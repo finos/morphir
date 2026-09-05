@@ -10,8 +10,9 @@ description: |
   - Explicit TypeAttributes and ValueAttributes
   - Canonical string formats for names, paths, and FQNames
   - Embedded documentation support
-  - New value expressions (Hole, Native, External)
-  
+  - New value expression (Hole) and definition bodies (NativeBody, ExternalBody, IncompleteBody)
+  - DocumentLiteral, a schema-less JSON-like literal (decision 0013)
+
   See the complete example at: docs/spec/ir/schemas/v4/complete-example.json
 
 type: object
@@ -99,19 +100,10 @@ definitions:
       Module path within a package. Examples: "basics", "list", "domain/users"
     examples: ["basics", "list", "domain/users", "US/FR2052A/data-tables"]
 
-  FileStem:
-    type: string
-    pattern: "^_?[a-z0-9]+(-_?[a-z0-9]+)*(__[0-9a-f]{8})?_?$"
-    description: |
-      Escaped projection of a Name onto the document tree. All lowercase, so it is
-      stable on case-insensitive filesystems. An initialism segment carries a "_"
-      prefix; a stem colliding with a Windows reserved device name carries a "_"
-      suffix.
-
-      A stem truncated for path length carries "__" followed by eight hex digits
-      of the SHA-256 of the untruncated stem. A truncated stem is not reversible,
-      so the module manifest records the mapping from canonical name to stem.
-    examples: ["user", "user-_id", "value-in-_usd", "aux_", "some-extremely-long-canonical__3f9a1c04"]
+  # FileStem is defined authoritatively in morphir-ir-v4-document-tree-files.yaml
+  # (decision 0012). Nothing in this schema references it, so the copy that used to
+  # sit here is gone; a cross-file reference replaces it when the generated schema
+  # of specification step 7.2 lands.
 
   FQNameString:
     type: string
@@ -226,6 +218,14 @@ definitions:
       Encoders should output the canonical form.
     examples: ["Public", "Private", "pub"]
 
+  # Documentation
+  Doc:
+    type: string
+    description: |
+      Documentation text. Decision 0010 places "doc" first, flattened beside the
+      variant it documents, rather than in a nested { "doc", "value" } wrapper.
+    examples: ["The user's display name", "Adds two integers"]
+
   AccessControlled:
     # anyOf rather than oneOf: these are alternative spellings of the same thing,
     # and the flattened form below is deliberately a superset of the legacy
@@ -283,6 +283,115 @@ definitions:
       - { "pub": { "some": "data" } }
       - { "access": "Public", "value": { "some": "data" } }
       - { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+
+  # Documented definitions and specifications
+  #
+  # Decision 0010: "doc" is a flattened member placed first beside the variant it
+  # documents. The nested { "doc", "value" } wrapper is accepted for one release
+  # (decision 0006) and then refused.
+  #
+  DocumentedTypeDefinition:
+    oneOf:
+      - $ref: "#/definitions/TypeDefinition"
+      - type: object
+        required: ["doc", "value"]
+        additionalProperties: false
+        properties:
+          doc: { $ref: "#/definitions/Doc" }
+          value: { $ref: "#/definitions/TypeDefinition" }
+        description: "Nested wrapper, accepted for one release (decision 0010)"
+    description: |
+      A type definition, documented or not.
+      Canonical: { "doc": "...", "TypeAliasDefinition": {...} }
+      Accepted for one release: { "doc": "...", "value": { "TypeAliasDefinition": {...} } }
+    examples:
+      - { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+      - { "doc": "The user's display name", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+
+  DocumentedValueDefinition:
+    oneOf:
+      - $ref: "#/definitions/ValueDefinition"
+      - type: object
+        required: ["doc", "value"]
+        additionalProperties: false
+        properties:
+          doc: { $ref: "#/definitions/Doc" }
+          value: { $ref: "#/definitions/ValueDefinition" }
+        description: "Nested wrapper, accepted for one release (decision 0010)"
+    description: |
+      A value definition, documented or not.
+      Canonical: { "doc": "...", "ExpressionBody": {...} }
+      Accepted for one release: { "doc": "...", "value": { "ExpressionBody": {...} } }
+
+  DocumentedTypeSpecification:
+    oneOf:
+      - $ref: "#/definitions/TypeSpecification"
+      - type: object
+        required: ["doc", "value"]
+        additionalProperties: false
+        properties:
+          doc: { $ref: "#/definitions/Doc" }
+          value: { $ref: "#/definitions/TypeSpecification" }
+        description: "Nested wrapper, accepted for one release (decision 0010)"
+    description: |
+      A type specification, documented or not.
+      Canonical: { "doc": "...", "OpaqueTypeSpecification": {} }
+
+  DocumentedValueSpecification:
+    oneOf:
+      - $ref: "#/definitions/ValueSpecification"
+      - type: object
+        required: ["doc", "value"]
+        additionalProperties: false
+        properties:
+          doc: { $ref: "#/definitions/Doc" }
+          value: { $ref: "#/definitions/ValueSpecification" }
+        description: "Nested wrapper, accepted for one release (decision 0010)"
+    description: |
+      A value specification, documented or not. Its "doc" is first beside its own
+      members (decision 0010).
+      Canonical: { "doc": "...", "inputs": {...}, "output": ... }
+
+  AccessControlledTypeDefinition:
+    allOf:
+      - $ref: "#/definitions/AccessControlled"
+      # Only the keyed and nested spellings carry the definition as a payload; in
+      # the flattened spelling the variant sits beside "access", so no property
+      # here applies to it.
+      - type: object
+        properties:
+          Public: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          Private: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          public: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          private: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          pub: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          value: { $ref: "#/definitions/DocumentedTypeDefinition" }
+    description: |
+      An access-controlled type definition, the entry shape of ModuleDefinition.types.
+      Canonical: { "Public": { "doc": "...", "TypeAliasDefinition": {...} } }
+      Accepted: { "access": "Public", "TypeAliasDefinition": {...} } and the lowercase
+      and "pub" spellings of the access level.
+    examples:
+      - { "Public": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } }
+      - { "Public": { "doc": "The user's display name", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } }
+      - { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+
+  AccessControlledValueDefinition:
+    allOf:
+      - $ref: "#/definitions/AccessControlled"
+      - type: object
+        properties:
+          Public: { $ref: "#/definitions/DocumentedValueDefinition" }
+          Private: { $ref: "#/definitions/DocumentedValueDefinition" }
+          public: { $ref: "#/definitions/DocumentedValueDefinition" }
+          private: { $ref: "#/definitions/DocumentedValueDefinition" }
+          pub: { $ref: "#/definitions/DocumentedValueDefinition" }
+          value: { $ref: "#/definitions/DocumentedValueDefinition" }
+    description: |
+      An access-controlled value definition, the entry shape of ModuleDefinition.values.
+      Canonical: { "Public": { "doc": "...", "ExpressionBody": {...} } }
+    examples:
+      - { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Literal": { "IntegerLiteral": 42 } } } }
 
   # Packages
   Dependencies:
@@ -461,49 +570,28 @@ definitions:
     properties:
       types:
         type: object
-        additionalProperties:
-          allOf:
-            - $ref: "#/definitions/AccessControlled"
-            - properties:
-                value:
-                  oneOf:
-                    - type: object
-                      required: ["doc", "value"]
-                      properties:
-                        doc: { type: string }
-                        value: { $ref: "#/definitions/TypeDefinition" }
-                    - $ref: "#/definitions/TypeDefinition"
+        additionalProperties: { $ref: "#/definitions/AccessControlledTypeDefinition" }
         description: |
           Dictionary mapping type names to access-controlled type definitions.
           V4 uses object format: { "type-name": { "access": "Public", "TypeAliasDefinition": {...} } }
-          Documentation can be included inline or omitted if None.
           Optional - defaults to empty object if omitted.
       values:
         type: object
-        additionalProperties:
-          allOf:
-            - $ref: "#/definitions/AccessControlled"
-            - properties:
-                value:
-                  oneOf:
-                    - type: object
-                      required: ["doc", "value"]
-                      properties:
-                        doc: { type: string }
-                        value: { $ref: "#/definitions/ValueDefinition" }
-                    - $ref: "#/definitions/ValueDefinition"
+        additionalProperties: { $ref: "#/definitions/AccessControlledValueDefinition" }
         description: |
           Dictionary mapping value names to access-controlled value definitions.
           V4 uses object format: { "value-name": { "access": "Public", "ExpressionBody": {...} } }
-          Documentation can be included inline or omitted if None.
           Optional - defaults to empty object if omitted.
-      doc: { type: string, description: "Optional module-level documentation" }
+      doc: { $ref: "#/definitions/Doc", description: "Optional module-level documentation" }
     description: |
       Full module definition containing all types and values with their implementations.
       Includes both public and private items. Used in PackageDefinition.
       The "types" and "values" fields can be omitted if empty.
+
+      Canonical: "doc" flattened first beside the variant (decision 0010); the nested
+      { "doc", "value" } form is accepted for one release.
     examples:
-      - { "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } }, "values": {} }
+      - { "types": { "user": { "Public": { "doc": "The user's display name", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } } }, "values": {} }
       - { "types": {}, "values": { "calculate": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } } } } }, "doc": "Module documentation" }
       - { "values": { "main": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": { "Unit": {} }, "body": { "Unit": {} } } } } }
 
@@ -516,41 +604,28 @@ definitions:
         description: "Module-level annotations"
       types:
         type: object
-        additionalProperties:
-          oneOf:
-            - type: object
-              required: ["doc", "value"]
-              properties:
-                doc: { type: string }
-                value: { $ref: "#/definitions/TypeSpecification" }
-            - $ref: "#/definitions/TypeSpecification"
+        additionalProperties: { $ref: "#/definitions/DocumentedTypeSpecification" }
         description: |
           Dictionary mapping type names to documented type specifications.
           V4 uses object format: { "type-name": { "TypeAliasSpecification": {...} } }
-          Documentation can be included inline or omitted if None.
           Optional - defaults to empty object if omitted.
       values:
         type: object
-        additionalProperties:
-          oneOf:
-            - type: object
-              required: ["doc", "value"]
-              properties:
-                doc: { type: string }
-                value: { $ref: "#/definitions/ValueSpecification" }
-            - $ref: "#/definitions/ValueSpecification"
+        additionalProperties: { $ref: "#/definitions/DocumentedValueSpecification" }
         description: |
           Dictionary mapping value names to documented value specifications.
           V4 uses object format: { "value-name": { "inputs": {...}, "output": "..." } }
-          Documentation can be included inline or omitted if None.
           Optional - defaults to empty object if omitted.
-      doc: { type: string, description: "Optional module-level documentation" }
+      doc: { $ref: "#/definitions/Doc", description: "Optional module-level documentation" }
     description: |
       Module specification containing only public interfaces (no implementations).
       Used in PackageSpecification and dependencies.
       The "types" and "values" fields can be omitted if empty.
+
+      Canonical: "doc" flattened first beside the variant (decision 0010); the nested
+      { "doc", "value" } form is accepted for one release.
     examples:
-      - { "types": { "int": { "OpaqueTypeSpecification": {} } }, "values": { "add": { "inputs": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" } } }
+      - { "types": { "int": { "doc": "Arbitrary precision integer", "OpaqueTypeSpecification": {} } }, "values": { "add": { "doc": "Adds two integers", "inputs": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" } } }
       - { "types": { "int": { "OpaqueTypeSpecification": {} } } }
 
   # Type System
@@ -573,16 +648,34 @@ definitions:
       - $ref: "#/definitions/UnitType"
 
   VariableType:
-    type: string
-    pattern: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    oneOf:
+      # Compact: bare name string
+      - type: string
+        pattern: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+        description: |
+          Compact format: bare name string (no ':' or '#').
+          Distinguished from Reference by absence of FQName separators.
+      # Wrapper, with the expanded payload of decision 0005
+      - type: object
+        required: ["Variable"]
+        additionalProperties: false
+        properties:
+          Variable:
+            oneOf:
+              - $ref: "#/definitions/Name"
+              - type: object
+                required: ["name"]
+                additionalProperties: false
+                properties:
+                  attributes: { $ref: "#/definitions/TypeAttributes" }
+                  name: { $ref: "#/definitions/Name" }
     description: |
       Type variable (generic type parameter).
-      V4 compact format: bare name string (no ':' or '#').
-      Distinguished from Reference by absence of FQName separators.
+      Compact: "a"; expanded: {"Variable": {"attributes": {...}, "name": "a"}}
     examples:
       - "a"
       - "comparable"
-      - "number"
+      - { "Variable": { "attributes": {}, "name": "a" } }
 
   ReferenceType:
     oneOf:
@@ -625,13 +718,15 @@ definitions:
           Reference:
             type: object
             required: ["fqname"]
+            additionalProperties: false
             properties:
+              attributes: { $ref: "#/definitions/TypeAttributes" }
               fqname: { $ref: "#/definitions/FQName" }
               args:
                 type: array
                 items: { $ref: "#/definitions/Type" }
             description: |
-              Object with fqname and optional args fields.
+              Object with optional attributes, fqname, and optional args fields.
         description: |
           Expanded wrapper format with explicit fqname and args fields.
     description: |
@@ -680,12 +775,14 @@ definitions:
           Tuple:
             type: object
             required: ["elements"]
+            additionalProperties: false
             properties:
+              attributes: { $ref: "#/definitions/TypeAttributes" }
               elements:
                 type: array
                 items: { $ref: "#/definitions/Type" }
         description: |
-          Expanded wrapper format with explicit elements field.
+          Expanded wrapper format with optional attributes and an explicit elements field.
     description: |
       Tuple type with multiple element types.
 
@@ -706,28 +803,39 @@ definitions:
   RecordType:
     type: object
     required: ["Record"]
+    additionalProperties: false
     properties:
       Record:
         type: object
-        additionalProperties: { $ref: "#/definitions/Type" }
-        description: |
-          Dictionary mapping field names to their types.
-          Field names use kebab-case.
+        required: ["fields"]
+        additionalProperties: false
+        properties:
+          attributes: { $ref: "#/definitions/TypeAttributes" }
+          fields:
+            type: object
+            additionalProperties: { $ref: "#/definitions/Type" }
+            description: "Dictionary mapping field names (kebab-case) to their types."
     description: |
-      Record type with named fields.
-      Format: {"Record": {"field-name": type, ...}}
+      Record type with named fields (decision 0004).
+      Canonical: {"Record": {"fields": {"field-name": type, ...}}}
+      Expanded: {"Record": {"attributes": {...}, "fields": {...}}}
+      The field map directly under "Record" is a legacy spelling readers accept for
+      one release (decision 0006) and report as legacy_spelling; it is not valid here.
     examples:
-      - { "Record": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:int#int" } }
-      - { "Record": { "inflows": "regulation:data-tables#inflows", "outflows": "regulation:data-tables#outflows" } }
+      - { "Record": { "fields": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int" } } }
+      - { "Record": { "fields": { "inflows": "regulation:data-tables#inflows", "outflows": "regulation:data-tables#outflows" } } }
 
   ExtensibleRecordType:
     type: object
     required: ["ExtensibleRecord"]
+    additionalProperties: false
     properties:
       ExtensibleRecord:
         type: object
         required: ["variable", "fields"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/TypeAttributes" }
           variable: { $ref: "#/definitions/Name" }
           fields:
             type: object
@@ -735,6 +843,7 @@ definitions:
     description: |
       Extensible record type (row polymorphism).
       Format: {"ExtensibleRecord": {"variable": "a", "fields": {...}}}
+      Expanded: {"ExtensibleRecord": {"attributes": {...}, "variable": "a", "fields": {...}}}
     examples:
       - { "ExtensibleRecord": { "variable": "a", "fields": { "name": "morphir/SDK:string#string" } } }
       - { "ExtensibleRecord": { "variable": "r", "fields": { "email": "morphir/SDK:string#string" } } }
@@ -742,30 +851,41 @@ definitions:
   FunctionType:
     type: object
     required: ["Function"]
+    additionalProperties: false
     properties:
       Function:
         type: object
-        required: ["argumentType", "returnType"]
+        required: ["parameterType", "returnType"]
+        additionalProperties: false
         properties:
-          argumentType: { $ref: "#/definitions/Type" }
+          attributes: { $ref: "#/definitions/TypeAttributes" }
+          parameterType: { $ref: "#/definitions/Type" }
           returnType: { $ref: "#/definitions/Type" }
     description: |
-      Function type.
-      Format: {"Function": {"argumentType": ..., "returnType": ...}}
+      Function type. A function declares a parameter and applies an argument (decision 0007).
+      Canonical: {"Function": {"parameterType": ..., "returnType": ...}}
+      Expanded: {"Function": {"attributes": {...}, "parameterType": ..., "returnType": ...}}
+      The older "argumentType" and the "arg"/"result" pair are legacy spellings readers
+      accept for one release (decision 0006); they are not valid here.
     examples:
-      - { "Function": { "argumentType": "morphir/SDK:int#int", "returnType": "morphir/SDK:string#string" } }
+      - { "Function": { "parameterType": "morphir/SDK:basics#int", "returnType": "morphir/SDK:string#string" } }
 
   UnitType:
     type: object
     required: ["Unit"]
+    additionalProperties: false
     properties:
       Unit:
         type: object
+        additionalProperties: false
+        properties:
+          attributes: { $ref: "#/definitions/TypeAttributes" }
     description: |
       Unit type (the type with exactly one value).
-      Format: {"Unit": {}}
+      Compact: {"Unit": {}}; expanded: {"Unit": {"attributes": {...}}}
     examples:
       - { "Unit": {} }
+      - { "Unit": { "attributes": {} } }
 
   Field:
     type: object
@@ -794,6 +914,7 @@ definitions:
         required: ["TypeAliasSpecification"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           TypeAliasSpecification:
             type: object
             required: ["typeParams", "typeExp"]
@@ -827,6 +948,7 @@ definitions:
         required: ["OpaqueTypeSpecification"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           # One schema rather than a oneOf. The previous second branch, an object
           # carrying only "annotations", was a strict subset of this one, so any
           # value matching it matched both and "exactly one" could never hold.
@@ -862,6 +984,7 @@ definitions:
         required: ["CustomTypeSpecification"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           CustomTypeSpecification:
             type: object
             required: ["typeParams", "constructors"]
@@ -894,6 +1017,7 @@ definitions:
         required: ["DerivedTypeSpecification"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           DerivedTypeSpecification:
             type: object
             required: ["typeParams", "baseType", "fromBaseType", "toBaseType"]
@@ -942,6 +1066,7 @@ definitions:
         required: ["TypeAliasDefinition"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           TypeAliasDefinition:
             type: object
             required: ["typeParams", "typeExp"]
@@ -972,6 +1097,7 @@ definitions:
         required: ["CustomTypeDefinition"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           CustomTypeDefinition:
             type: object
             required: ["typeParams", "constructors"]
@@ -1005,6 +1131,7 @@ definitions:
     required: ["IncompleteTypeDefinition"]
     additionalProperties: false
     properties:
+      doc: { $ref: "#/definitions/Doc" }
       IncompleteTypeDefinition:
         type: object
         required: ["typeParams", "incompleteness"]
@@ -1075,7 +1202,7 @@ definitions:
       - type: boolean
         description: "Shorthand for BoolLiteral"
       - type: number
-        description: "Shorthand for IntegerLiteral or FloatLiteral"
+        description: "Shorthand for IntegerLiteral or FloatLiteral, by lexeme (decision 0009)"
       - type: string
         pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
         description: "Shorthand for Reference (FQName string)"
@@ -1084,7 +1211,7 @@ definitions:
         description: "Shorthand for Variable (Name string)"
       - type: array
         items: { $ref: "#/definitions/Value" }
-        description: "Shorthand for List"
+        description: "Shorthand for List (decision 0009); a Tuple always carries its wrapper"
 
       # Canonical wrapper formats
       - $ref: "#/definitions/LiteralValue"
@@ -1105,10 +1232,12 @@ definitions:
       - $ref: "#/definitions/PatternMatchValue"
       - $ref: "#/definitions/UpdateRecordValue"
       - $ref: "#/definitions/UnitValue"
+      - $ref: "#/definitions/HoleValue"
 
   LiteralValue:
     type: object
     required: ["Literal"]
+    additionalProperties: false
     properties:
       Literal:
         oneOf:
@@ -1121,6 +1250,7 @@ definitions:
           # Expanded with attributes (literal can be typed or direct value)
           - type: object
             required: ["literal"]
+            additionalProperties: false
             properties:
               attributes: { $ref: "#/definitions/ValueAttributes" }
               literal:
@@ -1149,14 +1279,24 @@ definitions:
   ConstructorValue:
     type: object
     required: ["Constructor"]
+    additionalProperties: false
     properties:
-      Constructor: { $ref: "#/definitions/FQName" }
+      Constructor:
+        oneOf:
+          - $ref: "#/definitions/FQName"
+          - type: object
+            required: ["fqname"]
+            additionalProperties: false
+            properties:
+              attributes: { $ref: "#/definitions/ValueAttributes" }
+              fqname: { $ref: "#/definitions/FQName" }
     description: |
       Reference to a custom type constructor.
-      Format: {"Constructor": "package:module#constructor-name"}
+      Compact: {"Constructor": "package:module#constructor-name"}
+      Expanded: {"Constructor": {"attributes": {...}, "fqname": "package:module#constructor-name"}}
     examples:
       - { "Constructor": "morphir/SDK:maybe#just" }
-      - { "Constructor": "morphir/SDK:maybe#nothing" }
+      - { "Constructor": { "attributes": {}, "fqname": "morphir/SDK:maybe#just" } }
 
   TupleValue:
     oneOf:
@@ -1178,12 +1318,14 @@ definitions:
           Tuple:
             type: object
             required: ["elements"]
+            additionalProperties: false
             properties:
+              attributes: { $ref: "#/definitions/ValueAttributes" }
               elements:
                 type: array
                 items: { $ref: "#/definitions/Value" }
         description: |
-          Expanded wrapper format with explicit elements field.
+          Expanded wrapper format with optional attributes and an explicit elements field.
     description: |
       Tuple value with multiple elements.
 
@@ -1192,8 +1334,9 @@ definitions:
       Accepted formats:
       - Wrapper with array: {"Tuple": [value1, value2, ...]}
       - Wrapper with object: {"Tuple": {"elements": [value1, value2, ...]}}
+      - Expanded: {"Tuple": {"attributes": {...}, "elements": [...]}}
 
-      Note: Bare arrays are NOT allowed for values (would be ambiguous with ListValue).
+      A bare array at value position is a List (decision 0009).
 
       Encoders should output canonical form.
     examples:
@@ -1220,12 +1363,14 @@ definitions:
           List:
             type: object
             required: ["items"]
+            additionalProperties: false
             properties:
+              attributes: { $ref: "#/definitions/ValueAttributes" }
               items:
                 type: array
                 items: { $ref: "#/definitions/Value" }
         description: |
-          Expanded wrapper format with explicit items field.
+          Expanded wrapper format with optional attributes and an explicit items field.
     description: |
       List of values.
 
@@ -1234,8 +1379,9 @@ definitions:
       Accepted formats:
       - Wrapper with array: {"List": [value1, value2, ...]}
       - Wrapper with object: {"List": {"items": [value1, value2, ...]}}
+      - Expanded: {"List": {"attributes": {...}, "items": [...]}}
 
-      Note: Bare arrays are NOT allowed for values (would be ambiguous with TupleValue).
+      A bare array at value position is a List (decision 0009).
 
       Encoders should output canonical form.
     examples:
@@ -1245,81 +1391,126 @@ definitions:
   RecordValue:
     type: object
     required: ["Record"]
+    additionalProperties: false
     properties:
       Record:
         type: object
-        additionalProperties: { $ref: "#/definitions/Value" }
+        required: ["fields"]
+        additionalProperties: false
+        properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
+          fields:
+            type: object
+            additionalProperties: { $ref: "#/definitions/Value" }
+            description: "Dictionary mapping field names (kebab-case) to their values."
     description: |
-      Record value with named fields.
-      Format: {"Record": {"field-name": value, ...}}
-      Field names use kebab-case.
+      Record value with named fields (decision 0004).
+      Canonical: {"Record": {"fields": {"field-name": value, ...}}}
+      Expanded: {"Record": {"attributes": {...}, "fields": {...}}}
+      The field map directly under "Record" is a legacy spelling readers accept for
+      one release (decision 0006) and report as legacy_spelling; it is not valid here.
     examples:
-      - { "Record": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } }
+      - { "Record": { "fields": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } } }
 
   VariableValue:
     type: object
     required: ["Variable"]
+    additionalProperties: false
     properties:
-      Variable: { $ref: "#/definitions/Name" }
+      Variable:
+        oneOf:
+          - $ref: "#/definitions/Name"
+          - type: object
+            required: ["name"]
+            additionalProperties: false
+            properties:
+              attributes: { $ref: "#/definitions/ValueAttributes" }
+              name: { $ref: "#/definitions/Name" }
     description: |
       Reference to a variable in scope.
-      Format: {"Variable": "variable-name"}
+      Compact: {"Variable": "variable-name"}; expanded: {"Variable": {"attributes": {...}, "name": "variable-name"}}
     examples:
       - { "Variable": "x" }
-      - { "Variable": "my-value" }
+      - { "Variable": { "attributes": {}, "name": "x" } }
 
   ReferenceValue:
     type: object
     required: ["Reference"]
+    additionalProperties: false
     properties:
-      Reference: { $ref: "#/definitions/FQName" }
+      Reference:
+        oneOf:
+          - $ref: "#/definitions/FQName"
+          - type: object
+            required: ["fqname"]
+            additionalProperties: false
+            properties:
+              attributes: { $ref: "#/definitions/ValueAttributes" }
+              fqname: { $ref: "#/definitions/FQName" }
     description: |
       Reference to a defined value (function or constant).
-      Format: {"Reference": "package:module#name"}
+      Compact: {"Reference": "package:module#name"}; expanded: {"Reference": {"attributes": {...}, "fqname": "package:module#name"}}
     examples:
       - { "Reference": "morphir/SDK:basics#add" }
-      - { "Reference": "morphir/SDK:list#map" }
+      - { "Reference": { "attributes": {}, "fqname": "morphir/SDK:basics#add" } }
 
   FieldValue:
     type: object
     required: ["Field"]
+    additionalProperties: false
     properties:
       Field:
         type: object
         required: ["target", "name"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           target: { $ref: "#/definitions/Value" }
           name: { $ref: "#/definitions/Name" }
     description: |
       Field access on a record.
       Format: {"Field": {"target": value, "name": "field-name"}}
+      The older "subject" and "fieldName" are legacy spellings readers accept for one
+      release (decision 0006); they are not valid here.
     examples:
       - { "Field": { "target": { "Variable": "record" }, "name": "field-name" } }
 
   FieldFunctionValue:
     type: object
     required: ["FieldFunction"]
+    additionalProperties: false
     properties:
-      FieldFunction: { $ref: "#/definitions/Name" }
+      FieldFunction:
+        oneOf:
+          - $ref: "#/definitions/Name"
+          - type: object
+            required: ["name"]
+            additionalProperties: false
+            properties:
+              attributes: { $ref: "#/definitions/ValueAttributes" }
+              name: { $ref: "#/definitions/Name" }
     description: |
       A function that extracts a field.
-      Format: {"FieldFunction": "field-name"}
+      Compact: {"FieldFunction": "field-name"}; expanded: {"FieldFunction": {"attributes": {...}, "name": "field-name"}}
     examples:
       - { "FieldFunction": "name" }
-      - { "FieldFunction": "age" }
+      - { "FieldFunction": { "attributes": {}, "name": "name" } }
 
   ApplyValue:
     type: object
     required: ["Apply"]
+    additionalProperties: false
     properties:
       Apply:
         type: object
         required: ["function", "argument"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           function: { $ref: "#/definitions/Value" }
           argument: { $ref: "#/definitions/Value" }
     description: |
-      Function application.
+      Function application: an argument is applied to a function (decision 0007).
       Format: {"Apply": {"function": value, "argument": value}}
     examples:
       - { "Apply": { "function": { "Reference": "morphir/SDK:basics#add" }, "argument": { "Literal": { "IntegerLiteral": 1 } } } }
@@ -1327,11 +1518,14 @@ definitions:
   LambdaValue:
     type: object
     required: ["Lambda"]
+    additionalProperties: false
     properties:
       Lambda:
         type: object
         required: ["pattern", "body"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           pattern: { $ref: "#/definitions/Pattern" }
           body: { $ref: "#/definitions/Value" }
     description: |
@@ -1343,28 +1537,36 @@ definitions:
   LetDefinitionValue:
     type: object
     required: ["LetDefinition"]
+    additionalProperties: false
     properties:
       LetDefinition:
         type: object
         required: ["name", "definition", "in"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           name: { $ref: "#/definitions/Name" }
           definition: { $ref: "#/definitions/ValueDefinition" }
           in: { $ref: "#/definitions/Value" }
     description: |
       Let binding introducing a single value.
       Format: {"LetDefinition": {"name": "x", "definition": {...}, "in": value}}
+      The older "valueName", "valueDefinition", and "inValue" are legacy spellings
+      readers accept for one release (decision 0006); they are not valid here.
     examples:
-      - { "LetDefinition": { "name": "x", "definition": { }, "in": { "Variable": "x" } } }
+      - { "LetDefinition": { "name": "x", "definition": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Literal": { "IntegerLiteral": 1 } } } }, "in": { "Variable": "x" } } }
 
   LetRecursionValue:
     type: object
     required: ["LetRecursion"]
+    additionalProperties: false
     properties:
       LetRecursion:
         type: object
         required: ["definitions", "in"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           definitions:
             type: object
             additionalProperties: { $ref: "#/definitions/ValueDefinition" }
@@ -1373,16 +1575,19 @@ definitions:
       Mutually recursive let bindings.
       Format: {"LetRecursion": {"definitions": {"f": {...}, "g": {...}}, "in": value}}
     examples:
-      - { "LetRecursion": { "definitions": { "f": { }, "g": { } }, "in": { "Variable": "f" } } }
+      - { "LetRecursion": { "definitions": { "f": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "f" } } } }, "in": { "Variable": "f" } } }
 
   DestructureValue:
     type: object
     required: ["Destructure"]
+    additionalProperties: false
     properties:
       Destructure:
         type: object
         required: ["pattern", "value", "in"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           pattern: { $ref: "#/definitions/Pattern" }
           value: { $ref: "#/definitions/Value" }
           in: { $ref: "#/definitions/Value" }
@@ -1393,32 +1598,41 @@ definitions:
   IfThenElseValue:
     type: object
     required: ["IfThenElse"]
+    additionalProperties: false
     properties:
       IfThenElse:
         type: object
         required: ["condition", "then", "else"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           condition: { $ref: "#/definitions/Value" }
           then: { $ref: "#/definitions/Value" }
           else: { $ref: "#/definitions/Value" }
     description: |
       Conditional expression.
       Format: {"IfThenElse": {"condition": value, "then": value, "else": value}}
+      The older "thenBranch" and "elseBranch" are legacy spellings readers accept for
+      one release (decision 0006); they are not valid here.
 
   PatternMatchValue:
     type: object
     required: ["PatternMatch"]
+    additionalProperties: false
     properties:
       PatternMatch:
         type: object
         required: ["value", "cases"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           value: { $ref: "#/definitions/Value" }
           cases:
             type: array
             items:
               type: object
               required: ["pattern", "body"]
+              additionalProperties: false
               properties:
                 pattern: { $ref: "#/definitions/Pattern" }
                 body: { $ref: "#/definitions/Value" }
@@ -1429,11 +1643,14 @@ definitions:
   UpdateRecordValue:
     type: object
     required: ["UpdateRecord"]
+    additionalProperties: false
     properties:
       UpdateRecord:
         type: object
         required: ["target", "fields"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           target: { $ref: "#/definitions/Value" }
           fields:
             type: object
@@ -1447,14 +1664,43 @@ definitions:
   UnitValue:
     type: object
     required: ["Unit"]
+    additionalProperties: false
     properties:
       Unit:
         type: object
+        additionalProperties: false
+        properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
     description: |
       The unit value.
-      Format: {"Unit": {}}
+      Compact: {"Unit": {}}; expanded: {"Unit": {"attributes": {...}}}
     examples:
       - { "Unit": {} }
+      - { "Unit": { "attributes": {} } }
+
+  HoleValue:
+    type: object
+    required: ["Hole"]
+    additionalProperties: false
+    properties:
+      Hole:
+        type: object
+        required: ["reason"]
+        additionalProperties: false
+        properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
+          reason: { $ref: "#/definitions/HoleReason" }
+          expectedType:
+            $ref: "#/definitions/Type"
+            description: "Optional type the missing expression was expected to have"
+    description: |
+      A missing expression (decision 0008). Hole is the only V4-specific value
+      expression: native and external operations are definition bodies (NativeBody,
+      ExternalBody), not expressions, and a reader refuses "Native" or "External" at
+      value position as an unknown node.
+    examples:
+      - { "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } } } }
+      - { "Hole": { "attributes": {}, "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } } } }
 
   # Pattern
   #
@@ -1474,23 +1720,31 @@ definitions:
   WildcardPattern:
     type: object
     required: ["WildcardPattern"]
+    additionalProperties: false
     properties:
       WildcardPattern:
         type: object
+        additionalProperties: false
+        properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
     description: |
       Wildcard pattern (matches anything).
-      Format: {"WildcardPattern": {}}
+      Compact: {"WildcardPattern": {}}; expanded: {"WildcardPattern": {"attributes": {...}}}
     examples:
       - { "WildcardPattern": {} }
+      - { "WildcardPattern": { "attributes": {} } }
 
   AsPattern:
     type: object
     required: ["AsPattern"]
+    additionalProperties: false
     properties:
       AsPattern:
         type: object
         required: ["pattern", "name"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           pattern: { $ref: "#/definitions/Pattern" }
           name: { $ref: "#/definitions/Name" }
     description: |
@@ -1524,12 +1778,14 @@ definitions:
           TuplePattern:
             type: object
             required: ["patterns"]
+            additionalProperties: false
             properties:
+              attributes: { $ref: "#/definitions/ValueAttributes" }
               patterns:
                 type: array
                 items: { $ref: "#/definitions/Pattern" }
         description: |
-          Expanded wrapper format with explicit patterns field.
+          Expanded wrapper format with optional attributes and an explicit patterns field.
     description: |
       Tuple pattern for destructuring tuples.
 
@@ -1549,11 +1805,14 @@ definitions:
   ConstructorPattern:
     type: object
     required: ["ConstructorPattern"]
+    additionalProperties: false
     properties:
       ConstructorPattern:
         type: object
         required: ["fqname", "patterns"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           fqname: { $ref: "#/definitions/FQName" }
           patterns:
             type: array
@@ -1567,23 +1826,31 @@ definitions:
   EmptyListPattern:
     type: object
     required: ["EmptyListPattern"]
+    additionalProperties: false
     properties:
       EmptyListPattern:
         type: object
+        additionalProperties: false
+        properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
     description: |
       Pattern matching an empty list.
-      Format: {"EmptyListPattern": {}}
+      Compact: {"EmptyListPattern": {}}; expanded: {"EmptyListPattern": {"attributes": {...}}}
     examples:
       - { "EmptyListPattern": {} }
+      - { "EmptyListPattern": { "attributes": {} } }
 
   HeadTailPattern:
     type: object
     required: ["HeadTailPattern"]
+    additionalProperties: false
     properties:
       HeadTailPattern:
         type: object
         required: ["head", "tail"]
+        additionalProperties: false
         properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
           head: { $ref: "#/definitions/Pattern" }
           tail: { $ref: "#/definitions/Pattern" }
     description: |
@@ -1595,6 +1862,7 @@ definitions:
   LiteralPattern:
     type: object
     required: ["LiteralPattern"]
+    additionalProperties: false
     properties:
       LiteralPattern:
         oneOf:
@@ -1603,10 +1871,18 @@ definitions:
           - type: number
           - type: string
           # Compact with explicit type
-          - $ref: "#/definitions/Literal"
+          - oneOf:
+              - $ref: "#/definitions/BoolLiteral"
+              - $ref: "#/definitions/CharLiteral"
+              - $ref: "#/definitions/StringLiteral"
+              - $ref: "#/definitions/IntegerLiteral"
+              - $ref: "#/definitions/WholeNumberLiteral"
+              - $ref: "#/definitions/FloatLiteral"
+              - $ref: "#/definitions/DecimalLiteral"
           # Expanded with attributes
           - type: object
             required: ["literal"]
+            additionalProperties: false
             properties:
               attributes: { $ref: "#/definitions/ValueAttributes" }
               literal:
@@ -1614,9 +1890,17 @@ definitions:
                   - type: boolean
                   - type: number
                   - type: string
-                  - $ref: "#/definitions/Literal"
+                  - oneOf:
+                      - $ref: "#/definitions/BoolLiteral"
+                      - $ref: "#/definitions/CharLiteral"
+                      - $ref: "#/definitions/StringLiteral"
+                      - $ref: "#/definitions/IntegerLiteral"
+                      - $ref: "#/definitions/WholeNumberLiteral"
+                      - $ref: "#/definitions/FloatLiteral"
+                      - $ref: "#/definitions/DecimalLiteral"
     description: |
-      Pattern matching a literal value. Multiple forms accepted:
+      Pattern matching a literal value. A DocumentLiteral is not a valid pattern
+      (decision 0013). Multiple forms accepted:
 
       - Most compact: { "LiteralPattern": 42 }
       - Compact with type: { "LiteralPattern": { "IntegerLiteral": 42 } }
@@ -1632,14 +1916,19 @@ definitions:
   UnitPattern:
     type: object
     required: ["UnitPattern"]
+    additionalProperties: false
     properties:
       UnitPattern:
         type: object
+        additionalProperties: false
+        properties:
+          attributes: { $ref: "#/definitions/ValueAttributes" }
     description: |
       Pattern matching the unit value.
-      Format: {"UnitPattern": {}}
+      Compact: {"UnitPattern": {}}; expanded: {"UnitPattern": {"attributes": {...}}}
     examples:
       - { "UnitPattern": {} }
+      - { "UnitPattern": { "attributes": {} } }
 
   # Specs & Defs
   ValueSpecification:
@@ -1689,21 +1978,25 @@ definitions:
         required: ["ExpressionBody"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           ExpressionBody: { $ref: "#/definitions/ExpressionBody" }
       - type: object
         required: ["NativeBody"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           NativeBody: { $ref: "#/definitions/NativeBody" }
       - type: object
         required: ["ExternalBody"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           ExternalBody: { $ref: "#/definitions/ExternalBody" }
       - type: object
         required: ["IncompleteBody"]
         additionalProperties: false
         properties:
+          doc: { $ref: "#/definitions/Doc" }
           IncompleteBody: { $ref: "#/definitions/IncompleteBody" }
     description: |
       Value definition body variant. When wrapped in AccessControlled (as in ModuleDefinition.values),
@@ -1747,9 +2040,21 @@ definitions:
     examples:
       - { "inputTypes": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "nativeInfo": { "hint": { "Arithmetic": {} } } }
 
+  ExternalBinding:
+    type: object
+    required: ["targetPlatform", "externalName"]
+    additionalProperties: false
+    properties:
+      targetPlatform: { type: string, description: "Target platform identifier (e.g. 'javascript', 'erlang', 'wasm')" }
+      externalName: { type: string, description: "Name of the external function on that platform" }
+    description: "One per-target binding of an external definition."
+    examples:
+      - { "targetPlatform": "javascript", "externalName": "console.log" }
+
   ExternalBody:
     type: object
-    required: ["inputTypes", "outputType", "externalName", "targetPlatform"]
+    required: ["inputTypes", "outputType", "externals"]
+    additionalProperties: false
     properties:
       inputTypes:
         type: object
@@ -1758,13 +2063,21 @@ definitions:
           Dictionary mapping input parameter names to their types.
           V4 uses object format: { "param-name": type, ... }
       outputType: { $ref: "#/definitions/Type" }
-      externalName: { type: string, description: "Name of the external function/operation" }
-      targetPlatform: { type: string, description: "Target platform identifier (e.g., 'wasm', 'native')" }
+      externals:
+        type: array
+        minItems: 1
+        items: { $ref: "#/definitions/ExternalBinding" }
+        description: "Per-target bindings; a backend picks the one for its platform"
+      body:
+        $ref: "#/definitions/Value"
+        description: "Optional fallback expression for platforms with no binding"
     description: |
-      External FFI call body (no IR expression).
-      Used for foreign function interface calls to platform-specific code.
+      External definition body (decision 0008): one or more per-target bindings and an
+      optional fallback body, so a Gleam-style external with a body encodes faithfully.
+      The single-binding spelling with top-level externalName/targetPlatform is a legacy
+      spelling readers accept for one release (decision 0006); it is not valid here.
     examples:
-      - { "inputTypes": { "msg": "morphir/SDK:string#string" }, "outputType": "morphir/SDK:basics#unit", "externalName": "console.log", "targetPlatform": "javascript" }
+      - { "inputTypes": { "msg": "morphir/SDK:string#string" }, "outputType": "morphir/SDK:basics#unit", "externals": [{ "targetPlatform": "javascript", "externalName": "console.log" }] }
 
   IncompleteBody:
     type: object
@@ -1800,10 +2113,13 @@ definitions:
       - $ref: "#/definitions/CharLiteral"
       - $ref: "#/definitions/StringLiteral"
       - $ref: "#/definitions/IntegerLiteral"
+      - $ref: "#/definitions/WholeNumberLiteral"
       - $ref: "#/definitions/FloatLiteral"
       - $ref: "#/definitions/DecimalLiteral"
+      - $ref: "#/definitions/DocumentLiteral"
     description: |
-      Literal constant value. V4 uses wrapper object format.
+      Literal constant value. V4 uses wrapper object format, and has seven literals:
+      the six scalar ones and DocumentLiteral (decision 0013).
 
       Two forms are accepted (permissive decoding):
       - Compact (canonical): { "IntegerLiteral": 42 }
@@ -1895,6 +2211,25 @@ definitions:
       - { "IntegerLiteral": -100 }
       - { "IntegerLiteral": 0 }
 
+  WholeNumberLiteral:
+    type: object
+    required: ["WholeNumberLiteral"]
+    additionalProperties: false
+    properties:
+      WholeNumberLiteral:
+        oneOf:
+          - type: integer
+          - type: object
+            required: ["value"]
+            properties:
+              value: { type: integer }
+    description: |
+      The V3 name of IntegerLiteral, accepted on input and never written.
+      Compact: { "WholeNumberLiteral": 42 }
+      Expanded: { "WholeNumberLiteral": { "value": 42 } }
+    examples:
+      - { "WholeNumberLiteral": 42 }
+
   FloatLiteral:
     type: object
     required: ["FloatLiteral"]
@@ -1935,6 +2270,20 @@ definitions:
     examples:
       - { "DecimalLiteral": "123456789.987654321" }
       - { "DecimalLiteral": "0.000000000000000001" }
+
+  DocumentLiteral:
+    type: object
+    required: ["DocumentLiteral"]
+    additionalProperties: false
+    properties:
+      DocumentLiteral:
+        description: "The document itself: any JSON value, carried verbatim. There is no { value } spelling."
+    description: |
+      Schema-less JSON-like document (decision 0013), typed morphir/SDK:document#document.
+      Number lexemes are preserved; readers must not narrow them to 64-bit floats.
+      A DocumentLiteral cannot appear in a LiteralPattern.
+    examples:
+      - { "DocumentLiteral": { "name": "Alice", "age": 30, "tags": ["admin", "user"], "metadata": null } }
 
   # V4-specific: Native and Incomplete Support
   NativeInfo:

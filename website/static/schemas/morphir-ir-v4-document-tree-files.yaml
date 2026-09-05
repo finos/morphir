@@ -17,6 +17,10 @@ description: |
   Note: This schema references definitions from morphir-ir-v4.yaml for core types
   (Name, ModuleName, PackageName, TypeDefinition, ValueDefinition, etc.).
 
+  A top-level "$meta" member in any document-tree file is reserved (decision 0014):
+  readers ignore it and never report it as unknown; writers never emit it.
+  session.jsonl is daemon workspace state and not part of a distribution.
+
 definitions:
   # Import core types from main schema (these would be $ref in practice)
   FormatVersion:
@@ -38,10 +42,24 @@ definitions:
       - type: array
         items:
           type: string
-          pattern: "^[a-z][a-z0-9]*$"
+          pattern: "^[a-z0-9]+$"
         minItems: 1
-        description: "Legacy array representation"
-  
+        description: |
+          Legacy array representation. One legacy word grammar is shared with
+          morphir-ir-v4.yaml (decision 0012), so a digits-only word is legal:
+          ["item", "2"] decodes to "item-2".
+
+  FileStem:
+    type: string
+    pattern: "^_?[a-z0-9]+(-_?[a-z0-9]+)*(__[0-9a-f]{8})?_?$"
+    description: |
+      Escaped projection of a Name onto the document tree (decision 0001). All lowercase; an
+      initialism segment carries a "_" prefix; a Windows reserved device name carries a "_"
+      suffix. A stem truncated for the path budget keeps a prefix of the escaped stem with
+      trailing "-" and "_" removed, then "__" and the first eight hex digits of the SHA-256 of
+      the untruncated escaped stem; the module manifest then records the mapping in fileNames.
+    examples: ["user", "user-_id", "value-in-_usd", "aux_", "customer-relati__3f9a1c04"]
+
   ModuleName:
     oneOf:
       - type: string
@@ -139,14 +157,10 @@ definitions:
       - type: object
         required: []
         properties:
-          doc:
-            oneOf:
-              - type: string
-                description: "Single-line documentation (will be split on newlines)"
-              - type: array
-                items: { type: string }
-                description: "Multi-line documentation (one string per line)"
-            description: "Optional documentation for this type"
+          "$meta":
+            description: |
+              Reserved (decision 0014): readers ignore it and never report it as unknown;
+              writers never emit it.
           def:
             type: object
             required: []
@@ -159,7 +173,7 @@ definitions:
                   - type: string
                   - type: array
                     items: { type: string }
-                description: "Optional documentation (can be at def level or top level)"
+                description: "Documentation, first beside the variant (decision 0010)"
             additionalProperties: true
             description: |
               Type definition (implementation). Used in PackageDefinition.
@@ -186,13 +200,13 @@ definitions:
       Structure:
       - formatVersion: Required, shared v4 format version
       - name: Required, canonical name matching filename
-      - doc: Optional, documentation (can be at top level or nested in def/spec)
+      - doc: inside def or spec, first beside the variant (decision 0010); never at the top level
       - def: Required if this is a definition (implementation), contains TypeDefinition variant
       - spec: Required if this is a specification (interface), contains TypeSpecification variant
       
       Exactly one of 'def' or 'spec' must be present.
     examples:
-      - { "formatVersion": 4, "name": "user", "doc": "Represents a user", "def": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "email": "morphir/SDK:string#string" } } } } } }
+      - { "formatVersion": 4, "name": "user", "def": { "access": "Public", "doc": "Represents a user", "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "email": "morphir/SDK:string#string" } } } } } }
       - { "formatVersion": 4, "name": "int", "spec": { "doc": "Arbitrary precision integer", "OpaqueTypeSpecification": {} } }
 
   # Value Definition File (*.value.json)
@@ -202,14 +216,10 @@ definitions:
       - type: object
         required: []
         properties:
-          doc:
-            oneOf:
-              - type: string
-                description: "Single-line documentation"
-              - type: array
-                items: { type: string }
-                description: "Multi-line documentation"
-            description: "Optional documentation for this value"
+          "$meta":
+            description: |
+              Reserved (decision 0014): readers ignore it and never report it as unknown;
+              writers never emit it.
           def:
             type: object
             required: []
@@ -249,7 +259,7 @@ definitions:
       Structure:
       - formatVersion: Required, shared v4 format version
       - name: Required, canonical name matching filename
-      - doc: Optional, documentation (can be at top level or nested in def/spec)
+      - doc: inside def or spec, first beside the variant (decision 0010); never at the top level
       - def: Required if this is a definition (implementation), contains ValueDefinition variant
       - spec: Required if this is a specification (interface), contains ValueSpecification
       
@@ -317,6 +327,19 @@ definitions:
                             value: { $ref: "#/definitions/ValueDefinition" }
                         - $ref: "#/definitions/ValueDefinition"
             description: "Inline value definitions (inline style)"
+      fileNames:
+        type: object
+        propertyNames: { pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$" }
+        additionalProperties: { $ref: "#/definitions/FileStem" }
+        description: |
+          Canonical name to file stem, for every type or value whose stem was truncated for the
+          path budget (decision 0012). A name listed here must also appear in types or values.
+        examples:
+          - { "customer-relationship-management-record": "customer-relati__44a101f8" }
+      "$meta":
+        description: |
+          Reserved (decision 0014): readers ignore it and never report it as unknown;
+          writers never emit it.
     description: |
       Module manifest file (module.json).
       
@@ -328,6 +351,7 @@ definitions:
          - doc: Optional, module documentation
          - types: Optional, array of type names
          - values: Optional, array of value names
+         - fileNames: Optional, canonical name to truncated stem
       
       2. **Inline Style (Hybrid)**: Contains definitions directly
          - formatVersion: Required
@@ -335,12 +359,13 @@ definitions:
          - doc: Optional, module documentation
          - types: Optional, object mapping type names to definitions
          - values: Optional, object mapping value names to definitions
-      
+
       Either 'path' or 'module' field must be present (they are equivalent).
       The 'path' field is preferred; 'module' is accepted for backwards compatibility.
       Types and values can be arrays (manifest) or objects (inline), but not mixed.
     examples:
       - { "formatVersion": 4, "path": "my-org/domain", "types": ["user", "order"], "values": ["create-order"] }
+      - { "formatVersion": 4, "path": "domain", "types": ["customer-relationship-management-record"], "values": [], "fileNames": { "customer-relationship-management-record": "customer-relati__44a101f8" } }
       - { "formatVersion": 4, "module": "main/domain", "doc": "Domain model", "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } }, "values": {} }
       - { "formatVersion": 4, "path": "my-org/domain", "doc": "Domain model", "types": ["user", "order"], "values": ["create-order"] }
       - { "formatVersion": 4, "module": "my-org/domain", "doc": "Domain model (legacy field)", "types": ["user"], "values": [] }
@@ -348,7 +373,7 @@ definitions:
   # Distribution Manifest File (manifest.json)
   DistributionManifestFile:
     type: object
-    required: ["formatVersion", "distribution", "package"]
+    required: ["formatVersion", "distribution", "package", "pathBudget"]
     properties:
       formatVersion:
         $ref: "#/definitions/FormatVersion"
@@ -375,7 +400,6 @@ definitions:
       pathBudget:
         type: integer
         minimum: 64
-        default: 4000
         description: |
           Maximum path length, in characters from the distribution root, that this
           tree was written against. A stem that would exceed it is truncated and
@@ -387,10 +411,8 @@ definitions:
           LongPathsEnabled and for stock Git for Windows, which ships
           core.longpaths=false.
 
-          Writers set this unconditionally rather than leaving it inferred, so a
-          reader that cannot satisfy the budget can say so up front instead of
-          failing to open files one at a time. A missing value is read as 4000,
-          for trees written before this field existed.
+          Required (decision 0012): writers always state the budget so a reader can
+          refuse a tree it cannot open before opening files one at a time.
         examples: [4000, 200]
       entryPoints:
         type: object
@@ -398,6 +420,10 @@ definitions:
         description: |
           Entry points (required for Application distributions, optional otherwise).
           Map of entry point names to EntryPoint definitions.
+      "$meta":
+        description: |
+          Reserved (decision 0014): readers ignore it and never report it as unknown;
+          writers never emit it.
     description: |
       Distribution manifest/metadata file (manifest.json).
       
@@ -407,13 +433,14 @@ definitions:
       - formatVersion: Required, IR format version
       - distribution: Required, distribution type (Library, Specs, Application)
       - package: Required, package name
+      - pathBudget: Required, path length this tree was written against (decision 0012)
       - version: Optional, package version
       - created: Optional, creation timestamp (ISO 8601)
       - layout: Optional, distribution layout (defaults to VfsMode for document tree)
       - entryPoints: Optional, entry points (required for Application distributions)
     examples:
-      - { "formatVersion": 4, "distribution": "Library", "package": "my-org/my-project", "version": "1.2.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
-      - { "formatVersion": 4, "distribution": "Specs", "package": "morphir/SDK", "version": "3.0.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
-      - { "formatVersion": 4, "distribution": "Application", "package": "my-org/my-cli", "version": "2.0.0", "created": "2026-01-15T12:00:00Z", "entryPoints": { "startup": { "target": "my-org/my-cli:main#run", "kind": "main" } } }
+      - { "formatVersion": 4, "distribution": "Library", "package": "my-org/my-project", "pathBudget": 4000, "version": "1.2.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
+      - { "formatVersion": 4, "distribution": "Specs", "package": "morphir/SDK", "pathBudget": 4000, "version": "3.0.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
+      - { "formatVersion": 4, "distribution": "Application", "package": "my-org/my-cli", "pathBudget": 4000, "version": "2.0.0", "created": "2026-01-15T12:00:00Z", "entryPoints": { "startup": { "target": "my-org/my-cli:main#run", "kind": "main" } } }
 
 
