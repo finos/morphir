@@ -1,0 +1,260 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://morphir.finos.org/spec/ir/mck/protocol.schema.json",
+	"title": "Morphir Compatibility Kit adapter protocol",
+	"description": "Contract version 1 of the JSON-lines adapter protocol between the mck driver and a testee adapter. Normative: spec S6. Every message rejects unknown fields (additionalProperties: false throughout); the contract extends only through contractVersion, never through an added-but-ignored key.",
+	"definitions": {
+		"Profile": { "type": "string", "enum": ["json", "yaml"] },
+		"Layout": { "type": "string", "enum": ["single", "tree"] },
+		"PathMode": { "type": "string", "enum": ["current", "pinned"] },
+		"Stage": { "type": "string", "enum": ["syntax", "normalization", "semantic"] },
+		"Envelope": {
+			"type": "object",
+			"properties": {
+				"id": { "type": "integer", "minimum": 1 }
+			},
+			"required": ["id"]
+		},
+		"TreeFile": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"path": { "type": "string" },
+				"content": { "type": "string" }
+			},
+			"required": ["path", "content"]
+		},
+		"Warning": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"code": { "type": "string" },
+				"cursor": { "type": "string" }
+			},
+			"required": ["code", "cursor"]
+		},
+		"Diagnostic": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"code": { "type": "string" },
+				"stage": { "$ref": "#/definitions/Stage" },
+				"cursor": { "type": "string" },
+				"message": { "type": "string" }
+			},
+			"required": ["code"]
+		},
+		"Capabilities": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"contractVersion": { "const": 1 },
+						"binding": { "type": "string" },
+						"language": { "type": "string" },
+						"versions": {
+							"type": "array",
+							"items": { "type": "integer", "minimum": 1, "description": "A positive integer IR version this binding supports." }
+						},
+						"profiles": { "type": "array", "items": { "$ref": "#/definitions/Profile" } },
+						"layouts": { "type": "array", "items": { "$ref": "#/definitions/Layout" } },
+						"paths": { "type": "array", "items": { "$ref": "#/definitions/PathMode" } },
+						"nodes": {
+							"type": "array",
+							"items": { "type": "string" },
+							"minItems": 1,
+							"description": "Node kinds this adapter decodes, spelled as the kit names them (aliases included, e.g. \"Distribution\")."
+						}
+					},
+					"required": ["id", "contractVersion", "binding", "language", "versions", "profiles", "layouts", "paths", "nodes"]
+				}
+			]
+		},
+		"CapabilitiesRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "capabilities" }
+					},
+					"required": ["id", "op"]
+				}
+			]
+		},
+		"ExitRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "exit" }
+					},
+					"required": ["id", "op"]
+				}
+			]
+		},
+		"DecodeRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "decode" },
+						"version": { "type": "integer" },
+						"profile": { "$ref": "#/definitions/Profile" },
+						"path": { "$ref": "#/definitions/PathMode" },
+						"strip": { "type": "boolean" },
+						"node": { "type": "string" },
+						"input": { "type": "string" }
+					},
+					"required": ["id", "op", "version", "profile", "path", "strip", "node", "input"]
+				}
+			]
+		},
+		"ReadTreeRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "readTree" },
+						"version": { "type": "integer" },
+						"profile": { "$ref": "#/definitions/Profile" },
+						"path": { "$ref": "#/definitions/PathMode" },
+						"strip": { "type": "boolean" },
+						"node": { "type": "string" },
+						"files": { "type": "array", "items": { "$ref": "#/definitions/TreeFile" } }
+					},
+					"required": ["id", "op", "version", "profile", "path", "strip", "node", "files"]
+				}
+			]
+		},
+		"WriteTreeRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "writeTree" },
+						"version": { "type": "integer" },
+						"path": { "$ref": "#/definitions/PathMode" },
+						"policy": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"profile": { "$ref": "#/definitions/Profile" },
+								"pathBudget": { "type": "integer" }
+							},
+							"required": ["profile", "pathBudget"]
+						},
+						"input": { "type": "string" }
+					},
+					"required": ["id", "op", "version", "path", "policy", "input"]
+				}
+			]
+		},
+		"Request": {
+			"oneOf": [
+				{ "$ref": "#/definitions/CapabilitiesRequest" },
+				{ "$ref": "#/definitions/DecodeRequest" },
+				{ "$ref": "#/definitions/ReadTreeRequest" },
+				{ "$ref": "#/definitions/WriteTreeRequest" },
+				{ "$ref": "#/definitions/ExitRequest" }
+			]
+		},
+		"DecodeResponse": {
+			"oneOf": [
+				{
+					"allOf": [
+						{ "$ref": "#/definitions/Envelope" },
+						{
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"id": { "type": "integer", "minimum": 1 },
+								"ok": { "const": true },
+								"kind": { "type": "string" },
+								"canonical": {
+									"type": "object",
+									"additionalProperties": { "type": "string" },
+									"propertyNames": { "$ref": "#/definitions/Profile" }
+								},
+								"warnings": { "type": "array", "items": { "$ref": "#/definitions/Warning" } }
+							},
+							"required": ["id", "ok", "kind", "canonical", "warnings"]
+						}
+					]
+				},
+				{
+					"allOf": [
+						{ "$ref": "#/definitions/Envelope" },
+						{
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"id": { "type": "integer", "minimum": 1 },
+								"ok": { "const": false },
+								"diagnostic": { "$ref": "#/definitions/Diagnostic" }
+							},
+							"required": ["id", "ok", "diagnostic"]
+						}
+					]
+				}
+			]
+		},
+		"WriteTreeResponse": {
+			"oneOf": [
+				{
+					"allOf": [
+						{ "$ref": "#/definitions/Envelope" },
+						{
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"id": { "type": "integer", "minimum": 1 },
+								"ok": { "const": true },
+								"files": { "type": "array", "items": { "$ref": "#/definitions/TreeFile" } }
+							},
+							"required": ["id", "ok", "files"]
+						}
+					]
+				},
+				{
+					"allOf": [
+						{ "$ref": "#/definitions/Envelope" },
+						{
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"id": { "type": "integer", "minimum": 1 },
+								"ok": { "const": false },
+								"diagnostic": { "$ref": "#/definitions/Diagnostic" }
+							},
+							"required": ["id", "ok", "diagnostic"]
+						}
+					]
+				}
+			]
+		}
+	},
+	"oneOf": [
+		{ "$ref": "#/definitions/Request" },
+		{ "$ref": "#/definitions/Capabilities" },
+		{ "$ref": "#/definitions/DecodeResponse" },
+		{ "$ref": "#/definitions/WriteTreeResponse" }
+	]
+}

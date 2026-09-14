@@ -2,54 +2,60 @@
 	"contractVersion": 1,
 	"binding": "morphir-typescript",
 	"language": "typescript",
-	"driverVersion": "0.1.0",
-	"kitVersion": "d6e6ad62",
-	"startedAt": "2026-09-04T00:00:00.000Z",
+	"driverVersion": "0.0.1",
+	"kitVersion": "4a972bc3",
+	"startedAt": "2026-09-14T19:27:41.478Z",
 	"records": [
 		{
-			"caseId": "types-0001",
+			"caseId": "definitions-0001",
 			"irVersion": 4,
 			"profile": "yaml",
 			"role": "canonical",
 			"fenceIndex": 0,
 			"path": "current",
-			"result": "pass",
-			"durationMs": 3.2
+			"result": "skipped",
+			"message": "profile yaml not in capabilities",
+			"durationMs": 0.0311
 		},
 		{
-			"caseId": "distributions-0003",
+			"caseId": "definitions-0001",
 			"irVersion": 4,
 			"profile": "json",
-			"role": "rejected",
-			"fenceIndex": 0,
+			"role": "canonical",
+			"fenceIndex": 1,
 			"path": "current",
-			"expectedDiagnostic": "invalid_distribution_shape",
-			"observedDiagnostic": {
-				"code": "unknown_member",
-				"stage": "semantic",
-				"cursor": "$.distribution",
-				"message": "unexpected array shape for distribution"
-			},
-			"result": "fail",
-			"durationMs": 5.7
+			"result": "pass",
+			"durationMs": 1.5826
 		},
 		{
-			"caseId": "types-0099",
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.1492
+		},
+		{
+			"caseId": "versions-0001",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "skipped",
+			"message": "version 3 not in capabilities",
+			"durationMs": 0.0005
+		},
+		{
+			"caseId": "kit-0000",
 			"irVersion": 4,
 			"profile": "json",
 			"role": "canonical",
 			"fenceIndex": 0,
 			"result": "kit-error",
-			"message": "case has no data fences (types-0099)",
-			"durationMs": 0
-		},
-		{
-			"caseId": "types-0005",
-			"irVersion": 4,
-			"profile": "yaml",
-			"role": "canonical",
-			"fenceIndex": 0,
-			"result": "skipped",
+			"message": "spec/ir/mck/types.md:12: duplicate case ID types-0007",
 			"durationMs": 0
 		}
 	]

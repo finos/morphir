@@ -240,6 +240,10 @@ examples), `morphir-bx6v` (tree schema root), `morphir-l2p9` (formatVersion cont
 migration), `morphir-19s6` (Insight, gated on this note). GitHub issues #792 to #795 audit the ingestion routes and
 feed findings back here.
 
+Plan 2b shipped the mck driver: it lives in finos/morphir-typescript's `packages/mck`, drives the TypeScript
+binding in-process or any binding through its adapter protocol, and is what the parent runs in CI against
+`spec/ir/mck` (`mise run mck:run`).
+
 Related: [Decision 0001](/decisions/0001-name-canonicalization-and-initialism-encoding.md),
 [Decision 0002](/decisions/0002-both-name-encodings-behind-one-switch.md),
 [Decision 0003](/decisions/0003-the-naming-codec-is-modelled-in-morphir.md).

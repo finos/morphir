@@ -430,6 +430,16 @@ jobs:
       - name: Check kit fences against the v4 schemas
         run: mise run mck:schema-check
 
+      - name: Run the kit against the TypeScript binding
+        run: mise run mck:run
+
+      - name: Upload MCK reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mck-reports
+          path: .dev/out/mck
+
   release-workflow:
     name: Release workflow
     runs-on: ubuntu-latest
