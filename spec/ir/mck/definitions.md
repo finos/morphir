@@ -201,3 +201,128 @@ values:
 ```json accepted warning=legacy_spelling
 { "types": {}, "values": { "add": { "doc": "Adds two integers", "value": { "inputs": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" } } } }
 ```
+
+## definitions-0011: Type alias specification {node=TypeSpecification}
+
+A specification states a type's shape without an access level; `typeParams` comes before `typeExp`, as it does in the matching definition (definitions-0001).
+
+```yaml canonical
+TypeAliasSpecification:
+  typeParams: [a]
+  typeExp:
+    Reference: ["morphir/SDK:list#list", a]
+```
+
+```json canonical
+{ "TypeAliasSpecification": { "typeParams": ["a"], "typeExp": { "Reference": ["morphir/SDK:list#list", "a"] } } }
+```
+
+## definitions-0012: Custom type specification {node=TypeSpecification}
+
+The constructor map is the same `[name, type]` pair list the definition uses (definitions-0003); a specification has no `access` member, because the whole specification is the public face of the type.
+
+```yaml canonical
+CustomTypeSpecification:
+  typeParams: [a]
+  constructors:
+    just: [[value, a]]
+    nothing: []
+```
+
+```json canonical
+{ "CustomTypeSpecification": { "typeParams": ["a"], "constructors": { "just": [["value", "a"]], "nothing": [] } } }
+```
+
+## definitions-0013: Derived type specification {node=TypeSpecification}
+
+A derived type names the type it is built from and the two functions that convert between them. All four members are required, and the two conversions are FQNames, not expressions.
+
+```yaml canonical
+DerivedTypeSpecification:
+  typeParams: []
+  baseType: morphir/SDK:string#string
+  fromBaseType: my-org/project:module#from-string
+  toBaseType: my-org/project:module#to-string
+```
+
+```json canonical
+{ "DerivedTypeSpecification": { "typeParams": [], "baseType": "morphir/SDK:string#string", "fromBaseType": "my-org/project:module#from-string", "toBaseType": "my-org/project:module#to-string" } }
+```
+
+## definitions-0014: Incomplete type definition, a hole with a type mismatch {node=TypeDefinition}
+
+Decision 0008: incompleteness belongs to a definition, not to a type expression (types-0011). An `IncompleteTypeDefinition` carries its `typeParams`, an `incompleteness`, and an optional `partialTypeExp` — what the author had written when the definition stopped being complete. A `Hole`'s `reason` says why; `TypeMismatch` names the expected and the found type as strings.
+
+```yaml canonical
+IncompleteTypeDefinition:
+  typeParams: [a]
+  incompleteness:
+    Hole:
+      reason:
+        TypeMismatch:
+          expected: morphir/SDK:basics#int
+          found: morphir/SDK:string#string
+```
+
+```json canonical
+{ "IncompleteTypeDefinition": { "typeParams": ["a"], "incompleteness": { "Hole": { "reason": { "TypeMismatch": { "expected": "morphir/SDK:basics#int", "found": "morphir/SDK:string#string" } } } } } }
+```
+
+## definitions-0015: Draft type definition with a partial type expression {node=TypeDefinition}
+
+`Draft` is the second incompleteness: the definition is deliberately unfinished rather than broken, so it takes an empty payload and no reason. The `partialTypeExp` it keeps is an ordinary type expression.
+
+```yaml canonical
+IncompleteTypeDefinition:
+  typeParams: []
+  incompleteness:
+    Draft: {}
+  partialTypeExp: morphir/SDK:basics#int
+```
+
+```json canonical
+{ "IncompleteTypeDefinition": { "typeParams": [], "incompleteness": { "Draft": {} }, "partialTypeExp": "morphir/SDK:basics#int" } }
+```
+
+## definitions-0016: Incomplete value definition {node=ValueDefinition}
+
+Decision 0008 consequence 2: a hole inside a body and an incomplete body are different things. An `IncompleteBody` is the fourth value definition body; its `outputType` is optional, because an incomplete definition may not have one yet, and its `incompleteness` uses the same vocabulary the type side does. `DeletedDuringRefactor` spells its transaction identifier `tx-id` on the wire.
+
+```yaml canonical
+IncompleteBody:
+  inputTypes:
+    x: morphir/SDK:basics#int
+  outputType: morphir/SDK:basics#int
+  incompleteness:
+    Hole:
+      reason:
+        DeletedDuringRefactor:
+          tx-id: tx-42
+```
+
+```json canonical
+{ "IncompleteBody": { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "incompleteness": { "Hole": { "reason": { "DeletedDuringRefactor": { "tx-id": "tx-42" } } } } } }
+```
+
+## definitions-0017: Private access-controlled definition {node=AccessControlledTypeDefinition}
+
+`Private` is the other access level of definitions-0001 and takes the same three spellings. Decision 0010: the nested `{ "doc", "value" }` wrapper is accepted for the window of decision 0006 under `Private` exactly as it is under `Public` (definitions-0006), and normalizes to the flattened `doc`.
+
+```yaml canonical
+Private:
+  TypeAliasDefinition:
+    typeParams: []
+    typeExp: morphir/SDK:basics#int
+```
+
+```json canonical
+{ "Private": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } }
+```
+
+```json accepted
+{ "access": "Private", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } }
+```
+
+```json accepted warning=legacy_spelling
+{ "Private": { "value": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } } }
+```
