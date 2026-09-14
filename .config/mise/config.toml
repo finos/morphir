@@ -221,6 +221,9 @@ run = "bun test tools/demo-desktop.test.ts"
 description = "Run all checks"
 # fixtures:validate is not part of check: it needs fixtures fetched from the
 # network first and fails when none are present.
+# mck:run is not part of check either: it drives the TypeScript binding, so it
+# needs the ecosystem/morphir-typescript submodule checked out and its
+# dependencies installed. CI runs it as its own step in the docs job.
 depends = [
     "fmt-check",
     "lint",

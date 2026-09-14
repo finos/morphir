@@ -85,6 +85,9 @@ jobs:
               - 'spec/ir/mck/**'
               # checks every kit fence against the v4 JSON Schemas
               - 'tools/validate-mck-fences.ts'
+              # checks the protocol example against the protocol schema and both
+              # contract copies against the submodule originals
+              - 'tools/validate-mck-protocol.ts'
               - 'ecosystem/morphir-typescript'
               # the Gleam mirror is checked by the mck driver once its adapter
               # lands; routing its pointer bumps here keeps them from skipping

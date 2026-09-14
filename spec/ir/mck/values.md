@@ -276,7 +276,7 @@ Literal:
 
 ## values-0013: Record value {node=Value}
 
-Decision 0004 applies to record values too; the direct field map is accepted for the window of decision 0006, and so is the Rust encoder's `attrs` spelling of `attributes` (decision 0005), which this case pins for values as types-0005 pins it for type expressions.
+Decision 0004 applies to record values too; the direct field map is accepted for the window of decision 0006, and so is the Rust encoder's `attrs` spelling of `attributes`, a row of decision 0006's window table, which this case pins for values as types-0005 pins it for type expressions.
 
 ```yaml canonical
 Record:

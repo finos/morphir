@@ -89,3 +89,85 @@ distribution:
 ```json canonical
 { "formatVersion": 4, "distribution": { "Library": { "packageName": "example", "dependencies": { "morphir/SDK": { "modules": {} } }, "def": { "modules": {} } } } }
 ```
+
+## distributions-0006: Specs distribution {node=Distribution}
+
+A `Specs` distribution publishes a package's public face and nothing else: its member is `spec`, a package specification, where a `Library` carries `def`, a package definition. `packageName`, `dependencies` and `spec` are the three members the reader accepts; `dependencies` and `spec` may be omitted and default to empty, and a writer emits all three regardless (distributions-0002).
+
+```yaml canonical
+formatVersion: 4
+distribution:
+  Specs:
+    packageName: example
+    dependencies:
+      morphir/SDK:
+        modules: {}
+    spec:
+      modules:
+        main:
+          types: {}
+          values:
+            greet:
+              inputs:
+                name: morphir/SDK:string#string
+              output: morphir/SDK:string#string
+```
+
+```json canonical
+{ "formatVersion": 4, "distribution": { "Specs": { "packageName": "example", "dependencies": { "morphir/SDK": { "modules": {} } }, "spec": { "modules": { "main": { "types": {}, "values": { "greet": { "inputs": { "name": "morphir/SDK:string#string" }, "output": "morphir/SDK:string#string" } } } } } } } }
+```
+
+A `Specs` document has no `def`: an implementation is exactly what it does not carry.
+
+```json rejected diagnostic=unknown_member
+{ "formatVersion": 4, "distribution": { "Specs": { "packageName": "example", "dependencies": {}, "def": { "modules": {} } } } }
+```
+
+## distributions-0007: Application distribution with entry points {node=Distribution}
+
+An `Application` is an executable package. It carries `packageName`, `dependencies`, `def` and `entryPoints`; `entryPoints` is required, because an application with no way in is not one. The dependency map holds package definitions rather than specifications, because an application links its dependencies statically. An entry point is keyed by a name the author chooses and holds `target`, `kind`, and an optional `doc`; the writer emits `doc` only when it is present, so `build` below has none.
+
+```yaml canonical
+formatVersion: 4
+distribution:
+  Application:
+    packageName: example
+    dependencies: {}
+    def:
+      modules:
+        main:
+          Public:
+            types: {}
+            values:
+              run:
+                Public:
+                  ExpressionBody:
+                    inputTypes: {}
+                    outputType: morphir/SDK:basics#unit
+                    body:
+                      Unit: {}
+    entryPoints:
+      start:
+        target: example:main#run
+        kind: main
+        doc: The application entry point
+      build:
+        target: example:main#run
+        kind: command
+```
+
+```json canonical
+{ "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": {}, "def": { "modules": { "main": { "Public": { "types": {}, "values": { "run": { "Public": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#unit", "body": { "Unit": {} } } } } } } } } }, "entryPoints": { "start": { "target": "example:main#run", "kind": "main", "doc": "The application entry point" }, "build": { "target": "example:main#run", "kind": "command" } } } } }
+```
+
+`doc` belongs to an entry point, not to the distribution. An `Application` accepts exactly the four members above, so a `doc` beside them is an unknown member rather than package documentation.
+
+```json rejected diagnostic=unknown_member
+{ "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": {}, "def": { "modules": {} }, "entryPoints": {}, "doc": "Applications document their entry points, not themselves" } } }
+```
+
+`kind` is drawn from a fixed set: `main`, `command`, `handler`, `job`, `policy`.
+
+```json rejected diagnostic=invalid_type
+{ "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": {}, "def": { "modules": {} }, "entryPoints": { "start": { "target": "example:main#run", "kind": "startup" } } } } }
+```

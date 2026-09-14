@@ -38,6 +38,24 @@
 			"durationMs": 0.1492
 		},
 		{
+			"caseId": "distributions-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "fail",
+			"expectedDiagnostic": "invalid_distribution_shape",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "semantic",
+				"cursor": "/distribution",
+				"message": "expected an object, found an array"
+			},
+			"message": "expected invalid_distribution_shape, got invalid_type at /distribution: expected an object, found an array",
+			"durationMs": 0.2174
+		},
+		{
 			"caseId": "versions-0001",
 			"irVersion": 3,
 			"profile": "json",

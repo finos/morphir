@@ -251,7 +251,7 @@ DerivedTypeSpecification:
 
 ## definitions-0014: Incomplete type definition, a hole with a type mismatch {node=TypeDefinition}
 
-Decision 0008: incompleteness belongs to a definition, not to a type expression (types-0011). An `IncompleteTypeDefinition` carries its `typeParams`, an `incompleteness`, and an optional `partialTypeExp` — what the author had written when the definition stopped being complete. A `Hole`'s `reason` says why; `TypeMismatch` names the expected and the found type as strings.
+Decision 0008 puts `Hole` in the value expressions; the v4 schema's `IncompleteTypeDefinitionBody` puts type-level incompleteness in a definition rather than in a type expression (types-0011). An `IncompleteTypeDefinition` carries its `typeParams`, an `incompleteness`, and an optional `partialTypeExp` — what the author had written when the definition stopped being complete. A `Hole`'s `reason` says why; `TypeMismatch` names the expected and the found type as strings.
 
 ```yaml canonical
 IncompleteTypeDefinition:
@@ -306,7 +306,7 @@ IncompleteBody:
 
 ## definitions-0017: Private access-controlled definition {node=AccessControlledTypeDefinition}
 
-`Private` is the other access level of definitions-0001 and takes the same three spellings. Decision 0010: the nested `{ "doc", "value" }` wrapper is accepted for the window of decision 0006 under `Private` exactly as it is under `Public` (definitions-0006), and normalizes to the flattened `doc`.
+`Private` is the other access level of definitions-0001 and takes the same three spellings. Decision 0010: the nested `{ "doc", "value" }` wrapper is accepted for the window of decision 0006 under `Private` exactly as it is under `Public` (definitions-0006). The fence below carries no `doc`, so it shows only the unwrapping half: the payload under `value` moves up beside the access tag.
 
 ```yaml canonical
 Private:
@@ -325,4 +325,59 @@ Private:
 
 ```json accepted warning=legacy_spelling
 { "Private": { "value": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } } }
+```
+
+## definitions-0018: Access-controlled value definition, public {node=AccessControlledValueDefinition}
+
+The value twin of definitions-0001 and definitions-0006. `readAccessControlled` is shared with the type side, so the same three access spellings and the same documentation rules apply; the node kind is its own, so the kit states it in its own case. Decision 0010: `doc` is flattened beside the variant, and the nested `{ "doc", "value" }` wrapper is accepted for the window of decision 0006.
+
+```yaml canonical
+Public:
+  doc: Adds two integers
+  ExpressionBody:
+    inputTypes:
+      a: morphir/SDK:basics#int
+      b: morphir/SDK:basics#int
+    outputType: morphir/SDK:basics#int
+    body:
+      Variable: a
+```
+
+```json canonical
+{ "Public": { "doc": "Adds two integers", "ExpressionBody": { "inputTypes": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "a" } } } }
+```
+
+```json accepted
+{ "access": "Public", "doc": "Adds two integers", "ExpressionBody": { "inputTypes": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "a" } } }
+```
+
+The fence below is the nested wrapper: the definition sits under `value` instead of beside `doc`. A reader normalizes it to the canonical fence above and reports `legacy_spelling`.
+
+```json accepted warning=legacy_spelling
+{ "Public": { "doc": "Adds two integers", "value": { "ExpressionBody": { "inputTypes": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "a" } } } } }
+```
+
+## definitions-0019: Private access-controlled value definition {node=AccessControlledValueDefinition}
+
+`Private` on the value side, the twin of definitions-0017. The nested `{ "value" }` wrapper is accepted for the window of decision 0006 under `Private` exactly as it is under `Public` (definitions-0018); the fence below carries no `doc`, so it shows only the unwrapping half.
+
+```yaml canonical
+Private:
+  ExpressionBody:
+    inputTypes: {}
+    outputType: morphir/SDK:basics#int
+    body:
+      Variable: x
+```
+
+```json canonical
+{ "Private": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "x" } } } }
+```
+
+```json accepted
+{ "access": "Private", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "x" } } }
+```
+
+```json accepted warning=legacy_spelling
+{ "Private": { "value": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "x" } } } } }
 ```

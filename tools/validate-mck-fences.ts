@@ -106,6 +106,7 @@ const NODE_TARGETS: ReadonlyMap<string, Target> = new Map<string, Target>([
 const DOC_WRAPPER_CASES: ReadonlySet<string> = new Set([
 	"definitions-0006",
 	"definitions-0010",
+	"definitions-0018",
 ]);
 
 // ---------------------------------------------------------------- the kit
