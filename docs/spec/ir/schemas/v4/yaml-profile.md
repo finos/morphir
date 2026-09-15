@@ -21,13 +21,13 @@ A YAML IR artifact MUST:
 - contain exactly one document and a mapping at its root;
 - use strings for mapping keys wherever the semantic model requires names;
 - reject duplicate mapping keys;
-- reject application-specific and unsupported semantic tags;
-- reject cyclic aliases and bound alias expansion, nesting, event count, and input bytes;
-- reject merge keys;
+- reject every explicit YAML tag, whether application-specific or a `!!` core-schema tag ([Reader restrictions](#reader-restrictions));
+- reject every anchor and alias, and reject merge keys;
+- bound nesting depth, event count, and input bytes while parsing, independent of that rejection;
 - reject implicit timestamps and implementation-specific scalar coercions;
 - reject non-finite numbers and numeric values that cannot be represented by the corresponding IR literal without loss.
 
-An implementation MAY accept safe anchors and aliases within its configured bounds. Anchors and aliases are presentation only. The canonical writer does not emit them and does not preserve them across conversion.
+Anchors and aliases are presentation only: a reader rejects them (`unsupported_yaml_feature`), and the canonical writer never emits them.
 
 ## Explicit structural vocabulary
 
@@ -58,7 +58,9 @@ The canonical YAML writer emits readable vocabulary where this specification def
 
 Canonical YAML output MUST:
 
-- use block mappings and block sequences except for specified compact name components;
+- use block style for mappings and use block style for sequences unless the [Canonical writer](#canonical-writer)
+  section makes them flow (a sequence holding no mapping at any depth, or an empty mapping or sequence, which are
+  written inline as `{}` and `[]`);
 - use two-space indentation;
 - use the field order defined by the concrete profile;
 - emit one trailing newline;
@@ -90,8 +92,8 @@ the fence wins and this page is corrected.
 4. **Strings** MUST be plain unless plain resolution would change their meaning or they contain YAML syntax, in
    which case they MUST be double-quoted with JSON escapes. Plain is refused when the string:
    - is empty;
-   - resolves under the scalar table in [Reader restrictions](#reader-restrictions) to a non-string
-     (`true`, `false`, `null`, `~`, `42`, `1e3`, `0x1F`, `.inf`, `.nan`, …);
+   - resolves under [Scalar resolution](#scalar-resolution) to a non-string
+     (`true`, `True`, `TRUE`, `false`, `False`, `FALSE`, `null`, `Null`, `NULL`, `~`, `42`, `1e3`, `0x1F`, `.inf`, `.nan`, …);
    - starts with one of `- ? : , [ ] { } # & * ! | > ' " % @ \`` or with a space;
    - ends with a space or with `:`;
    - contains `: `, ` #`, a newline, a tab, or any control character;
@@ -130,15 +132,17 @@ line and column when the parser provides them.
 
 Resolution applies to plain scalars only. Every quoted scalar and every block scalar is a string.
 
-- `true` and `false` resolve to booleans; `null`, `~`, and the empty scalar resolve to null.
+- `true`, `True`, and `TRUE` resolve to the boolean `true`; `false`, `False`, and `FALSE` resolve to the boolean
+  `false`; `null`, `Null`, `NULL`, `~`, and the empty scalar resolve to null.
 - A YAML 1.2 core decimal integer (`[-+]?[0-9]+`) resolves to a number whose lexeme is the source text.
-  Leading zeros are rejected, because they are not a JSON lexeme. Octal (`0o17`) and hexadecimal (`0xF`)
-  integers are **rejected** with `invalid_literal` ("write decimal"): the IR carries a lexeme, and these forms
-  have no JSON lexeme to carry.
+  A leading zero (`01`, `-007`, and the same in a float such as `01.5`) is rejected with `invalid_literal`
+  ("leading zeros are not part of the profile"), because it is not a JSON lexeme. Octal (`0o17`) and
+  hexadecimal (`0xF`) integers are **rejected** with `invalid_literal` ("write decimal"): the IR carries a
+  lexeme, and these forms have no JSON lexeme to carry.
 - A YAML 1.2 core float (`[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?`) resolves to a number with the
   source lexeme, except that a lexeme JSON would not accept is rewritten to the shortest JSON form denoting the
   same value: `.5` becomes `0.5`, `5.` becomes `5.0`, `+1` becomes `1`. The rewrite is a normalization, not a
-  warning.
+  warning. A leading zero is rejected before this rewrite, as above.
 - Everything else is a string, **including date-looking text** such as `2026-01-15`. YAML 1.2 core has no
   implicit timestamps, and this profile forbids implicit coercions, so a plain `2026-01-15` where a literal is
   expected is a `StringLiteral`, never a date.
