@@ -76,6 +76,21 @@ interface FqNameCase {
 	readonly documentTreePath: string;
 }
 
+/**
+ * A package-qualified module name spells as `package:module`, the fully
+ * qualified name without its `#name` tail, so the package path and the module
+ * path (both multi-segment) can always be split again. `documentTreePath` is
+ * the module manifest under `pkg/`; `dependencyTreePath` is the same module as
+ * a dependency, where the `@` segment ends the package path (decision 0015).
+ */
+interface QualifiedModuleNameCase {
+	readonly packagePath: Canonical;
+	readonly modulePath: Canonical;
+	readonly canonical: Canonical;
+	readonly documentTreePath: string;
+	readonly dependencyTreePath: string;
+}
+
 interface TruncationCase {
 	readonly escapedStem: string;
 	readonly available: number; // characters the stem may occupy, suffix included
@@ -99,6 +114,7 @@ interface Corpus {
 	readonly rejectCases: readonly RejectCase[];
 	readonly pathCases: readonly PathCase[];
 	readonly fqNameCases: readonly FqNameCase[];
+	readonly qualifiedModuleNameCases: readonly QualifiedModuleNameCase[];
 	readonly truncationCases: readonly TruncationCase[];
 }
 
@@ -262,6 +278,21 @@ const FQNAMES: readonly FqSpec[] = [
 	{ pkg: [[w("my"), w("org")]], mod: [[w("domain")]], name: [w("value"), w("in"), i("usd")] },
 ];
 
+// Package-qualified module names. The last two are the pair that a `/`-joined
+// spelling cannot tell apart: package `a` with module `b/c`, and package `a/b`
+// with module `c`. With `:` between the halves, and with the `@` segment in a
+// dependency directory, both stay distinct.
+interface QualifiedModuleSpec {
+	readonly pkg: NamePath;
+	readonly mod: NamePath;
+}
+const QUALIFIED_MODULES: readonly QualifiedModuleSpec[] = [
+	{ pkg: [[w("morphir")], [i("sdk")]], mod: [[w("list")]] },
+	{ pkg: [[w("my"), w("org")]], mod: [[w("domain")], [w("orders")]] },
+	{ pkg: [[w("a")]], mod: [[w("b")], [w("c")]] },
+	{ pkg: [[w("a")], [w("b")]], mod: [[w("c")]] },
+];
+
 // Decision 0012: keep `available - 10` characters of the escaped stem, drop
 // trailing "-" and "_" so the stem stays well-formed, append "__" and the first
 // eight hex digits of SHA-256(escaped stem).
@@ -388,6 +419,16 @@ function build(): string {
 				doubledHyphen: `${pathStr(f.pkg, encDouble)}:${pathStr(f.mod, encDouble)}#${encDouble(f.name)}`,
 			},
 			documentTreePath: `pkg/${pathStr(f.pkg, escapeName)}/${pathStr(f.mod, escapeName)}/${escapeName(f.name)}.value.json`,
+		})),
+		qualifiedModuleNameCases: QUALIFIED_MODULES.map((q) => ({
+			packagePath: { uppercase: pathStr(q.pkg, encUpper), doubledHyphen: pathStr(q.pkg, encDouble) },
+			modulePath: { uppercase: pathStr(q.mod, encUpper), doubledHyphen: pathStr(q.mod, encDouble) },
+			canonical: {
+				uppercase: `${pathStr(q.pkg, encUpper)}:${pathStr(q.mod, encUpper)}`,
+				doubledHyphen: `${pathStr(q.pkg, encDouble)}:${pathStr(q.mod, encDouble)}`,
+			},
+			documentTreePath: `pkg/${pathStr(q.pkg, escapeName)}/${pathStr(q.mod, escapeName)}/module.json`,
+			dependencyTreePath: `deps/${pathStr(q.pkg, escapeName)}/@/${pathStr(q.mod, escapeName)}/module.json`,
 		})),
 		truncationCases,
 	};

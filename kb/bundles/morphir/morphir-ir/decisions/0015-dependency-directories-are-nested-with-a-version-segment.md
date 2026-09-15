@@ -114,8 +114,12 @@ turn into `%21`. The `_` escape stays.
 
 1. The document-tree specification page spells the dependency layout as `deps/<package path>/@<version>/…`, with
    the empty-version form shown, and states why `pkg/` carries no segment.
-2. The naming draft's URI examples under `deps/` gain the segment. The `ModuleName` string form, which joins package
-   and module with `/` and is ambiguous for the same reason, is tracked separately.
+2. The naming draft's URI examples under `deps/` gain the segment. The draft's `ModuleName` section, which had
+   folded the package path in and joined with `/` (`morphir/SDK/list`), is corrected to what the schema, the
+   reference model and the IR specification already say: a `ModuleName` is the module path within its package.
+   A package-qualified module spells as `package:module` (`morphir/SDK:list`), the fully qualified name without
+   its `#name` tail; the core schema defines `QualifiedModuleNameString` and the naming corpus gains
+   `qualifiedModuleNameCases`, including the `a:b/c` versus `a/b:c` pair.
 3. The reference layout in finos/morphir-typescript classifies a `deps/` path by the `@` segment, drops the
    longest-prefix search, and writes the segment; the kit case for a dependency and the kit README follow.
 4. Package versioning, when it lands in the v4 model, fills the segment. No other path changes.
