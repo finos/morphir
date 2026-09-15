@@ -181,11 +181,29 @@ A **PackageName** identifies a package, the top-level namespace for a Morphir pr
 
 ## ModuleName
 
-A **ModuleName** identifies a module within a package, combining the package path and module path.
+A **ModuleName** identifies a module within its package. It carries no package path: the schema, the reference
+model and the IR specification all treat it as a `Path` relative to the package, and that is what a module
+manifest's `path` holds.
 
-- **Structure**: Composed of a `PackageName` and a module `Path`
-- **Canonical Serialization**: Package path followed by module path segments (e.g., `"morphir/SDK/list"`, `"my-org/finance/pricing/models"`)
-- **Purpose**: Provides the full path to a module for resolution
+- **Structure**: A `Path` (the module path within the package)
+- **Canonical Serialization**: Same as Path (e.g., `"list"`, `"domain/users"`, `"pricing/models"`)
+- **Legacy Decoding**: Same as Path
+- **Purpose**: Names a module inside the package that owns it; keys of a package's `modules` map are ModuleNames
+
+## QualifiedModuleName
+
+A **QualifiedModuleName** identifies a module across packages: a `PackageName` together with a `ModuleName`.
+
+- **Canonical Serialization**: `{package-path}:{module-path}` (e.g., `"morphir/SDK:list"`, `"my-org/finance:pricing/models"`).
+  This is the [FQName](#fully-qualified-name-fqname) form without its `#{local-name}` tail, and it never carries a `#`.
+- **Purpose**: Refers to a module from outside its package without ambiguity.
+
+The two halves are both multi-segment paths, so they need a delimiter that a path segment cannot contain. Joining
+them with `/` (an earlier draft wrote `morphir/SDK/list`) is not reversible: `a/b/c` would be package `a` with
+module `b/c` or package `a/b` with module `c`. The `:` gives the string form the same boundary the document tree
+gives a dependency directory with its `@` segment (decision 0015). The
+[name-encoding conformance corpus](../ir/fixtures/naming-conformance.json) carries that pair under
+`qualifiedModuleNameCases`.
 
 ## Qualified Name (QName)
 

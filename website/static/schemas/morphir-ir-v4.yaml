@@ -113,6 +113,17 @@ definitions:
       This uniquely identifies a type or value across the entire IR.
     examples: ["morphir/SDK:list#map", "morphir/SDK:basics#int", "my-org/domain:users#create-user"]
 
+  QualifiedModuleNameString:
+    type: string
+    pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*$"
+    description: |
+      Package-qualified module name in canonical string format: "package:module",
+      the FQName form without its "#name" tail. Package and module paths are both
+      multi-segment, so the ":" is what makes the string reversible. No v4 member
+      uses this yet; it is defined here so tooling and the naming corpus agree on
+      the one spelling.
+    examples: ["morphir/SDK:list", "my-org/finance:pricing/models"]
+
   FQName:
     oneOf:
       - $ref: "#/definitions/FQNameString"

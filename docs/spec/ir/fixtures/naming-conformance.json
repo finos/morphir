@@ -930,6 +930,72 @@
       "documentTreePath": "pkg/my-org/domain/value-in-_usd.value.json"
     }
   ],
+  "qualifiedModuleNameCases": [
+    {
+      "packagePath": {
+        "uppercase": "morphir/SDK",
+        "doubledHyphen": "morphir/--sdk"
+      },
+      "modulePath": {
+        "uppercase": "list",
+        "doubledHyphen": "list"
+      },
+      "canonical": {
+        "uppercase": "morphir/SDK:list",
+        "doubledHyphen": "morphir/--sdk:list"
+      },
+      "documentTreePath": "pkg/morphir/_sdk/list/module.json",
+      "dependencyTreePath": "deps/morphir/_sdk/@/list/module.json"
+    },
+    {
+      "packagePath": {
+        "uppercase": "my-org",
+        "doubledHyphen": "my-org"
+      },
+      "modulePath": {
+        "uppercase": "domain/orders",
+        "doubledHyphen": "domain/orders"
+      },
+      "canonical": {
+        "uppercase": "my-org:domain/orders",
+        "doubledHyphen": "my-org:domain/orders"
+      },
+      "documentTreePath": "pkg/my-org/domain/orders/module.json",
+      "dependencyTreePath": "deps/my-org/@/domain/orders/module.json"
+    },
+    {
+      "packagePath": {
+        "uppercase": "a",
+        "doubledHyphen": "a"
+      },
+      "modulePath": {
+        "uppercase": "b/c",
+        "doubledHyphen": "b/c"
+      },
+      "canonical": {
+        "uppercase": "a:b/c",
+        "doubledHyphen": "a:b/c"
+      },
+      "documentTreePath": "pkg/a/b/c/module.json",
+      "dependencyTreePath": "deps/a/@/b/c/module.json"
+    },
+    {
+      "packagePath": {
+        "uppercase": "a/b",
+        "doubledHyphen": "a/b"
+      },
+      "modulePath": {
+        "uppercase": "c",
+        "doubledHyphen": "c"
+      },
+      "canonical": {
+        "uppercase": "a/b:c",
+        "doubledHyphen": "a/b:c"
+      },
+      "documentTreePath": "pkg/a/b/c/module.json",
+      "dependencyTreePath": "deps/a/b/@/c/module.json"
+    }
+  ],
   "truncationCases": [
     {
       "escapedStem": "customer-relationship-management-record",
