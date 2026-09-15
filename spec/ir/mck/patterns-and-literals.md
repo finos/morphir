@@ -226,7 +226,7 @@ CharLiteral: a
 
 ## patterns-and-literals-0014: A date-looking plain scalar is a string {node=Literal}
 
-YAML 1.2 core has no implicit timestamps, and the YAML profile forbids implicit coercions, so a plain `2026-01-15` where a literal is expected is a `StringLiteral` and nothing else. Spec S4 scalar resolution.
+YAML 1.2 core has no implicit timestamps, and the YAML profile forbids implicit coercions, so a plain `2026-01-15` where a literal is expected is a `StringLiteral` and nothing else. YAML profile page, "Scalar resolution".
 
 ```yaml canonical
 StringLiteral: 2026-01-15
@@ -238,7 +238,7 @@ StringLiteral: 2026-01-15
 
 ## patterns-and-literals-0015: Octal and hexadecimal integers are not accepted {node=Literal}
 
-An IR integer literal carries its decimal lexeme. YAML 1.2 core resolves `0o17` and `0xF` to integers, but neither is a JSON lexeme, so the profile refuses them with `invalid_literal` and asks for decimal instead of inventing a spelling. Spec S4 scalar resolution.
+An IR integer literal carries its decimal lexeme. YAML 1.2 core resolves `0o17` and `0xF` to integers, but neither is a JSON lexeme, so the profile refuses them with `invalid_literal` and asks for decimal instead of inventing a spelling. YAML profile page, "Scalar resolution".
 
 ```yaml canonical
 IntegerLiteral: 15

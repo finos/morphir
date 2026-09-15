@@ -208,7 +208,7 @@ distribution:
 
 ## document-tree-0007: A Private module {node=Distribution}
 
-A package definition's modules are access-controlled, so the module manifest carries an optional `access` member (spec S7.3a). It defaults to `Public` and a writer emits it only for a `Private` module, which keeps every existing manifest byte-identical while letting a private module round-trip through a tree.
+A package definition's modules are access-controlled, so the module manifest carries an optional `access` member (document-tree page, "access (module manifest)"). It defaults to `Public` and a writer emits it only for a `Private` module, which keeps every existing manifest byte-identical while letting a private module round-trip through a tree.
 
 ```yaml file path=manifest set=private
 formatVersion: 4

@@ -10,11 +10,11 @@ A v3 tagged array with capitalized tags decodes to the same value the v4 spellin
 
 ## versions-0002: Writing a Hole to v3 is refused {node=Value version=3 status=pending}
 
-The CLI refuses a v4 to v3 downgrade with `unsupported_v4_downgrade`. The kit grammar has no role for a write refusal yet; plan 2 adds one, and bead morphir-diwy specifies the rules. Until then this case is prose only.
+The CLI refuses a v4 to v3 downgrade with `unsupported_v4_downgrade`. The kit grammar has no role for a write refusal yet; bead morphir-diwy specifies the rules for adding one. Until then this case is prose only.
 
 ## versions-0003: One YAML document {node=FormatVersion}
 
-The YAML profile admits exactly one document. A second document after `---`, or content after `...`, is refused rather than silently reading the first. Spec S4.
+The YAML profile admits exactly one document. A second document after `---`, or content after `...`, is refused rather than silently reading the first. YAML profile page, "Reader restrictions".
 
 ```yaml canonical
 4
@@ -28,7 +28,7 @@ The YAML profile admits exactly one document. A second document after `---`, or 
 
 ## versions-0004: No anchors, tags, merge keys or directives {node=Distribution}
 
-Anchors, aliases, explicit tags, merge keys, and directives are presentation and schema machinery the profile does not carry: an IR document means the same thing wherever it is read, so nothing in it may be resolved against something else. Each is refused with `unsupported_yaml_feature`. Spec S4.
+Anchors, aliases, explicit tags, merge keys, and directives are presentation and schema machinery the profile does not carry: an IR document means the same thing wherever it is read, so nothing in it may be resolved against something else. Each is refused with `unsupported_yaml_feature`. YAML profile page, "Reader restrictions".
 
 ```yaml canonical
 formatVersion: 4
@@ -89,7 +89,7 @@ distribution:
 
 ## versions-0005: Duplicate keys {node=Distribution}
 
-A repeated mapping key is refused with `duplicate_member`, the same diagnostic the JSON profile reports for a repeated object member: last-one-wins would make the same bytes mean different things in different readers. Spec S4.
+A repeated mapping key is refused with `duplicate_member`, the same diagnostic the JSON profile reports for a repeated object member: last-one-wins would make the same bytes mean different things in different readers. YAML profile page, "Reader restrictions".
 
 ```yaml canonical
 formatVersion: 4
