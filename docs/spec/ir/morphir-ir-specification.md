@@ -229,6 +229,8 @@ A **Module Name** uniquely identifies a module within a package.
 A **Qualified Module Name** provides a globally unique module identifier.
 
 - Structure: A tuple of (package path, module path)
+- Canonical string form: `{package-path}:{module-path}`, e.g. `morphir/SDK:list` (the Fully-Qualified Name form
+  without its `#name` tail; see [Naming](../draft/names.md#qualifiedmodulename))
 - Purpose: Enables unambiguous module references across packages
 
 ## Type System
