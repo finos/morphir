@@ -640,7 +640,7 @@
           }
         },
         "dependencies": {
-          "description": "Package names of this distribution's dependencies. Each listed package\nlives under \"deps/<package path>/\", laid out exactly as \"pkg/\" is and\nwith no version segment, so discovery does not have to walk \"deps/\"\nblindly. Library and Specs dependencies hold specifications; Application\ndependencies hold definitions.\n",
+          "description": "Package names of this distribution's dependencies. Each listed package\nlives under \"deps/<package path>/@<version>/\", laid out exactly as\n\"pkg/\" is below the version segment, so discovery does not have to\nwalk \"deps/\" blindly. The segment beginning with \"@\" ends the package\npath and is a bare \"@\" while the model carries no package version\n(decision 0015). Library and Specs dependencies hold specifications;\nApplication dependencies hold definitions.\n",
           "examples": [
             [ "morphir/SDK" ]
           ],

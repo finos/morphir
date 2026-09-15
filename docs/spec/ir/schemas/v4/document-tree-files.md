@@ -29,14 +29,15 @@ manifest
 pkg/<package path>/<module path>/module
 pkg/<package path>/<module path>/<stem>.type
 pkg/<package path>/<module path>/<stem>.value
-deps/<package path>/<module path>/module
-deps/<package path>/<module path>/<stem>.type
-deps/<package path>/<module path>/<stem>.value
+deps/<package path>/@<version>/<module path>/module
+deps/<package path>/@<version>/<module path>/<stem>.type
+deps/<package path>/@<version>/<module path>/<stem>.value
 ```
 
 `<package path>` is the escaped package name and `<module path>` is the escaped module name, one escaped stem
 per segment (see [Naming](../../../draft/names.md)). `.type` and `.value` are part of the logical name, not
-file extensions.
+file extensions. Under `deps/`, the segment beginning with `@` ends the package path and carries the package
+version; it is a bare `@` while the v4 model carries no version (see [Dependencies](#dependencies)).
 
 The profile decides the extension at the physical boundary and nowhere else: `.json` for the JSON profile,
 `.yaml` for the YAML profile. Going the other way, a physical name with `.json`, `.yaml`, or `.yml` maps back to
@@ -472,9 +473,11 @@ Modules can be nested by creating subdirectories:
 
 ### Dependencies
 
-A distribution's dependencies live under `deps/`, with exactly the layout `pkg/` uses — one directory per
-package path, a `module` file per module, and one file per type or value — and **no version segment**, because
-the v4 model carries no package version:
+A distribution's dependencies live under `deps/`. Each dependency's package path nests as directories, exactly
+as under `pkg/`, and is followed by one **version segment** that begins with `@`. Below that segment the layout
+is the one `pkg/` uses: a `module` file per module and one file per type or value. The version segment is a
+bare `@` while the v4 model carries no package version, and it carries the version (`@3.0.0`) once it does
+(decision 0015):
 
 ```
 .morphir-dist/
@@ -488,9 +491,10 @@ the v4 model carries no package version:
 └── deps/
     └── morphir/
         └── _sdk/
-            └── basics/
-                ├── module.yaml
-                └── int.type.yaml
+            └── @/                    # version segment: bare @ until the model carries a version
+                └── basics/
+                    ├── module.yaml
+                    └── int.type.yaml
 ```
 
 The distribution manifest MUST list every dependency package under `dependencies`, so that discovery does not
@@ -507,8 +511,12 @@ dependencies: [morphir/SDK]
 `Library` and `Specs` dependencies are package **specifications**, so their node files carry `spec`.
 `Application` dependencies are package **definitions**, so their node files carry `def`.
 
-A version segment is deliberately deferred to the packages work that gives the model a version; until then a
-tree holds exactly one revision of each dependency.
+The version segment exists so that a reader never has to guess where a package path ends: package paths and
+module paths are both multi-segment, and without the segment a tree holding packages `a` and `a/b` could not
+tell module `b/c` of `a` from module `c` of `a/b`. `pkg/` carries no segment because a tree holds exactly one
+own package and the manifest names it. While the model carries no package version the segment is a bare `@`, a
+tree holds exactly one revision of each dependency, and a reader MUST report a `deps/` directory whose segment
+carries a version. When package versioning lands, the version fills the segment and no other path changes.
 
 ### Module order and annotations
 

@@ -432,10 +432,12 @@ definitions:
         items: { $ref: "#/definitions/PackageName" }
         description: |
           Package names of this distribution's dependencies. Each listed package
-          lives under "deps/<package path>/", laid out exactly as "pkg/" is and
-          with no version segment, so discovery does not have to walk "deps/"
-          blindly. Library and Specs dependencies hold specifications; Application
-          dependencies hold definitions.
+          lives under "deps/<package path>/@<version>/", laid out exactly as
+          "pkg/" is below the version segment, so discovery does not have to
+          walk "deps/" blindly. The segment beginning with "@" ends the package
+          path and is a bare "@" while the model carries no package version
+          (decision 0015). Library and Specs dependencies hold specifications;
+          Application dependencies hold definitions.
         examples: [["morphir/SDK"]]
       "$meta":
         description: |

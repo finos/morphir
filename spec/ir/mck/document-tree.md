@@ -245,7 +245,7 @@ distribution:
 
 ## document-tree-0008: A dependency lives under deps {node=Distribution}
 
-A tree holds its dependencies under `deps/<package path>/`, laid out exactly as `pkg/` is and with no version segment, because the v4 model carries no package version (spec S7.3a). The distribution manifest lists each dependency package under `dependencies`, so discovery reads one file instead of walking `deps/`. A `Library` tree's dependencies are package specifications, so their node files carry `spec`.
+A tree holds its dependencies under `deps/<package path>/@<version>/`, laid out exactly as `pkg/` is below that segment. The segment beginning with `@` ends the package path, so a package named `a` and one named `a/b` can never claim the same directory; it is a bare `@` while the v4 model carries no package version (decision 0015). The distribution manifest lists each dependency package under `dependencies`, so discovery reads one file instead of walking `deps/`. A `Library` tree's dependencies are package specifications, so their node files carry `spec`.
 
 ```yaml file path=manifest set=deps
 formatVersion: 4
@@ -262,14 +262,14 @@ types: []
 values: []
 ```
 
-```yaml file path=deps/morphir/_sdk/basics/module set=deps
+```yaml file path=deps/morphir/_sdk/@/basics/module set=deps
 formatVersion: 4
 path: basics
 types: [int]
 values: []
 ```
 
-```yaml file path=deps/morphir/_sdk/basics/int.type set=deps
+```yaml file path=deps/morphir/_sdk/@/basics/int.type set=deps
 formatVersion: 4
 name: int
 spec:

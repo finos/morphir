@@ -35,8 +35,8 @@ The **Document Tree** layout follows a strict directory structure:
 │           └── login.value.json
 ├── deps/                  # Dependency IR
 │   └── morphir/
-│       └── sdk/
-│           └── 1.2.0/
+│       └── _sdk/
+│           └── @/                # version segment: bare @ until the model carries a version
 │               └── ...
 ```
 
