@@ -1,8 +1,12 @@
 # Log
 
+## 2026-09-15
+
+* **Creation**: Added [Dependency directories nest the package path and mark the version segment with @](/decisions/0015-dependency-directories-are-nested-with-a-version-segment.md).
+
 ## 2026-09-05
 
-* **Update**: Implemented decisions 0004 to 0014 (plan 2d): kit cases flipped and extended to 74, reference codec, both schemas, examples, specification and design pages, and the naming corpus's truncation cases. The remaining open decisions are the 4.1.0 support policy and the naming codec's home (decision 0003).
+* **Update**: Implemented decisions 0004 to 0014 (finos/morphir#802, finos/morphir-typescript#3): kit cases flipped and extended to 74, reference codec, both schemas, examples, specification and design pages, and the naming corpus's truncation cases. The remaining open decisions are the 4.1.0 support policy and the naming codec's home (decision 0003).
 
 ## 2026-09-04
 

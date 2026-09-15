@@ -20,6 +20,34 @@ A document tree maps logical `manifest`, `module`, `NAME.type`, and `NAME.value`
 
 The extension is not part of a logical identity. A generated tree MUST use one profile for every file. If discovery finds both `manifest.json` and `manifest.yaml`, it MUST report ambiguity and MUST NOT select one implicitly. The structures documented below apply to both profiles; JSON examples use the [JSON profile](json-profile.md), and their YAML equivalents use the [YAML profile](yaml-profile.md).
 
+## Logical paths
+
+A document tree is addressed by **logical paths**, and a logical path carries **no extension**:
+
+```
+manifest
+pkg/<package path>/<module path>/module
+pkg/<package path>/<module path>/<stem>.type
+pkg/<package path>/<module path>/<stem>.value
+deps/<package path>/@<version>/<module path>/module
+deps/<package path>/@<version>/<module path>/<stem>.type
+deps/<package path>/@<version>/<module path>/<stem>.value
+```
+
+`<package path>` is the escaped package name and `<module path>` is the escaped module name, one escaped stem
+per segment (see [Naming](../../../draft/names.md)). `.type` and `.value` are part of the logical name, not
+file extensions. Under `deps/`, the segment beginning with `@` ends the package path and carries the package
+version; it is a bare `@` while the v4 model carries no version (see [Dependencies](#dependencies)).
+
+The profile decides the extension at the physical boundary and nowhere else: `.json` for the JSON profile,
+`.yaml` for the YAML profile. Going the other way, a physical name with `.json`, `.yaml`, or `.yml` maps back to
+its logical path; a file with any other extension is not part of the tree and is ignored. Because the extension
+is chosen at that boundary, the same logical tree renders into either profile without renaming anything.
+
+> `mode` is a concept of the [Morphir Compatibility Kit](https://github.com/finos/morphir/tree/main/spec/ir/mck),
+> where a `file` fence may be marked `mode=read` so the kit driver checks only the read direction. It is not a
+> concept of a document tree: no tree file carries a mode, and no reader looks for one.
+
 ## Overview
 
 In VFS mode, a Morphir IR distribution is organized as:
@@ -55,6 +83,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 - `created`: Creation timestamp (ISO 8601 format)
 - `layout`: Distribution layout (`"VfsMode"` or `"Classic"`, defaults to `"VfsMode"`)
 - `entryPoints`: Entry points map (required for Application distributions)
+- `dependencies`: Array of package names, one per package that lives under `deps/` (see [Dependencies](#dependencies))
 
 **Schema**: See [morphir-ir-v4-document-tree-files.yaml](/schemas/morphir-ir-v4-document-tree-files.yaml) → `DistributionManifestFile`
 
@@ -123,6 +152,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 > Both `path` and `module` fields are equivalent and accepted for backwards compatibility. The `path` field is preferred for new files. When reading `module.json` files, tools should accept either field name.
 
 **Optional Fields**:
+- `access`: Module visibility, `"Public"` or `"Private"`. Placed after `path`. Defaults to `"Public"` when absent, and a canonical writer emits it **only** when the module is `Private`. A package definition's modules are access-controlled, so without this member a private module could not round-trip through a tree.
 - `doc`: Module-level documentation (string or array of strings)
 - `types`: Either array of type names (manifest style) or object with inline definitions (inline style)
 - `values`: Either array of value names (manifest style) or object with inline definitions (inline style)
@@ -441,6 +471,82 @@ Modules can be nested by creating subdirectories:
                         └── address.type.json
 ```
 
+### Dependencies
+
+A distribution's dependencies live under `deps/`. Each dependency's package path nests as directories, exactly
+as under `pkg/`, and is followed by one **version segment** that begins with `@`. Below that segment the layout
+is the one `pkg/` uses: a `module` file per module and one file per type or value. The version segment is a
+bare `@` while the v4 model carries no package version, and it carries the version (`@3.0.0`) once it does
+(decision 0015):
+
+```
+.morphir-dist/
+├── manifest.yaml
+├── pkg/
+│   └── my-org/
+│       └── my-project/
+│           └── domain/
+│               ├── module.yaml
+│               └── user.type.yaml
+└── deps/
+    └── morphir/
+        └── _sdk/
+            └── @/                    # version segment: bare @ until the model carries a version
+                └── basics/
+                    ├── module.yaml
+                    └── int.type.yaml
+```
+
+The distribution manifest MUST list every dependency package under `dependencies`, so that discovery does not
+have to walk `deps/` blindly:
+
+```yaml
+formatVersion: 4
+distribution: Library
+package: my-org/my-project
+pathBudget: 4000
+dependencies: [morphir/SDK]
+```
+
+`Library` and `Specs` dependencies are package **specifications**, so their node files carry `spec`.
+`Application` dependencies are package **definitions**, so their node files carry `def`.
+
+The version segment exists so that a reader never has to guess where a package path ends: package paths and
+module paths are both multi-segment, and without the segment a tree holding packages `a` and `a/b` could not
+tell module `b/c` of `a` from module `c` of `a/b`. `pkg/` carries no segment because a tree holds exactly one
+own package and the manifest names it. While the model carries no package version the segment is a bare `@`, a
+tree holds exactly one revision of each dependency, and a reader MUST report a `deps/` directory whose segment
+carries a version. When package versioning lands, the version fills the segment and no other path changes.
+
+### Module order and annotations
+
+A directory carries no order. A tree is therefore read with its modules in **sorted logical-path order**, and a
+distribution written to a tree and read back has its modules in that order. Order is not semantic, but it is
+determined, so two readers of the same tree agree.
+
+A module specification's `annotations` have no place in a tree file in 4.0.0. Reading a module from a tree
+yields an empty `annotations` list, and writing a module specification that carries annotations MUST fail with
+`invalid_distribution_shape` ("module annotations cannot be written to a document tree") rather than dropping
+them silently. A bead tracks adding an `annotations` member to the module manifest.
+
+### Write-time truncation and its failure
+
+A writer measures `pathBudget` in characters **from the distribution root, on the physical path**, extension
+included — `pkg/my-org/my-project/domain/user.type.yaml`, not the logical path. When a physical path exceeds the
+budget, the writer keeps the longest prefix of the escaped stem that fits, drops any trailing `-` or `_`, and
+appends `__` plus the first eight hex digits of the SHA-256 of the **untruncated** escaped stem, recording
+`name → stem` in the module's `fileNames` (decisions 0001 and 0012).
+
+Truncation MUST fail, rather than produce an unreadable tree, when:
+
+- even the shortest truncated form — `__` plus eight hex digits plus the `.type`/`.value` suffix and the
+  profile's extension — does not fit the budget;
+- the module directory or the package directory alone already exceeds the budget;
+- a truncated stem collides with another stem in the same module and kind.
+
+Each failure is `invalid_distribution_shape`, naming the offending path and the budget. Silently overwriting a
+colliding file, or emitting a path over budget, is not conforming.
+
 ## Field Details
 
 ### formatVersion
@@ -491,6 +597,22 @@ is also accepted. Prerelease and build metadata are rejected.
 - `"domain/orders/shipping"`
 
 **Note**: `path` and `module` are equivalent; `path` is preferred for new files, while `module` is accepted for backwards compatibility with legacy files.
+
+### access (module manifest)
+
+**Type**: `"Public"` or `"Private"`
+**Required**: No
+**Default**: `"Public"`
+**Description**: The module's visibility inside its package definition. Written only when the value is
+`"Private"`, so a public module's manifest is unchanged. Placed immediately after `path`.
+
+```yaml
+formatVersion: 4
+path: domain
+access: Private
+types: [user]
+values: []
+```
 
 ### doc
 

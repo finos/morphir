@@ -16,19 +16,16 @@ distribution:
             values:
               add:
                 inputs:
-                  a: "morphir/SDK:basics#int"
-                  b: "morphir/SDK:basics#int"
-                output: "morphir/SDK:basics#int"
+                  a: morphir/SDK:basics#int
+                  b: morphir/SDK:basics#int
+                output: morphir/SDK:basics#int
           list:
             types:
               list:
                 TypeAliasSpecification:
-                  typeParams:
-                    - a
+                  typeParams: [a]
                   typeExp:
-                    Reference:
-                      - "morphir/SDK:list#list"
-                      - a
+                    Reference: ["morphir/SDK:list#list", a]
             values:
               map:
                 inputs:
@@ -37,13 +34,9 @@ distribution:
                       parameterType: a
                       returnType: b
                   list:
-                    Reference:
-                      - "morphir/SDK:list#list"
-                      - a
+                    Reference: ["morphir/SDK:list#list", a]
                 output:
-                  Reference:
-                    - "morphir/SDK:list#list"
-                    - b
+                  Reference: ["morphir/SDK:list#list", b]
     def:
       modules:
         u-s/f-r-2052-a/data-tables:
@@ -56,9 +49,9 @@ distribution:
                     typeExp:
                       Record:
                         fields:
-                          inflows: "regulation:u-s/f-r-2052-a/data-tables#inflows"
-                          outflows: "regulation:u-s/f-r-2052-a/data-tables#outflows"
-                          supplemental: "regulation:u-s/f-r-2052-a/data-tables#supplemental"
+                          inflows: regulation:u-s/f-r-2052-a/data-tables#inflows
+                          outflows: regulation:u-s/f-r-2052-a/data-tables#outflows
+                          supplemental: regulation:u-s/f-r-2052-a/data-tables#supplemental
               inflows:
                 Public:
                   TypeAliasDefinition:
@@ -67,16 +60,14 @@ distribution:
                       Record:
                         fields:
                           assets:
-                            Reference:
-                              - "morphir/SDK:list#list"
-                              - "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"
+                            Reference: ["morphir/SDK:list#list", "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"]
             values:
               calculate-total:
                 Public:
                   ExpressionBody:
                     inputTypes:
-                      tables: "regulation:u-s/f-r-2052-a/data-tables#data-tables"
-                    outputType: "morphir/SDK:basics#float"
+                      tables: regulation:u-s/f-r-2052-a/data-tables#data-tables
+                    outputType: morphir/SDK:basics#float
                     body:
                       Literal:
                         FloatLiteral: 0.0

@@ -160,8 +160,8 @@ operations as definition bodies (0008), bare arrays as lists and bare scalars as
 member (0010), the SDK package as `morphir/SDK` (0011), one legacy name grammar and one FileStem (0012),
 `DocumentLiteral` in 4.0.0 (0013), and the scope of the remaining design-only features (0014). Items 1 to 5 and 7
 below are therefore decided; the list is kept as the record of what was asked. Item 6 (the exact-release table)
-stays open. The kit flips, schema, example, and prose changes that implement the records are plan 2d. Plan 2d
-landed on 2026-09-05: the kit carries 74 cases with the records' spellings (`accepted warning=legacy_spelling`
+stays open. The kit flips, schema, example, and prose changes that implement the records
+landed on 2026-09-05 (finos/morphir#802, finos/morphir-typescript#3): the kit carries 74 cases with the records' spellings (`accepted warning=legacy_spelling`
 marks the one-release window), the reference codec passes every JSON fence, both schemas and every accepted
 fence agree (`mise run mck:schema-check`), and the examples and pages are rewritten. Item 6 is the only open
 spelling decision. Item 8, where the naming codec model lives, stays open under decision 0003.
@@ -224,7 +224,7 @@ body validation, the `session.jsonl` and `deco` scope) have none, because they a
 (`types-0003`) are stable and are the way beads and decision records cite the kit.
 
 Rejection-only cases such as names-0003 are active. No case is pending except versions-0002. It is a write
-refusal the kit grammar cannot express until plan 2b.
+refusal the kit grammar cannot express until the driver gains a write-refusal role.
 
 ## Tracking
 
@@ -240,9 +240,14 @@ examples), `morphir-bx6v` (tree schema root), `morphir-l2p9` (formatVersion cont
 migration), `morphir-19s6` (Insight, gated on this note). GitHub issues #792 to #795 audit the ingestion routes and
 feed findings back here.
 
-Plan 2b shipped the mck driver: it lives in finos/morphir-typescript's `packages/mck`, drives the TypeScript
+The mck driver (finos/morphir-typescript#6, finos/morphir#809) lives in finos/morphir-typescript's `packages/mck`, drives the TypeScript
 binding in-process or any binding through its adapter protocol, and is what the parent runs in CI against
 `spec/ir/mck` (`mise run mck:run`).
+
+The YAML profile and the document tree (finos/morphir-typescript#8, finos/morphir#810) are in the reference binding: `@finos/morphir-ir`'s
+`./codec/yaml`, `./layout`, and `./layout/node`. The driver now checks every YAML fence and file set in the kit
+(no case is skipped for lacking a YAML or tree capability); the only remaining skips are the kit's version-3
+fences, which this binding does not declare.
 
 Related: [Decision 0001](/decisions/0001-name-canonicalization-and-initialism-encoding.md),
 [Decision 0002](/decisions/0002-both-name-encodings-behind-one-switch.md),

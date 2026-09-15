@@ -235,6 +235,9 @@ A protocol-level address combining scheme, path, name, and suffix.
 
 - **Structure**: `Uri(scheme, path, name, suffix)`
 - **Example**: `morphir://pkg/my-org/project/main/domain/user.type.json`
+- **Dependency example**: `morphir://deps/morphir/_sdk/@/list/map.value.json`. A URI mirrors the document-tree
+  path, so under `deps/` the segment beginning with `@` ends the package path and carries the version, bare `@`
+  while the model has none (see the [document tree page](../ir/schemas/v4/document-tree-files.md#dependencies)).
 
 A URI addresses the document tree, so its path and name components hold **escaped stems**, not canonical names.
 `Uri.name` is therefore a file stem rather than a `Name`.
