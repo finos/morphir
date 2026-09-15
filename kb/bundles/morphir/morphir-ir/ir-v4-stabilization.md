@@ -244,6 +244,11 @@ Plan 2b shipped the mck driver: it lives in finos/morphir-typescript's `packages
 binding in-process or any binding through its adapter protocol, and is what the parent runs in CI against
 `spec/ir/mck` (`mise run mck:run`).
 
+Plan 2c shipped the YAML profile and the document tree in the reference binding: `@finos/morphir-ir`'s
+`./codec/yaml`, `./layout`, and `./layout/node`. The driver now checks every YAML fence and file set in the kit
+(no case is skipped for lacking a YAML or tree capability); the only remaining skips are the kit's version-3
+fences, which this binding does not declare.
+
 Related: [Decision 0001](/decisions/0001-name-canonicalization-and-initialism-encoding.md),
 [Decision 0002](/decisions/0002-both-name-encodings-behind-one-switch.md),
 [Decision 0003](/decisions/0003-the-naming-codec-is-modelled-in-morphir.md).
