@@ -47,38 +47,37 @@ distribution:
     def:
       modules:
         u-s/f-r-2052-a/data-tables:
-          access: Public
-          value:
+          Public:
             types:
               data-tables:
-                access: Public
-                TypeAliasDefinition:
-                  typeParams: []
-                  typeExp:
-                    Record:
-                      fields:
-                        inflows: "regulation:u-s/f-r-2052-a/data-tables#inflows"
-                        outflows: "regulation:u-s/f-r-2052-a/data-tables#outflows"
-                        supplemental: "regulation:u-s/f-r-2052-a/data-tables#supplemental"
+                Public:
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp:
+                      Record:
+                        fields:
+                          inflows: "regulation:u-s/f-r-2052-a/data-tables#inflows"
+                          outflows: "regulation:u-s/f-r-2052-a/data-tables#outflows"
+                          supplemental: "regulation:u-s/f-r-2052-a/data-tables#supplemental"
               inflows:
-                access: Public
-                TypeAliasDefinition:
-                  typeParams: []
-                  typeExp:
-                    Record:
-                      fields:
-                        assets:
-                          Reference:
-                            - "morphir/SDK:list#list"
-                            - "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"
+                Public:
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp:
+                      Record:
+                        fields:
+                          assets:
+                            Reference:
+                              - "morphir/SDK:list#list"
+                              - "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"
             values:
               calculate-total:
-                access: Public
-                ExpressionBody:
-                  inputTypes:
-                    tables: "regulation:u-s/f-r-2052-a/data-tables#data-tables"
-                  outputType: "morphir/SDK:basics#float"
-                  body:
-                    Literal:
-                      FloatLiteral: 0.0
+                Public:
+                  ExpressionBody:
+                    inputTypes:
+                      tables: "regulation:u-s/f-r-2052-a/data-tables#data-tables"
+                    outputType: "morphir/SDK:basics#float"
+                    body:
+                      Literal:
+                        FloatLiteral: 0.0
             doc: Data tables module for regulatory reporting

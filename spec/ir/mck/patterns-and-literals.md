@@ -199,3 +199,23 @@ AsPattern:
 ```json canonical
 { "AsPattern": { "attributes": { "source": { "startLine": 2, "startColumn": 1, "endLine": 2, "endColumn": 2 } }, "pattern": { "WildcardPattern": {} }, "name": "x" } }
 ```
+
+## patterns-and-literals-0013: Character literal {node=Literal}
+
+A `CharLiteral` carries one character as a string, because JSON has no character type. One character means one code point, so an astral character is a single `CharLiteral` and a two-character string is not a character at all.
+
+```yaml canonical
+CharLiteral: a
+```
+
+```json canonical
+{ "CharLiteral": "a" }
+```
+
+```json accepted
+{ "CharLiteral": { "value": "a" } }
+```
+
+```json rejected diagnostic=invalid_literal
+{ "CharLiteral": "ab" }
+```

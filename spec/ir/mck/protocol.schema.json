@@ -1,0 +1,261 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://morphir.finos.org/spec/ir/mck/protocol.schema.json",
+	"title": "Morphir Compatibility Kit adapter protocol",
+	"description": "Contract version 1 of the JSON-lines adapter protocol between the mck driver and a testee adapter. Normative: spec S6. Every message rejects unknown fields (additionalProperties: false throughout); the contract extends only through contractVersion, never through an added-but-ignored key. A validator that knows what it is looking at should be pointed at one definition (Request, Capabilities, DecodeResponse, WriteTreeResponse); a validator given a bare line validates against the root oneOf below, whose branches are disjoint so that exactly one accepts any message.",
+	"definitions": {
+		"Profile": { "type": "string", "enum": ["json", "yaml"] },
+		"Layout": { "type": "string", "enum": ["single", "tree"] },
+		"PathMode": { "type": "string", "enum": ["current", "pinned"] },
+		"Stage": { "type": "string", "enum": ["syntax", "normalization", "semantic"] },
+		"Envelope": {
+			"type": "object",
+			"properties": {
+				"id": { "type": "integer", "minimum": 1 }
+			},
+			"required": ["id"]
+		},
+		"TreeFile": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"path": { "type": "string" },
+				"content": { "type": "string" }
+			},
+			"required": ["path", "content"]
+		},
+		"Warning": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"code": { "type": "string" },
+				"cursor": { "type": "string" }
+			},
+			"required": ["code", "cursor"]
+		},
+		"Diagnostic": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"code": { "type": "string" },
+				"stage": { "$ref": "#/definitions/Stage" },
+				"cursor": { "type": "string" },
+				"message": { "type": "string" }
+			},
+			"required": ["code"]
+		},
+		"Capabilities": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"contractVersion": { "const": 1 },
+						"binding": {
+							"type": "string",
+							"minLength": 1,
+							"description": "Non-empty: the report schema requires a non-empty binding, so an empty one here would produce an invalid report."
+						},
+						"language": {
+							"type": "string",
+							"minLength": 1,
+							"description": "Non-empty: the report schema requires a non-empty language, so an empty one here would produce an invalid report."
+						},
+						"versions": {
+							"type": "array",
+							"items": { "type": "integer", "minimum": 1, "description": "A positive integer IR version this binding supports." }
+						},
+						"profiles": { "type": "array", "items": { "$ref": "#/definitions/Profile" } },
+						"layouts": { "type": "array", "items": { "$ref": "#/definitions/Layout" } },
+						"paths": { "type": "array", "items": { "$ref": "#/definitions/PathMode" } },
+						"nodes": {
+							"type": "array",
+							"items": { "type": "string" },
+							"minItems": 1,
+							"description": "Node kinds this adapter decodes, spelled as the kit names them (aliases included, e.g. \"Distribution\")."
+						}
+					},
+					"required": ["id", "contractVersion", "binding", "language", "versions", "profiles", "layouts", "paths", "nodes"]
+				}
+			]
+		},
+		"CapabilitiesRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "capabilities" }
+					},
+					"required": ["id", "op"]
+				}
+			]
+		},
+		"ExitRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "exit" }
+					},
+					"required": ["id", "op"]
+				}
+			]
+		},
+		"DecodeRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "decode" },
+						"version": { "type": "integer" },
+						"profile": { "$ref": "#/definitions/Profile" },
+						"path": { "$ref": "#/definitions/PathMode" },
+						"strip": { "type": "boolean" },
+						"node": { "type": "string" },
+						"input": { "type": "string" }
+					},
+					"required": ["id", "op", "version", "profile", "path", "strip", "node", "input"]
+				}
+			]
+		},
+		"ReadTreeRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "readTree" },
+						"version": { "type": "integer" },
+						"profile": { "$ref": "#/definitions/Profile" },
+						"path": { "$ref": "#/definitions/PathMode" },
+						"strip": { "type": "boolean" },
+						"node": { "type": "string" },
+						"files": { "type": "array", "items": { "$ref": "#/definitions/TreeFile" } }
+					},
+					"required": ["id", "op", "version", "profile", "path", "strip", "node", "files"]
+				}
+			]
+		},
+		"WriteTreeRequest": {
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"op": { "const": "writeTree" },
+						"version": { "type": "integer" },
+						"path": { "$ref": "#/definitions/PathMode" },
+						"policy": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"profile": { "$ref": "#/definitions/Profile" },
+								"pathBudget": {
+									"type": "integer",
+									"minimum": 64,
+									"description": "Matches the document-tree schema's DistributionManifestFile.pathBudget floor."
+								}
+							},
+							"required": ["profile", "pathBudget"]
+						},
+						"input": { "type": "string" }
+					},
+					"required": ["id", "op", "version", "path", "policy", "input"]
+				}
+			]
+		},
+		"Request": {
+			"oneOf": [
+				{ "$ref": "#/definitions/CapabilitiesRequest" },
+				{ "$ref": "#/definitions/DecodeRequest" },
+				{ "$ref": "#/definitions/ReadTreeRequest" },
+				{ "$ref": "#/definitions/WriteTreeRequest" },
+				{ "$ref": "#/definitions/ExitRequest" }
+			]
+		},
+		"ErrorResponse": {
+			"description": "The failure answer to decode, readTree or writeTree. It is one shape, not one per op: an adapter that refuses a document says so the same way whatever it was asked to do, so this is a single definition rather than an identical branch inside each response. The root oneOf below lists it once for that reason — two identical branches would make every error response match twice and fail.",
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"ok": { "const": false },
+						"diagnostic": { "$ref": "#/definitions/Diagnostic" }
+					},
+					"required": ["id", "ok", "diagnostic"]
+				}
+			]
+		},
+		"DecodeSuccess": {
+			"description": "The success answer to decode or readTree: the node kind that was read, its canonical form per profile, and the legacy spellings accepted on the way.",
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"ok": { "const": true },
+						"kind": { "type": "string" },
+						"canonical": {
+							"type": "object",
+							"additionalProperties": { "type": "string" },
+							"propertyNames": { "$ref": "#/definitions/Profile" }
+						},
+						"warnings": { "type": "array", "items": { "$ref": "#/definitions/Warning" } }
+					},
+					"required": ["id", "ok", "kind", "canonical", "warnings"]
+				}
+			]
+		},
+		"WriteTreeSuccess": {
+			"description": "The success answer to writeTree: the files the binding would write.",
+			"allOf": [
+				{ "$ref": "#/definitions/Envelope" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"id": { "type": "integer", "minimum": 1 },
+						"ok": { "const": true },
+						"files": { "type": "array", "items": { "$ref": "#/definitions/TreeFile" } }
+					},
+					"required": ["id", "ok", "files"]
+				}
+			]
+		},
+		"DecodeResponse": {
+			"description": "Either answer to decode or readTree. Kept as a named definition so a validator can be pointed at it directly, by op, without knowing which way the answer went.",
+			"oneOf": [{ "$ref": "#/definitions/DecodeSuccess" }, { "$ref": "#/definitions/ErrorResponse" }]
+		},
+		"WriteTreeResponse": {
+			"description": "Either answer to writeTree. Named for the same reason as DecodeResponse.",
+			"oneOf": [{ "$ref": "#/definitions/WriteTreeSuccess" }, { "$ref": "#/definitions/ErrorResponse" }]
+		}
+	},
+	"oneOf": [
+		{ "$ref": "#/definitions/Request" },
+		{ "$ref": "#/definitions/Capabilities" },
+		{ "$ref": "#/definitions/DecodeSuccess" },
+		{ "$ref": "#/definitions/WriteTreeSuccess" },
+		{ "$ref": "#/definitions/ErrorResponse" }
+	]
+}

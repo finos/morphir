@@ -56,8 +56,14 @@ distribution:
 
 The published complete example and its YAML rendering are the same distribution. Both write record fields under `fields` (decision 0004), the SDK as `morphir/SDK` (decision 0011), and the list function's `parameterType` (decision 0007).
 
-```text canonical
+`website/static/ir/examples/v4/complete-example.json` is the human-readable form the docs site publishes: it is pretty-printed and spells its format version `"4.0.0"`, both of which a reader accepts and a writer never emits, so it is an `accepted` spelling. The `json canonical` fence below is the writer's own output for the same distribution, on one line with the integer format version (distributions-0001). The YAML file stays canonical: it is the reference text form.
+
+```text accepted
 website/static/ir/examples/v4/complete-example.json
+```
+
+```json canonical
+{ "formatVersion": 4, "distribution": { "Library": { "packageName": "regulation", "dependencies": { "morphir/SDK": { "modules": { "basics": { "types": { "int": { "OpaqueTypeSpecification": {} }, "float": { "OpaqueTypeSpecification": {} }, "bool": { "OpaqueTypeSpecification": {} } }, "values": { "add": { "inputs": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" } } }, "list": { "types": { "list": { "TypeAliasSpecification": { "typeParams": ["a"], "typeExp": { "Reference": ["morphir/SDK:list#list", "a"] } } } }, "values": { "map": { "inputs": { "f": { "Function": { "parameterType": "a", "returnType": "b" } }, "list": { "Reference": ["morphir/SDK:list#list", "a"] } }, "output": { "Reference": ["morphir/SDK:list#list", "b"] } } } } } } }, "def": { "modules": { "u-s/f-r-2052-a/data-tables": { "Public": { "types": { "data-tables": { "Public": { "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "inflows": "regulation:u-s/f-r-2052-a/data-tables#inflows", "outflows": "regulation:u-s/f-r-2052-a/data-tables#outflows", "supplemental": "regulation:u-s/f-r-2052-a/data-tables#supplemental" } } } } } }, "inflows": { "Public": { "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "assets": { "Reference": ["morphir/SDK:list#list", "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"] } } } } } } } }, "values": { "calculate-total": { "Public": { "ExpressionBody": { "inputTypes": { "tables": "regulation:u-s/f-r-2052-a/data-tables#data-tables" }, "outputType": "morphir/SDK:basics#float", "body": { "Literal": { "FloatLiteral": 0.0 } } } } } }, "doc": "Data tables module for regulatory reporting" } } } } } } }
 ```
 
 ```text canonical
@@ -82,4 +88,86 @@ distribution:
 
 ```json canonical
 { "formatVersion": 4, "distribution": { "Library": { "packageName": "example", "dependencies": { "morphir/SDK": { "modules": {} } }, "def": { "modules": {} } } } }
+```
+
+## distributions-0006: Specs distribution {node=Distribution}
+
+A `Specs` distribution publishes a package's public face and nothing else: its member is `spec`, a package specification, where a `Library` carries `def`, a package definition. `packageName`, `dependencies` and `spec` are the three members the reader accepts; `dependencies` and `spec` may be omitted and default to empty, and a writer emits all three regardless (distributions-0002).
+
+```yaml canonical
+formatVersion: 4
+distribution:
+  Specs:
+    packageName: example
+    dependencies:
+      morphir/SDK:
+        modules: {}
+    spec:
+      modules:
+        main:
+          types: {}
+          values:
+            greet:
+              inputs:
+                name: morphir/SDK:string#string
+              output: morphir/SDK:string#string
+```
+
+```json canonical
+{ "formatVersion": 4, "distribution": { "Specs": { "packageName": "example", "dependencies": { "morphir/SDK": { "modules": {} } }, "spec": { "modules": { "main": { "types": {}, "values": { "greet": { "inputs": { "name": "morphir/SDK:string#string" }, "output": "morphir/SDK:string#string" } } } } } } } }
+```
+
+A `Specs` document has no `def`: an implementation is exactly what it does not carry.
+
+```json rejected diagnostic=unknown_member
+{ "formatVersion": 4, "distribution": { "Specs": { "packageName": "example", "dependencies": {}, "def": { "modules": {} } } } }
+```
+
+## distributions-0007: Application distribution with entry points {node=Distribution}
+
+An `Application` is an executable package. It carries `packageName`, `dependencies`, `def` and `entryPoints`; `entryPoints` is required, because an application with no way in is not one. The dependency map holds package definitions rather than specifications, because an application links its dependencies statically. An entry point is keyed by a name the author chooses and holds `target`, `kind`, and an optional `doc`; the writer emits `doc` only when it is present, so `build` below has none.
+
+```yaml canonical
+formatVersion: 4
+distribution:
+  Application:
+    packageName: example
+    dependencies: {}
+    def:
+      modules:
+        main:
+          Public:
+            types: {}
+            values:
+              run:
+                Public:
+                  ExpressionBody:
+                    inputTypes: {}
+                    outputType: morphir/SDK:basics#unit
+                    body:
+                      Unit: {}
+    entryPoints:
+      start:
+        target: example:main#run
+        kind: main
+        doc: The application entry point
+      build:
+        target: example:main#run
+        kind: command
+```
+
+```json canonical
+{ "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": {}, "def": { "modules": { "main": { "Public": { "types": {}, "values": { "run": { "Public": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#unit", "body": { "Unit": {} } } } } } } } } }, "entryPoints": { "start": { "target": "example:main#run", "kind": "main", "doc": "The application entry point" }, "build": { "target": "example:main#run", "kind": "command" } } } } }
+```
+
+`doc` belongs to an entry point, not to the distribution. An `Application` accepts exactly the four members above, so a `doc` beside them is an unknown member rather than package documentation.
+
+```json rejected diagnostic=unknown_member
+{ "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": {}, "def": { "modules": {} }, "entryPoints": {}, "doc": "Applications document their entry points, not themselves" } } }
+```
+
+`kind` is drawn from a fixed set: `main`, `command`, `handler`, `job`, `policy`.
+
+```json rejected diagnostic=invalid_type
+{ "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": {}, "def": { "modules": {} }, "entryPoints": { "start": { "target": "example:main#run", "kind": "startup" } } } } }
 ```

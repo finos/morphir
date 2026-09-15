@@ -90,7 +90,7 @@ Tuple: ["morphir/SDK:basics#int", "morphir/SDK:string#string"]
 
 ## types-0005: Record type {node=Type}
 
-Decision 0004: fields live under a `fields` member, so `attributes` can sit beside them. The field map directly under `Record`, which the schema documented until 2026-09-04, is accepted for the one-release window of decision 0006 and reported as `legacy_spelling`.
+Decision 0004: fields live under a `fields` member, so `attributes` can sit beside them. The field map directly under `Record`, which the schema documented until 2026-09-04, is accepted for the one-release window of decision 0006 and reported as `legacy_spelling`. The Rust encoder's `attrs` is the other window spelling a Record payload takes — it is a row of decision 0006's window table, not a decision of its own; this case pins it for type expressions and values-0013 pins it for values.
 
 ```yaml canonical
 Record:
@@ -105,6 +105,10 @@ Record:
 
 ```json accepted
 { "Record": { "attributes": {}, "fields": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int" } } }
+```
+
+```json accepted warning=legacy_spelling
+{ "Record": { "attrs": {}, "fields": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int" } } }
 ```
 
 ```json accepted warning=legacy_spelling
@@ -201,4 +205,16 @@ Variable:
 
 ```json canonical
 { "Variable": { "attributes": { "source": { "startLine": 1, "startColumn": 1, "endLine": 1, "endColumn": 2 } }, "name": "a" } }
+```
+
+## types-0011: Incompleteness is not a type expression {node=Type}
+
+Decision 0008 makes `Hole` a value expression (values-0009). The type-level incompleteness vocabulary — `Hole` with its reason, and `Draft` — is the v4 schema's `IncompleteTypeDefinitionBody`, which belongs to a definition, not to a type expression. A reader that meets either tag where a type belongs refuses it as an unknown node. The spellings themselves are pinned where they are read: definitions-0014 for a `Hole` with a `TypeMismatch` reason, definitions-0015 for `Draft`, and definitions-0016 for a `DeletedDuringRefactor` reason on an incomplete value definition.
+
+```json rejected diagnostic=unknown_node
+{ "Hole": { "reason": { "TypeMismatch": { "expected": "morphir/SDK:basics#int", "found": "morphir/SDK:string#string" } } } }
+```
+
+```json rejected diagnostic=unknown_node
+{ "Draft": {} }
 ```

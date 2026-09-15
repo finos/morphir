@@ -22,6 +22,7 @@ corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabiliza
 | `versions.md` | cross-version reading and writing |
 | `documents/` | large fixtures referenced by path |
 | `report.schema.json` | the JSON Schema of an MCK report |
+| [`protocol.schema.json`](protocol.schema.json) | the JSON Schema of the adapter protocol, contract version 1 |
 
 ## A case
 
@@ -71,12 +72,35 @@ Reference: ["morphir/SDK:list#list", a]
 
 ## What the driver does with a case
 
+The parent runs the kit against the TypeScript binding in-process with `mck run --kit spec/ir/mck`. A binding
+under test runs it through its adapter instead, with `mck run --kit spec/ir/mck --adapter <exe>`. Either way the
+driver speaks the same steps against the same cases:
+
 1. Decodes `canonical` and every `accepted` fence; every result re-encoded canonically must be byte-equal to the
    others and to the `canonical` fence of the same profile (one trailing newline allowed).
 2. Decodes every `rejected` fence and requires the named diagnostic, or the named node kind for `expect=`.
 3. Builds each `file` set into a document tree, reads it, and compares with the case's `canonical` single-file
    document; writes it back and compares the emitted files with the fences.
 4. Reports a `pending` case as `skipped`. A case whose fences are all `rejected` is active and is checked normally.
+
+Before any of that, the driver asks the testee for its `capabilities`: the IR versions, profiles, layouts,
+paths, and node kinds it supports. A fence whose case needs a version, profile, layout, path, or node the
+testee did not declare is reported `skipped` rather than run; an adapter that never learned YAML, for example,
+skips every YAML fence without failing the run. The wire shape of `capabilities` and every other exchange is
+the adapter protocol, `protocol.schema.json`, contract version 1.
+
+## Running the driver against a binding
+
+A binding pins the driver instead of vendoring the kit. Either pin works with mise:
+
+```toml
+[tools]
+"npm:@finos/morphir-mck" = "<version>"
+```
+
+or, for the single-file release binaries, mise's `github:finos/morphir-typescript` backend pointed at the
+release tag. The binding's CI then runs `mck run --kit <path-to-a-checkout-of-this-kit> --adapter <exe>` and
+publishes the JSON report.
 
 ## Errors the parser reports
 

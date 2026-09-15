@@ -1,0 +1,116 @@
+[
+	{
+		"direction": "request",
+		"message": { "id": 1, "op": "capabilities" }
+	},
+	{
+		"direction": "response",
+		"message": {
+			"id": 1,
+			"contractVersion": 1,
+			"binding": "morphir-typescript",
+			"language": "typescript",
+			"versions": [4],
+			"profiles": ["json"],
+			"layouts": ["single"],
+			"paths": ["current", "pinned"],
+			"nodes": [
+				"Name",
+				"Path",
+				"FQName",
+				"FormatVersion",
+				"Type",
+				"Literal",
+				"Pattern",
+				"Value",
+				"TypeSpecification",
+				"TypeDefinition",
+				"ValueSpecification",
+				"ValueDefinition",
+				"AccessControlledTypeDefinition",
+				"AccessControlledValueDefinition",
+				"ModuleDefinition",
+				"ModuleSpecification",
+				"IRFile",
+				"Distribution"
+			]
+		}
+	},
+	{
+		"direction": "request",
+		"message": {
+			"id": 2,
+			"op": "decode",
+			"version": 4,
+			"profile": "json",
+			"path": "current",
+			"strip": true,
+			"node": "Type",
+			"input": "{\"tag\":\"Variable\"}"
+		}
+	},
+	{
+		"direction": "response",
+		"message": {
+			"id": 2,
+			"ok": true,
+			"kind": "Type",
+			"canonical": { "json": "{\"tag\":\"Variable\"}" },
+			"warnings": [{ "code": "legacy_spelling", "cursor": "/Function/arg" }]
+		}
+	},
+	{
+		"direction": "response",
+		"message": {
+			"id": 2,
+			"ok": false,
+			"diagnostic": { "code": "unknown_member", "stage": "normalization", "cursor": "/Record/attrs", "message": "unexpected member" }
+		}
+	},
+	{
+		"direction": "request",
+		"message": {
+			"id": 3,
+			"op": "readTree",
+			"version": 4,
+			"profile": "yaml",
+			"path": "current",
+			"strip": true,
+			"node": "IRFile",
+			"files": [{ "path": "manifest", "content": "kind: IRFile" }]
+		}
+	},
+	{
+		"direction": "response",
+		"message": {
+			"id": 3,
+			"ok": true,
+			"kind": "IRFile",
+			"canonical": { "yaml": "kind: IRFile" },
+			"warnings": []
+		}
+	},
+	{
+		"direction": "request",
+		"message": {
+			"id": 4,
+			"op": "writeTree",
+			"version": 4,
+			"path": "current",
+			"policy": { "profile": "yaml", "pathBudget": 4000 },
+			"input": "{}"
+		}
+	},
+	{
+		"direction": "response",
+		"message": {
+			"id": 4,
+			"ok": true,
+			"files": [{ "path": "manifest", "content": "kind: IRFile" }]
+		}
+	},
+	{
+		"direction": "request",
+		"message": { "id": 5, "op": "exit" }
+	}
+]
