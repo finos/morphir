@@ -25,7 +25,7 @@
 		"check:schema-sync": "node scripts/check-config-schema-sync.js"
 	},
 	"dependencies": {
-		"effect": "3.22.1",
+		"effect": "3.22.2",
 		"ajv": "^8.20.0",
 		"ajv-formats": "^3.0.1",
 		"@cmfcmf/docusaurus-search-local": "^2.0.0",
