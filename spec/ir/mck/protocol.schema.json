@@ -53,8 +53,16 @@
 					"properties": {
 						"id": { "type": "integer", "minimum": 1 },
 						"contractVersion": { "const": 1 },
-						"binding": { "type": "string" },
-						"language": { "type": "string" },
+						"binding": {
+							"type": "string",
+							"minLength": 1,
+							"description": "Non-empty: the report schema requires a non-empty binding, so an empty one here would produce an invalid report."
+						},
+						"language": {
+							"type": "string",
+							"minLength": 1,
+							"description": "Non-empty: the report schema requires a non-empty language, so an empty one here would produce an invalid report."
+						},
 						"versions": {
 							"type": "array",
 							"items": { "type": "integer", "minimum": 1, "description": "A positive integer IR version this binding supports." }
@@ -157,7 +165,11 @@
 							"additionalProperties": false,
 							"properties": {
 								"profile": { "$ref": "#/definitions/Profile" },
-								"pathBudget": { "type": "integer" }
+								"pathBudget": {
+									"type": "integer",
+									"minimum": 64,
+									"description": "Matches the document-tree schema's DistributionManifestFile.pathBudget floor."
+								}
 							},
 							"required": ["profile", "pathBudget"]
 						},
