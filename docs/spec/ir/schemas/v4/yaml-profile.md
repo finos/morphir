@@ -134,15 +134,19 @@ Resolution applies to plain scalars only. Every quoted scalar and every block sc
 
 - `true`, `True`, and `TRUE` resolve to the boolean `true`; `false`, `False`, and `FALSE` resolve to the boolean
   `false`; `null`, `Null`, `NULL`, `~`, and the empty scalar resolve to null.
-- A YAML 1.2 core decimal integer (`[-+]?[0-9]+`) resolves to a number whose lexeme is the source text.
-  A leading zero (`01`, `-007`, and the same in a float such as `01.5`) is rejected with `invalid_literal`
-  ("leading zeros are not part of the profile"), because it is not a JSON lexeme. Octal (`0o17`) and
+- Numbers are resolved in two steps that a reader applies in this order, so the integer form is tried first and
+  the float form only applies to text the integer form did not match:
+  1. A YAML 1.2 core decimal integer (`[-+]?[0-9]+`) resolves to a number whose lexeme is the source text
+     with any leading `+` removed: `+1` becomes `1`, `-7` stays `-7`.
+  2. Otherwise, a YAML 1.2 core float (`[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?`) resolves to a
+     number with the source lexeme, except that a lexeme JSON would not accept is rewritten to the shortest
+     JSON form denoting the same value: `.5` becomes `0.5`, `5.` becomes `5.0`, `+1.5` becomes `1.5`,
+     `+.5e3` becomes `0.5e3`. A lexeme JSON already accepts (`1.5E3`) is kept as written.
+  In both steps the rewrite is a normalization, not a warning, and it never changes the value. A leading zero
+  (`01`, `-007`, and the same in a float such as `01.5`) is rejected with `invalid_literal` ("leading zeros are
+  not part of the profile") before either rewrite, because it is not a JSON lexeme. Octal (`0o17`) and
   hexadecimal (`0xF`) integers are **rejected** with `invalid_literal` ("write decimal"): the IR carries a
   lexeme, and these forms have no JSON lexeme to carry.
-- A YAML 1.2 core float (`[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?`) resolves to a number with the
-  source lexeme, except that a lexeme JSON would not accept is rewritten to the shortest JSON form denoting the
-  same value: `.5` becomes `0.5`, `5.` becomes `5.0`, `+1` becomes `1`. The rewrite is a normalization, not a
-  warning. A leading zero is rejected before this rewrite, as above.
 - Everything else is a string, **including date-looking text** such as `2026-01-15`. YAML 1.2 core has no
   implicit timestamps, and this profile forbids implicit coercions, so a plain `2026-01-15` where a literal is
   expected is a `StringLiteral`, never a date.
