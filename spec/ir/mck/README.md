@@ -48,7 +48,18 @@ Fences are the data. The info string is `<language> <role> [key=value ...]`.
 | `canonical` | The spelling a writer must emit for this profile. At most one per language per case. | none |
 | `accepted` | A spelling a reader must normalize to the same value as `canonical`. With `warning=<code>` the reader must also report exactly that warning diagnostic (the one-release window of decision 0006); without it the reader must accept silently. | optional `warning=<code>` |
 | `rejected` | A spelling a reader must refuse with the named diagnostic, or decode as a different node. | exactly one of `diagnostic=<code>` or `expect=<Kind>` |
-| `file` | One document of a multi-file input (a document tree). | `path=<logical path>` required; `set=<name>` groups files |
+| `file` | One document of a multi-file input (a document tree). | `path=<logical path>` required; `set=<name>` groups files; `mode=read` optional |
+
+A `file` set may be written in either profile: every fence of a set is `yaml` or every fence is `json`, and the
+set is read and written back in that profile. A set's logical paths carry no extension; the profile supplies
+`.yaml` or `.json` at the physical boundary. The driver stays profile-agnostic about one value it needs before
+decoding anything: it reads `pathBudget` **lexically** out of the set's `manifest` fence, with one expression
+that matches both spellings (`"pathBudget": 4000` and `pathBudget: 4000`). A `file` set whose manifest has no
+readable budget is a `kit-error`.
+
+`mode=read`: the set is read and compared, never written back; every fence of a set carries it or none. It marks
+a set whose input a conforming writer never reproduces — `document-tree-0005`, whose files carry `$meta` members
+that readers ignore and writers never emit.
 
 Languages are `yaml`, `json`, and `text` (a list of paths, one per line, relative to the repository root; the
 kit's own fixtures live under `spec/ir/mck/documents/`). In a report, a text fence takes the profile of the

@@ -199,7 +199,11 @@ A source location makes the expanded spelling the canonical one.
 ```yaml canonical
 Variable:
   attributes:
-    source: { startLine: 1, startColumn: 1, endLine: 1, endColumn: 2 }
+    source:
+      startLine: 1
+      startColumn: 1
+      endLine: 1
+      endColumn: 2
   name: a
 ```
 

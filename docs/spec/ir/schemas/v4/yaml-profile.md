@@ -69,6 +69,83 @@ Mapping order is not semantic unless the semantic model explicitly defines order
 
 Readers MUST accept `formatVersion` before or after `distribution`. Canonical YAML output MUST place `formatVersion` first and `distribution` second. A linter SHOULD report `format_version_not_first` when another root member appears first, but this warning MUST NOT cause rejection.
 
+## Canonical writer
+
+The rules below fix the bytes a canonical v4 YAML writer emits, so that every binding and every mirror emits
+the same file for the same IR value. The [Morphir Compatibility Kit](https://github.com/finos/morphir/tree/main/spec/ir/mck)
+is the authority: its `yaml canonical` fences are the reference, and where a rule below and a fence disagree,
+the fence wins and this page is corrected.
+
+1. **Root.** A scalar root is written as the scalar followed by a newline. A mapping root is a block mapping.
+   A sequence root follows rule 3.
+2. **Mappings** MUST be block style with two-space indentation, and MUST keep members in the order the v4 writer
+   produced them. Each member is `key:` followed by a space and an inline scalar, or by a newline and an
+   indented block for a nested mapping or a block sequence. An empty mapping MUST be written inline as `{}`.
+   Keys are written as scalars under rule 4.
+3. **Sequences** MUST be flow style — `[a, b]`, one space after each comma, no trailing comma — when the
+   sequence contains no mapping at any depth. Nested scalar-only sequences therefore stay inline:
+   `just: [[value, a]]`. A sequence MUST be block style (`- ` items) as soon as any item, at any depth, is a
+   mapping; inside a block sequence a mapping item starts on its `- ` line. An empty sequence MUST be written
+   inline as `[]`.
+4. **Strings** MUST be plain unless plain resolution would change their meaning or they contain YAML syntax, in
+   which case they MUST be double-quoted with JSON escapes. Plain is refused when the string:
+   - is empty;
+   - resolves under the scalar table in [Reader restrictions](#reader-restrictions) to a non-string
+     (`true`, `false`, `null`, `~`, `42`, `1e3`, `0x1F`, `.inf`, `.nan`, …);
+   - starts with one of `- ? : , [ ] { } # & * ! | > ' " % @ \`` or with a space;
+   - ends with a space or with `:`;
+   - contains `: `, ` #`, a newline, a tab, or any control character;
+   - or, **inside a flow sequence only**, contains any of `[ ] { } , : #`.
+
+   An FQName-like string is therefore plain in every position except a flow sequence: `morphir/SDK:basics#int`
+   as a mapping value is plain, while `"morphir/SDK:list#list"` inside a flow sequence is quoted. A key such as
+   `$meta` is plain.
+5. **Numbers** MUST be written from their lexeme, unchanged. Booleans and null MUST be written `true`, `false`,
+   and `null`.
+6. **Output** MUST end with exactly one newline and MUST contain no tags, anchors, aliases, comments,
+   directives, or document markers.
+
+Block scalars (`|`, `>`) are never emitted; a multi-line string is double-quoted with `\n` escapes.
+
+## Reader restrictions
+
+A conforming YAML reader produces the same value tree the JSON reader produces for the equivalent document:
+ordered mapping members and lexeme-preserving numbers. Each row below is a rejection with a stable diagnostic
+code, stage `syntax`, a semantic cursor (`/` at the root, the JSON pointer of the offending node otherwise), and
+line and column when the parser provides them.
+
+| Input | Outcome |
+| --- | --- |
+| Zero documents, or more than one (`---` twice; `...` then content) | `invalid_yaml`: "expected exactly one document" |
+| A parser error | `invalid_yaml` with the parser's message and position |
+| A duplicate mapping key | `duplicate_member` at the key (the same code the JSON profile uses, with the same meaning) |
+| An anchor or an alias anywhere | `unsupported_yaml_feature`: "anchors and aliases are not part of the profile" |
+| An explicit tag (`!!int`, `!!map`, `!foo`, …) | `unsupported_yaml_feature`: "tags are not part of the profile" |
+| A `<<` merge key | `unsupported_yaml_feature`: "merge keys are not part of the profile" |
+| A directive (`%YAML`, `%TAG`) | `unsupported_yaml_feature` |
+| A non-string mapping key (number, boolean, null, mapping, sequence) | `invalid_type`: "mapping keys must be strings" |
+| A non-finite number (`.inf`, `-.inf`, `.nan`) | `invalid_literal`: "non-finite numbers are not part of the profile" |
+
+### Scalar resolution
+
+Resolution applies to plain scalars only. Every quoted scalar and every block scalar is a string.
+
+- `true` and `false` resolve to booleans; `null`, `~`, and the empty scalar resolve to null.
+- A YAML 1.2 core decimal integer (`[-+]?[0-9]+`) resolves to a number whose lexeme is the source text.
+  Leading zeros are rejected, because they are not a JSON lexeme. Octal (`0o17`) and hexadecimal (`0xF`)
+  integers are **rejected** with `invalid_literal` ("write decimal"): the IR carries a lexeme, and these forms
+  have no JSON lexeme to carry.
+- A YAML 1.2 core float (`[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?`) resolves to a number with the
+  source lexeme, except that a lexeme JSON would not accept is rewritten to the shortest JSON form denoting the
+  same value: `.5` becomes `0.5`, `5.` becomes `5.0`, `+1` becomes `1`. The rewrite is a normalization, not a
+  warning.
+- Everything else is a string, **including date-looking text** such as `2026-01-15`. YAML 1.2 core has no
+  implicit timestamps, and this profile forbids implicit coercions, so a plain `2026-01-15` where a literal is
+  expected is a `StringLiteral`, never a date.
+
+Block scalars are accepted on input and produce their folded or literal string; see rule 6 for why a writer
+never emits one.
+
 ## File names
 
 Single-file YAML input accepts `.yaml` and `.yml`. Canonical document trees use `.yaml` only: `manifest.yaml`, `module.yaml`, `*.type.yaml`, and `*.value.yaml`.

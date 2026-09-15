@@ -484,7 +484,11 @@ UpdateRecord:
 ```yaml canonical
 Variable:
   attributes:
-    source: { startLine: 3, startColumn: 5, endLine: 3, endColumn: 6 }
+    source:
+      startLine: 3
+      startColumn: 5
+      endLine: 3
+      endColumn: 6
   name: x
 ```
 

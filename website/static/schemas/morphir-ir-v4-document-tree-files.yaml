@@ -281,6 +281,13 @@ definitions:
       module:
         $ref: "#/definitions/ModuleName"
         description: "Alternative field name for module path (legacy compatibility)"
+      access:
+        enum: ["Public", "Private"]
+        default: "Public"
+        description: |
+          Module visibility inside its package definition. Absent means "Public";
+          a canonical writer emits this member only when the module is "Private".
+          Placed after "path".
       doc:
         oneOf:
           - type: string
@@ -420,6 +427,16 @@ definitions:
         description: |
           Entry points (required for Application distributions, optional otherwise).
           Map of entry point names to EntryPoint definitions.
+      dependencies:
+        type: array
+        items: { $ref: "#/definitions/PackageName" }
+        description: |
+          Package names of this distribution's dependencies. Each listed package
+          lives under "deps/<package path>/", laid out exactly as "pkg/" is and
+          with no version segment, so discovery does not have to walk "deps/"
+          blindly. Library and Specs dependencies hold specifications; Application
+          dependencies hold definitions.
+        examples: [["morphir/SDK"]]
       "$meta":
         description: |
           Reserved (decision 0014): readers ignore it and never report it as unknown;

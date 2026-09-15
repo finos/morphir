@@ -190,7 +190,11 @@ HeadTailPattern:
 ```yaml canonical
 AsPattern:
   attributes:
-    source: { startLine: 2, startColumn: 1, endLine: 2, endColumn: 2 }
+    source:
+      startLine: 2
+      startColumn: 1
+      endLine: 2
+      endColumn: 2
   pattern:
     WildcardPattern: {}
   name: x
@@ -218,4 +222,36 @@ CharLiteral: a
 
 ```json rejected diagnostic=invalid_literal
 { "CharLiteral": "ab" }
+```
+
+## patterns-and-literals-0014: A date-looking plain scalar is a string {node=Literal}
+
+YAML 1.2 core has no implicit timestamps, and the YAML profile forbids implicit coercions, so a plain `2026-01-15` where a literal is expected is a `StringLiteral` and nothing else. Spec S4 scalar resolution.
+
+```yaml canonical
+StringLiteral: 2026-01-15
+```
+
+```json canonical
+{ "StringLiteral": "2026-01-15" }
+```
+
+## patterns-and-literals-0015: Octal and hexadecimal integers are not accepted {node=Literal}
+
+An IR integer literal carries its decimal lexeme. YAML 1.2 core resolves `0o17` and `0xF` to integers, but neither is a JSON lexeme, so the profile refuses them with `invalid_literal` and asks for decimal instead of inventing a spelling. Spec S4 scalar resolution.
+
+```yaml canonical
+IntegerLiteral: 15
+```
+
+```json canonical
+{ "IntegerLiteral": 15 }
+```
+
+```yaml rejected diagnostic=invalid_literal
+IntegerLiteral: 0o17
+```
+
+```yaml rejected diagnostic=invalid_literal
+IntegerLiteral: 0xF
 ```
