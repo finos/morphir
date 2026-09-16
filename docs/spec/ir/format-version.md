@@ -61,13 +61,13 @@ open     = "[" / "("
 close    = "]" / ")"
 ```
 
-`[` and `]` are inclusive; `(` and `)` are exclusive. `[a]` means exactly `a`. A missing lower bound means no lower bound; a missing upper bound means no upper bound; at least one bound is required. Whitespace after a comma and around a bound is permitted on input and dropped on normalization. A bound MUST be a release string; the integer alias is not permitted inside a table. An interval whose lower bound is above its upper bound, or which contains no release, is invalid. An interval is empty when no release lies inside it: the smallest release the lower bound admits (the bound itself when inclusive, otherwise its successor, carrying into the minor and then the major when a component is at its maximum) must lie inside the upper bound.
+`[` and `]` are inclusive; `(` and `)` are exclusive. `[a]` means exactly `a`. A missing lower bound means no lower bound; a missing upper bound means no upper bound; at least one bound is required. Whitespace after a comma and around a bound is permitted on input and dropped on normalization. A bound MUST be a release string; the integer alias is not permitted inside a table. An interval whose lower bound is above its upper bound, or which contains no release, is invalid: the smallest release its lower bound admits (the bound itself when inclusive, otherwise the next release after it) must satisfy the upper bound. The next release after a bound carries into the minor, and then into the major, when a component is at its maximum. This is deliberately not the `next()` of canonicalization below, which never carries: a bound that cannot be advanced keeps its bracket rather than moving to another minor.
 
 A release is supported when it lies inside any interval of the table.
 
 A table has one canonical spelling, which writers, adapters and reports MUST emit:
 
-1. Every interval is rewritten as a half-open `[a,b)` interval wherever a finite bound can be advanced: an inclusive upper `b]` becomes `next(b))`, an exclusive lower `(a` becomes `[next(a)`, and `[a]` becomes `[a,next(a))`, where `next(x.y.z)` is `x.y.(z+1)`. A patch component at `4294967295` cannot be advanced and keeps its original bracket. An absent bound takes a round bracket.
+1. Every interval is rewritten as a half-open `[a,b)` interval wherever a finite bound can be advanced: an inclusive upper `b]` becomes `next(b))`, an exclusive lower `(a` becomes `[next(a)`, and `[a]` becomes `[a,next(a))`, where `next(x.y.z)` is `x.y.(z+1)`. A patch component at `4294967295` cannot be advanced and keeps its original bracket; `next()` never carries into the minor, unlike the successor the emptiness rule above uses. An absent bound takes a round bracket.
 2. Intervals are sorted by lower bound, an absent lower bound first.
 3. Overlapping or adjacent intervals are merged.
 4. No whitespace.

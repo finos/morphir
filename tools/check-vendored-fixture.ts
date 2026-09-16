@@ -2,9 +2,9 @@
 // Usage: bun run tools/check-vendored-fixture.ts <source> <copy>
 //
 // The source is tracked in this repository, so its absence is always an error.
-// The copy usually lives in a git submodule, and no CI job here checks out
-// submodules, so an absent copy is reported and skipped the way
-// gen-naming-corpus.ts skips its vendored write.
+// The copy lives in a git submodule, which a developer may not have initialised
+// (CI initialises submodules through `mise run init -- --ci`), so an absent copy
+// is reported and skipped the way gen-naming-corpus.ts skips its vendored write.
 import { existsSync, readFileSync } from "node:fs";
 
 const [source, copy] = process.argv.slice(2);
