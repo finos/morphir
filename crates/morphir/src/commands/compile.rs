@@ -1542,9 +1542,26 @@ mod tests {
         // for an `IRFile` that reaches it without going through the decoder.
         let message = error.to_string();
         assert!(
-            message.contains("unsupported_format_version_revision") && message.contains("4.1.0"),
+            message.contains("unsupported_format_version_minor")
+                && message
+                    .contains("release 4.1.0 is a minor revision this reader does not support"),
             "{error}"
         );
+    }
+
+    /// The patch promise keeps `4.0.1` inside the reference support table, so
+    /// the version must never be the reason a compile result is refused. The
+    /// result/embedded mismatch below is a separate complaint.
+    #[test]
+    fn direct_compile_does_not_refuse_a_supported_embedded_v4_patch() {
+        if let Err(error) =
+            validate_v4_compile_result(&v4_compile_result("4.0.0", serde_json::json!("4.0.1")))
+        {
+            assert!(
+                !error.to_string().contains("unsupported_format_version"),
+                "{error}"
+            );
+        }
     }
 
     #[test]
