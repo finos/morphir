@@ -268,7 +268,9 @@ depends = ["website:install"]
 
 [tasks."website:build"]
 description = "Build the website for production"
-run = "npm run build"
+# The schemas and the worker are built by the dependencies; `npm run build`
+# would regenerate the schemas a second time without formatting them.
+run = "npm run docusaurus -- build"
 dir = "website"
 depends = ["website:build-schemas", "website:build-worker"]
 

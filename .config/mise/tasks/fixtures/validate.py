@@ -88,15 +88,22 @@ def find_fixture_files(root: Path, verbose: bool = False) -> list[Path]:
     return sorted(fixture_files)
 
 
-def is_ir_document(file_path: Path) -> bool:
-    """True when the file is a JSON object carrying a top-level formatVersion."""
+def is_fragment_collection(file_path: Path) -> bool:
+    """True for a node-example collection: an object with neither a
+    formatVersion nor a distribution member. An IR document always carries a
+    distribution, so one that merely lost its formatVersion is still validated
+    and fails on it."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except Exception:
         # Unreadable or invalid JSON is reported by validate_file.
-        return True
-    return isinstance(data, dict) and "formatVersion" in data
+        return False
+    return (
+        isinstance(data, dict)
+        and "formatVersion" not in data
+        and "distribution" not in data
+    )
 
 
 def validate_file(
@@ -154,14 +161,16 @@ def main() -> int:
     fixture_files = find_fixture_files(root, verbose)
 
     if not fixture_files:
-        if not json_output:
-            print("No fixture files found to validate.")
-            print("Fixture directories checked:")
-            for d in FIXTURE_DIRS:
-                exists = "present" if (root / d).exists() else "missing"
-                print(f"  {d}: {exists}")
         # Nothing validated is a failure: a moved or misspelled directory must
         # not turn this check into a silent pass.
+        checked = {d: (root / d).exists() for d in FIXTURE_DIRS}
+        if json_output:
+            print(json.dumps({"results": [], "errors": 1, "validated": 0, "error": "no fixture files found", "directories": checked}, indent=2))
+        else:
+            print("No fixture files found to validate.")
+            print("Fixture directories checked:")
+            for d, exists in checked.items():
+                print(f"  {d}: {'present' if exists else 'missing'}")
         return 1
 
     results: list[dict[str, Any]] = []
@@ -171,14 +180,15 @@ def main() -> int:
     for file_path in fixture_files:
         rel_path = file_path.relative_to(root)
         # A fixture directory also holds fragment collections (node examples
-        # keyed under "examples") that are not IR documents. They carry no
-        # formatVersion, so there is no schema to hold them to; say so rather
-        # than counting them as failures or silently passing them.
-        if not is_ir_document(file_path):
+        # with neither formatVersion nor distribution) that are not IR documents. There is no
+        # schema to hold them to; say so rather than counting them as failures
+        # or silently passing them. Anything else is validated, including a
+        # document that lost its formatVersion.
+        if is_fragment_collection(file_path):
             if json_output:
-                results.append({"file": str(rel_path), "valid": None, "message": "skipped: not an IR document (no formatVersion)"})
+                results.append({"file": str(rel_path), "valid": None, "message": "skipped: fragment collection, not an IR document"})
             else:
-                print(f"skip {rel_path}: not an IR document (no formatVersion)")
+                print(f"skip {rel_path}: fragment collection, not an IR document")
             continue
         validated += 1
         success, message = validate_file(file_path, root, verbose)
@@ -197,7 +207,10 @@ def main() -> int:
             errors += 1
 
     if validated == 0:
-        print("No IR document found among the fixtures; nothing was validated.")
+        if json_output:
+            print(json.dumps({"results": results, "errors": 1, "validated": 0, "error": "no IR document found among the fixtures"}, indent=2))
+        else:
+            print("No IR document found among the fixtures; nothing was validated.")
         return 1
 
     if json_output:
