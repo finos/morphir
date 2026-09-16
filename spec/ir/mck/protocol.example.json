@@ -10,6 +10,7 @@
 			"contractVersion": 1,
 			"binding": "morphir-typescript",
 			"language": "typescript",
+			"formatVersions": "[4.0.0,4.1.0)",
 			"versions": [4],
 			"profiles": ["json"],
 			"layouts": ["single"],

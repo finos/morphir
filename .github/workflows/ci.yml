@@ -479,6 +479,9 @@ jobs:
       - name: Check the format-version conformance corpus and its vendored copy agree
         run: mise run fixtures:format-version-corpus-check
 
+      - name: Website IR conformance runner
+        run: mise run website:test-ir-storage-profiles
+
       - name: Check the Morphir Compatibility Kit
         run: mise run mck:check
 

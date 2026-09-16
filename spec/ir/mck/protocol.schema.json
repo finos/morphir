@@ -63,6 +63,11 @@
 							"minLength": 1,
 							"description": "Non-empty: the report schema requires a non-empty language, so an empty one here would produce an invalid report."
 						},
+						"formatVersions": {
+							"type": "string",
+							"minLength": 3,
+							"description": "The binding's support table in canonical interval notation, e.g. [3.0.0,3.1.0),[4.0.0,4.1.0). Non-canonical spellings are a protocol error. See docs/spec/ir/format-version.md, Recognition and compatibility."
+						},
 						"versions": {
 							"type": "array",
 							"items": { "type": "integer", "minimum": 1, "description": "A positive integer IR version this binding supports." }
@@ -77,7 +82,7 @@
 							"description": "Node kinds this adapter decodes, spelled as the kit names them (aliases included, e.g. \"Distribution\")."
 						}
 					},
-					"required": ["id", "contractVersion", "binding", "language", "versions", "profiles", "layouts", "paths", "nodes"]
+					"required": ["id", "contractVersion", "binding", "language", "formatVersions", "versions", "profiles", "layouts", "paths", "nodes"]
 				}
 			]
 		},

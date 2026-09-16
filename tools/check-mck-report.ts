@@ -11,7 +11,8 @@
 // hide the next real failure behind it.
 //
 // The report's shape is `report.schema.json` in the kit (spec/ir/mck), contract
-// version 1: a `records` array of `{ caseId, irVersion, profile, role,
+// version 1: a top-level `formatVersions` support table and a `records` array
+// of `{ caseId, irVersion, profile, role,
 // fenceIndex, path?, result, durationMs, message? }`, where `result` is one of
 // `pass`, `fail`, `skipped` and `kit-error`. One case has many records — one per
 // fence per path — so a case is failing if any of its records is.
@@ -106,6 +107,53 @@ export function malformedRecordReason(record: unknown, index: number): string | 
 	return null;
 }
 
+/**
+ * The report's top-level `formatVersions`: the support table the adapter
+ * declared, in the canonical interval notation of `docs/spec/ir/format-version.md`,
+ * Recognition and compatibility. This is a syntax gate only — the driver decides
+ * whether the table the adapter gave matches what the kit expects.
+ *
+ * Canonical spelling is what makes two tables comparable as strings, so both
+ * halves of it are checked: the shape of each interval, and the rule that a
+ * bound which could be advanced already has been. An inclusive upper bound
+ * `[a,b]` is canonical only at the patch maximum, because anywhere else it
+ * spells the same set as `[a,b+1)`; an exclusive lower bound `(a,b)` is
+ * canonical only at the patch maximum for the same reason.
+ *
+ * `unknown` is the one non-table value: the driver writes it when the run never
+ * got a capabilities answer, and a report of a failed handshake still has to
+ * validate.
+ */
+const RELEASE = "(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)";
+const CANONICAL_INTERVAL = `(?:\\[${RELEASE},(?:${RELEASE})?\\)|\\(,${RELEASE}\\)|\\[${RELEASE},${RELEASE}\\]|\\(${RELEASE},${RELEASE}\\))`;
+const CANONICAL_TABLE = new RegExp(`^${CANONICAL_INTERVAL}(?:,${CANONICAL_INTERVAL})*$`);
+/**
+ * One interval, bracket to bracket. The bound groups are release characters
+ * only, so a match cannot run past the interval it started in — with `\S+?`
+ * there, `[3.0.0,3.1.0),[4.0.0,4.1.0]` would match as a single interval and
+ * blame 3.0.0's upper bound for 4.1.0's bracket.
+ */
+const INTERVAL = /([[(])([0-9.]*),([0-9.]*)([\])])/g;
+const PATCH_MAXIMUM = ".4294967295";
+const UNKNOWN_TABLE = "unknown";
+
+export function malformedFormatVersionsReason(value: unknown): string | null {
+	if (typeof value !== "string") return "formatVersions must be a string";
+	if (value === UNKNOWN_TABLE) return null;
+	if (!CANONICAL_TABLE.test(value)) {
+		return `formatVersions ${JSON.stringify(value)} is not a canonical support table`;
+	}
+	for (const [, open, lower, upper, close] of value.matchAll(INTERVAL)) {
+		if (close === "]" && !upper.endsWith(PATCH_MAXIMUM)) {
+			return `formatVersions ${JSON.stringify(value)}: an inclusive upper bound must be at the component maximum`;
+		}
+		if (open === "(" && lower !== "" && !lower.endsWith(PATCH_MAXIMUM)) {
+			return `formatVersions ${JSON.stringify(value)}: an exclusive lower bound must be at the component maximum`;
+		}
+	}
+	return null;
+}
+
 function readJson(file: string, what: string): unknown {
 	try {
 		return JSON.parse(readFileSync(file, "utf8"));
@@ -147,8 +195,14 @@ function main(): void {
 
 	const allowed = readAllowed(allowedPath);
 	const report = readJson(reportPath, "the kit report") as {
+		formatVersions?: unknown;
 		records?: unknown;
 	};
+	const tableReason = malformedFormatVersionsReason(report.formatVersions);
+	if (tableReason !== null) {
+		console.error(`error: ${reportPath} has a malformed report: ${tableReason}`);
+		process.exit(1);
+	}
 	if (!Array.isArray(report.records)) {
 		console.error(`error: ${reportPath} has no records array`);
 		process.exit(1);

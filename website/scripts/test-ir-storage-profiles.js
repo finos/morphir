@@ -50,7 +50,7 @@ const SCHEMA_PROFILES = ["v1", "v2", "v3", "v4"];
 const COMPATIBILITY_RESULTS = new Set([
 	"supported",
 	"unsupported_format_version_major",
-	"unsupported_format_version_revision",
+	"unsupported_format_version_minor",
 ]);
 
 function isPlainObject(value) {
@@ -101,17 +101,47 @@ function normalizeFormatVersion(value) {
 	};
 }
 
-function compatibility(normalized, supportedVersions) {
-	const major = Number(normalized.split(".", 1)[0]);
-	const supportedMajors = new Set(
-		supportedVersions.map((version) => Number(version.split(".", 1)[0])),
-	);
-	if (!supportedMajors.has(major)) {
-		return "unsupported_format_version_major";
+// Parses a CANONICAL support table only: [a,b), [a,), (,b), and the two
+// unadvanceable shapes [a,b] and (a,b). Everything else is the module's job.
+function parseCanonicalTable(text) {
+	const release = (s) => s.split(".").map(Number);
+	const intervals = [];
+	for (const m of text.matchAll(/([\[(])([0-9.]*),([0-9.]*)([\])])/g)) {
+		intervals.push({
+			lower: m[2] === "" ? null : release(m[2]),
+			lowerInclusive: m[1] === "[",
+			upper: m[3] === "" ? null : release(m[3]),
+			upperInclusive: m[4] === "]",
+		});
 	}
-	return supportedVersions.includes(normalized)
-		? "supported"
-		: "unsupported_format_version_revision";
+	assert.ok(intervals.length > 0, `support table ${text} has no intervals`);
+	return intervals;
+}
+function compareRelease(a, b) {
+	for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+	return 0;
+}
+function contains(interval, r) {
+	if (interval.lower !== null) {
+		const c = compareRelease(interval.lower, r);
+		if (c > 0 || (c === 0 && !interval.lowerInclusive)) return false;
+	}
+	if (interval.upper !== null) {
+		const c = compareRelease(r, interval.upper);
+		if (c > 0 || (c === 0 && !interval.upperInclusive)) return false;
+	}
+	return true;
+}
+function compatibility(normalized, table) {
+	const r = normalized.split(".").map(Number);
+	const intervals = parseCanonicalTable(table);
+	if (intervals.some((i) => contains(i, r))) return "supported";
+	const sameMajor = intervals.some((i) => {
+		const lo = i.lower === null ? -Infinity : i.lower[0];
+		const hi = i.upper === null ? Infinity : i.upper[0];
+		return lo <= r[0] && r[0] <= hi;
+	});
+	return sameMajor ? "unsupported_format_version_minor" : "unsupported_format_version_major";
 }
 
 function scalarValidator(ajv, schema) {
@@ -531,11 +561,23 @@ assert.equal(conformance.contractVersion, 1, "formatVersion conformance contract
 assertNamedCases(conformance.scalarCases, "scalarCases");
 assertNamedCases(conformance.headerOrderCases, "headerOrderCases");
 assertNamedCases(conformance.rootDiagnosticCases, "rootDiagnosticCases");
-const supportedVersions = conformance.supportedVersions;
-assert.deepEqual(
-	supportedVersions,
-	["3.0.0", "4.0.0"],
-	"supported exact format versions",
+const supportTable = conformance.supportTable;
+assert.equal(
+	supportTable,
+	"[3.0.0,3.1.0),[4.0.0,4.1.0)",
+	"reference support table",
+);
+// The reference table's intervals each open at a baseline release, so the
+// coverage the corpus owes per supported family is still keyed by that release.
+const supportIntervals = parseCanonicalTable(supportTable);
+const supportedMajors = new Set(
+	supportIntervals.map((interval) => {
+		assert.ok(interval.lower !== null, "reference intervals open at a release");
+		return interval.lower[0];
+	}),
+);
+const baselineVersions = supportIntervals.map((interval) =>
+	interval.lower.join("."),
 );
 
 const normalizedScalarCases = conformance.scalarCases.map((testCase) => {
@@ -592,9 +634,6 @@ const normalizedScalarCases = conformance.scalarCases.map((testCase) => {
 	};
 });
 
-const supportedMajors = new Set(
-	supportedVersions.map((version) => Number(version.split(".", 1)[0])),
-);
 const requiredScalarCoverage = new Map([
 	[
 		"release string with a plus sign",
@@ -764,12 +803,18 @@ const requiredScalarCoverage = new Map([
 			allSchemasReject(testCase),
 	],
 	[
-		"same-major unsupported revision",
+		"same-major unsupported minor",
 		({ actual, testCase }) =>
 			actual.normalized !== undefined &&
 			supportedMajors.has(Number(actual.normalized.split(".", 1)[0])) &&
-			!supportedVersions.includes(actual.normalized) &&
-			testCase.compatibility === "unsupported_format_version_revision",
+			testCase.compatibility === "unsupported_format_version_minor",
+	],
+	[
+		"supported later patch of a baseline minor",
+		({ actual, testCase }) =>
+			actual.normalized !== undefined &&
+			!baselineVersions.includes(actual.normalized) &&
+			testCase.compatibility === "supported",
 	],
 	[
 		"valid nonbaseline revision preserving its exact canonical string",
@@ -814,11 +859,11 @@ for (const historicalMajor of [1, 2]) {
 		`missing named scalar case covering historical integer v${historicalMajor}`,
 	);
 }
-for (const supportedVersion of supportedVersions) {
-	const [major, minor, patch] = supportedVersion.split(".").map(Number);
-	assert.equal(minor, 0, `${supportedVersion}: supported integer alias minor`);
-	assert.equal(patch, 0, `${supportedVersion}: supported integer alias patch`);
-	const expected = { normalized: supportedVersion, canonical: major };
+for (const baselineVersion of baselineVersions) {
+	const [major, minor, patch] = baselineVersion.split(".").map(Number);
+	assert.equal(minor, 0, `${baselineVersion}: supported integer alias minor`);
+	assert.equal(patch, 0, `${baselineVersion}: supported integer alias patch`);
+	const expected = { normalized: baselineVersion, canonical: major };
 	assert.ok(
 		normalizedScalarCases.some(
 			({ actual, testCase }) =>
@@ -833,13 +878,13 @@ for (const supportedVersion of supportedVersions) {
 	assert.ok(
 		normalizedScalarCases.some(
 			({ actual, testCase }) =>
-				testCase.value === supportedVersion &&
+				testCase.value === baselineVersion &&
 				actual.normalized === expected.normalized &&
 				actual.canonical === expected.canonical &&
 				testCase.compatibility === "supported" &&
 				schemaAcceptsOnly(testCase, `v${major}`),
 		),
-		`missing named scalar case covering exact baseline spelling ${supportedVersion}`,
+		`missing named scalar case covering exact baseline spelling ${baselineVersion}`,
 	);
 	assert.ok(
 		normalizedScalarCases.some(
@@ -847,12 +892,24 @@ for (const supportedVersion of supportedVersions) {
 				typeof testCase.value === "string" &&
 				actual.normalized === testCase.value &&
 				actual.normalized.startsWith(`${major}.`) &&
-				actual.normalized !== supportedVersion &&
+				actual.normalized !== baselineVersion &&
 				actual.canonical === testCase.value &&
-				testCase.compatibility === "unsupported_format_version_revision" &&
+				testCase.compatibility === "supported" &&
 				schemaAcceptsOnly(testCase, `v${major}`),
 		),
-		`missing named scalar case covering valid later v${major} revision`,
+		`missing named scalar case covering a supported later v${major} patch`,
+	);
+	assert.ok(
+		normalizedScalarCases.some(
+			({ actual, testCase }) =>
+				typeof testCase.value === "string" &&
+				actual.normalized === testCase.value &&
+				actual.normalized.startsWith(`${major}.`) &&
+				actual.canonical === testCase.value &&
+				testCase.compatibility === "unsupported_format_version_minor" &&
+				schemaAcceptsOnly(testCase, `v${major}`),
+		),
+		`missing named scalar case covering a later v${major} minor`,
 	);
 	assert.ok(
 		normalizedScalarCases.some(
@@ -875,11 +932,48 @@ for (const { testCase, actual } of normalizedScalarCases) {
 	assert.deepEqual(actual, testCase.normalization, testCase.name);
 	if (actual.normalized !== undefined) {
 		assert.equal(
-			compatibility(actual.normalized, supportedVersions),
+			compatibility(actual.normalized, supportTable),
 			testCase.compatibility,
 			`${testCase.name}: compatibility`,
 		);
 	}
+}
+
+// Membership is decided against a table, not against the reference table alone:
+// each case carries the table it is asking about. The unbounded and
+// component-maximum shapes only appear here.
+assert.ok(
+	isPlainObject(conformance.supportTableCases),
+	"supportTableCases must be an object",
+);
+const membershipCases = conformance.supportTableCases.membership;
+assert.ok(
+	Array.isArray(membershipCases) && membershipCases.length > 0,
+	"supportTableCases.membership must be a non-empty array",
+);
+for (const membershipCase of membershipCases) {
+	assert.ok(
+		isPlainObject(membershipCase),
+		"supportTableCases.membership entries must be objects",
+	);
+	assert.equal(
+		typeof membershipCase.table,
+		"string",
+		"membership case table",
+	);
+	assert.ok(
+		RELEASE_PATTERN.test(membershipCase.release),
+		`membership case release ${JSON.stringify(membershipCase.release)}`,
+	);
+	assert.ok(
+		COMPATIBILITY_RESULTS.has(membershipCase.compatibility),
+		`membership case compatibility ${JSON.stringify(membershipCase.compatibility)}`,
+	);
+	assert.equal(
+		compatibility(membershipCase.release, membershipCase.table),
+		membershipCase.compatibility,
+		`${membershipCase.release} in ${membershipCase.table}`,
+	);
 }
 
 const ajv = new Ajv({ allErrors: true, strict: false });

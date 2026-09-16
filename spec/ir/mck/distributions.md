@@ -2,7 +2,7 @@
 
 ## distributions-0001: Format version spellings {node=FormatVersion}
 
-Governed by `docs/spec/ir/format-version.md` and its generated corpus. Integer 4 is canonical for 4.0.0.
+Governed by `docs/spec/ir/format-version.md` and its corpus. Integer 4 is canonical for 4.0.0; a later patch of a supported minor is accepted; a later minor is not.
 
 ```yaml canonical
 4
@@ -20,7 +20,11 @@ Governed by `docs/spec/ir/format-version.md` and its generated corpus. Integer 4
 "4.0.0-beta"
 ```
 
-```json rejected diagnostic=unsupported_format_version_revision
+```json accepted
+"4.0.1"
+```
+
+```json rejected diagnostic=unsupported_format_version_minor
 "4.1.0"
 ```
 
