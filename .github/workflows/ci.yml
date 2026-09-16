@@ -80,6 +80,11 @@ jobs:
               - 'docs/**'
               - '**/*.md'
               - 'spec/ir/**'
+              # the tracked IR fixtures and the corpus generator are validated
+              # in the docs job, and the mise tasks define what that job runs
+              - 'tests/bdd/fixtures/**'
+              - 'tools/gen-naming-corpus.ts'
+              - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
               - 'spec/ir/mck/**'
@@ -426,6 +431,12 @@ jobs:
 
       - name: Validate published examples
         run: mise run examples:validate
+
+      - name: Validate the tracked IR fixtures
+        run: mise run fixtures:validate
+
+      - name: Check the naming conformance corpus is current
+        run: mise run fixtures:naming-corpus-check
 
       - name: Check the Morphir Compatibility Kit
         run: mise run mck:check
