@@ -18,6 +18,18 @@ sources:
   - id: scala-package-designs
     resource: https://github.com/finos/morphir-scala/tree/fb9ca0f4056e817dcf241f7f67ad96716fa8f7e7/kb/bundles/morphir/morphir-scala/design
     title: Morphir Scala package-management designs
+  - id: mck-ir-baseline
+    resource: https://github.com/finos/morphir/tree/2cd0dcd0e0236a38e577eff90fad67339aa42449/spec/ir/mck
+    title: MCK IR suite and version 1 contracts
+  - id: typescript-yaml-tree
+    resource: https://github.com/finos/morphir-typescript/tree/46197e289b437038427f964cca6f1f54c03044a1
+    title: TypeScript IR codecs, document-tree layout, and MCK driver
+  - id: yaml-tree-integration
+    resource: https://github.com/finos/morphir/pull/810
+    title: Merged Morphir YAML and document-tree specification integration
+  - id: dependency-layout-decision
+    resource: https://github.com/finos/morphir/blob/8d1a3d8d499c2d9ca94b89c32e0c60e1ecca5f96/kb/bundles/morphir/morphir-ir/decisions/0015-dependency-directories-are-nested-with-a-version-segment.md
+    title: Decision 0015 dependency version slot and qualified module naming
 generated:
   by: codex/gpt-5.6-sol
   at: 2026-09-05T08:21:20Z
@@ -46,13 +58,15 @@ The core design is:
 - A package has an authority-bearing logical path independent of its repository.
 - An exact release is `PackagePath + SemVer`.
 - Package paths do not gain Go-style major-version suffixes.
+- Core IR definitions and references remain package-release-version-free. Packaging selects releases; distributions supply dependency binding context.
+- Common use cases have one implicit binding per dependency IR Package name in each consumer. Explicit multi-binding support follows in the graph-aware stage.
 - Exact versioned release nodes and dependency edges allow incompatible releases to coexist.
 - Human authoring configuration, exact locks, and published release manifests are separate documents.
 - Package distributions are semantic IR values; package bundles are transport-neutral logical content layouts.
 - Library releases provide implementations. Contract releases provide specifications for externally supplied implementations.
 - Application distributions are portable model closures. Target-specific provider bindings remain separate.
 - Registry indexes are separate from package content and may be implemented by local directories, static Git or HTTPS, OCI, or hosted services.
-- Namespace delegation, release signing, immutable content, complete locks, and a shared conformance corpus are required parts of the system.
+- Namespace delegation, release signing, immutable content, complete locks, and a package suite in the Morphir Compatibility Kit (MCK) are required parts of the system.
 
 The package system keeps semantic content, logical packaging, transport, and discovery separate.
 
@@ -120,6 +134,43 @@ The design reconciles:
 
 The older umbrella draft treats a package as a compiled IR archive and proposes npm, Maven, and GitHub Releases as backends. The newer Scala design separates identity from source, uses exact verified materialization, and proposes a small registry capability with Git-file and local-directory implementations. This design retains the IR-first package boundary while adopting the newer identity, source, lock, and verification separation.
 
+### Current IR and MCK integration, 2026-09-16
+
+The [MCK overview](https://github.com/finos/morphir/blob/main/spec/mck/README.md) defines one kit with domain suites.
+The IR suite exists at `spec/ir/mck/`. The package suite is planned at `spec/package/mck/` as Stage 0 work.
+
+This reconciliation uses Morphir commit `2cd0dcd0e0236a38e577eff90fad67339aa42449` and its pinned morphir-typescript commit
+`46197e289b437038427f964cca6f1f54c03044a1`, which includes decision 0015 and qualified-module naming tests.
+[Morphir PR #810](https://github.com/finos/morphir/pull/810) has merged with the YAML/tree specification and kit changes.
+[Morphir PR #812](https://github.com/finos/morphir/pull/812) then clarified module naming and extended its generated fixtures.
+[Morphir PR #813](https://github.com/finos/morphir/pull/813) validates tracked IR fixtures and refreshes the Rust and TypeScript pins.
+
+| Recent work | Consequence for packages |
+| --- | --- |
+| [Morphir PR #809](https://github.com/finos/morphir/pull/809) runs MCK through in-process and executable adapters and checks IR vocabulary coverage | Extend the existing MCK infrastructure. Running one codec through two transports does not meet the two-independent-implementation exit criterion. |
+| [TypeScript PR #6](https://github.com/finos/morphir-typescript/pull/6) adds the driver, protocol, embedded kit, provenance lock, and release machinery | Pin driver and kit revisions separately. Reuse provenance and adapter components where they fit package operations. |
+| [TypeScript PR #7](https://github.com/finos/morphir-typescript/pull/7) tightens protocol validation | Contract version 1 rejects unknown fields. Package operations and suite-aware reports need explicit versioned evolution. |
+| [TypeScript PR #8](https://github.com/finos/morphir-typescript/pull/8) implements YAML and document trees, including reader-only cases | Reuse IR codecs and logical-path handling for supported payloads. Package verification still owns release metadata, signatures, content digests, and safe materialization. |
+| [Decision 0015](https://github.com/finos/morphir/blob/8d1a3d8d499c2d9ca94b89c32e0c60e1ecca5f96/kb/bundles/morphir/morphir-ir/decisions/0015-dependency-directories-are-nested-with-a-version-segment.md) and [TypeScript PR #9](https://github.com/finos/morphir-typescript/pull/9) add the dependency `@` boundary and reject duplicate dependency names | Reuse the specified layout. A bare version slot carries no release identity; package versioning and multiple-release graphs still need explicit model support. |
+| [Morphir PR #812](https://github.com/finos/morphir/pull/812) and [TypeScript PR #10](https://github.com/finos/morphir-typescript/pull/10) distinguish package-relative Module names from `package:module` and test the qualified-name corpus | Default exports derive from the module-relative path. Dependency slots select packages independently; concatenating package and module paths with `/` is ambiguous. |
+| The current Distribution model has Library, Specs, and Application variants, with dependencies keyed by IR Package name | These are the semantic payloads. Exact versioned dependency slots, Contract release metadata, and package-instance graphs remain package-system work. |
+
+TypeScript's embedded `kit.lock.json` pins Morphir commit `94d5cc864683a6a5f15dc90d92b70fa605f4da47`.
+Cross-implementation comparisons must pin the kit content and required capabilities, including when an embedded kit
+and a checkout have different provenance revisions. A capability that an adapter skips is not tested by a successful run.
+
+The latest TypeScript naming tests consume `qualifiedModuleNameCases` from the generated naming corpus. That corpus
+remains separate from the embedded MCK Markdown cases. Package checks must declare and supply every required fixture
+source; an optional-fixtures test mode cannot establish coverage for a corpus it did not load.
+
+The naming-corpus drift check passes at this baseline with morphir-rust pinned to
+`933fcf580b9bfe191f0218964a588027fb86c2d6`. This resolves the fixture drift previously reported in bead `morphir-klsu`.
+That task retains verification of Rust test coverage; matching fixtures and passing TypeScript tests do not establish Rust coverage.
+
+The npm libraries and downloadable MCK executables use host-language package and tool distribution mechanisms.
+Their release machinery does not make them Morphir model-package releases. Model packages, executable extensions,
+and installable tools continue to have distinct contracts.
+
 ### External package ecosystems
 
 - [JSR packages](https://jsr.io/docs/packages) and [publishing](https://jsr.io/docs/publishing-packages) separate a scoped package release from declared exported entry points.
@@ -142,7 +193,7 @@ The older umbrella draft treats a package as a compiled IR archive and proposes 
 - Support local, Git, vendored, offline, static HTTP, OCI, and hosted-registry workflows.
 - Define immutable transport-neutral package content with integrity and provenance.
 - Preserve a gradual migration path for existing Morphir IR and `morphir.json` projects.
-- Define shared diagnostics and a language-neutral conformance corpus.
+- Define shared diagnostics and the language-neutral MCK package suite.
 - Permit shared infrastructure with extensions and tools only where semantics agree.
 
 ## Non-goals
@@ -168,7 +219,7 @@ The older umbrella draft treats a package as a compiled IR archive and proposes 
 7. Fail closed for authority, integrity, and signature failures.
 8. Make ordinary builds consume locks without silent re-resolution.
 9. Keep local development flexible without allowing snapshots to impersonate releases.
-10. Specify observable behavior with schemas and conformance vectors, not one reference implementation.
+10. Specify observable behavior with schemas and MCK cases, not one reference implementation.
 
 ## Domain model
 
@@ -396,10 +447,18 @@ version = ">=1.6.0, <2.0.0"
 ```
 
 The slot `rules` is not the canonical package identity. Different slots may directly request different releases of the same Package path.
+Ordinary projects do not need to name slots explicitly. One dependency IR `PackageName` has one implicit binding within
+each consuming package. Publication records its association with a Package requirement; the resolver selects the exact target.
+Directly consuming multiple bindings for that same IR name requires an explicit distinction, introduced with the graph-aware capability.
 
 ### Reference model
 
-Published Library IR must distinguish local and external references. The graph-aware representation should support the equivalent of:
+Core IR definitions and references do not carry package release versions. An IR `PackageName`, such as `morphir/SDK`,
+is distinct from an authority-bearing packaging `PackagePath`, such as `finos.org/morphir/sdk`. Package metadata records
+their association explicitly. Neither authority nor release version is inferred from an existing IR name.
+
+Existing Library FQNames remain usable when their owning distribution gives each dependency name one unambiguous binding.
+The future graph-aware representation must distinguish local and external references and support the equivalent of:
 
 ```text
 LocalReference(ModulePath, LocalName)
@@ -408,13 +467,57 @@ ExternalReference(DependencySlot, PackageExportPath, LocalName)
 
 The lock maps the dependency slot to an exact release node. The target release export table maps the export path to a Module path. A linked Application may lower these references to exact package-instance references.
 
-The final IR v4 representation may use explicit package-instance IDs or graph-relative dependency edges. It must not depend on source locations.
+The future graph-aware IR representation may use explicit package-instance IDs or graph-relative dependency edges. It must not depend on source locations.
+
+These are semantic requirements, not new constructors or an accepted wire format. Explicit reference targets and
+scoped aliases encoded in FQNames remain alternative representations. Reusing the FQName encoding would still change
+its semantics and require binding-aware interpretation of references inside dependency specifications.
+
+The current v4 codec represents external references as FQNames containing an IR Package name. Stage 0 fixes the
+binding invariants and baseline capability boundary. The exact graph-aware reference encoding and its supported format
+release must be settled before Stage 3 implementation, but do not block the Stage 1 packaging workflow.
+Adding slots to a manifest does not make the existing v4.0.0 payload capable of distinguishing ambiguous references.
+
+### Concrete binding cases
+
+The following package and releases are hypothetical. The names and reference fragments use canonical v4 IR syntax.
+Both releases of packaging `PackagePath` `example.com/finance/money` declare IR `PackageName` `example/finance`.
+Module `amount` exposes an opaque type named `amount` and a function named `round`.
+
+```json
+{ "Reference": "example/finance:amount#round" }
+```
+
+This is a `Value.Reference`. Its FQName has package `example/finance`, package-relative module `amount`, and local name `round`.
+A `Type.Reference` with no arguments uses the compact encoding `"example/finance:amount#amount"`.
+
+| Case | Resolution behavior | Required capability |
+| --- | --- | --- |
+| Billing requires `>=1.4.0,<2.0.0`; reporting requires `>=1.6.0,<2.0.0` | Share one eligible release when the complete graph permits it | Single-binding baseline within supported payload limits |
+| Billing requires `>=1.4.0,<2.0.0`; reporting requires `>=2.0.0,<3.0.0` | Each consumer binds its unchanged FQName to its selected release | Graph-aware coexistence |
+| One migration package deliberately consumes both release lines | Separate `legacy-money` and `current-money` bindings distinguish intended targets | Explicit direct multi-binding |
+
+Version selection resolves the first two cases within the stated capabilities. It cannot infer different intended
+targets from two identical references in the same consumer. The third case needs an explicit reference distinction;
+the resolver still selects the exact version for each binding. A lower-capability reader reports the limitation rather
+than choosing an arbitrary target or silently renaming packages.
+
+The type checker resolves references through their binding context before comparing declaration identities.
+Opaque types from different target declarations are not interchangeable merely because their FQName text matches.
+Conversely, two slots resolving to the same target instance and declaration do not create different types.
+Transparent aliases and structural types retain their own equivalence rules. SemVer eligibility alone does not prove type compatibility.
 
 ## Exports and imports
 
 ### Default exports
 
 By default, every public module in the package specification receives a Package export path derived by a canonical encoding of its Morphir Module path. The default is based on logical IR structure, not source or bundle filesystem layout.
+
+`ModuleName` is relative to its package, such as `domain/users`. `QualifiedModuleName` combines the IR Package name
+and Module name with `:`, such as `finos/models:domain/users`. The pairs `a:b/c` and `a/b:c` name different modules;
+joining both halves with `/` loses that distinction. A dependency slot selects the package release, and its export
+table maps the export path to a package-relative Module path. The dependency tree's `@` marker is a storage boundary
+and never becomes part of an export name or canonical PackagePath.
 
 ### Custom exports
 
@@ -451,7 +554,8 @@ Publication:
 
 Consumers never regenerate a published export table.
 
-A frontend may present native import syntax. It compiles that syntax into dependency-slot and package-export references.
+A frontend may present native import syntax. For the baseline it emits ordinary FQNames with unambiguous dependency bindings.
+Graph-aware frontends preserve explicit dependency distinctions and package-export selection in the supported reference representation.
 
 An export alias controls visibility and resolution. It does not yet guarantee that moving nominal Morphir types between underlying Module paths is non-breaking.
 
@@ -460,6 +564,7 @@ An export alias controls visibility and resolution. It does not yet guarantee th
 ### Selected policy
 
 - Requirements use explicit SemVer constraints.
+- One implicit binding per dependency IR `PackageName` in each consumer is the default; ordinary projects need no explicit aliases.
 - An ordinary build consumes the exact lock and performs no version selection.
 - Initial resolution and explicit update prefer the highest stable eligible release.
 - Overlapping requirements are unified when a single release satisfies them.
@@ -494,6 +599,30 @@ The normative solver behavior must specify deterministic ordering rather than ma
 6. Produce a structured conflict explanation when no solution exists.
 
 The specification must define how partial updates constrain unaffected nodes and how yanked or revoked releases interact with explicit update requests.
+
+### Resolution approach and delivery boundary
+
+Resolution separates binding identity from version selection. An implicit binding is sufficient for ordinary references;
+explicit slots distinguish deliberate multi-binding. Neither form embeds the selected SemVer in the core reference.
+
+The agreed approach is:
+
+1. Establish each consumer's bindings and their explicit association with IR dependency names and Package requirements.
+2. Collect version constraints, root overrides, payload capabilities, and required binding or type-identity constraints.
+3. For an ordinary build, validate and replay the exact lock. An invalid lock is an error, not an invitation to re-resolve.
+4. For initial resolution or explicit update, search assignments across the dependency graph using the resolver objectives above.
+5. Reconsider earlier choices when their transitive dependencies conflict. A locally highest release may not permit a valid complete graph.
+6. Permit separate releases only where the graph and reference capabilities support them. Report unsupported capabilities separately from unsatisfiable requirements.
+7. Record the exact selected graph and bindings in the lock for subsequent builds.
+
+This defines the approach, not a completed solver specification or implementation. Stage 0 must fix requirement grouping,
+preference ordering, candidate ordering, and tie-breaks with MCK cases. A shared release must satisfy every grouped
+requirement and permit a valid complete graph. Implementations may use different search algorithms but must agree
+on observable selections and diagnostics for the same inputs and supported capabilities.
+
+Stage 1 supports one implicit binding per dependency IR name in each consumer, within the supported payload's limits.
+It does not promise multiple incompatible releases in a flat dependency map. Stage 3 adds graph-aware coexistence
+and explicit direct multi-binding. The future reference encoding is a Stage 3 prerequisite, not a blocker for Stage 1.
 
 ### Lock
 
@@ -622,6 +751,19 @@ package bundle
 
 Exact filenames and serialization choices remain schema-level decisions. The logical roles are normative.
 
+An IR document-tree `manifest` describes one Distribution payload. The Package release manifest describes the outer
+release, including its exact identity and content. The two manifests have separate schemas. Decision 0015 specifies
+`pkg/<escaped-package-path>/<escaped-module-path>/...` for the own package and
+`deps/<escaped-package-path>/@<version>/<escaped-module-path>/...` for dependencies.
+The current model has no dependency release version, so it writes bare `@` and rejects populated slots such as `@1.2.0`.
+It also rejects a dependency path missing the slot and duplicate dependency names in the manifest.
+
+The boundary lets package `a` with module `b/c` coexist with package `a/b` with module `c` at distinct paths:
+`deps/a/@/b/c/...` and `deps/a/b/@/c/...`. Decision 0015 reserves the slot for future version information.
+Populating it requires a follow-on distribution/layout contract; it does not require SemVer in core definitions or FQNames.
+The current bare-slot rule remains unchanged. The directory grammar alone does not supply exact graph nodes,
+release authority, or multiple-version linking. `pkg/` needs no slot because the Distribution contains one own package.
+
 ### Encodings
 
 The same logical bundle may be encoded as:
@@ -641,6 +783,15 @@ Two digest domains are required:
 2. Transport digest: digest of one archive, blob, or other acquired byte stream.
 
 Repacking identical logical content may change the transport digest but not the Package content digest.
+
+JSON, YAML, single-document, and document-tree payloads can represent the same Distribution while containing different
+files or bytes. That semantic equivalence does not establish equal Package content digests. Stage 0 must define the
+canonical payload representation and whether any profile or layout conversions precede digest calculation.
+The MCK IR suite's canonical text comparison is useful evidence for codecs, but is not a package-digest algorithm.
+
+The MCK embedded-kit content hash identifies its fixture file map. It is a reuse candidate for hashing components,
+not an adopted Package content-digest specification. Package rules still need manifest normalization, declared-content
+boundaries, path safety, and test vectors for the signed release.
 
 The release manifest contains content references and file digests, but not the Package content digest itself. The Package release statement binds the release ID, release-manifest digest, and resulting Package content digest. The release statement is therefore outside the content-digest calculation. Later attestations may refer to the Package content digest without changing the release and may be carried beside the logical bundle in a transport envelope.
 
@@ -876,7 +1027,10 @@ A Package release manifest identifies each payload's IR format and layout. Suppo
 
 ### Capability gating
 
-| Capability | Legacy IR | Graph-aware IR |
+Current v4.0.0 payloads remain name-keyed even though they support three Distribution kinds and multiple storage profiles.
+The right-hand column below describes planned graph-aware support, not a capability inferred from the `Application` tag.
+
+| Capability | Legacy or current name-keyed IR | Planned graph-aware IR |
 | --- | --- | --- |
 | Library release publication | Supported through adapter | Native |
 | Convention exports | Release metadata | Native metadata/reference model |
@@ -899,9 +1053,13 @@ A new linker may ingest legacy Libraries into its internal model and emit a grap
 6. Validates IR without rewriting it by default.
 7. Produces a machine-readable migration and capability report.
 
-## Normative conformance corpus
+## Morphir Compatibility Kit: package suite
 
-The package specification ships with a language-neutral conformance corpus. Each case declares:
+The package specification ships with the language-neutral **MCK package suite** at `spec/package/mck/`.
+It extends the Morphir Compatibility Kit alongside the existing IR suite at `spec/ir/mck/`.
+"Package conformance corpus" is the former descriptive name for this suite.
+
+Each case declares:
 
 - Inputs
 - Required capabilities
@@ -915,8 +1073,12 @@ Test families cover:
 
 - Package path, SemVer, and proposed PURL mapping
 - Export expansion, exclusion, aliasing, and collisions
+- Package-relative and qualified module names, prefix-overlapping dependency paths, and the decision 0015 version-slot boundary
 - Manifest normalization and digest vectors
 - Overlapping, disjoint, aliased, prerelease, yanked, and revoked resolution
+- Implicit single bindings, backtracking from an unsatisfiable highest candidate, and deterministic conflict explanations
+- Identical FQNames in separate consumer contexts, explicit direct multi-binding, and capability errors in baseline readers
+- Opaque type separation across target declarations and equal type identity through two slots bound to the same target instance
 - Complete lock generation and deterministic serialization
 - Contract release and Application binding compatibility
 - Structural SemVer reports
@@ -926,7 +1088,34 @@ Test families cover:
 - Legacy configuration and Distribution adaptation
 - Capability errors
 
-Every Morphir implementation runs the same corpus. No implementation is normative. Implementation-specific unit, property, fuzz, differential, and performance tests are additional evidence.
+Implementations run the same versioned package cases for their required capabilities. Accepted MCK cases define expected
+behavior; disagreements with prose or schemas must be reconciled explicitly. No package implementation is normative.
+Implementation-specific unit, property, fuzz, differential, and performance tests are additional evidence.
+
+### Driver, protocol, and reports
+
+The existing driver is `@finos/morphir-mck` in finos/morphir-typescript. Reuse its case loading, adapter transport,
+kit provenance, and report handling where the semantics fit. Package resolution, verification, and materialization need
+their own operations and expected results; they cannot be encoded as IR `decode` or `writeTree` calls.
+
+The current protocol and report contract version 1 are IR-specific. Reports require `irVersion`, `profile`, and fence
+roles, while protocol validation rejects unknown operations and fields. Stage 0 must define versioned suite identification,
+package capabilities, case grammar, operation requests, and report records. Preserve existing IR invocations, case IDs,
+and contract version 1 support. Identify cases by suite and stable case ID when comparing or aggregating results.
+
+Report the suite, kit revision, driver version, adapter contract, and required capabilities separately from the model
+package's release version, package format, and IR format. The embedded kit lock is provenance for test inputs;
+`morphir.lock` is the dependency graph of a model package.
+
+### Required coverage
+
+Every required case must pass, with no kit errors or skipped required cases. The current MCK driver skips unsupported
+IR capabilities, and a default successful exit can include skips. Use `--strict` when the entire selection is required,
+or an explicit gate for the required capability set. Package Stage 0 must implement equivalent coverage enforcement.
+
+For example, a TypeScript JSON run and the same TypeScript codec behind an executable adapter check transport agreement.
+They count as one implementation. Stage 0 requires a second independent implementation running the same package cases.
+IR-only results, pending cases, and unsupported package operations cannot satisfy that requirement.
 
 ## Staged delivery
 
@@ -936,13 +1125,19 @@ Deliver:
 
 - Domain model and invariants
 - Authoring-configuration extensions
+- Implicit single-binding rules, deterministic resolution policy, and capability boundaries with MCK cases
 - Release-manifest, lock, registry-record, and diagnostic schemas
 - Canonical content-digest algorithm
 - Proposed PURL mapping
 - WIT package-management interfaces
-- Initial conformance corpus
+- Initial MCK package suite at `spec/package/mck/`
+- Versioned MCK package operations, suite-aware reporting, kit provenance, and required-capability gates
 
-Exit criterion: at least two implementations can parse the schemas and agree on initial normalization and digest vectors.
+Exit criterion: at least two independent implementations parse the schemas and pass the same initial MCK package cases
+for normalization and digests at a pinned kit revision. Required cases have no failures, kit errors, or skips.
+The existing IR suite continues to run through its supported contract.
+The advanced reference encoding remains a Stage 3 prerequisite. Stage 0 records its semantic requirements without
+making a new IR reference representation a dependency of the initial package workflow.
 
 ### Stage 1: Local Library steel thread
 
@@ -963,13 +1158,15 @@ Scope:
 
 - Library releases
 - Supported legacy and current IR payloads
+- One implicit binding per dependency IR Package name in each consumer, subject to supported payload limits
+- Exact locked builds and deterministic initial resolution or explicit updates, with capability errors for unsupported graphs
 - Convention exports
 - Workspace overrides and snapshots
 - Explicit local trust policy
 - Package release statements signed and verified through an explicitly trusted local development key
 - Core build, resolve, pack, verify, publish, sync, and tree operations
 
-Exit criterion: the complete offline workflow passes the shared conformance cases and reproduces the same Package content digest across two implementations.
+Exit criterion: the complete offline workflow passes the required MCK package cases and reproduces the same Package content digest across two independent implementations.
 
 ### Stage 2: Signed distributed registry
 
@@ -983,21 +1180,24 @@ Add:
 - Yank, revoke, and tombstone status
 - Structural compatibility checks
 
-Exit criterion: two independent clients resolve, acquire, verify, and reproduce the same signed release through primary and mirror sources. Public publication is not considered complete before this stage.
+Exit criterion: two independent clients resolve, acquire, verify, and reproduce the same signed release through primary and mirror sources, passing the required MCK package cases. Public publication is not considered complete before this stage.
 
 ### Stage 3: Graph-aware packages
+
+Before implementation, settle the reference encoding, package-instance identity rules, and supported IR format release.
+This includes whether one published release can have multiple instances with different dependency environments.
 
 Add:
 
 - Native dependency slots and external references
-- Overlap-driven unification
+- Overlap-driven unification across graph-aware consumer contexts
 - Multiple incompatible releases in one graph
 - Contract releases
 - Portable Application distributions
 - Target-specific Application bindings
 - Capability-aware legacy diagnostics
 
-Exit criterion: the shared corpus proves compatible unification, incompatible coexistence, direct aliases, Contract requirements, and complete target bindings across implementations.
+Exit criterion: the MCK package suite proves compatible unification, incompatible coexistence, direct aliases, Contract requirements, and complete target bindings across implementations.
 
 ### Stage 4: Ecosystem adoption and interoperability
 
@@ -1005,13 +1205,13 @@ Add:
 
 - morphir-elm `localDependencies` migration
 - morphir-scala package-resolution integration
-- morphir-rust, Go, JVM, .NET, MoonBit, and Python adapters
+- morphir-rust, TypeScript, Go, JVM, .NET, MoonBit, and Python package adapters
 - OCI registry adapter
 - Aggregated Package catalogs
 - Upstream Morphir PURL registration
 - Cross-implementation differential testing
 
-Exit criterion: multiple ecosystem implementations publish and consume the same releases and pass the normative corpus without implementation-specific package metadata.
+Exit criterion: multiple ecosystem implementations publish and consume the same releases and pass the required MCK package cases without implementation-specific package metadata.
 
 ## Security considerations
 
@@ -1029,17 +1229,17 @@ Exit criterion: multiple ecosystem implementations publish and consume the same 
 
 ## Open specification decisions
 
-These choices remain for Stage 0 and do not change the approved architecture:
+Unless marked as Stage 3 prerequisites, these choices remain for Stage 0 and do not change the approved architecture:
 
 1. Exact PackagePath grammar, authority syntax, canonical case, Unicode, reserved segments, and path length budget.
-2. Canonical ModulePath-to-export-path encoding and collision rules.
+2. Canonical package-relative ModulePath-to-export-path encoding and collision rules, preserving the qualified `package:module` boundary settled by decision 0015 and PR #812.
 3. Exact authoring-configuration keys and migration from existing dependency syntax.
 4. Release-manifest, lock, registry-record, authority-metadata, and diagnostic serialization formats and schema versions.
 5. Canonical logical content-manifest algorithm, digest algorithms, and algorithm-agility representation.
 6. Deterministic archive format and filename extension.
 7. Exact solver grouping, tie-breaking, partial-update, and conflict-explanation rules.
 8. Precise pre-1.0 SemVer and compatibility-enforcement policy.
-9. Exact IR v4 representation for dependency slots, export references, package-instance IDs, Contract releases, and Application graphs.
+9. Stage 3 prerequisite: exact graph-aware IR representation and supported format release for dependency slots, export references, package-instance IDs, Contract releases, and Application graphs. Specify adaptation from the current v4 name-keyed model and whether one release may have multiple dependency environments. Stage 0 establishes binding invariants and baseline capability diagnostics without requiring this encoding.
 10. Provider compatibility and Application-binding schema.
 11. TUF/DSSE/in-toto profile, key rotation, expiry, threshold, rollback, and recovery policy.
 12. Well-known authority document schema and enterprise override precedence.
@@ -1047,6 +1247,10 @@ These choices remain for Stage 0 and do not change the approved architecture:
 14. Yank, revocation, tombstone, and channel policy details.
 15. Cache retention and garbage-collection reachability rules for model packages.
 16. PURL type definition and upstream registration timing.
+
+MCK integration adds one specification decision to these sixteen:
+
+17. Versioned MCK suite identity, package case grammar, adapter operations, report records, kit provenance, and required-capability gates, preserving IR contract version 1 support.
 
 ## Rejected alternatives
 
@@ -1096,7 +1300,7 @@ Rejected because it makes builds non-reproducible and hides supply-chain changes
 
 ### Use one implementation as the specification
 
-Rejected because Morphir is a multi-implementation ecosystem. Schemas and the conformance corpus define observable behavior.
+Rejected because Morphir is a multi-implementation ecosystem. Schemas and the MCK package suite define observable behavior.
 
 ## Success criteria
 
@@ -1110,4 +1314,4 @@ The design succeeds when:
 - Application model identity is portable across runtime-provider bindings.
 - Legacy Morphir projects migrate without invented identity or an ecosystem-wide format flag day.
 - Package, extension, and tool lifecycles remain semantically separate.
-- Two or more implementations produce identical normalized values, content digests, graphs, and diagnostic codes for the normative corpus.
+- Two or more independent implementations produce identical normalized values, content digests, graphs, and diagnostic codes for the required MCK package cases.

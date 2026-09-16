@@ -5,12 +5,17 @@ description: "Specification for Morphir IR v4 Distributions"
 
 # Distribution
 
-A **Distribution** represents a complete, versioned unit of a Morphir project or dependency. IR v4 supports two distribution modes: **Classic** and **Document Tree**.
+A **Distribution** contains a Morphir package and its dependency context. IR v4 supports two storage layouts: **Classic** and **Document Tree**.
+The document's `formatVersion` identifies the IR format; package release versions belong to the proposed package system.
+
+The [MCK IR suite](https://github.com/finos/morphir/tree/main/spec/ir/mck) specifies serialization and layout behavior.
+The planned MCK package suite covers the outer release manifest, dependency lock, and package verification.
+See [the package specification](./packages.md) for the distinction and the status of the current document-tree integration.
 
 ## Dual Distribution Modes
 
 ### 1. Classic Mode
-A single monolithic JSON blob (e.g., `morphir-ir.json`).
+A single document, such as `morphir-ir.json`, using a supported JSON or YAML profile.
 - **Use Case**: Compatibility with existing tooling, simple projects.
 - **Structure**: Contains the entire package definition, including all modules, types, and values nested within the JSON object.
 
@@ -26,7 +31,6 @@ The **Document Tree** layout follows a strict directory structure:
 ```text
 .morphir-dist/
 ├── manifest.json          # Distribution metadata and format version
-├── morphir.toml           # Project-level configuration
 ├── pkg/                   # Local project IR
 │   └── my-org/
 │       └── my-project/
@@ -36,8 +40,9 @@ The **Document Tree** layout follows a strict directory structure:
 ├── deps/                  # Dependency IR
 │   └── morphir/
 │       └── _sdk/
-│           └── @/                # version segment: bare @ until the model carries a version
-│               └── ...
+│           └── @/                # reserved version segment; current readers require bare @
+│               └── basics/
+│                   └── module.json
 ```
 
 ## Distribution Types
