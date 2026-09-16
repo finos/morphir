@@ -110,8 +110,9 @@ export function malformedRecordReason(record: unknown, index: number): string | 
 /**
  * The report's top-level `formatVersions`: the support table the adapter
  * declared, in the canonical interval notation of `docs/spec/ir/format-version.md`,
- * Recognition and compatibility. This is a syntax gate only — the driver decides
- * whether the table the adapter gave matches what the kit expects.
+ * Recognition and compatibility. The driver still decides whether the table the
+ * adapter gave matches what the kit expects; what is checked here is that the
+ * string is a canonical table at all, in shape and in structure.
  *
  * Canonical spelling is what makes two tables comparable as strings, so both
  * halves of it are checked: the shape of each interval, and the rule that a
@@ -146,13 +147,143 @@ const COMPONENT_MAXIMUM = 4294967295;
 const PATCH_MAXIMUM = ".4294967295";
 const UNKNOWN_TABLE = "unknown";
 
+/**
+ * The release grammar starts at major 3, so an absent lower bound admits
+ * releases from `3.0.0` and no bound may name an older family.
+ */
+const MAJOR_MINIMUM = 3;
+const FIRST_RELEASE: Release = [MAJOR_MINIMUM, 0, 0];
+
+/** A release as its three components, so bounds compare component by component. */
+type Release = readonly [number, number, number];
+
+function parseRelease(bound: string): Release {
+	const [major = 0, minor = 0, patch = 0] = bound.split(".").map(Number);
+	return [major, minor, patch];
+}
+
+function compareReleases(a: Release, b: Release): number {
+	for (let index = 0; index < 3; index += 1) {
+		const difference = (a[index] as number) - (b[index] as number);
+		if (difference !== 0) return difference < 0 ? -1 : 1;
+	}
+	return 0;
+}
+
+/**
+ * The carrying successor of the spec's emptiness and adjacency rules: patch,
+ * then minor, then major when a component sits at `4294967295`. `null` is the
+ * answer for `4294967295.4294967295.4294967295`, which has no next release.
+ * This is deliberately not the `next()` of canonicalization, which never
+ * carries.
+ */
+function successor(release: Release): Release | null {
+	const [major, minor, patch] = release;
+	if (patch < COMPONENT_MAXIMUM) return [major, minor, patch + 1];
+	if (minor < COMPONENT_MAXIMUM) return [major, minor + 1, 0];
+	if (major < COMPONENT_MAXIMUM) return [major + 1, 0, 0];
+	return null;
+}
+
+interface Interval {
+	readonly text: string;
+	/** The smallest release the interval admits, or `null` when there is none. */
+	readonly start: Release | null;
+	/**
+	 * The smallest release above the interval that it does not admit, or `null`
+	 * when the interval runs to the top of the grammar.
+	 */
+	readonly firstExcluded: Release | null;
+}
+
+function toInterval(
+	text: string,
+	open: string,
+	lower: string,
+	upper: string,
+	close: string,
+): Interval {
+	const start =
+		lower === ""
+			? FIRST_RELEASE
+			: open === "["
+				? parseRelease(lower)
+				: successor(parseRelease(lower));
+	const firstExcluded =
+		upper === ""
+			? null
+			: close === ")"
+				? parseRelease(upper)
+				: successor(parseRelease(upper));
+	return { text, start, firstExcluded };
+}
+
+/**
+ * The structural half of canonicality, which the grammar above cannot express:
+ * every bound inside the release domain, every interval non-empty, the
+ * intervals ascending by lower bound, and no two of them overlapping or
+ * adjacent. Without this a report could advertise `[4.1.0,4.0.0)` or
+ * `[2.0.0,3.0.0)` and still be adjudicated clean.
+ */
+function uncanonicalIntervalsReason(value: string): string | null {
+	const intervals: Interval[] = [];
+	for (const [
+		text = "",
+		open = "",
+		lower = "",
+		upper = "",
+		close = "",
+	] of value.matchAll(INTERVAL)) {
+		for (const bound of [lower, upper]) {
+			if (bound === "") continue;
+			if (parseRelease(bound)[0] < MAJOR_MINIMUM) {
+				return `the bound ${bound} is below ${MAJOR_MINIMUM}.0.0, where the release grammar starts`;
+			}
+		}
+		const interval = toInterval(text, open, lower, upper, close);
+		if (
+			interval.start === null ||
+			(interval.firstExcluded !== null &&
+				compareReleases(interval.start, interval.firstExcluded) >= 0)
+		) {
+			return `the interval ${text} contains no release`;
+		}
+		intervals.push(interval);
+	}
+	for (let index = 1; index < intervals.length; index += 1) {
+		const previous = intervals[index - 1] as Interval;
+		const current = intervals[index] as Interval;
+		const start = current.start as Release;
+		if (compareReleases(start, previous.start as Release) <= 0) {
+			return `the intervals ${previous.text} and ${current.text} are not sorted by lower bound`;
+		}
+		if (previous.firstExcluded === null) {
+			return `the intervals ${previous.text} and ${current.text} overlap`;
+		}
+		const order = compareReleases(start, previous.firstExcluded);
+		if (order < 0) {
+			return `the intervals ${previous.text} and ${current.text} overlap`;
+		}
+		if (order === 0) {
+			return `the intervals ${previous.text} and ${current.text} are adjacent and must be merged`;
+		}
+	}
+	return null;
+}
+
 export function malformedFormatVersionsReason(value: unknown): string | null {
 	if (typeof value !== "string") return "formatVersions must be a string";
 	if (value === UNKNOWN_TABLE) return null;
 	if (!CANONICAL_TABLE.test(value)) {
 		return `formatVersions ${JSON.stringify(value)} is not a canonical support table`;
 	}
-	for (const [, open, lower, upper, close] of value.matchAll(INTERVAL)) {
+	for (const [
+		,
+		open = "",
+		lower = "",
+		upper = "",
+		close = "",
+	] of value.matchAll(INTERVAL)) {
 		for (const bound of [lower, upper]) {
 			if (bound === "") continue;
 			for (const component of bound.split(".")) {
@@ -167,6 +298,10 @@ export function malformedFormatVersionsReason(value: unknown): string | null {
 		if (open === "(" && lower !== "" && !lower.endsWith(PATCH_MAXIMUM)) {
 			return `formatVersions ${JSON.stringify(value)}: an exclusive lower bound must be at the component maximum`;
 		}
+	}
+	const structural = uncanonicalIntervalsReason(value);
+	if (structural !== null) {
+		return `formatVersions ${JSON.stringify(value)}: ${structural}`;
 	}
 	return null;
 }

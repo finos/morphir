@@ -66,9 +66,9 @@ test("rejects a record that is not an object", () => {
 
 /**
  * The report's top-level support table, `docs/spec/ir/format-version.md`,
- * Recognition and compatibility. The checker is a syntax gate: it takes the
- * table's canonical spelling, and the literal `unknown` a driver writes when the
- * adapter never answered capabilities.
+ * Recognition and compatibility. The checker takes the table's canonical
+ * spelling — in shape and in structure — and the literal `unknown` a driver
+ * writes when the adapter never answered capabilities.
  */
 const report = {
 	contractVersion: 1,
@@ -147,6 +147,44 @@ test("rejects a release component above the unsigned 32-bit maximum", () => {
 		/out of range/,
 	);
 	expect(malformedFormatVersionsReason("[4.0.0,4.4294967295.0)")).toBeNull();
+});
+
+test("rejects an interval that contains no release", () => {
+	expect(malformedFormatVersionsReason("[4.1.0,4.0.0)")).toMatch(/contains no release/);
+	expect(malformedFormatVersionsReason("[4.0.0,4.0.0)")).toMatch(/contains no release/);
+});
+
+test("rejects a bound below the major family the grammar starts at", () => {
+	expect(malformedFormatVersionsReason("[2.0.0,3.0.0)")).toMatch(/below 3\.0\.0/);
+});
+
+test("rejects intervals that are not ascending by lower bound", () => {
+	expect(malformedFormatVersionsReason("[4.0.0,4.1.0),[3.0.0,3.1.0)")).toMatch(
+		/not sorted by lower bound/,
+	);
+});
+
+test("rejects intervals that overlap", () => {
+	expect(malformedFormatVersionsReason("[3.0.0,3.2.0),[3.1.0,3.3.0)")).toMatch(/overlap/);
+});
+
+test("rejects intervals that are adjacent and should have merged", () => {
+	expect(malformedFormatVersionsReason("[3.0.0,3.1.0),[3.1.0,3.2.0)")).toMatch(
+		/adjacent/,
+	);
+	// The carrying successor of an inclusive upper at the patch maximum is the
+	// next minor, so these two spell `[4.0.0,4.2.0)` the long way round.
+	expect(
+		malformedFormatVersionsReason("[4.0.0,4.0.4294967295],[4.1.0,4.2.0)"),
+	).toMatch(/adjacent/);
+});
+
+test("accepts the structurally canonical tables", () => {
+	expect(malformedFormatVersionsReason("[3.0.0,3.1.0),[4.0.0,4.1.0)")).toBeNull();
+	expect(malformedFormatVersionsReason("[4.0.0,)")).toBeNull();
+	expect(malformedFormatVersionsReason("(,4.1.0)")).toBeNull();
+	expect(malformedFormatVersionsReason("(4.0.4294967295,4.2.0)")).toBeNull();
+	expect(malformedFormatVersionsReason("[4.0.0,4.0.4294967295]")).toBeNull();
 });
 
 test("accepts the literal unknown a capabilities-less run reports", () => {
