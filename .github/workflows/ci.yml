@@ -93,7 +93,13 @@ jobs:
               # checks the protocol example against the protocol schema and both
               # contract copies against the submodule originals
               - 'tools/validate-mck-protocol.ts'
+              # adjudicates a driver report against a binding's allowed-failing list
+              - 'tools/check-mck-report.ts'
+              - 'tools/run-mck-rust.ts'
               - 'ecosystem/morphir-typescript'
+              # the Rust binding is driven through its adapter by mck:run-rust,
+              # so a pointer bump has to re-run the kit validations too
+              - 'ecosystem/morphir-rust'
               # the Gleam mirror is checked by the mck driver once its adapter
               # lands; routing its pointer bumps here keeps them from skipping
               # every validation job in the meantime
@@ -326,6 +332,19 @@ jobs:
 
       - name: Run tests
         run: cargo test --locked --package morphir
+
+      - name: Run the kit against the Rust binding
+        run: mise run mck:run-rust
+
+      - name: Upload the Rust binding's MCK report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mck-report-morphir-rust
+          path: .dev/out/mck/morphir-rust.json
+
+      - name: Validate migrated IR against the v4 schema
+        run: mise run migrate:validate
 
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata
