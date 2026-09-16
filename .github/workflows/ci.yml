@@ -31,6 +31,7 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
       docs: ${{ steps.filter.outputs.docs }}
       mck: ${{ steps.filter.outputs.mck }}
+      package-mck: ${{ steps.filter.outputs.package-mck }}
       release: ${{ steps.filter.outputs.release }}
       desktop-demo: ${{ steps.filter.outputs.desktop-demo }}
     steps:
@@ -83,6 +84,7 @@ jobs:
               - 'tools/check-mck-report.ts'
               # resolves and runs the Rust binding's MCK adapter
               - 'tools/run-mck-rust.ts'
+              - 'tools/rust-mck-command*'
               # validates the output of `mise run migrate:validate` against the v4 schema
               - 'website/scripts/validate-migrated-ir.js'
               # fixtures `mise run migrate:validate` migrates and validates
@@ -117,6 +119,7 @@ jobs:
               # adjudicates a driver report against a binding's allowed-failing list
               - 'tools/check-mck-report.ts'
               - 'tools/run-mck-rust.ts'
+              - 'tools/rust-mck-command*'
               - 'ecosystem/morphir-typescript'
               # the Rust binding is driven through its adapter by mck:run-rust,
               # so a pointer bump has to re-run the kit validations too
@@ -125,6 +128,19 @@ jobs:
               # lands; routing its pointer bumps here keeps them from skipping
               # every validation job in the meantime
               - 'ecosystem/morphir-gleam'
+              - '.config/mise/config.toml'
+              - '.github/workflows/ci.yml'
+            package-mck:
+              - 'spec/package/**'
+              - 'ecosystem/morphir-rust'
+              - 'ecosystem/morphir-typescript'
+              - 'tools/run-mck-rust.ts'
+              - 'tools/rust-mck-command*'
+              - 'tools/package-ci.test.ts'
+              - 'tools/package.json'
+              - 'tools/bun.lock'
+              - 'tools/tsconfig.json'
+              - '.gitmodules'
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             release:
@@ -509,6 +525,42 @@ jobs:
           name: mck-reports
           path: .dev/out/mck
 
+  package-mck:
+    name: MCK package compatibility (TypeScript + Rust)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.package-mck == 'true' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: jdx/mise-action@v4
+      - name: Cache Rust adapter build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ecosystem/morphir-rust -> target
+          shared-key: package-mck
+      - name: Install integration test types
+        run: bun install --frozen-lockfile
+        working-directory: tools
+      - name: Check integration tooling
+        id: integration
+        run: |
+          bun run --cwd tools typecheck
+          bun test tools/rust-mck-command.test.ts tools/package-ci.test.ts
+      - name: Run TypeScript package implementation
+        run: mise run package:check
+      - name: Run independent Rust package implementation
+        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+        run: mise run package:check:rust
+      - name: Upload package compatibility reports
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mck-package-implementations
+          path: .dev/out/mck/package-*.json
+          if-no-files-found: error
+
   release-workflow:
     name: Release workflow
     runs-on: ubuntu-latest
@@ -524,7 +576,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, release-workflow, desktop-demo]
+    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, release-workflow, desktop-demo, package-mck]
     if: always()
     steps:
       - name: Check results
@@ -568,6 +620,12 @@ jobs:
           if [[ "${{ needs.changes.outputs.desktop-demo }}" == "true" ]]; then
             if [[ "${{ needs.desktop-demo.result }}" != "success" ]]; then
               echo "Desktop demo tests failed"
+              exit 1
+            fi
+          fi
+          if [[ "${{ needs.changes.outputs.package-mck }}" == "true" ]]; then
+            if [[ "${{ needs.package-mck.result }}" != "success" ]]; then
+              echo "MCK package compatibility failed"
               exit 1
             fi
           fi
