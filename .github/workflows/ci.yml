@@ -103,6 +103,8 @@ jobs:
               - 'tests/bdd/fixtures/**'
               - 'tools/gen-naming-corpus.ts'
               - 'tools/check-vendored-fixture.ts'
+              # the Bun tooling tests the docs job runs through `mise run tools:test`
+              - 'tools/*.test.ts'
               - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
@@ -478,6 +480,9 @@ jobs:
 
       - name: Check the format-version conformance corpus and its vendored copy agree
         run: mise run fixtures:format-version-corpus-check
+
+      - name: Run the Bun specification tooling tests
+        run: mise run tools:test
 
       - name: Website IR conformance runner
         run: mise run website:test-ir-storage-profiles

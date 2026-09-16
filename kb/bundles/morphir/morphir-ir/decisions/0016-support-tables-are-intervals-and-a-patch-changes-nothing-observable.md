@@ -23,9 +23,10 @@ may change anything. The reference table is therefore `[3.0.0,3.1.0),[4.0.0,4.1.
 The format-version contract shipped in finos/morphir#738 treated every exact release as its own island. The reference
 table listed `3.0.0` and `4.0.0`, and a `4.0.1` or `4.1.0` document failed. A reviewer on finos/morphir#790 asked why
 the contract rejected `4.1.0`. GitHub issues #792 and #795 then asked that no support for `4.1.0` be added silently, and
-that any change to the policy be recorded as a contract decision. The intent behind the exact list was never to reject later
-revisions. It was to avoid minting `4.1.0` while the vocabulary is still moving before the formal 4.0.0 release. This
-record separates the two questions: what a revision is allowed to change, and how a reader states what it supports.
+that any change to the policy be recorded as a contract decision. The intent behind the exact list was never to
+reject later revisions. It was to avoid minting `4.1.0` while the vocabulary is still moving before the formal 4.0.0
+release. This record separates the two questions: what a revision is allowed to change, and how a reader states what
+it supports.
 
 | Option | Outcome | Why |
 | ------ | ------- | --- |

@@ -37,6 +37,10 @@ The grammar is small:
 - `[a]` is exactly the release `a`.
 - A missing bound means unbounded on that side, and the bracket beside an absent bound is written round.
 - At least one of the two bounds is required, so `(,)` is not a table.
+- The release grammar starts at major 3, so an absent lower bound reaches down to `3.0.0` and no further; `(,3.0.0)`
+  contains no release and is not a table.
+- A table needs one canonical spelling that parses back to itself, so a table whose intervals merge into an interval
+  with neither bound is not a table either.
 
 Membership is "inside any interval". The canonical spelling rewrites every interval as half-open `[a,b)` wherever a
 bound can be advanced (`next(x.y.z)` is `x.y.(z+1)`), then sorts, merges, and drops whitespace. A patch component
@@ -64,7 +68,7 @@ minor.
 
 ## Where each binding publishes its table
 
-These are the tables each binding declares once the pull requests carrying this design land.
+Each binding declares its table where this table says.
 
 | Binding | Table | Published |
 | --- | --- | --- |
@@ -79,7 +83,7 @@ canonical string into the report.
 ## Unresolved
 
 - Minting the first minor after 4.0.0 is released: which kit cases move, how every binding's ceiling advances in one
-  change, and whether the legacy-spelling window (bead `morphir-ir-v4-stabilize.19`, closing the legacy-spelling
-  window) is the whole of `4.1.0` or one part of it.
+  change, and whether the legacy-spelling window (bead `morphir-ir-v4-stabilize.19`) is the whole of `4.1.0` or one
+  part of it.
 - Which of morphir-scala and morphir-elm adopts the contract first, and whether either needs a table narrower than the
   reference.

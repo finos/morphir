@@ -15,6 +15,8 @@ Versions 1 and 2 are historical integer-only formats. Version 1 MUST be written 
 
 Version 3 is the first format family governed by the permanent contract below. Every format family with major version `N >= 3`, including future families, inherits the same contract. A future family MUST NOT revert to integer-only version spelling.
 
+This page defines the conformance target. A reader or writer does not conform merely because its repository publishes this specification. Implementations adopt the contract when their normalization, compatibility checks, diagnostics, ordering behavior, and replay strategy satisfy these requirements.
+
 ## Accepted scalar forms
 
 For every major family `N >= 3`, `formatVersion` has exactly two accepted scalar forms:
@@ -63,13 +65,13 @@ close    = "]" / ")"
 
 `[` and `]` are inclusive; `(` and `)` are exclusive. `[a]` means exactly `a`. A missing lower bound means no lower bound; a missing upper bound means no upper bound; at least one bound is required. Whitespace after a comma and around a bound is permitted on input and dropped on normalization. A bound MUST be a release string; the integer alias is not permitted inside a table. An interval whose lower bound is above its upper bound, or which contains no release, is invalid: the smallest release its lower bound admits (the bound itself when inclusive, otherwise the next release after it) must satisfy the upper bound. The release grammar starts at major 3, so an absent lower bound admits releases from `3.0.0`; a table such as `(,3.0.0)` contains no release and is invalid. The next release after a bound carries into the minor, and then into the major, when a component is at its maximum. This is deliberately not the `next()` of canonicalization below, which never carries: a bound that cannot be advanced keeps its bracket rather than moving to another minor.
 
-A table whose intervals merge into an interval with no bound on either side would admit every release; such a table is invalid.
+Every interval requires at least one bound, and a table MUST have one canonical spelling that parses back to the same table. A table whose intervals merge into an interval with no bound on either side has no such spelling, so that table is invalid.
 
 A release is supported when it lies inside any interval of the table.
 
 A table has one canonical spelling, which writers, adapters and reports MUST emit:
 
-1. Every interval is rewritten as a half-open `[a,b)` interval wherever a finite bound can be advanced: an inclusive upper `b]` becomes `next(b))`, an exclusive lower `(a` becomes `[next(a)`, and `[a]` becomes `[a,next(a))`, where `next(x.y.z)` is `x.y.(z+1)`. A patch component at `4294967295` cannot be advanced and keeps its original bracket; `next()` never carries into the minor, unlike the successor the emptiness rule above uses. An absent bound takes a round bracket.
+1. Every interval is rewritten as a half-open `[a,b)` interval wherever a finite bound can be advanced: an inclusive upper `b]` becomes `next(b))`, an exclusive lower `(a` becomes `[next(a)`, and `[a]` becomes `[a,next(a))`, where `next(x.y.z)` is `x.y.(z+1)`. A patch component at `4294967295` cannot be advanced and keeps its original bracket; `next()` never carries into the minor, unlike the successor the emptiness rule above uses. The exact form `[a]` is never a canonical spelling, so an `[a]` whose patch is at the maximum becomes `[a,a]` rather than staying `[a]`. An absent bound takes a round bracket.
 2. Intervals are sorted by lower bound, an absent lower bound first.
 3. Overlapping or adjacent intervals are merged. Two intervals are adjacent when the second's lower bound is the next release after the first's upper bound, using the carrying successor defined for the emptiness rule, so `[4.0.0,4.0.4294967295],[4.1.0,4.2.0)` merges to `[4.0.0,4.2.0)`.
 4. No whitespace.
@@ -91,8 +93,6 @@ A table may be shown to people in three other styles, none of which is accepted 
 | Cargo comparator sets | `>=3.0.0, <3.1.0` and `>=4.0.0, <4.1.0` |
 | Elm constraints | `3.0.0 <= v < 3.1.0` and `4.0.0 <= v < 4.1.0` |
 | Prose | `3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0` |
-
-This page defines the conformance target. A reader or writer does not conform merely because its repository publishes this specification. Implementations adopt the contract when their normalization, compatibility checks, diagnostics, ordering behavior, and replay strategy satisfy these requirements.
 
 After successful recognition and normalization, an implementation MUST distinguish these compatibility results:
 

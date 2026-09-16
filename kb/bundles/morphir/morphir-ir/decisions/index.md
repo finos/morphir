@@ -1,5 +1,3 @@
-# Decisions
-
 ## Decisions
 
 * [Names encode initialisms as uppercase segments](/decisions/0001-name-canonicalization-and-initialism-encoding.md) - IR v4 marks an initialism by writing its canonical segment in uppercase, and projects names onto the document tree through a defined escape.
