@@ -182,7 +182,7 @@ These cannot be closed by editing prose. Each needs a maintainer decision, and e
 5. **Scope of design-only features for 4.0.0.** `DocumentLiteral`, layered decorations under `deco/`, `$meta`,
    `$ref`, and `session.jsonl` exist only in the design documents. Each either enters the schema or is marked as
    post-4.0.
-6. **Exact-release support table.** Decided in decision 0016: a support table is a union of intervals with one
+6. **Support-table grammar.** Decided in decision 0016: a support table is a union of intervals with one
    canonical spelling, a patch changes nothing a reader can observe, and the reference table is
    `[3.0.0,3.1.0),[4.0.0,4.1.0)`; see [Format-version support and revisions](/format-version-support.md).
 7. **Legacy-name compatibility boundary.** GitHub issue #793: migrate the books fixture to `product-ID`, or define

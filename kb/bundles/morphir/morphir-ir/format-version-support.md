@@ -10,8 +10,8 @@ status: draft
 
 A reader states what it reads as a support table: a union of intervals over release strings, in Maven-style interval
 notation, with one canonical spelling. A patch changes nothing a reader can observe, so a table's ceilings sit on minor
-boundaries. The reference table is `[3.0.0,3.1.0),[4.0.0,4.1.0)`. This page is the narrative home for that design; the
-reasoning is in [decision 0016](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md)
+boundaries. The reference table is `[3.0.0,3.1.0),[4.0.0,4.1.0)`. This page is the narrative home for that design. The
+reasoning is in [decision 0016](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md),
 and the normative text is the format-version page of the specification.
 
 ## The revision promise
@@ -30,10 +30,18 @@ A revision exists when the kit carries cases for it. Before the formal 4.0.0 rel
 [3.0.0,3.1.0),[4.0.0,4.1.0)
 ```
 
-Square brackets are inclusive, round brackets exclusive, a comma between intervals is union, `[a]` is exactly `a`, and a
-missing bound is unbounded on that side. Membership is "inside any interval". The canonical spelling rewrites every
-interval as half-open `[a,b)` where a bound can be advanced (`next(x.y.z)` is `x.y.(z+1)`), sorts, merges, and drops
-whitespace; a component at `4294967295` cannot be advanced and keeps its bracket.
+The grammar is small:
+
+- A square bracket is an inclusive bound; a round bracket is an exclusive one.
+- A comma between two intervals is union.
+- `[a]` is exactly the release `a`.
+- A missing bound means unbounded on that side, and the bracket beside an absent bound is written round.
+- At least one of the two bounds is required, so `(,)` is not a table.
+
+Membership is "inside any interval". The canonical spelling rewrites every interval as half-open `[a,b)` wherever a
+bound can be advanced (`next(x.y.z)` is `x.y.(z+1)`), then sorts, merges, and drops whitespace. A patch component
+already at `4294967295` cannot be advanced, so that bound keeps its original bracket; `next()` never carries into the
+minor.
 
 Three renderings exist for people; none is accepted as input:
 
@@ -45,11 +53,18 @@ Three renderings exist for people; none is accepted as input:
 
 ## Compatibility results
 
-`supported` when the release is inside the table; `unsupported_format_version_major` when no interval touches its major;
-`unsupported_format_version_minor` when an interval touches its major but none contains it. The last replaces
-`unsupported_format_version_revision`, because under the patch promise the mismatch is always the minor.
+| Result | When |
+| --- | --- |
+| `supported` | The release is inside some interval of the table |
+| `unsupported_format_version_major` | No interval touches the release's major |
+| `unsupported_format_version_minor` | An interval touches its major, but none contains the release |
+
+The last replaces `unsupported_format_version_revision`, because under the patch promise the mismatch is always the
+minor.
 
 ## Where each binding publishes its table
+
+These are the tables each binding declares once the pull requests carrying this design land.
 
 | Binding | Table | Published |
 | --- | --- | --- |
@@ -64,5 +79,7 @@ canonical string into the report.
 ## Unresolved
 
 - Minting the first minor after 4.0.0 is released: which kit cases move, how every binding's ceiling advances in one
-  change, and whether the legacy-spelling window (bead .19) is the whole of `4.1.0` or one part of it.
-- morphir-scala and morphir-elm do not yet declare tables; they adopt the notation when they adopt the contract.
+  change, and whether the legacy-spelling window (bead `morphir-ir-v4-stabilize.19`, closing the legacy-spelling
+  window) is the whole of `4.1.0` or one part of it.
+- Which of morphir-scala and morphir-elm adopts the contract first, and whether either needs a table narrower than the
+  reference.
