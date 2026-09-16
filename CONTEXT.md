@@ -270,9 +270,25 @@ _Avoid_: Download URL, source location
 A stable name within a consuming Morphir package that associates its IR references with one Package requirement. Different slots may request different versions of the same Package path.
 _Avoid_: Package path, source location, resolved package
 
+**Implicit dependency binding**:
+The single dependency binding associated with an IR Package name in one consuming package when no explicit multi-binding distinction is requested.
+_Avoid_: Global package-name-to-version map, package release identity, source-language import alias
+
+**IR Package name**:
+The Morphir `PackageName` identifying a package namespace in an FQName or distribution, such as `morphir/SDK`. Its association with an authority-bearing Package path and release is separate.
+_Avoid_: Package path, Package release ID, dependency slot
+
 **Package export path**:
-A public logical module path addressed through a dependency slot. It is either generated canonically from a public Morphir Module path or declared as an explicit alias.
+A public logical module path addressed through a dependency slot. It is either generated canonically from a public package-relative Morphir Module path or declared as an explicit alias.
 _Avoid_: Filesystem path, Package path, source-language import alias
+
+**ModuleName**:
+The path of a module within its owning package, such as `domain/users`.
+_Avoid_: Package-qualified module name, concatenated package and module paths
+
+**QualifiedModuleName**:
+An IR Package name and ModuleName joined as `package:module`, such as `morphir/SDK:list`. The colon preserves the boundary between the two paths.
+_Avoid_: Slash-concatenated package and module paths, FQName with a local-name tail, Package release ID
 
 **Package export table**:
 The complete immutable mapping from Package export paths to public Morphir Module paths in a package release. Publication expands convention-based exports, exclusions, and aliases into this table; consumers never infer it from a filesystem layout.
@@ -306,9 +322,17 @@ _Avoid_: IR migration, silent format upgrade, legacy package manager
 A stable, versioned, structured report of a package operation's warning or failure, including a machine code, subject, dependency path, details, causes, and human guidance. Integrity and authority diagnostics fail closed and never cause silent trust or resolution fallback.
 _Avoid_: Implementation-specific error string, log entry, solver trace
 
-**Package conformance corpus**:
-The normative, language-neutral fixtures and expected normalized values, serializations, digests, graphs, and Package diagnostics used to verify package behavior across Morphir implementations.
-_Avoid_: Reference implementation, implementation-specific unit tests, examples without assertions
+**Morphir Compatibility Kit (MCK)**:
+The collection of executable compatibility suites shared by Morphir implementations. A compatibility claim identifies its suite, kit revision, and required capabilities, with every required case passing.
+_Avoid_: Reference implementation, implementation-specific unit tests, unqualified ecosystem-wide compatibility claim
+
+**MCK IR suite**:
+The MCK cases and expected results for Morphir IR serialization, normalization, diagnostics, and document-tree behavior.
+_Avoid_: Package release validation, package-manager compatibility
+
+**MCK package suite**:
+The planned MCK cases and expected normalized values, serializations, digests, graphs, and Package diagnostics that specify package behavior across Morphir implementations.
+_Avoid_: Separately branded package conformance corpus, IR-only codec tests, examples without assertions
 
 **Source descriptor**:
 A typed description of where package content can be acquired, such as a verified registry archive, immutable Git commit, workspace snapshot, or vendored tree.
