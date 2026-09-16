@@ -2,7 +2,7 @@
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"$id": "https://morphir.finos.org/spec/ir/mck/protocol.schema.json",
 	"title": "Morphir Compatibility Kit adapter protocol",
-	"description": "Contract version 1 of the JSON-lines adapter protocol between the mck driver and a testee adapter. Normative: spec S6. Every message rejects unknown fields (additionalProperties: false throughout); the contract extends only through contractVersion, never through an added-but-ignored key. A validator that knows what it is looking at should be pointed at one definition (Request, Capabilities, DecodeResponse, WriteTreeResponse); a validator given a bare line validates against the root oneOf below, whose branches are disjoint so that exactly one accepts any message.",
+	"description": "Contract version 1 of the JSON-lines adapter protocol between the mck driver and a testee adapter. Normative for the adapter protocol; the kit README (Running the driver against a binding) explains how the driver uses it. Every message rejects unknown fields (additionalProperties: false throughout); the contract extends only through contractVersion, never through an added-but-ignored key. A validator that knows what it is looking at should be pointed at one definition (Request, Capabilities, DecodeResponse, WriteTreeResponse); a validator given a bare line validates against the root oneOf below, whose branches are disjoint so that exactly one accepts any message.",
 	"definitions": {
 		"Profile": { "type": "string", "enum": ["json", "yaml"] },
 		"Layout": { "type": "string", "enum": ["single", "tree"] },

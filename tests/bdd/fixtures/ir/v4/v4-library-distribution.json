@@ -1,95 +1,75 @@
 {
   "formatVersion": 4,
-  "distribution": [
-    "Library",
-    "example/v4-test",
-    {},
-    {
-      "modules": [
-        [
-          "domain",
-          {
+  "distribution": {
+    "Library": {
+      "packageName": "example/v4-test",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "domain": {
             "access": "Public",
             "value": {
-              "types": [
-                [
-                  "user-id",
-                  {
-                    "access": "Public",
-                    "value": {
-                      "TypeAliasDefinition": {
-                        "typeParams": [],
-                        "typeExp": "morphir/sdk:string#string"
-                      }
-                    }
+              "types": {
+                "user-id": {
+                  "access": "Public",
+                  "TypeAliasDefinition": {
+                    "typeParams": [],
+                    "typeExp": "morphir/SDK:string#string"
                   }
-                ],
-                [
-                  "incomplete-user",
-                  {
-                    "access": "Private",
-                    "value": {
-                      "IncompleteTypeDefinition": {
-                        "typeParams": [],
-                        "incompleteness": {
-                          "Draft": {}
-                        },
-                        "partialTypeExp": {
-                          "Record": {
-                            "id": "morphir/sdk:string#string"
-                          }
+                },
+                "incomplete-user": {
+                  "access": "Private",
+                  "IncompleteTypeDefinition": {
+                    "typeParams": [],
+                    "incompleteness": { "Draft": {} },
+                    "partialTypeExp": {
+                      "Record": {
+                        "fields": {
+                          "id": "morphir/SDK:string#string"
                         }
                       }
                     }
                   }
-                ]
-              ],
-              "values": [
-                [
-                  "get-user-name",
-                  {
-                    "access": "Public",
-                    "value": {
-                      "inputTypes": [
-                        ["user", {}, "example/v4-test:domain#user-id"]
-                      ],
-                      "outputType": "morphir/sdk:string#string",
-                      "body": {
-                        "Hole": [
-                          {},
-                          {
-                            "UnresolvedReference": {
-                              "target": "example/v4-test:domain#user-name-lookup"
-                            }
-                          },
-                          "morphir/sdk:string#string"
-                        ]
+                }
+              },
+              "values": {
+                "get-user-name": {
+                  "access": "Public",
+                  "ExpressionBody": {
+                    "inputTypes": {
+                      "user": "example/v4-test:domain#user-id"
+                    },
+                    "outputType": "morphir/SDK:string#string",
+                    "body": {
+                      "Hole": {
+                        "reason": {
+                          "UnresolvedReference": {
+                            "target": "example/v4-test:domain#user-name-lookup"
+                          }
+                        },
+                        "expectedType": "morphir/SDK:string#string"
                       }
                     }
                   }
-                ],
-                [
-                  "native-add",
-                  {
-                    "access": "Public",
-                    "value": {
-                      "inputTypes": [
-                        ["a", {}, "morphir/sdk:basics#int"],
-                        ["b", {}, "morphir/sdk:basics#int"]
-                      ],
-                      "outputType": "morphir/sdk:basics#int",
-                      "nativeBody": {
-                        "hint": { "Arithmetic": {} },
-                        "description": "Native integer addition"
-                      }
+                },
+                "native-add": {
+                  "access": "Public",
+                  "NativeBody": {
+                    "inputTypes": {
+                      "a": "morphir/SDK:basics#int",
+                      "b": "morphir/SDK:basics#int"
+                    },
+                    "outputType": "morphir/SDK:basics#int",
+                    "nativeInfo": {
+                      "hint": { "Arithmetic": {} }
                     }
                   }
-                ]
-              ]
+                }
+              }
             }
           }
-        ]
-      ]
+        }
+      }
     }
-  ]
+  }
 }
