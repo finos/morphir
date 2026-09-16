@@ -17,6 +17,7 @@ This guide provides detailed instructions for converting Morphir IR between diff
   - [V1 → V2](#v1--v2)
   - [V2 → V3](#v2--v3)
   - [V3 → V4](#v3--v4)
+  - [Files written by CLIs before 0.4.0-alpha.7](#files-written-by-clis-before-040-alpha7)
 - [Backward Migration (Downgrading)](#backward-migration-downgrading)
   - [V4 → V3](#v4--v3)
   - [V3 → V2](#v3--v2)
@@ -486,6 +487,78 @@ def migrate_fqname_to_string(fqname_array):
 
 ---
 
+### Files written by CLIs before 0.4.0-alpha.7
+
+Before the v4 vocabulary settled, the Rust CLI and some published examples wrote a handful of v4 member
+names and shapes that differ from the ones the v4 schema and the Morphir Compatibility Kit (the
+[MCK](https://github.com/finos/morphir/tree/main/spec/ir/mck)) pin as canonical. Release 0.4.0-alpha.7
+decodes files carrying those older spellings, but reports a `legacy_spelling` warning at each place it
+does so. Release 0.4.0-alpha.8 closes that window: the same spellings are then refused as unknown members.
+
+A `legacy_spelling` warning is a normal decode-time diagnostic, the same kind a CLI or binding reports for
+any other v4 finding, pointed at the member's JSON pointer cursor. It means the member decoded successfully
+under its old name, not that anything is wrong with the value — but the file should be rewritten (see
+below) before the window closes. The MCK's `accepted warning=legacy_spelling` fences in `spec/ir/mck` are
+the authoritative list of which spellings this covers; the tables here mirror them.
+
+#### Renamed members
+
+| Node | Old spelling | Canonical spelling |
+| ---- | ------------ | ------------------- |
+| any node | `attrs` | `attributes` |
+| `Function` | `argumentType`, `arg` | `parameterType` |
+| `Function` | `result` | `returnType` |
+| `IfThenElse` | `thenBranch` | `then` |
+| `IfThenElse` | `elseBranch` | `else` |
+| `Field` | `subject` | `target` |
+| `Field` | `fieldName` | `name` |
+| `LetDefinition` | `valueName` | `name` |
+| `LetDefinition` | `valueDefinition` | `definition` |
+| `LetDefinition` | `inValue` | `in` |
+| `ExternalBody` | `externalName`, `targetPlatform` (single pair) | `externals` (list) |
+
+#### Structural changes, accepted with a warning
+
+- A `Record` type or value that carries its field map directly under the wrapper, instead of under a
+  `fields` member, decodes with a warning.
+- A definition nested under a `value` member beside its `Public`/`Private` access tag, instead of
+  flattened onto the wrapper, decodes with a warning.
+- A `{ "doc", "value" }` wrapper, instead of a flattened `doc` member beside the variant it documents,
+  decodes with a warning.
+
+#### Refused outright, no window
+
+Some pre-decision shapes are not old spellings of a current member; they no longer exist in v4 at all, so
+there is nothing to accept even temporarily:
+
+- The `Native` and `External` value expressions. In v4 these are definition bodies (`NativeBody`,
+  `ExternalBody`), not value expressions.
+- A Classic (v3) tagged array nested inside a version-4 document.
+
+#### Rewriting a file before the window closes
+
+`morphir migrate` reads a v4 file — accepting any legacy spellings above, with their warnings — and writes
+it back out canonically:
+
+```bash
+morphir migrate <path/to/file> -o <path/to/file> --target-version v4
+```
+
+Writing to the same path as the input is safe: `morphir migrate` (`crates/morphir/src/commands/migrate.rs`)
+never opens the output path directly. It encodes into a temporary file created beside it and only renames
+that temporary file over the destination once encoding has finished, so the original content at the input
+path is never truncated while it is still being read.
+
+Run this on any file written by a pre-0.4.0-alpha.7 CLI before upgrading to 0.4.0-alpha.8, so it decodes
+without warnings and keeps decoding after the window closes.
+
+This vocabulary and its one-release window are decided in decisions 0004 to 0015: decision 0004 (record
+fields under `fields`), decision 0006 (the member names and the window itself), decision 0007
+(`parameterType`/`returnType`), decision 0008 (`Native`/`External` refused, `ExternalBody` as a list),
+and decision 0010 (flattened `doc`).
+
+---
+
 ## Backward Migration (Downgrading)
 
 Backward migration may be necessary for compatibility with older tooling. Some migrations are lossy.
@@ -590,10 +663,10 @@ V4 introduces new value expressions not present in V3. These must be transformed
 V4 allows inline documentation which V3 doesn't support:
 
 ```python
-def remove_doc_wrappers(type_or_value):
-    """Remove V4 doc wrappers from types/values."""
+def remove_doc_fields(type_or_value):
+    """Remove the flattened V4 `doc` member from types/values (decision 0010)."""
     if isinstance(type_or_value, dict) and "doc" in type_or_value:
-        return type_or_value["value"]
+        return {key: value for key, value in type_or_value.items() if key != "doc"}
     return type_or_value
 ```
 

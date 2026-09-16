@@ -75,6 +75,23 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-rust-ci/**'
               - '.github/actions/cache-scala-native-image/**'
+              # morphir-cli-test runs the kit against the Rust binding, so its fences are an input
+              - 'spec/ir/mck/**'
+              # the kit driver and the Rust binding's adapter live here
+              - 'ecosystem/morphir-typescript'
+              # adjudicates the Rust binding's MCK report against its allowed-failing list
+              - 'tools/check-mck-report.ts'
+              # resolves and runs the Rust binding's MCK adapter
+              - 'tools/run-mck-rust.ts'
+              # validates the output of `mise run migrate:validate` against the v4 schema
+              - 'website/scripts/validate-migrated-ir.js'
+              # fixtures `mise run migrate:validate` migrates and validates
+              - 'website/static/ir/examples/**'
+              # the v4 schema `mise run migrate:validate` validates migrated IR against
+              - 'website/static/schemas/morphir-ir-v4.json'
+              # migrate:validate depends on website:install, and validate-migrated-ir.js imports ajv/ajv-formats from it
+              - 'website/package.json'
+              - 'website/package-lock.json'
             docs:
               - 'website/**'
               - 'docs/**'
@@ -94,7 +111,13 @@ jobs:
               # checks the protocol example against the protocol schema and both
               # contract copies against the submodule originals
               - 'tools/validate-mck-protocol.ts'
+              # adjudicates a driver report against a binding's allowed-failing list
+              - 'tools/check-mck-report.ts'
+              - 'tools/run-mck-rust.ts'
               - 'ecosystem/morphir-typescript'
+              # the Rust binding is driven through its adapter by mck:run-rust,
+              # so a pointer bump has to re-run the kit validations too
+              - 'ecosystem/morphir-rust'
               # the Gleam mirror is checked by the mck driver once its adapter
               # lands; routing its pointer bumps here keeps them from skipping
               # every validation job in the meantime
@@ -327,6 +350,19 @@ jobs:
 
       - name: Run tests
         run: cargo test --locked --package morphir
+
+      - name: Run the kit against the Rust binding
+        run: mise run mck:run-rust
+
+      - name: Upload the Rust binding's MCK report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mck-report-morphir-rust
+          path: .dev/out/mck/morphir-rust.json
+
+      - name: Validate migrated IR against the v4 schema
+        run: mise run migrate:validate
 
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata

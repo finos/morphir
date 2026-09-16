@@ -207,8 +207,10 @@ pub fn run_config_show_with_options(
     let config = redact_secrets(&effective.value);
 
     if format == OutputFormat::Human {
-        let rendered = toml::to_string_pretty(&config).map_err(|error| CliError::Config {
-            error: anyhow::anyhow!("Failed to render effective configuration as TOML: {error}"),
+        let rendered = toml::to_string_pretty(&config_as_toml(&config)?).map_err(|error| {
+            CliError::Config {
+                error: anyhow::anyhow!("Failed to render effective configuration as TOML: {error}"),
+            }
         })?;
         print!("{rendered}");
     } else {
@@ -220,6 +222,83 @@ pub fn run_config_show_with_options(
     }
 
     Ok(None)
+}
+
+/// Rewrites the effective configuration into TOML's own value model.
+///
+/// `morphir-core` turns on serde_json's `arbitrary_precision`, and Cargo
+/// unifies features across the build, so every `serde_json::Number` in this
+/// binary serializes as the internal one-member map `{"$serde_json::private::
+/// Number": "3"}`. Only serde_json's own serializer understands that map;
+/// handing a `Value` straight to the TOML serializer leaks it into what a
+/// reader sees. Walking the value here keeps `config show` printing `3`.
+fn config_as_toml(value: &serde_json::Value) -> Result<toml::Value, CliError> {
+    config_as_toml_at(value, "<config>")
+}
+
+/// `path` is the dotted/indexed key of `value` within the effective
+/// configuration, threaded through the recursion so an error can name where
+/// the offending value lives rather than just what it is.
+fn config_as_toml_at(value: &serde_json::Value, path: &str) -> Result<toml::Value, CliError> {
+    match value {
+        // TOML has no null, and the configuration model has no optional value
+        // that reaches this far, so this is a loader bug rather than user input.
+        serde_json::Value::Null => Err(CliError::Config {
+            error: anyhow::anyhow!(
+                "Failed to render effective configuration as TOML: \
+                 TOML cannot represent a null at {path}"
+            ),
+        }),
+        serde_json::Value::Bool(bool) => Ok(toml::Value::Boolean(*bool)),
+        serde_json::Value::Number(number) => {
+            if let Some(integer) = number.as_i64() {
+                return Ok(toml::Value::Integer(integer));
+            }
+            // `morphir-core` turns on serde_json's arbitrary_precision, which keeps
+            // the exact source lexeme behind every `Number`. A lexeme with neither a
+            // decimal point nor an exponent marker is an integer literal, not a
+            // float that happens to be round, so it must not fall through to
+            // `as_f64()`: that would silently round a too-large integer into a
+            // different, smaller-looking configuration instead of reporting the
+            // range error TOML actually has for it.
+            let lexeme = number.to_string();
+            if !lexeme.contains(['.', 'e', 'E']) {
+                return Err(CliError::Config {
+                    error: anyhow::anyhow!(
+                        "Failed to render effective configuration as TOML: \
+                         configuration integer is outside TOML's 64-bit range \
+                         at {path}: {lexeme}"
+                    ),
+                });
+            }
+            number
+                .as_f64()
+                .map(toml::Value::Float)
+                .ok_or_else(|| CliError::Config {
+                    error: anyhow::anyhow!(
+                        "Failed to render effective configuration as TOML: \
+                     {number} at {path} is outside the range TOML can represent"
+                    ),
+                })
+        }
+        serde_json::Value::String(string) => Ok(toml::Value::String(string.clone())),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| config_as_toml_at(item, &format!("{path}[{index}]")))
+            .collect::<Result<Vec<_>, _>>()
+            .map(toml::Value::Array),
+        serde_json::Value::Object(members) => members
+            .iter()
+            .map(|(name, member)| {
+                Ok((
+                    name.clone(),
+                    config_as_toml_at(member, &format!("{path}.{name}"))?,
+                ))
+            })
+            .collect::<Result<toml::map::Map<_, _>, CliError>>()
+            .map(toml::Value::Table),
+    }
 }
 
 #[cfg(test)]
@@ -235,6 +314,54 @@ mod tests {
         assert_eq!(options.global, SourceSelection::Skip);
         assert_eq!(options.user_override, SourceSelection::Skip);
         assert_eq!(options.env, EnvSelection::Process);
+    }
+
+    #[test]
+    fn rendered_toml_spells_numbers_as_numbers() {
+        // serde_json's arbitrary_precision is on across this build, so a number
+        // handed straight to the TOML serializer would come out as the internal
+        // `$serde_json::private::Number` map instead of as `3`.
+        let config = serde_json::json!({
+            "ir": { "format_version": 3, "tolerance": 0.5, "strict_mode": false },
+            "codegen": { "targets": ["go"] },
+        });
+
+        let rendered = toml::to_string_pretty(&config_as_toml(&config).unwrap()).unwrap();
+
+        assert!(rendered.contains("format_version = 3"), "{rendered}");
+        assert!(rendered.contains("tolerance = 0.5"), "{rendered}");
+        assert!(rendered.contains("strict_mode = false"), "{rendered}");
+        assert!(rendered.contains("\"go\""), "{rendered}");
+        assert!(!rendered.contains("serde_json"), "{rendered}");
+    }
+
+    #[test]
+    fn integers_outside_tomls_i64_range_are_rejected_rather_than_rounded() {
+        // 18446744073709551615 is u64::MAX: `as_i64()` fails, and `as_f64()` would
+        // otherwise succeed and silently round it into a different, smaller-looking
+        // configuration instead of reporting that TOML cannot hold it.
+        let config = serde_json::json!({ "huge": 18446744073709551615u64 });
+
+        let CliError::Config { error } = config_as_toml(&config).unwrap_err() else {
+            panic!("expected a Config error");
+        };
+        let error = error.to_string();
+
+        assert!(
+            error.contains("configuration integer is outside TOML's 64-bit range"),
+            "{error}"
+        );
+        assert!(error.contains("<config>.huge"), "{error}");
+        assert!(error.contains("18446744073709551615"), "{error}");
+    }
+
+    #[test]
+    fn fractional_numbers_still_render_as_floats() {
+        let config = serde_json::json!({ "tolerance": 1.0e300 });
+
+        let rendered = toml::to_string_pretty(&config_as_toml(&config).unwrap()).unwrap();
+
+        assert!(rendered.starts_with("tolerance = 1"), "{rendered}");
     }
 
     #[test]

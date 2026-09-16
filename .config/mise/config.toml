@@ -167,6 +167,32 @@ run = [
     "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts coverage --kit spec/ir/mck",
 ]
 
+[tasks."mck:run-rust"]
+description = "Run the Morphir Compatibility Kit against the pinned Rust binding's adapter and adjudicate the report"
+# The adapter binary's name carries an .exe suffix on Windows, so the driver is
+# invoked through a wrapper that resolves it; the wrapper passes the rest
+# straight through to `mck run`.
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml",
+    "bun run tools/run-mck-rust.ts --kit spec/ir/mck --report .dev/out/mck/morphir-rust.json",
+    # mck:check only proves the schema against the checked-in report.example.json;
+    # this confirms the real report the driver just wrote conforms to it too,
+    # before the checker below adjudicates its contents.
+    "jsonschema validate spec/ir/mck/report.schema.json .dev/out/mck/morphir-rust.json",
+    "bun run tools/check-mck-report.ts .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json",
+]
+
+[tasks."migrate:validate"]
+description = "Migrate the published v3 example to v4 and validate the output against the v4 JSON Schema"
+# The validator is a website script, so it needs website/node_modules; `init`
+# only checks out submodules.
+depends = ["website:install"]
+run = [
+    "cargo run -p morphir -- migrate website/static/ir/examples/v3/greeting-example.json --output .dev/out/migrate/out.json",
+    "node website/scripts/validate-migrated-ir.js .dev/out/migrate/out.json",
+]
+
 [tasks."package:schema-check"]
 description = "Validate draft package schemas and example structures (not MCK package compatibility)"
 run = [

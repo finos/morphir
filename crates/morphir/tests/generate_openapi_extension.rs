@@ -83,10 +83,9 @@ impl std::ops::Deref for OpenApiCliMother {
 /// tests already prove renders cleanly: a record alias, an optional field,
 /// a sibling reference, and a nullary custom type. Reusing it here (rather
 /// than the Avro suite's IR) keeps this an end-to-end dispatch test, not a
-/// fresh exercise of the projection itself. The Avro suite's fixture spells
-/// the SDK package non-canonically as `morphir/sdk`, which resolves to a
-/// different package identity than the real `morphir/SDK`, so it does not
-/// exercise this backend's SDK type mappings the way real IR does.
+/// fresh exercise of the projection itself. The Avro suite's fixture is a
+/// v4 library; this backend's golden tests are Classic-format, so the
+/// Classic library is the one that matches its SDK type mappings.
 fn classic_schema_library() -> Value {
     serde_json::from_str(include_str!("fixtures/openapi/classic-schema-library.json")).unwrap()
 }
