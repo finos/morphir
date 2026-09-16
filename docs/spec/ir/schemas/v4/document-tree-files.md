@@ -713,6 +713,10 @@ values: []
 
 ## Access Control
 
+Access is recorded at two levels. A module's own visibility lives in its module manifest as the optional
+[`access` member](#access-module-manifest), written only when the module is `Private`. The visibility of each
+type and value lives in its definition file, as below.
+
 ### In PackageDefinition Context
 
 When type/value files are part of a PackageDefinition:
@@ -1155,6 +1159,12 @@ A filename is the **escaped stem** of a Name, not the canonical name. See
 - Must match `path`/`module` field in `module.json`
 - Path: `.morphir-dist/pkg/{package-path}/{module-path}/`
 - Must contain `module.json` file
+
+**Dependency Directory**:
+- One per package listed under `dependencies` in `manifest.json`
+- Path: `.morphir-dist/deps/{package-path}/@{version}/`, where the segment beginning with `@` ends the package
+  path and is a bare `@` while the model carries no package version (see [Dependencies](#dependencies))
+- Below that segment, the same module and definition layout as `pkg/`
 
 **Definition Files**:
 - Must be in module directory

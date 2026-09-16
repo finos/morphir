@@ -10,11 +10,12 @@ This script:
 2. Auto-detects schema version from formatVersion field
 3. Validates against the appropriate schema (v1-v4)
 4. Reports validation errors with file paths and details
-5. Skips missing directories with a warning (non-fatal)
+5. Fails when no fixture file is found at all, so a moved directory cannot
+   turn the check into a silent pass
 
 Fixture locations:
-- .morphir/testing/fixtures/ (local development fixtures)
-- tests/bdd/testdata/morphir-ir/ (fetched fixtures)
+- tests/bdd/fixtures/ir/ (tracked IR fixtures, one directory per format version)
+- .morphir/testing/fixtures/ (local development fixtures, optional)
 """
 
 from __future__ import annotations
@@ -64,8 +65,8 @@ def get_schema_path(root: Path, version: str) -> Path | None:
 
 # Predefined fixture locations
 FIXTURE_DIRS = [
-    ".morphir/testing/fixtures",  # Local development fixtures
-    "tests/bdd/testdata/morphir-ir",  # Fetched fixtures
+    "tests/bdd/fixtures/ir",  # Tracked IR fixtures
+    ".morphir/testing/fixtures",  # Local development fixtures (optional)
 ]
 
 
@@ -82,9 +83,20 @@ def find_fixture_files(root: Path, verbose: bool = False) -> list[Path]:
                 print(f"Found {len(files)} files in {fixture_dir}")
         else:
             if verbose:
-                print(f"⚠ Directory not found (skipping): {fixture_dir}")
+                print(f"warning: directory not found (skipping): {fixture_dir}")
 
     return sorted(fixture_files)
+
+
+def is_ir_document(file_path: Path) -> bool:
+    """True when the file is a JSON object carrying a top-level formatVersion."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        # Unreadable or invalid JSON is reported by validate_file.
+        return True
+    return isinstance(data, dict) and "formatVersion" in data
 
 
 def validate_file(
@@ -146,15 +158,29 @@ def main() -> int:
             print("No fixture files found to validate.")
             print("Fixture directories checked:")
             for d in FIXTURE_DIRS:
-                exists = "✓" if (root / d).exists() else "✗"
-                print(f"  {exists} {d}")
-        return 0
+                exists = "present" if (root / d).exists() else "missing"
+                print(f"  {d}: {exists}")
+        # Nothing validated is a failure: a moved or misspelled directory must
+        # not turn this check into a silent pass.
+        return 1
 
     results: list[dict[str, Any]] = []
     errors = 0
+    validated = 0
 
     for file_path in fixture_files:
         rel_path = file_path.relative_to(root)
+        # A fixture directory also holds fragment collections (node examples
+        # keyed under "examples") that are not IR documents. They carry no
+        # formatVersion, so there is no schema to hold them to; say so rather
+        # than counting them as failures or silently passing them.
+        if not is_ir_document(file_path):
+            if json_output:
+                results.append({"file": str(rel_path), "valid": None, "message": "skipped: not an IR document (no formatVersion)"})
+            else:
+                print(f"skip {rel_path}: not an IR document (no formatVersion)")
+            continue
+        validated += 1
         success, message = validate_file(file_path, root, verbose)
 
         if json_output:
@@ -162,16 +188,22 @@ def main() -> int:
                 {"file": str(rel_path), "valid": success, "message": message}
             )
         else:
-            status = "✓" if success else "✗"
+            # ASCII markers: a Windows console with a cp1252 code page cannot
+            # print the check-mark glyphs.
+            status = "ok  " if success else "FAIL"
             print(f"{status} {rel_path}: {message}")
 
         if not success:
             errors += 1
 
+    if validated == 0:
+        print("No IR document found among the fixtures; nothing was validated.")
+        return 1
+
     if json_output:
-        print(json.dumps({"results": results, "errors": errors}, indent=2))
+        print(json.dumps({"results": results, "errors": errors, "validated": validated}, indent=2))
     else:
-        print(f"\nValidated {len(fixture_files)} fixtures, {errors} errors")
+        print(f"\nValidated {validated} of {len(fixture_files)} fixtures, {errors} errors")
 
     return 1 if errors > 0 else 0
 
