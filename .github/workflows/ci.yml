@@ -89,6 +89,9 @@ jobs:
               - 'website/static/ir/examples/**'
               # the v4 schema `mise run migrate:validate` validates migrated IR against
               - 'website/static/schemas/morphir-ir-v4.json'
+              # migrate:validate depends on website:install, and validate-migrated-ir.js imports ajv/ajv-formats from it
+              - 'website/package.json'
+              - 'website/package-lock.json'
             docs:
               - 'website/**'
               - 'docs/**'
