@@ -45,7 +45,7 @@ as an integer, without floating-point conversion. The lower bound must precede t
 IR paths use the current v4 canonical string spelling, including uppercase initialism
 words such as `HTTP`. They do not adopt the dotted authority syntax of PackagePath.
 The schema includes that IR path grammar. The worked payloads pass the pinned v4 schema;
-the shared package reference also checks them with the TypeScript codec. No current IR
+the TypeScript and Rust package implementations also use their respective v4 codecs. No current IR
 schema or codec is changed here.
 
 Content paths are relative slash-separated lowercase alphanumeric/kebab components with
@@ -139,6 +139,7 @@ The [lock-core schema](schemas/lock-core.schema.json) captures the dependency gr
 for this example. It is **not an installable lock file**. It omits acquisition sources,
 registry metadata, trust evidence, release statements, status observations, snapshots,
 and the complete resolution-policy record. It cannot authorize installation or execution.
+The full user-facing lockfile remains named `morphir.lock`; `lock-core` names this draft projection only.
 
 `root` names a graph node. Each member of `nodes` has an exact release identity, the
 associated IR Package name, manifest and content digests, and its own `bindings` map.
@@ -163,6 +164,8 @@ It is not a dependency resolver or a public-specification compatibility checker.
 `mise run package:schema-check` validates the draft schemas and the worked manifests,
 lock-core, and IR document structures. `mise run package:check` runs the schema/digest case
 matrices and Library integrity cases through the shared TypeScript core in both transports.
+`mise run package:check:rust` runs the same cases through that core against the independent
+Rust implementation. Its adapter delegates package operations to the `morphir-package` library.
 
 The fixed digest expectations were cross-checked during the initial local prototype.
 That prototype's standalone runners were retired after the
@@ -174,6 +177,6 @@ Two transports of the TypeScript implementation count as one implementation.
 Full lock,
 registry-record and diagnostic schemas, deterministic resolver policy cases, public
 specification compatibility, authoring configuration, PURL mapping, WIT interfaces,
-additional package operations and independent implementations remain Stage 0 work. The bounded
+additional package operations and their interoperability evidence remain Stage 0 work. The bounded
 draft now has a versioned adapter/report contract, corpus content provenance and mandatory-case gates.
 Advanced reference encoding remains Stage 3 work.

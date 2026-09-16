@@ -174,7 +174,7 @@ description = "Run the Morphir Compatibility Kit against the pinned Rust binding
 # straight through to `mck run`.
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml",
+    "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "bun run tools/run-mck-rust.ts --kit spec/ir/mck --report .dev/out/mck/morphir-rust.json",
     # mck:check only proves the schema against the checked-in report.example.json;
     # this confirms the real report the driver just wrote conforms to it too,
@@ -210,6 +210,14 @@ run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --kit spec/package/mck --report .dev/out/mck/package-typescript.json",
     "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --kit spec/package/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --adapter-arg --suite --adapter-arg package --report .dev/out/mck/package-typescript-adapter.json",
+]
+
+[tasks."package:check:rust"]
+description = "Run draft MCK package cases against the independent Rust implementation through the shared driver"
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
+    "bun run tools/run-mck-rust.ts --suite package --kit spec/package/mck --report .dev/out/mck/package-rust.json",
 ]
 
 [tasks."hooks:install"]
