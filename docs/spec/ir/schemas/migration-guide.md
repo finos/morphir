@@ -17,6 +17,7 @@ This guide provides detailed instructions for converting Morphir IR between diff
   - [V1 → V2](#v1--v2)
   - [V2 → V3](#v2--v3)
   - [V3 → V4](#v3--v4)
+- [Files written by CLIs before 0.4.0-alpha.7](#files-written-by-clis-before-040-alpha7)
 - [Backward Migration (Downgrading)](#backward-migration-downgrading)
   - [V4 → V3](#v4--v3)
   - [V3 → V2](#v3--v2)
@@ -483,6 +484,83 @@ def migrate_fqname_to_string(fqname_array):
 3. **Type inference**: V4's `inferredType` in ValueAttributes is typically populated by a type checker, not available from V3
 
 **Recommendation**: Preserve V3 attributes in V4's `extensions` field for full round-trip compatibility.
+
+---
+
+## Files written by CLIs before 0.4.0-alpha.7
+
+Before the v4 vocabulary settled, the Rust CLI and some published examples wrote a handful of v4 member
+names and shapes that differ from the ones the v4 schema and the Morphir Compatibility Kit (the
+[MCK](https://github.com/finos/morphir/tree/main/spec/ir/mck)) pin as canonical. Release 0.4.0-alpha.7
+decodes files carrying those older spellings, but reports a `legacy_spelling` warning at each place it
+does so. Release 0.4.0-alpha.8 closes that window: the same spellings are then refused as unknown members.
+
+A `legacy_spelling` warning is a normal decode-time diagnostic, the same kind a CLI or binding reports for
+any other v4 finding, pointed at the member's JSON pointer cursor. It means the member decoded successfully
+under its old name, not that anything is wrong with the value — but the file should be rewritten (see
+below) before the window closes. The MCK's `accepted warning=legacy_spelling` fences in `spec/ir/mck` are
+the authoritative list of which spellings this covers; the tables here mirror them.
+
+### Renamed members
+
+| Node | Old spelling | Canonical spelling |
+| ---- | ------------ | ------------------- |
+| any node | `attrs` | `attributes` |
+| `Function` | `argumentType`, `arg` | `parameterType` |
+| `Function` | `result` | `returnType` |
+| `IfThenElse` | `thenBranch` | `then` |
+| `IfThenElse` | `elseBranch` | `else` |
+| `Field` | `subject` | `target` |
+| `Field` | `fieldName` | `name` |
+| `LetDefinition` | `valueName` | `name` |
+| `LetDefinition` | `valueDefinition` | `definition` |
+| `LetDefinition` | `inValue` | `in` |
+| `ExternalBody` | `externalName`, `targetPlatform` (single pair) | `externals` (list) |
+
+### Structural changes, accepted with a warning
+
+- A `Record` type or value that carries its field map directly under the wrapper, instead of under a
+  `fields` member, decodes with a warning.
+- A definition nested under a `value` member beside its `Public`/`Private` access tag, instead of
+  flattened onto the wrapper, decodes with a warning.
+- A `{ "doc", "value" }` wrapper, instead of a flattened `doc` member beside the variant it documents,
+  decodes with a warning.
+
+### Refused outright, no window
+
+Some pre-decision shapes are not old spellings of a current member; they no longer exist in v4 at all, so
+there is nothing to accept even temporarily:
+
+- The `Native` and `External` value expressions. In v4 these are definition bodies (`NativeBody`,
+  `ExternalBody`), not value expressions.
+- A Classic (v3) tagged array nested inside a version-4 document.
+
+### Rewriting a file before the window closes
+
+`morphir migrate` reads a v4 file — accepting any legacy spellings above, with their warnings — and writes
+it back out canonically:
+
+```bash
+morphir migrate <path/to/file> -o <path/to/file> --target-version v4
+```
+
+Run this on any file written by a pre-0.4.0-alpha.7 CLI before upgrading to 0.4.0-alpha.8, so it decodes
+without warnings and keeps decoding after the window closes.
+
+This vocabulary and its one-release window are decided in the morphir-ir knowledge base: decision
+[0004](../../../../kb/bundles/morphir/morphir-ir/decisions/0004-record-fields-are-spelled-under-a-fields-member.md)
+(record fields under `fields`), decision
+[0006](../../../../kb/bundles/morphir/morphir-ir/decisions/0006-node-member-names-follow-the-schema-with-a-one-release-window.md)
+(the member names and the window itself), decision
+[0007](../../../../kb/bundles/morphir/morphir-ir/decisions/0007-parameters-are-declared-and-arguments-are-applied.md)
+(`parameterType`/`returnType`), decision
+[0008](../../../../kb/bundles/morphir/morphir-ir/decisions/0008-hole-is-an-expression-native-and-external-are-definition-bodies.md)
+(`Native`/`External` refused, `ExternalBody` as a list), and decision
+[0010](../../../../kb/bundles/morphir/morphir-ir/decisions/0010-documentation-is-a-flattened-doc-member.md)
+(flattened `doc`), among the wider run of v4 vocabulary decisions from
+[0004](../../../../kb/bundles/morphir/morphir-ir/decisions/0004-record-fields-are-spelled-under-a-fields-member.md)
+to
+[0015](../../../../kb/bundles/morphir/morphir-ir/decisions/0015-dependency-directories-are-nested-with-a-version-segment.md).
 
 ---
 
