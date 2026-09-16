@@ -90,6 +90,8 @@ A table may be shown to people in three other styles, none of which is accepted 
 | Elm constraints | `3.0.0 <= v < 3.1.0` and `4.0.0 <= v < 4.1.0` |
 | Prose | `3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0` |
 
+This page defines the conformance target. A reader or writer does not conform merely because its repository publishes this specification. Implementations adopt the contract when their normalization, compatibility checks, diagnostics, ordering behavior, and replay strategy satisfy these requirements.
+
 After successful recognition and normalization, an implementation MUST distinguish these compatibility results:
 
 - `supported` means the normalized release lies inside the table.

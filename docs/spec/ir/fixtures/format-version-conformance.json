@@ -38,7 +38,7 @@
       "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
     },
     {
-      "name": "v3 later exact revision",
+      "name": "v3 later minor",
       "value": "3.1.0",
       "normalization": { "normalized": "3.1.0", "canonical": "3.1.0" },
       "compatibility": "unsupported_format_version_minor",
