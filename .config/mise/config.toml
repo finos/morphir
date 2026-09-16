@@ -174,7 +174,7 @@ description = "Run the Morphir Compatibility Kit against the pinned Rust binding
 # straight through to `mck run`.
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "cargo build -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml",
+    "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml",
     "bun run tools/run-mck-rust.ts --kit spec/ir/mck --report .dev/out/mck/morphir-rust.json",
     "bun run tools/check-mck-report.ts .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json",
 ]

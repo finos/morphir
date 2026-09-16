@@ -1149,16 +1149,6 @@ fn prune_empty_parents(path: &Path, stop: &Path) -> Result<(), CliError> {
     Ok(())
 }
 
-/// Recursively copy `source` to `destination`, appending the path of every
-/// file actually copied — relative to `target` (`relative` is the entry's own
-/// relative path, the same root `flatten_value_files`/`collect_files` walk
-/// from) — to `copied_files` as it goes.
-///
-/// `copied_files` grows incrementally, file by file, rather than only being
-/// filled in once the whole copy has succeeded, so a caller whose call fails
-/// partway through still has an accurate record of exactly what this call
-/// wrote before the failure — the list `roll_back_partial_copy` needs to
-/// clean up after it.
 /// A path relative to the install target, spelled the way the ledger spells it.
 ///
 /// Ledger entries and `record.value` are forward-slash relative paths, and they
@@ -1176,6 +1166,16 @@ fn ledger_path(relative: &Path) -> String {
         .join("/")
 }
 
+/// Recursively copy `source` to `destination`, appending the path of every
+/// file actually copied — relative to `target` (`relative` is the entry's own
+/// relative path, the same root `flatten_value_files`/`collect_files` walk
+/// from) — to `copied_files` as it goes.
+///
+/// `copied_files` grows incrementally, file by file, rather than only being
+/// filled in once the whole copy has succeeded, so a caller whose call fails
+/// partway through still has an accurate record of exactly what this call
+/// wrote before the failure — the list `roll_back_partial_copy` needs to
+/// clean up after it.
 fn copy_dir(
     source: &Path,
     destination: &Path,
