@@ -134,8 +134,11 @@ unsupported = "warn-and-skip"
         "representation=idl",
         "--option",
         "projection=protocol-public",
+        // The keys are FQNames, matched by the name they spell. The fixture
+        // spells the SDK package canonically as `morphir/SDK`; `morphir/sdk`
+        // would name a different package and override nothing.
         "--option",
-        r#"type_mappings={"morphir/sdk:string#string":{"type":"bytes"},"morphir/sdk:basics#int":{"type":"double"}}"#,
+        r#"type_mappings={"morphir/SDK:string#string":{"type":"bytes"},"morphir/SDK:basics#int":{"type":"double"}}"#,
         "--json",
     ]);
 
@@ -327,7 +330,7 @@ fn generate_avro_partial_output_reports_warnings_and_validated_paths() {
         "--option",
         "unsupported=warn-and-skip",
         "--option",
-        r#"type_mappings={"morphir/sdk:string#string":{"type":"string"}}"#,
+        r#"type_mappings={"morphir/SDK:string#string":{"type":"string"}}"#,
         "--json",
     ]);
 
