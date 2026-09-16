@@ -279,10 +279,11 @@
       { "name": "contained interval merges", "input": "[3.0.0,4.0.0),[3.1.0,3.2.0)", "canonical": "[3.0.0,4.0.0)" },
       { "name": "exact next to range merges", "input": "[4.0.0,4.0.2),[4.0.2]", "canonical": "[4.0.0,4.0.3)" },
       { "name": "upper at component maximum keeps its bracket", "input": "[4.0.0,4.0.4294967295]", "canonical": "[4.0.0,4.0.4294967295]" },
-      { "name": "lower at component maximum keeps its bracket", "input": "(4.0.4294967295,4.1.0)", "canonical": "(4.0.4294967295,4.1.0)" },
+      { "name": "lower at component maximum keeps its bracket", "input": "(4.0.4294967295,4.2.0)", "canonical": "(4.0.4294967295,4.2.0)" },
       { "name": "inverted interval is invalid", "input": "[4.1.0,4.0.0)", "invalid": true },
       { "name": "empty half-open interval is invalid", "input": "[4.0.0,4.0.0)", "invalid": true },
       { "name": "empty exclusive interval is invalid", "input": "(4.0.0,4.0.1)", "invalid": true },
+      { "name": "empty interval above the patch maximum is invalid", "input": "(4.0.4294967295,4.1.0)", "invalid": true },
       { "name": "both bounds absent is invalid", "input": "(,)", "invalid": true },
       { "name": "integer alias is invalid", "input": "[4,4.1.0)", "invalid": true },
       { "name": "prerelease suffix is invalid", "input": "[4.0.0-beta,4.1.0)", "invalid": true },
@@ -314,7 +315,7 @@
       { "table": "[4.0.0,)", "cargo": [">=4.0.0"], "elm": null, "prose": "4.0.0 and later" },
       { "table": "(,4.1.0)", "cargo": ["<4.1.0"], "elm": null, "prose": "earlier than 4.1.0" },
       { "table": "[4.0.0,4.0.4294967295]", "cargo": [">=4.0.0, <=4.0.4294967295"], "elm": null, "prose": "4.0.0 through 4.0.4294967295" },
-      { "table": "(4.0.4294967295,4.1.0)", "cargo": [">4.0.4294967295, <4.1.0"], "elm": null, "prose": "after 4.0.4294967295 up to but not including 4.1.0" }
+      { "table": "(4.0.4294967295,4.2.0)", "cargo": [">4.0.4294967295, <4.2.0"], "elm": null, "prose": "after 4.0.4294967295 up to but not including 4.2.0" }
     ]
   },
   "headerOrderCases": [

@@ -102,6 +102,7 @@ jobs:
               # in the docs job, and the mise tasks define what that job runs
               - 'tests/bdd/fixtures/**'
               - 'tools/gen-naming-corpus.ts'
+              - 'tools/check-vendored-fixture.ts'
               - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
@@ -474,6 +475,9 @@ jobs:
 
       - name: Check the naming conformance corpus is current
         run: mise run fixtures:naming-corpus-check
+
+      - name: Check the format-version conformance corpus and its vendored copy agree
+        run: mise run fixtures:format-version-corpus-check
 
       - name: Check the Morphir Compatibility Kit
         run: mise run mck:check

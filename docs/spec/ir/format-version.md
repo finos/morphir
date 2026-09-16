@@ -61,13 +61,13 @@ open     = "[" / "("
 close    = "]" / ")"
 ```
 
-`[` and `]` are inclusive; `(` and `)` are exclusive. `[a]` means exactly `a`. A missing lower bound means no lower bound; a missing upper bound means no upper bound; at least one bound is required. Whitespace after a comma and around a bound is permitted on input and dropped on normalization. A bound MUST be a release string; the integer alias is not permitted inside a table. An interval whose lower bound is above its upper bound, or which contains no release, is invalid.
+`[` and `]` are inclusive; `(` and `)` are exclusive. `[a]` means exactly `a`. A missing lower bound means no lower bound; a missing upper bound means no upper bound; at least one bound is required. Whitespace after a comma and around a bound is permitted on input and dropped on normalization. A bound MUST be a release string; the integer alias is not permitted inside a table. An interval whose lower bound is above its upper bound, or which contains no release, is invalid. An interval is empty when no release lies inside it: the smallest release the lower bound admits (the bound itself when inclusive, otherwise its successor, carrying into the minor and then the major when a component is at its maximum) must lie inside the upper bound.
 
 A release is supported when it lies inside any interval of the table.
 
 A table has one canonical spelling, which writers, adapters and reports MUST emit:
 
-1. Every interval is rewritten as a half-open `[a,b)` interval wherever a finite bound can be advanced: an inclusive upper `b]` becomes `next(b))`, an exclusive lower `(a` becomes `[next(a)`, and `[a]` becomes `[a,next(a))`, where `next(x.y.z)` is `x.y.(z+1)`. A component at `4294967295` cannot be advanced and keeps its original bracket. An absent bound takes a round bracket.
+1. Every interval is rewritten as a half-open `[a,b)` interval wherever a finite bound can be advanced: an inclusive upper `b]` becomes `next(b))`, an exclusive lower `(a` becomes `[next(a)`, and `[a]` becomes `[a,next(a))`, where `next(x.y.z)` is `x.y.(z+1)`. A patch component at `4294967295` cannot be advanced and keeps its original bracket. An absent bound takes a round bracket.
 2. Intervals are sorted by lower bound, an absent lower bound first.
 3. Overlapping or adjacent intervals are merged.
 4. No whitespace.
@@ -96,7 +96,7 @@ After successful recognition and normalization, an implementation MUST distingui
 
 - `supported` means the normalized release lies inside the table.
 - `unsupported_format_version_major` means no interval of the table contains any release of the normalized release's major family.
-- `unsupported_format_version_minor` means some interval contains a release of that major family, but none contains the normalized release. Under the patch promise the mismatching component is always the minor.
+- `unsupported_format_version_minor` means some interval contains a release of that major family, but none contains the normalized release. For the reference table, and for any table whose ceilings sit on minor boundaries, the mismatching component is the minor.
 
 For the reference table, `"4.0.1"` is supported, `"4.1.0"` produces `unsupported_format_version_minor`, and `"5.0.0"` produces `unsupported_format_version_major`.
 
@@ -108,7 +108,7 @@ A reader MUST complete format-version recognition and compatibility checking bef
 
 The v3-and-later schemas enforce the permitted scalar types, lexical grammar, and the schema's own major family. Schema validation is only a bootstrap check. It does not establish component bounds or implementation support.
 
-Semantic normalization MUST enforce the unsigned 32-bit range for every component. This is why a lexically valid string such as `"3.4294967296.0"` can match the v3 schema but must fail normalization with `format_version_out_of_range`. Exact-release compatibility is also a semantic check against the implementation's support list.
+Semantic normalization MUST enforce the unsigned 32-bit range for every component. This is why a lexically valid string such as `"3.4294967296.0"` can match the v3 schema but must fail normalization with `format_version_out_of_range`. Support-table membership is also a semantic check, made after normalization.
 
 ## Root member order
 
