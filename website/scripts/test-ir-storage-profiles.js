@@ -123,7 +123,11 @@ function compareRelease(a, b) {
 	for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
 	return 0;
 }
+// The smallest release the domain has: release strings are valid only for major
+// 3 and later, so an absent lower bound reaches down to here and no further.
+const DOMAIN_FLOOR = [3, 0, 0];
 function contains(interval, r) {
+	if (compareRelease(r, DOMAIN_FLOOR) < 0) return false;
 	if (interval.lower !== null) {
 		const c = compareRelease(interval.lower, r);
 		if (c > 0 || (c === 0 && !interval.lowerInclusive)) return false;
@@ -151,13 +155,17 @@ function carryingSuccessor([major, minor, patch]) {
 // begins, so it holds no release of major 4.
 function touchesMajor(interval, major) {
 	const base = [major, 0, 0];
+	// An absent lower bound is the domain floor, not zero, so a table that
+	// reaches down holds no release of a major below 3.
+	const lower = interval.lower === null ? DOMAIN_FLOOR : interval.lower;
+	const lowerInclusive = interval.lower === null ? true : interval.lowerInclusive;
 	let candidate;
-	if (interval.lower === null || compareRelease(interval.lower, base) < 0) {
+	if (compareRelease(lower, base) < 0) {
 		candidate = base;
-	} else if (interval.lowerInclusive) {
-		candidate = interval.lower;
+	} else if (lowerInclusive) {
+		candidate = lower;
 	} else {
-		candidate = carryingSuccessor(interval.lower);
+		candidate = carryingSuccessor(lower);
 		if (candidate === null) return false;
 	}
 	if (candidate[0] !== major) return false;
