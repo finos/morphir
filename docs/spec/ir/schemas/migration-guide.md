@@ -544,6 +544,11 @@ it back out canonically:
 morphir migrate <path/to/file> -o <path/to/file> --target-version v4
 ```
 
+Writing to the same path as the input is safe: `morphir migrate` (`crates/morphir/src/commands/migrate.rs`)
+never opens the output path directly. It encodes into a temporary file created beside it and only renames
+that temporary file over the destination once encoding has finished, so the original content at the input
+path is never truncated while it is still being read.
+
 Run this on any file written by a pre-0.4.0-alpha.7 CLI before upgrading to 0.4.0-alpha.8, so it decodes
 without warnings and keeps decoding after the window closes.
 
@@ -658,10 +663,10 @@ V4 introduces new value expressions not present in V3. These must be transformed
 V4 allows inline documentation which V3 doesn't support:
 
 ```python
-def remove_doc_wrappers(type_or_value):
-    """Remove V4 doc wrappers from types/values."""
+def remove_doc_fields(type_or_value):
+    """Remove the flattened V4 `doc` member from types/values (decision 0010)."""
     if isinstance(type_or_value, dict) and "doc" in type_or_value:
-        return type_or_value["value"]
+        return {key: value for key, value in type_or_value.items() if key != "doc"}
     return type_or_value
 ```
 

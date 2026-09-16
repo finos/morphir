@@ -47,7 +47,7 @@ if (!existsSync(adapter)) {
 // also passes `--adapter` is asking for something it cannot honour: the driver
 // would see the flag twice. Say so rather than pass a contradiction along.
 const forwarded = process.argv.slice(2);
-if (forwarded.includes("--adapter")) {
+if (forwarded.includes("--adapter") || forwarded.some((argument) => argument.startsWith("--adapter="))) {
 	console.error(
 		"error: this wrapper supplies --adapter (it resolves the binary's name per platform); " +
 			"run the driver directly to point it at a different adapter",

@@ -75,6 +75,20 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-rust-ci/**'
               - '.github/actions/cache-scala-native-image/**'
+              # morphir-cli-test runs the kit against the Rust binding, so its fences are an input
+              - 'spec/ir/mck/**'
+              # the kit driver and the Rust binding's adapter live here
+              - 'ecosystem/morphir-typescript'
+              # adjudicates the Rust binding's MCK report against its allowed-failing list
+              - 'tools/check-mck-report.ts'
+              # resolves and runs the Rust binding's MCK adapter
+              - 'tools/run-mck-rust.ts'
+              # validates the output of `mise run migrate:validate` against the v4 schema
+              - 'website/scripts/validate-migrated-ir.js'
+              # fixtures `mise run migrate:validate` migrates and validates
+              - 'website/static/ir/examples/**'
+              # the v4 schema `mise run migrate:validate` validates migrated IR against
+              - 'website/static/schemas/morphir-ir-v4.json'
             docs:
               - 'website/**'
               - 'docs/**'
