@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **IR format-version support tables**: format-version support tables are intervals (`[3.0.0,3.1.0),[4.0.0,4.1.0)`); a later patch of a supported minor is read, a later minor is refused with `unsupported_format_version_minor`, which replaces `unsupported_format_version_revision` (decision 0016)
 - **IR v4 legacy spellings**: the member names and shapes the Rust CLI wrote before the v4 vocabulary settled (`attrs`, `argumentType`/`arg`, `result`, `thenBranch`/`elseBranch`, `subject`/`fieldName`, `valueName`/`valueDefinition`/`inValue`, the single-target `ExternalBody`, and a few pre-decision structural shapes) decode with a `legacy_spelling` warning starting in 0.4.0-alpha.7 and are refused starting in 0.4.0-alpha.8. See [Files written by CLIs before 0.4.0-alpha.7](docs/spec/ir/schemas/migration-guide.md#files-written-by-clis-before-040-alpha7) for the full table and the `morphir migrate` command that rewrites affected files.
 
 ### Fixed

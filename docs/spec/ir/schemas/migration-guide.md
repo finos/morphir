@@ -18,6 +18,7 @@ This guide provides detailed instructions for converting Morphir IR between diff
   - [V2 → V3](#v2--v3)
   - [V3 → V4](#v3--v4)
   - [Files written by CLIs before 0.4.0-alpha.7](#files-written-by-clis-before-040-alpha7)
+  - [Format-version support tables and the renamed diagnostic](#format-version-support-tables-and-the-renamed-diagnostic)
 - [Backward Migration (Downgrading)](#backward-migration-downgrading)
   - [V4 → V3](#v4--v3)
   - [V3 → V2](#v3--v2)
@@ -556,6 +557,21 @@ This vocabulary and its one-release window are decided in decisions 0004 to 0015
 fields under `fields`), decision 0006 (the member names and the window itself), decision 0007
 (`parameterType`/`returnType`), decision 0008 (`Native`/`External` refused, `ExternalBody` as a list),
 and decision 0010 (flattened `doc`).
+
+---
+
+### Format-version support tables and the renamed diagnostic
+
+A reader no longer lists the exact releases it accepts. It declares a **support table**: a union of intervals
+over release strings in Maven-style notation, such as the reference table `[3.0.0,3.1.0),[4.0.0,4.1.0)`. A patch
+revision changes nothing a reader can observe, so a `4.0.0` reader now reads every `4.0.x` document, including
+`4.0.1`, with no change to the file. A minor revision may change what a reader accepts, so `4.1.0` is still
+refused.
+
+The diagnostic for that refusal is renamed: `unsupported_format_version_revision` becomes
+`unsupported_format_version_minor`, pairing with `unsupported_format_version_major`. The old code is pre-release
+and has no alias, so any tooling or test that matched on it by string must be updated. Nothing in a migrated IR
+file changes; only the reader's acceptance rule and the diagnostic code do. This is decided in decision 0016.
 
 ---
 

@@ -5,7 +5,7 @@
 // importing it here for `malformedRecordReason` does not attempt to read a
 // report or call `process.exit`.
 import { expect, test } from "bun:test";
-import { malformedRecordReason } from "./check-mck-report";
+import { malformedFormatVersionsReason, malformedRecordReason } from "./check-mck-report";
 
 const valid = {
 	caseId: "definitions-0001",
@@ -62,4 +62,131 @@ test("rejects a record that is not an object", () => {
 	expect(malformedRecordReason(null, 0)).toMatch(/is not an object/);
 	expect(malformedRecordReason("pass", 0)).toMatch(/is not an object/);
 	expect(malformedRecordReason(["pass"], 0)).toMatch(/is not an object/);
+});
+
+/**
+ * The report's top-level support table, `docs/spec/ir/format-version.md`,
+ * Recognition and compatibility. The checker takes the table's canonical
+ * spelling — in shape and in structure — and the literal `unknown` a driver
+ * writes when the adapter never answered capabilities.
+ */
+const report = {
+	contractVersion: 1,
+	binding: "morphir-typescript",
+	language: "typescript",
+	formatVersions: "[3.0.0,3.1.0),[4.0.0,4.1.0)",
+	driverVersion: "0.0.1",
+	kitVersion: "4a972bc3",
+	startedAt: "2026-09-14T19:27:41.478Z",
+	records: [valid],
+};
+
+test("accepts a canonical multi-interval support table", () => {
+	expect(malformedFormatVersionsReason(report.formatVersions)).toBeNull();
+});
+
+test("names the field when a report carries no formatVersions", () => {
+	const { formatVersions: _formatVersions, ...withoutTable } = report;
+	expect(
+		malformedFormatVersionsReason(
+			(withoutTable as { formatVersions?: unknown }).formatVersions,
+		),
+	).toMatch(/formatVersions/);
+});
+
+test("rejects an inclusive upper bound that could be advanced", () => {
+	expect(malformedFormatVersionsReason("[4.0.0,4.1.0]")).toMatch(
+		/inclusive upper bound/,
+	);
+});
+
+test("rejects an exclusive lower bound that could be advanced", () => {
+	expect(malformedFormatVersionsReason("(4.0.0,4.1.0)")).toMatch(
+		/exclusive lower bound/,
+	);
+});
+
+test("accepts the two bracket shapes that cannot be advanced", () => {
+	expect(malformedFormatVersionsReason("[4.0.0,4.0.4294967295]")).toBeNull();
+	expect(malformedFormatVersionsReason("(4.0.4294967295,4.2.0)")).toBeNull();
+});
+
+test("accepts an absent bound without mistaking it for an advanceable one", () => {
+	expect(malformedFormatVersionsReason("[4.0.0,)")).toBeNull();
+	expect(malformedFormatVersionsReason("(,4.1.0)")).toBeNull();
+});
+
+test("does not misfire on a half-open interval beside a closed one", () => {
+	// A single bracket scan that let a match run past `)` would read this as one
+	// interval from 3.0.0 and blame the wrong bound.
+	expect(malformedFormatVersionsReason("[3.0.0,3.1.0),[4.0.0,4.1.0]")).toMatch(
+		/inclusive upper bound/,
+	);
+	expect(malformedFormatVersionsReason("[3.0.0,3.1.0),(4.0.0,4.1.0)")).toMatch(
+		/exclusive lower bound/,
+	);
+	expect(
+		malformedFormatVersionsReason("[3.0.0,3.1.0),[4.0.0,4.0.4294967295]"),
+	).toBeNull();
+});
+
+test("rejects a table that is not in interval notation at all", () => {
+	expect(malformedFormatVersionsReason("4.0.0")).toMatch(/canonical support table/);
+	expect(malformedFormatVersionsReason("")).toMatch(/canonical support table/);
+	expect(malformedFormatVersionsReason(4)).toMatch(/must be a string/);
+});
+
+test("rejects a release component above the unsigned 32-bit maximum", () => {
+	// The corpus calls this table invalid ("component above range is invalid").
+	expect(malformedFormatVersionsReason("[4.0.0,4.4294967296.0)")).toMatch(
+		/out of range/,
+	);
+	expect(malformedFormatVersionsReason("[4294967296.0.0,)")).toMatch(/out of range/);
+	// A longer patch is not the component maximum wearing a prefix.
+	expect(malformedFormatVersionsReason("[4.0.0,4.0.14294967295]")).toMatch(
+		/out of range/,
+	);
+	expect(malformedFormatVersionsReason("[4.0.0,4.4294967295.0)")).toBeNull();
+});
+
+test("rejects an interval that contains no release", () => {
+	expect(malformedFormatVersionsReason("[4.1.0,4.0.0)")).toMatch(/contains no release/);
+	expect(malformedFormatVersionsReason("[4.0.0,4.0.0)")).toMatch(/contains no release/);
+});
+
+test("rejects a bound below the major family the grammar starts at", () => {
+	expect(malformedFormatVersionsReason("[2.0.0,3.0.0)")).toMatch(/below 3\.0\.0/);
+});
+
+test("rejects intervals that are not ascending by lower bound", () => {
+	expect(malformedFormatVersionsReason("[4.0.0,4.1.0),[3.0.0,3.1.0)")).toMatch(
+		/not sorted by lower bound/,
+	);
+});
+
+test("rejects intervals that overlap", () => {
+	expect(malformedFormatVersionsReason("[3.0.0,3.2.0),[3.1.0,3.3.0)")).toMatch(/overlap/);
+});
+
+test("rejects intervals that are adjacent and should have merged", () => {
+	expect(malformedFormatVersionsReason("[3.0.0,3.1.0),[3.1.0,3.2.0)")).toMatch(
+		/adjacent/,
+	);
+	// The carrying successor of an inclusive upper at the patch maximum is the
+	// next minor, so these two spell `[4.0.0,4.2.0)` the long way round.
+	expect(
+		malformedFormatVersionsReason("[4.0.0,4.0.4294967295],[4.1.0,4.2.0)"),
+	).toMatch(/adjacent/);
+});
+
+test("accepts the structurally canonical tables", () => {
+	expect(malformedFormatVersionsReason("[3.0.0,3.1.0),[4.0.0,4.1.0)")).toBeNull();
+	expect(malformedFormatVersionsReason("[4.0.0,)")).toBeNull();
+	expect(malformedFormatVersionsReason("(,4.1.0)")).toBeNull();
+	expect(malformedFormatVersionsReason("(4.0.4294967295,4.2.0)")).toBeNull();
+	expect(malformedFormatVersionsReason("[4.0.0,4.0.4294967295]")).toBeNull();
+});
+
+test("accepts the literal unknown a capabilities-less run reports", () => {
+	expect(malformedFormatVersionsReason("unknown")).toBeNull();
 });

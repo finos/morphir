@@ -246,6 +246,10 @@ run = "bun run tools/gen-naming-corpus.ts"
 description = "Verify the name-encoding conformance corpus and its vendored copy are up to date"
 run = "bun run tools/gen-naming-corpus.ts --check"
 
+[tasks."fixtures:format-version-corpus-check"]
+description = "Verify the format-version conformance corpus and its copy vendored into morphir-rust are byte-identical"
+run = "bun run tools/check-vendored-fixture.ts docs/spec/ir/fixtures/format-version-conformance.json ecosystem/morphir-rust/tests/fixtures/format-version-conformance.json"
+
 [tasks."tools:install"]
 description = "Install dependencies for the Bun specification tooling"
 run = "bun install"
@@ -255,6 +259,11 @@ dir = "tools"
 description = "Type check the Bun specification tooling"
 run = "bun run typecheck"
 dir = "tools"
+depends = ["tools:install"]
+
+[tasks."tools:test"]
+description = "Run the Bun specification tooling tests"
+run = "bun test tools"
 depends = ["tools:install"]
 
 [tasks."vendor:morphir-web"]
@@ -281,10 +290,12 @@ depends = [
     "examples:validate",
     "fixtures:validate",
     "fixtures:naming-corpus-check",
+    "fixtures:format-version-corpus-check",
     "schema:validate",
     "mck:check",
     "mck:schema-check",
     "package:schema-check",
+    "tools:test",
 ]
 
 # ===== Testing Tasks =====
@@ -333,6 +344,12 @@ description = "Start website development server"
 run = "npm run start"
 dir = "website"
 depends = ["website:build-schemas", "website:build-worker"]
+
+[tasks."website:test-ir-storage-profiles"]
+description = "Run the website's format-version and storage-profile conformance runner"
+depends = ["website:install"]
+dir = "website"
+run = "npm run test:ir-storage-profiles"
 
 [tasks."website:typecheck"]
 description = "Run TypeScript type checking on website"

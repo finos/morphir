@@ -80,7 +80,7 @@ documentation defect, listed under [Live contradictions](#live-contradictions).
 
 | Rule | Settled by |
 | ---- | ---------- |
-| `formatVersion`: integer `4` is canonical for 4.0.0; `"4.minor.patch"` strings name later revisions; no prerelease or build metadata; readers reject unsupported exact releases before semantic decoding | `docs/spec/ir/format-version.md`, both schemas, bead `morphir-l2p9` |
+| `formatVersion`: integer `4` is canonical for 4.0.0; `"4.minor.patch"` strings name later revisions; no prerelease or build metadata; a reader declares what it reads as an interval support table, the reference table being `[3.0.0,3.1.0),[4.0.0,4.1.0)`, and rejects a release outside it before semantic decoding | [Decision 0016](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md), `docs/spec/ir/format-version.md`, both schemas, bead `morphir-l2p9` |
 | Names: an initialism is an uppercase segment (`value-in-USD`); readers also accept the doubled-hyphen style and the legacy word array; document-tree filenames are an escape of the name (`value-in-_usd`) | [Decision 0001](/decisions/0001-name-canonicalization-and-initialism-encoding.md), [Decision 0002](/decisions/0002-both-name-encodings-behind-one-switch.md), both schemas, `docs/spec/draft/names.md`, the Rust naming module, `docs/spec/ir/fixtures/naming-conformance.json` |
 | A bare array in type position is a Tuple. A parameterized reference always carries the `Reference` wrapper: `{"Reference": ["morphir/SDK:list#list", "a"]}` | `TupleType` and `ReferenceType` in the schema, `document-tree-files.md`, bead `morphir-j442` (closed 2026-08-30) |
 | Access on a definition may be flattened: `{"access": "Public", "TypeAliasDefinition": {...}}` validates alongside the tag form `{"Public": {...}}` and the legacy `{access, value}` form | `AccessControlled` in the schema (third `anyOf` arm), bead `morphir-j442` |
@@ -158,13 +158,13 @@ and the outcomes are Decision Records 0004 to 0014 in [decisions](/decisions/ind
 one-release window (0006), parameters versus arguments (0007), Hole as an expression with native and external
 operations as definition bodies (0008), bare arrays as lists and bare scalars as literals (0009), a flattened `doc`
 member (0010), the SDK package as `morphir/SDK` (0011), one legacy name grammar and one FileStem (0012),
-`DocumentLiteral` in 4.0.0 (0013), and the scope of the remaining design-only features (0014). Items 1 to 5 and 7
-below are therefore decided; the list is kept as the record of what was asked. Item 6 (the exact-release table)
-stays open. The kit flips, schema, example, and prose changes that implement the records
+`DocumentLiteral` in 4.0.0 (0013), and the scope of the remaining design-only features (0014). Decision 0016 then
+took the support table on 2026-09-16. Items 1 to 7 below are therefore decided; the list is kept as the record of
+what was asked. The kit flips, schema, example, and prose changes that implement the records
 landed on 2026-09-05 (finos/morphir#802, finos/morphir-typescript#3): the kit carries 74 cases with the records' spellings (`accepted warning=legacy_spelling`
 marks the one-release window), the reference codec passes every JSON fence, both schemas and every accepted
-fence agree (`mise run mck:schema-check`), and the examples and pages are rewritten. Item 6 is the only open
-spelling decision. Item 8, where the naming codec model lives, stays open under decision 0003.
+fence agree (`mise run mck:schema-check`), and the examples and pages are rewritten. Item 8, where the naming codec
+model lives, stays open under decision 0003.
 
 These cannot be closed by editing prose. Each needs a maintainer decision, and each has a bead.
 
@@ -182,10 +182,9 @@ These cannot be closed by editing prose. Each needs a maintainer decision, and e
 5. **Scope of design-only features for 4.0.0.** `DocumentLiteral`, layered decorations under `deco/`, `$meta`,
    `$ref`, and `session.jsonl` exist only in the design documents. Each either enters the schema or is marked as
    post-4.0.
-6. **Exact-release support table.** The format-version contract's reference table is `3.0.0` and `4.0.0`, and
-   distributions-0001 pins that a reader rejects `"4.1.0"` with `unsupported_format_version_revision`. What remains
-   open, in bead `morphir-ir-v4-stabilize.8`, is where each implementation publishes its own table and what changes
-   when a `4.1.0` revision is actually specified.
+6. **Support-table grammar.** Decided in decision 0016: a support table is a union of intervals with one
+   canonical spelling, a patch changes nothing a reader can observe, and the reference table is
+   `[3.0.0,3.1.0),[4.0.0,4.1.0)`; see [Format-version support and revisions](/format-version-support.md).
 7. **Legacy-name compatibility boundary.** GitHub issue #793: migrate the books fixture to `product-ID`, or define
    a documented compatibility rule without weakening the canonical parser.
 8. **Naming codec home.** [Decision 0003](/decisions/0003-the-naming-codec-is-modelled-in-morphir.md) is still

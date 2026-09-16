@@ -1,9 +1,6 @@
 {
   "contractVersion": 1,
-  "supportedVersions": [
-    "3.0.0",
-    "4.0.0"
-  ],
+  "supportTable": "[3.0.0,3.1.0),[4.0.0,4.1.0)",
   "scalarCases": [
     {
       "name": "historical v1 integer",
@@ -34,10 +31,17 @@
       "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
     },
     {
-      "name": "v3 later exact revision",
+      "name": "v3 later patch",
+      "value": "3.0.1",
+      "normalization": { "normalized": "3.0.1", "canonical": "3.0.1" },
+      "compatibility": "supported",
+      "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
+    },
+    {
+      "name": "v3 later minor",
       "value": "3.1.0",
       "normalization": { "normalized": "3.1.0", "canonical": "3.1.0" },
-      "compatibility": "unsupported_format_version_revision",
+      "compatibility": "unsupported_format_version_minor",
       "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
     },
     {
@@ -55,10 +59,17 @@
       "schema": { "v1": false, "v2": false, "v3": false, "v4": true }
     },
     {
-      "name": "v4 later exact revision",
+      "name": "v4 later patch",
       "value": "4.0.1",
       "normalization": { "normalized": "4.0.1", "canonical": "4.0.1" },
-      "compatibility": "unsupported_format_version_revision",
+      "compatibility": "supported",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": true }
+    },
+    {
+      "name": "v4 later minor",
+      "value": "4.1.0",
+      "normalization": { "normalized": "4.1.0", "canonical": "4.1.0" },
+      "compatibility": "unsupported_format_version_minor",
       "schema": { "v1": false, "v2": false, "v3": false, "v4": true }
     },
     {
@@ -251,6 +262,74 @@
       "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
     }
   ],
+  "supportTableCases": {
+    "parse": [
+      { "name": "reference table is canonical", "input": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "canonical": "[3.0.0,3.1.0),[4.0.0,4.1.0)" },
+      { "name": "whitespace is dropped", "input": "[3.0.0, 3.1.0) , [4.0.0 ,4.1.0)", "canonical": "[3.0.0,3.1.0),[4.0.0,4.1.0)" },
+      { "name": "inclusive upper advances", "input": "[4.0.0,4.0.2]", "canonical": "[4.0.0,4.0.3)" },
+      { "name": "exclusive lower advances", "input": "(4.0.0,4.1.0)", "canonical": "[4.0.1,4.1.0)" },
+      { "name": "exact release", "input": "[4.0.0]", "canonical": "[4.0.0,4.0.1)" },
+      { "name": "absent upper bound", "input": "[4.0.0,]", "canonical": "[4.0.0,)" },
+      { "name": "absent upper bound round", "input": "[4.0.0,)", "canonical": "[4.0.0,)" },
+      { "name": "absent lower bound", "input": "[,4.1.0)", "canonical": "(,4.1.0)" },
+      { "name": "absent lower bound inclusive upper", "input": "(,4.0.2]", "canonical": "(,4.0.3)" },
+      { "name": "unsorted intervals sort", "input": "[4.0.0,4.1.0),[3.0.0,3.1.0)", "canonical": "[3.0.0,3.1.0),[4.0.0,4.1.0)" },
+      { "name": "adjacent intervals merge", "input": "[3.0.0,3.1.0),[3.1.0,3.2.0)", "canonical": "[3.0.0,3.2.0)" },
+      { "name": "overlapping intervals merge", "input": "[3.0.0,3.2.0),[3.1.0,3.3.0)", "canonical": "[3.0.0,3.3.0)" },
+      { "name": "contained interval merges", "input": "[3.0.0,4.0.0),[3.1.0,3.2.0)", "canonical": "[3.0.0,4.0.0)" },
+      { "name": "exact next to range merges", "input": "[4.0.0,4.0.2),[4.0.2]", "canonical": "[4.0.0,4.0.3)" },
+      { "name": "upper at component maximum keeps its bracket", "input": "[4.0.0,4.0.4294967295]", "canonical": "[4.0.0,4.0.4294967295]" },
+      { "name": "lower at component maximum keeps its bracket", "input": "(4.0.4294967295,4.2.0)", "canonical": "(4.0.4294967295,4.2.0)" },
+      { "name": "inverted interval is invalid", "input": "[4.1.0,4.0.0)", "invalid": true },
+      { "name": "empty half-open interval is invalid", "input": "[4.0.0,4.0.0)", "invalid": true },
+      { "name": "empty exclusive interval is invalid", "input": "(4.0.0,4.0.1)", "invalid": true },
+      { "name": "empty interval above the patch maximum is invalid", "input": "(4.0.4294967295,4.1.0)", "invalid": true },
+      { "name": "both bounds absent is invalid", "input": "(,)", "invalid": true },
+      { "name": "integer alias is invalid", "input": "[4,4.1.0)", "invalid": true },
+      { "name": "prerelease suffix is invalid", "input": "[4.0.0-beta,4.1.0)", "invalid": true },
+      { "name": "leading zero is invalid", "input": "[04.0.0,4.1.0)", "invalid": true },
+      { "name": "component above range is invalid", "input": "[4.0.0,4.4294967296.0)", "invalid": true },
+      { "name": "exact with round bracket is invalid", "input": "(4.0.0)", "invalid": true },
+      { "name": "missing comma between intervals is invalid", "input": "[3.0.0,3.1.0)[4.0.0,4.1.0)", "invalid": true },
+      { "name": "empty table is invalid", "input": "", "invalid": true },
+      { "name": "major below three is invalid", "input": "[2.0.0,3.0.0)", "invalid": true },
+      { "name": "a table admitting every release is invalid", "input": "(,4.0.0),[3.0.0,)", "invalid": true },
+      { "name": "adjacent across the patch maximum merges", "input": "[4.0.0,4.0.4294967295],[4.1.0,4.2.0)", "canonical": "[4.0.0,4.2.0)" },
+      { "name": "exact at the patch maximum", "input": "[4.0.4294967295]", "canonical": "[4.0.4294967295,4.0.4294967295]" },
+      { "name": "nothing below the domain floor is invalid", "input": "(,3.0.0)", "invalid": true },
+      { "name": "an inclusive lower bound wins over an exclusive one at the same release", "input": "(4.0.4294967295,4.2.0),[4.0.4294967295]", "canonical": "[4.0.4294967295,4.2.0)" },
+      { "name": "exclusive lower at the patch maximum with no upper bound", "input": "(4.0.4294967295,)", "canonical": "(4.0.4294967295,)" }
+    ],
+    "membership": [
+      { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "release": "4.0.0", "compatibility": "supported" },
+      { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "release": "4.0.7", "compatibility": "supported" },
+      { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "release": "4.1.0", "compatibility": "unsupported_format_version_minor" },
+      { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "release": "3.0.1", "compatibility": "supported" },
+      { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "release": "3.1.0", "compatibility": "unsupported_format_version_minor" },
+      { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "release": "5.0.0", "compatibility": "unsupported_format_version_major" },
+      { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "release": "2.0.0", "compatibility": "unsupported_format_version_major" },
+      { "table": "[4.1.0,4.2.0)", "release": "4.0.3", "compatibility": "unsupported_format_version_minor" },
+      { "table": "[4.0.0,4.0.3)", "release": "4.0.2", "compatibility": "supported" },
+      { "table": "[4.0.0,4.0.3)", "release": "4.0.3", "compatibility": "unsupported_format_version_minor" },
+      { "table": "[4.0.0,)", "release": "9.7.1", "compatibility": "supported" },
+      { "table": "(,4.1.0)", "release": "3.9.9", "compatibility": "supported" },
+      { "table": "[4.0.0,4.0.4294967295]", "release": "4.0.4294967295", "compatibility": "supported" },
+      { "table": "[3.0.0,4.0.0)", "release": "4.5.0", "compatibility": "unsupported_format_version_major" },
+      { "table": "[3.0.0,4.0.1)", "release": "4.5.0", "compatibility": "unsupported_format_version_minor" },
+      { "table": "(,3.0.1)", "release": "3.0.0", "compatibility": "supported" },
+      { "table": "(,4.1.0)", "release": "2.0.0", "compatibility": "unsupported_format_version_major" },
+      { "table": "[4.0.4294967295,4.2.0)", "release": "4.0.4294967295", "compatibility": "supported" }
+    ],
+    "render": [
+      { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "cargo": [">=3.0.0, <3.1.0", ">=4.0.0, <4.1.0"], "elm": ["3.0.0 <= v < 3.1.0", "4.0.0 <= v < 4.1.0"], "prose": "3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0" },
+      { "table": "[4.0.0,4.0.3)", "cargo": [">=4.0.0, <4.0.3"], "elm": ["4.0.0 <= v < 4.0.3"], "prose": "4.0.0 up to but not including 4.0.3" },
+      { "table": "[4.0.0,)", "cargo": [">=4.0.0"], "elm": null, "prose": "4.0.0 and later" },
+      { "table": "(,4.1.0)", "cargo": ["<4.1.0"], "elm": null, "prose": "earlier than 4.1.0" },
+      { "table": "[4.0.0,4.0.4294967295]", "cargo": [">=4.0.0, <=4.0.4294967295"], "elm": null, "prose": "4.0.0 through 4.0.4294967295" },
+      { "table": "(4.0.4294967295,4.2.0)", "cargo": [">4.0.4294967295, <4.2.0"], "elm": null, "prose": "after 4.0.4294967295 up to but not including 4.2.0" },
+      { "table": "(4.0.4294967295,)", "cargo": [">4.0.4294967295"], "elm": null, "prose": "after 4.0.4294967295" }
+    ]
+  },
   "headerOrderCases": [
     {
       "name": "canonical JSON header order",
