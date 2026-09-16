@@ -1,0 +1,15 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "cases": [
+    { "id": "package.library.two-libraries", "expected": "accept" },
+    { "id": "package.library.unknown-root", "expected": "reject", "replace": { "path": ["lock", "root"], "value": "n9" } },
+    { "id": "package.library.unknown-target", "expected": "reject", "replace": { "path": ["lock", "nodes", "n0", "bindings", "example/eligibility"], "value": "n9" } },
+    { "id": "package.library.wrong-content-digest", "expected": "reject", "replace": { "path": ["lock", "nodes", "n1", "contentDigest"], "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000" } },
+    { "id": "package.library.wrong-manifest-digest", "expected": "reject", "replace": { "path": ["lock", "nodes", "n1", "manifestDigest"], "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000" } },
+    { "id": "package.library.changed-payload-byte", "expected": "reject", "payloadSuffix": { "library": "eligibility", "hex": "0a" } },
+    { "id": "package.library.wrong-ir-name", "expected": "reject", "replace": { "path": ["lock", "nodes", "n1", "irPackageName"], "value": "example/other" } },
+    { "id": "package.library.wrong-release", "expected": "reject", "replace": { "path": ["lock", "nodes", "n1", "release", "version"], "value": "2.0.0" } },
+    { "id": "package.library.missing-binding", "expected": "reject", "remove": ["lock", "nodes", "n0", "bindings", "example/eligibility"] },
+    { "id": "package.library.duplicate-key", "expected": "reject", "lockText": "{\"root\":\"n0\",\"root\":\"n1\",\"nodes\":{}}" }
+  ]
+}

@@ -74,6 +74,16 @@ See the [Domain Modeling guide](docs/developers/domain-modeling.md).
 
 ## Development Practices
 
+### Repository tooling and compatibility checks
+
+- Prefer TypeScript for new repository tooling. JavaScript scripts use `.mjs`.
+- Do not introduce Python or another tooling language without an explicit, justified exception agreed with maintainers. Existing scripts and language-specific Morphir implementations are not a blanket exception for new repository tooling.
+- Extend the shared MCK core in `finos/morphir-typescript` for compatibility case loading, execution, comparison, capability checks, and reporting. Keep specifications, schemas, cases, and fixed expected results in `finos/morphir`.
+- Other implementations reuse MCK through its library or an adapter. Independent implementations under test do not require independent compatibility runners. Do not create a parallel checker in this repository, even in TypeScript or `.mjs`.
+- Preserve supported IR contracts when adding versioned package operations. Keep reference implementation behavior separate from the driver's expected results.
+
+See [the package MCK decision](kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
+
 ### Test-Driven Development (TDD)
 
 **Write tests before implementation.** Follow the TDD cycle:

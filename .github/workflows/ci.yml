@@ -80,6 +80,7 @@ jobs:
               - 'docs/**'
               - '**/*.md'
               - 'spec/ir/**'
+              - 'spec/package/**'
               # the tracked IR fixtures and the corpus generator are validated
               # in the docs job, and the mise tasks define what that job runs
               - 'tests/bdd/fixtures/**'
@@ -446,6 +447,12 @@ jobs:
 
       - name: Run the kit against the TypeScript binding
         run: mise run mck:run
+
+      - name: Validate draft package schemas and examples
+        run: mise run package:schema-check
+
+      - name: Run the MCK package suite through the shared TypeScript core
+        run: mise run package:check
 
       - name: Upload MCK reports
         uses: actions/upload-artifact@v7

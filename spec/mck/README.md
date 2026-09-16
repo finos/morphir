@@ -8,13 +8,19 @@ Each suite defines observable behavior through stable cases, expected results, a
 | Suite | Contract | Location and status |
 | --- | --- | --- |
 | IR | IR serialization, normalization, diagnostics, and document-tree behavior | [IR suite](../ir/mck/README.md), implemented |
-| Package | Package identities, exports, manifests, locks, digests, resolution, trust, and materialization | Planned at `spec/package/mck/`; initial cases and driver support are Stage 0 work in [issue #800](https://github.com/finos/morphir/issues/800) |
+| Package | Package identities, exports, manifests, locks, digests, resolution, trust, and materialization | [Draft suite](../package/mck/README.md) executes Library schema, normalization/digest, and closed-set integrity cases through the shared TypeScript core; wider Stage 0 work remains in [issue #800](https://github.com/finos/morphir/issues/800) |
 
 Use **MCK IR suite** and **MCK package suite** when identifying a domain. "Conformance corpus" describes a collection
 of cases; MCK is the shared name. Generated naming and format-version fixture filenames remain stable.
 
 Model packages, executable extensions, and installable tools retain their own artifact domains. Sharing MCK infrastructure
 does not require shared manifests, lifecycle rules, or test operations.
+
+The first package slice provides `mise run package:check` for shared-core execution and
+`mise run package:schema-check` for generic schema/example validation. The lock-core omits acquisition and trust;
+it cannot authorize installation. Package execution belongs in the shared TypeScript MCK core, as recorded in the
+[ownership decision](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
+No standalone Python, TypeScript, or JavaScript compatibility runner is required in the parent repository.
 
 ## Current driver and contracts
 
@@ -26,9 +32,11 @@ The driver supports an in-process binding and executable adapters using a JSON-l
 includes an embedded kit; `--kit` selects a checkout instead. The embedded `kit.lock.json` records repository, path,
 commit, and content hash. Driver releases and kit revisions must be identified separately when comparing results.
 
-Package support must evolve the existing infrastructure through explicit versioned contracts. Protocol version 1
+Package support uses its own experimental `0.1.0-draft.1` adapter and report contracts. IR protocol version 1
 rejects unknown operations and fields, and its reports require IR-specific fields such as `irVersion` and `profile`.
-Stage 0 must define suite identity, package operations, required capabilities, and report records appropriate to packages.
+The draft package contract defines suite identity, four operations, required capabilities, and package report records.
+The shared core runs other implementations through adapters. Independent implementations
+under test can share a runner; independently rewritten runners are not an interoperability requirement.
 Reuse case loading, adapter transport, provenance, and reporting components where their semantics fit. Existing IR
 commands, case IDs, and version 1 contracts remain supported through that evolution.
 
@@ -37,10 +45,11 @@ commands, case IDs, and version 1 contracts remain supported through that evolut
 A compatibility claim identifies the suite, kit revision, driver version, adapter contract, and required capabilities.
 Every required case must pass. Failures, kit errors, and skipped required cases prevent the claim.
 
-The current driver may exit successfully while unsupported capabilities are skipped. `--strict` fails on all skips;
+The IR driver may exit successfully while unsupported capabilities are skipped. `--strict` fails on all skips;
 a claim covering a narrower capability set needs an explicit gate for its required cases. An IR-only pass does not
 establish package compatibility. Running one implementation in-process and through its adapter tests transport agreement;
-the package design's two-implementation criterion requires independent implementations.
+the package design's two-implementation criterion requires independent implementations. The draft package command
+always fails on any skip, failure, kit error, or empty corpus.
 
 ## Integration baseline, 2026-09-16
 
@@ -59,5 +68,9 @@ the package design's two-implementation criterion requires independent implement
   Record this provenance separately from the checkout revision. Compare case content and required capabilities before
   treating runs against an embedded kit and a checkout as equivalent.
 
-Before package implementation begins, pin a mutually compatible driver and kit revision. The [package-system design](../../kb/bundles/morphir/morphir-package-system/package-system-design.md)
+Package integration extends this baseline through [TypeScript PR #16](https://github.com/finos/morphir-typescript/pull/16),
+rebased onto commit `872ece8`, including the 0.1.0 publication and the Effect-based CLI.
+Dependent draft PRs may pin its published feature commit for integration checks. Before merging the parent,
+land the TypeScript PR and pin its merged commit. Never publish a parent commit requiring uncommitted submodule files.
+The [package-system design](../../kb/bundles/morphir/morphir-package-system/package-system-design.md)
 records how these IR changes affect Stage 0 and the later delivery stages.

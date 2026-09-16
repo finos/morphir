@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json",
+  "title": "Experimental Library release manifest",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "kind",
+    "packagePath",
+    "version",
+    "ir",
+    "dependencies",
+    "exports",
+    "content"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "kind": {
+      "const": "Library"
+    },
+    "packagePath": {
+      "$ref": "#/$defs/PackagePath"
+    },
+    "version": {
+      "$ref": "#/$defs/StableVersion"
+    },
+    "ir": {
+      "type": "object",
+      "required": [ "formatVersion", "packageName", "payload" ],
+      "properties": {
+        "formatVersion": {
+          "const": "4"
+        },
+        "packageName": {
+          "$ref": "#/$defs/IRPath"
+        },
+        "payload": {
+          "type": "object",
+          "required": [ "path", "mediaType", "profile" ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/ContentPath"
+            },
+            "mediaType": {
+              "const": "application/json"
+            },
+            "profile": {
+              "const": "classic"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "dependencies": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/IRPath"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [ "packagePath", "versionRange" ],
+        "properties": {
+          "packagePath": {
+            "$ref": "#/$defs/PackagePath"
+          },
+          "versionRange": {
+            "type": "object",
+            "required": [ "minimumInclusive", "maximumExclusive" ],
+            "properties": {
+              "minimumInclusive": {
+                "$ref": "#/$defs/StableVersion"
+              },
+              "maximumExclusive": {
+                "$ref": "#/$defs/StableVersion"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "exports": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/IRPath"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/IRPath"
+      }
+    },
+    "content": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/ContentPath"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Digest"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "PackagePath": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)+/[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*$"
+    },
+    "StableVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "IRPath": {
+      "type": "string",
+      "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*$"
+    },
+    "ContentPath": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*(\\.[a-z0-9]+)?$"
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
