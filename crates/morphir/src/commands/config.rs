@@ -207,8 +207,10 @@ pub fn run_config_show_with_options(
     let config = redact_secrets(&effective.value);
 
     if format == OutputFormat::Human {
-        let rendered = toml::to_string_pretty(&config).map_err(|error| CliError::Config {
-            error: anyhow::anyhow!("Failed to render effective configuration as TOML: {error}"),
+        let rendered = toml::to_string_pretty(&config_as_toml(&config)?).map_err(|error| {
+            CliError::Config {
+                error: anyhow::anyhow!("Failed to render effective configuration as TOML: {error}"),
+            }
         })?;
         print!("{rendered}");
     } else {
@@ -220,6 +222,48 @@ pub fn run_config_show_with_options(
     }
 
     Ok(None)
+}
+
+/// Rewrites the effective configuration into TOML's own value model.
+///
+/// `morphir-core` turns on serde_json's `arbitrary_precision`, and Cargo
+/// unifies features across the build, so every `serde_json::Number` in this
+/// binary serializes as the internal one-member map `{"$serde_json::private::
+/// Number": "3"}`. Only serde_json's own serializer understands that map;
+/// handing a `Value` straight to the TOML serializer leaks it into what a
+/// reader sees. Walking the value here keeps `config show` printing `3`.
+fn config_as_toml(value: &serde_json::Value) -> Result<toml::Value, CliError> {
+    match value {
+        // TOML has no null, and the configuration model has no optional value
+        // that reaches this far, so this is a loader bug rather than user input.
+        serde_json::Value::Null => Err(CliError::Config {
+            error: anyhow::anyhow!(
+                "Failed to render effective configuration as TOML: TOML cannot represent a null"
+            ),
+        }),
+        serde_json::Value::Bool(bool) => Ok(toml::Value::Boolean(*bool)),
+        serde_json::Value::Number(number) => number
+            .as_i64()
+            .map(toml::Value::Integer)
+            .or_else(|| number.as_f64().map(toml::Value::Float))
+            .ok_or_else(|| CliError::Config {
+                error: anyhow::anyhow!(
+                    "Failed to render effective configuration as TOML: \
+                     {number} is outside the range TOML can represent"
+                ),
+            }),
+        serde_json::Value::String(string) => Ok(toml::Value::String(string.clone())),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .map(config_as_toml)
+            .collect::<Result<Vec<_>, _>>()
+            .map(toml::Value::Array),
+        serde_json::Value::Object(members) => members
+            .iter()
+            .map(|(name, member)| Ok((name.clone(), config_as_toml(member)?)))
+            .collect::<Result<toml::map::Map<_, _>, CliError>>()
+            .map(toml::Value::Table),
+    }
 }
 
 #[cfg(test)]
@@ -235,6 +279,25 @@ mod tests {
         assert_eq!(options.global, SourceSelection::Skip);
         assert_eq!(options.user_override, SourceSelection::Skip);
         assert_eq!(options.env, EnvSelection::Process);
+    }
+
+    #[test]
+    fn rendered_toml_spells_numbers_as_numbers() {
+        // serde_json's arbitrary_precision is on across this build, so a number
+        // handed straight to the TOML serializer would come out as the internal
+        // `$serde_json::private::Number` map instead of as `3`.
+        let config = serde_json::json!({
+            "ir": { "format_version": 3, "tolerance": 0.5, "strict_mode": false },
+            "codegen": { "targets": ["go"] },
+        });
+
+        let rendered = toml::to_string_pretty(&config_as_toml(&config).unwrap()).unwrap();
+
+        assert!(rendered.contains("format_version = 3"), "{rendered}");
+        assert!(rendered.contains("tolerance = 0.5"), "{rendered}");
+        assert!(rendered.contains("strict_mode = false"), "{rendered}");
+        assert!(rendered.contains("\"go\""), "{rendered}");
+        assert!(!rendered.contains("serde_json"), "{rendered}");
     }
 
     #[test]

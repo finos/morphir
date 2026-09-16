@@ -1536,10 +1536,13 @@ mod tests {
             validate_v4_compile_result(&v4_compile_result("4.0.0", serde_json::json!("4.1.0")))
                 .expect_err("unsupported embedded revisions must fail direct validation");
 
+        // The v4 codec settles the revision at `formatVersion` while decoding, so the
+        // refusal arrives as the canonical diagnostic rather than as this module's own
+        // message. The check below in `validate_v4_compile_result` stays as a backstop
+        // for an `IRFile` that reaches it without going through the decoder.
+        let message = error.to_string();
         assert!(
-            error
-                .to_string()
-                .contains("unsupported embedded Morphir IR version '4.1.0'"),
+            message.contains("unsupported_format_version_revision") && message.contains("4.1.0"),
             "{error}"
         );
     }
