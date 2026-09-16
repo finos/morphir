@@ -8,6 +8,13 @@ fn greeting_v3() -> PathBuf {
         .join("../../website/static/ir/examples/v3/greeting-example.json")
 }
 
+/// A single-file v4 YAML model in the readable vocabulary — the spelling the canonical
+/// writer emits and the one the v4 JSON Schema accepts for `packageName` (a `Path`
+/// string). See `docs/spec/ir/schemas/v4/yaml-profile.md`.
+fn v4_yaml() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/migrate/yaml/v4-readable.yaml")
+}
+
 fn morphir_command() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
     command.env("MORPHIR_LOG_FILE", "false");
@@ -122,21 +129,25 @@ fn yaml_document_tree_round_trips_to_json() {
 #[test]
 fn yaml_v4_single_file_converts_to_json() {
     let temp = TempDir::new().unwrap();
-    let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/migrate/yaml/v4-explicit.yaml");
+    let input = v4_yaml();
     let output = temp.path().join("model.json");
 
     assert_success(&migrate(&input, &output, &[]));
 
-    serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&std::fs::read(output).unwrap())
-        .unwrap();
+    let bytes = std::fs::read(output).unwrap();
+    serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&bytes).unwrap();
+    // The JSON profile spells a package name as a `Path` string, not as structural words.
+    let document: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(
+        document["distribution"]["Library"]["packageName"],
+        "example"
+    );
 }
 
 #[test]
 fn quoted_yaml_format_version_key_converts_to_json() {
     let temp = TempDir::new().unwrap();
-    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/migrate/yaml/v4-explicit.yaml");
+    let fixture = v4_yaml();
     let input = temp.path().join("quoted-version.yaml");
     let output = temp.path().join("model.json");
     let source = std::fs::read_to_string(fixture).unwrap().replacen(

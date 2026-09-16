@@ -3301,8 +3301,10 @@ fn migrate_selects_compact_or_expanded_v4_type_encoding() {
     let type_expression = |path: &PathBuf| {
         let value: serde_json::Value =
             serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
-        value["distribution"]["Library"]["def"]["modules"]["main"]["value"]["types"]
-            ["product-id"]["value"]["value"]["TypeAliasDefinition"]["typeExp"]
+        // Access control is externally tagged in v4: the access level is the
+        // wrapper's single member name, not an `access`/`value` pair.
+        value["distribution"]["Library"]["def"]["modules"]["main"]["Public"]["types"]["product-id"]
+            ["Public"]["TypeAliasDefinition"]["typeExp"]
             .clone()
     };
     assert!(type_expression(&compact).is_string());
