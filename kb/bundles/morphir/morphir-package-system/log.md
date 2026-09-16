@@ -2,6 +2,8 @@
 
 ## 2026-09-16
 
+* **Update**: Added the independent Rust package implementation and opt-in MCK package adapter. The same shared TypeScript driver reports all 80 draft cases passing against Rust with no failures, kit errors, or skips. Parent CI runs both implementations and retains their reports. Full locks, resolution, registry and trust behavior remain outside this slice; the user-facing lockfile remains `morphir.lock`.
+* **Update**: Landed the shared TypeScript package core in [morphir-typescript #16](https://github.com/finos/morphir-typescript/pull/16) and its parent integration in [Morphir #815](https://github.com/finos/morphir/pull/815). The parent pins merged TypeScript commit `f308c9be27fa58af72c112fe4e16028568c3e6f4`.
 * **Update**: Implemented the draft package suite in the TypeScript MCK core, with separate reference operations, versioned package contracts, fixed-result comparison and required-case gates. Parent invocation runs both transports. Added closed Library-set integrity cases for bytes, digests, names and binding targets. Upstream landing and the parent pin remain coordinated follow-up work; two transports are one implementation.
 * **Update**: Accepted exact declared payload-byte hashing, with separate manifest normalization. Recompression preserves Package content identity; payload reformatting changes it. IR semantic equivalence is a separate check.
 * **Update**: Recorded [decision 0001](/decisions/0001-package-compatibility-uses-the-shared-mck-core.md): package compatibility uses the shared TypeScript MCK core and implementation adapters. Retired the standalone prototype runners from deliverable tooling and made the language preference explicit in agent guidance.

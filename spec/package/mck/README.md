@@ -7,6 +7,7 @@ Record the repository commit when comparing runs; no kit-release or package comp
 claim follows merely from a local pass.
 
 Run `mise run package:check` for the shared-core suite, in-process and over an executable adapter.
+Run `mise run package:check:rust` for the same suite against the independent Rust implementation.
 Run `mise run package:schema-check` separately for generic schema and example structure validation.
 
 `schema-cases.json` declares each case's schema, base fixture, expected verdict, and
@@ -39,6 +40,15 @@ The core exposes `PackageTestee`, `runPackageKit`, and `processPackageTestee`. I
 command requires `--kit`; no package corpus is embedded yet. `mck-adapter-typescript --suite package`
 selects the experimental `0.1.0-draft.1` package protocol. The package protocol and report schemas
 ship with `@finos/morphir-mck`. IR protocol/report version 1 and default IR commands stay unchanged.
+
+The Rust adapter exposes the same package contract through `mck-adapter-rust --suite package`.
+Package behavior lives in the separate `morphir-package` library, not the adapter or the extension
+distribution library. The parent wrapper only selects the suite and the platform-specific binary
+name. The shared driver still loads cases, compares fixed expectations and reports results.
+
+CI writes `package-typescript.json`, `package-typescript-adapter.json`, and `package-rust.json`
+under `.dev/out/mck/`. The two TypeScript transports count as one implementation; Rust supplies
+the second implementation. Passing this restricted corpus does not complete all Stage 0 work.
 
 Package reports record suite, contract and driver versions, testee identity and capabilities,
 and a content hash of all consumed corpus, schema and fixture bytes. Record both repository

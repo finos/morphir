@@ -139,6 +139,8 @@ The older umbrella draft treats a package as a compiled IR archive and proposes 
 The [MCK overview](https://github.com/finos/morphir/blob/main/spec/mck/README.md) defines one kit with domain suites.
 The IR suite exists at `spec/ir/mck/`. The draft package suite at `spec/package/mck/` executes
 normalization, byte digests, schemas, and closed Library-set integrity through the shared TypeScript core.
+The Rust `morphir-package` library implements the same bounded operations independently.
+Its package adapter uses the shared driver; the IR adapter remains the default mode.
 
 This reconciliation uses Morphir commit `2cd0dcd0e0236a38e577eff90fad67339aa42449` and its pinned morphir-typescript commit
 `46197e289b437038427f964cca6f1f54c03044a1`, which includes decision 0015 and qualified-module naming tests.
@@ -1129,8 +1131,8 @@ or an explicit gate for the required capability set. The draft package command f
 failure, kit error, and empty corpus.
 
 For example, a TypeScript JSON run and the same TypeScript codec behind an executable adapter check transport agreement.
-They count as one implementation. Stage 0 requires a second independent implementation running the same package cases
-through the shared core. Independence applies to behavior under test, not separately written compatibility runners.
+They count as one implementation. The Rust package adapter supplies a second independent implementation for the
+bounded draft cases through the shared core. Independence applies to behavior under test, not separately written compatibility runners.
 IR-only results, pending cases, and unsupported package operations cannot satisfy that requirement.
 
 ## Staged delivery
@@ -1142,10 +1144,15 @@ draft release-manifest and lock-core schemas, and executable MCK package schema/
 The lock-core is a partial dependency graph, not a complete acquisition/trust lock. `package:check` invokes the
 TypeScript core in-process and through its executable adapter. Its experimental package contract is separate from IR v1.
 Reports identify the corpus content hash, driver, testee and supported operations. Reference operations remain
-separate from fixed expected results. The two transports count as one implementation.
+separate from fixed expected results. The two TypeScript transports count as one implementation.
+`package:check:rust` runs the same cases against Rust. The dedicated package CI job requires both
+implementations to pass and retains their reports. This evidence covers only the restricted draft operations.
 
-The TypeScript implementation lives in `packages/mck/src/package/` in its submodule. Its changes must land upstream
-before the parent merges the final pin. Dependent drafts may pin a published feature commit for integration checks.
+The TypeScript implementation lives in `packages/mck/src/package/` in its submodule.
+Rust production behavior lives in `crates/morphir-package/` and uses `morphir-mck-adapter` only for test transport.
+It does not extend the executable-extension manifest or make model packages depend on extension acquisition.
+Implementation changes must land upstream before the parent merges the final pin.
+Dependent drafts may pin a published feature commit for integration checks.
 The standalone prototype runners remain retired. This slice does not implement
 a resolver, registry client, public-specification compatibility checker, or installation authorization.
 

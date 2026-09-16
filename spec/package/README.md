@@ -13,15 +13,24 @@ Run `mise run package:schema-check` from the repository root after the required 
 It validates schema syntax and example structure using the existing JSON Schema tool.
 Run `mise run package:check` to execute the package corpus through the TypeScript MCK core,
 both in-process and through its executable adapter. Reports appear in `.dev/out/mck/`.
+Run `mise run package:check:rust` to build the pinned Rust adapter and execute the same
+corpus through the same TypeScript driver against the independent Rust implementation.
+The dedicated package CI job runs both implementations and uploads their reports.
 The suite checks normalization, digests, schemas, and the worked Library set's integrity.
 It does not establish full package-system compatibility or complete Stage 0.
 
 The [shared MCK core decision](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md)
 places package case execution in finos/morphir-typescript. The implementation lives in
 `ecosystem/morphir-typescript/packages/mck/src/package/`; this repository only invokes it.
-The TypeScript changes must land upstream before the parent merges the corresponding submodule pin.
+Rust production behavior lives in `ecosystem/morphir-rust/crates/morphir-package/`.
+Its `mck-adapter-rust --suite package` adapter delegates to that library; default invocation
+continues to serve the IR protocol. Rust does not supply another compatibility runner.
+Implementation changes must land upstream before the parent merges the corresponding submodule pin.
 A dependent draft may pin a published feature commit for CI, then replace it with the merged commit.
 No standalone package compatibility runner ships here.
+
+The planned user-facing lockfile is `morphir.lock`. The current `lock-core.json` fixture
+and `lock-core.schema.json` describe only a partial graph, not an installable lockfile.
 
 Executable extensions and installable tools retain separate contracts. Nothing here
 requires their manifests or lifecycles to adopt the model-package format.
