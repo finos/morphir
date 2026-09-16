@@ -36,26 +36,67 @@ A reader MUST normalize either accepted spelling to an exact three-component rel
 
 A canonical writer MUST emit the integer `N` for the baseline release `N.0.0`. It MUST emit the exact release string for any release whose minor or patch component is nonzero. For example, the canonical spellings are `3`, `"3.1.0"`, `4`, and `"4.0.2"`. A baseline release string is valid input but is not canonical output.
 
+## Revisions
+
+For every major family `N >= 3`, the three components of a release make three promises:
+
+| Revision | May change |
+| --- | --- |
+| Patch (`N.m.p` to `N.m.(p+1)`) | Nothing a reader can observe. Prose clarifications, corrected examples, and kit cases that pin behaviour the contract already required. No new node kinds, members or accepted spellings; nothing previously accepted becomes rejected; nothing a writer emits changes. |
+| Minor (`N.m.*` to `N.(m+1).0`) | What a reader accepts or emits. New vocabulary, new accepted spellings, and the closing of an acceptance window are all minor revisions. |
+| Major | Anything, including the reading of older documents. |
+
+A reader that understands `N.m.0` can therefore process every `N.m.p`, including patches specified after the reader was built. A revision exists when the Morphir Compatibility Kit carries cases for it; nothing else mints one.
+
 ## Recognition and compatibility
 
 Recognition and support are separate decisions. Recognition checks the scalar type, release grammar, component range, and major-family spelling. Syntax recognition never implies support for the normalized release.
 
-Each implementation MUST declare an explicit support table of exact normalized releases. The permanent support-table contract starts with v3 and applies to every later major family. The reference table used by this specification and its conformance corpus is:
+Each implementation MUST declare an explicit support table. A support table is a union of intervals over the release grammar above, written in the interval notation shared by Maven, NuGet and OSGi:
 
-- `3.0.0`
-- `4.0.0`
+```
+table    = interval *( "," interval )
+interval = "[" release "]" / open [release] "," [release] close
+open     = "[" / "("
+close    = "]" / ")"
+```
 
-An implementation MAY declare a different table when its actual decoder or migration capabilities differ. It MUST NOT claim support for an exact release that it cannot process according to that release's specification.
+`[` and `]` are inclusive; `(` and `)` are exclusive. `[a]` means exactly `a`. A missing lower bound means no lower bound; a missing upper bound means no upper bound; at least one bound is required. Whitespace after a comma and around a bound is permitted on input and dropped on normalization. A bound MUST be a release string; the integer alias is not permitted inside a table. An interval whose lower bound is above its upper bound, or which contains no release, is invalid.
 
-This page defines the conformance target. A reader or writer does not conform merely because its repository publishes this specification. Implementations adopt the contract when their normalization, compatibility checks, diagnostics, ordering behavior, and replay strategy satisfy these requirements.
+A release is supported when it lies inside any interval of the table.
+
+A table has one canonical spelling, which writers, adapters and reports MUST emit:
+
+1. Every interval is rewritten as a half-open `[a,b)` interval wherever a finite bound can be advanced: an inclusive upper `b]` becomes `next(b))`, an exclusive lower `(a` becomes `[next(a)`, and `[a]` becomes `[a,next(a))`, where `next(x.y.z)` is `x.y.(z+1)`. A component at `4294967295` cannot be advanced and keeps its original bracket. An absent bound takes a round bracket.
+2. Intervals are sorted by lower bound, an absent lower bound first.
+3. Overlapping or adjacent intervals are merged.
+4. No whitespace.
+
+The reference table used by this specification and its conformance corpus is:
+
+```
+[3.0.0,3.1.0),[4.0.0,4.1.0)
+```
+
+Its ceilings sit on minor boundaries because of the patch promise above: a `4.0.0` reader accepts every `4.0.x`. An implementation MAY declare any table the grammar allows when its decoder or migration capabilities differ. It MUST NOT claim support for a release it cannot process according to that release's specification.
+
+A binding driven through the Morphir Compatibility Kit publishes its table in the `formatVersions` member of its adapter's capabilities reply; the driver validates that it is canonical and carries it into the run report. A binding not driven through the kit publishes the same canonical string in its README.
+
+A table may be shown to people in three other styles, none of which is accepted as input:
+
+| Style | `[3.0.0,3.1.0),[4.0.0,4.1.0)` reads as |
+| --- | --- |
+| Cargo comparator sets | `>=3.0.0, <3.1.0` and `>=4.0.0, <4.1.0` |
+| Elm constraints | `3.0.0 <= v < 3.1.0` and `4.0.0 <= v < 4.1.0` |
+| Prose | `3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0` |
 
 After successful recognition and normalization, an implementation MUST distinguish these compatibility results:
 
-- `supported` means the exact normalized release is in its support list.
-- `unsupported_format_version_major` means the normalized major has no supported release.
-- `unsupported_format_version_revision` means the implementation supports the major family but not that exact minor and patch release.
+- `supported` means the normalized release lies inside the table.
+- `unsupported_format_version_major` means no interval of the table contains any release of the normalized release's major family.
+- `unsupported_format_version_minor` means some interval contains a release of that major family, but none contains the normalized release. Under the patch promise the mismatching component is always the minor.
 
-For the current reference table, `"3.1.0"` is a recognized v3 release spelling but produces `unsupported_format_version_revision`. `"5.0.0"` follows the permanent grammar but produces `unsupported_format_version_major` because the table contains no v5 release.
+For the reference table, `"4.0.1"` is supported, `"4.1.0"` produces `unsupported_format_version_minor`, and `"5.0.0"` produces `unsupported_format_version_major`.
 
 `unsupported_format_version_major` applies only after the reader recognizes either the historical integer `1` or `2`, or a family `N >= 3`, and normalizes that spelling as appropriate. Integer `0` and the forbidden release strings for majors 0, 1, and 2 fail with `invalid_format_version_syntax` before compatibility checking.
 
@@ -87,11 +128,11 @@ Readers and linters MUST use stable diagnostic categories so callers do not need
 | `invalid_format_version_syntax` | A string does not match the exact release grammar or names a major below 3, or the value is integer `0`. |
 | `format_version_out_of_range` | An integer or release component exceeds the unsigned 32-bit range. |
 | `unsupported_format_version_major` | No release from the recognized major family is supported. |
-| `unsupported_format_version_revision` | The major family is supported, but the exact normalized release is not. |
+| `unsupported_format_version_minor` | The major family is supported, but the normalized release lies outside the table. |
 | `format_version_not_first` | A valid root mapping uses noncanonical member order. This is a warning only. |
 
 Diagnostics SHOULD also identify their processing stage, semantic cursor, and physical source location when known. The code remains stable even when explanatory text or recovery guidance changes.
 
 ## Conformance data
 
-The [format-version conformance corpus](fixtures/format-version-conformance.json) records scalar normalization, compatibility, schema-family expectations, and canonical and noncanonical JSON and YAML header order. The [v3 schema](schemas/v3/index.md) is the first family-specific profile governed by this contract. The [v4 semantic model](schemas/v4/semantic-model.md), [JSON profile](schemas/v4/json-profile.md), and [YAML profile](schemas/v4/yaml-profile.md) inherit it unchanged.
+The [format-version conformance corpus](fixtures/format-version-conformance.json) records scalar normalization, compatibility against the reference `supportTable`, support-table parsing, canonical spelling, membership and rendering (`supportTableCases`), schema-family expectations, and canonical and noncanonical JSON and YAML header order. The [v3 schema](schemas/v3/index.md) is the first family-specific profile governed by this contract. The [v4 semantic model](schemas/v4/semantic-model.md), [JSON profile](schemas/v4/json-profile.md), and [YAML profile](schemas/v4/yaml-profile.md) inherit it unchanged.

@@ -238,6 +238,10 @@ run = "bun run tools/gen-naming-corpus.ts"
 description = "Verify the name-encoding conformance corpus and its vendored copy are up to date"
 run = "bun run tools/gen-naming-corpus.ts --check"
 
+[tasks."fixtures:format-version-corpus-check"]
+description = "Verify the format-version conformance corpus and its copy vendored into morphir-rust are byte-identical"
+run = "bun run tools/check-vendored-fixture.ts docs/spec/ir/fixtures/format-version-conformance.json ecosystem/morphir-rust/tests/fixtures/format-version-conformance.json"
+
 [tasks."tools:install"]
 description = "Install dependencies for the Bun specification tooling"
 run = "bun install"
@@ -273,6 +277,7 @@ depends = [
     "examples:validate",
     "fixtures:validate",
     "fixtures:naming-corpus-check",
+    "fixtures:format-version-corpus-check",
     "schema:validate",
     "mck:check",
     "mck:schema-check",
