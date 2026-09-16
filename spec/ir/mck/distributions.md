@@ -2,7 +2,7 @@
 
 ## distributions-0001: Format version spellings {node=FormatVersion}
 
-Governed by `docs/spec/ir/format-version.md` and its corpus. Integer 4 is canonical for 4.0.0; a later patch of a supported minor is accepted; a later minor is not.
+Governed by `docs/spec/ir/format-version.md` and its corpus. Integer 4 is canonical for 4.0.0; a later minor is not supported.
 
 ```yaml canonical
 4
@@ -18,10 +18,6 @@ Governed by `docs/spec/ir/format-version.md` and its corpus. Integer 4 is canoni
 
 ```json rejected diagnostic=invalid_format_version_syntax
 "4.0.0-beta"
-```
-
-```json accepted
-"4.0.1"
 ```
 
 ```json rejected diagnostic=unsupported_format_version_minor
@@ -174,4 +170,16 @@ distribution:
 
 ```json rejected diagnostic=invalid_type
 { "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": {}, "def": { "modules": {} }, "entryPoints": { "start": { "target": "example:main#run", "kind": "startup" } } } } }
+```
+
+## distributions-0008: Later patch of a supported minor {node=FormatVersion}
+
+A patch of a supported minor is read; its canonical spelling stays the release string, since only the baseline collapses to the integer. Governed by `docs/spec/ir/format-version.md`, Revisions.
+
+```yaml canonical
+"4.0.1"
+```
+
+```json canonical
+"4.0.1"
 ```
