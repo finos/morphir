@@ -1129,7 +1129,7 @@ fn collect_files(source: &Path, relative: &Path, files: &mut Vec<String>) -> Res
         if file_type.is_dir() {
             collect_files(&child.path(), &child_relative, files)?;
         } else {
-            files.push(child_relative.to_string_lossy().into_owned());
+            files.push(ledger_path(&child_relative));
         }
     }
     Ok(())
@@ -1159,6 +1159,23 @@ fn prune_empty_parents(path: &Path, stop: &Path) -> Result<(), CliError> {
 /// partway through still has an accurate record of exactly what this call
 /// wrote before the failure — the list `roll_back_partial_copy` needs to
 /// clean up after it.
+/// A path relative to the install target, spelled the way the ledger spells it.
+///
+/// Ledger entries and `record.value` are forward-slash relative paths, and they
+/// are compared as strings: a stale entry is one the current run does not
+/// produce. `Path::join` uses the platform separator, so on Windows a file
+/// copied out of a directory-valued entry would land in the ledger as
+/// `sub\report\pkg\x.yaml` and never match the `sub/report/pkg/x.yaml` the next
+/// run derives, which would make the next install see its own output as foreign
+/// content. Spelling them one way keeps the ledger portable.
+fn ledger_path(relative: &Path) -> String {
+    relative
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 fn copy_dir(
     source: &Path,
     destination: &Path,
@@ -1178,14 +1195,14 @@ fn copy_dir(
         } else {
             let source = entry.path();
             match std::fs::copy(&source, &target) {
-                Ok(_) => copied_files.push(child_relative.to_string_lossy().into_owned()),
+                Ok(_) => copied_files.push(ledger_path(&child_relative)),
                 Err(error) => {
                     // Same reasoning as the file-entry branch in `install`:
                     // a failure partway through this one file's copy can
                     // still have created it, and pre-flight already
                     // guarantees anything found here now is this run's own.
                     if copy_failure_left_a_file(&target) {
-                        copied_files.push(child_relative.to_string_lossy().into_owned());
+                        copied_files.push(ledger_path(&child_relative));
                     }
                     return Err(copy_error(&source, &target, error));
                 }
