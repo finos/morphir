@@ -1,0 +1,29 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "kind": "LibraryLockCore",
+  "root": "n0",
+  "nodes": {
+    "n1": {
+      "release": {
+        "packagePath": "example.com/finance/eligibility",
+        "version": "1.2.0"
+      },
+      "irPackageName": "example/eligibility",
+      "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+      "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+      "bindings": {}
+    },
+    "n0": {
+      "release": {
+        "packagePath": "example.com/finance/loan-rules",
+        "version": "1.0.0"
+      },
+      "irPackageName": "example/loan-rules",
+      "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+      "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+      "bindings": {
+        "example/eligibility": "n1"
+      }
+    }
+  }
+}

@@ -1,0 +1,245 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "cases": [
+    {
+      "id": "empty-object",
+      "input": "{}",
+      "canonical": "{}",
+      "manifestDigest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "packageContentDigest": "sha256:a95ff91778f926f308008d6e448b08f08c74913e595740b32787f1e04323fb2f"
+    },
+    {
+      "id": "metadata",
+      "input": "{\"version\":\"1.0.0\",\"name\":\"example\",\"files\":{\"z.json\":\"sha256:abc\",\"a.json\":\"sha256:def\"}}",
+      "canonical": "{\"files\":{\"a.json\":\"sha256:def\",\"z.json\":\"sha256:abc\"},\"name\":\"example\",\"version\":\"1.0.0\"}",
+      "manifestDigest": "sha256:1500f8a7c65c394cb7329faad72bf456cc651fba737c8e14ae9c58e405ac9d3f",
+      "packageContentDigest": "sha256:6fe7344e27356d66987a0b11f281ea67e4130bd4c63eb725ea2dd2defd5c0ae1"
+    },
+    {
+      "id": "metadata-reordered",
+      "input": " \n { \"files\": { \"a.json\": \"sha256:def\", \"z.json\": \"sha256:abc\" }, \"name\": \"example\", \"version\": \"1.0.0\" } \t\n",
+      "canonical": "{\"files\":{\"a.json\":\"sha256:def\",\"z.json\":\"sha256:abc\"},\"name\":\"example\",\"version\":\"1.0.0\"}",
+      "manifestDigest": "sha256:1500f8a7c65c394cb7329faad72bf456cc651fba737c8e14ae9c58e405ac9d3f",
+      "packageContentDigest": "sha256:6fe7344e27356d66987a0b11f281ea67e4130bd4c63eb725ea2dd2defd5c0ae1"
+    },
+    {
+      "id": "array-order",
+      "input": "{\"items\":[\"a\",\"b\",{}]}",
+      "canonical": "{\"items\":[\"a\",\"b\",{}]}",
+      "manifestDigest": "sha256:7033953f81d82857db12044f3a997dc22f6e2a1d36182487a53a0db01936202d",
+      "packageContentDigest": "sha256:ebd82c95d20e9a7492f3572598735fc508ff4c5b14f54be4502d71e5a4a3e8b5"
+    },
+    {
+      "id": "array-reversed",
+      "input": "{\"items\":[\"b\",\"a\",{}]}",
+      "canonical": "{\"items\":[\"b\",\"a\",{}]}",
+      "manifestDigest": "sha256:985181545ab25f562c13c087f9159dcad0d7f9c092ff6466942e0640fa5c9eae",
+      "packageContentDigest": "sha256:66f38b448b9c4497d96e5d70ac9ed4f1411057a539606357fa5032afed8db810"
+    },
+    {
+      "id": "escaped-printable",
+      "input": "{\"quote\":\"\\\"\",\"slash\":\"\\/\",\"backslash\":\"\\\\\",\"ascii\":\"\\u0041\"}",
+      "canonical": "{\"ascii\":\"A\",\"backslash\":\"\\\\\",\"quote\":\"\\\"\",\"slash\":\"/\"}",
+      "manifestDigest": "sha256:234ee5321eed7140bc83be4c9b9ca480ccb818282f4da2f12402e6f350058d25",
+      "packageContentDigest": "sha256:0fdebfa05de77de643aa79473d93e7bfb936b30cb4b80c0e0a1be8d29f18863c"
+    },
+    {
+      "id": "numeric-looking-keys",
+      "input": "{\"2\":\"b\",\"10\":\"a\",\"1\":\"c\"}",
+      "canonical": "{\"1\":\"c\",\"10\":\"a\",\"2\":\"b\"}",
+      "manifestDigest": "sha256:d388910ec5cf84bc7cc522b20042057db536b6cd28badf6cc85b5799064b0c32",
+      "packageContentDigest": "sha256:00adad3e6153bac052fb6ed0f3a895950f48cfd810ce1b34c171a1a2bdf0a96c"
+    },
+    {
+      "id": "empty-array",
+      "input": "[]",
+      "canonical": "[]",
+      "manifestDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "packageContentDigest": "sha256:6f1e7ce909fb93020dbdb04c21bd2c7aa55c6dc5b8071b83d14c56017599226c"
+    },
+    {
+      "id": "string",
+      "input": "\" hello ~ \"",
+      "canonical": "\" hello ~ \"",
+      "manifestDigest": "sha256:85f3df6c9f42251161f69d41c0fdbc9e76adb9ab343698e3b421755d2b77b270",
+      "packageContentDigest": "sha256:8fb9e7c6ce61b6ab9e027a6e79b3845366c6ea3e58bac1c43cdafb199651e924"
+    },
+    {
+      "id": "special-keys",
+      "input": "{\"__proto__\":\"safe\",\"constructor\":\"safe\",\"toString\":[]}",
+      "canonical": "{\"__proto__\":\"safe\",\"constructor\":\"safe\",\"toString\":[]}",
+      "manifestDigest": "sha256:d13982707c3d7a324d571f8adc44321d32c64f530749038919f1971f398551bb",
+      "packageContentDigest": "sha256:b6384d74400202d54f9346906e0f9c5dac06a2740d690509cedf943b6fbb43a9"
+    },
+    {
+      "id": "duplicate-root",
+      "input": "{\"a\":\"x\",\"a\":\"y\"}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "duplicate-nested",
+      "input": "{\"outer\":[{\"a\":\"x\",\"a\":\"y\"}]}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "duplicate-escaped",
+      "input": "{\"a\":\"x\",\"\\u0061\":\"y\"}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "number",
+      "input": "1",
+      "error": "invalid-document"
+    },
+    {
+      "id": "nested-number",
+      "input": "{\"n\":1}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "boolean",
+      "input": "true",
+      "error": "invalid-document"
+    },
+    {
+      "id": "nested-boolean",
+      "input": "[false]",
+      "error": "invalid-document"
+    },
+    {
+      "id": "null",
+      "input": "null",
+      "error": "invalid-document"
+    },
+    {
+      "id": "nested-null",
+      "input": "{\"n\":null}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "control-value",
+      "input": "\"\\n\"",
+      "error": "invalid-document"
+    },
+    {
+      "id": "control-key",
+      "input": "{\"\\t\":\"x\"}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "del-value",
+      "input": "\"\\u007f\"",
+      "error": "invalid-document"
+    },
+    {
+      "id": "del-key",
+      "input": "{\"\\u007f\":\"x\"}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "nonascii-value",
+      "input": "\"café\"",
+      "error": "invalid-document"
+    },
+    {
+      "id": "nonascii-key",
+      "input": "{\"é\":\"x\"}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "unicode-escape",
+      "input": "\"\\u00e9\"",
+      "error": "invalid-document"
+    },
+    {
+      "id": "surrogate",
+      "input": "\"\\ud800\"",
+      "error": "invalid-document"
+    },
+    {
+      "id": "raw-control",
+      "input": "\"a\nb\"",
+      "error": "invalid-document"
+    },
+    {
+      "id": "trailing-content",
+      "input": "{} {}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "invalid-json",
+      "input": "{\"a\":}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "fixture-eligibility-manifest",
+      "input": "{\n  \"formatVersion\": \"0.1.0-draft.1\",\n  \"kind\": \"Library\",\n  \"packagePath\": \"example.com/finance/eligibility\",\n  \"version\": \"1.2.0\",\n  \"ir\": {\n    \"formatVersion\": \"4\",\n    \"packageName\": \"example/eligibility\",\n    \"payload\": {\n      \"path\": \"ir.json\",\n      \"mediaType\": \"application/json\",\n      \"profile\": \"classic\"\n    }\n  },\n  \"dependencies\": {},\n  \"exports\": {\n    \"decision\": \"decision\"\n  },\n  \"content\": {\n    \"ir.json\": \"sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43\"\n  }\n}\n",
+      "canonical": "{\"content\":{\"ir.json\":\"sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43\"},\"dependencies\":{},\"exports\":{\"decision\":\"decision\"},\"formatVersion\":\"0.1.0-draft.1\",\"ir\":{\"formatVersion\":\"4\",\"packageName\":\"example/eligibility\",\"payload\":{\"mediaType\":\"application/json\",\"path\":\"ir.json\",\"profile\":\"classic\"}},\"kind\":\"Library\",\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}",
+      "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+      "packageContentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+    },
+    {
+      "id": "fixture-loan-rules-manifest",
+      "input": "{\n  \"formatVersion\": \"0.1.0-draft.1\",\n  \"kind\": \"Library\",\n  \"packagePath\": \"example.com/finance/loan-rules\",\n  \"version\": \"1.0.0\",\n  \"ir\": {\n    \"formatVersion\": \"4\",\n    \"packageName\": \"example/loan-rules\",\n    \"payload\": {\n      \"path\": \"ir.json\",\n      \"mediaType\": \"application/json\",\n      \"profile\": \"classic\"\n    }\n  },\n  \"dependencies\": {\n    \"example/eligibility\": {\n      \"packagePath\": \"example.com/finance/eligibility\",\n      \"versionRange\": {\n        \"minimumInclusive\": \"1.0.0\",\n        \"maximumExclusive\": \"2.0.0\"\n      }\n    }\n  },\n  \"exports\": {\n    \"eligibility\": \"eligibility\"\n  },\n  \"content\": {\n    \"ir.json\": \"sha256:b1884eeb8364f96c6405cc45f2fe07a006c22f066a4136656ad05dda9c9a94cc\"\n  }\n}\n",
+      "canonical": "{\"content\":{\"ir.json\":\"sha256:b1884eeb8364f96c6405cc45f2fe07a006c22f066a4136656ad05dda9c9a94cc\"},\"dependencies\":{\"example/eligibility\":{\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"maximumExclusive\":\"2.0.0\",\"minimumInclusive\":\"1.0.0\"}}},\"exports\":{\"eligibility\":\"eligibility\"},\"formatVersion\":\"0.1.0-draft.1\",\"ir\":{\"formatVersion\":\"4\",\"packageName\":\"example/loan-rules\",\"payload\":{\"mediaType\":\"application/json\",\"path\":\"ir.json\",\"profile\":\"classic\"}},\"kind\":\"Library\",\"packagePath\":\"example.com/finance/loan-rules\",\"version\":\"1.0.0\"}",
+      "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+      "packageContentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+    },
+    {
+      "id": "leading-bom",
+      "input": "﻿{}",
+      "error": "invalid-document"
+    },
+    {
+      "id": "depth-64-arrays",
+      "input": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "canonical": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "manifestDigest": "sha256:47a6ea3d0d276d4402f79745bb6d53886b97d4fa964939c171783a3dd0eef621",
+      "packageContentDigest": "sha256:88f73827f5eecca10fc539481682e76b1c24e64c840a3d95ec5cd23af0cebc5f"
+    },
+    {
+      "id": "depth-65-arrays",
+      "input": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "error": "invalid-document"
+    },
+    {
+      "id": "depth-64-objects",
+      "input": "{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":\"leaf\"}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+      "canonical": "{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":\"leaf\"}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+      "manifestDigest": "sha256:4de92818b468f38d8a42068d81e57a80bdd2a4e08525492b17d0dc51a478e98d",
+      "packageContentDigest": "sha256:6802ef58e2150ebf898ad9cbeb5d15e7c0bd38e7a04b857450aecba28fd65b64"
+    },
+    {
+      "id": "depth-65-objects",
+      "input": "{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":{\"child\":\"leaf\"}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+      "error": "invalid-document"
+    }
+  ],
+  "byteCases": [
+    {
+      "id": "empty-bytes",
+      "hex": "",
+      "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "ascii-bytes",
+      "hex": "616263",
+      "digest": "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "id": "ascii-lf",
+      "hex": "6162630a",
+      "digest": "sha256:edeaaff3f1774ad2888673770c6d64097e391bc362d7d6fb34982ddf0efd18cb"
+    },
+    {
+      "id": "ascii-crlf",
+      "hex": "6162630d0a",
+      "digest": "sha256:552bab6864c7a7b69a502ed1854b9245c0e1a30f008aaa0b281da62585fdb025"
+    },
+    {
+      "id": "binary-bytes",
+      "hex": "0080ff",
+      "digest": "sha256:5240672d7b51756b829ad0ef8d9468b7a078afa2f410484fd3892dab47becb72"
+    }
+  ]
+}
