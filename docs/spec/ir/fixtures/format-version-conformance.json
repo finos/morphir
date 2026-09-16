@@ -307,7 +307,9 @@
       { "table": "[4.0.0,4.0.3)", "release": "4.0.3", "compatibility": "unsupported_format_version_minor" },
       { "table": "[4.0.0,)", "release": "9.7.1", "compatibility": "supported" },
       { "table": "(,4.1.0)", "release": "3.9.9", "compatibility": "supported" },
-      { "table": "[4.0.0,4.0.4294967295]", "release": "4.0.4294967295", "compatibility": "supported" }
+      { "table": "[4.0.0,4.0.4294967295]", "release": "4.0.4294967295", "compatibility": "supported" },
+      { "table": "[3.0.0,4.0.0)", "release": "4.5.0", "compatibility": "unsupported_format_version_major" },
+      { "table": "[3.0.0,4.0.0]", "release": "4.5.0", "compatibility": "unsupported_format_version_minor" }
     ],
     "render": [
       { "table": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "cargo": [">=3.0.0, <3.1.0", ">=4.0.0, <4.1.0"], "elm": ["3.0.0 <= v < 3.1.0", "4.0.0 <= v < 4.1.0"], "prose": "3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0" },

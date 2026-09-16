@@ -45,6 +45,8 @@ const requiredSections = new Map([
 ]);
 
 const U32_MAX = 4294967295n;
+// The same bound as a Number, for release arithmetic over parsed components.
+const COMPONENT_MAXIMUM = Number(U32_MAX);
 const RELEASE_PATTERN = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 const SCHEMA_PROFILES = ["v1", "v2", "v3", "v4"];
 const COMPATIBILITY_RESULTS = new Set([
@@ -132,16 +134,46 @@ function contains(interval, r) {
 	}
 	return true;
 }
+// The next release after a bound, carrying into the minor and then the major
+// when a component is at its maximum (the emptiness rule of the specification's
+// support-table grammar, not the non-carrying `next()` of canonicalization).
+// Null when there is no next release at all.
+function carryingSuccessor([major, minor, patch]) {
+	if (patch < COMPONENT_MAXIMUM) return [major, minor, patch + 1];
+	if (minor < COMPONENT_MAXIMUM) return [major, minor + 1, 0];
+	if (major < COMPONENT_MAXIMUM) return [major + 1, 0, 0];
+	return null;
+}
+// Whether an interval contains any release of major family `major`: take the
+// smallest release the interval admits at or above `major.0.0` and ask whether
+// it is still in that family and still under the upper bound. A major-range
+// comparison would get `[3.0.0,4.0.0)` wrong — it ends exactly where major 4
+// begins, so it holds no release of major 4.
+function touchesMajor(interval, major) {
+	const base = [major, 0, 0];
+	let candidate;
+	if (interval.lower === null || compareRelease(interval.lower, base) < 0) {
+		candidate = base;
+	} else if (interval.lowerInclusive) {
+		candidate = interval.lower;
+	} else {
+		candidate = carryingSuccessor(interval.lower);
+		if (candidate === null) return false;
+	}
+	if (candidate[0] !== major) return false;
+	if (interval.upper !== null) {
+		const c = compareRelease(candidate, interval.upper);
+		if (c > 0 || (c === 0 && !interval.upperInclusive)) return false;
+	}
+	return true;
+}
 function compatibility(normalized, table) {
 	const r = normalized.split(".").map(Number);
 	const intervals = parseCanonicalTable(table);
 	if (intervals.some((i) => contains(i, r))) return "supported";
-	const sameMajor = intervals.some((i) => {
-		const lo = i.lower === null ? -Infinity : i.lower[0];
-		const hi = i.upper === null ? Infinity : i.upper[0];
-		return lo <= r[0] && r[0] <= hi;
-	});
-	return sameMajor ? "unsupported_format_version_minor" : "unsupported_format_version_major";
+	return intervals.some((i) => touchesMajor(i, r[0]))
+		? "unsupported_format_version_minor"
+		: "unsupported_format_version_major";
 }
 
 function scalarValidator(ajv, schema) {

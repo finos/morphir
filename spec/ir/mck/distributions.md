@@ -177,7 +177,7 @@ distribution:
 A patch of a supported minor is read; its canonical spelling stays the release string, since only the baseline collapses to the integer. Governed by `docs/spec/ir/format-version.md`, Revisions.
 
 ```yaml canonical
-"4.0.1"
+4.0.1
 ```
 
 ```json canonical

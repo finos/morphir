@@ -134,6 +134,15 @@ const CANONICAL_TABLE = new RegExp(`^${CANONICAL_INTERVAL}(?:,${CANONICAL_INTERV
  * blame 3.0.0's upper bound for 4.1.0's bracket.
  */
 const INTERVAL = /([[(])([0-9.]*),([0-9.]*)([\])])/g;
+/**
+ * Release components are unsigned 32-bit. `RELEASE` above only forbids leading
+ * zeros, so the range is checked here rather than in the grammar: without it
+ * `[4.0.0,4.4294967296.0)`, a table the corpus itself calls invalid, would be
+ * adjudicated clean. It also keeps the `PATCH_MAXIMUM` suffix test unambiguous —
+ * a longer patch such as `14294967295` is rejected before anything asks whether
+ * it ends in the component maximum.
+ */
+const COMPONENT_MAXIMUM = 4294967295;
 const PATCH_MAXIMUM = ".4294967295";
 const UNKNOWN_TABLE = "unknown";
 
@@ -144,6 +153,14 @@ export function malformedFormatVersionsReason(value: unknown): string | null {
 		return `formatVersions ${JSON.stringify(value)} is not a canonical support table`;
 	}
 	for (const [, open, lower, upper, close] of value.matchAll(INTERVAL)) {
+		for (const bound of [lower, upper]) {
+			if (bound === "") continue;
+			for (const component of bound.split(".")) {
+				if (Number(component) > COMPONENT_MAXIMUM) {
+					return `formatVersions ${JSON.stringify(value)}: the release component ${component} is out of range`;
+				}
+			}
+		}
 		if (close === "]" && !upper.endsWith(PATCH_MAXIMUM)) {
 			return `formatVersions ${JSON.stringify(value)}: an inclusive upper bound must be at the component maximum`;
 		}

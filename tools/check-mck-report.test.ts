@@ -136,6 +136,19 @@ test("rejects a table that is not in interval notation at all", () => {
 	expect(malformedFormatVersionsReason(4)).toMatch(/must be a string/);
 });
 
+test("rejects a release component above the unsigned 32-bit maximum", () => {
+	// The corpus calls this table invalid ("component above range is invalid").
+	expect(malformedFormatVersionsReason("[4.0.0,4.4294967296.0)")).toMatch(
+		/out of range/,
+	);
+	expect(malformedFormatVersionsReason("[4294967296.0.0,)")).toMatch(/out of range/);
+	// A longer patch is not the component maximum wearing a prefix.
+	expect(malformedFormatVersionsReason("[4.0.0,4.0.14294967295]")).toMatch(
+		/out of range/,
+	);
+	expect(malformedFormatVersionsReason("[4.0.0,4.4294967295.0)")).toBeNull();
+});
+
 test("accepts the literal unknown a capabilities-less run reports", () => {
 	expect(malformedFormatVersionsReason("unknown")).toBeNull();
 });
