@@ -137,7 +137,8 @@ The older umbrella draft treats a package as a compiled IR archive and proposes 
 ### Current IR and MCK integration, 2026-09-16
 
 The [MCK overview](https://github.com/finos/morphir/blob/main/spec/mck/README.md) defines one kit with domain suites.
-The IR suite exists at `spec/ir/mck/`. The package suite is planned at `spec/package/mck/` as Stage 0 work.
+The IR suite exists at `spec/ir/mck/`. The draft package suite at `spec/package/mck/` executes
+normalization, byte digests, schemas, and closed Library-set integrity through the shared TypeScript core.
 
 This reconciliation uses Morphir commit `2cd0dcd0e0236a38e577eff90fad67339aa42449` and its pinned morphir-typescript commit
 `46197e289b437038427f964cca6f1f54c03044a1`, which includes decision 0015 and qualified-module naming tests.
@@ -782,16 +783,23 @@ Two digest domains are required:
 1. Package content digest: digest of the normalized release manifest and its canonical sorted declared-content file digests.
 2. Transport digest: digest of one archive, blob, or other acquired byte stream.
 
-Repacking identical logical content may change the transport digest but not the Package content digest.
+Repacking the same normalized manifest and declared payload bytes may change the transport digest but not the Package content digest.
 
 JSON, YAML, single-document, and document-tree payloads can represent the same Distribution while containing different
-files or bytes. That semantic equivalence does not establish equal Package content digests. Stage 0 must define the
-canonical payload representation and whether any profile or layout conversions precede digest calculation.
+files or bytes. That semantic equivalence does not establish equal Package content digests. Hash exact declared payload
+bytes without parsing, rewriting, or profile/layout conversion. Normalize release-manifest metadata separately.
+Reformatting an IR payload changes its file digest and, after updating the declaration, its Package content digest.
 The MCK IR suite's canonical text comparison is useful evidence for codecs, but is not a package-digest algorithm.
+
+The [first Stage 0 contract](../../../../spec/package/library-contract.md) specifies this policy with a
+restricted `0.1.0-draft.1` profile. Its aggregate hashes a domain prefix followed by normalized manifest bytes,
+which include declared paths and file digests. Implementations must also verify those declarations against actual
+payload bytes. The marker, ASCII normalization domain, and aggregate encoding remain experimental draft details.
 
 The MCK embedded-kit content hash identifies its fixture file map. It is a reuse candidate for hashing components,
 not an adopted Package content-digest specification. Package rules still need manifest normalization, declared-content
-boundaries, path safety, and test vectors for the signed release.
+boundaries, path safety, and test vectors for the signed release. The draft covers metadata normalization and initial
+digest cases; transport/materialization safety and signed release contracts remain open.
 
 The release manifest contains content references and file digests, but not the Package content digest itself. The Package release statement binds the release ID, release-manifest digest, and resulting Package content digest. The release statement is therefore outside the content-digest calculation. Later attestations may refer to the Package content digest without changing the release and may be carried beside the logical bundle in a transport envelope.
 
@@ -1094,6 +1102,12 @@ Implementation-specific unit, property, fuzz, differential, and performance test
 
 ### Driver, protocol, and reports
 
+The [shared-core decision](/decisions/0001-package-compatibility-uses-the-shared-mck-core.md) fixes ownership:
+finos/morphir holds the specifications and cases; finos/morphir-typescript holds shared execution and reference
+support; other implementations use the shared tooling through an interface or adapter. Do not duplicate compatibility
+runners in the parent, regardless of language. New repository tooling prefers TypeScript or JavaScript in `.mjs` files;
+another tooling language requires an explicit, justified exception. Reference behavior remains separate from fixed expectations.
+
 The existing driver is `@finos/morphir-mck` in finos/morphir-typescript. Reuse its case loading, adapter transport,
 kit provenance, and report handling where the semantics fit. Package resolution, verification, and materialization need
 their own operations and expected results; they cannot be encoded as IR `decode` or `writeTree` calls.
@@ -1111,15 +1125,29 @@ package's release version, package format, and IR format. The embedded kit lock 
 
 Every required case must pass, with no kit errors or skipped required cases. The current MCK driver skips unsupported
 IR capabilities, and a default successful exit can include skips. Use `--strict` when the entire selection is required,
-or an explicit gate for the required capability set. Package Stage 0 must implement equivalent coverage enforcement.
+or an explicit gate for the required capability set. The draft package command fails on every skip,
+failure, kit error, and empty corpus.
 
 For example, a TypeScript JSON run and the same TypeScript codec behind an executable adapter check transport agreement.
-They count as one implementation. Stage 0 requires a second independent implementation running the same package cases.
+They count as one implementation. Stage 0 requires a second independent implementation running the same package cases
+through the shared core. Independence applies to behavior under test, not separately written compatibility runners.
 IR-only results, pending cases, and unsupported package operations cannot satisfy that requirement.
 
 ## Staged delivery
 
 ### Stage 0: Specification foundation
+
+The [first specification slice](../../../../spec/package/README.md) contains two current-v4 Library examples,
+draft release-manifest and lock-core schemas, and executable MCK package schema/normalization/digest and integrity cases.
+The lock-core is a partial dependency graph, not a complete acquisition/trust lock. `package:check` invokes the
+TypeScript core in-process and through its executable adapter. Its experimental package contract is separate from IR v1.
+Reports identify the corpus content hash, driver, testee and supported operations. Reference operations remain
+separate from fixed expected results. The two transports count as one implementation.
+
+The TypeScript implementation lives in `packages/mck/src/package/` in its submodule. Its changes must land upstream
+before the parent merges the final pin. Dependent drafts may pin a published feature commit for integration checks.
+The standalone prototype runners remain retired. This slice does not implement
+a resolver, registry client, public-specification compatibility checker, or installation authorization.
 
 Deliver:
 

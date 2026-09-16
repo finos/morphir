@@ -1,0 +1,337 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "cases": [
+    {
+      "id": "package.schema.manifest",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "accept"
+    },
+    {
+      "id": "package.schema.consumer",
+      "schema": "manifest",
+      "fixture": "consumer",
+      "expected": "accept"
+    },
+    {
+      "id": "package.schema.lock-core",
+      "schema": "lock",
+      "fixture": "lock",
+      "expected": "accept"
+    },
+    {
+      "id": "package.schema.unknown-field",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "unknown"
+        ],
+        "value": "x"
+      }
+    },
+    {
+      "id": "package.schema.wrong-domain",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "kind"
+        ],
+        "value": "ExecutableExtension"
+      }
+    },
+    {
+      "id": "package.schema.unknown-version",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "formatVersion"
+        ],
+        "value": "1.0.0"
+      }
+    },
+    {
+      "id": "package.schema.package-authority",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "packagePath"
+        ],
+        "value": "example/eligibility"
+      }
+    },
+    {
+      "id": "package.schema.uppercase-authority",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "packagePath"
+        ],
+        "value": "Example.com/finance/eligibility"
+      }
+    },
+    {
+      "id": "package.schema.major-in-path",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "packagePath"
+        ],
+        "value": "example.com/finance/eligibility@2"
+      }
+    },
+    {
+      "id": "package.schema.release-leading-zero",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "version"
+        ],
+        "value": "01.2.0"
+      }
+    },
+    {
+      "id": "package.schema.prerelease-outside-profile",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "version"
+        ],
+        "value": "1.2.0-rc.1"
+      }
+    },
+    {
+      "id": "package.schema.release-in-ir-name",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "ir",
+          "packageName"
+        ],
+        "value": "example/eligibility@1.2.0"
+      }
+    },
+    {
+      "id": "package.schema.ir-dot-authority",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "ir",
+          "packageName"
+        ],
+        "value": "example.com/eligibility"
+      }
+    },
+    {
+      "id": "package.schema.payload-traversal",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "ir",
+          "payload",
+          "path"
+        ],
+        "value": "../ir.json"
+      }
+    },
+    {
+      "id": "package.schema.absolute-path",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "ir",
+          "payload",
+          "path"
+        ],
+        "value": "/ir.json"
+      }
+    },
+    {
+      "id": "package.schema.payload-version-type",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "ir",
+          "formatVersion"
+        ],
+        "value": 4
+      }
+    },
+    {
+      "id": "package.schema.empty-content",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "content"
+        ],
+        "value": {}
+      }
+    },
+    {
+      "id": "package.schema.unknown-export",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "exports"
+        ],
+        "value": {
+          "decision": "BadName"
+        }
+      }
+    },
+    {
+      "id": "package.schema.unsafe-content",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "content"
+        ],
+        "value": {
+          "../ir.json": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": "package.schema.wrong-hash",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "content",
+          "ir.json"
+        ],
+        "value": "sha256:abc"
+      }
+    },
+    {
+      "id": "package.schema.null-dependencies",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "dependencies"
+        ],
+        "value": null
+      }
+    },
+    {
+      "id": "package.schema.required-ir",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "reject",
+      "remove": [
+        "ir"
+      ]
+    },
+    {
+      "id": "package.schema.ir-initialism",
+      "schema": "manifest",
+      "fixture": "eligibility",
+      "expected": "accept",
+      "replace": {
+        "path": [
+          "ir",
+          "packageName"
+        ],
+        "value": "example/HTTP-rules"
+      }
+    },
+    {
+      "id": "package.schema.requirement-identity",
+      "schema": "manifest",
+      "fixture": "consumer",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "dependencies",
+          "example/eligibility",
+          "packagePath"
+        ],
+        "value": "example/eligibility"
+      }
+    },
+    {
+      "id": "package.schema.range-required-upper",
+      "schema": "manifest",
+      "fixture": "consumer",
+      "expected": "reject",
+      "remove": [
+        "dependencies",
+        "example/eligibility",
+        "versionRange",
+        "maximumExclusive"
+      ]
+    },
+    {
+      "id": "package.schema.lock-node-id",
+      "schema": "lock",
+      "fixture": "lock",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "root"
+        ],
+        "value": "example/loan-rules"
+      }
+    },
+    {
+      "id": "package.schema.lock-unknown-field",
+      "schema": "lock",
+      "fixture": "lock",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "trusted"
+        ],
+        "value": "yes"
+      }
+    },
+    {
+      "id": "package.schema.lock-hash",
+      "schema": "lock",
+      "fixture": "lock",
+      "expected": "reject",
+      "replace": {
+        "path": [
+          "nodes",
+          "n1",
+          "manifestDigest"
+        ],
+        "value": "bad"
+      }
+    }
+  ]
+}

@@ -167,6 +167,25 @@ run = [
     "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts coverage --kit spec/ir/mck",
 ]
 
+[tasks."package:schema-check"]
+description = "Validate draft package schemas and example structures (not MCK package compatibility)"
+run = [
+    "jsonschema fmt spec/package/schemas --check",
+    "jsonschema metaschema spec/package/schemas/library-manifest.schema.json",
+    "jsonschema metaschema spec/package/schemas/lock-core.schema.json",
+    "jsonschema validate spec/package/schemas/library-manifest.schema.json spec/package/mck/fixtures/two-libraries/eligibility/manifest.json spec/package/mck/fixtures/two-libraries/loan-rules/manifest.json",
+    "jsonschema validate spec/package/schemas/lock-core.schema.json spec/package/mck/fixtures/two-libraries/lock-core.json -r spec/package/schemas",
+    "jsonschema validate website/static/schemas/morphir-ir-v4.json spec/package/mck/fixtures/two-libraries/eligibility/ir.json spec/package/mck/fixtures/two-libraries/loan-rules/ir.json",
+]
+
+[tasks."package:check"]
+description = "Run draft MCK package cases through the shared TypeScript core and executable adapter"
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --kit spec/package/mck --report .dev/out/mck/package-typescript.json",
+    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --kit spec/package/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --adapter-arg --suite --adapter-arg package --report .dev/out/mck/package-typescript-adapter.json",
+]
+
 [tasks."hooks:install"]
 description = "Activate the checked-in git hooks in .husky"
 run = "bun run tools/install-git-hooks.ts"
@@ -231,6 +250,7 @@ depends = [
     "schema:validate",
     "mck:check",
     "mck:schema-check",
+    "package:schema-check",
 ]
 
 # ===== Testing Tasks =====

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/0.1.0-draft.1/lock-core.schema.json",
+  "title": "Experimental Library lock-core projection (not an install lock)",
+  "type": "object",
+  "required": [ "formatVersion", "kind", "root", "nodes" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "kind": {
+      "const": "LibraryLockCore"
+    },
+    "root": {
+      "type": "string",
+      "pattern": "^n(0|[1-9][0-9]*)$"
+    },
+    "nodes": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^n(0|[1-9][0-9]*)$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "release",
+          "irPackageName",
+          "manifestDigest",
+          "contentDigest",
+          "bindings"
+        ],
+        "properties": {
+          "release": {
+            "type": "object",
+            "required": [ "packagePath", "version" ],
+            "properties": {
+              "packagePath": {
+                "$ref": "library-manifest.schema.json#/$defs/PackagePath"
+              },
+              "version": {
+                "$ref": "library-manifest.schema.json#/$defs/StableVersion"
+              }
+            },
+            "additionalProperties": false
+          },
+          "irPackageName": {
+            "$ref": "library-manifest.schema.json#/$defs/IRPath"
+          },
+          "manifestDigest": {
+            "$ref": "library-manifest.schema.json#/$defs/Digest"
+          },
+          "contentDigest": {
+            "$ref": "library-manifest.schema.json#/$defs/Digest"
+          },
+          "bindings": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "library-manifest.schema.json#/$defs/IRPath"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^n(0|[1-9][0-9]*)$"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
