@@ -1,5 +1,10 @@
 # Log
 
+## 2026-09-16
+
+* **Creation**: Added [Support tables are intervals, and a patch changes nothing a reader can observe](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md), closing bead morphir-ir-v4-stabilize.8.
+* **Creation**: Added the [Format-version support and revisions](/format-version-support.md) Design Note.
+
 ## 2026-09-15
 
 * **Creation**: Added [Dependency directories nest the package path and mark the version segment with @](/decisions/0015-dependency-directories-are-nested-with-a-version-segment.md).

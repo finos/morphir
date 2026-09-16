@@ -1,5 +1,7 @@
 # Decisions
 
+## Decisions
+
 * [Names encode initialisms as uppercase segments](/decisions/0001-name-canonicalization-and-initialism-encoding.md) - IR v4 marks an initialism by writing its canonical segment in uppercase, and projects names onto the document tree through a defined escape.
 * [Both name encodings are implemented, and the switch gates only the encoder](/decisions/0002-both-name-encodings-behind-one-switch.md) - Implementations carry both canonical name encodings; a compile-time constant selects which one is written, while readers always accept both.
 * [The naming codec is modelled in Morphir, with a host-language bootstrap](/decisions/0003-the-naming-codec-is-modelled-in-morphir.md) - The v4 naming codec is expressed as a Morphir model in finos/morphir and drives a shared conformance corpus, while one host implementation remains as the bootstrap.
@@ -14,7 +16,5 @@
 * [One legacy name grammar and one FileStem definition](/decisions/0012-one-legacy-name-grammar-and-one-file-stem-definition.md) - Both IR v4 schemas use the core legacy word grammar ^[a-z0-9]+$, FileStem with its truncation suffix is defined once in the document-tree schema, pathBudget stays required, and ModuleManifestFile gains the fileNames map decision 0001 promised.
 * [DocumentLiteral is in v4, with a raw payload and a deliberately small SDK](/decisions/0013-document-literal-is-in-v4-with-a-raw-payload.md) - IR v4.0.0 adds DocumentLiteral, a seventh literal holding a schema-less JSON-like tree typed as the opaque SDK type morphir/SDK:document#document; its payload is the document verbatim, it cannot be pattern matched, it refuses to downgrade, and the SDK exposes construction, inspection and navigation but no merge, equality or ordering.
 * [Scope of v4.0.0 for the design-only features](/decisions/0014-scope-of-v4-0-0-for-design-only-features.md) - Layered decorations, $ref deduplication and the session journal are out of IR v4.0.0; $meta is reserved and ignored by readers; the books fixture migrates to the canonical product-ID spelling with no legacy-name compatibility rule.
-
-## Decisions
-
 * [Dependency directories nest the package path and mark the version segment with @](/decisions/0015-dependency-directories-are-nested-with-a-version-segment.md) - A document tree lays a dependency out as deps/<package path>/@<version>/<module path>/, where the segment beginning with @ ends the package path and carries the version, empty until the model has one; pkg/ keeps no segment because it holds exactly one package.
+* [Support tables are intervals, and a patch changes nothing a reader can observe](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md) - An implementation declares the IR format versions it reads as a union of intervals in Maven-style notation with one canonical spelling; a patch revision never changes what a reader accepts or a writer emits, a minor may, so the reference table is [3.0.0,3.1.0),[4.0.0,4.1.0) and a later minor fails with unsupported_format_version_minor.
