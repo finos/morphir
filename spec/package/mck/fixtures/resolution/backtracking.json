@@ -1,0 +1,201 @@
+{
+  "formatVersion": "0.1.0-draft.2",
+  "cases": [
+    {
+      "id": "resolution.backtracking.older-parent",
+      "family": "backtracking",
+      "description": "a 1.1.0 conflicts transitively; reconsider a and select 1.0.0.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/a\",\"packagePath\":\"example.com/pkg/a\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"1.3.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/a\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/a\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/a\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"1.3.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/a\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/a\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": true,
+        "graph": {
+          "root": {
+            "packagePath": "example.com/app/root",
+            "version": "1.0.0"
+          },
+          "nodes": [
+            {
+              "release": {
+                "packagePath": "example.com/app/root",
+                "version": "1.0.0"
+              },
+              "irPackageName": "example/app",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": [
+                {
+                  "irPackageName": "example/a",
+                  "target": {
+                    "packagePath": "example.com/pkg/a",
+                    "version": "1.0.0"
+                  }
+                },
+                {
+                  "irPackageName": "example/eligibility",
+                  "target": {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  }
+                }
+              ]
+            },
+            {
+              "release": {
+                "packagePath": "example.com/finance/eligibility",
+                "version": "1.2.0"
+              },
+              "irPackageName": "example/eligibility",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": []
+            },
+            {
+              "release": {
+                "packagePath": "example.com/pkg/a",
+                "version": "1.0.0"
+              },
+              "irPackageName": "example/a",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": [
+                {
+                  "irPackageName": "example/eligibility",
+                  "target": {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.ordering.new-earlier-package",
+      "family": "graph-ordering",
+      "description": "New earlier-sorting a wins graph ordering.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/z\",\"packagePath\":\"example.com/pkg/z\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/z\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/z\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/z\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/z\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/z\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/a\",\"packagePath\":\"example.com/pkg/a\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/pkg/a\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/a\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/a\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": true,
+        "graph": {
+          "root": {
+            "packagePath": "example.com/app/root",
+            "version": "1.0.0"
+          },
+          "nodes": [
+            {
+              "release": {
+                "packagePath": "example.com/app/root",
+                "version": "1.0.0"
+              },
+              "irPackageName": "example/app",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": [
+                {
+                  "irPackageName": "example/z",
+                  "target": {
+                    "packagePath": "example.com/pkg/z",
+                    "version": "1.1.0"
+                  }
+                }
+              ]
+            },
+            {
+              "release": {
+                "packagePath": "example.com/pkg/a",
+                "version": "1.0.0"
+              },
+              "irPackageName": "example/a",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": []
+            },
+            {
+              "release": {
+                "packagePath": "example.com/pkg/z",
+                "version": "1.1.0"
+              },
+              "irPackageName": "example/z",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": [
+                {
+                  "irPackageName": "example/a",
+                  "target": {
+                    "packagePath": "example.com/pkg/a",
+                    "version": "1.0.0"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.ordering.earlier-package-beats-version",
+      "family": "graph-ordering",
+      "description": "The graph with a wins even though z is older.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/z\",\"packagePath\":\"example.com/pkg/z\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/z\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/z\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/z\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/a\",\"packagePath\":\"example.com/pkg/a\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/z\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/z\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"example.com/pkg/a\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/a\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/a\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": true,
+        "graph": {
+          "root": {
+            "packagePath": "example.com/app/root",
+            "version": "1.0.0"
+          },
+          "nodes": [
+            {
+              "release": {
+                "packagePath": "example.com/app/root",
+                "version": "1.0.0"
+              },
+              "irPackageName": "example/app",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": [
+                {
+                  "irPackageName": "example/z",
+                  "target": {
+                    "packagePath": "example.com/pkg/z",
+                    "version": "1.0.0"
+                  }
+                }
+              ]
+            },
+            {
+              "release": {
+                "packagePath": "example.com/pkg/a",
+                "version": "1.0.0"
+              },
+              "irPackageName": "example/a",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": []
+            },
+            {
+              "release": {
+                "packagePath": "example.com/pkg/z",
+                "version": "1.0.0"
+              },
+              "irPackageName": "example/z",
+              "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "bindings": [
+                {
+                  "irPackageName": "example/a",
+                  "target": {
+                    "packagePath": "example.com/pkg/a",
+                    "version": "1.0.0"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

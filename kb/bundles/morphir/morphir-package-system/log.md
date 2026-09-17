@@ -1,6 +1,16 @@
 # Log
 
+## 2026-09-17
+
+* **Update**: Pinned the merged implementations from [TypeScript #18](https://github.com/finos/morphir-typescript/pull/18) and [Rust #154](https://github.com/finos/morphir-rust/pull/154). Fresh shared-driver runs pass all 78 resolution and 80 integrity cases on each transport, with no failures, kit errors, or skips. Rust includes the reviewed replay and update baseline execution bound. The [evidence record](../../../../spec/package/mck/README.md#local-resolution-evidence-pending-landing) identifies exact merged commits. Parent CI and landing remain separate gates; Stage 0 remains incomplete.
+
 ## 2026-09-16
+
+* **Update**: Published [TypeScript #18](https://github.com/finos/morphir-typescript/pull/18) and [Rust #154](https://github.com/finos/morphir-rust/pull/154) after rebasing onto the latest support-table changes and Rust YAML support. The dependent parent branch pins their feature commits and passes the actual package tasks: 78 resolution cases and 80 integrity cases on each transport. Merged upstream pins and passing CI remain required before parent landing; the [evidence record](../../../../spec/package/mck/README.md#local-resolution-evidence-pending-landing) identifies exact commits and versions.
+
+* **Update**: Implemented bounded draft.2 resolution locally in TypeScript and independent Rust, reusing the shared MCK driver. Fresh reports pass all 78 resolution cases and the separate 80 integrity cases on each transport, with no failures, kit errors, or skips. Initial runs used uncommitted checkouts; the [MCK evidence record](../../../../spec/package/mck/README.md#local-resolution-evidence-pending-landing) now records the subsequent published-commit verification. Parent resolution CI wiring is added, but upstream landing, final pins, and CI evidence remain pending. Stage 0 stays incomplete.
+
+* **Update**: Captured the bounded [resolution policy](/package-system-design.md#version-resolution), its normative contract, and fixed MCK cases. Exact replay, initial graph ordering, scoped update ranking, and structured failure distinctions are now specified. Resolution uses contract `0.1.0-draft.2`; integrity remains `0.1.0-draft.1`. Shared-driver integration and independent resolution evidence remain required, and Stage 0 remains incomplete.
 
 * **Update**: Added the independent Rust package implementation and opt-in MCK package adapter. The same shared TypeScript driver reports all 80 draft cases passing against Rust with no failures, kit errors, or skips. Parent CI runs both implementations and retains their reports. Full locks, resolution, registry and trust behavior remain outside this slice; the user-facing lockfile remains `morphir.lock`.
 * **Update**: Landed the shared TypeScript package core in [morphir-typescript #16](https://github.com/finos/morphir-typescript/pull/16) and its parent integration in [Morphir #815](https://github.com/finos/morphir/pull/815). The parent pins merged TypeScript commit `f308c9be27fa58af72c112fe4e16028568c3e6f4`.

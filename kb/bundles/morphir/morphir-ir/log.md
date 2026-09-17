@@ -4,6 +4,7 @@
 
 * **Creation**: Added [Support tables are intervals, and a patch changes nothing a reader can observe](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md), closing bead morphir-ir-v4-stabilize.8.
 * **Creation**: Added the [Format-version support and revisions](/format-version-support.md) Design Note.
+* **Update**: Recorded [decision 0017](/decisions/0017-package-release-versions-belong-to-distribution-bindings.md). Packaging and distribution bindings supply release versions without requiring versions in core definitions or FQNames. Decision 0015's historical text and current bare `@` layout remain unchanged; graph-aware encoding stays in Stage 3.
 
 ## 2026-09-15
 

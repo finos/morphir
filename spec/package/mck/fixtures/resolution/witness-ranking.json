@@ -1,0 +1,338 @@
+{
+  "formatVersion": "0.1.0-draft.2",
+  "cases": [
+    {
+      "id": "resolution.witness-ranking.multiplicity",
+      "family": "graph-ordering",
+      "description": "Repeated exact shared-release identities decide witness ranking before later package versions.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"initial\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/selector\",\"packagePath\":\"z.example/pkg/selector\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"3.0.0\"}}]},\"catalogs\":[{\"packagePath\":\"z.example/pkg/selector\",\"releases\":[{\"release\":{\"packagePath\":\"z.example/pkg/selector\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/selector\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/alpha\",\"packagePath\":\"m.example/pkg/alpha\",\"versionRange\":{\"minimumInclusive\":\"2.0.0\",\"maximumExclusive\":\"3.0.0\"}},{\"irPackageName\":\"example/beta\",\"packagePath\":\"m.example/pkg/beta\",\"versionRange\":{\"minimumInclusive\":\"2.0.0\",\"maximumExclusive\":\"3.0.0\"}},{\"irPackageName\":\"example/gamma\",\"packagePath\":\"m.example/pkg/gamma\",\"versionRange\":{\"minimumInclusive\":\"2.0.0\",\"maximumExclusive\":\"3.0.0\"}}]},{\"release\":{\"packagePath\":\"z.example/pkg/selector\",\"version\":\"2.0.0\"},\"irPackageName\":\"example/selector\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/alpha\",\"packagePath\":\"m.example/pkg/alpha\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/beta\",\"packagePath\":\"m.example/pkg/beta\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/gamma\",\"packagePath\":\"m.example/pkg/gamma\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"m.example/pkg/gamma\",\"releases\":[{\"release\":{\"packagePath\":\"m.example/pkg/gamma\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/gamma\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/shared\",\"packagePath\":\"a.example/pkg/shared\",\"versionRange\":{\"minimumInclusive\":\"2.0.0\",\"maximumExclusive\":\"3.0.0\"}}]},{\"release\":{\"packagePath\":\"m.example/pkg/gamma\",\"version\":\"2.0.0\"},\"irPackageName\":\"example/gamma\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/shared\",\"packagePath\":\"a.example/pkg/shared\",\"versionRange\":{\"minimumInclusive\":\"2.0.0\",\"maximumExclusive\":\"3.0.0\"}}]}]},{\"packagePath\":\"a.example/pkg/shared\",\"releases\":[{\"release\":{\"packagePath\":\"a.example/pkg/shared\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/shared\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"a.example/pkg/shared\",\"version\":\"2.0.0\"},\"irPackageName\":\"example/shared\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"m.example/pkg/alpha\",\"releases\":[{\"release\":{\"packagePath\":\"m.example/pkg/alpha\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/alpha\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/shared\",\"packagePath\":\"a.example/pkg/shared\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"m.example/pkg/alpha\",\"version\":\"2.0.0\"},\"irPackageName\":\"example/alpha\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/shared\",\"packagePath\":\"a.example/pkg/shared\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"m.example/pkg/beta\",\"releases\":[{\"release\":{\"packagePath\":\"m.example/pkg/beta\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/beta\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/shared\",\"packagePath\":\"a.example/pkg/shared\",\"versionRange\":{\"minimumInclusive\":\"2.0.0\",\"maximumExclusive\":\"3.0.0\"}}]},{\"release\":{\"packagePath\":\"m.example/pkg/beta\",\"version\":\"2.0.0\"},\"irPackageName\":\"example/beta\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/shared\",\"packagePath\":\"a.example/pkg/shared\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "unsupported-capability",
+          "requiredCapabilities": [
+            "graph-aware-coexistence"
+          ],
+          "changedPins": [],
+          "witness": {
+            "nodes": [
+              {
+                "occurrence": [],
+                "release": {
+                  "packagePath": "example.com/app/root",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/selector",
+                    "targetOccurrence": [
+                      "example/selector"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/selector"
+                ],
+                "release": {
+                  "packagePath": "z.example/pkg/selector",
+                  "version": "2.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/alpha",
+                    "targetOccurrence": [
+                      "example/selector",
+                      "example/alpha"
+                    ]
+                  },
+                  {
+                    "irPackageName": "example/beta",
+                    "targetOccurrence": [
+                      "example/selector",
+                      "example/beta"
+                    ]
+                  },
+                  {
+                    "irPackageName": "example/gamma",
+                    "targetOccurrence": [
+                      "example/selector",
+                      "example/gamma"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/selector",
+                  "example/alpha"
+                ],
+                "release": {
+                  "packagePath": "m.example/pkg/alpha",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/shared",
+                    "targetOccurrence": [
+                      "example/selector",
+                      "example/alpha",
+                      "example/shared"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/selector",
+                  "example/alpha",
+                  "example/shared"
+                ],
+                "release": {
+                  "packagePath": "a.example/pkg/shared",
+                  "version": "1.0.0"
+                },
+                "bindings": []
+              },
+              {
+                "occurrence": [
+                  "example/selector",
+                  "example/beta"
+                ],
+                "release": {
+                  "packagePath": "m.example/pkg/beta",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/shared",
+                    "targetOccurrence": [
+                      "example/selector",
+                      "example/beta",
+                      "example/shared"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/selector",
+                  "example/beta",
+                  "example/shared"
+                ],
+                "release": {
+                  "packagePath": "a.example/pkg/shared",
+                  "version": "2.0.0"
+                },
+                "bindings": []
+              },
+              {
+                "occurrence": [
+                  "example/selector",
+                  "example/gamma"
+                ],
+                "release": {
+                  "packagePath": "m.example/pkg/gamma",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/shared",
+                    "targetOccurrence": [
+                      "example/selector",
+                      "example/gamma",
+                      "example/shared"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/selector",
+                  "example/gamma",
+                  "example/shared"
+                ],
+                "release": {
+                  "packagePath": "a.example/pkg/shared",
+                  "version": "2.0.0"
+                },
+                "bindings": []
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "resolution.witness-ranking.occurrence-tie",
+      "family": "graph-ordering",
+      "description": "Reachable update targets force equal release multisets; occurrence ordering puts the newer provider under the earlier consumer.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"update\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/target\",\"packagePath\":\"example.com/pkg/target\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"3.0.0\"}}]},\"catalogs\":[{\"packagePath\":\"example.com/pkg/right\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/right\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/right\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/provider\",\"packagePath\":\"example.com/pkg/provider\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"3.0.0\"}}]}]},{\"packagePath\":\"example.com/pkg/provider\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/provider\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/provider\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/alpha\",\"packagePath\":\"example.com/pkg/alpha\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/provider\",\"version\":\"2.0.0\"},\"irPackageName\":\"example/provider\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/beta\",\"packagePath\":\"example.com/pkg/beta\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/pkg/beta\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/beta\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/beta\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"example.com/pkg/target\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/target\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/target\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/alpha\",\"packagePath\":\"example.com/pkg/alpha\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/beta\",\"packagePath\":\"example.com/pkg/beta\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/target\",\"version\":\"2.0.0\"},\"irPackageName\":\"example/target\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/left\",\"packagePath\":\"example.com/pkg/left\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/right\",\"packagePath\":\"example.com/pkg/right\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/pkg/alpha\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/alpha\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/alpha\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"example.com/pkg/left\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/left\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/left\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/provider\",\"packagePath\":\"example.com/pkg/provider\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"3.0.0\"}}]}]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/target\",\"target\":{\"packagePath\":\"example.com/pkg/target\",\"version\":\"1.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/target\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/target\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/alpha\",\"target\":{\"packagePath\":\"example.com/pkg/alpha\",\"version\":\"1.0.0\"}},{\"irPackageName\":\"example/beta\",\"target\":{\"packagePath\":\"example.com/pkg/beta\",\"version\":\"1.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/alpha\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/alpha\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/beta\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/beta\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]}]},\"targets\":[{\"kind\":\"eligible\",\"packagePath\":\"example.com/pkg/beta\"},{\"kind\":\"exact\",\"packagePath\":\"example.com/pkg/target\",\"version\":\"2.0.0\"},{\"kind\":\"eligible\",\"packagePath\":\"example.com/pkg/alpha\"}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "unsupported-capability",
+          "requiredCapabilities": [
+            "graph-aware-coexistence"
+          ],
+          "changedPins": [],
+          "witness": {
+            "nodes": [
+              {
+                "occurrence": [],
+                "release": {
+                  "packagePath": "example.com/app/root",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/target",
+                    "targetOccurrence": [
+                      "example/target"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/target"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/target",
+                  "version": "2.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/left",
+                    "targetOccurrence": [
+                      "example/target",
+                      "example/left"
+                    ]
+                  },
+                  {
+                    "irPackageName": "example/right",
+                    "targetOccurrence": [
+                      "example/target",
+                      "example/right"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/target",
+                  "example/left"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/left",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/provider",
+                    "targetOccurrence": [
+                      "example/target",
+                      "example/left",
+                      "example/provider"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/target",
+                  "example/left",
+                  "example/provider"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/provider",
+                  "version": "2.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/beta",
+                    "targetOccurrence": [
+                      "example/target",
+                      "example/left",
+                      "example/provider",
+                      "example/beta"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/target",
+                  "example/left",
+                  "example/provider",
+                  "example/beta"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/beta",
+                  "version": "1.0.0"
+                },
+                "bindings": []
+              },
+              {
+                "occurrence": [
+                  "example/target",
+                  "example/right"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/right",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/provider",
+                    "targetOccurrence": [
+                      "example/target",
+                      "example/right",
+                      "example/provider"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/target",
+                  "example/right",
+                  "example/provider"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/provider",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/alpha",
+                    "targetOccurrence": [
+                      "example/target",
+                      "example/right",
+                      "example/provider",
+                      "example/alpha"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/target",
+                  "example/right",
+                  "example/provider",
+                  "example/alpha"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/alpha",
+                  "version": "1.0.0"
+                },
+                "bindings": []
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

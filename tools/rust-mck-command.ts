@@ -16,6 +16,21 @@ export function rustMckInvocation(root: string, platform: string, args: readonly
 	if (forwarded.some((arg) => arg === "--adapter" || arg.startsWith("--adapter="))) {
 		throw new Error("this wrapper supplies --adapter; run the driver directly to select another adapter");
 	}
+	if (forwarded.some((arg) => arg.startsWith("--contract="))) {
+		throw new Error("select the package contract as --contract <version>");
+	}
+	const contractPositions = forwarded.flatMap((arg, index) => arg === "--contract" ? [index] : []);
+	if (contractPositions.length > 1) {
+		throw new Error("select the package contract once");
+	}
+	const contractPosition = contractPositions[0];
+	const contract = contractPosition === undefined ? undefined : forwarded[contractPosition + 1];
+	if (contractPosition !== undefined && (contract === undefined || contract.length === 0 || contract.startsWith("--"))) {
+		throw new Error("--contract requires a version");
+	}
+	if (contract !== undefined && suite !== "package") {
+		throw new Error("--contract requires --suite package");
+	}
 	const adapter = path.join(root, "ecosystem/morphir-rust/target/debug",
 		platform === "win32" ? "mck-adapter-rust.exe" : "mck-adapter-rust");
 	const driver = path.join(root, "ecosystem/morphir-typescript/packages/mck/src/cli.ts");
@@ -24,6 +39,7 @@ export function rustMckInvocation(root: string, platform: string, args: readonly
 		command: ["bun", driver, ...(suite === "package" ? ["package", "run"] : ["run"]),
 			"--adapter", adapter,
 			...(suite === "package" ? ["--adapter-arg", "--suite", "--adapter-arg", "package"] : []),
+			...(contract === undefined ? [] : ["--adapter-arg", "--contract", "--adapter-arg", contract]),
 			...forwarded],
 	};
 }

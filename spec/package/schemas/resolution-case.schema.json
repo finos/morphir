@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-case.schema.json",
+  "title": "Fixed resolution corpus manifest or fixture",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "formatVersion", "fixtures" ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.2"
+        },
+        "fixtures": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^fixtures/resolution/[a-z-]+\\.json$"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "formatVersion", "cases" ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.2"
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "id", "family", "description", "input", "expected" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^resolution\\.[a-z0-9.-]+$"
+              },
+              "family": {
+                "enum": [
+                  "replay",
+                  "initial-selection",
+                  "backtracking",
+                  "target-freshness",
+                  "preservation",
+                  "update-boundary",
+                  "shared-dependencies",
+                  "exact-requests",
+                  "multiple-targets",
+                  "graph-ordering",
+                  "failure-distinctions",
+                  "input-permutations",
+                  "profile-boundaries"
+                ]
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "input": {
+                "type": "string"
+              },
+              "expected": {
+                "$ref": "resolution-result.schema.json"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

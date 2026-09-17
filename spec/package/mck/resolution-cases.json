@@ -1,0 +1,12 @@
+{
+  "formatVersion": "0.1.0-draft.2",
+  "fixtures": [
+    "fixtures/resolution/basic.json",
+    "fixtures/resolution/backtracking.json",
+    "fixtures/resolution/updates.json",
+    "fixtures/resolution/diagnostics.json",
+    "fixtures/resolution/root-catalog.json",
+    "fixtures/resolution/witness-ranking.json",
+    "fixtures/resolution/validation-phases.json"
+  ]
+}
