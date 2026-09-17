@@ -3446,7 +3446,15 @@ fn migrate_writes_and_reads_a_v4_document_tree() {
         String::from_utf8_lossy(&to_tree.stdout),
         String::from_utf8_lossy(&to_tree.stderr)
     );
+    // The canonical layout: a manifest at the root, and one directory per module
+    // under `pkg/<package path>/<module path>/` holding that module's manifest
+    // beside a file per type and per value (document-tree page,
+    // docs/spec/ir/schemas/v4/document-tree-files.md; MCK document-tree-0001).
     assert!(tree.join("manifest.yaml").is_file());
+    let module = tree.join("pkg/elm-compat/main");
+    assert!(module.join("module.yaml").is_file());
+    assert!(module.join("product.type.yaml").is_file());
+    assert!(module.join("calculate-total.value.yaml").is_file());
 
     let to_file = morphir_command()
         .args([

@@ -5,8 +5,8 @@ use crate::commands::migrate::format::resolve_input;
 use crate::error::CliError;
 use morphir_common::config::model::IrSection;
 use morphir_common::ir_transport::{
-    CodecOptions, CodecRegistry, FormatId, IrVersion, Layout, read_document_tree_with_options,
-    write_document_tree_with_options,
+    CodecOptions, CodecRegistry, FormatId, IrVersion, Layout, discover_document_tree_format,
+    read_document_tree_with_options, write_document_tree_with_options,
 };
 use morphir_common::vfs::physical_root;
 use morphir_core::ir::v4::IRFile;
@@ -256,14 +256,20 @@ pub fn probe_external(path: &Path) -> Result<(PathBuf, IrDescriptor), CliError> 
     ))
 }
 
-/// Whether `path` has a document-tree manifest at its root. Only checks for
-/// presence — an ambiguous pair (`manifest.json` *and* `manifest.yaml`) is
-/// still surfaced by `discover_document_tree_format`'s own diagnostic once
-/// `resolve_input` runs.
+/// Whether `path` has a document-tree manifest at its root. The manifest names
+/// a tree root may carry are the transport's to know — `manifest.yml` is read
+/// as YAML alongside `manifest.yaml`, for one — so this asks
+/// `discover_document_tree_format` rather than keeping its own list, and only
+/// turns the answer into a yes or no. An ambiguous root (say `manifest.json`
+/// *and* `manifest.yaml`) is a tree root too: it is still surfaced by that
+/// function's own diagnostic once `resolve_input` runs, and calling it a
+/// compile-output directory here would hide the ambiguity behind a worse
+/// message.
 fn is_document_tree_root(path: &Path) -> bool {
-    ["manifest.json", "manifest.yaml"]
-        .into_iter()
-        .any(|name| path.join(name).is_file())
+    match discover_document_tree_format(&physical_root(path)) {
+        Ok(_) => true,
+        Err(error) => error.code() == "morphir::ir::detection::ambiguous_manifest",
+    }
 }
 
 /// Probe a directory that is not itself a document-tree root for the IR
@@ -288,7 +294,7 @@ fn probe_compile_output_directory(path: &Path) -> Result<(PathBuf, IrDescriptor)
     Err(CliError::Validation {
         message: format!(
             "'{}' has no Morphir IR: looked for a document-tree manifest \
-             (manifest.json, manifest.yaml), a single-file artifact \
+             (manifest.json, manifest.yaml, manifest.yml), a single-file artifact \
              (morphir-ir.json, morphir-ir.yaml), and a morphir-ir/ document tree",
             path.display()
         ),
@@ -438,6 +444,27 @@ mod tests {
         let (_, descriptor) = probe_external(&temp.path().join("morphir-ir.json")).unwrap();
         assert_eq!(descriptor.layout, IrLayout::SingleFile);
         assert_eq!(descriptor.format, "json");
+    }
+
+    #[test]
+    fn probe_external_recognizes_a_yml_manifest_as_a_document_tree_root() {
+        // `.yml` is a manifest spelling the transport reads but never writes.
+        // Discovery is the only place that knows the list, so probing must ask
+        // it rather than keep its own — a tree whose manifest is `manifest.yml`
+        // used to be mistaken for a compile-output directory and refused.
+        let temp = tempfile::tempdir().unwrap();
+        let storage = IrStorage::from_config(Some(&section("document-tree", "yaml"))).unwrap();
+        write_v4(temp.path(), &storage, &sample_ir()).unwrap();
+        let tree = temp.path().join("morphir-ir");
+        std::fs::rename(tree.join("manifest.yaml"), tree.join("manifest.yml")).unwrap();
+
+        let (base, descriptor) = probe_external(&tree).unwrap();
+
+        assert_eq!(base, temp.path());
+        assert_eq!(descriptor.layout, IrLayout::DocumentTree);
+        assert_eq!(descriptor.format, "yaml");
+        let value = read_value(&base, &descriptor).unwrap();
+        assert_eq!(value["formatVersion"], 4);
     }
 
     #[test]
