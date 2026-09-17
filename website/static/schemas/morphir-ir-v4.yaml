@@ -153,6 +153,7 @@ definitions:
 
   TypeAttributes:
     type: object
+    additionalProperties: false
     properties:
       source: { $ref: "#/definitions/SourceLocation" }
       constraints: { type: object, description: "Type constraints (placeholder for future expansion)" }
@@ -167,6 +168,7 @@ definitions:
 
   ValueAttributes:
     type: object
+    additionalProperties: false
     properties:
       source: { $ref: "#/definitions/SourceLocation" }
       inferredType: { $ref: "#/definitions/Type", description: "Type inferred during type checking" }
@@ -1159,6 +1161,7 @@ definitions:
   TypeAliasDefinitionBody:
     type: object
     required: ["typeParams", "typeExp"]
+    additionalProperties: false
     properties:
       typeParams:
         type: array
@@ -1195,6 +1198,7 @@ definitions:
   CustomTypeDefinitionBody:
     type: object
     required: ["typeParams", "constructors"]
+    additionalProperties: false
     properties:
       typeParams:
         type: array
@@ -1236,6 +1240,7 @@ definitions:
   IncompleteTypeDefinitionBody:
     type: object
     required: ["typeParams", "incompleteness"]
+    additionalProperties: false
     properties:
       typeParams:
         type: array
@@ -2118,6 +2123,7 @@ definitions:
   ExpressionBody:
     type: object
     required: ["inputTypes", "outputType", "body"]
+    additionalProperties: false
     properties:
       inputTypes:
         type: object
@@ -2137,6 +2143,7 @@ definitions:
   NativeBody:
     type: object
     required: ["inputTypes", "outputType", "nativeInfo"]
+    additionalProperties: false
     properties:
       inputTypes:
         type: object
@@ -2196,6 +2203,7 @@ definitions:
   IncompleteBody:
     type: object
     required: ["inputTypes", "incompleteness"]
+    additionalProperties: false
     properties:
       inputTypes:
         type: object
@@ -2373,14 +2381,20 @@ definitions:
       DecimalLiteral:
         oneOf:
           - type: string
+            pattern: "^[+-]?([0-9]+(\\.[0-9]*)?|\\.[0-9]+)([eE][+-]?[0-9]+)?$"
           - type: object
             required: ["value"]
             properties:
-              value: { type: string }
+              value:
+                type: string
+                pattern: "^[+-]?([0-9]+(\\.[0-9]*)?|\\.[0-9]+)([eE][+-]?[0-9]+)?$"
     description: |
       Arbitrary-precision decimal literal (stored as string for precision).
       Compact: { "DecimalLiteral": "123.456789012345678901234567890" }
       Expanded: { "DecimalLiteral": { "value": "123.456789012345678901234567890" } }
+      The string must spell a decimal lexeme (v4 schema page, "Literals" grammar):
+      an optional sign, digits with an optional fractional part (or a leading dot),
+      and an optional exponent: ^[+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?$
     examples:
       - { "DecimalLiteral": "123456789.987654321" }
       - { "DecimalLiteral": "0.000000000000000001" }
