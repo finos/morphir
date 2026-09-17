@@ -100,7 +100,7 @@
     },
     "ValueSpecification": {
       "type": "object",
-      "required": [ "inputs", "output" ],
+      "required": [ "output" ],
       "properties": {
         "inputs": {
           "description": "Input parameter types",
@@ -341,7 +341,7 @@
               "additionalProperties": true
             },
             "spec": {
-              "description": "Value specification (interface). Used in PackageSpecification.\nMust contain: inputs (object mapping parameter names to types) and output (type).\n",
+              "description": "Value specification (interface). Used in PackageSpecification.\nMust contain output (type); inputs (object mapping parameter names to types) is\nomitted when empty and accepted when written empty.\n",
               "type": "object",
               "required": [],
               "properties": {

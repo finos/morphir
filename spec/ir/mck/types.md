@@ -222,3 +222,15 @@ Decision 0008 makes `Hole` a value expression (values-0009). The type-level inco
 ```json rejected diagnostic=unknown_node
 { "Draft": {} }
 ```
+
+## types-0012: Attribute members are objects and nothing else is an attribute {node=Type}
+
+`constraints` and `extensions` are objects (v4 schema page, `TypeAttributes`); a member the schema does not name is unknown.
+
+```json rejected diagnostic=invalid_type
+{ "Variable": { "attributes": { "constraints": 5 }, "name": "a" } }
+```
+
+```json rejected diagnostic=unknown_member
+{ "Variable": { "attributes": { "colour": "red" }, "name": "a" } }
+```
