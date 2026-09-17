@@ -10,7 +10,7 @@ distribution:
             types:
               api-error:
                 Public:
-                  doc: " Possible API errors."
+                  doc: " Possible API errors.\n"
                   CustomTypeDefinition:
                     typeParams: []
                     access: Public
@@ -20,7 +20,7 @@ distribution:
                       order-not-found: [[arg-1, "morphir/SDK:string#string"]]
               request:
                 Public:
-                  doc: " Represents an API request to create or modify an order."
+                  doc: " Represents an API request to create or modify an order.\n"
                   TypeAliasDefinition:
                     typeParams: []
                     typeExp:
@@ -35,7 +35,7 @@ distribution:
                               - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
               response:
                 Public:
-                  doc: " Represents an API response."
+                  doc: " Represents an API response.\n"
                   TypeAliasDefinition:
                     typeParams: []
                     typeExp:
@@ -48,7 +48,7 @@ distribution:
             values:
               create-order:
                 Public:
-                  doc: " Create a new order from a list of products."
+                  doc: " Create a new order from a list of products.\n"
                   ExpressionBody:
                     inputTypes:
                       order-id: morphir/SDK:string#string
@@ -82,7 +82,7 @@ distribution:
                               fqname: elm-compat:main#pending
               get-order-status:
                 Public:
-                  doc: " Get the status of an order as a string response."
+                  doc: " Get the status of an order as a string response.\n"
                   ExpressionBody:
                     inputTypes:
                       order: elm-compat:main#customer-order
@@ -213,7 +213,7 @@ distribution:
                                     BoolLiteral: true
               process-request:
                 Public:
-                  doc: " Process an API request and return a response."
+                  doc: " Process an API request and return a response.\n"
                   ExpressionBody:
                     inputTypes:
                       request: elm-compat:api#request
@@ -493,13 +493,13 @@ distribution:
                                         inferredType: morphir/SDK:basics#bool
                                       literal:
                                         BoolLiteral: false
-            doc: [" API module demonstrating request/response patterns.", "", "This module provides types and functions for a simple API layer,", demonstrating how Morphir handles common API patterns.]
+            doc: " API module demonstrating request/response patterns.\n\nThis module provides types and functions for a simple API layer,\ndemonstrating how Morphir handles common API patterns.\n"
         main:
           Public:
             types:
               customer-order:
                 Public:
-                  doc: " A customer order containing products and quantities."
+                  doc: " A customer order containing products and quantities.\n"
                   TypeAliasDefinition:
                     typeParams: []
                     typeExp:
@@ -513,7 +513,7 @@ distribution:
                           status: elm-compat:main#order-status
               order-status:
                 Public:
-                  doc: " Possible states of an order."
+                  doc: " Possible states of an order.\n"
                   CustomTypeDefinition:
                     typeParams: []
                     access: Public
@@ -525,7 +525,7 @@ distribution:
                       shipped: []
               product:
                 Public:
-                  doc: " A product with price information."
+                  doc: " A product with price information.\n"
                   TypeAliasDefinition:
                     typeParams: []
                     typeExp:
@@ -536,20 +536,20 @@ distribution:
                           price: morphir/SDK:basics#float
               product-id:
                 Public:
-                  doc: " A unique identifier for products."
+                  doc: " A unique identifier for products.\n"
                   TypeAliasDefinition:
                     typeParams: []
                     typeExp: morphir/SDK:string#string
               quantity:
                 Public:
-                  doc: " Represents a quantity of items."
+                  doc: " Represents a quantity of items.\n"
                   TypeAliasDefinition:
                     typeParams: []
                     typeExp: morphir/SDK:basics#int
             values:
               apply-discount:
                 Public:
-                  doc: [" Apply a percentage discount to a price.", "", "    applyDiscount 10 100.0 == 90.0", ""]
+                  doc: " Apply a percentage discount to a price.\n\n    applyDiscount 10 100.0 == 90.0\n\n"
                   ExpressionBody:
                     inputTypes:
                       discount-percent: morphir/SDK:basics#float
@@ -658,7 +658,7 @@ distribution:
                                 name: discount
               calculate-total:
                 Public:
-                  doc: [" Calculate the total price of an order.", "", "    calculateTotal { orderId = \"1\", products = [ ( product, 2 ) ], status = Pending }", ""]
+                  doc: " Calculate the total price of an order.\n\n    calculateTotal { orderId = \"1\", products = [ ( product, 2 ) ], status = Pending }\n\n"
                   ExpressionBody:
                     inputTypes:
                       order: elm-compat:main#customer-order
@@ -805,7 +805,7 @@ distribution:
                                 name: products
               is-valid-order:
                 Public:
-                  doc: " Check if an order is valid (has at least one product with positive quantity)."
+                  doc: " Check if an order is valid (has at least one product with positive quantity).\n"
                   ExpressionBody:
                     inputTypes:
                       order: elm-compat:main#customer-order
@@ -953,7 +953,7 @@ distribution:
                                     name: products
               order-status-to-string:
                 Public:
-                  doc: " Convert an order status to a human-readable string."
+                  doc: " Convert an order status to a human-readable string.\n"
                   ExpressionBody:
                     inputTypes:
                       status: elm-compat:main#order-status
@@ -1028,4 +1028,4 @@ distribution:
                                   inferredType: morphir/SDK:string#string
                                 literal:
                                   StringLiteral: Cancelled
-            doc: [" Main module demonstrating Morphir-compatible Elm types and functions.", "", This module provides a simple e-commerce domain model for testing, the morphir-elm toolchain integration.]
+            doc: " Main module demonstrating Morphir-compatible Elm types and functions.\n\nThis module provides a simple e-commerce domain model for testing\nthe morphir-elm toolchain integration.\n"
