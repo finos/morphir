@@ -241,7 +241,8 @@
           "description": "Custom extension data",
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "ValueAttributes": {
       "description": "V4 explicit value attributes replacing generic 'a' parameter.\nContains source location, inferred type, and extensibility hooks.\n",
@@ -278,7 +279,8 @@
           "description": "Custom extension data",
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "Annotation": {
       "description": "Structured annotation on a specification type.\nCan be a compact string or a canonical object.\n",
@@ -1978,7 +1980,8 @@
         "typeExp": {
           "$ref": "#/definitions/Type"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "TypeAliasDefinition": {
       "description": "Type alias definition (implementation).\nV4 format: { \"TypeAliasDefinition\": { \"typeParams\": [...], \"typeExp\": ... } }\nLegacy format: [\"TypeAliasDefinition\", [...], ...]\n",
@@ -2066,7 +2069,8 @@
         "constructors": {
           "$ref": "#/definitions/Constructors"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "CustomTypeDefinition": {
       "description": "Custom type definition (sum type implementation).\nV4 format: { \"CustomTypeDefinition\": { \"typeParams\": [...], \"access\": \"Public\", \"constructors\": {...} } }\nLegacy format: [\"CustomTypeDefinition\", [...], { \"access\": ..., \"value\": [...] }]\n",
@@ -2153,7 +2157,8 @@
         "partialTypeExp": {
           "$ref": "#/definitions/Type"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "IncompleteTypeDefinition": {
       "description": "Incomplete type definition (V4 feature for best-effort support).\nUsed when a type definition cannot be fully resolved.\n",
@@ -3784,7 +3789,8 @@
         "body": {
           "$ref": "#/definitions/Value"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "NativeBody": {
       "description": "Native/builtin operation body (no IR expression).\nUsed for platform operations that don't have an IR representation.\n",
@@ -3818,7 +3824,8 @@
         "nativeInfo": {
           "$ref": "#/definitions/NativeInfo"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "ExternalBinding": {
       "description": "One per-target binding of an external definition.",
@@ -3924,7 +3931,8 @@
         "partialBody": {
           "$ref": "#/definitions/Value"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "Literal": {
       "description": "Literal constant value. V4 uses wrapper object format, and has seven literals:\nthe six scalar ones and DocumentLiteral (decision 0013).\n\nTwo forms are accepted (permissive decoding):\n- Compact (canonical): { \"IntegerLiteral\": 42 }\n- Expanded: { \"IntegerLiteral\": { \"value\": 42 } }\n\nEncoders should output the compact form.\n",
@@ -4155,7 +4163,7 @@
       "additionalProperties": false
     },
     "DecimalLiteral": {
-      "description": "Arbitrary-precision decimal literal (stored as string for precision).\nCompact: { \"DecimalLiteral\": \"123.456789012345678901234567890\" }\nExpanded: { \"DecimalLiteral\": { \"value\": \"123.456789012345678901234567890\" } }\n",
+      "description": "Arbitrary-precision decimal literal (stored as string for precision).\nCompact: { \"DecimalLiteral\": \"123.456789012345678901234567890\" }\nExpanded: { \"DecimalLiteral\": { \"value\": \"123.456789012345678901234567890\" } }\nThe string must spell a decimal lexeme (v4 schema page, \"Literals\" grammar):\nan optional sign, digits with an optional fractional part (or a leading dot),\nand an optional exponent: ^[+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?$\n",
       "examples": [
         {
           "DecimalLiteral": "123456789.987654321"
@@ -4170,14 +4178,16 @@
         "DecimalLiteral": {
           "oneOf": [
             {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[+-]?([0-9]+(\\.[0-9]*)?|\\.[0-9]+)([eE][+-]?[0-9]+)?$"
             },
             {
               "type": "object",
               "required": [ "value" ],
               "properties": {
                 "value": {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[+-]?([0-9]+(\\.[0-9]*)?|\\.[0-9]+)([eE][+-]?[0-9]+)?$"
                 }
               }
             }

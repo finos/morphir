@@ -483,6 +483,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
+name = "bigdecimal"
+version = "0.4.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d6867f1565b3aad85681f1015055b087fcfd840d6aeee6eee7f2da317603695"
+dependencies = [
+ "autocfg",
+ "libm",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4029,9 +4042,11 @@ name = "morphir-core"
 version = "0.4.0-alpha.6"
 dependencies = [
  "anyhow",
+ "bigdecimal",
  "granit-parser",
  "indexmap 2.14.0",
  "lasso",
+ "num-bigint",
  "rstest",
  "schemars 1.2.2",
  "serde",
@@ -4141,6 +4156,7 @@ dependencies = [
  "morphir-common",
  "morphir-core",
  "morphir-extension-sdk",
+ "num-bigint",
  "percent-encoding",
  "pretty",
  "serde",

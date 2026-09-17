@@ -255,3 +255,81 @@ IntegerLiteral: 0o17
 ```yaml rejected diagnostic=invalid_literal
 IntegerLiteral: 0xF
 ```
+
+## patterns-and-literals-0016: A decimal literal is a decimal lexeme {node=Literal}
+
+A `DecimalLiteral` is a genuine decimal, not text. Its payload is a string because JSON numbers are floats, but the string must spell a decimal: `[+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?`, no whitespace, no `_`, no hex, no `NaN` or `Infinity`. The lexeme is kept as written (patterns-and-literals-0002), so trailing zeros survive: `-0.00` is not `0`. Anything else is `invalid_literal`. v4 schema page, "Literals".
+
+```yaml canonical
+DecimalLiteral: "-0.00"
+```
+
+```json canonical
+{ "DecimalLiteral": "-0.00" }
+```
+
+```json rejected diagnostic=invalid_literal
+{ "DecimalLiteral": "ten" }
+```
+
+```json rejected diagnostic=invalid_literal
+{ "DecimalLiteral": "" }
+```
+
+```json rejected diagnostic=invalid_literal
+{ "DecimalLiteral": "1_000" }
+```
+
+```json rejected diagnostic=invalid_literal
+{ "DecimalLiteral": "NaN" }
+```
+
+```json rejected diagnostic=invalid_literal
+{ "DecimalLiteral": 10.5 }
+```
+
+## patterns-and-literals-0017: A decimal lexeme may carry an exponent {node=Literal}
+
+The grammar admits an exponent; the lexeme stays as written, so a reader does not expand `1e-7` to `0.0000001`. In YAML the lexeme is quoted, because a plain `1e-7` would resolve to a float.
+
+```yaml canonical
+DecimalLiteral: "1e-7"
+```
+
+```json canonical
+{ "DecimalLiteral": "1e-7" }
+```
+
+## patterns-and-literals-0018: A decimal lexeme may omit the integer part {node=Literal}
+
+`.5` is a decimal lexeme, and so is `12.`; neither is rewritten.
+
+```yaml canonical
+DecimalLiteral: ".5"
+```
+
+```json canonical
+{ "DecimalLiteral": ".5" }
+```
+
+## patterns-and-literals-0019: An integer literal has arbitrary precision {node=Literal}
+
+An `IntegerLiteral` carries a whole-number lexeme of any size; a binding that reads it through a 64-bit integer fails this case visibly. The lexeme is written back unchanged.
+
+```yaml canonical
+IntegerLiteral: 18446744073709551616
+```
+
+```json canonical
+{ "IntegerLiteral": 18446744073709551616 }
+```
+
+## patterns-and-literals-0020: A negative integer literal below the 64-bit range {node=Literal}
+
+```yaml canonical
+IntegerLiteral: -9223372036854775809
+```
+
+```json canonical
+{ "IntegerLiteral": -9223372036854775809 }
+```
