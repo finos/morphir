@@ -19,7 +19,7 @@ This guide provides detailed instructions for converting Morphir IR between diff
   - [V3 → V4](#v3--v4)
   - [Files written by CLIs before 0.4.0-alpha.7](#files-written-by-clis-before-040-alpha7)
   - [Format-version support tables and the renamed diagnostic](#format-version-support-tables-and-the-renamed-diagnostic)
-  - [Document-tree layout in 0.4.0-alpha.7](#document-tree-layout-in-040-alpha7)
+  - [Document-tree layout in 0.4.0-alpha.8](#document-tree-layout-in-040-alpha8)
 - [Backward Migration (Downgrading)](#backward-migration-downgrading)
   - [V4 → V3](#v4--v3)
   - [V3 → V2](#v3--v2)
@@ -576,11 +576,11 @@ file changes; only the reader's acceptance rule and the diagnostic code do. This
 
 ---
 
-### Document-tree layout in 0.4.0-alpha.7
+### Document-tree layout in 0.4.0-alpha.8
 
 A distribution can be stored as a directory of small files rather than one document. That layout — the
 **document tree** — is specified on the [document-tree page](./v4/document-tree-files.md) and pinned by MCK
-cases document-tree-0001 to 0009. Release 0.4.0-alpha.7 makes the Rust CLI write and read the layout that
+cases document-tree-0001 to 0009. Release 0.4.0-alpha.8 makes the Rust CLI write and read the layout that
 page describes. Trees written by earlier releases are refused rather than reinterpreted.
 
 #### The canonical shape
@@ -597,7 +597,7 @@ Every path segment is the escaped spelling of a name, and the extension is the p
 homogeneous, so one profile spells every file in it (document-tree page, "Serialization profile" and
 "Directory Structure").
 
-What changed from the layout the CLI wrote before 0.4.0-alpha.7:
+What changed from the layout the CLI wrote before 0.4.0-alpha.8:
 
 - **Dependencies live under `deps/`, not `pkg/`.** A dependency's package path ends in a `@` segment, the
   slot a package version would occupy, so one dependency's directory can never be a prefix of another's:
@@ -630,16 +630,16 @@ that a tree predates the change rather than being merely malformed. Reading such
 morphir::ir::document_tree::missing_member: missing member pathBudget (at manifest#/)
 ```
 
-carrying the guidance `this tree predates 0.4.0-alpha.7; regenerate it with morphir migrate`.
+carrying the guidance `this tree predates 0.4.0-alpha.8; regenerate it with morphir migrate`.
 
 There is no in-place upgrade, because the old tree can no longer be read: write the distribution to a single
-file with the CLI that produced the tree, then lay that file out again with 0.4.0-alpha.7 or later.
+file with the CLI that produced the tree, then lay that file out again with 0.4.0-alpha.8 or later.
 
 ```bash
-# with the CLI that wrote the tree (0.4.0-alpha.6 or earlier)
+# with the CLI that wrote the tree (0.4.0-alpha.7 or earlier)
 morphir migrate <old-tree> -o model.json --output-layout single-file
 
-# with 0.4.0-alpha.7 or later
+# with 0.4.0-alpha.8 or later
 morphir migrate model.json -o <new-tree> --output-layout vfs
 ```
 

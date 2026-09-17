@@ -3,7 +3,7 @@
 
 **Usage:** `morphir [FLAGS] <SUBCOMMAND>`
 
-**Version:** 0.4.0-alpha.6
+**Version:** 0.4.0-alpha.7
 
 - **Usage:** `morphir [FLAGS] <SUBCOMMAND>`
 

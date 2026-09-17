@@ -12,8 +12,8 @@ registry client or installer ships in this slice.
 The [resolution contract](resolution-contract.md) separately specifies experimental
 `0.1.0-draft.2` replay, initial selection, targeted updates, and structured diagnostics.
 Its schemas and fixed MCK expectations drive shared-core checks against TypeScript and
-independent Rust resolution implementations. This branch pins the merged TypeScript and Rust
-implementations for integration checks. Parent landing remains pending.
+independent Rust resolution implementations. [Parent PR #820](https://github.com/finos/morphir/pull/820)
+landed these checks with merged TypeScript and Rust pins on 2026-09-17 UTC.
 Results are metadata projections, not installable locks or verified payload/API compatibility. The draft.1
 integrity contract and content digest separator remain unchanged.
 
@@ -31,7 +31,7 @@ The resolution integration adds `mise run package:resolution-check` for both Typ
 transports and `mise run package:resolution-check:rust` for Rust through the same driver.
 These tasks explicitly select draft.2 and
 write separate `package-resolution-*.json` reports. See the [MCK suite](mck/README.md)
-for the bounded evidence and the distinction between local verification and landed support.
+for the exact pins, corpus hashes, and passing integration CI evidence.
 
 The [shared MCK core decision](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md)
 places package case execution in finos/morphir-typescript. The implementation lives in
@@ -45,6 +45,21 @@ No standalone package compatibility runner ships here.
 
 The planned user-facing lockfile is `morphir.lock`. The current `lock-core.json` fixture
 and `lock-core.schema.json` describe only a partial graph, not an installable lockfile.
+
+The candidate [local Library contract](local-library-contract.md) adds draft.3 full-lock,
+registry-record and release-statement schemas around the unchanged resolution graph.
+Its [unsigned worked shapes](mck/fixtures/local-registry/unsigned/README.md) use the existing
+two-Library identities and digests, but are not executable trust evidence. The accompanying
+[trust profile](package-trust-profile.md) proposes TUF/DSSE rules and durable local authorization.
+The candidate also specifies filesystem bounds, publication and recovery, and structured diagnostics.
+Its [MCK definitions](mck/README.md#candidate-local-registry-contract) describe fixed scenarios
+with explicit pending asset bindings. They are not an executable compatibility corpus yet.
+Wire-contract review was approved on 2026-09-17. The
+[signed two-Library fixture](mck/fixtures/local-registry/assets/signed/README.md) passed
+user review on 2026-09-17. Shared TypeScript runtime support, independent Rust support
+and parent integration are the next implementation stages.
+The later local workflow adds packing, publication, acquisition, and verified consumption;
+distributed registries and advanced multi-version graphs remain separate stages.
 
 Executable extensions and installable tools retain separate contracts. Nothing here
 requires their manifests or lifecycles to adopt the model-package format.

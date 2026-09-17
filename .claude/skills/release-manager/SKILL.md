@@ -119,14 +119,14 @@ MORPHIR_ELM_EXTENSION_BIN="$PWD/ecosystem/morphir-elm/dist/morphir-elm-extension
   cargo test --locked --package integration-tests --test elm_extension -- --ignored --nocapture
 ```
 
-**WASM extensions (Avro, OpenAPI).** CI builds the Avro and OpenAPI guests
+**WASM extensions (Avro, OpenAPI, Python).** CI builds all three guests
 from `ecosystem/morphir-rust` and runs the ignored `generate_extension` and
 `generate_openapi_extension` tests against them. To run them locally:
 
 ```bash
 rustup target add wasm32-unknown-unknown
 cargo build --locked --release --manifest-path ecosystem/morphir-rust/Cargo.toml \
-  -p morphir-avro-extension -p morphir-openapi-extension --target wasm32-unknown-unknown
+  -p morphir-avro-extension -p morphir-openapi-extension -p morphir-python-binding --target wasm32-unknown-unknown
 cargo test --locked -p morphir --test generate_extension --test generate_openapi_extension -- --ignored
 ```
 
@@ -154,6 +154,13 @@ $bin generate --target avro --input website/static/ir/examples/v3/greeting-examp
 Repeat the same steps for `extension/openapi/v<version>` with
 `morphir-openapi` and the `openapi` and `json-schema` targets. Every command
 must succeed and the generate step must write artifacts.
+
+For Python, download `extension/python/v<version>` and rename its namespaced
+descriptor to `release.json`. Set `MORPHIR_PYTHON_BUNDLE` to that directory and
+run `cargo test --locked -p morphir --test python_extension -- --ignored`.
+This exercises CLI publication, installation, compilation, generation and
+recompilation with a fresh Morphir Home after removing the source repository.
+CI packages the locally built Python guest and runs this test explicitly.
 
 ### Manual verification
 

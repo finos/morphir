@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/0.1.0-draft.3/package-trust-policy.schema.json",
+  "title": "Candidate local Library trust policy",
+  "$comment": "Local authorization input, never authority obtained from a lock or registry. Semantic uniqueness, namespace selection, distinct-key thresholds and bootstrap rules are defined in package-trust-profile.md.",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "kind",
+    "repositories",
+    "publisherRules",
+    "continuedUse"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.3"
+    },
+    "kind": {
+      "const": "LibraryTrustPolicy"
+    },
+    "repositories": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Repository"
+      }
+    },
+    "publisherRules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PublisherRule"
+      }
+    },
+    "continuedUse": {
+      "enum": [ "previous-authorization", "fresh-metadata" ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "Digest": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/Digest"
+    },
+    "Namespace": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)+(/[a-z0-9]+(-[a-z0-9]+)*)*$"
+    },
+    "PositiveInteger": {
+      "type": "integer",
+      "maximum": 9007199254740991,
+      "minimum": 1
+    },
+    "PublicKey": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "BootstrapRoot": {
+      "type": "object",
+      "required": [ "version", "digest" ],
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Repository": {
+      "type": "object",
+      "required": [ "identity", "bootstrapRoot", "namespaces" ],
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/Digest"
+        },
+        "bootstrapRoot": {
+          "$ref": "#/$defs/BootstrapRoot"
+        },
+        "namespaces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Namespace"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PublisherRule": {
+      "type": "object",
+      "required": [ "namespace", "publicKeys", "threshold" ],
+      "properties": {
+        "namespace": {
+          "$ref": "#/$defs/Namespace"
+        },
+        "publicKeys": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/PublicKey"
+          }
+        },
+        "threshold": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

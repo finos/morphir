@@ -1,0 +1,242 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "cases": [
+    {
+      "kind": "scenario",
+      "id": "local-registry.bounds.profile-lock-bytes",
+      "family": "bounds",
+      "description": "The first byte above the inclusive lock profile bound reports maximum+1 without unbounded parsing.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "resource-limit",
+                "phase": "decode",
+                "witnesses": [
+                  {
+                    "kind": "resource",
+                    "subject": {
+                      "kind": "lock"
+                    },
+                    "resource": "lock-bytes",
+                    "scope": "profile",
+                    "maximum": "16777216",
+                    "observed": "16777217"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-over-byte-bound"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-bounds-profile-lock-bytes",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.bounds.local-lock-bytes",
+      "family": "bounds",
+      "description": "A stricter caller byte bound is local-policy rejection, not evidence that package content is invalid.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [
+            {
+              "resource": "lock-bytes",
+              "maximum": "1"
+            }
+          ],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "resource-limit",
+                "phase": "decode",
+                "witnesses": [
+                  {
+                    "kind": "resource",
+                    "subject": {
+                      "kind": "lock"
+                    },
+                    "resource": "lock-bytes",
+                    "scope": "local-policy",
+                    "maximum": "1",
+                    "observed": "2"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-bounds-local-lock-bytes",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

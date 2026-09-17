@@ -1,0 +1,820 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "cases": [
+    {
+      "kind": "scenario",
+      "id": "local-registry.recovery.lost-state",
+      "family": "recovery",
+      "description": "Detected protected-state lost blocks copied-cache reconstruction and continued use; no automatic reprovisioning.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "initial",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": true,
+              "kind": "graph-ready",
+              "graph": {
+                "root": {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                "nodes": [
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/loan-rules",
+                      "version": "1.0.0"
+                    },
+                    "irPackageName": "example/loan-rules",
+                    "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+                    "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+                    "bindings": [
+                      {
+                        "irPackageName": "example/eligibility",
+                        "target": {
+                          "packagePath": "example.com/finance/eligibility",
+                          "version": "1.2.0"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/eligibility",
+                      "version": "1.2.0"
+                    },
+                    "irPackageName": "example/eligibility",
+                    "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+                    "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+                    "bindings": []
+                  }
+                ]
+              },
+              "verified": [
+                {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                }
+              ]
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        },
+        {
+          "id": "restarted",
+          "actor": "machine-a",
+          "at": "2027-02-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "operational-failure",
+                "code": "io-failure",
+                "phase": "repository",
+                "witnesses": [
+                  {
+                    "kind": "io",
+                    "subject": {
+                      "kind": "repository",
+                      "registry": "finance"
+                    },
+                    "action": "state-read",
+                    "reason": "state-corrupt"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "none"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "initial",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "initial"
+        },
+        {
+          "kind": "filesystem",
+          "change": {
+            "kind": "lose-security-state",
+            "actor": "machine-a"
+          }
+        },
+        {
+          "kind": "restart-client",
+          "actor": "machine-a"
+        },
+        {
+          "kind": "start",
+          "operation": "restarted",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restarted"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-recovery-lost-state",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": [
+              {
+                "operation": "initial",
+                "releases": [
+                  {
+                    "packagePath": "example.com/finance/loan-rules",
+                    "version": "1.0.0"
+                  },
+                  {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "pointer": "/security/0/condition",
+            "equals": "lost"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-02-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.recovery.corrupt-state",
+      "family": "recovery",
+      "description": "Detected protected-state corrupt blocks copied-cache reconstruction and continued use; no automatic reprovisioning.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "initial",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": true,
+              "kind": "graph-ready",
+              "graph": {
+                "root": {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                "nodes": [
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/loan-rules",
+                      "version": "1.0.0"
+                    },
+                    "irPackageName": "example/loan-rules",
+                    "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+                    "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+                    "bindings": [
+                      {
+                        "irPackageName": "example/eligibility",
+                        "target": {
+                          "packagePath": "example.com/finance/eligibility",
+                          "version": "1.2.0"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/eligibility",
+                      "version": "1.2.0"
+                    },
+                    "irPackageName": "example/eligibility",
+                    "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+                    "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+                    "bindings": []
+                  }
+                ]
+              },
+              "verified": [
+                {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                }
+              ]
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        },
+        {
+          "id": "restarted",
+          "actor": "machine-a",
+          "at": "2027-02-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "operational-failure",
+                "code": "io-failure",
+                "phase": "repository",
+                "witnesses": [
+                  {
+                    "kind": "io",
+                    "subject": {
+                      "kind": "repository",
+                      "registry": "finance"
+                    },
+                    "action": "state-read",
+                    "reason": "state-corrupt"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "none"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "initial",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "initial"
+        },
+        {
+          "kind": "filesystem",
+          "change": {
+            "kind": "corrupt-security-state",
+            "actor": "machine-a"
+          }
+        },
+        {
+          "kind": "restart-client",
+          "actor": "machine-a"
+        },
+        {
+          "kind": "start",
+          "operation": "restarted",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restarted"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-recovery-corrupt-state",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": [
+              {
+                "operation": "initial",
+                "releases": [
+                  {
+                    "packagePath": "example.com/finance/loan-rules",
+                    "version": "1.0.0"
+                  },
+                  {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "pointer": "/security/0/condition",
+            "equals": "corrupt"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-02-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.recovery.revocation-write-failure-marker",
+      "family": "recovery",
+      "description": "A fresh authenticated revocation reaches a durable in-flight marker, then revocation commit fails. Restart reconciles retained candidate evidence before any old grant reuse.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "initial",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": true,
+              "kind": "graph-ready",
+              "graph": {
+                "root": {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                "nodes": [
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/loan-rules",
+                      "version": "1.0.0"
+                    },
+                    "irPackageName": "example/loan-rules",
+                    "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+                    "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+                    "bindings": [
+                      {
+                        "irPackageName": "example/eligibility",
+                        "target": {
+                          "packagePath": "example.com/finance/eligibility",
+                          "version": "1.2.0"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/eligibility",
+                      "version": "1.2.0"
+                    },
+                    "irPackageName": "example/eligibility",
+                    "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+                    "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+                    "bindings": []
+                  }
+                ]
+              },
+              "verified": [
+                {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                }
+              ]
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        },
+        {
+          "id": "learn",
+          "actor": "machine-a",
+          "at": "2027-01-02T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "operational-failure",
+                "code": "io-failure",
+                "phase": "authorization",
+                "witnesses": [
+                  {
+                    "kind": "io",
+                    "subject": {
+                      "kind": "repository",
+                      "registry": "finance"
+                    },
+                    "action": "state-write",
+                    "reason": "no-space"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "refresh-library-registry",
+          "input": {
+            "registry": "finance"
+          }
+        },
+        {
+          "id": "restarted",
+          "actor": "machine-a",
+          "at": "2027-02-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "release-revoked",
+                "phase": "authorization",
+                "witnesses": [
+                  {
+                    "kind": "authority",
+                    "registry": "finance",
+                    "release": {
+                      "packagePath": "example.com/finance/loan-rules",
+                      "version": "1.0.0"
+                    },
+                    "rule": "revoked"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "none"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "initial",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "initial"
+        },
+        {
+          "kind": "select-view",
+          "registry": "finance",
+          "tree": {
+            "asset": "view-revoked"
+          }
+        },
+        {
+          "kind": "start",
+          "operation": "learn",
+          "barriers": [
+            {
+              "operation": "learn",
+              "boundary": "after",
+              "step": "security-update-marker",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            },
+            {
+              "operation": "learn",
+              "boundary": "before",
+              "step": "security-state-commit",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "learn",
+            "boundary": "after",
+            "step": "security-update-marker",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "learn",
+            "boundary": "after",
+            "step": "security-update-marker",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "learn",
+            "boundary": "before",
+            "step": "security-state-commit",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "inject-fault",
+          "checkpoint": {
+            "operation": "learn",
+            "boundary": "before",
+            "step": "security-state-commit",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          },
+          "action": "state-write",
+          "reason": "no-space"
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "learn",
+            "boundary": "before",
+            "step": "security-state-commit",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "learn"
+        },
+        {
+          "kind": "withhold-registry",
+          "registry": "finance"
+        },
+        {
+          "kind": "restart-client",
+          "actor": "machine-a"
+        },
+        {
+          "kind": "start",
+          "operation": "restarted",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restarted"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-recovery-revocation-write-failure-marker",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": [
+              {
+                "operation": "initial",
+                "releases": [
+                  {
+                    "packagePath": "example.com/finance/loan-rules",
+                    "version": "1.0.0"
+                  },
+                  {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "pointer": "/security/0/marker",
+            "equals": "none"
+          },
+          {
+            "pointer": "/security/0/revocations/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-02-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

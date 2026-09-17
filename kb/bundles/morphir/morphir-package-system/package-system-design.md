@@ -633,8 +633,9 @@ The [resolution schemas and fixed MCK cases](../../../../spec/package/mck/README
 This metadata projection is not the full `morphir.lock`, and it does not verify payload bytes or type compatibility.
 The separate integrity contract remains `0.1.0-draft.1`; its digest domain and existing operations are unchanged.
 Shared-driver checks exercise TypeScript and independent Rust implementations at merged upstream commits.
-Parent integration landing remains pending. The [MCK suite](../../../../spec/package/mck/README.md)
-records bounded evidence; a local pass does not establish published compatibility.
+[Parent PR #820](https://github.com/finos/morphir/pull/820) landed the integration with passing CI.
+The [MCK suite](../../../../spec/package/mck/README.md#landed-resolution-evidence)
+records exact pins and bounded evidence; this is not a stable package-system compatibility release.
 
 Stage 1 supports one implicit binding per dependency IR name in each consumer, within the supported payload's limits.
 It does not promise multiple incompatible releases in a flat dependency map. Stage 3 adds graph-aware coexistence
@@ -895,7 +896,89 @@ TLS and transport digests protect acquisition. They do not establish package pub
 
 The implementation should reuse reviewed standards and libraries for signatures and delegation. It must not invent cryptographic primitives.
 
+### Approved local Library profile
+
+The first complete-lock profile covers published Libraries in a local-directory registry, using unpacked bundles.
+Unpublished package snapshots, workspace overrides, remote sources, and archive transports follow separately.
+These are approved design choices, not shipped package operations or a completed wire specification.
+
+The portable `morphir.lock` retains the existing draft.2 graph. Its additional sections record resolution policy,
+logical registry snapshot pins, one acquisition entry per release, and digest-pinned evidence references.
+Filesystem roots, credentials, and verification timestamps remain outside the lock.
+Evidence references require the corresponding documents locally for offline replay; the lock is not an offline bundle.
+
+[The Update Framework](https://theupdateframework.io/docs/metadata/), or TUF, supplies registry authentication.
+Its targets metadata authenticates package records and release-statement files and carries package-specific release status.
+Snapshot metadata binds a consistent targets view; timestamp metadata establishes freshness during refresh.
+The logical registry snapshot is that authenticated view, not another signed-index protocol.
+The lock pins exact metadata digests, not only revision numbers.
+
+Trust configuration authorizes a repository for explicit PackagePath namespaces.
+For example, `example.com/finance` covers `example.com/finance/eligibility`, but not `example.com/finance-other`.
+Matching uses path components. A source directory or package-supplied field cannot expand that authority.
+
+Package release statements use [DSSE](https://github.com/secure-systems-lab/dsse/blob/master/protocol.md),
+an envelope that authenticates a payload type and exact bytes, with Ed25519 as the first signature algorithm.
+The versioned Morphir statement binds release identity to manifest and Package content digests.
+Publisher keys require explicit namespace authorization, separately from TUF signing roles.
+A key ID is only a lookup hint. Signatures remain outside the existing Package content digest.
+
+The [tool trust profile](../../../../docs/spec/tool-release-metadata/index.md) provides related design and implementation experience.
+Reuse domain-neutral trust components where their semantics fit, without adopting tool descriptors, inventory, or lifecycle rules.
+Using TUF and DSSE avoids defining new signature framing and repository-security protocols.
+
+| Operation | Approved authorization policy |
+| --- | --- |
+| Resolve, update, or first restore on a machine | Require valid unexpired TUF metadata and publisher authorization; local metadata can satisfy this |
+| Replay previously authorized local packages | Reverify exact bytes and applicable signatures; allow continued use under durable local authorization if current policy permits |
+| Known revocation or withdrawn trust | Reject, including offline |
+| Required fresh status unavailable | Fail without implicit fetching, weaker policy, or version substitution |
+
+Prior authorization belongs to durable client security state, alongside trusted roots, rollback protection, and known revocations.
+It is not a field in the portable lock, a cache-directory name, or an ordinary verification report.
+Copying a lock and package bytes to another machine does not transfer this authorization.
+Fresh metadata may authorize the same exact locked release without rewriting the lock.
+
+Expiry alone does not erase prior local authorization. This is Morphir continued-use policy, not acceptance of expired metadata by TUF.
+Every replay applies current trust policy and known revocations; offline operation cannot promise knowledge of unseen revocations.
+Requiring fresh metadata for every replay was rejected because it would stop otherwise authorized offline builds at repository expiry.
+Treating a portable lock as permanent authorization was rejected because it would bypass fresh authorization on a new machine.
+
+Publication stages and verifies immutable content before publishing signed metadata. TUF timestamp publication is the final commit point.
+Concurrent writers serialize that update and check the expected previous revision. An interrupted publish must not advertise a partial release.
+Identical republication is idempotent; conflicting content under an existing release identity is rejected. Republishing never clears revocation or yank status.
+
+The candidate [local Library contract](../../../../spec/package/local-library-contract.md) now proposes draft.3 lock, record and statement schemas.
+Its unsigned worked shapes preserve the existing two-Library names and digests but do not establish authentication.
+The accompanying [trust profile](../../../../spec/package/package-trust-profile.md) defines candidate namespace policy,
+root continuity, signed status, publisher thresholds, and durable offline-authorization rules.
+The candidate specifies security-state persistence, resource limits, staged materialization,
+publication recovery and diagnostic witnesses. A durable in-flight security-update marker prevents
+failed revocation persistence from silently restoring permission to reuse an older grant after restart.
+The candidate low-level publication operation accepts a caller-signed successor metadata set,
+verifies it against the prior view, and reserves and commits those exact bytes. Signing remains
+outside that operation, so implementations need not share a TUF serializer.
+The [candidate MCK definitions](../../../../spec/package/mck/README.md#candidate-local-registry-contract)
+cover wire inputs, trust, exact replay, publication, filesystem safety, bounds and recovery.
+Unbound signed inputs and complete expected snapshots remain explicit pending assets;
+definition validation is not a compatibility pass.
+Wire-contract review was approved on 2026-09-17. The
+[signed two-Library example](../../../../spec/package/mck/fixtures/local-registry/assets/signed/README.md)
+now supplies complete acquisition and authentication bytes with separate fixed first-restore
+observations. Six base assets are bound; 121 remain pending. User signed-fixture review was
+approved on 2026-09-17, completing the contract-first gate for shared MCK and runtime
+implementation. Neither fixture generation nor schema validation is a new local-registry
+compatibility pass. Publication was authorized on 2026-09-17, with shared MCK tooling in
+[TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21) preceding the parent
+contract and fixtures. That tooling was squash-merged with user approval as
+`6f180b84357cdca8fa55544e6579c0c8ba95b10e`; the parent now pins that merged commit.
+[Parent PR #824](https://github.com/finos/morphir/pull/824) still requires separate merge approval.
+The complete two-Library lock and signed registry fixture must precede runtime implementation.
+MCK cases remain in the parent repository; execution and reference support use the shared TypeScript core, with independent Rust behavior through its adapter.
+
 ### Verification sequence
+
+The following sequence establishes fresh authorization. Continued local use follows the separate policy above and never rolls trusted state backward.
 
 1. Establish or load a trusted Package authority.
 2. Verify the applicable namespace delegation.
@@ -1134,8 +1217,8 @@ their own operations and expected results; they cannot be encoded as IR `decode`
 
 IR protocol and report contract version 1 remain IR-specific. Package integrity uses its separate
 `0.1.0-draft.1` contract. Resolution specifies `0.1.0-draft.2`, selected explicitly rather than silently adding
-operations to draft.1. Shared-driver checks cover both implementations at merged upstream pins;
-parent integration landing remains pending.
+operations to draft.1. Parent PR #820 landed shared-driver checks against both implementations
+at merged upstream pins, with passing integration CI.
 Preserve existing IR invocations, case IDs, and contract version 1 support. Identify cases by suite and stable case ID
 when comparing or aggregating results.
 
@@ -1178,9 +1261,17 @@ a registry client, public-specification compatibility checker, or installation a
 
 The follow-up resolution implementation adds exact replay, deterministic initial selection, scoped updates, and
 structured diagnostics under draft.2. `package:resolution-check` exercises both TypeScript transports;
-`package:resolution-check:rust` uses the same driver against Rust. The dependent parent branch pins published
-implementation commits for CI. Its final pins must identify merged upstream commits before landing.
+`package:resolution-check:rust` uses the same driver against Rust. Parent PR #820 merged as
+`d67cf0df7bce30cd46328366d155919ff4874e69`, pinning the merged TypeScript #18 and Rust #154 commits.
+The [MCK evidence record](../../../../spec/package/mck/README.md#landed-resolution-evidence)
+links passing integration CI and identifies the 78 resolution and 80 integrity cases.
 Resolution returns metadata only. Full `morphir.lock` materialization, acquisition, and trust remain unfinished.
+
+The next specification slice works through the complete Library lock and registry records using the existing
+eligibility and loan-rules fixtures. It must define exact sources, registry revisions, content verification,
+and local trust without putting release versions into core IR. Ordinary replay must not select new versions.
+After contract approval, land fixed MCK cases and shared TypeScript support, then independent Rust support,
+then parent integration. Stage 1 follows with offline local publication and verified consumption.
 
 Deliver:
 
@@ -1302,7 +1393,7 @@ Unless marked as Stage 3 prerequisites, these choices remain for Stage 0 and do 
 8. Precise pre-1.0 SemVer and compatibility-enforcement policy.
 9. Stage 3 prerequisite: exact graph-aware IR representation and supported format release for dependency slots, export references, package-instance IDs, Contract releases, and Application graphs. Specify adaptation from the current v4 name-keyed model and whether one release may have multiple dependency environments. Stage 0 establishes binding invariants and baseline capability diagnostics without requiring this encoding.
 10. Provider compatibility and Application-binding schema.
-11. TUF/DSSE/in-toto profile, key rotation, expiry, threshold, rollback, and recovery policy.
+11. Exact TUF and DSSE/Ed25519 wire profiles, key policy, thresholds, rotation, durable authorization state, and recovery rules. The local fresh-authorization versus continued-use policy is settled above; additional attestation formats remain open.
 12. Well-known authority document schema and enterprise override precedence.
 13. Registry history format, snapshot protocol, and concurrency/publication transaction rules.
 14. Yank, revocation, tombstone, and channel policy details.

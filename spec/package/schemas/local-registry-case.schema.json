@@ -1,0 +1,3550 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/0.1.0-draft.3/local-registry-case.schema.json",
+  "title": "Candidate local registry case definitions and fixed observations",
+  "$comment": "Definitions only. Pending assets are not executable inputs. Semantic admission, byte binding, schedules, references and code-specific witness rules are specified in ../mck/README.md.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Index"
+    },
+    {
+      "$ref": "#/$defs/CaseFile"
+    }
+  ],
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "Digest": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/Digest"
+    },
+    "Release": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-input.schema.json#/$defs/ReleaseId"
+    },
+    "Graph": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-input.schema.json#/$defs/LockedGraph"
+    },
+    "Decimal": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "Positive": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "Time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"
+    },
+    "Pointer": {
+      "type": "string",
+      "pattern": "^(|(/([^~/]|~[01])*)+)$"
+    },
+    "FixturePath": {
+      "type": "string",
+      "not": {
+        "pattern": "(^|/)\\.\\.?(/|$)|//|/$"
+      },
+      "pattern": "^fixtures/local-registry/(assets|cases|expected)/[a-z0-9][a-z0-9./-]*$"
+    },
+    "SafePath": {
+      "type": "string",
+      "not": {
+        "pattern": "(^|/)\\.\\.?(/|$)|//|/$"
+      },
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+    },
+    "AssetRef": {
+      "type": "object",
+      "required": [ "asset" ],
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Bytes": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "value" ],
+          "properties": {
+            "kind": {
+              "const": "hex"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^(?:[0-9a-f]{2})*$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "asset" ],
+          "properties": {
+            "kind": {
+              "const": "asset"
+            },
+            "asset": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Asset": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "id", "purpose", "type", "kind" ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "purpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "enum": [
+                "bytes",
+                "tree",
+                "configuration",
+                "result",
+                "observations"
+              ]
+            },
+            "kind": {
+              "const": "pending"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "purpose",
+            "type",
+            "kind",
+            "path",
+            "length",
+            "sha256"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "purpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "enum": [
+                "bytes",
+                "tree",
+                "configuration",
+                "result",
+                "observations"
+              ]
+            },
+            "kind": {
+              "const": "bound"
+            },
+            "path": {
+              "$ref": "#/$defs/FixturePath"
+            },
+            "length": {
+              "$ref": "#/$defs/Decimal"
+            },
+            "sha256": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Subject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "lock"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "policy"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "request"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "registry" ],
+          "properties": {
+            "kind": {
+              "const": "repository"
+            },
+            "registry": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "registry", "path" ],
+          "properties": {
+            "kind": {
+              "const": "object"
+            },
+            "registry": {
+              "$ref": "#/$defs/Id"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Revision": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "absent"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "digest" ],
+          "properties": {
+            "kind": {
+              "const": "timestamp"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Phase": {
+      "enum": [
+        "decode",
+        "support",
+        "shape",
+        "structure",
+        "repository",
+        "authorization",
+        "catalog",
+        "bundle",
+        "graph",
+        "publication",
+        "commit"
+      ]
+    },
+    "Resource": {
+      "enum": [
+        "lock-bytes",
+        "manifest-bytes",
+        "record-bytes",
+        "statement-bytes",
+        "envelope-bytes",
+        "policy-bytes",
+        "root-bytes",
+        "timestamp-bytes",
+        "snapshot-bytes",
+        "targets-bytes",
+        "metadata-bytes",
+        "file-bytes",
+        "bundle-bytes",
+        "operation-content-bytes",
+        "declared-files",
+        "bundle-entries",
+        "operation-entries",
+        "json-depth",
+        "graph-nodes",
+        "node-bindings",
+        "graph-bindings",
+        "catalog-releases",
+        "registries",
+        "evidence-entries",
+        "target-entries",
+        "publisher-rules",
+        "namespace-grants",
+        "publisher-keys",
+        "tuf-keys",
+        "role-keys",
+        "signatures",
+        "root-rotations",
+        "path-bytes",
+        "path-components",
+        "component-bytes"
+      ]
+    },
+    "ViolationRule": {
+      "anyOf": [
+        {
+          "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-result.schema.json#/$defs/Violation/properties/rule"
+        },
+        {
+          "enum": [
+            "noncanonical",
+            "missing-reference",
+            "orphan-reference",
+            "evidence-kind-mismatch",
+            "target-link-mismatch",
+            "dependency-mismatch",
+            "threshold-exceeds-keys"
+          ]
+        }
+      ]
+    },
+    "CatalogCandidate": {
+      "type": "object",
+      "required": [
+        "repository",
+        "snapshot",
+        "record",
+        "manifestDigest",
+        "contentDigest"
+      ],
+      "properties": {
+        "repository": {
+          "$ref": "#/$defs/Digest"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/Digest"
+        },
+        "record": {
+          "$ref": "#/$defs/Digest"
+        },
+        "manifestDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "contentDigest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-violation": {
+      "type": "object",
+      "required": [ "kind", "subject", "pointer", "rule" ],
+      "properties": {
+        "kind": {
+          "const": "violation"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "pointer": {
+          "$ref": "#/$defs/Pointer"
+        },
+        "rule": {
+          "$ref": "#/$defs/ViolationRule"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-unsupported": {
+      "type": "object",
+      "required": [ "kind", "subject", "pointer", "value" ],
+      "properties": {
+        "kind": {
+          "const": "unsupported"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "pointer": {
+          "$ref": "#/$defs/Pointer"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-resource": {
+      "type": "object",
+      "required": [
+        "kind",
+        "subject",
+        "resource",
+        "scope",
+        "maximum",
+        "observed"
+      ],
+      "properties": {
+        "kind": {
+          "const": "resource"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "resource": {
+          "$ref": "#/$defs/Resource"
+        },
+        "scope": {
+          "enum": [ "profile", "local-policy" ]
+        },
+        "maximum": {
+          "$ref": "#/$defs/Decimal"
+        },
+        "observed": {
+          "$ref": "#/$defs/Decimal"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-path": {
+      "type": "object",
+      "required": [ "kind", "subject", "rule" ],
+      "properties": {
+        "kind": {
+          "const": "path"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "rule": {
+          "enum": [
+            "grammar",
+            "reserved-name",
+            "case-collision",
+            "case-spelling",
+            "symlink",
+            "hardlink",
+            "special-file",
+            "unexpected-entry",
+            "manifest-claim",
+            "file-ancestor",
+            "escape"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-missing": {
+      "type": "object",
+      "required": [ "kind", "subject" ],
+      "properties": {
+        "kind": {
+          "const": "missing"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-changed": {
+      "type": "object",
+      "required": [ "kind", "subject" ],
+      "properties": {
+        "kind": {
+          "const": "changed"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-digest": {
+      "type": "object",
+      "required": [ "kind", "subject", "expected", "actual" ],
+      "properties": {
+        "kind": {
+          "const": "digest"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "expected": {
+          "$ref": "#/$defs/Digest"
+        },
+        "actual": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-length": {
+      "type": "object",
+      "required": [ "kind", "subject", "expected", "actual" ],
+      "properties": {
+        "kind": {
+          "const": "length"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "expected": {
+          "$ref": "#/$defs/Decimal"
+        },
+        "actual": {
+          "$ref": "#/$defs/Decimal"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-authentication": {
+      "type": "object",
+      "required": [ "kind", "subject", "role", "required", "verified" ],
+      "properties": {
+        "kind": {
+          "const": "authentication"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "role": {
+          "enum": [ "root", "timestamp", "snapshot", "targets", "publisher" ]
+        },
+        "required": {
+          "$ref": "#/$defs/Decimal"
+        },
+        "verified": {
+          "$ref": "#/$defs/Decimal"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-repository-authority": {
+      "type": "object",
+      "required": [ "kind", "registry", "rule" ],
+      "properties": {
+        "kind": {
+          "const": "repository-authority"
+        },
+        "registry": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule": {
+          "const": "repository-unconfigured"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-authority": {
+      "type": "object",
+      "required": [ "kind", "registry", "release", "rule" ],
+      "properties": {
+        "kind": {
+          "const": "authority"
+        },
+        "registry": {
+          "$ref": "#/$defs/Id"
+        },
+        "release": {
+          "$ref": "#/$defs/Release"
+        },
+        "rule": {
+          "enum": [
+            "namespace-denied",
+            "publisher-rule-missing",
+            "previous-grant-ineligible",
+            "revoked",
+            "fresh-view-required"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-continuity": {
+      "type": "object",
+      "required": [
+        "kind",
+        "registry",
+        "fromVersion",
+        "throughVersion",
+        "missingVersions"
+      ],
+      "properties": {
+        "kind": {
+          "const": "continuity"
+        },
+        "registry": {
+          "$ref": "#/$defs/Id"
+        },
+        "fromVersion": {
+          "$ref": "#/$defs/Positive"
+        },
+        "throughVersion": {
+          "$ref": "#/$defs/Positive"
+        },
+        "missingVersions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Positive"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-time": {
+      "type": "object",
+      "required": [ "kind", "registry", "role", "at", "boundary" ],
+      "properties": {
+        "kind": {
+          "const": "time"
+        },
+        "registry": {
+          "$ref": "#/$defs/Id"
+        },
+        "role": {
+          "enum": [ "root", "timestamp", "snapshot", "targets", "clock" ]
+        },
+        "at": {
+          "$ref": "#/$defs/Time"
+        },
+        "boundary": {
+          "$ref": "#/$defs/Time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-rollback": {
+      "type": "object",
+      "required": [ "kind", "registry", "role", "trusted", "received" ],
+      "properties": {
+        "kind": {
+          "const": "rollback"
+        },
+        "registry": {
+          "$ref": "#/$defs/Id"
+        },
+        "role": {
+          "enum": [ "root", "timestamp", "snapshot", "targets" ]
+        },
+        "trusted": {
+          "$ref": "#/$defs/Positive"
+        },
+        "received": {
+          "$ref": "#/$defs/Positive"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-membership": {
+      "type": "object",
+      "required": [ "kind", "registry", "release", "path" ],
+      "properties": {
+        "kind": {
+          "const": "membership"
+        },
+        "registry": {
+          "$ref": "#/$defs/Id"
+        },
+        "release": {
+          "$ref": "#/$defs/Release"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-catalog": {
+      "type": "object",
+      "required": [ "kind", "release", "candidates" ],
+      "properties": {
+        "kind": {
+          "const": "catalog"
+        },
+        "release": {
+          "$ref": "#/$defs/Release"
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/CatalogCandidate"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-views": {
+      "type": "object",
+      "required": [ "kind", "repository", "snapshots" ],
+      "properties": {
+        "kind": {
+          "const": "views"
+        },
+        "repository": {
+          "$ref": "#/$defs/Digest"
+        },
+        "snapshots": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-release-conflict": {
+      "type": "object",
+      "required": [
+        "kind",
+        "release",
+        "existingManifest",
+        "proposedManifest",
+        "existingContent",
+        "proposedContent"
+      ],
+      "properties": {
+        "kind": {
+          "const": "release-conflict"
+        },
+        "release": {
+          "$ref": "#/$defs/Release"
+        },
+        "existingManifest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "proposedManifest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "existingContent": {
+          "$ref": "#/$defs/Digest"
+        },
+        "proposedContent": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-replacement": {
+      "type": "object",
+      "required": [ "kind", "release", "field", "existing", "proposed" ],
+      "properties": {
+        "kind": {
+          "const": "replacement"
+        },
+        "release": {
+          "$ref": "#/$defs/Release"
+        },
+        "field": {
+          "enum": [ "record", "statement" ]
+        },
+        "existing": {
+          "$ref": "#/$defs/Digest"
+        },
+        "proposed": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-revision": {
+      "type": "object",
+      "required": [ "kind", "expected", "actual" ],
+      "properties": {
+        "kind": {
+          "const": "revision"
+        },
+        "expected": {
+          "$ref": "#/$defs/Revision"
+        },
+        "actual": {
+          "$ref": "#/$defs/Revision"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-immutable": {
+      "type": "object",
+      "required": [ "kind", "subject", "existing", "proposed" ],
+      "properties": {
+        "kind": {
+          "const": "immutable"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "existing": {
+          "$ref": "#/$defs/Digest"
+        },
+        "proposed": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-filesystem": {
+      "type": "object",
+      "required": [ "kind", "subject", "guarantee" ],
+      "properties": {
+        "kind": {
+          "const": "filesystem"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "guarantee": {
+          "enum": [
+            "anchored-no-follow",
+            "exclusive-create",
+            "writer-lock",
+            "atomic-no-replace",
+            "atomic-replace",
+            "durable-flush",
+            "physical-path"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-io": {
+      "type": "object",
+      "required": [ "kind", "subject", "action", "reason" ],
+      "properties": {
+        "kind": {
+          "const": "io"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "action": {
+          "enum": [
+            "open",
+            "read",
+            "enumerate",
+            "create",
+            "copy",
+            "lock",
+            "reserve",
+            "rename",
+            "flush",
+            "state-read",
+            "state-write"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "permission",
+            "no-space",
+            "memory",
+            "interrupted",
+            "state-corrupt",
+            "other"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-uncertain": {
+      "type": "object",
+      "required": [ "kind", "registry", "previous", "attempted" ],
+      "properties": {
+        "kind": {
+          "const": "uncertain"
+        },
+        "registry": {
+          "$ref": "#/$defs/Id"
+        },
+        "previous": {
+          "$ref": "#/$defs/Revision"
+        },
+        "attempted": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-resolver": {
+      "type": "object",
+      "required": [ "kind", "diagnostic" ],
+      "properties": {
+        "kind": {
+          "const": "resolver"
+        },
+        "diagnostic": {
+          "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-result.schema.json#/$defs/Diagnostic"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness-library": {
+      "type": "object",
+      "required": [ "kind", "release", "subject", "pointer", "rule" ],
+      "properties": {
+        "kind": {
+          "const": "library"
+        },
+        "release": {
+          "$ref": "#/$defs/Release"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "pointer": {
+          "$ref": "#/$defs/Pointer"
+        },
+        "rule": {
+          "enum": [
+            "ir-decode",
+            "ir-identity",
+            "export-missing",
+            "export-private",
+            "dependency-identity",
+            "payload-undeclared"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Witness": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Witness-violation"
+        },
+        {
+          "$ref": "#/$defs/Witness-unsupported"
+        },
+        {
+          "$ref": "#/$defs/Witness-resource"
+        },
+        {
+          "$ref": "#/$defs/Witness-path"
+        },
+        {
+          "$ref": "#/$defs/Witness-missing"
+        },
+        {
+          "$ref": "#/$defs/Witness-changed"
+        },
+        {
+          "$ref": "#/$defs/Witness-digest"
+        },
+        {
+          "$ref": "#/$defs/Witness-length"
+        },
+        {
+          "$ref": "#/$defs/Witness-authentication"
+        },
+        {
+          "$ref": "#/$defs/Witness-repository-authority"
+        },
+        {
+          "$ref": "#/$defs/Witness-authority"
+        },
+        {
+          "$ref": "#/$defs/Witness-continuity"
+        },
+        {
+          "$ref": "#/$defs/Witness-time"
+        },
+        {
+          "$ref": "#/$defs/Witness-rollback"
+        },
+        {
+          "$ref": "#/$defs/Witness-membership"
+        },
+        {
+          "$ref": "#/$defs/Witness-catalog"
+        },
+        {
+          "$ref": "#/$defs/Witness-views"
+        },
+        {
+          "$ref": "#/$defs/Witness-release-conflict"
+        },
+        {
+          "$ref": "#/$defs/Witness-replacement"
+        },
+        {
+          "$ref": "#/$defs/Witness-revision"
+        },
+        {
+          "$ref": "#/$defs/Witness-immutable"
+        },
+        {
+          "$ref": "#/$defs/Witness-filesystem"
+        },
+        {
+          "$ref": "#/$defs/Witness-io"
+        },
+        {
+          "$ref": "#/$defs/Witness-uncertain"
+        },
+        {
+          "$ref": "#/$defs/Witness-resolver"
+        },
+        {
+          "$ref": "#/$defs/Witness-library"
+        }
+      ]
+    },
+    "Diagnostic": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "invalid-input"
+            },
+            "code": {
+              "enum": [ "invalid-input" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-violation"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "unsupported-capability"
+            },
+            "code": {
+              "enum": [
+                "unsupported-profile",
+                "unsupported-source",
+                "unsupported-capability",
+                "unsupported-payload-type",
+                "capability-unavailable"
+              ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-unsupported"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "unsupported-capability"
+            },
+            "code": {
+              "enum": [ "filesystem-unsupported" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-filesystem"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "resource-limit" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-resource"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "unsafe-path" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-path"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "source-changed" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-changed"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "operational-failure"
+            },
+            "code": {
+              "enum": [ "missing-content" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-missing"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "digest-mismatch" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-digest"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "length-mismatch" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-length"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "signature-invalid" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-authentication"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "unauthorized-repository" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-repository-authority"
+                  },
+                  {
+                    "$ref": "#/$defs/Witness-authority"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [
+                "unauthorized-publisher",
+                "previous-authorization-ineligible",
+                "release-revoked",
+                "freshness-required"
+              ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-authority"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "historical-continuity-missing" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-continuity"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "metadata-expired", "trusted-time-unavailable" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-time"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "metadata-rollback" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-rollback"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "target-membership-missing" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-membership"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "cross-document-mismatch" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-violation"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "registry-view-conflict" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-views"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "catalog-record-conflict", "catalog-ambiguous" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-catalog"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "invalid-input"
+            },
+            "code": {
+              "enum": [ "resolution-invalid" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-resolver"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "unsupported-capability"
+            },
+            "code": {
+              "enum": [ "resolution-unsupported" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-resolver"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "resolution-rejected" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-resolver"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "library-rejected" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-library"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "publication-conflict" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-revision"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "release-conflict" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-release-conflict"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "unsupported-capability"
+            },
+            "code": {
+              "enum": [ "record-replacement-unsupported" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-replacement"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "domain-rejection"
+            },
+            "code": {
+              "enum": [ "immutable-object-conflict" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-immutable"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "operational-failure"
+            },
+            "code": {
+              "enum": [ "io-failure" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-io"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "category", "code", "phase", "witnesses" ],
+          "properties": {
+            "category": {
+              "const": "operational-failure"
+            },
+            "code": {
+              "enum": [ "commit-outcome-uncertain" ]
+            },
+            "phase": {
+              "$ref": "#/$defs/Phase"
+            },
+            "witnesses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Witness-uncertain"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "ok", "diagnostic" ],
+          "properties": {
+            "ok": {
+              "const": false
+            },
+            "diagnostic": {
+              "$ref": "#/$defs/Diagnostic"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "ok", "kind", "graph", "verified" ],
+          "properties": {
+            "ok": {
+              "const": true
+            },
+            "kind": {
+              "const": "graph-ready"
+            },
+            "graph": {
+              "$ref": "#/$defs/Graph"
+            },
+            "verified": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/Release"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "ok", "kind", "outcome", "timestampDigest" ],
+          "properties": {
+            "ok": {
+              "const": true
+            },
+            "kind": {
+              "const": "publication"
+            },
+            "outcome": {
+              "enum": [ "committed", "idempotent" ]
+            },
+            "timestampDigest": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "ok",
+            "kind",
+            "registry",
+            "timestampDigest",
+            "snapshotDigest"
+          ],
+          "properties": {
+            "ok": {
+              "const": true
+            },
+            "kind": {
+              "const": "registry-refreshed"
+            },
+            "registry": {
+              "$ref": "#/$defs/Id"
+            },
+            "timestampDigest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "snapshotDigest": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Assertion": {
+      "type": "object",
+      "required": [ "pointer", "equals" ],
+      "properties": {
+        "pointer": {
+          "$ref": "#/$defs/Pointer"
+        },
+        "equals": {}
+      },
+      "additionalProperties": false
+    },
+    "Expected": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "result" ],
+          "properties": {
+            "kind": {
+              "const": "inline"
+            },
+            "result": {
+              "$ref": "#/$defs/Result"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "asset", "assertions" ],
+          "properties": {
+            "kind": {
+              "const": "asset"
+            },
+            "asset": {
+              "$ref": "#/$defs/Id"
+            },
+            "assertions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/Assertion"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "checkpoint" ],
+          "properties": {
+            "kind": {
+              "const": "terminated"
+            },
+            "checkpoint": {
+              "$ref": "#/$defs/Checkpoint"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ExpectedObservations": {
+      "type": "object",
+      "required": [ "asset", "assertions" ],
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/Id"
+        },
+        "assertions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Assertion"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Step": {
+      "enum": [
+        "writer-lock",
+        "predecessor-check",
+        "version-reservation",
+        "bundle-install",
+        "record-install",
+        "statement-install",
+        "targets-install",
+        "snapshot-install",
+        "retained-timestamp-install",
+        "timestamp-replace",
+        "timestamp-directory-flush",
+        "source-inventory",
+        "source-file-copy",
+        "source-recheck",
+        "staged-verification",
+        "cache-promotion",
+        "bundle-ready",
+        "security-update-marker",
+        "security-state-commit"
+      ]
+    },
+    "Checkpoint": {
+      "type": "object",
+      "required": [ "operation", "boundary", "step", "subject" ],
+      "properties": {
+        "operation": {
+          "$ref": "#/$defs/Id"
+        },
+        "boundary": {
+          "enum": [ "before", "after" ]
+        },
+        "step": {
+          "$ref": "#/$defs/Step"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BeforeCheckpoint": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Checkpoint"
+        },
+        {
+          "properties": {
+            "boundary": {
+              "const": "before"
+            }
+          }
+        }
+      ]
+    },
+    "Root": {
+      "type": "object",
+      "required": [ "owner", "kind" ],
+      "properties": {
+        "owner": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "registry",
+            "cache",
+            "staging",
+            "destination",
+            "security",
+            "publisher"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "TreeEntry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "path" ],
+          "properties": {
+            "kind": {
+              "const": "directory"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path", "bytes" ],
+          "properties": {
+            "kind": {
+              "const": "file"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            },
+            "bytes": {
+              "$ref": "#/$defs/Bytes"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path", "target" ],
+          "properties": {
+            "kind": {
+              "const": "symlink"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            },
+            "target": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path", "target" ],
+          "properties": {
+            "kind": {
+              "const": "hardlink"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            },
+            "target": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path" ],
+          "properties": {
+            "kind": {
+              "const": "fifo"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Tree": {
+      "type": "object",
+      "required": [ "entries" ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/TreeEntry"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Configuration": {
+      "type": "object",
+      "required": [ "bindings", "bootstrapRoots" ],
+      "properties": {
+        "bindings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "alias", "registryRoot", "identity" ],
+            "properties": {
+              "alias": {
+                "$ref": "#/$defs/Id"
+              },
+              "registryRoot": {
+                "$ref": "#/$defs/Id"
+              },
+              "identity": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "bootstrapRoots": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "identity", "version", "bytes" ],
+            "properties": {
+              "identity": {
+                "$ref": "#/$defs/Digest"
+              },
+              "version": {
+                "$ref": "#/$defs/Positive"
+              },
+              "bytes": {
+                "$ref": "#/$defs/Bytes"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Setup": {
+      "type": "object",
+      "required": [ "registries", "actors" ],
+      "properties": {
+        "registries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "id", "tree", "publisher" ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "tree": {
+                "$ref": "#/$defs/AssetRef"
+              },
+              "publisher": {
+                "const": "explicitly-initialize"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "actors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "configuration",
+              "policy",
+              "security",
+              "cache",
+              "staging",
+              "destination"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "configuration": {
+                "$ref": "#/$defs/AssetRef"
+              },
+              "policy": {
+                "$ref": "#/$defs/Bytes"
+              },
+              "security": {
+                "const": "explicitly-initialize"
+              },
+              "cache": {
+                "$ref": "#/$defs/AssetRef"
+              },
+              "staging": {
+                "const": "empty"
+              },
+              "destination": {
+                "const": "empty"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Operation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "actor",
+            "at",
+            "policy",
+            "limits",
+            "expected",
+            "name",
+            "input"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            },
+            "at": {
+              "$ref": "#/$defs/Time"
+            },
+            "policy": {
+              "$ref": "#/$defs/Bytes"
+            },
+            "limits": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "required": [ "resource", "maximum" ],
+                "properties": {
+                  "resource": {
+                    "$ref": "#/$defs/Resource"
+                  },
+                  "maximum": {
+                    "$ref": "#/$defs/Decimal"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "expected": {
+              "$ref": "#/$defs/Expected"
+            },
+            "name": {
+              "const": "replay-library"
+            },
+            "input": {
+              "type": "object",
+              "required": [ "lock", "authorizationView" ],
+              "properties": {
+                "lock": {
+                  "$ref": "#/$defs/Bytes"
+                },
+                "authorizationView": {
+                  "$ref": "#/$defs/AuthorizationView"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "actor",
+            "at",
+            "policy",
+            "limits",
+            "expected",
+            "name",
+            "input"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            },
+            "at": {
+              "$ref": "#/$defs/Time"
+            },
+            "policy": {
+              "$ref": "#/$defs/Bytes"
+            },
+            "limits": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "required": [ "resource", "maximum" ],
+                "properties": {
+                  "resource": {
+                    "$ref": "#/$defs/Resource"
+                  },
+                  "maximum": {
+                    "$ref": "#/$defs/Decimal"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "expected": {
+              "$ref": "#/$defs/Expected"
+            },
+            "name": {
+              "const": "resolve-library"
+            },
+            "input": {
+              "type": "object",
+              "required": [ "root", "registries" ],
+              "properties": {
+                "root": {
+                  "$ref": "#/$defs/Release"
+                },
+                "registries": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/Id"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "actor",
+            "at",
+            "policy",
+            "limits",
+            "expected",
+            "name",
+            "input"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            },
+            "at": {
+              "$ref": "#/$defs/Time"
+            },
+            "policy": {
+              "$ref": "#/$defs/Bytes"
+            },
+            "limits": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "required": [ "resource", "maximum" ],
+                "properties": {
+                  "resource": {
+                    "$ref": "#/$defs/Resource"
+                  },
+                  "maximum": {
+                    "$ref": "#/$defs/Decimal"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "expected": {
+              "$ref": "#/$defs/Expected"
+            },
+            "name": {
+              "const": "update-library"
+            },
+            "input": {
+              "type": "object",
+              "required": [ "root", "registries", "lock", "targets" ],
+              "properties": {
+                "root": {
+                  "$ref": "#/$defs/Release"
+                },
+                "registries": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/Id"
+                  }
+                },
+                "lock": {
+                  "$ref": "#/$defs/Bytes"
+                },
+                "targets": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-input.schema.json#/$defs/UpdateTarget"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "actor",
+            "at",
+            "policy",
+            "limits",
+            "expected",
+            "name",
+            "input"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            },
+            "at": {
+              "$ref": "#/$defs/Time"
+            },
+            "policy": {
+              "$ref": "#/$defs/Bytes"
+            },
+            "limits": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "required": [ "resource", "maximum" ],
+                "properties": {
+                  "resource": {
+                    "$ref": "#/$defs/Resource"
+                  },
+                  "maximum": {
+                    "$ref": "#/$defs/Decimal"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "expected": {
+              "$ref": "#/$defs/Expected"
+            },
+            "name": {
+              "const": "publish-library"
+            },
+            "input": {
+              "type": "object",
+              "required": [
+                "registry",
+                "bundle",
+                "record",
+                "envelope",
+                "predecessor",
+                "proposal"
+              ],
+              "properties": {
+                "registry": {
+                  "$ref": "#/$defs/Id"
+                },
+                "bundle": {
+                  "$ref": "#/$defs/AssetRef"
+                },
+                "record": {
+                  "$ref": "#/$defs/Bytes"
+                },
+                "envelope": {
+                  "$ref": "#/$defs/Bytes"
+                },
+                "predecessor": {
+                  "$ref": "#/$defs/Bytes"
+                },
+                "proposal": {
+                  "$ref": "#/$defs/AssetRef"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "actor",
+            "at",
+            "policy",
+            "limits",
+            "expected",
+            "name",
+            "input"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            },
+            "at": {
+              "$ref": "#/$defs/Time"
+            },
+            "policy": {
+              "$ref": "#/$defs/Bytes"
+            },
+            "limits": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "required": [ "resource", "maximum" ],
+                "properties": {
+                  "resource": {
+                    "$ref": "#/$defs/Resource"
+                  },
+                  "maximum": {
+                    "$ref": "#/$defs/Decimal"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "expected": {
+              "$ref": "#/$defs/Expected"
+            },
+            "name": {
+              "const": "refresh-library-registry"
+            },
+            "input": {
+              "type": "object",
+              "required": [ "registry" ],
+              "properties": {
+                "registry": {
+                  "$ref": "#/$defs/Id"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Mutation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "root", "path" ],
+          "properties": {
+            "kind": {
+              "const": "remove"
+            },
+            "root": {
+              "$ref": "#/$defs/Root"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "root", "path", "bytes" ],
+          "properties": {
+            "kind": {
+              "const": "replace-file"
+            },
+            "root": {
+              "$ref": "#/$defs/Root"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            },
+            "bytes": {
+              "$ref": "#/$defs/Bytes"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "root", "entry" ],
+          "properties": {
+            "kind": {
+              "const": "create-entry"
+            },
+            "root": {
+              "$ref": "#/$defs/Root"
+            },
+            "entry": {
+              "$ref": "#/$defs/TreeEntry"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "actor" ],
+          "properties": {
+            "kind": {
+              "const": "lose-security-state"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "actor" ],
+          "properties": {
+            "kind": {
+              "const": "corrupt-security-state"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "operation", "barriers" ],
+          "properties": {
+            "kind": {
+              "const": "start"
+            },
+            "operation": {
+              "$ref": "#/$defs/Id"
+            },
+            "barriers": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "$ref": "#/$defs/Checkpoint"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "checkpoint" ],
+          "properties": {
+            "kind": {
+              "const": "await"
+            },
+            "checkpoint": {
+              "$ref": "#/$defs/Checkpoint"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "checkpoint" ],
+          "properties": {
+            "kind": {
+              "const": "release"
+            },
+            "checkpoint": {
+              "$ref": "#/$defs/Checkpoint"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "operation" ],
+          "properties": {
+            "kind": {
+              "const": "join"
+            },
+            "operation": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "checkpoint" ],
+          "properties": {
+            "kind": {
+              "const": "terminate"
+            },
+            "checkpoint": {
+              "$ref": "#/$defs/Checkpoint"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "checkpoint", "action", "reason" ],
+          "properties": {
+            "kind": {
+              "const": "inject-fault"
+            },
+            "checkpoint": {
+              "$ref": "#/$defs/BeforeCheckpoint"
+            },
+            "action": {
+              "enum": [
+                "open",
+                "read",
+                "enumerate",
+                "create",
+                "copy",
+                "lock",
+                "reserve",
+                "rename",
+                "flush",
+                "state-read",
+                "state-write"
+              ]
+            },
+            "reason": {
+              "enum": [
+                "permission",
+                "no-space",
+                "memory",
+                "interrupted",
+                "state-corrupt",
+                "other"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "registry", "tree" ],
+          "properties": {
+            "kind": {
+              "const": "select-view"
+            },
+            "registry": {
+              "$ref": "#/$defs/Id"
+            },
+            "tree": {
+              "$ref": "#/$defs/AssetRef"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "registry" ],
+          "properties": {
+            "kind": {
+              "const": "withhold-registry"
+            },
+            "registry": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "actor" ],
+          "properties": {
+            "kind": {
+              "const": "evict-ordinary-cache"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "actor" ],
+          "properties": {
+            "kind": {
+              "const": "restart-client"
+            },
+            "actor": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "change" ],
+          "properties": {
+            "kind": {
+              "const": "filesystem"
+            },
+            "change": {
+              "$ref": "#/$defs/Mutation"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ParseCase": {
+      "type": "object",
+      "required": [
+        "kind",
+        "id",
+        "family",
+        "description",
+        "required",
+        "target",
+        "at",
+        "input",
+        "expected"
+      ],
+      "properties": {
+        "kind": {
+          "const": "parse"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^local-registry\\.[a-z0-9.-]+$"
+        },
+        "family": {
+          "enum": [
+            "wire",
+            "trust",
+            "replay",
+            "publication",
+            "filesystem",
+            "bounds",
+            "recovery"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "const": true
+        },
+        "target": {
+          "enum": [
+            "lock",
+            "record",
+            "statement-payload",
+            "policy",
+            "dsse-envelope",
+            "tuf-root",
+            "tuf-timestamp",
+            "tuf-snapshot",
+            "tuf-targets"
+          ]
+        },
+        "at": {
+          "$ref": "#/$defs/Time"
+        },
+        "input": {
+          "$ref": "#/$defs/Bytes"
+        },
+        "expected": {
+          "$ref": "#/$defs/ParseExpected"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Scenario": {
+      "type": "object",
+      "required": [
+        "kind",
+        "id",
+        "family",
+        "description",
+        "required",
+        "setup",
+        "operations",
+        "actions",
+        "expectedObservations",
+        "observe"
+      ],
+      "properties": {
+        "kind": {
+          "const": "scenario"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^local-registry\\.[a-z0-9.-]+$"
+        },
+        "family": {
+          "enum": [
+            "wire",
+            "trust",
+            "replay",
+            "publication",
+            "filesystem",
+            "bounds",
+            "recovery"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "const": true
+        },
+        "setup": {
+          "$ref": "#/$defs/Setup"
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Operation"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        },
+        "expectedObservations": {
+          "$ref": "#/$defs/ExpectedObservations"
+        },
+        "observe": {
+          "$ref": "#/$defs/ObservationContext"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Case": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ParseCase"
+        },
+        {
+          "$ref": "#/$defs/Scenario"
+        }
+      ]
+    },
+    "CaseFile": {
+      "type": "object",
+      "required": [ "formatVersion", "cases" ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.3"
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Case"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Index": {
+      "type": "object",
+      "required": [ "formatVersion", "status", "schema", "fixtures", "assets" ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.3"
+        },
+        "status": {
+          "const": "candidate-definitions"
+        },
+        "schema": {
+          "const": "../schemas/local-registry-case.schema.json"
+        },
+        "fixtures": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/FixturePath"
+          }
+        },
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Asset"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SecurityObservation": {
+      "type": "object",
+      "required": [
+        "actor",
+        "condition",
+        "repositories",
+        "grants",
+        "revocations",
+        "marker",
+        "observedAt",
+        "policy"
+      ],
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/Id"
+        },
+        "condition": {
+          "enum": [ "readable", "lost", "corrupt", "recovery-blocked" ]
+        },
+        "repositories": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [
+              "registry",
+              "currentRoot",
+              "floors",
+              "lastFreshAuthorization"
+            ],
+            "properties": {
+              "registry": {
+                "$ref": "#/$defs/Id"
+              },
+              "currentRoot": {
+                "$ref": "#/$defs/Positive"
+              },
+              "floors": {
+                "type": "object",
+                "required": [ "timestamp", "snapshot", "targets" ],
+                "properties": {
+                  "timestamp": {
+                    "$ref": "#/$defs/Decimal"
+                  },
+                  "snapshot": {
+                    "$ref": "#/$defs/Decimal"
+                  },
+                  "targets": {
+                    "$ref": "#/$defs/Decimal"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "lastFreshAuthorization": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "kind" ],
+                    "properties": {
+                      "kind": {
+                        "const": "none"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "kind", "time" ],
+                    "properties": {
+                      "kind": {
+                        "const": "at"
+                      },
+                      "time": {
+                        "$ref": "#/$defs/Time"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "grants": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [
+              "registry",
+              "release",
+              "record",
+              "statement",
+              "manifest",
+              "content",
+              "at",
+              "keys"
+            ],
+            "properties": {
+              "registry": {
+                "$ref": "#/$defs/Id"
+              },
+              "release": {
+                "$ref": "#/$defs/Release"
+              },
+              "record": {
+                "$ref": "#/$defs/Digest"
+              },
+              "statement": {
+                "$ref": "#/$defs/Digest"
+              },
+              "manifest": {
+                "$ref": "#/$defs/Digest"
+              },
+              "content": {
+                "$ref": "#/$defs/Digest"
+              },
+              "at": {
+                "$ref": "#/$defs/Time"
+              },
+              "keys": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "revocations": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [ "registry", "release", "targetsVersion", "evidence" ],
+            "properties": {
+              "registry": {
+                "$ref": "#/$defs/Id"
+              },
+              "release": {
+                "$ref": "#/$defs/Release"
+              },
+              "targetsVersion": {
+                "$ref": "#/$defs/Positive"
+              },
+              "evidence": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "marker": {
+          "enum": [ "none", "unresolved" ]
+        },
+        "observedAt": {
+          "$ref": "#/$defs/Time"
+        },
+        "policy": {
+          "$ref": "#/$defs/Bytes"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ObservedEntry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "path" ],
+          "properties": {
+            "kind": {
+              "const": "directory"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path", "length", "sha256" ],
+          "properties": {
+            "kind": {
+              "const": "file"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            },
+            "length": {
+              "$ref": "#/$defs/Decimal"
+            },
+            "sha256": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path", "target" ],
+          "properties": {
+            "kind": {
+              "const": "symlink"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            },
+            "target": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path", "target" ],
+          "properties": {
+            "kind": {
+              "const": "hardlink"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            },
+            "target": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path" ],
+          "properties": {
+            "kind": {
+              "const": "fifo"
+            },
+            "path": {
+              "$ref": "#/$defs/SafePath"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Observations": {
+      "type": "object",
+      "required": [
+        "security",
+        "filesystems",
+        "registries",
+        "lockBytes",
+        "readyGraphs"
+      ],
+      "properties": {
+        "security": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/SecurityObservation"
+          }
+        },
+        "filesystems": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [ "root", "entries" ],
+            "properties": {
+              "root": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Root"
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "enum": [ "registry", "cache", "destination" ]
+                      }
+                    }
+                  }
+                ]
+              },
+              "entries": {
+                "type": "array",
+                "minItems": 0,
+                "items": {
+                  "$ref": "#/$defs/ObservedEntry"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "registries": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [ "registry", "timestamp", "reserved" ],
+            "properties": {
+              "registry": {
+                "$ref": "#/$defs/Id"
+              },
+              "timestamp": {
+                "$ref": "#/$defs/Revision"
+              },
+              "reserved": {
+                "type": "object",
+                "required": [ "targets", "snapshot", "timestamp" ],
+                "properties": {
+                  "targets": {
+                    "$ref": "#/$defs/Decimal"
+                  },
+                  "snapshot": {
+                    "$ref": "#/$defs/Decimal"
+                  },
+                  "timestamp": {
+                    "$ref": "#/$defs/Decimal"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "lockBytes": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [ "asset", "sha256" ],
+            "properties": {
+              "asset": {
+                "$ref": "#/$defs/Id"
+              },
+              "sha256": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "readyGraphs": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [ "operation", "releases" ],
+            "properties": {
+              "operation": {
+                "$ref": "#/$defs/Id"
+              },
+              "releases": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/Release"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "AuthorizationView": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "tree" ],
+          "properties": {
+            "kind": {
+              "const": "supplied"
+            },
+            "tree": {
+              "$ref": "#/$defs/AssetRef"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ParseExpected": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "result" ],
+          "properties": {
+            "kind": {
+              "const": "inline"
+            },
+            "result": {
+              "type": "object",
+              "required": [ "ok", "diagnostic" ],
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "diagnostic": {
+                  "$ref": "#/$defs/Diagnostic"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "asset", "assertions" ],
+          "properties": {
+            "kind": {
+              "const": "asset"
+            },
+            "asset": {
+              "$ref": "#/$defs/Id"
+            },
+            "assertions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/Assertion"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ObservationContext": {
+      "type": "object",
+      "required": [ "at", "policies" ],
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/Time"
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [ "actor", "policy" ],
+            "properties": {
+              "actor": {
+                "$ref": "#/$defs/Id"
+              },
+              "policy": {
+                "$ref": "#/$defs/Bytes"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
