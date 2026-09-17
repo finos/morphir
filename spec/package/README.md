@@ -63,3 +63,10 @@ distributed registries and advanced multi-version graphs remain separate stages.
 
 Executable extensions and installable tools retain separate contracts. Nothing here
 requires their manifests or lifecycles to adopt the model-package format.
+
+The accepted [restore filesystem assurance design](restore-filesystem-assurance.md)
+targets portable restore on Linux, macOS and Windows first, with hardened providers
+following separately. Package authentication and durable trust state remain mandatory.
+The existing draft.3 execution requirements are the hardened baseline; portable mode
+needs its own explicitly identified execution/report profile and qualification evidence.
+No package artifact format changes or implemented platform support follow from this decision.

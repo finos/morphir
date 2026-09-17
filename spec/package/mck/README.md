@@ -120,6 +120,15 @@ Neither result completes Stage 0 or produces an installable `morphir.lock`.
 
 ## Candidate local-registry contract
 
+The accepted [filesystem assurance design](../restore-filesystem-assurance.md) targets
+portable restore on Linux, macOS and Windows before hardened providers. The existing
+54 draft.3 cases retain their original, hardened requirements and fixed expectations.
+Portable execution requires its own explicitly versioned execution/report profile,
+declared complete required-case set and provider evidence in the shared MCK core.
+Do not relabel this corpus, skip hardened cases to produce a portable pass, or add
+mode fields to closed messages without versioned schema support. Existing pending assets
+remain pending. Definition validation is not evidence for either filesystem mode.
+
 The [draft.3 local Library contract](../local-library-contract.md) defines candidate full-lock
 and immutable registry-record shapes. The [unsigned example](fixtures/local-registry/unsigned/README.md)
 is review material, not a new passing corpus. Its lock and record examples deliberately use
