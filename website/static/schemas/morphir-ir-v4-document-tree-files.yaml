@@ -101,7 +101,7 @@ definitions:
   
   ValueSpecification:
     type: object
-    required: ["inputs", "output"]
+    required: ["output"]
     properties:
       inputs:
         type: object
@@ -252,7 +252,8 @@ definitions:
             additionalProperties: true
             description: |
               Value specification (interface). Used in PackageSpecification.
-              Must contain: inputs (object mapping parameter names to types) and output (type).
+              Must contain output (type); inputs (object mapping parameter names to types) is
+              omitted when empty and accepted when written empty.
     description: |
       Value definition or specification file (*.value.json).
       

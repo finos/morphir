@@ -332,7 +332,7 @@ Contains definitions directly:
 - `name`: Value name (canonical format, must match filename without `.value.json` suffix)
 - Exactly one of:
   - `def`: Value definition (implementation) - contains wrapper object with `ExpressionBody`, `NativeBody`, `ExternalBody`, or `IncompleteBody`
-  - `spec`: Value specification (interface) - contains `inputs` (object) and `output` (type)
+  - `spec`: Value specification (interface) - contains `output` (type) and, when non-empty, `inputs` (object)
 
 **Optional Fields**:
 - `doc`: Documentation (string or array of strings), nested inside `def` or `spec` (decision 0010)
@@ -683,9 +683,9 @@ values: []
 
 **For Value Specifications**:
 - Must contain:
-  - `inputs`: Object mapping parameter names to types
   - `output`: Type
 - May include `doc` field
+- May include `inputs`: Object mapping parameter names to types; omitted when empty, accepted when written empty
 
 **Example (Type)**:
 ```json
@@ -1108,8 +1108,8 @@ A filename is the **escaped stem** of a Name, not the canonical name. See
 - `IncompleteBody` must have `inputTypes`, `outputType`, and `reason`
 
 **Value Specifications** (`spec` in `*.value.json`):
-- Must have `inputs` (object mapping parameter names to types)
 - Must have `output` (type)
+- May have `inputs` (object mapping parameter names to types); omitted when empty, accepted when written empty
 - May have `doc` (string or array of strings)
 
 ### Module Manifest Validation
