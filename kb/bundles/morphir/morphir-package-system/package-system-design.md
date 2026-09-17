@@ -990,6 +990,26 @@ contract and fixtures. That tooling was squash-merged with user approval as
 The complete two-Library lock and signed registry fixture must precede runtime implementation.
 MCK cases remain in the parent repository; execution and reference support use the shared TypeScript core, with independent Rust behavior through its adapter.
 
+### Restore filesystem assurance
+
+The first restore delivery targets Linux, macOS and Windows in
+[portable mode](/glossary.md#portable-restore). It assumes caller-controlled local
+directories without hostile concurrent filesystem modification. Package bytes remain
+untrusted; repository and publisher authentication, exact replay and durable trust state
+remain mandatory. Platform support still requires tested providers on each OS.
+
+[Decision 0002](/decisions/0002-portable-restore-with-explicit-filesystem-assurance.md)
+records why this boundary replaced hardened-only first delivery. The
+[assurance addendum](../../../../spec/package/restore-filesystem-assurance.md) defines
+selection, failure behavior and MCK evidence. A hardened request must fail when its
+provider is unavailable; no automatic fallback changes the caller's requirement.
+
+The original draft.3 filesystem requirements remain the hardened baseline. Portable
+mode gets separately identified execution/report contracts and required cases through
+the shared MCK core. Neither mode changes package identity, `morphir.lock`, IR naming,
+or the separation between model packages, executable extensions and installable tools.
+Seatbelt and specially mounted volumes are not baseline consumer requirements.
+
 ### Verification sequence
 
 The following sequence establishes fresh authorization. Continued local use follows the separate policy above and never rolls trusted state backward.
@@ -1329,6 +1349,8 @@ Scope:
 - Convention exports
 - Workspace overrides and snapshots
 - Explicit local trust policy
+- Portable restore on qualified Linux, macOS and Windows local filesystems, with
+  hardened filesystem assurance delivered separately
 - Package release statements signed and verified through an explicitly trusted local development key
 - Core build, resolve, pack, verify, publish, sync, and tree operations
 
