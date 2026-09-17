@@ -93,7 +93,10 @@ run = "cargo fmt --all --check"
 
 [tasks."fmt-check:schema"]
 description = "Check JSON Schema formatting"
-run = "find website/static/schemas -type f -name '*.json' -print0 | xargs -0 jsonschema fmt --check"
+# The glob is expanded by the helper rather than by the shell: the default
+# Windows shell expands nothing, and `find | xargs` is not a portable fallback
+# because a Windows box may carry neither.
+run = "bun run tools/jsonschema-glob.ts fmt --check website/static/schemas/*.json"
 
 # ===== Linting Tasks =====
 [tasks.lint]
@@ -108,8 +111,10 @@ run = "cargo clippy --all-targets --all-features -- -D warnings"
 description = "Lint JSON Schema files"
 # Rules the schemas do not satisfy yet are excluded so the task can gate
 # `check`. Re-enable a rule by fixing its findings and deleting its line.
+# The globs are expanded by the helper rather than by the shell; see
+# `fmt-check:schema` above.
 run = """
-jsonschema lint website/static/schemas/*.yaml website/static/schemas/*.json \
+bun run tools/jsonschema-glob.ts lint website/static/schemas/*.yaml website/static/schemas/*.json \
   --exclude const_with_type \
   --exclude description_trailing_period \
   --exclude description_trim \
