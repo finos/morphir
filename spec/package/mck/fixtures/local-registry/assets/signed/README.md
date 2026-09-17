@@ -49,9 +49,9 @@ Fixture configuration supplies these out of band; the lock supplies neither auth
 
 ## Reproduce and verify
 
-Use [TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21), commit
-`7a99f3810c6ea8ad35f6bfe8ae90e5a1439218ab`, in a `finos/morphir-typescript` checkout.
-The parent submodule pin has not yet advanced to that change. No checker is duplicated here.
+Use the merged [TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21), commit
+`6f180b84357cdca8fa55544e6579c0c8ba95b10e`, available through the parent submodule pin.
+No checker is duplicated here.
 
 The pinned toolchain is Bun 1.4.2 and Node 20.20.2. MCK's test-only dependencies are
 `@noble/curves` 2.4.0, `@tufjs/canonical-json` 2.0.0, and `tuf-js` 5.0.1. The adopted

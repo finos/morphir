@@ -970,7 +970,9 @@ approved on 2026-09-17, completing the contract-first gate for shared MCK and ru
 implementation. Neither fixture generation nor schema validation is a new local-registry
 compatibility pass. Publication was authorized on 2026-09-17, with shared MCK tooling in
 [TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21) preceding the parent
-contract and fixtures. Merging remains a separate approval; the parent pin must use the merged tooling commit before landing.
+contract and fixtures. That tooling was squash-merged with user approval as
+`6f180b84357cdca8fa55544e6579c0c8ba95b10e`; the parent now pins that merged commit.
+[Parent PR #824](https://github.com/finos/morphir/pull/824) still requires separate merge approval.
 The complete two-Library lock and signed registry fixture must precede runtime implementation.
 MCK cases remain in the parent repository; execution and reference support use the shared TypeScript core, with independent Rust behavior through its adapter.
 

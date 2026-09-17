@@ -2,6 +2,8 @@
 
 ## 2026-09-17
 
+* **Update**: Squash-merged [TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21) with user approval as `6f180b84357cdca8fa55544e6579c0c8ba95b10e`, after green CI and a check of all review channels. Updated the parent submodule pin and fixture reproduction instructions to that merged commit. [Parent PR #824](https://github.com/finos/morphir/pull/824) remains unmerged and needs separate approval.
+
 * **Publication**: User authorized commits, pushes and PR creation, with merge approval remaining separate. Published shared fixture tooling in [TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21), commit `7a99f3810c6ea8ad35f6bfe8ae90e5a1439218ab`. The parent contract and fixture PR follows; its submodule pin must advance to the merged tooling commit before landing. Fresh local TypeScript CI passes 1,105 tests, and explicit fixture integration verifies 19 exact files, two Libraries and four independently verified TUF targets.
 
 * **Approval**: User approved the signed two-Library fixture after specification and quality reviews. Both wire-contract and signed-fixture gates are complete. The next implementation slice is shared TypeScript MCK support and exact authenticated two-published-Library restore, followed by independent Rust support and parent integration. Existing 121 pending assets and absent runtime support remain explicit. This approval does not authorize commits, pushes, PR creation, or merges.
