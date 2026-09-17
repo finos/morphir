@@ -108,22 +108,6 @@ pub(super) async fn load_project_model(
 }
 
 #[cfg(all(test, unix))]
-fn load(
-    workspace: &Dir,
-    source: &WorkbenchSourceRef,
-    snapshot: WorkspaceSnapshot,
-    project_id: &str,
-) -> Result<ProjectModelOpenResult, CliError> {
-    load_with_hooks(
-        workspace,
-        source,
-        snapshot,
-        project_id,
-        &NoopProjectModelHooks,
-    )
-}
-
-#[cfg(all(test, unix))]
 fn load_with_hooks<H: ProjectModelHooks + ?Sized>(
     workspace: &Dir,
     source: &WorkbenchSourceRef,
@@ -387,9 +371,19 @@ mod tests {
         let workspace = open_workspace(root.path()).unwrap();
 
         let started = std::time::Instant::now();
-        let error = load_project_model(&workspace, &source, snapshot, &project_id)
-            .await
-            .unwrap_err();
+        let error = load_project_model(
+            &workspace,
+            &source,
+            snapshot,
+            &project_id,
+            ProjectModelConfig {
+                workspace: root.path().to_path_buf(),
+                options: ConfigLoadOptions::project_only(),
+                out: OutOverrides::default(),
+            },
+        )
+        .await
+        .unwrap_err();
         let elapsed = started.elapsed();
         writer.join().unwrap();
 
@@ -442,9 +436,19 @@ mod tests {
         };
 
         let workspace = open_workspace(root.path()).unwrap();
-        let error = load_project_model(&workspace, &source, snapshot, &project_id)
-            .await
-            .unwrap_err();
+        let error = load_project_model(
+            &workspace,
+            &source,
+            snapshot,
+            &project_id,
+            ProjectModelConfig {
+                workspace: root.path().to_path_buf(),
+                options: ConfigLoadOptions::project_only(),
+                out: OutOverrides::default(),
+            },
+        )
+        .await
+        .unwrap_err();
 
         assert!(error.to_string().contains("leaves the workspace root"));
     }
