@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.7] - 2026-09-17
+
+### Added
+- **Python extension bundles**: `morphir extension repository publish` preserves frontend languages and backend targets in the Python extension's release descriptor. Install the separately released `morphir-python` WASM bundle to compile the supported Python ADTs, fixed tuples and conditional functions to IR v4 and generate Python. CI verifies publication, installation and offline compilation/generation through the CLI.
+
 ### Changed
 - Update `morphir-rust` to `736fbdf`, adding fixed tuples, conditional function bodies and arbitrary-precision integer literals to the Python frontend/backend (finos/morphir-rust#157). The Python extension is built and installed separately.
 - **IR format-version support tables**: format-version support tables are intervals (`[3.0.0,3.1.0),[4.0.0,4.1.0)`); a later patch of a supported minor is read, a later minor is refused with `unsupported_format_version_minor`, which replaces `unsupported_format_version_revision` (decision 0016)
