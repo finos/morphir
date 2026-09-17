@@ -897,6 +897,36 @@ v4_attrs = {
 3. **Test with round-trip** conversions when possible
 4. **Preserve original** IR files before migration
 
+### YAML output style
+
+Starting in 0.4.0-alpha.7 the CLI writes YAML in the canonical style of the [v4 YAML
+profile](v4/yaml-profile.md): a sequence is written in flow style (`[a, b]`) when no
+mapping appears anywhere inside it and in block style otherwise, a scalar is quoted only
+where the plain spelling would change its meaning (an empty string, a spelling that
+resolves to a boolean, null or a number, a leading YAML indicator, a trailing space or
+colon, an embedded `: ` or ` #`, a control character, or a flow-sequence item containing
+`[]{},:#`), members keep the order the encoder writes them in, and the file ends with
+exactly one newline. Files written by earlier versions still read: nothing about the
+accepted input changed, only the bytes the CLI produces, so a file rewritten by
+`morphir migrate` may differ from its predecessor in quoting and line breaks while
+carrying the same model.
+
+The same release retires the YAML codec's private diagnostic names for the conformance
+kit's:
+
+| Before | Now |
+| --- | --- |
+| `morphir::ir::yaml::duplicate_key` | `morphir::ir::yaml::duplicate_member` |
+| `duplicate_format_version` (duplicate `formatVersion` key) | `morphir::ir::yaml::duplicate_member` |
+| `morphir::ir::yaml::alias_not_allowed` | `morphir::ir::yaml::unsupported_yaml_feature` |
+| `morphir::ir::yaml::unsupported_tag` | `morphir::ir::yaml::unsupported_yaml_feature` |
+| `morphir::ir::yaml::merge_key_not_allowed` | `morphir::ir::yaml::unsupported_yaml_feature` |
+| `morphir::ir::yaml::multiple_documents` | `morphir::ir::yaml::invalid_yaml` |
+| `morphir::ir::yaml::non_finite_number` | `morphir::ir::yaml::invalid_literal` |
+| `morphir::ir::yaml::budget_exceeded` | `morphir::ir::yaml::nesting_too_deep` |
+| `morphir::ir::yaml::invalid_ir` | the specific semantic code for the member at fault |
+| `morphir::ir::yaml::ambiguous_scalar` | removed: an unquoted timestamp-like scalar is a string, not an error |
+
 ### Validation
 
 Each version has a JSON Schema for validation:
