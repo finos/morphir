@@ -250,6 +250,13 @@ run = "bun run tools/gen-naming-corpus.ts --check"
 description = "Verify the format-version conformance corpus and its copy vendored into morphir-rust are byte-identical"
 run = "bun run tools/check-vendored-fixture.ts docs/spec/ir/fixtures/format-version-conformance.json ecosystem/morphir-rust/tests/fixtures/format-version-conformance.json"
 
+[tasks."fixtures:yaml-acceptance"]
+description = "Regenerate the greeting-example YAML acceptance fixture from the reference writer"
+run = [
+    "cargo run -p morphir -- migrate website/static/ir/examples/v3/greeting-example.json --output .dev/out/migrate/greeting.v4.json",
+    "bun run tools/gen-yaml-acceptance-fixture.ts .dev/out/migrate/greeting.v4.json crates/morphir/tests/fixtures/yaml/greeting-example.v4.yaml",
+]
+
 [tasks."tools:install"]
 description = "Install dependencies for the Bun specification tooling"
 run = "bun install"

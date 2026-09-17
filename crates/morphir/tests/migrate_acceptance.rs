@@ -249,11 +249,19 @@ fn migrated_yaml_matches_the_reference_writer_byte_for_byte() {
                 "line {}: the CLI wrote\n  {a}\nthe reference writer wrote\n  {e}",
                 index + 1
             ),
-            None => panic!(
-                "the two texts share a prefix but differ in length: CLI {} lines, reference {} lines",
-                actual.lines().count(),
-                expected.lines().count()
-            ),
+            None => {
+                // `.lines()` ignores a trailing newline, so two texts that agree on
+                // every line can still land here when they differ only in trailing
+                // newline count (or trailing whitespace after the last line). Report
+                // byte lengths, which do distinguish them, instead of the equal line
+                // counts `.lines()` would otherwise print.
+                panic!(
+                    "the two texts agree line-for-line via `.lines()` but are not equal \
+                     — likely a trailing-newline difference: CLI {} bytes, reference {} bytes",
+                    actual.len(),
+                    expected.len()
+                )
+            }
         }
     }
 }
