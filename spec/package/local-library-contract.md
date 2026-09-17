@@ -19,6 +19,12 @@ projection. Release versions never enter IR dependency names or FQNames.
 The [candidate trust profile](package-trust-profile.md) specifies repository and publisher
 authority, signed release status, historical evidence and durable local authorization.
 
+The accepted [filesystem assurance addendum](restore-filesystem-assurance.md) introduces
+a portable restore delivery target alongside hardened restore. The filesystem guarantees
+in this document remain the hardened baseline. Portable execution requires explicit host
+selection and separate MCK profile evidence; this addendum does not silently weaken the
+existing draft.3 execution contract or its fixed cases. Package artifact wire shapes stay unchanged.
+
 ## Common wire rules
 
 The [lock schema](schemas/library-lock.schema.json), [record schema](schemas/registry-record.schema.json),

@@ -5,6 +5,12 @@ on 2026-09-17. Shared MCK and package runtime implementation may proceed.
 This document specifies no implemented package client or interoperability claim.
 It supplements the [local Library contract](local-library-contract.md).
 
+The [filesystem assurance modes](restore-filesystem-assurance.md) do not weaken this
+trust profile. Portable and hardened restore both require repository and publisher
+authentication, revocation enforcement, durable rollback state and recovery. A filesystem
+mode is host policy, not package authority, and cannot make a failed trust-state commit
+successful. Missing platform guarantees must not trigger weaker verification.
+
 ## Adopted protocols and boundaries
 
 Repository authentication follows [TUF 1.0.36, pinned source](https://github.com/theupdateframework/specification/blob/59e601ed29c0d2e497264ae8b31c11b8ef07df1e/tuf-spec.md).
