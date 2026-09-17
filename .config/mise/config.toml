@@ -199,6 +199,8 @@ run = [
     "jsonschema fmt spec/package/schemas --check",
     "jsonschema metaschema spec/package/schemas/library-manifest.schema.json",
     "jsonschema metaschema spec/package/schemas/lock-core.schema.json",
+    "jsonschema metaschema spec/package/schemas/resolution-input.schema.json spec/package/schemas/resolution-result.schema.json spec/package/schemas/resolution-case.schema.json",
+    "jsonschema validate spec/package/schemas/resolution-case.schema.json spec/package/mck/resolution-cases.json spec/package/mck/fixtures/resolution/basic.json spec/package/mck/fixtures/resolution/backtracking.json spec/package/mck/fixtures/resolution/updates.json spec/package/mck/fixtures/resolution/diagnostics.json spec/package/mck/fixtures/resolution/root-catalog.json spec/package/mck/fixtures/resolution/witness-ranking.json spec/package/mck/fixtures/resolution/validation-phases.json -r spec/package/schemas",
     "jsonschema validate spec/package/schemas/library-manifest.schema.json spec/package/mck/fixtures/two-libraries/eligibility/manifest.json spec/package/mck/fixtures/two-libraries/loan-rules/manifest.json",
     "jsonschema validate spec/package/schemas/lock-core.schema.json spec/package/mck/fixtures/two-libraries/lock-core.json -r spec/package/schemas",
     "jsonschema validate website/static/schemas/morphir-ir-v4.json spec/package/mck/fixtures/two-libraries/eligibility/ir.json spec/package/mck/fixtures/two-libraries/loan-rules/ir.json",
@@ -218,6 +220,22 @@ run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "bun run tools/run-mck-rust.ts --suite package --kit spec/package/mck --report .dev/out/mck/package-rust.json",
+]
+
+[tasks."package:resolution-check"]
+description = "Run draft package resolution cases through the shared TypeScript core and executable adapter"
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --contract 0.1.0-draft.2 --kit spec/package/mck --report .dev/out/mck/package-resolution-typescript.json",
+    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --contract 0.1.0-draft.2 --kit spec/package/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --adapter-arg --suite --adapter-arg package --adapter-arg --contract --adapter-arg 0.1.0-draft.2 --report .dev/out/mck/package-resolution-typescript-adapter.json",
+]
+
+[tasks."package:resolution-check:rust"]
+description = "Run draft package resolution cases against the independent Rust implementation through the shared driver"
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
+    "bun run tools/run-mck-rust.ts --suite package --contract 0.1.0-draft.2 --kit spec/package/mck --report .dev/out/mck/package-resolution-rust.json",
 ]
 
 [tasks."hooks:install"]

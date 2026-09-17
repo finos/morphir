@@ -1,0 +1,279 @@
+{
+  "formatVersion": "0.1.0-draft.2",
+  "cases": [
+    {
+      "id": "resolution.validation.release-siblings",
+      "family": "profile-boundaries",
+      "description": "Independent release identity shape errors accumulate within the first failing phase.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"initial\",\"root\":{\"release\":{\"packagePath\":0,\"version\":0},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"catalogs\":[]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/root/release/packagePath",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/root/release/version",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.requirement-siblings",
+      "family": "profile-boundaries",
+      "description": "Requirement identity and interval-bound shape errors accumulate independently.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"initial\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":0,\"packagePath\":0,\"versionRange\":{\"minimumInclusive\":0,\"maximumExclusive\":0}}]},\"catalogs\":[]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/root/dependencies/0/irPackageName",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/root/dependencies/0/packagePath",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/root/dependencies/0/versionRange/maximumExclusive",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/root/dependencies/0/versionRange/minimumInclusive",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.locked-node-siblings",
+      "family": "profile-boundaries",
+      "description": "Lock shape collects missing node metadata and both malformed release identity fields before later phases.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"replay\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"releases\":[],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":0,\"version\":0},\"bindings\":[]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock/nodes/0/contentDigest",
+              "rule": "missing-field"
+            },
+            {
+              "pointer": "/lock/nodes/0/irPackageName",
+              "rule": "missing-field"
+            },
+            {
+              "pointer": "/lock/nodes/0/manifestDigest",
+              "rule": "missing-field"
+            },
+            {
+              "pointer": "/lock/nodes/0/release/packagePath",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/lock/nodes/0/release/version",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.locked-binding-siblings",
+      "family": "profile-boundaries",
+      "description": "A malformed binding name does not suppress independent target identity shape errors.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"replay\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"releases\":[],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":0,\"target\":{\"packagePath\":0,\"version\":0}}]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock/nodes/0/bindings/0/irPackageName",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/lock/nodes/0/bindings/0/target/packagePath",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/lock/nodes/0/bindings/0/target/version",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.unknown-target-kind",
+      "family": "profile-boundaries",
+      "description": "An unknown target kind suppresses variant-only version checks, but not unrelated unknown fields; outer errors precede missing lock.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"update\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"catalogs\":[],\"targets\":[{\"kind\":\"future\",\"packagePath\":\"example.com/pkg/a\",\"version\":0,\"extra\":true}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/targets/0/extra",
+              "rule": "unknown-field"
+            },
+            {
+              "pointer": "/targets/0/kind",
+              "rule": "invalid-value"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.missing-target-kind",
+      "family": "profile-boundaries",
+      "description": "An absent target kind still rejects unrelated fields while suppressing variant-only version checks.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"update\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"catalogs\":[],\"targets\":[{\"packagePath\":\"example.com/pkg/a\",\"version\":0,\"extra\":true}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/targets/0/extra",
+              "rule": "unknown-field"
+            },
+            {
+              "pointer": "/targets/0/kind",
+              "rule": "missing-field"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.wrong-type-target-kind",
+      "family": "profile-boundaries",
+      "description": "A wrongly typed target kind still rejects unrelated fields while suppressing variant-only version checks.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"update\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"catalogs\":[],\"targets\":[{\"kind\":0,\"packagePath\":\"example.com/pkg/a\",\"version\":0,\"extra\":true}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/targets/0/extra",
+              "rule": "unknown-field"
+            },
+            {
+              "pointer": "/targets/0/kind",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.duplicate-lock-path-suppression",
+      "family": "profile-boundaries",
+      "description": "A later node PackagePath duplicate suppresses its nested binding duplicates and IR-name reuse in the identity phase.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"replay\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"releases\":[],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]},{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"2.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/a\",\"target\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"}},{\"irPackageName\":\"example/a\",\"target\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"}}]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock/nodes/1/release/packagePath",
+              "rule": "duplicate-identity"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.unknown-target-kind-common-field",
+      "family": "profile-boundaries",
+      "description": "An unknown target kind still validates common packagePath while suppressing variant-only version checks.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"update\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"catalogs\":[],\"targets\":[{\"kind\":\"future\",\"packagePath\":0,\"version\":0,\"extra\":true}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/targets/0/extra",
+              "rule": "unknown-field"
+            },
+            {
+              "pointer": "/targets/0/kind",
+              "rule": "invalid-value"
+            },
+            {
+              "pointer": "/targets/0/packagePath",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.missing-target-kind-common-field",
+      "family": "profile-boundaries",
+      "description": "An absent target kind still validates common packagePath while suppressing variant-only version checks.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"update\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"catalogs\":[],\"targets\":[{\"packagePath\":0,\"version\":0,\"extra\":true}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/targets/0/extra",
+              "rule": "unknown-field"
+            },
+            {
+              "pointer": "/targets/0/kind",
+              "rule": "missing-field"
+            },
+            {
+              "pointer": "/targets/0/packagePath",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.wrong-type-target-kind-common-field",
+      "family": "profile-boundaries",
+      "description": "A wrongly typed target kind still validates common packagePath while suppressing variant-only version checks.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"mode\":\"update\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},\"catalogs\":[],\"targets\":[{\"kind\":0,\"packagePath\":0,\"version\":0,\"extra\":true}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/targets/0/extra",
+              "rule": "unknown-field"
+            },
+            {
+              "pointer": "/targets/0/kind",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/targets/0/packagePath",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

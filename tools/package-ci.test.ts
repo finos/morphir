@@ -14,6 +14,30 @@ test("Rust package task builds a locked adapter and delegates verdicts to shared
 	expect(runs.some((run) => run.includes("check-mck-report"))).toBe(false);
 });
 
+test("resolution tasks select draft.2 for both transports and implementations", () => {
+	expect(tasks.tasks["package:resolution-check"]?.run).toEqual([
+		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+		"bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --contract 0.1.0-draft.2 --kit spec/package/mck --report .dev/out/mck/package-resolution-typescript.json",
+		"bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --contract 0.1.0-draft.2 --kit spec/package/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --adapter-arg --suite --adapter-arg package --adapter-arg --contract --adapter-arg 0.1.0-draft.2 --report .dev/out/mck/package-resolution-typescript-adapter.json",
+	]);
+	expect(tasks.tasks["package:resolution-check:rust"]?.run).toEqual([
+		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+		"cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
+		"bun run tools/run-mck-rust.ts --suite package --contract 0.1.0-draft.2 --kit spec/package/mck --report .dev/out/mck/package-resolution-rust.json",
+	]);
+});
+
+test("package schema validation covers every indexed resolution fixture", () => {
+	const index = JSON.parse(readFileSync(new URL("../spec/package/mck/resolution-cases.json", import.meta.url), "utf8")) as {
+		fixtures: readonly string[];
+	};
+	const schemaRuns = tasks.tasks["package:schema-check"]?.run ?? [];
+	const resolutionValidation = schemaRuns.find((run) => run.includes("resolution-case.schema.json") && run.includes("jsonschema validate")) ?? "";
+	for (const fixture of index.fixtures) {
+		expect(resolutionValidation).toContain(`spec/package/mck/${fixture}`);
+	}
+});
+
 test("package CI covers each input and always uploads its report", () => {
 	const filters = workflow.jobs.changes?.steps.find((step) => step.with?.filters)?.with?.filters ?? "";
 	const paths = (Bun.YAML.parse(filters) as Record<string, string[]>)["package-mck"] ?? [];
@@ -26,6 +50,11 @@ test("package CI covers each input and always uploads its report", () => {
 	expect(job?.steps.find((step) => step.run === "mise run package:check:rust")?.if)
 		.toBe("${{ !cancelled() && steps.integration.outcome == 'success' }}");
 	expect(job?.steps.some((step) => step.run === "mise run package:check")).toBe(true);
+	for (const task of ["package:resolution-check", "package:resolution-check:rust"]) {
+		expect(job?.steps.some((step) => step.run === `mise run ${task}`)).toBe(true);
+		expect(job?.steps.find((step) => step.run === `mise run ${task}`)?.if)
+			.toBe("${{ !cancelled() && steps.integration.outcome == 'success' }}");
+	}
 	const upload = job?.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
 	expect(upload?.if).toBe("always()");
 	expect(upload?.with?.path).toBe(".dev/out/mck/package-*.json");

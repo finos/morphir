@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-result.schema.json",
+  "title": "Experimental Library resolution result",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "ok", "graph" ],
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "graph": {
+          "$ref": "resolution-input.schema.json#/$defs/LockedGraph"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "ok", "diagnostic" ],
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "diagnostic": {
+          "$ref": "#/$defs/Diagnostic"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "Violation": {
+      "type": "object",
+      "required": [ "pointer", "rule" ],
+      "properties": {
+        "pointer": {
+          "type": "string"
+        },
+        "rule": {
+          "enum": [
+            "malformed-json",
+            "duplicate-key",
+            "unknown-field",
+            "missing-field",
+            "invalid-type",
+            "invalid-value",
+            "invalid-name",
+            "invalid-version",
+            "invalid-interval",
+            "invalid-digest",
+            "duplicate-identity",
+            "identity-mismatch",
+            "missing-root",
+            "dangling-binding",
+            "binding-mismatch",
+            "requirement-mismatch",
+            "digest-mismatch",
+            "unreachable-node",
+            "cycle",
+            "unsupported-flat-binding"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChangedPin": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "previous", "selected" ],
+          "properties": {
+            "kind": {
+              "const": "changed"
+            },
+            "previous": {
+              "$ref": "resolution-input.schema.json#/$defs/ReleaseId"
+            },
+            "selected": {
+              "$ref": "resolution-input.schema.json#/$defs/ReleaseId"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "previous" ],
+          "properties": {
+            "kind": {
+              "const": "removed"
+            },
+            "previous": {
+              "$ref": "resolution-input.schema.json#/$defs/ReleaseId"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Occurrence": {
+      "type": "array",
+      "items": {
+        "$ref": "resolution-input.schema.json#/$defs/IRPath"
+      }
+    },
+    "Witness": {
+      "type": "object",
+      "required": [ "nodes" ],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "occurrence", "release", "bindings" ],
+            "properties": {
+              "occurrence": {
+                "$ref": "#/$defs/Occurrence"
+              },
+              "release": {
+                "$ref": "resolution-input.schema.json#/$defs/ReleaseId"
+              },
+              "bindings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [ "irPackageName", "targetOccurrence" ],
+                  "properties": {
+                    "irPackageName": {
+                      "$ref": "resolution-input.schema.json#/$defs/IRPath"
+                    },
+                    "targetOccurrence": {
+                      "$ref": "#/$defs/Occurrence"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Diagnostic": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "code", "violations" ],
+          "properties": {
+            "code": {
+              "enum": [ "invalid-input", "invalid-lock" ]
+            },
+            "violations": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/Violation"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "code", "missing" ],
+          "properties": {
+            "code": {
+              "const": "incomplete-input"
+            },
+            "missing": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "kind", "packagePath" ],
+                    "properties": {
+                      "kind": {
+                        "const": "catalog"
+                      },
+                      "packagePath": {
+                        "$ref": "resolution-input.schema.json#/$defs/PackagePath"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "kind", "release" ],
+                    "properties": {
+                      "kind": {
+                        "const": "release"
+                      },
+                      "release": {
+                        "$ref": "resolution-input.schema.json#/$defs/ReleaseId"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "code", "changedPins", "witness" ],
+          "properties": {
+            "code": {
+              "const": "update-scope-conflict"
+            },
+            "changedPins": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/ChangedPin"
+              }
+            },
+            "witness": {
+              "$ref": "#/$defs/Witness"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "code",
+            "requiredCapabilities",
+            "changedPins",
+            "witness"
+          ],
+          "properties": {
+            "code": {
+              "const": "unsupported-capability"
+            },
+            "requiredCapabilities": {
+              "const": [ "graph-aware-coexistence" ]
+            },
+            "changedPins": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ChangedPin"
+              }
+            },
+            "witness": {
+              "$ref": "#/$defs/Witness"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "code", "root", "catalogs", "targets" ],
+          "properties": {
+            "code": {
+              "const": "unsatisfiable-requirements"
+            },
+            "root": {
+              "$ref": "resolution-input.schema.json#/$defs/ReleaseRecord"
+            },
+            "catalogs": {
+              "type": "array",
+              "items": {
+                "$ref": "resolution-input.schema.json#/$defs/Catalog"
+              }
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "resolution-input.schema.json#/$defs/UpdateTarget"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

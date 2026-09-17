@@ -18,6 +18,32 @@ test("package suite selects both driver and adapter package contracts", () => {
 	]);
 });
 
+test("package contract selection reaches the Linux driver and adapter", () => {
+	const result = rustMckInvocation("/repo", "linux", [
+		"--suite", "package", "--contract", "0.1.0-draft.2", "--kit", "kit",
+	]);
+	expect(result.adapter).toEndWith("mck-adapter-rust");
+	expect(result.command.slice(2)).toEqual([
+		"package", "run", "--adapter", result.adapter,
+		"--adapter-arg", "--suite", "--adapter-arg", "package",
+		"--adapter-arg", "--contract", "--adapter-arg", "0.1.0-draft.2",
+		"--contract", "0.1.0-draft.2", "--kit", "kit",
+	]);
+});
+
+test("package contract selection reaches the Windows driver and adapter", () => {
+	const result = rustMckInvocation("C:\\repo", "win32", [
+		"--suite", "package", "--contract", "0.1.0-draft.2", "--kit", "kit",
+	]);
+	expect(result.adapter).toEndWith("mck-adapter-rust.exe");
+	expect(result.command.slice(2)).toEqual([
+		"package", "run", "--adapter", result.adapter,
+		"--adapter-arg", "--suite", "--adapter-arg", "package",
+		"--adapter-arg", "--contract", "--adapter-arg", "0.1.0-draft.2",
+		"--contract", "0.1.0-draft.2", "--kit", "kit",
+	]);
+});
+
 test("explicit IR selection preserves the default command", () => {
 	expect(rustMckInvocation("/repo", "linux", ["--suite", "ir"]).command)
 		.toEqual(rustMckInvocation("/repo", "linux", []).command);
@@ -32,6 +58,20 @@ test("rejects invalid or ambiguous suite selection", () => {
 	for (const args of [["--suite"], ["--suite", "other"], ["--suite=package"],
 		["--kit", "kit", "--suite", "package"], ["--suite", "package", "--suite", "ir"]]) {
 		expect(() => rustMckInvocation("/repo", "linux", args)).toThrow();
+	}
+});
+
+test("rejects duplicate, conflicting, or malformed contract selection", () => {
+	for (const args of [
+		["--suite", "package", "--contract"],
+		["--suite", "package", "--contract", "--kit", "kit"],
+		["--suite", "package", "--contract=0.1.0-draft.2"],
+		["--suite", "package", "--contract", "0.1.0-draft.2", "--contract", "0.1.0-draft.2"],
+		["--suite", "package", "--contract", "0.1.0-draft.2", "--contract", "0.1.0-draft.1"],
+		["--contract", "0.1.0-draft.2"],
+		["--suite", "ir", "--contract", "0.1.0-draft.2"],
+	]) {
+		expect(() => rustMckInvocation("/repo", "linux", args)).toThrow("contract");
 	}
 });
 
