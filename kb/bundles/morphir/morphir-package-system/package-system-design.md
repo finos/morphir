@@ -896,6 +896,20 @@ TLS and transport digests protect acquisition. They do not establish package pub
 
 The implementation should reuse reviewed standards and libraries for signatures and delegation. It must not invent cryptographic primitives.
 
+### Consumer key-management requirement
+
+Ordinary package consumption must not require routine manual key or certificate management.
+Consumers need independently provisioned public trust configuration, not private signing keys,
+a GPG keyring or X.509 certificates. Organizations or trusted tooling may provision the configuration.
+After provisioning, clients perform verification and supported authenticated root updates automatically.
+Packages, locks and self-signed roots cannot grant themselves authority.
+
+Publishers and registry operators still manage signing authority, key protection, metadata renewal,
+rotation and recovery. The package publication operation accepts caller-signed bytes rather than holding keys.
+The [trust profile](../../../../spec/package/package-trust-profile.md#consumer-key-management-requirement)
+records this separation as a requirement. Onboarding commands and managed signing integrations remain unimplemented.
+This requirement does not select GPG support, add certificate infrastructure or weaken verification on failure.
+
 ### Approved local Library profile
 
 The first complete-lock profile covers published Libraries in a local-directory registry, using unpacked bundles.

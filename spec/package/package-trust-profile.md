@@ -23,6 +23,27 @@ Repository authority and publisher authority are independent requirements. A TUF
 signature does not authorize a package publisher. A publisher signature does not authorize
 a repository, location, release status or first restore. A lock supplies neither authority.
 
+## Consumer key-management requirement
+
+Ordinary package consumption must not require routine manual key or certificate
+management. A consumer must not need a private signing key, a GPG keyring or an
+X.509 certificate to verify and use published Libraries under this profile.
+
+Initial provisioning must still establish independently trusted repository identities,
+bootstrap pins and namespace-scoped publisher policy. An organization or trusted tooling
+may provision that configuration. A lock, downloaded package or self-signed repository
+root cannot authorize itself. After provisioning, the client must perform verification
+and supported authenticated root updates without asking consumers to copy keys for
+each package. Failures must explain whether the consumer can retry or an administrator
+must update policy or recover trust; bypassing verification is not a recovery step.
+
+Publishers and registry operators retain signing, key protection, metadata renewal,
+rotation and recovery responsibilities. The low-level publication operation accepts
+caller-signed bytes and does not hold private keys. Signing services and onboarding
+commands remain separate implementation work, not capabilities supplied by this profile.
+This requirement adds no OpenPGP signature format, certificate infrastructure or implicit
+trust defaults. Remote-registry access credentials are outside this local profile.
+
 ## Local trust policy
 
 The [policy schema](schemas/package-trust-policy.schema.json) is JSON Schema 2020-12.
