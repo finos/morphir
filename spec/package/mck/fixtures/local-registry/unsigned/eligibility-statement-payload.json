@@ -1,0 +1,12 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "kind": "LibraryReleaseStatement",
+  "release": {
+    "packagePath": "example.com/finance/eligibility",
+    "version": "1.2.0"
+  },
+  "irPackageName": "example/eligibility",
+  "dependencies": [],
+  "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+  "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+}
