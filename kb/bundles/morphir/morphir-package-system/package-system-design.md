@@ -632,8 +632,8 @@ flowchart TD
 The [resolution schemas and fixed MCK cases](../../../../spec/package/mck/README.md) define these observable results.
 This metadata projection is not the full `morphir.lock`, and it does not verify payload bytes or type compatibility.
 The separate integrity contract remains `0.1.0-draft.1`; its digest domain and existing operations are unchanged.
-Shared-driver checks now exercise TypeScript and independent Rust implementations in local development checkouts.
-Upstream landing and the final parent pins remain pending. The [MCK suite](../../../../spec/package/mck/README.md)
+Shared-driver checks exercise TypeScript and independent Rust implementations at published feature commits.
+Upstream landing and the final merged-commit pins remain pending. The [MCK suite](../../../../spec/package/mck/README.md)
 records bounded evidence; a local pass does not establish published compatibility.
 
 Stage 1 supports one implicit binding per dependency IR name in each consumer, within the supported payload's limits.
@@ -1134,8 +1134,8 @@ their own operations and expected results; they cannot be encoded as IR `decode`
 
 IR protocol and report contract version 1 remain IR-specific. Package integrity uses its separate
 `0.1.0-draft.1` contract. Resolution specifies `0.1.0-draft.2`, selected explicitly rather than silently adding
-operations to draft.1. Local shared-driver checks cover both implementations; merged upstream commits and parent
-integration pins remain pending. The current recorded pins still expose draft.1 only.
+operations to draft.1. Shared-driver checks cover both implementations at temporary feature pins;
+merged upstream commits and final parent integration pins remain pending.
 Preserve existing IR invocations, case IDs, and contract version 1 support. Identify cases by suite and stable case ID
 when comparing or aggregating results.
 
@@ -1178,8 +1178,8 @@ a registry client, public-specification compatibility checker, or installation a
 
 The follow-up resolution implementation adds exact replay, deterministic initial selection, scoped updates, and
 structured diagnostics under draft.2. `package:resolution-check` exercises both TypeScript transports;
-`package:resolution-check:rust` uses the same driver against Rust. The new CI steps require pending implementation
-pins, so local verification must identify the uncommitted checkouts rather than imply support in the recorded pins.
+`package:resolution-check:rust` uses the same driver against Rust. The dependent parent branch pins published
+implementation commits for CI. Its final pins must identify merged upstream commits before landing.
 Resolution returns metadata only. Full `morphir.lock` materialization, acquisition, and trust remain unfinished.
 
 Deliver:

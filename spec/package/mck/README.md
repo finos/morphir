@@ -17,8 +17,8 @@ results. Every digest in these fixtures is synthetic metadata, not a verified pa
 The schema task checks the index and case/result structure. Executable resolution
 uses the shared TypeScript MCK core and the independent Rust implementation through an adapter.
 The new `package:resolution-check` and `package:resolution-check:rust` tasks select draft.2
-explicitly. Their CI integration requires the pending upstream implementation pins;
-the currently recorded submodule commits still provide draft.1 only.
+explicitly. This dependent branch pins published implementation commits for CI;
+replace them with merged upstream commits before landing the parent.
 The existing draft.1 package suite remains available unchanged.
 
 `schema-cases.json` declares each case's schema, base fixture, expected verdict, and
@@ -84,12 +84,13 @@ its interfaces or adapters; duplicating the runner is not an independence requir
 ## Local resolution evidence, pending landing
 
 The 2026-09-16 development run passed all 78 draft.2 cases on each transport, with zero
-failures, kit errors, or skips. The shared driver version was `0.1.0`.
+failures, kit errors, or skips. After incorporating current upstream changes, the shared driver
+and TypeScript testee versions are `0.2.0`; Rust remains `0.2.0`.
 
 | Report under `.dev/out/mck/` | Testee | Passing cases |
 | --- | --- | --- |
-| `package-resolution-typescript.json` | morphir-typescript `0.1.0`, in-process | 78 |
-| `package-resolution-typescript-adapter.json` | morphir-typescript `0.1.0`, executable adapter | 78 |
+| `package-resolution-typescript.json` | morphir-typescript `0.2.0`, in-process | 78 |
+| `package-resolution-typescript-adapter.json` | morphir-typescript `0.2.0`, executable adapter | 78 |
 | `package-resolution-rust.json` | morphir-rust `0.2.0`, executable adapter | 78 |
 
 All three reports identify corpus hash
@@ -97,14 +98,14 @@ All three reports identify corpus hash
 The fixed cases cover validation phases, replay, backtracking, scoped updates, graph ordering,
 and diagnostic witness ranking. They do not verify acquisition, payloads, trust, or API compatibility.
 
-These runs used uncommitted implementation changes in isolated development checkouts,
-not the recorded parent submodules. TypeScript's base was
-`f308c9be27fa58af72c112fe4e16028568c3e6f4`; Rust's base was
-`392c1a7078acfb459f1d335d953cc70e027971ff`. These base commits do not identify the tested
-source changes. Parent base `0e79ee2ed25876780dbbae5d91147d55050019cc` still records the
-TypeScript base above and Rust `05f59d7dcf36a74fefa284ca27abbfc49e56a3e3`.
-Merged implementation commits, final pins, and fresh CI reports are required before a
-published compatibility claim. Local reports are ignored build outputs, not committed evidence artifacts.
+The parent branch is rebased onto `2ff3416a` and temporarily pins these published implementation commits:
+
+- TypeScript `8a0ee253f3193030bf11cc9c032e37f640379432`, [PR #18](https://github.com/finos/morphir-typescript/pull/18).
+- Rust `346f72216016c682034d0770c3836ab84016e429`, [PR #154](https://github.com/finos/morphir-rust/pull/154).
+
+These commits include the latest upstream IR support-table changes; Rust also includes the YAML profile.
+Final pins must identify merged upstream commits. Fresh passing CI against those final pins is required
+before a published compatibility claim. Local reports are ignored build outputs, not committed evidence artifacts.
 
 The separate draft.1 corpus also passed all 80 cases on each transport with no failures,
 kit errors, or skips. Its hash remains
