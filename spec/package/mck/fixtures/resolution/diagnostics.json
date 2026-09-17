@@ -1,0 +1,1349 @@
+{
+  "formatVersion": "0.1.0-draft.2",
+  "cases": [
+    {
+      "id": "resolution.validation.unicode-pointer-order",
+      "family": "failure-distinctions",
+      "description": "Duplicate pointers follow Unicode scalar order, not JavaScript UTF-16 code-unit order.",
+      "input": "{\"\\ue000\":0,\"\\ue000\":1,\"\\ud800\\udc00\":0,\"\\ud800\\udc00\":1}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/\ue000",
+              "rule": "duplicate-key"
+            },
+            {
+              "pointer": "/\ud800\udc00",
+              "rule": "duplicate-key"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.unpaired-surrogate-key",
+      "family": "failure-distinctions",
+      "description": "An unpaired surrogate in a decoded member name is malformed input.",
+      "input": "{\"\\ud800\":1}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "",
+              "rule": "malformed-json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.unpaired-surrogate-duplicate-value",
+      "family": "failure-distinctions",
+      "description": "Invalid Unicode in a later duplicate member still takes precedence over duplicate-key diagnostics.",
+      "input": "{\"a\":1,\"a\":\"\\ud800\"}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "",
+              "rule": "malformed-json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.leading-bom",
+      "family": "failure-distinctions",
+      "description": "The package document boundary rejects a leading byte order mark before shape validation.",
+      "input": "\ufeff{}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "",
+              "rule": "malformed-json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.exact.unavailable",
+      "family": "exact-requests",
+      "description": "An unavailable exact version never falls back.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/loan-rules\",\"packagePath\":\"example.com/pkg/loan-rules\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"update\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/loan-rules\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.4.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/loan-rules\",\"target\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]}]},\"targets\":[{\"kind\":\"exact\",\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.9.0\"}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "unsatisfiable-requirements",
+          "root": {
+            "release": {
+              "packagePath": "example.com/app/root",
+              "version": "1.0.0"
+            },
+            "irPackageName": "example/app",
+            "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "dependencies": [
+              {
+                "irPackageName": "example/loan-rules",
+                "packagePath": "example.com/pkg/loan-rules",
+                "versionRange": {
+                  "minimumInclusive": "1.0.0",
+                  "maximumExclusive": "2.0.0"
+                }
+              }
+            ]
+          },
+          "catalogs": [
+            {
+              "packagePath": "example.com/finance/eligibility",
+              "releases": [
+                {
+                  "release": {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.4.0"
+                  },
+                  "irPackageName": "example/eligibility",
+                  "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "dependencies": []
+                },
+                {
+                  "release": {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.3.0"
+                  },
+                  "irPackageName": "example/eligibility",
+                  "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "dependencies": []
+                },
+                {
+                  "release": {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  },
+                  "irPackageName": "example/eligibility",
+                  "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "dependencies": []
+                }
+              ]
+            },
+            {
+              "packagePath": "example.com/pkg/loan-rules",
+              "releases": [
+                {
+                  "release": {
+                    "packagePath": "example.com/pkg/loan-rules",
+                    "version": "1.2.0"
+                  },
+                  "irPackageName": "example/loan-rules",
+                  "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "dependencies": [
+                    {
+                      "irPackageName": "example/eligibility",
+                      "packagePath": "example.com/finance/eligibility",
+                      "versionRange": {
+                        "minimumInclusive": "1.3.0",
+                        "maximumExclusive": "2.0.0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "release": {
+                    "packagePath": "example.com/pkg/loan-rules",
+                    "version": "1.1.0"
+                  },
+                  "irPackageName": "example/loan-rules",
+                  "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "dependencies": [
+                    {
+                      "irPackageName": "example/eligibility",
+                      "packagePath": "example.com/finance/eligibility",
+                      "versionRange": {
+                        "minimumInclusive": "1.2.0",
+                        "maximumExclusive": "2.0.0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "release": {
+                    "packagePath": "example.com/pkg/loan-rules",
+                    "version": "1.0.0"
+                  },
+                  "irPackageName": "example/loan-rules",
+                  "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "dependencies": [
+                    {
+                      "irPackageName": "example/eligibility",
+                      "packagePath": "example.com/finance/eligibility",
+                      "versionRange": {
+                        "minimumInclusive": "1.2.0",
+                        "maximumExclusive": "2.0.0"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "targets": [
+            {
+              "kind": "exact",
+              "packagePath": "example.com/pkg/loan-rules",
+              "version": "1.9.0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.exact.scope-conflict",
+      "family": "exact-requests",
+      "description": "The exact target needs a changed reporting pin.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/loan-rules\",\"packagePath\":\"example.com/pkg/loan-rules\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/reporting\",\"packagePath\":\"example.com/pkg/reporting\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"update\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/loan-rules\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.4.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"example.com/pkg/reporting\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/reporting\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/reporting\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"1.3.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/reporting\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/reporting\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/loan-rules\",\"target\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"}},{\"irPackageName\":\"example/reporting\",\"target\":{\"packagePath\":\"example.com/pkg/reporting\",\"version\":\"1.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/reporting\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/reporting\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]}]},\"targets\":[{\"kind\":\"exact\",\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.2.0\"}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "update-scope-conflict",
+          "changedPins": [
+            {
+              "kind": "changed",
+              "previous": {
+                "packagePath": "example.com/pkg/reporting",
+                "version": "1.0.0"
+              },
+              "selected": {
+                "packagePath": "example.com/pkg/reporting",
+                "version": "1.1.0"
+              }
+            }
+          ],
+          "witness": {
+            "nodes": [
+              {
+                "occurrence": [],
+                "release": {
+                  "packagePath": "example.com/app/root",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/loan-rules",
+                    "targetOccurrence": [
+                      "example/loan-rules"
+                    ]
+                  },
+                  {
+                    "irPackageName": "example/reporting",
+                    "targetOccurrence": [
+                      "example/reporting"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/loan-rules"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/loan-rules",
+                  "version": "1.2.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/eligibility",
+                    "targetOccurrence": [
+                      "example/loan-rules",
+                      "example/eligibility"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/loan-rules",
+                  "example/eligibility"
+                ],
+                "release": {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.4.0"
+                },
+                "bindings": []
+              },
+              {
+                "occurrence": [
+                  "example/reporting"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/reporting",
+                  "version": "1.1.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/eligibility",
+                    "targetOccurrence": [
+                      "example/reporting",
+                      "example/eligibility"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/reporting",
+                  "example/eligibility"
+                ],
+                "release": {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.4.0"
+                },
+                "bindings": []
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "resolution.update.new-edge-keeps-pin",
+      "family": "update-boundary",
+      "description": "New edges do not unpin existing unrelated packages.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/loan-rules\",\"packagePath\":\"example.com/pkg/loan-rules\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/unrelated\",\"packagePath\":\"example.com/pkg/unrelated\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"update\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/loan-rules\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/unrelated\",\"packagePath\":\"example.com/pkg/unrelated\",\"versionRange\":{\"minimumInclusive\":\"1.1.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/pkg/unrelated\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/unrelated\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/unrelated\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/unrelated\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/unrelated\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/loan-rules\",\"target\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"}},{\"irPackageName\":\"example/unrelated\",\"target\":{\"packagePath\":\"example.com/pkg/unrelated\",\"version\":\"1.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/unrelated\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/unrelated\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]}]},\"targets\":[{\"kind\":\"exact\",\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.1.0\"}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "update-scope-conflict",
+          "changedPins": [
+            {
+              "kind": "changed",
+              "previous": {
+                "packagePath": "example.com/pkg/unrelated",
+                "version": "1.0.0"
+              },
+              "selected": {
+                "packagePath": "example.com/pkg/unrelated",
+                "version": "1.1.0"
+              }
+            }
+          ],
+          "witness": {
+            "nodes": [
+              {
+                "occurrence": [],
+                "release": {
+                  "packagePath": "example.com/app/root",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/loan-rules",
+                    "targetOccurrence": [
+                      "example/loan-rules"
+                    ]
+                  },
+                  {
+                    "irPackageName": "example/unrelated",
+                    "targetOccurrence": [
+                      "example/unrelated"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/loan-rules"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/loan-rules",
+                  "version": "1.1.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/unrelated",
+                    "targetOccurrence": [
+                      "example/loan-rules",
+                      "example/unrelated"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/loan-rules",
+                  "example/unrelated"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/unrelated",
+                  "version": "1.1.0"
+                },
+                "bindings": []
+              },
+              {
+                "occurrence": [
+                  "example/unrelated"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/unrelated",
+                  "version": "1.1.0"
+                },
+                "bindings": []
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "resolution.input.empty-catalog",
+      "family": "failure-distinctions",
+      "description": "Declared empty catalog is unsatisfiable.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "unsatisfiable-requirements",
+          "root": {
+            "release": {
+              "packagePath": "example.com/app/root",
+              "version": "1.0.0"
+            },
+            "irPackageName": "example/app",
+            "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "dependencies": [
+              {
+                "irPackageName": "example/eligibility",
+                "packagePath": "example.com/finance/eligibility",
+                "versionRange": {
+                  "minimumInclusive": "1.0.0",
+                  "maximumExclusive": "2.0.0"
+                }
+              }
+            ]
+          },
+          "catalogs": [
+            {
+              "packagePath": "example.com/finance/eligibility",
+              "releases": []
+            }
+          ],
+          "targets": []
+        }
+      }
+    },
+    {
+      "id": "resolution.input.absent-catalog",
+      "family": "failure-distinctions",
+      "description": "Absent catalog is incomplete input.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "incomplete-input",
+          "missing": [
+            {
+              "kind": "catalog",
+              "packagePath": "example.com/finance/eligibility"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.replay.missing-lock",
+      "family": "replay",
+      "description": "Recognized replay without lock is invalid-lock.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"replay\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock",
+              "rule": "missing-field"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.update.missing-lock",
+      "family": "replay",
+      "description": "Recognized update without lock is invalid-lock.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/loan-rules\",\"packagePath\":\"example.com/pkg/loan-rules\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"update\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/loan-rules\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.4.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}],\"targets\":[{\"kind\":\"eligible\",\"packagePath\":\"example.com/pkg/loan-rules\"}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock",
+              "rule": "missing-field"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.replay.missing-release",
+      "family": "failure-distinctions",
+      "description": "Replay requires metadata for selected releases.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"replay\",\"releases\":[],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "incomplete-input",
+          "missing": [
+            {
+              "kind": "release",
+              "release": {
+                "packagePath": "example.com/finance/eligibility",
+                "version": "1.2.0"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.replay.digest-mismatch",
+      "family": "replay",
+      "description": "Locked digest differs from metadata.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"replay\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:1111111111111111111111111111111111111111111111111111111111111111\",\"bindings\":[]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock/nodes/1/contentDigest",
+              "rule": "digest-mismatch"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.capability.coexistence",
+      "family": "failure-distinctions",
+      "description": "Consumers need different eligibility releases.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/a\",\"packagePath\":\"example.com/pkg/a\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/b\",\"packagePath\":\"example.com/pkg/b\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/a\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/a\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/a\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"1.3.0\"}}]}]},{\"packagePath\":\"example.com/pkg/b\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/b\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/b\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "unsupported-capability",
+          "requiredCapabilities": [
+            "graph-aware-coexistence"
+          ],
+          "changedPins": [],
+          "witness": {
+            "nodes": [
+              {
+                "occurrence": [],
+                "release": {
+                  "packagePath": "example.com/app/root",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/a",
+                    "targetOccurrence": [
+                      "example/a"
+                    ]
+                  },
+                  {
+                    "irPackageName": "example/b",
+                    "targetOccurrence": [
+                      "example/b"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/a"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/a",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/eligibility",
+                    "targetOccurrence": [
+                      "example/a",
+                      "example/eligibility"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/a",
+                  "example/eligibility"
+                ],
+                "release": {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                },
+                "bindings": []
+              },
+              {
+                "occurrence": [
+                  "example/b"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/b",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/eligibility",
+                    "targetOccurrence": [
+                      "example/b",
+                      "example/eligibility"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/b",
+                  "example/eligibility"
+                ],
+                "release": {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.3.0"
+                },
+                "bindings": []
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "resolution.permutation.diagnostic",
+      "family": "input-permutations",
+      "description": "Permutations preserve witness evidence.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/a\",\"packagePath\":\"example.com/pkg/a\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/b\",\"packagePath\":\"example.com/pkg/b\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"example.com/pkg/b\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/b\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/b\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/pkg/a\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/a\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/a\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"1.3.0\"}}]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "unsupported-capability",
+          "requiredCapabilities": [
+            "graph-aware-coexistence"
+          ],
+          "changedPins": [],
+          "witness": {
+            "nodes": [
+              {
+                "occurrence": [],
+                "release": {
+                  "packagePath": "example.com/app/root",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/a",
+                    "targetOccurrence": [
+                      "example/a"
+                    ]
+                  },
+                  {
+                    "irPackageName": "example/b",
+                    "targetOccurrence": [
+                      "example/b"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/a"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/a",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/eligibility",
+                    "targetOccurrence": [
+                      "example/a",
+                      "example/eligibility"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/a",
+                  "example/eligibility"
+                ],
+                "release": {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                },
+                "bindings": []
+              },
+              {
+                "occurrence": [
+                  "example/b"
+                ],
+                "release": {
+                  "packagePath": "example.com/pkg/b",
+                  "version": "1.0.0"
+                },
+                "bindings": [
+                  {
+                    "irPackageName": "example/eligibility",
+                    "targetOccurrence": [
+                      "example/b",
+                      "example/eligibility"
+                    ]
+                  }
+                ]
+              },
+              {
+                "occurrence": [
+                  "example/b",
+                  "example/eligibility"
+                ],
+                "release": {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.3.0"
+                },
+                "bindings": []
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "resolution.profile.cycle",
+      "family": "profile-boundaries",
+      "description": "Cycles remain forbidden in diagnostic search.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/a\",\"packagePath\":\"example.com/pkg/a\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/a\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/a\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/a\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/b\",\"packagePath\":\"example.com/pkg/b\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/pkg/b\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/b\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/b\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/a\",\"packagePath\":\"example.com/pkg/a\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "unsatisfiable-requirements",
+          "root": {
+            "release": {
+              "packagePath": "example.com/app/root",
+              "version": "1.0.0"
+            },
+            "irPackageName": "example/app",
+            "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "dependencies": [
+              {
+                "irPackageName": "example/a",
+                "packagePath": "example.com/pkg/a",
+                "versionRange": {
+                  "minimumInclusive": "1.0.0",
+                  "maximumExclusive": "2.0.0"
+                }
+              }
+            ]
+          },
+          "catalogs": [
+            {
+              "packagePath": "example.com/pkg/a",
+              "releases": [
+                {
+                  "release": {
+                    "packagePath": "example.com/pkg/a",
+                    "version": "1.0.0"
+                  },
+                  "irPackageName": "example/a",
+                  "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "dependencies": [
+                    {
+                      "irPackageName": "example/b",
+                      "packagePath": "example.com/pkg/b",
+                      "versionRange": {
+                        "minimumInclusive": "1.0.0",
+                        "maximumExclusive": "2.0.0"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "packagePath": "example.com/pkg/b",
+              "releases": [
+                {
+                  "release": {
+                    "packagePath": "example.com/pkg/b",
+                    "version": "1.0.0"
+                  },
+                  "irPackageName": "example/b",
+                  "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "dependencies": [
+                    {
+                      "irPackageName": "example/a",
+                      "packagePath": "example.com/pkg/a",
+                      "versionRange": {
+                        "minimumInclusive": "1.0.0",
+                        "maximumExclusive": "2.0.0"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "targets": []
+        }
+      }
+    },
+    {
+      "id": "resolution.profile.prerelease",
+      "family": "profile-boundaries",
+      "description": "Reject prerelease syntax.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0-alpha\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs/0/releases/0/release/version",
+              "rule": "invalid-version"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.profile.build",
+      "family": "profile-boundaries",
+      "description": "Reject build syntax.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0+build\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs/0/releases/0/release/version",
+              "rule": "invalid-version"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.malformed-json",
+      "family": "failure-distinctions",
+      "description": "Operation syntax errors are separate from envelope failures.",
+      "input": "{",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "",
+              "rule": "malformed-json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.duplicate-key",
+      "family": "failure-distinctions",
+      "description": "Reject duplicate decoded JSON keys.",
+      "input": "{\"mode\":\"initial\",\"mode\":\"initial\"}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/mode",
+              "rule": "duplicate-key"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.unknown-field",
+      "family": "failure-distinctions",
+      "description": "Reject unknown input fields.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}],\"extra\":true}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/extra",
+              "rule": "unknown-field"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.duplicate-catalog",
+      "family": "failure-distinctions",
+      "description": "Catalog paths must be unique.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs/1/packagePath",
+              "rule": "duplicate-identity"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.duplicate-release",
+      "family": "failure-distinctions",
+      "description": "Duplicate exact identities are invalid even when equal.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs/0/releases/1/release",
+              "rule": "duplicate-identity"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.catalog-path-mismatch",
+      "family": "failure-distinctions",
+      "description": "Catalog and release paths must match.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/a\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs/0/releases/0/release/packagePath",
+              "rule": "identity-mismatch"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.duplicate-target",
+      "family": "failure-distinctions",
+      "description": "Target paths must be unique.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/loan-rules\",\"packagePath\":\"example.com/pkg/loan-rules\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"update\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/loan-rules\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.4.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/loan-rules\",\"target\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]}]},\"targets\":[{\"kind\":\"eligible\",\"packagePath\":\"example.com/pkg/loan-rules\"},{\"kind\":\"eligible\",\"packagePath\":\"example.com/pkg/loan-rules\"}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/targets/1/packagePath",
+              "rule": "duplicate-identity"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.root-target",
+      "family": "failure-distinctions",
+      "description": "Root is fixed.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/loan-rules\",\"packagePath\":\"example.com/pkg/loan-rules\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"update\",\"catalogs\":[{\"packagePath\":\"example.com/pkg/loan-rules\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.1.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.2.0\",\"maximumExclusive\":\"2.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.3.0\",\"maximumExclusive\":\"2.0.0\"}}]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.4.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/loan-rules\",\"target\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]},{\"release\":{\"packagePath\":\"example.com/pkg/loan-rules\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/loan-rules\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]}]},\"targets\":[{\"kind\":\"eligible\",\"packagePath\":\"example.com/app/root\"}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/targets/0/packagePath",
+              "rule": "identity-mismatch"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.duplicate-requirement",
+      "family": "failure-distinctions",
+      "description": "Consumer IR requirement names must be unique.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}},{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/root/dependencies/1/irPackageName",
+              "rule": "duplicate-identity"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.input.empty-interval",
+      "family": "profile-boundaries",
+      "description": "Lower bound must be below upper bound.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"1.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/root/dependencies/0/versionRange",
+              "rule": "invalid-interval"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.null-catalogs",
+      "family": "failure-distinctions",
+      "description": "Wrong JSON type is distinct from a missing field.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":null}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.unknown-mode",
+      "family": "failure-distinctions",
+      "description": "Unknown discriminator rejects its literal and suppresses variant-specific checks.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"other\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/mode",
+              "rule": "invalid-value"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.wrong-format",
+      "family": "failure-distinctions",
+      "description": "Unsupported contract literal is invalid-value.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.1\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/formatVersion",
+              "rule": "invalid-value"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.root-type",
+      "family": "failure-distinctions",
+      "description": "Wrong root type suppresses nested field checks.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":[],\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/root",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.outer-before-lock",
+      "family": "failure-distinctions",
+      "description": "Outer shape errors win over a missing replay lock.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"replay\",\"releases\":null}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/releases",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.outer-accumulates",
+      "family": "failure-distinctions",
+      "description": "Independent outer shape faults accumulate canonically.",
+      "input": "{\"formatVersion\":\"other\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":null,\"extra\":true}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs",
+              "rule": "invalid-type"
+            },
+            {
+              "pointer": "/extra",
+              "rule": "unknown-field"
+            },
+            {
+              "pointer": "/formatVersion",
+              "rule": "invalid-value"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.lock-type",
+      "family": "failure-distinctions",
+      "description": "Lock null is a wrong type rather than absent.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"replay\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}],\"lock\":null}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.topology-before-metadata",
+      "family": "failure-distinctions",
+      "description": "Root mismatch wins over missing selected metadata and suppresses root-presence/reachability.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"replay\",\"releases\":[],\"lock\":{\"root\":{\"packagePath\":\"example.com/pkg/other\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock/root",
+              "rule": "identity-mismatch"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.metadata-before-digest",
+      "family": "failure-distinctions",
+      "description": "Missing selected metadata wins over a detectable root digest mismatch.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"replay\",\"releases\":[],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:1111111111111111111111111111111111111111111111111111111111111111\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "incomplete-input",
+          "missing": [
+            {
+              "kind": "release",
+              "release": {
+                "packagePath": "example.com/finance/eligibility",
+                "version": "1.2.0"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.lock-metadata-accumulates",
+      "family": "failure-distinctions",
+      "description": "Independent digest faults accumulate within lock metadata phase.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"replay\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:1111111111111111111111111111111111111111111111111111111111111111\",\"contentDigest\":\"sha256:1111111111111111111111111111111111111111111111111111111111111111\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-lock",
+          "violations": [
+            {
+              "pointer": "/lock/nodes/0/contentDigest",
+              "rule": "digest-mismatch"
+            },
+            {
+              "pointer": "/lock/nodes/0/manifestDigest",
+              "rule": "digest-mismatch"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.duplicate-subtree-suppressed",
+      "family": "failure-distinctions",
+      "description": "Later duplicate catalog suppresses repeated releases and its invalid interval.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/x\",\"packagePath\":\"example.com/pkg/x\",\"versionRange\":{\"minimumInclusive\":\"2.0.0\",\"maximumExclusive\":\"1.0.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs/1/packagePath",
+              "rule": "duplicate-identity"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.shape-before-duplicate",
+      "family": "failure-distinctions",
+      "description": "Shape faults are detected before semantic duplicate subtree suppression.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]},{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":null},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}]}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/catalogs/1/releases/0/dependencies",
+              "rule": "invalid-type"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.escaped-duplicate-key",
+      "family": "failure-distinctions",
+      "description": "Decode keys and RFC6901-escape the duplicate pointer.",
+      "input": "{\"a/b~c\":1,\"a\\u002fb~c\":2}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/a~1b~0c",
+              "rule": "duplicate-key"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.syntax-before-duplicate",
+      "family": "failure-distinctions",
+      "description": "Incomplete syntax wins even when duplicate keys appeared earlier.",
+      "input": "{\"mode\":\"initial\",\"mode\":\"initial\",",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "",
+              "rule": "malformed-json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.duplicate-keys-accumulate",
+      "family": "failure-distinctions",
+      "description": "Collect all duplicate pointers in canonical order rather than first textual duplicate.",
+      "input": "{\"z\":1,\"z\":2,\"a\":1,\"a\":2}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/a",
+              "rule": "duplicate-key"
+            },
+            {
+              "pointer": "/z",
+              "rule": "duplicate-key"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolution.validation.initial-lock-unknown",
+      "family": "failure-distinctions",
+      "description": "Recognized initial mode rejects lock as an unknown field; only update and replay defer lock validation.",
+      "input": "{\"formatVersion\":\"0.1.0-draft.2\",\"capability\":\"flat-library\",\"root\":{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[{\"irPackageName\":\"example/eligibility\",\"packagePath\":\"example.com/finance/eligibility\",\"versionRange\":{\"minimumInclusive\":\"1.0.0\",\"maximumExclusive\":\"2.0.0\"}}]},\"mode\":\"initial\",\"catalogs\":[{\"packagePath\":\"example.com/finance/eligibility\",\"releases\":[{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.3.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"dependencies\":[]}]}],\"lock\":{\"root\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"nodes\":[{\"release\":{\"packagePath\":\"example.com/app/root\",\"version\":\"1.0.0\"},\"irPackageName\":\"example/app\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[{\"irPackageName\":\"example/eligibility\",\"target\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"}}]},{\"release\":{\"packagePath\":\"example.com/finance/eligibility\",\"version\":\"1.2.0\"},\"irPackageName\":\"example/eligibility\",\"manifestDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"contentDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"bindings\":[]}]}}",
+      "expected": {
+        "ok": false,
+        "diagnostic": {
+          "code": "invalid-input",
+          "violations": [
+            {
+              "pointer": "/lock",
+              "rule": "unknown-field"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -553,6 +553,12 @@ jobs:
       - name: Run independent Rust package implementation
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
         run: mise run package:check:rust
+      - name: Run TypeScript package resolution implementation
+        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+        run: mise run package:resolution-check
+      - name: Run independent Rust package resolution implementation
+        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+        run: mise run package:resolution-check:rust
       - name: Upload package compatibility reports
         uses: actions/upload-artifact@v7
         if: always()

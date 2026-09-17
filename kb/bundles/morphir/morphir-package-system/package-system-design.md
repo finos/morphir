@@ -566,66 +566,84 @@ An export alias controls visibility and resolution. It does not yet guarantee th
 
 ### Selected policy
 
-- Requirements use explicit SemVer constraints.
-- One implicit binding per dependency IR `PackageName` in each consumer is the default; ordinary projects need no explicit aliases.
-- An ordinary build consumes the exact lock and performs no version selection.
-- Initial resolution and explicit update prefer the highest stable eligible release.
-- Overlapping requirements are unified when a single release satisfies them.
-- Disjoint requirements may resolve to separate exact release nodes for the same Package path.
-- Direct use of multiple releases requires distinct dependency slots.
-- Prereleases require explicit admission.
-- Dependency cycles are rejected unless a future IR capability explicitly defines them.
+The bounded [Library resolution contract](../../../../spec/package/resolution-contract.md) fixes the initial `flat-library`
+profile in MCK package contract `0.1.0-draft.2`. Each selected PackagePath has one release, each IR PackageName has
+one unambiguous target, and every selected node is reachable from the fixed root. Cycles are rejected.
+Requirements use inclusive-minimum, exclusive-maximum intervals over stable three-component versions.
+Prereleases, build metadata, and advanced multi-binding are outside this profile.
 
-Example:
+| Operation | Selection policy |
+| --- | --- |
+| Exact replay | Validate the supplied lock and metadata, then preserve its releases and bindings. Never select replacements. |
+| Initial resolution | Search complete valid graphs and choose the first under canonical graph ordering. |
+| Scoped update | Maximize requested target versions, preserve old non-target releases where possible, then apply canonical graph ordering. |
 
-```text
-A requires >=1.4,<2
-B requires >=1.6,<2
-=> one highest eligible 1.x release
-
-A requires >=1.4,<2
-B requires >=2,<3
-=> separate 1.x and 2.x release nodes
-```
-
-This avoids Go's major-version path suffix while preserving exact, unambiguous graph identity.
+Canonical graph ordering compares sorted release lists by PackagePath ascending and numeric version descending,
+with shorter prefixes first. An earlier-sorting dependency path can therefore outweigh a newer release on a
+different path. Selecting each locally highest release is not sufficient; transitive conflicts require backtracking.
 
 ### Resolver objectives
 
-The normative solver behavior must specify deterministic ordering rather than mandate an implementation algorithm:
+An update unlocks its requested targets and their transitive dependencies in the old lock. Existing paths outside
+that closure retain exact releases if reachable. A newly introduced edge cannot unpin one of those paths.
+Every consumer's interval remains binding, including consumers outside the update closure. Exact requests apply
+to the new selection, not to validation of the old lock.
 
-1. Preserve every valid locked assignment during normal locked resolution.
-2. On initial resolution or explicit update, satisfy every dependency edge and policy restriction.
-3. Reuse one release across overlapping requirements when possible.
-4. Prefer the highest stable eligible version for each resulting requirement group.
-5. Use a stable PackagePath and SemVer ordering as the final tie-break.
-6. Produce a structured conflict explanation when no solution exists.
+Requested targets must remain reachable. Their version list, ordered by PackagePath, is maximized first.
+Next, minimize old non-target paths whose version changes or which disappear. A newly added path counts zero.
+Canonical graph ordering breaks remaining ties. The [fixed update cases](../../../../spec/package/mck/fixtures/resolution/updates.json)
+cover target freshness, preservation, exact requests, and shared dependencies.
 
-The specification must define how partial updates constrain unaffected nodes and how yanked or revoked releases interact with explicit update requests.
+For example, a newer `example.com/finance/loan-rules` release may require eligibility to change from `1.2.0` to
+at least `1.3.0`. Target freshness wins over preserving `1.2.0`. If the requested loan-rules release already
+admits `1.2.0`, preservation wins over an optional transitive upgrade.
 
 ### Resolution approach and delivery boundary
 
 Resolution separates binding identity from version selection. An implicit binding is sufficient for ordinary references;
 explicit slots distinguish deliberate multi-binding. Neither form embeds the selected SemVer in the core reference.
 
-The agreed approach is:
+The caller supplies a complete finite candidate universe. Missing catalogs are incomplete input; declared empty
+catalogs have no candidates. Completeness follows dependencies of every reachable candidate, even candidates that
+selection will reject. The separate root record is known without a catalog; an omitted root-path catalog means
+no additional releases. Supplied root-path alternatives matter only when a dependency reaches that path.
 
-1. Establish each consumer's bindings and their explicit association with IR dependency names and Package requirements.
-2. Collect version constraints, root overrides, payload capabilities, and required binding or type-identity constraints.
-3. For an ordinary build, validate and replay the exact lock. An invalid lock is an error, not an invitation to re-resolve.
-4. For initial resolution or explicit update, search assignments across the dependency graph using the resolver objectives above.
-5. Reconsider earlier choices when their transitive dependencies conflict. A locally highest release may not permit a valid complete graph.
-6. Permit separate releases only where the graph and reference capabilities support them. Report unsupported capabilities separately from unsatisfiable requirements.
-7. Record the exact selected graph and bindings in the lock for subsequent builds.
+After validation, a failed scoped search checks whether relaxing outside-scope pins admits a supported graph.
+Such a graph explains an update-scope conflict. Otherwise, a consumer-scoped coexistence witness can explain an
+unsupported capability. Only failure of both searches establishes unsatisfiable requirements in the supplied universe.
+Witnesses disclose relaxed pins and never authorize installation or automatic scope expansion. Execution failures,
+including exhausted resources, remain distinct from domain rejections.
 
-This defines the approach, not a completed solver specification or implementation. Stage 0 must fix requirement grouping,
-preference ordering, candidate ordering, and tie-breaks with MCK cases. A shared release must satisfy every grouped
-requirement and permit a valid complete graph. Implementations may use different search algorithms but must agree
-on observable selections and diagnostics for the same inputs and supported capabilities.
+Figure 2 shows this diagnostic order after validation and candidate completeness checks.
+
+```mermaid
+flowchart TD
+    Scoped[Supported scoped search] -->|Graph exists| Success[Selected graph]
+    Scoped -->|Update has no graph| Relaxed[Supported search with outside pins relaxed]
+    Scoped -->|Initial resolution has no graph| Coexist[Consumer-scoped coexistence search]
+    Relaxed -->|Graph exists| Scope[Update-scope conflict witness]
+    Relaxed -->|No graph| Coexist
+    Coexist -->|Witness exists| Capability[Unsupported-capability witness]
+    Coexist -->|No witness| Unsat[Unsatisfiable requirements]
+```
+
+**Figure 2:** Domain diagnosis distinguishes a restricted update scope from unsupported coexistence before declaring the supplied requirements unsatisfiable.
+
+The [resolution schemas and fixed MCK cases](../../../../spec/package/mck/README.md) define these observable results.
+This metadata projection is not the full `morphir.lock`, and it does not verify payload bytes or type compatibility.
+The separate integrity contract remains `0.1.0-draft.1`; its digest domain and existing operations are unchanged.
+Shared-driver checks exercise TypeScript and independent Rust implementations at merged upstream commits.
+Parent integration landing remains pending. The [MCK suite](../../../../spec/package/mck/README.md)
+records bounded evidence; a local pass does not establish published compatibility.
 
 Stage 1 supports one implicit binding per dependency IR name in each consumer, within the supported payload's limits.
 It does not promise multiple incompatible releases in a flat dependency map. Stage 3 adds graph-aware coexistence
 and explicit direct multi-binding. The future reference encoding is a Stage 3 prerequisite, not a blocker for Stage 1.
+The [release-version decision](../morphir-ir/decisions/0017-package-release-versions-belong-to-distribution-bindings.md)
+preserves the current bare `@` directory boundary without requiring release versions in core IR.
+
+Registry completeness, yanked or revoked releases, acquisition, trust, full locks, and public-specification
+compatibility remain outside this bounded resolution contract. Stage 0 is not complete.
 
 ### Lock
 
@@ -1114,10 +1132,12 @@ The existing driver is `@finos/morphir-mck` in finos/morphir-typescript. Reuse i
 kit provenance, and report handling where the semantics fit. Package resolution, verification, and materialization need
 their own operations and expected results; they cannot be encoded as IR `decode` or `writeTree` calls.
 
-The current protocol and report contract version 1 are IR-specific. Reports require `irVersion`, `profile`, and fence
-roles, while protocol validation rejects unknown operations and fields. Stage 0 must define versioned suite identification,
-package capabilities, case grammar, operation requests, and report records. Preserve existing IR invocations, case IDs,
-and contract version 1 support. Identify cases by suite and stable case ID when comparing or aggregating results.
+IR protocol and report contract version 1 remain IR-specific. Package integrity uses its separate
+`0.1.0-draft.1` contract. Resolution specifies `0.1.0-draft.2`, selected explicitly rather than silently adding
+operations to draft.1. Shared-driver checks cover both implementations at merged upstream pins;
+parent integration landing remains pending.
+Preserve existing IR invocations, case IDs, and contract version 1 support. Identify cases by suite and stable case ID
+when comparing or aggregating results.
 
 Report the suite, kit revision, driver version, adapter contract, and required capabilities separately from the model
 package's release version, package format, and IR format. The embedded kit lock is provenance for test inputs;
@@ -1154,7 +1174,13 @@ It does not extend the executable-extension manifest or make model packages depe
 Implementation changes must land upstream before the parent merges the final pin.
 Dependent drafts may pin a published feature commit for integration checks.
 The standalone prototype runners remain retired. This slice does not implement
-a resolver, registry client, public-specification compatibility checker, or installation authorization.
+a registry client, public-specification compatibility checker, or installation authorization.
+
+The follow-up resolution implementation adds exact replay, deterministic initial selection, scoped updates, and
+structured diagnostics under draft.2. `package:resolution-check` exercises both TypeScript transports;
+`package:resolution-check:rust` uses the same driver against Rust. The dependent parent branch pins published
+implementation commits for CI. Its final pins must identify merged upstream commits before landing.
+Resolution returns metadata only. Full `morphir.lock` materialization, acquisition, and trust remain unfinished.
 
 Deliver:
 
@@ -1272,7 +1298,7 @@ Unless marked as Stage 3 prerequisites, these choices remain for Stage 0 and do 
 4. Release-manifest, lock, registry-record, authority-metadata, and diagnostic serialization formats and schema versions.
 5. Canonical logical content-manifest algorithm, digest algorithms, and algorithm-agility representation.
 6. Deterministic archive format and filename extension.
-7. Exact solver grouping, tie-breaking, partial-update, and conflict-explanation rules.
+7. Solver policy beyond the bounded `flat-library` contract. Its grouping, canonical ordering, partial updates, and diagnostics are now specified; registry policy and advanced binding capabilities remain open.
 8. Precise pre-1.0 SemVer and compatibility-enforcement policy.
 9. Stage 3 prerequisite: exact graph-aware IR representation and supported format release for dependency slots, export references, package-instance IDs, Contract releases, and Application graphs. Specify adaptation from the current v4 name-keyed model and whether one release may have multiple dependency environments. Stage 0 establishes binding invariants and baseline capability diagnostics without requiring this encoding.
 10. Provider compatibility and Application-binding schema.
@@ -1285,7 +1311,7 @@ Unless marked as Stage 3 prerequisites, these choices remain for Stage 0 and do 
 
 MCK integration adds one specification decision to these sixteen:
 
-17. Versioned MCK suite identity, package case grammar, adapter operations, report records, kit provenance, and required-capability gates, preserving IR contract version 1 support.
+17. Additional versioned MCK package operations and capabilities beyond draft.1 integrity and the specified draft.2 resolution contract. Preserve IR contract version 1 support and require shared-driver evidence for each added capability.
 
 ## Rejected alternatives
 

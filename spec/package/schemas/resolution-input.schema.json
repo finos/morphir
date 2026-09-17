@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-input.schema.json",
+  "title": "Experimental Library resolution metadata input",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "formatVersion", "capability", "root", "mode", "catalogs" ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.2"
+        },
+        "capability": {
+          "const": "flat-library"
+        },
+        "root": {
+          "$ref": "#/$defs/ReleaseRecord"
+        },
+        "mode": {
+          "const": "initial"
+        },
+        "catalogs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Catalog"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "formatVersion",
+        "capability",
+        "root",
+        "mode",
+        "catalogs",
+        "lock",
+        "targets"
+      ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.2"
+        },
+        "capability": {
+          "const": "flat-library"
+        },
+        "root": {
+          "$ref": "#/$defs/ReleaseRecord"
+        },
+        "mode": {
+          "const": "update"
+        },
+        "catalogs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Catalog"
+          }
+        },
+        "lock": {
+          "$ref": "#/$defs/LockedGraph"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/UpdateTarget"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "formatVersion",
+        "capability",
+        "root",
+        "mode",
+        "releases",
+        "lock"
+      ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.2"
+        },
+        "capability": {
+          "const": "flat-library"
+        },
+        "root": {
+          "$ref": "#/$defs/ReleaseRecord"
+        },
+        "mode": {
+          "const": "replay"
+        },
+        "releases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReleaseRecord"
+          }
+        },
+        "lock": {
+          "$ref": "#/$defs/LockedGraph"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "PackagePath": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/PackagePath"
+    },
+    "StableVersion": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/StableVersion"
+    },
+    "IRPath": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/IRPath"
+    },
+    "Digest": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/Digest"
+    },
+    "ReleaseId": {
+      "type": "object",
+      "required": [ "packagePath", "version" ],
+      "properties": {
+        "packagePath": {
+          "$ref": "#/$defs/PackagePath"
+        },
+        "version": {
+          "$ref": "#/$defs/StableVersion"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Requirement": {
+      "type": "object",
+      "required": [ "irPackageName", "packagePath", "versionRange" ],
+      "properties": {
+        "irPackageName": {
+          "$ref": "#/$defs/IRPath"
+        },
+        "packagePath": {
+          "$ref": "#/$defs/PackagePath"
+        },
+        "versionRange": {
+          "type": "object",
+          "required": [ "minimumInclusive", "maximumExclusive" ],
+          "properties": {
+            "minimumInclusive": {
+              "$ref": "#/$defs/StableVersion"
+            },
+            "maximumExclusive": {
+              "$ref": "#/$defs/StableVersion"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReleaseRecord": {
+      "type": "object",
+      "required": [
+        "release",
+        "irPackageName",
+        "manifestDigest",
+        "contentDigest",
+        "dependencies"
+      ],
+      "properties": {
+        "release": {
+          "$ref": "#/$defs/ReleaseId"
+        },
+        "irPackageName": {
+          "$ref": "#/$defs/IRPath"
+        },
+        "manifestDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "contentDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Requirement"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Binding": {
+      "type": "object",
+      "required": [ "irPackageName", "target" ],
+      "properties": {
+        "irPackageName": {
+          "$ref": "#/$defs/IRPath"
+        },
+        "target": {
+          "$ref": "#/$defs/ReleaseId"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LockedNode": {
+      "type": "object",
+      "required": [
+        "release",
+        "irPackageName",
+        "manifestDigest",
+        "contentDigest",
+        "bindings"
+      ],
+      "properties": {
+        "release": {
+          "$ref": "#/$defs/ReleaseId"
+        },
+        "irPackageName": {
+          "$ref": "#/$defs/IRPath"
+        },
+        "manifestDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "contentDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Binding"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "LockedGraph": {
+      "type": "object",
+      "required": [ "root", "nodes" ],
+      "properties": {
+        "root": {
+          "$ref": "#/$defs/ReleaseId"
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/LockedNode"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Catalog": {
+      "type": "object",
+      "required": [ "packagePath", "releases" ],
+      "properties": {
+        "packagePath": {
+          "$ref": "#/$defs/PackagePath"
+        },
+        "releases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReleaseRecord"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateTarget": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "packagePath" ],
+          "properties": {
+            "kind": {
+              "const": "eligible"
+            },
+            "packagePath": {
+              "$ref": "#/$defs/PackagePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "packagePath", "version" ],
+          "properties": {
+            "kind": {
+              "const": "exact"
+            },
+            "packagePath": {
+              "$ref": "#/$defs/PackagePath"
+            },
+            "version": {
+              "$ref": "#/$defs/StableVersion"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

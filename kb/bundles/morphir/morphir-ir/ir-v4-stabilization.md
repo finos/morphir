@@ -57,6 +57,10 @@ paragraph replaces still describes how the mechanical prose corrections of 2026-
 
 ## Sources
 
+Package-release identity remains separate from core IR naming. [Decision 0017](/decisions/0017-package-release-versions-belong-to-distribution-bindings.md)
+records how packaging and distribution bindings supply release versions while retaining decision 0015's current
+bare `@` delimiter. Populated slots and graph-aware coexistence remain future capability work.
+
 Four bodies of material describe v4. Each carries a different authority, and the differences are the problem.
 
 | Source | Location | Authority |
