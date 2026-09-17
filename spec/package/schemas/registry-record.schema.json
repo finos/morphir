@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/0.1.0-draft.3/registry-record.schema.json",
+  "title": "Candidate immutable local Library registry record",
+  "$comment": "Experimental candidate. Immutable stored bytes use the record encoding in local-library-contract.md. Status is separate TUF metadata.",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "kind",
+    "release",
+    "irPackageName",
+    "dependencies",
+    "manifestDigest",
+    "contentDigest",
+    "source",
+    "statement"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.3"
+    },
+    "kind": {
+      "const": "LibraryRegistryRecord"
+    },
+    "release": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-input.schema.json#/$defs/ReleaseId"
+    },
+    "irPackageName": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/IRPath"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.2/resolution-input.schema.json#/$defs/Requirement"
+      }
+    },
+    "manifestDigest": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/Digest"
+    },
+    "contentDigest": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.1/library-manifest.schema.json#/$defs/Digest"
+    },
+    "source": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.3/library-lock.schema.json#/$defs/DirectorySource"
+    },
+    "statement": {
+      "$ref": "https://morphir.finos.org/spec/package/0.1.0-draft.3/library-lock.schema.json#/$defs/ObjectReference"
+    }
+  },
+  "additionalProperties": false
+}

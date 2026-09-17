@@ -1,0 +1,766 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "cases": [
+    {
+      "kind": "scenario",
+      "id": "local-registry.replay.newer-metadata-same-lock",
+      "family": "replay",
+      "description": "First restore of the original lock succeeds under a newer fresh view authorizing the same exact releases; historical and lock bytes remain unchanged.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-two"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-02-02T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": true,
+              "kind": "graph-ready",
+              "graph": {
+                "root": {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                "nodes": [
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/loan-rules",
+                      "version": "1.0.0"
+                    },
+                    "irPackageName": "example/loan-rules",
+                    "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+                    "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+                    "bindings": [
+                      {
+                        "irPackageName": "example/eligibility",
+                        "target": {
+                          "packagePath": "example.com/finance/eligibility",
+                          "version": "1.2.0"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/eligibility",
+                      "version": "1.2.0"
+                    },
+                    "irPackageName": "example/eligibility",
+                    "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+                    "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+                    "bindings": []
+                  }
+                ]
+              },
+              "verified": [
+                {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                }
+              ]
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-two"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-replay-newer-metadata-same-lock",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": [
+              {
+                "operation": "restore",
+                "releases": [
+                  {
+                    "packagePath": "example.com/finance/loan-rules",
+                    "version": "1.0.0"
+                  },
+                  {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "pointer": "/security/0/grants/1/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            }
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-02-02T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.replay.exact-after-new-release",
+      "family": "replay",
+      "description": "With eligibility 1.3.0 available, exact replay still returns 1.2.0 and preserves the original lock bytes.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-with-eligibility-13"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": true,
+              "kind": "graph-ready",
+              "graph": {
+                "root": {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                "nodes": [
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/loan-rules",
+                      "version": "1.0.0"
+                    },
+                    "irPackageName": "example/loan-rules",
+                    "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+                    "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+                    "bindings": [
+                      {
+                        "irPackageName": "example/eligibility",
+                        "target": {
+                          "packagePath": "example.com/finance/eligibility",
+                          "version": "1.2.0"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/eligibility",
+                      "version": "1.2.0"
+                    },
+                    "irPackageName": "example/eligibility",
+                    "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+                    "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+                    "bindings": []
+                  }
+                ]
+              },
+              "verified": [
+                {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                }
+              ]
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-with-eligibility-13"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-replay-exact-after-new-release",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": [
+              {
+                "operation": "restore",
+                "releases": [
+                  {
+                    "packagePath": "example.com/finance/loan-rules",
+                    "version": "1.0.0"
+                  },
+                  {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.replay.exact-missing-no-substitution",
+      "family": "replay",
+      "description": "Missing or corrupt locked 1.2.0 fails despite valid 1.3.0 availability.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-with-eligibility-13-missing"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "operational-failure",
+                "code": "missing-content",
+                "phase": "bundle",
+                "witnesses": [
+                  {
+                    "kind": "missing",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-with-eligibility-13-missing"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": [
+            {
+              "operation": "restore",
+              "boundary": "after",
+              "step": "bundle-ready",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-inventory",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-replay-exact-missing-no-substitution",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/root",
+            "equals": {
+              "owner": "machine-a",
+              "kind": "cache"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/entries/1/path",
+            "equals": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.replay.exact-corrupt-no-substitution",
+      "family": "replay",
+      "description": "Missing or corrupt locked 1.2.0 fails despite valid 1.3.0 availability.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-with-eligibility-13-corrupt"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "asset",
+            "asset": "result-corrupt-12",
+            "assertions": [
+              {
+                "pointer": "/ok",
+                "equals": false
+              },
+              {
+                "pointer": "/diagnostic/category",
+                "equals": "domain-rejection"
+              },
+              {
+                "pointer": "/diagnostic/code",
+                "equals": "digest-mismatch"
+              },
+              {
+                "pointer": "/diagnostic/phase",
+                "equals": "bundle"
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/kind",
+                "equals": "digest"
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/subject",
+                "equals": {
+                  "kind": "object",
+                  "registry": "finance",
+                  "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json"
+                }
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/expected",
+                "equals": "sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43"
+              }
+            ]
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-with-eligibility-13-corrupt"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": [
+            {
+              "operation": "restore",
+              "boundary": "after",
+              "step": "bundle-ready",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-inventory",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-replay-exact-corrupt-no-substitution",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/root",
+            "equals": {
+              "owner": "machine-a",
+              "kind": "cache"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/entries/1/path",
+            "equals": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

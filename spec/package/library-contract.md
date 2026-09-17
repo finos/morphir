@@ -174,8 +174,11 @@ Current execution uses finos/morphir-typescript's package runner and separate re
 Other implementations participate through the same in-process interface or executable adapter contract.
 Two transports of the TypeScript implementation count as one implementation.
 
-Full lock,
-registry-record and diagnostic schemas, deterministic resolver policy cases, public
+[Deterministic resolution](resolution-contract.md) and its fixed MCK cases have since landed
+under draft.2, with independent TypeScript and Rust implementations. See the
+[landing evidence](mck/README.md#landed-resolution-evidence). This does not expand draft.1's operations.
+
+Full lock and registry-record schemas, acquisition and trust diagnostics, public
 specification compatibility, authoring configuration, PURL mapping, WIT interfaces,
 additional package operations and their interoperability evidence remain Stage 0 work. The bounded
 draft now has a versioned adapter/report contract, corpus content provenance and mandatory-case gates.

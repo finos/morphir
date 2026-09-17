@@ -1,0 +1,1266 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "cases": [
+    {
+      "kind": "parse",
+      "id": "local-registry.wire.bom",
+      "family": "wire",
+      "description": "Reject exact raw bom input before package acquisition.",
+      "required": true,
+      "target": "lock",
+      "at": "2027-01-01T00:00:00Z",
+      "input": {
+        "kind": "hex",
+        "value": "efbbbf7b7d"
+      },
+      "expected": {
+        "kind": "inline",
+        "result": {
+          "ok": false,
+          "diagnostic": {
+            "category": "invalid-input",
+            "code": "invalid-input",
+            "phase": "decode",
+            "witnesses": [
+              {
+                "kind": "violation",
+                "subject": {
+                  "kind": "lock"
+                },
+                "pointer": "",
+                "rule": "malformed-json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "kind": "parse",
+      "id": "local-registry.wire.duplicate-key",
+      "family": "wire",
+      "description": "Reject exact raw duplicate-key input before package acquisition.",
+      "required": true,
+      "target": "lock",
+      "at": "2027-01-01T00:00:00Z",
+      "input": {
+        "kind": "hex",
+        "value": "7b226b696e64223a224c6962726172794c6f636b222c225c7530303662696e64223a224c6962726172794c6f636b227d"
+      },
+      "expected": {
+        "kind": "inline",
+        "result": {
+          "ok": false,
+          "diagnostic": {
+            "category": "invalid-input",
+            "code": "invalid-input",
+            "phase": "decode",
+            "witnesses": [
+              {
+                "kind": "violation",
+                "subject": {
+                  "kind": "lock"
+                },
+                "pointer": "/kind",
+                "rule": "duplicate-key"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "kind": "parse",
+      "id": "local-registry.wire.malformed-json",
+      "family": "wire",
+      "description": "Reject exact raw malformed-json input before package acquisition.",
+      "required": true,
+      "target": "lock",
+      "at": "2027-01-01T00:00:00Z",
+      "input": {
+        "kind": "hex",
+        "value": "7b"
+      },
+      "expected": {
+        "kind": "inline",
+        "result": {
+          "ok": false,
+          "diagnostic": {
+            "category": "invalid-input",
+            "code": "invalid-input",
+            "phase": "decode",
+            "witnesses": [
+              {
+                "kind": "violation",
+                "subject": {
+                  "kind": "lock"
+                },
+                "pointer": "",
+                "rule": "malformed-json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "kind": "parse",
+      "id": "local-registry.wire.invalid-utf8",
+      "family": "wire",
+      "description": "Reject exact raw invalid-utf8 input before package acquisition.",
+      "required": true,
+      "target": "lock",
+      "at": "2027-01-01T00:00:00Z",
+      "input": {
+        "kind": "hex",
+        "value": "7b22ff223a22227d"
+      },
+      "expected": {
+        "kind": "inline",
+        "result": {
+          "ok": false,
+          "diagnostic": {
+            "category": "invalid-input",
+            "code": "invalid-input",
+            "phase": "decode",
+            "witnesses": [
+              {
+                "kind": "violation",
+                "subject": {
+                  "kind": "lock"
+                },
+                "pointer": "",
+                "rule": "malformed-json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.valid-two-node",
+      "family": "wire",
+      "description": "Fresh first restore verifies the published consumer and provider, persists both grants and emits the unchanged graph.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": true,
+              "kind": "graph-ready",
+              "graph": {
+                "root": {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                "nodes": [
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/loan-rules",
+                      "version": "1.0.0"
+                    },
+                    "irPackageName": "example/loan-rules",
+                    "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+                    "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+                    "bindings": [
+                      {
+                        "irPackageName": "example/eligibility",
+                        "target": {
+                          "packagePath": "example.com/finance/eligibility",
+                          "version": "1.2.0"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "release": {
+                      "packagePath": "example.com/finance/eligibility",
+                      "version": "1.2.0"
+                    },
+                    "irPackageName": "example/eligibility",
+                    "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+                    "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+                    "bindings": []
+                  }
+                ]
+              },
+              "verified": [
+                {
+                  "packagePath": "example.com/finance/loan-rules",
+                  "version": "1.0.0"
+                },
+                {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                }
+              ]
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-valid-two-node",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": [
+              {
+                "operation": "restore",
+                "releases": [
+                  {
+                    "packagePath": "example.com/finance/loan-rules",
+                    "version": "1.0.0"
+                  },
+                  {
+                    "packagePath": "example.com/finance/eligibility",
+                    "version": "1.2.0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "pointer": "/security/0/marker",
+            "equals": "none"
+          },
+          {
+            "pointer": "/security/0/revocations",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/1/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            }
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.duplicate-acquisition",
+      "family": "wire",
+      "description": "lock-two with an exact duplicate of acquisitions[0] appended at index 2; no other change.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "invalid-input",
+                "code": "invalid-input",
+                "phase": "structure",
+                "witnesses": [
+                  {
+                    "kind": "violation",
+                    "subject": {
+                      "kind": "lock"
+                    },
+                    "pointer": "/acquisitions/2/release",
+                    "rule": "duplicate-identity"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-duplicate-acquisition"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-duplicate-acquisition",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.missing-acquisition",
+      "family": "wire",
+      "description": "lock-two with acquisitions[0], the provider, removed; no other change.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "invalid-input",
+                "code": "invalid-input",
+                "phase": "structure",
+                "witnesses": [
+                  {
+                    "kind": "violation",
+                    "subject": {
+                      "kind": "lock"
+                    },
+                    "pointer": "/graph/nodes/1/release",
+                    "rule": "missing-reference"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-missing-acquisition"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-missing-acquisition",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.orphan-acquisition",
+      "family": "wire",
+      "description": "lock-two with one extra acquisition for eligibility 1.3.0 outside the graph, with unique record and existing valid references.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "invalid-input",
+                "code": "invalid-input",
+                "phase": "structure",
+                "witnesses": [
+                  {
+                    "kind": "violation",
+                    "subject": {
+                      "kind": "lock"
+                    },
+                    "pointer": "/acquisitions/2/release",
+                    "rule": "orphan-reference"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-orphan-acquisition"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-orphan-acquisition",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.unsupported-source",
+      "family": "wire",
+      "description": "lock-two with acquisitions[0].source.kind archive, keeping other input bytes valid.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "unsupported-capability",
+                "code": "unsupported-source",
+                "phase": "support",
+                "witnesses": [
+                  {
+                    "kind": "unsupported",
+                    "subject": {
+                      "kind": "lock"
+                    },
+                    "pointer": "/acquisitions/0/source/kind",
+                    "value": "archive"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-unsupported-source"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-unsupported-source",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.absolute-path",
+      "family": "wire",
+      "description": "lock-two with acquisitions[0].source.path /tmp/eligibility.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "unsafe-path",
+                "phase": "shape",
+                "witnesses": [
+                  {
+                    "kind": "path",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "/tmp/eligibility"
+                    },
+                    "rule": "grammar"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-absolute-path"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-absolute-path",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.unknown-capability",
+      "family": "wire",
+      "description": "lock-two with requiredCapabilities[3] equal future-signatures.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "unsupported-capability",
+                "code": "unsupported-capability",
+                "phase": "support",
+                "witnesses": [
+                  {
+                    "kind": "unsupported",
+                    "subject": {
+                      "kind": "lock"
+                    },
+                    "pointer": "/resolution/requiredCapabilities/3",
+                    "value": "future-signatures"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-unknown-capability"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-unknown-capability",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.missing-evidence-reference",
+      "family": "wire",
+      "description": "lock-two with acquisitions[0].statement equal absent-statement, retaining otherwise complete evidence.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "invalid-input",
+                "code": "invalid-input",
+                "phase": "structure",
+                "witnesses": [
+                  {
+                    "kind": "violation",
+                    "subject": {
+                      "kind": "lock"
+                    },
+                    "pointer": "/acquisitions/0/statement",
+                    "rule": "missing-reference"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-missing-evidence-reference"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-missing-evidence-reference",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.wire.record-manifest-identity",
+      "family": "wire",
+      "description": "Independently valid record and manifest disagree on IR identity.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-record-identity-mismatch"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "cross-document-mismatch",
+                "phase": "graph",
+                "witnesses": [
+                  {
+                    "kind": "violation",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "records/loan-rules-1.0.0.json"
+                    },
+                    "pointer": "/irPackageName",
+                    "rule": "identity-mismatch"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-record-identity-mismatch"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-record-identity-mismatch"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-wire-record-manifest-identity",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
