@@ -42,6 +42,11 @@ configuration model. Legacy `morphir.json` continues to normalize `name`,
 An omitted project version defaults to `0.1.0`, as in legacy normalization;
 opening a discovered project does not require adding a version just to read its model.
 
+The existing single-file Elm route is an isolated compilation: it synthesizes
+exposure for the one submitted module. A surrounding project's exposure list
+does not add unsubmitted modules to that request. Project-mode compilation,
+including Python, forwards the configured exposure list for its complete source set.
+
 ## Source identity across MEP hosts
 
 `CompileRequest.documents` is the complete compilation unit. Hosts supply

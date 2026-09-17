@@ -315,6 +315,28 @@ fn fallback_elm_module_name(input: &Path) -> String {
         .unwrap_or_else(|| "Main".into())
 }
 
+fn prepare_configured_single_file_context(
+    options: &CompileOptions,
+    input: &Path,
+    source: &str,
+    config: Option<&ConfigContext>,
+    output: PathBuf,
+) -> Result<SingleFileCompileContext, CliError> {
+    // This route submits one document, so its synthesized exposure must not
+    // require other modules from the surrounding project.
+    prepare_single_file_context(
+        &[input.to_path_buf()],
+        source,
+        options.language.as_deref(),
+        options.package_name.as_deref().or_else(|| {
+            config
+                .and_then(|context| context.current_project.as_ref())
+                .map(|project| project.name.as_str())
+        }),
+        output,
+    )
+}
+
 fn file_uri(path: &Path) -> Result<String, CliError> {
     let text = path.to_str().ok_or_else(|| CliError::Validation {
         message: format!("Source path is not valid UTF-8: '{}'", path.display()),
@@ -607,24 +629,13 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let descriptor = crate::commands::ir_storage::v3_json_descriptor();
     warn_if_ir_storage_settings_are_ignored(config_context.as_ref(), &descriptor);
     let output_path = paths.dest.join(&descriptor.path);
-    let mut context = prepare_single_file_context(
-        std::slice::from_ref(&input_path),
+    let context = prepare_configured_single_file_context(
+        &options,
+        &input_path,
         &source,
-        options.language.as_deref(),
-        options.package_name.as_deref().or_else(|| {
-            config_context
-                .as_ref()
-                .and_then(|context| context.current_project.as_ref())
-                .map(|project| project.name.as_str())
-        }),
+        config_context.as_ref(),
         output_path,
     )?;
-    if let Some(modules) = config_context
-        .as_ref()
-        .and_then(ConfigContext::exposed_modules)
-    {
-        context.package.exposed_modules = Some(modules.to_vec());
-    }
     let environment = filtered_process_environment();
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
     let extension_id = resolve_extension_id(&context.language_id, options.extension.as_deref())?;
@@ -1448,6 +1459,36 @@ mod tests {
     use tempfile::TempDir;
 
     const ELM_SOURCE: &str = "module Example exposing (add)\n\nadd left right = left + right\n";
+
+    #[test]
+    fn single_file_elm_does_not_require_unsubmitted_project_modules() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("morphir.toml");
+        std::fs::write(
+            &path,
+            "[project]\nname = 'local/example'\nexposed_modules = ['Example', 'Other']\n",
+        )
+        .unwrap();
+        let config = morphir_devkit::load_config_context_with(
+            &path,
+            &morphir_devkit::ConfigLoadOptions::project_only(),
+        )
+        .unwrap();
+        let context = prepare_configured_single_file_context(
+            &CompileOptions::default(),
+            &temp.path().join("Example.elm"),
+            ELM_SOURCE,
+            Some(&config),
+            temp.path().join("output.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            context.package.exposed_modules,
+            Some(vec!["Example".into()])
+        );
+        validate_compile_success(&context, &example_compile_result(vec!["Example".into()]))
+            .unwrap();
+    }
 
     /// A single-file compile whose input has since been deleted must leave a
     /// TOMBSTONE, not the previous run's successful record: `generate` treats
