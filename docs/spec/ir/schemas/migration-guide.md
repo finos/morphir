@@ -19,6 +19,7 @@ This guide provides detailed instructions for converting Morphir IR between diff
   - [V3 → V4](#v3--v4)
   - [Files written by CLIs before 0.4.0-alpha.7](#files-written-by-clis-before-040-alpha7)
   - [Format-version support tables and the renamed diagnostic](#format-version-support-tables-and-the-renamed-diagnostic)
+  - [Document-tree layout in 0.4.0-alpha.7](#document-tree-layout-in-040-alpha7)
 - [Backward Migration (Downgrading)](#backward-migration-downgrading)
   - [V4 → V3](#v4--v3)
   - [V3 → V2](#v3--v2)
@@ -572,6 +573,109 @@ The diagnostic for that refusal is renamed: `unsupported_format_version_revision
 `unsupported_format_version_minor`, pairing with `unsupported_format_version_major`. The old code is pre-release
 and has no alias, so any tooling or test that matched on it by string must be updated. Nothing in a migrated IR
 file changes; only the reader's acceptance rule and the diagnostic code do. This is decided in decision 0016.
+
+---
+
+### Document-tree layout in 0.4.0-alpha.7
+
+A distribution can be stored as a directory of small files rather than one document. That layout — the
+**document tree** — is specified on the [document-tree page](./v4/document-tree-files.md) and pinned by MCK
+cases document-tree-0001 to 0009. Release 0.4.0-alpha.7 makes the Rust CLI write and read the layout that
+page describes. Trees written by earlier releases are refused rather than reinterpreted.
+
+#### The canonical shape
+
+```text
+manifest.yaml                                  # or manifest.json
+pkg/<package path>/<module path>/module.yaml   # the module manifest
+pkg/<package path>/<module path>/<stem>.type.yaml
+pkg/<package path>/<module path>/<stem>.value.yaml
+deps/<package path>/@/<module path>/…          # one dependency, same shape
+```
+
+Every path segment is the escaped spelling of a name, and the extension is the profile's: a tree is
+homogeneous, so one profile spells every file in it (document-tree page, "Serialization profile" and
+"Directory Structure").
+
+What changed from the layout the CLI wrote before 0.4.0-alpha.7:
+
+- **Dependencies live under `deps/`, not `pkg/`.** A dependency's package path ends in a `@` segment, the
+  slot a package version would occupy, so one dependency's directory can never be a prefix of another's:
+  a package named `a` and a package named `a/b` land at `deps/a/@/` and `deps/a/b/@/` (decision 0015,
+  document-tree page, "Dependencies").
+- **The distribution manifest records `pathBudget`** — the longest physical path the tree may hold, counted
+  from the distribution root, extension included. The CLI writes 4000 unless told otherwise. It is a required
+  member, and the reason writing a tree can fail at all (document-tree page, "Write-time truncation and its
+  failure"; decision 0014).
+- **A `Library` or `Specs` distribution lists its dependencies by name** in the distribution manifest, with
+  each dependency's content in its own `deps/` directory rather than inline.
+- **An `Application`'s dependencies are package definitions with a home in the tree**, written under `deps/`
+  like any other dependency (MCK document-tree-0009). The older transport had nowhere to put them and refused
+  such a distribution; it no longer does. The refusal remains for a dependency whose kind does not match the
+  distribution's.
+- **`doc` and `access` stay inside each `def`/`spec` file**, not hoisted into the module manifest
+  (document-tree page, "access (module manifest)" and "doc").
+- **File stems are escaped the way the reference binding escapes them**, and a stem the path budget had to
+  truncate is recorded in the module manifest's `fileNames`, which is present only when something was cut.
+- **A module specification carrying `annotations` is still refused** — a tree has nowhere to put them — now
+  as `morphir::ir::document_tree::invalid_distribution_shape`.
+
+#### Older trees are refused, and how to rewrite one
+
+`pathBudget` is the one required manifest member no older tree carries, so its absence is the reliable signal
+that a tree predates the change rather than being merely malformed. Reading such a tree fails with:
+
+```text
+morphir::ir::document_tree::missing_member: missing member pathBudget (at manifest#/)
+```
+
+carrying the guidance `this tree predates 0.4.0-alpha.7; regenerate it with morphir migrate`.
+
+There is no in-place upgrade, because the old tree can no longer be read: write the distribution to a single
+file with the CLI that produced the tree, then lay that file out again with 0.4.0-alpha.7 or later.
+
+```bash
+# with the CLI that wrote the tree (0.4.0-alpha.6 or earlier)
+morphir migrate <old-tree> -o model.json --output-layout single-file
+
+# with 0.4.0-alpha.7 or later
+morphir migrate model.json -o <new-tree> --output-layout vfs
+```
+
+Recompiling the source is equally good, and is the better answer when the source is still to hand.
+
+#### Reading a tree: `.yml`, and links
+
+A manifest spelled `manifest.yml` is read as a YAML tree, alongside `manifest.yaml`. It is never written back
+as `.yml`: the canonical extension is `.yaml`, and `.yml` is an input spelling only. A logical path that both
+a `.yaml` and a `.yml` physical file map to is refused as
+`morphir::ir::document_tree::invalid_distribution_shape`, naming both physical spellings.
+
+A document tree is read through real files. The transport never follows a symlink or junction, whether it is
+walking the tree or pruning one before a rewrite, so neither reading nor writing can reach outside the tree
+root. A manifest that is itself a link is found but not read, and that case has its own diagnostic rather than
+the misleading "no manifest" one:
+
+```text
+morphir::ir::detection::linked_manifest
+```
+
+#### Renamed diagnostics
+
+The document-tree transport no longer carries diagnostic codes of its own for faults the kit already names.
+Tooling or tests that matched these by string must be updated; the old codes are pre-release and have no
+aliases.
+
+| Old code | Now reported as | Raised when |
+| -------- | --------------- | ----------- |
+| `morphir::ir::document_tree::name_mismatch` | `morphir::ir::document_tree::invalid_distribution_shape` | A definition file's own `name` is not the name the module manifest listed it under |
+| `morphir::ir::document_tree::module_path_mismatch` | `morphir::ir::document_tree::invalid_distribution_shape` | A module manifest's `path` does not match the directory it sits in |
+
+Two refusals are new rather than renamed: `morphir::ir::detection::linked_manifest` above, and
+`morphir::ir::document_tree::invalid_path` for a tree nested past 256 directory levels.
+
+This layout and its refusals are decided in decisions 0012, 0014 and 0015, and pinned by MCK cases
+document-tree-0001 to 0009 (finos/morphir-rust#160).
 
 ---
 
