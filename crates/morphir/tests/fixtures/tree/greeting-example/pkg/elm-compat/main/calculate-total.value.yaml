@@ -1,0 +1,149 @@
+formatVersion: 4
+name: calculate-total
+def:
+  Public:
+    doc: " Calculate the total price of an order.\n\n    calculateTotal { orderId = \"1\", products = [ ( product, 2 ) ], status = Pending }\n\n"
+    ExpressionBody:
+      inputTypes:
+        order: elm-compat:main#customer-order
+      outputType: morphir/SDK:basics#float
+      body:
+        Apply:
+          attributes:
+            inferredType: morphir/SDK:basics#float
+          function:
+            Reference:
+              attributes:
+                inferredType:
+                  Function:
+                    parameterType:
+                      Reference: ["morphir/SDK:list#list", "morphir/SDK:basics#float"]
+                    returnType: morphir/SDK:basics#float
+              fqname: morphir/SDK:list#sum
+          argument:
+            Apply:
+              attributes:
+                inferredType:
+                  Reference: ["morphir/SDK:list#list", "morphir/SDK:basics#float"]
+              function:
+                Apply:
+                  attributes:
+                    inferredType:
+                      Function:
+                        parameterType:
+                          Reference:
+                            - morphir/SDK:list#list
+                            - Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                        returnType:
+                          Reference: ["morphir/SDK:list#list", "morphir/SDK:basics#float"]
+                  function:
+                    Reference:
+                      attributes:
+                        inferredType:
+                          Function:
+                            parameterType:
+                              Function:
+                                parameterType:
+                                  Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                                returnType: morphir/SDK:basics#float
+                            returnType:
+                              Function:
+                                parameterType:
+                                  Reference:
+                                    - morphir/SDK:list#list
+                                    - Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                                returnType:
+                                  Reference: ["morphir/SDK:list#list", "morphir/SDK:basics#float"]
+                      fqname: morphir/SDK:list#map
+                  argument:
+                    Lambda:
+                      attributes:
+                        inferredType:
+                          Function:
+                            parameterType:
+                              Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                            returnType: morphir/SDK:basics#float
+                      pattern:
+                        TuplePattern:
+                          attributes:
+                            inferredType:
+                              Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                          patterns:
+                            - AsPattern:
+                                attributes:
+                                  inferredType: elm-compat:main#product
+                                pattern:
+                                  WildcardPattern:
+                                    attributes:
+                                      inferredType: elm-compat:main#product
+                                name: product
+                            - AsPattern:
+                                attributes:
+                                  inferredType: morphir/SDK:basics#int
+                                pattern:
+                                  WildcardPattern:
+                                    attributes:
+                                      inferredType: morphir/SDK:basics#int
+                                name: qty
+                      body:
+                        Apply:
+                          attributes:
+                            inferredType: morphir/SDK:basics#float
+                          function:
+                            Apply:
+                              attributes:
+                                inferredType:
+                                  Function:
+                                    parameterType: morphir/SDK:basics#float
+                                    returnType: morphir/SDK:basics#float
+                              function:
+                                Reference:
+                                  attributes:
+                                    inferredType:
+                                      Function:
+                                        parameterType: morphir/SDK:basics#float
+                                        returnType:
+                                          Function:
+                                            parameterType: morphir/SDK:basics#float
+                                            returnType: morphir/SDK:basics#float
+                                  fqname: morphir/SDK:basics#multiply
+                              argument:
+                                Field:
+                                  attributes:
+                                    inferredType: morphir/SDK:basics#float
+                                  target:
+                                    Variable:
+                                      attributes:
+                                        inferredType: elm-compat:main#product
+                                      name: product
+                                  name: price
+                          argument:
+                            Apply:
+                              attributes:
+                                inferredType: morphir/SDK:basics#float
+                              function:
+                                Reference:
+                                  attributes:
+                                    inferredType:
+                                      Function:
+                                        parameterType: morphir/SDK:basics#int
+                                        returnType: morphir/SDK:basics#float
+                                  fqname: morphir/SDK:basics#to-float
+                              argument:
+                                Variable:
+                                  attributes:
+                                    inferredType: morphir/SDK:basics#int
+                                  name: qty
+              argument:
+                Field:
+                  attributes:
+                    inferredType:
+                      Reference:
+                        - morphir/SDK:list#list
+                        - Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                  target:
+                    Variable:
+                      attributes:
+                        inferredType: elm-compat:main#customer-order
+                      name: order
+                  name: products

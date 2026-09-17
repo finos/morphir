@@ -1,0 +1,133 @@
+formatVersion: 4
+name: get-order-status
+def:
+  Public:
+    doc: " Get the status of an order as a string response.\n"
+    ExpressionBody:
+      inputTypes:
+        order: elm-compat:main#customer-order
+      outputType: elm-compat:api#response
+      body:
+        LetDefinition:
+          attributes:
+            inferredType: elm-compat:api#response
+          name: status-str
+          definition:
+            ExpressionBody:
+              inputTypes: {}
+              outputType: morphir/SDK:string#string
+              body:
+                PatternMatch:
+                  attributes:
+                    inferredType: morphir/SDK:string#string
+                  value:
+                    Field:
+                      attributes:
+                        inferredType: elm-compat:main#order-status
+                      target:
+                        Variable:
+                          attributes:
+                            inferredType: elm-compat:main#customer-order
+                          name: order
+                      name: status
+                  cases:
+                    - pattern:
+                        ConstructorPattern:
+                          attributes:
+                            inferredType: elm-compat:main#order-status
+                          fqname: elm-compat:main#pending
+                          patterns: []
+                      body:
+                        Literal:
+                          attributes:
+                            inferredType: morphir/SDK:string#string
+                          literal:
+                            StringLiteral: Order is pending
+                    - pattern:
+                        ConstructorPattern:
+                          attributes:
+                            inferredType: elm-compat:main#order-status
+                          fqname: elm-compat:main#confirmed
+                          patterns: []
+                      body:
+                        Literal:
+                          attributes:
+                            inferredType: morphir/SDK:string#string
+                          literal:
+                            StringLiteral: Order has been confirmed
+                    - pattern:
+                        ConstructorPattern:
+                          attributes:
+                            inferredType: elm-compat:main#order-status
+                          fqname: elm-compat:main#shipped
+                          patterns: []
+                      body:
+                        Literal:
+                          attributes:
+                            inferredType: morphir/SDK:string#string
+                          literal:
+                            StringLiteral: Order has been shipped
+                    - pattern:
+                        ConstructorPattern:
+                          attributes:
+                            inferredType: elm-compat:main#order-status
+                          fqname: elm-compat:main#delivered
+                          patterns: []
+                      body:
+                        Literal:
+                          attributes:
+                            inferredType: morphir/SDK:string#string
+                          literal:
+                            StringLiteral: Order has been delivered
+                    - pattern:
+                        ConstructorPattern:
+                          attributes:
+                            inferredType: elm-compat:main#order-status
+                          fqname: elm-compat:main#cancelled
+                          patterns: []
+                      body:
+                        Literal:
+                          attributes:
+                            inferredType: morphir/SDK:string#string
+                          literal:
+                            StringLiteral: Order was cancelled
+          in:
+            Record:
+              attributes:
+                inferredType: elm-compat:api#response
+              fields:
+                message:
+                  Variable:
+                    attributes:
+                      inferredType: morphir/SDK:string#string
+                    name: status-str
+                order-id:
+                  Apply:
+                    attributes:
+                      inferredType:
+                        Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                    function:
+                      Constructor:
+                        attributes:
+                          inferredType:
+                            Function:
+                              parameterType: morphir/SDK:string#string
+                              returnType:
+                                Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                        fqname: morphir/SDK:maybe#just
+                    argument:
+                      Field:
+                        attributes:
+                          inferredType: morphir/SDK:string#string
+                        target:
+                          Variable:
+                            attributes:
+                              inferredType: elm-compat:main#customer-order
+                            name: order
+                        name: order-id
+                success:
+                  Literal:
+                    attributes:
+                      inferredType: morphir/SDK:basics#bool
+                    literal:
+                      BoolLiteral: true

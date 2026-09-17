@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking — IR document-tree layout**: `morphir migrate --output-layout vfs`, and project-mode `morphir compile` with `[ir] layout = "document-tree"`, write the layout the [document-tree page](docs/spec/ir/schemas/v4/document-tree-files.md) specifies and MCK cases document-tree-0001 to 0009 pin: `manifest.<ext>` at the root carrying `pathBudget` and listing dependencies by name, `pkg/<package path>/<module path>/module.<ext>` beside `<stem>.type.<ext>` and `<stem>.value.<ext>`, and each dependency under `deps/<package path>/@/<module path>/`. An `Application`'s dependencies now have a home in the tree instead of being refused. A tree written by an earlier release is refused with `morphir::ir::document_tree::missing_member` and the guidance `this tree predates 0.4.0-alpha.8; regenerate it with morphir migrate`; the transport's own `name_mismatch` and `module_path_mismatch` codes are replaced by `morphir::ir::document_tree::invalid_distribution_shape`. See [Document-tree layout in 0.4.0-alpha.8](docs/spec/ir/schemas/migration-guide.md#document-tree-layout-in-040-alpha8) (decisions 0012 and 0015; finos/morphir-rust#160)
+
+### Added
+- **Document-tree input spellings**: a `manifest.yml` root is recognised and read as a YAML document tree alongside `manifest.yaml` (it is never written back as `.yml`). `morphir generate -i` and every other path that probes a directory now ask the transport which manifests count, so the two agree
+
+### Fixed
+- Reading or rewriting a document tree never follows a symlink or junction, so neither can reach outside the tree root; a manifest that is itself a link is refused with `morphir::ir::detection::linked_manifest` rather than reported as a missing manifest
+
 ## [0.4.0-alpha.7] - 2026-09-17
 
 ### Added

@@ -15,17 +15,25 @@ fn python_bundle_compiles_and_generates_offline() {
     let home = root.path().join("home");
     let repository = root.path().join("repository");
     fs::create_dir(&project).unwrap();
+    fs::create_dir_all(project.join("src/domain")).unwrap();
     fs::write(
         project.join("morphir.toml"),
-        "[project]\nname = \"acme/example\"\nversion = \"0.1.0\"\n\
+        "[project]\nname = \"acme/example\"\nversion = \"0.1.0\"\nsource_directory = \"src\"\n\
          [frontend]\nlanguage = \"python\"\nemit_parse_stage = false\n",
     )
     .unwrap();
     fs::write(
-        project.join("models.py"),
+        project.join("src/domain/models.py"),
         concat!(
             "from dataclasses import dataclass\n",
             "@dataclass(frozen=True)\nclass Point:\n    coordinates: tuple[int, int]\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        project.join("src/domain/rules.py"),
+        concat!(
+            "from .models import Point\n",
             "def choose(flag: bool, first: Point, second: Point) -> Point:\n",
             "    if flag:\n        return first\n    else:\n        return second\n",
         ),
@@ -76,7 +84,7 @@ fn python_bundle_compiles_and_generates_offline() {
         "--language",
         "python",
         "--input",
-        "models.py",
+        "src",
         "--output",
         "compiled",
     ]);
@@ -89,13 +97,14 @@ fn python_bundle_compiles_and_generates_offline() {
         "--output",
         "generated",
     ]);
-    assert!(project.join("generated/models.py").is_file());
+    assert!(project.join("generated/domain/models.py").is_file());
+    assert!(project.join("generated/domain/rules.py").is_file());
     run(&[
         "compile",
         "--language",
         "python",
         "--input",
-        "generated/models.py",
+        "generated",
         "--output",
         "recompiled",
     ]);

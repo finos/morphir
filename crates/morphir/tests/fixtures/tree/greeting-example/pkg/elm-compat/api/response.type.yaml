@@ -1,0 +1,14 @@
+formatVersion: 4
+name: response
+def:
+  Public:
+    doc: " Represents an API response.\n"
+    TypeAliasDefinition:
+      typeParams: []
+      typeExp:
+        Record:
+          fields:
+            success: morphir/SDK:basics#bool
+            message: morphir/SDK:string#string
+            order-id:
+              Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]

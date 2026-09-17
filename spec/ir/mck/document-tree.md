@@ -300,3 +300,101 @@ distribution:
 ```json canonical
 { "formatVersion": 4, "distribution": { "Library": { "packageName": "my-org/my-project", "dependencies": { "morphir/SDK": { "modules": { "basics": { "types": { "int": { "OpaqueTypeSpecification": {} } }, "values": {} } } } }, "def": { "modules": { "domain": { "Public": { "types": {}, "values": {} } } } } } } }
 ```
+
+## document-tree-0009: An application's dependencies are definitions under deps {node=Distribution}
+
+An `Application` links its dependencies statically (distributions-0010), so the node files under its `deps/` carry `def`, access-controlled like the package's own, where a `Library` or `Specs` tree's carry `spec` (document-tree-0008). The entry points live in the distribution manifest.
+
+```yaml file path=manifest set=app-deps
+formatVersion: 4
+distribution: Application
+package: example
+pathBudget: 4000
+dependencies: [my-org/shared]
+entryPoints:
+  start:
+    target: example:main#run
+    kind: main
+```
+
+```yaml file path=pkg/example/main/module set=app-deps
+formatVersion: 4
+path: main
+types: []
+values: [run]
+```
+
+```yaml file path=pkg/example/main/run.value set=app-deps
+formatVersion: 4
+name: run
+def:
+  Public:
+    ExpressionBody:
+      inputTypes: {}
+      outputType: morphir/SDK:basics#unit
+      body:
+        Unit: {}
+```
+
+```yaml file path=deps/my-org/shared/@/util/module set=app-deps
+formatVersion: 4
+path: util
+types: []
+values: [identity]
+```
+
+```yaml file path=deps/my-org/shared/@/util/identity.value set=app-deps
+formatVersion: 4
+name: identity
+def:
+  Public:
+    ExpressionBody:
+      inputTypes:
+        x: morphir/SDK:basics#int
+      outputType: morphir/SDK:basics#int
+      body:
+        Variable: x
+```
+
+```yaml canonical
+formatVersion: 4
+distribution:
+  Application:
+    packageName: example
+    dependencies:
+      my-org/shared:
+        modules:
+          util:
+            Public:
+              types: {}
+              values:
+                identity:
+                  Public:
+                    ExpressionBody:
+                      inputTypes:
+                        x: morphir/SDK:basics#int
+                      outputType: morphir/SDK:basics#int
+                      body:
+                        Variable: x
+    def:
+      modules:
+        main:
+          Public:
+            types: {}
+            values:
+              run:
+                Public:
+                  ExpressionBody:
+                    inputTypes: {}
+                    outputType: morphir/SDK:basics#unit
+                    body:
+                      Unit: {}
+    entryPoints:
+      start:
+        target: example:main#run
+        kind: main
+```
+
+```json canonical
+{ "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": { "my-org/shared": { "modules": { "util": { "Public": { "types": {}, "values": { "identity": { "Public": { "ExpressionBody": { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "x" } } } } } } } } } }, "def": { "modules": { "main": { "Public": { "types": {}, "values": { "run": { "Public": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#unit", "body": { "Unit": {} } } } } } } } } }, "entryPoints": { "start": { "target": "example:main#run", "kind": "main" } } } } }
+```
