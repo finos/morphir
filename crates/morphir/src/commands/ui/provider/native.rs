@@ -29,6 +29,7 @@ pub struct NativeWorkspaceProvider {
     source: WorkbenchSourceRef,
     workspace: PathBuf,
     workspace_dir: Dir,
+    out: crate::commands::out_context::OutOverrides,
     config_options: ConfigLoadOptions,
 }
 
@@ -37,7 +38,7 @@ impl NativeWorkspaceProvider {
         Self::discover_with_options(root, session_id, ConfigLoadOptions::default())
     }
 
-    fn discover_with_options(
+    pub fn discover_with_options(
         root: &Path,
         session_id: &str,
         config_options: ConfigLoadOptions,
@@ -74,6 +75,7 @@ impl NativeWorkspaceProvider {
             source,
             workspace,
             workspace_dir,
+            out: Default::default(),
             config_options,
         })
     }
@@ -85,6 +87,11 @@ impl NativeWorkspaceProvider {
         config_options: ConfigLoadOptions,
     ) -> Result<Self, CliError> {
         Self::discover_with_options(root, session_id, config_options)
+    }
+
+    pub fn with_out_overrides(mut self, out: crate::commands::out_context::OutOverrides) -> Self {
+        self.out = out;
+        self
     }
 
     fn validate_source(&self, source: &WorkbenchSourceRef) -> Result<(), CliError> {
@@ -144,7 +151,18 @@ impl WorkspaceCapability for NativeWorkspaceProvider {
     ) -> Result<ProjectModelOpenResult, CliError> {
         self.validate_source(source)?;
         let snapshot = self.open(source).await?;
-        load_project_model(&self.workspace_dir, &self.source, snapshot, project_id).await
+        load_project_model(
+            &self.workspace_dir,
+            &self.source,
+            snapshot,
+            project_id,
+            super::project_model::ProjectModelConfig {
+                workspace: self.workspace.clone(),
+                options: self.config_options.clone(),
+                out: self.out.clone(),
+            },
+        )
+        .await
     }
 }
 
@@ -247,6 +265,81 @@ mod tests {
     fn fixture() -> std::path::PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../ecosystem/morphir-rust/tests/fixtures/workspace-discovery/valid-monorepo")
+    }
+
+    #[tokio::test]
+    async fn model_loading_uses_selected_member_config_and_out_overrides() {
+        use crate::commands::out_context::{OutContext, OutOverrides};
+        use morphir_devkit::{TaskId, TaskResult};
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
+        std::fs::write(
+            root.join("morphir.toml"),
+            "[workspace]\nmembers = ['a', 'b']\ndefault_member = 'a'\nout_dir = 'build/models'\n",
+        )
+        .unwrap();
+        for name in ["a", "b"] {
+            std::fs::create_dir(root.join(name)).unwrap();
+            std::fs::write(
+                root.join(name).join("morphir.toml"),
+                format!("[project]\nname = 'acme/{name}'\nversion = '1.0.0'\n"),
+            )
+            .unwrap();
+            std::fs::write(root.join(name).join("morphir-ir.json"), "stale legacy").unwrap();
+        }
+        for overrides in [
+            OutOverrides::default(),
+            OutOverrides {
+                flag: Some(root.join("explicit-output")),
+                env: Some(root.join("ignored-env").into_os_string()),
+            },
+        ] {
+            let output_root = overrides
+                .flag
+                .clone()
+                .unwrap_or_else(|| root.join("build/models"));
+            let out = OutContext {
+                root: output_root,
+                module: "b".into(),
+            };
+            let paths = out.task(&TaskId::compile()).unwrap();
+            std::fs::create_dir_all(&paths.dest).unwrap();
+            std::fs::write(paths.dest.join("actual.json"), r#"{"selected":"b"}"#).unwrap();
+            let mut record = TaskResult::new(&TaskId::compile(), &out.module);
+            record.ir = Some(morphir_devkit::IrDescriptor {
+                path: "actual.json".into(),
+                layout: morphir_devkit::IrLayout::SingleFile,
+                format: "json".into(),
+                version: "v4".into(),
+            });
+            record.write(&paths.result).unwrap();
+            let provider = NativeWorkspaceProvider::discover_for_test(
+                root,
+                "model-test",
+                ConfigLoadOptions::project_only(),
+            )
+            .unwrap()
+            .with_out_overrides(overrides);
+            let source = provider.initial_sources().pop().unwrap();
+            let snapshot = provider.open(&source).await.unwrap();
+            let id = &snapshot
+                .projects
+                .iter()
+                .find(|project| project.relative_path == "b")
+                .unwrap()
+                .id;
+            assert_eq!(
+                provider
+                    .load_project_model(&source, id)
+                    .await
+                    .unwrap()
+                    .content,
+                r#"{"selected":"b"}"#
+            );
+            record.tombstone = true;
+            record.write(&paths.result).unwrap();
+            assert!(provider.load_project_model(&source, id).await.is_err());
+        }
     }
 
     #[tokio::test]

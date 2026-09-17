@@ -79,7 +79,7 @@ enum Commands {
         /// Explicit config file path. An Elm command is a development override for the installed extension.
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
         /// Output as JSON
@@ -103,7 +103,7 @@ enum Commands {
         /// Explicit config file path
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
         /// Override a backend option as KEY=VALUE. May be repeated.
@@ -539,7 +539,7 @@ enum GleamAction {
         /// Explicit config file path
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
     },
@@ -554,7 +554,7 @@ enum GleamAction {
         /// Explicit config file path
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
     },
@@ -572,7 +572,7 @@ enum GleamAction {
         /// Explicit config file path
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
     },
@@ -831,7 +831,7 @@ impl AppSession for MorphirSession {
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
             Commands::Migrate(args) => args.run(),
-            Commands::Ui(args) => commands::ui::run_ui(args.clone()).await,
+            Commands::Ui(args) => commands::ui::run_ui(args.clone(), self.out.clone()).await,
             Commands::Desktop(args) => run_desktop(&self.operation_id, args.clone()),
             Commands::Playground(args) => commands::playground::run_playground(args.clone()).await,
             Commands::Config { action } => match action {

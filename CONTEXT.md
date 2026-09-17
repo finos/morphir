@@ -66,6 +66,18 @@ _Avoid_: Extension server, backend manager
 An extension capability that compiles source documents into Morphir IR.
 _Avoid_: Compiler extension
 
+**Compilation unit**:
+The complete set of source documents compiled together into one Morphir package.
+_Avoid_: Workspace, project when referring only to the submitted documents
+
+**Source root**:
+The absolute location used to give source documents stable relative identities within a compilation unit.
+_Avoid_: Workspace root, output root
+
+**Module exposure**:
+The selection of a package's public modules. Private modules remain available within the package.
+_Avoid_: Source inclusion, deletion of private modules
+
 **Backend**:
 An extension capability that converts Morphir IR into generated artifacts.
 _Avoid_: Extension when referring to any capability provider

@@ -13,8 +13,8 @@ use crate::commands::out_context::{
 use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
 use morphir_devkit::{
-    ConfigContext, TaskId, TaskResult, discover_config, ensure_morphir_structure,
-    load_config_context,
+    ConfigContext, ConfigLoadOptions, TaskId, TaskResult, discover_config,
+    ensure_morphir_structure, load_config_context_with,
 };
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::GenerateRequest;
@@ -36,7 +36,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         input,
         output,
         config_path,
-        project: _project,
+        project,
         backend_options,
         json,
         json_lines,
@@ -56,7 +56,19 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     };
 
     // Load config context
-    let ctx = load_config_context(&config_file).map_err(|e| CliError::Config { error: e })?;
+    let ctx = load_config_context_with(
+        &config_file,
+        &ConfigLoadOptions {
+            project: project
+                .map(morphir_devkit::config::ProjectSelection::Explicit)
+                .unwrap_or_default(),
+            ..Default::default()
+        },
+    )
+    .map_err(|error| CliError::Config { error })?;
+    if ctx.project_root.is_none() {
+        return Err(CliError::Config { error: anyhow::anyhow!("Workspace has no selected project; use --project with a declared member path or exact project name") }.into());
+    }
 
     // Ensure .morphir/ structure exists
     ensure_morphir_structure(&ctx.morphir_dir).map_err(|e| CliError::Config { error: e })?;

@@ -284,6 +284,27 @@ Passing content rather than paths has four consequences:
 
 The `package` field supplies language-neutral compilation context. A host compiling one file may synthesize it. For Elm, the adapter converts this value to the package information expected by the existing compiler.
 
+`package.exposedModules` is optional. Omission means all compiled modules are
+public; an explicit empty array means all are private. A nonempty array selects
+exactly the public modules, with other modules retained as private package
+definitions. Unknown names are errors. Frontends that cannot implement the
+requested visibility must report that limitation instead of changing access.
+
+`options.sourceRootUri` supplies the absolute source root for stable relative
+document identities. Relative document paths retain their nesting. Multiple
+documents containing absolute URIs require this option; one absolute document
+without it retains basename identity for existing single-document callers.
+Absolute documents must be below the root, with matching scheme and authority.
+Query and fragment metadata do not affect identity. Decode path segments once;
+reject dot segments, encoded separators, invalid UTF-8, outside-root paths, and
+duplicate identities. Keep the original URI for diagnostics. URI resolution
+does not perform I/O or grant access to source locations.
+
+The Rust SDK exposes this validation as `CompileRequest::source_paths()`.
+Hosts should use hierarchical URIs; absolute native paths remain accepted for
+compatibility. See [Project compilation context](../../project-compilation-context.md)
+for project selection, CLI precedence, exposure, and artifact-loading rules.
+
 Dependencies are Morphir IR distributions. Version 0.1 permits them inline:
 
 ```json

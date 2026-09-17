@@ -613,7 +613,7 @@ mod tests {
             documents: vec![],
             package: CompilePackage {
                 name: "example/test".into(),
-                exposed_modules: vec![],
+                exposed_modules: Some(vec![]),
             },
             dependencies: vec![],
             options: CompileOptions {

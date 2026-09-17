@@ -38,6 +38,7 @@ pub struct ExtensionWorkspaceProvider {
     source: WorkbenchSourceRef,
     workspace: PathBuf,
     workspace_dir: Dir,
+    out: crate::commands::out_context::OutOverrides,
     config_options: ConfigLoadOptions,
     implementation: ExtensionImplementation,
 }
@@ -115,6 +116,7 @@ impl ExtensionWorkspaceProvider {
             source,
             workspace,
             workspace_dir,
+            out: Default::default(),
             config_options: ConfigLoadOptions::default(),
             implementation: ExtensionImplementation::Installed {
                 home,
@@ -144,12 +146,18 @@ impl ExtensionWorkspaceProvider {
             source: source_for(workspace, &provider_id),
             workspace: workspace.to_path_buf(),
             workspace_dir: open_workspace(workspace).unwrap(),
+            out: Default::default(),
             config_options,
             implementation: ExtensionImplementation::Fixture {
                 expected_request: Arc::new(expected_request),
                 response: Arc::new(response),
             },
         }
+    }
+
+    pub fn with_out_overrides(mut self, out: crate::commands::out_context::OutOverrides) -> Self {
+        self.out = out;
+        self
     }
 
     fn validate_source(&self, source: &WorkbenchSourceRef) -> Result<(), CliError> {
@@ -233,7 +241,18 @@ impl WorkspaceCapability for ExtensionWorkspaceProvider {
     ) -> Result<ProjectModelOpenResult, CliError> {
         self.validate_source(source)?;
         let snapshot = self.open(source).await?;
-        load_project_model(&self.workspace_dir, &self.source, snapshot, project_id).await
+        load_project_model(
+            &self.workspace_dir,
+            &self.source,
+            snapshot,
+            project_id,
+            super::project_model::ProjectModelConfig {
+                workspace: self.workspace.clone(),
+                options: self.config_options.clone(),
+                out: self.out.clone(),
+            },
+        )
+        .await
     }
 }
 

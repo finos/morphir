@@ -41,7 +41,7 @@ cmd compile display_order=3 args_override_self=#false help="Compile source code 
     flag --config help="Explicit config file path. An Elm command is a development override for the installed extension" {
         arg <CONFIG>
     }
-    flag --project help="Project name (for workspaces)" {
+    flag --project help="Declared workspace-relative member path or exact project name" {
         arg <PROJECT>
     }
     flag --json help="Output as JSON"
@@ -60,7 +60,7 @@ cmd generate display_order=4 args_override_self=#false help="Generate code from 
     flag --config help="Explicit config file path" {
         arg <CONFIG>
     }
-    flag --project help="Project name (for workspaces)" {
+    flag --project help="Declared workspace-relative member path or exact project name" {
         arg <PROJECT>
     }
     flag --option help="Override a backend option as KEY=VALUE. May be repeated" var=#true {
@@ -887,7 +887,7 @@ cmd gleam display_order=19 subcommand_required=#true arg_required_else_help=#tru
         flag --config help="Explicit config file path" {
             arg <CONFIG>
         }
-        flag --project help="Project name (for workspaces)" {
+        flag --project help="Declared workspace-relative member path or exact project name" {
             arg <PROJECT>
         }
     }
@@ -901,7 +901,7 @@ cmd gleam display_order=19 subcommand_required=#true arg_required_else_help=#tru
         flag --config help="Explicit config file path" {
             arg <CONFIG>
         }
-        flag --project help="Project name (for workspaces)" {
+        flag --project help="Declared workspace-relative member path or exact project name" {
             arg <PROJECT>
         }
     }
@@ -918,7 +918,7 @@ cmd gleam display_order=19 subcommand_required=#true arg_required_else_help=#tru
         flag --config help="Explicit config file path" {
             arg <CONFIG>
         }
-        flag --project help="Project name (for workspaces)" {
+        flag --project help="Declared workspace-relative member path or exact project name" {
             arg <PROJECT>
         }
     }
