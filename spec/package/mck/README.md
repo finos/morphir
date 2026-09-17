@@ -17,8 +17,7 @@ results. Every digest in these fixtures is synthetic metadata, not a verified pa
 The schema task checks the index and case/result structure. Executable resolution
 uses the shared TypeScript MCK core and the independent Rust implementation through an adapter.
 The new `package:resolution-check` and `package:resolution-check:rust` tasks select draft.2
-explicitly. This dependent branch pins published implementation commits for CI;
-replace them with merged upstream commits before landing the parent.
+explicitly. This branch pins merged upstream implementation commits for CI.
 The existing draft.1 package suite remains available unchanged.
 
 `schema-cases.json` declares each case's schema, base fixture, expected verdict, and
@@ -83,7 +82,7 @@ its interfaces or adapters; duplicating the runner is not an independence requir
 
 ## Local resolution evidence, pending landing
 
-The 2026-09-16 development run passed all 78 draft.2 cases on each transport, with zero
+The 2026-09-17 UTC development run passed all 78 draft.2 cases on each transport, with zero
 failures, kit errors, or skips. After incorporating current upstream changes, the shared driver
 and TypeScript testee versions are `0.2.0`; Rust remains `0.2.0`.
 
@@ -98,13 +97,14 @@ All three reports identify corpus hash
 The fixed cases cover validation phases, replay, backtracking, scoped updates, graph ordering,
 and diagnostic witness ranking. They do not verify acquisition, payloads, trust, or API compatibility.
 
-The parent branch is rebased onto `2ff3416a` and temporarily pins these published implementation commits:
+The parent branch is based on `2ff3416a` and pins these merged implementation commits:
 
-- TypeScript `8a0ee253f3193030bf11cc9c032e37f640379432`, [PR #18](https://github.com/finos/morphir-typescript/pull/18).
-- Rust `346f72216016c682034d0770c3836ab84016e429`, [PR #154](https://github.com/finos/morphir-rust/pull/154).
+- TypeScript `100b7aa02359f57cbf0cd3db7cb2fbb3c1bb3b45`, [PR #18](https://github.com/finos/morphir-typescript/pull/18).
+- Rust `1c522051555eaefb076697cc3f0c7159670aeaa7`, [PR #154](https://github.com/finos/morphir-rust/pull/154).
 
-These commits include the latest upstream IR support-table changes; Rust also includes the YAML profile.
-Final pins must identify merged upstream commits. Fresh passing CI against those final pins is required
+These commits include the upstream IR support-table changes; Rust also includes the YAML profile
+and enforces its 512-release execution bound during replay and update baseline validation.
+Fresh passing CI against these merged pins is required
 before a published compatibility claim. Local reports are ignored build outputs, not committed evidence artifacts.
 
 The separate draft.1 corpus also passed all 80 cases on each transport with no failures,

@@ -12,8 +12,8 @@ registry client or installer ships in this slice.
 The [resolution contract](resolution-contract.md) separately specifies experimental
 `0.1.0-draft.2` replay, initial selection, targeted updates, and structured diagnostics.
 Its schemas and fixed MCK expectations drive shared-core checks against TypeScript and
-independent Rust resolution implementations. This dependent branch pins published implementation
-commits for integration checks. Upstream merges and final merged-commit pins are pending.
+independent Rust resolution implementations. This branch pins the merged TypeScript and Rust
+implementations for integration checks. Parent landing remains pending.
 Results are metadata projections, not installable locks or verified payload/API compatibility. The draft.1
 integrity contract and content digest separator remain unchanged.
 

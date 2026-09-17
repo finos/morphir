@@ -632,8 +632,8 @@ flowchart TD
 The [resolution schemas and fixed MCK cases](../../../../spec/package/mck/README.md) define these observable results.
 This metadata projection is not the full `morphir.lock`, and it does not verify payload bytes or type compatibility.
 The separate integrity contract remains `0.1.0-draft.1`; its digest domain and existing operations are unchanged.
-Shared-driver checks exercise TypeScript and independent Rust implementations at published feature commits.
-Upstream landing and the final merged-commit pins remain pending. The [MCK suite](../../../../spec/package/mck/README.md)
+Shared-driver checks exercise TypeScript and independent Rust implementations at merged upstream commits.
+Parent integration landing remains pending. The [MCK suite](../../../../spec/package/mck/README.md)
 records bounded evidence; a local pass does not establish published compatibility.
 
 Stage 1 supports one implicit binding per dependency IR name in each consumer, within the supported payload's limits.
@@ -1134,8 +1134,8 @@ their own operations and expected results; they cannot be encoded as IR `decode`
 
 IR protocol and report contract version 1 remain IR-specific. Package integrity uses its separate
 `0.1.0-draft.1` contract. Resolution specifies `0.1.0-draft.2`, selected explicitly rather than silently adding
-operations to draft.1. Shared-driver checks cover both implementations at temporary feature pins;
-merged upstream commits and final parent integration pins remain pending.
+operations to draft.1. Shared-driver checks cover both implementations at merged upstream pins;
+parent integration landing remains pending.
 Preserve existing IR invocations, case IDs, and contract version 1 support. Identify cases by suite and stable case ID
 when comparing or aggregating results.
 

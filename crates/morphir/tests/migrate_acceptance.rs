@@ -201,7 +201,13 @@ fn duplicate_yaml_format_version_reports_the_canonical_diagnostic() {
     let output = migrate(&input, &output_path, &[]);
 
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("duplicate_format_version"));
+    // The YAML profile and MCK versions-0005 reject every repeated mapping key
+    // as duplicate_member, including the root formatVersion key.
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("morphir::ir::yaml::duplicate_member"),
+        "stderr={stderr}"
+    );
     assert!(!output_path.exists());
 }
 

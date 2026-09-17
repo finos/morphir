@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-17
+
+* **Update**: Pinned the merged implementations from [TypeScript #18](https://github.com/finos/morphir-typescript/pull/18) and [Rust #154](https://github.com/finos/morphir-rust/pull/154). Fresh shared-driver runs pass all 78 resolution and 80 integrity cases on each transport, with no failures, kit errors, or skips. Rust includes the reviewed replay and update baseline execution bound. The [evidence record](../../../../spec/package/mck/README.md#local-resolution-evidence-pending-landing) identifies exact merged commits. Parent CI and landing remain separate gates; Stage 0 remains incomplete.
+
 ## 2026-09-16
 
 * **Update**: Published [TypeScript #18](https://github.com/finos/morphir-typescript/pull/18) and [Rust #154](https://github.com/finos/morphir-rust/pull/154) after rebasing onto the latest support-table changes and Rust YAML support. The dependent parent branch pins their feature commits and passes the actual package tasks: 78 resolution cases and 80 integrity cases on each transport. Merged upstream pins and passing CI remain required before parent landing; the [evidence record](../../../../spec/package/mck/README.md#local-resolution-evidence-pending-landing) identifies exact commits and versions.
