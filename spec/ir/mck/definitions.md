@@ -381,3 +381,170 @@ Private:
 ```json accepted warning=legacy_spelling
 { "Private": { "value": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "x" } } } } }
 ```
+
+## definitions-0020: Annotations on a type specification {node=TypeSpecification}
+
+A specification may carry `annotations`, written first and only when non-empty. Each is either the compact string `pkg:mod#local` or `pkg:mod#local:free text` (the separator is the first colon after `#`), or the structured object `{ "name", "arguments" }` whose arguments are positional values or named `{ "name", "value" }` pairs. `arguments` is omitted when empty. Definitions never carry annotations (definitions-0023).
+
+```yaml canonical
+TypeAliasSpecification:
+  annotations:
+    - my-org/project:annotations#deprecated:Use user-v2 instead
+    - name: my-org/project:annotations#since
+      arguments:
+        - Literal:
+            StringLiteral: 1.2.0
+        - name: reason
+          value:
+            Literal:
+              StringLiteral: renamed
+    - name: my-org/project:annotations#internal
+  typeParams: []
+  typeExp: morphir/SDK:string#string
+```
+
+```json canonical
+{ "TypeAliasSpecification": { "annotations": ["my-org/project:annotations#deprecated:Use user-v2 instead", { "name": "my-org/project:annotations#since", "arguments": [{ "Literal": { "StringLiteral": "1.2.0" } }, { "name": "reason", "value": { "Literal": { "StringLiteral": "renamed" } } }] }, { "name": "my-org/project:annotations#internal" }], "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+```
+
+```json accepted
+{ "TypeAliasSpecification": { "annotations": ["my-org/project:annotations#deprecated:Use user-v2 instead", { "name": "my-org/project:annotations#since", "arguments": [{ "Literal": { "StringLiteral": "1.2.0" } }, { "name": "reason", "value": { "Literal": { "StringLiteral": "renamed" } } }] }, { "name": "my-org/project:annotations#internal", "arguments": [] }], "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+```
+
+## definitions-0021: Annotations on a value specification {node=ValueSpecification}
+
+```yaml canonical
+annotations: ["my-org/project:annotations#pure"]
+inputs:
+  x: morphir/SDK:basics#int
+output: morphir/SDK:basics#int
+```
+
+```json canonical
+{ "annotations": ["my-org/project:annotations#pure"], "inputs": { "x": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" }
+```
+
+## definitions-0022: Annotations on a module specification {node=ModuleSpecification}
+
+`annotations` comes first; `doc` stays last (decision 0010).
+
+```yaml canonical
+annotations: ["my-org/project:annotations#stable"]
+types: {}
+values: {}
+doc: The domain module
+```
+
+```json canonical
+{ "annotations": ["my-org/project:annotations#stable"], "types": {}, "values": {}, "doc": "The domain module" }
+```
+
+## definitions-0023: A definition carries no annotations {node=TypeDefinition}
+
+Annotations belong to specifications, the public face; inside a definition the member is unknown.
+
+```json rejected diagnostic=unknown_member
+{ "TypeAliasDefinition": { "annotations": [], "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+```
+
+## definitions-0024: A hole incompleteness keeps a partial body {node=TypeDefinition}
+
+A `Hole` says why under `reason` and may keep what the author had as `partialBody`, a type expression; the member is written only when present (definitions-0014 has none).
+
+```yaml canonical
+IncompleteTypeDefinition:
+  typeParams: []
+  incompleteness:
+    Hole:
+      reason:
+        UnresolvedReference:
+          target: my-org/project:module#missing
+      partialBody: morphir/SDK:basics#int
+```
+
+```json canonical
+{ "IncompleteTypeDefinition": { "typeParams": [], "incompleteness": { "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#missing" } }, "partialBody": "morphir/SDK:basics#int" } } } }
+```
+
+## definitions-0025: An incomplete body keeps a partial value {node=ValueDefinition}
+
+The value twin of definitions-0024: `partialBody` on an `IncompleteBody` is a value expression, written after `incompleteness` and only when present.
+
+```yaml canonical
+IncompleteBody:
+  inputTypes: {}
+  outputType: morphir/SDK:basics#int
+  incompleteness:
+    Draft: {}
+  partialBody:
+    Literal:
+      IntegerLiteral: 1
+```
+
+```json canonical
+{ "IncompleteBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "incompleteness": { "Draft": {} }, "partialBody": { "Literal": { "IntegerLiteral": 1 } } } }
+```
+
+## definitions-0026: Draft is an incompleteness, not a hole reason {node=TypeDefinition}
+
+A hole's reason is `UnresolvedReference`, `DeletedDuringRefactor` or `TypeMismatch` (definitions-0014, 0016). `Draft` is the other incompleteness kind (definitions-0015) and names no reason; a reason must be a wrapper object.
+
+```json rejected diagnostic=unknown_node
+{ "IncompleteTypeDefinition": { "typeParams": [], "incompleteness": { "Hole": { "reason": { "Draft": {} } } } } }
+```
+
+```json rejected diagnostic=invalid_type
+{ "IncompleteTypeDefinition": { "typeParams": [], "incompleteness": { "Hole": { "reason": "Draft" } } } }
+```
+
+## definitions-0027: An input type is a bare type {node=ValueDefinition}
+
+Each entry of `inputTypes` is a type expression and nothing else; there is no per-parameter attributes member.
+
+```json rejected diagnostic=unknown_node
+{ "ExpressionBody": { "inputTypes": { "x": { "typeAttributes": {}, "type": "morphir/SDK:basics#int" } }, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "x" } } }
+```
+
+## definitions-0028: Documentation is one string {node=AccessControlledTypeDefinition}
+
+`doc` is a string wherever a node carries it (decision 0010). An array of lines is accepted only in a module manifest file (document-tree page), never here.
+
+```json rejected diagnostic=invalid_type
+{ "Public": { "doc": ["line one", "line two"], "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } }
+```
+
+## definitions-0029: A value specification without inputs writes none {node=ValueSpecification}
+
+`inputs` is omitted when empty and accepted when written empty.
+
+```yaml canonical
+output: morphir/SDK:basics#int
+```
+
+```json canonical
+{ "output": "morphir/SDK:basics#int" }
+```
+
+```json accepted
+{ "inputs": {}, "output": "morphir/SDK:basics#int" }
+```
+
+## definitions-0030: A platform-specific native hint names its platform {node=ValueDefinition}
+
+`PlatformSpecific` requires `platform`; a reader does not invent one.
+
+```json rejected diagnostic=missing_member
+{ "NativeBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "nativeInfo": { "hint": { "PlatformSpecific": {} } } } }
+```
+
+## definitions-0031: priv is not an access spelling {node=AccessControlledTypeDefinition}
+
+The access spellings are `Public`, `public`, `pub`, `Private` and `private` (definitions-0001, 0017). `priv` is none of them.
+
+```json rejected diagnostic=invalid_access
+{ "priv": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } }
+```
+
+```json rejected diagnostic=invalid_access
+{ "access": "priv", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } }
+```

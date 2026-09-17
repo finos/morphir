@@ -183,3 +183,58 @@ A patch of a supported minor is read; its canonical spelling stays the release s
 ```json canonical
 "4.0.1"
 ```
+
+## distributions-0009: A reserved $meta member belongs to document-tree files only {node=Distribution}
+
+`$meta` is reserved in the files of a document tree (document-tree-0005). A single document has no such member: at its root it is unknown.
+
+```json rejected diagnostic=unknown_member
+{ "formatVersion": 4, "$meta": { "generator": "example" }, "distribution": { "Library": { "packageName": "example", "dependencies": {}, "def": { "modules": {} } } } }
+```
+
+## distributions-0010: An application's dependencies are package definitions {node=Distribution}
+
+An `Application` links its dependencies statically (distributions-0007), so each entry of its `dependencies` is a package definition — access-controlled modules carrying definitions — where a `Library` or `Specs` entry is a package specification (distributions-0005, 0006).
+
+```yaml canonical
+formatVersion: 4
+distribution:
+  Application:
+    packageName: example
+    dependencies:
+      my-org/shared:
+        modules:
+          util:
+            Public:
+              types: {}
+              values:
+                identity:
+                  Public:
+                    ExpressionBody:
+                      inputTypes:
+                        x: morphir/SDK:basics#int
+                      outputType: morphir/SDK:basics#int
+                      body:
+                        Variable: x
+    def:
+      modules:
+        main:
+          Public:
+            types: {}
+            values:
+              run:
+                Public:
+                  ExpressionBody:
+                    inputTypes: {}
+                    outputType: morphir/SDK:basics#unit
+                    body:
+                      Unit: {}
+    entryPoints:
+      start:
+        target: example:main#run
+        kind: main
+```
+
+```json canonical
+{ "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": { "my-org/shared": { "modules": { "util": { "Public": { "types": {}, "values": { "identity": { "Public": { "ExpressionBody": { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "x" } } } } } } } } } }, "def": { "modules": { "main": { "Public": { "types": {}, "values": { "run": { "Public": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#unit", "body": { "Unit": {} } } } } } } } } }, "entryPoints": { "start": { "target": "example:main#run", "kind": "main" } } } } }
+```

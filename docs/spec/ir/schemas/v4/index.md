@@ -587,6 +587,17 @@ The six V3 literals plus one:
 - **DecimalLiteral**
 - **DocumentLiteral** (decision 0013)
 
+An `IntegerLiteral` carries a whole-number lexeme of arbitrary precision: a JSON number with no point and no exponent. A `DecimalLiteral` carries a decimal lexeme as a string, kept exactly as written (trailing zeros are scale and are meaning):
+
+```text
+decimal   = sign? ( digits ( "." digits? )? | "." digits ) exponent?
+sign      = "+" | "-"
+digits    = [0-9]+
+exponent  = ( "e" | "E" ) sign? digits
+```
+
+No whitespace, no `_`, no hexadecimal, no `NaN` or `Infinity`. A payload that is not a decimal lexeme is `invalid_literal`. Two decimal literals are the same literal when their lexemes are the same; numeric comparison is a consumer's choice.
+
 ## Migration
 
 ### From V3 to V4
