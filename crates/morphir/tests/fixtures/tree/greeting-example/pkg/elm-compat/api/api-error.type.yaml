@@ -1,0 +1,12 @@
+formatVersion: 4
+name: api-error
+def:
+  Public:
+    doc: " Possible API errors.\n"
+    CustomTypeDefinition:
+      typeParams: []
+      access: Public
+      constructors:
+        internal-error: []
+        invalid-request: [[arg-1, "morphir/SDK:string#string"]]
+        order-not-found: [[arg-1, "morphir/SDK:string#string"]]

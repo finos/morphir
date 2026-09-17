@@ -1,0 +1,8 @@
+formatVersion: 4
+name: quantity
+def:
+  Public:
+    doc: " Represents a quantity of items.\n"
+    TypeAliasDefinition:
+      typeParams: []
+      typeExp: morphir/SDK:basics#int

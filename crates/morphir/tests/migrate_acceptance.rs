@@ -226,6 +226,88 @@ fn concrete_v3_json_and_yaml_convert_in_both_directions() {
     assert_eq!(converted, original);
 }
 
+/// Every regular file under `root`, as `/`-separated paths relative to it, sorted.
+fn relative_files(root: &Path) -> Vec<String> {
+    fn walk(dir: &Path, prefix: &str, out: &mut Vec<String>) {
+        let mut entries: Vec<_> = std::fs::read_dir(dir)
+            .unwrap_or_else(|error| panic!("{} is not readable: {error}", dir.display()))
+            .map(|entry| entry.unwrap())
+            .collect();
+        entries.sort_by_key(std::fs::DirEntry::file_name);
+        for entry in entries {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let relative = if prefix.is_empty() {
+                name
+            } else {
+                format!("{prefix}/{name}")
+            };
+            if entry.file_type().unwrap().is_dir() {
+                walk(&entry.path(), &relative, out);
+            } else {
+                out.push(relative);
+            }
+        }
+    }
+
+    let mut out = Vec::new();
+    walk(root, "", &mut out);
+    out.sort();
+    out
+}
+
+/// The canonical document tree is the reference binding's, file for file and byte for byte.
+/// The fixture is the TypeScript binding's `writeTree` (with the YAML profile and the default
+/// path budget) over the same migrated v4 model, laid out by `writeTreeToDirectory`; see
+/// `docs/spec/ir/schemas/v4/document-tree-files.md` and MCK cases document-tree-0001 to 0009.
+/// Regenerate it with `mise run fixtures:tree-acceptance`.
+#[test]
+fn migrated_document_tree_matches_the_reference_writer_file_for_file() {
+    let temp = TempDir::new().unwrap();
+    let tree = temp.path().join("greeting.morphir-dist");
+    let fixture =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/tree/greeting-example");
+
+    assert_success(&migrate(&greeting_v3(), &tree, &["--output-layout", "vfs"]));
+
+    let actual_paths = relative_files(&tree);
+    let expected_paths = relative_files(&fixture);
+    assert_eq!(
+        actual_paths, expected_paths,
+        "the CLI and the reference writer disagree on which files the tree holds"
+    );
+
+    for relative in &expected_paths {
+        let actual = std::fs::read_to_string(tree.join(relative))
+            .unwrap()
+            .replace("\r\n", "\n");
+        let expected = std::fs::read_to_string(fixture.join(relative))
+            .unwrap()
+            .replace("\r\n", "\n");
+        if actual == expected {
+            continue;
+        }
+        match actual
+            .lines()
+            .zip(expected.lines())
+            .enumerate()
+            .find(|(_, (a, e))| a != e)
+        {
+            Some((index, (a, e))) => panic!(
+                "{relative} line {}: the CLI wrote\n  {a}\nthe reference writer wrote\n  {e}",
+                index + 1
+            ),
+            // `.lines()` ignores a trailing newline, so two texts that agree on every line can
+            // still differ in trailing newline count; byte lengths do distinguish them.
+            None => panic!(
+                "{relative}: the two texts agree line-for-line but are not equal \
+                 — likely a trailing-newline difference: CLI {} bytes, reference {} bytes",
+                actual.len(),
+                expected.len()
+            ),
+        }
+    }
+}
+
 /// The canonical YAML style is the reference binding's, byte for byte. The fixture is
 /// the TypeScript binding's `writeYaml` over the value tree of the same migration (see
 /// `docs/spec/ir/schemas/v4/yaml-profile.md`); if this test fails, the two writers

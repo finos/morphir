@@ -275,6 +275,16 @@ run = [
     "bun run tools/gen-yaml-acceptance-fixture.ts .dev/out/migrate/greeting.v4.json crates/morphir/tests/fixtures/yaml/greeting-example.v4.yaml",
 ]
 
+[tasks."fixtures:tree-acceptance"]
+description = "Regenerate the greeting-example document-tree acceptance fixture from the reference writer"
+# Both sides start from the same model: the CLI migrates the published v3
+# example to v4 JSON, and the reference writer lays that same JSON out as a
+# tree, so the fixture pins the layout rather than a migration difference.
+run = [
+    "cargo run -p morphir -- migrate website/static/ir/examples/v3/greeting-example.json --output .dev/out/migrate/greeting.v4.json",
+    "bun run tools/gen-yaml-acceptance-fixture.ts --tree .dev/out/migrate/greeting.v4.json crates/morphir/tests/fixtures/tree/greeting-example",
+]
+
 [tasks."tools:install"]
 description = "Install dependencies for the Bun specification tooling"
 run = "bun install"

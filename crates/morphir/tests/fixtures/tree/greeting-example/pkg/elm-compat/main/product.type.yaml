@@ -1,0 +1,13 @@
+formatVersion: 4
+name: product
+def:
+  Public:
+    doc: " A product with price information.\n"
+    TypeAliasDefinition:
+      typeParams: []
+      typeExp:
+        Record:
+          fields:
+            id: elm-compat:main#product-id
+            name: morphir/SDK:string#string
+            price: morphir/SDK:basics#float
