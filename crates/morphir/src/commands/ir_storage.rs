@@ -468,6 +468,37 @@ mod tests {
     }
 
     #[test]
+    fn probe_external_reports_the_ambiguity_of_a_tree_with_two_manifests() {
+        // A directory holding both `manifest.json` and `manifest.yaml` is still a
+        // document-tree root, so `is_document_tree_root` says yes and the probe
+        // goes on to `resolve_input`, whose own diagnostic names the ambiguity.
+        // Calling it a compile-output directory instead would replace that with
+        // the far less useful "has no Morphir IR".
+        //
+        // Writing the tree twice would not build one: `write_v4` prunes every
+        // manifest name before it writes, so the second write removes the first
+        // manifest. An ambiguous root is something a hand (or a stray copy)
+        // makes, which is how this one is made.
+        let temp = tempfile::tempdir().unwrap();
+        let json = IrStorage::from_config(Some(&section("document-tree", "json"))).unwrap();
+        write_v4(temp.path(), &json, &sample_ir()).unwrap();
+        let tree = temp.path().join("morphir-ir");
+        std::fs::copy(tree.join("manifest.json"), tree.join("manifest.yaml")).unwrap();
+        assert!(tree.join("manifest.json").is_file());
+        assert!(tree.join("manifest.yaml").is_file());
+
+        let error = probe_external(&tree).unwrap_err();
+
+        let message = error.to_string();
+        assert!(
+            message.contains("morphir::ir::detection::ambiguous_manifest"),
+            "{message}"
+        );
+        assert!(message.contains("manifest.json"), "{message}");
+        assert!(message.contains("manifest.yaml"), "{message}");
+    }
+
+    #[test]
     fn probe_external_finds_the_single_file_artifact_in_a_manifest_less_directory() {
         // A `.dest` directory (or any older compile-output directory) is
         // not itself a document-tree root: it holds `morphir-ir.json`

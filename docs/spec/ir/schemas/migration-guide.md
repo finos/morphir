@@ -606,7 +606,7 @@ What changed from the layout the CLI wrote before 0.4.0-alpha.7:
 - **The distribution manifest records `pathBudget`** — the longest physical path the tree may hold, counted
   from the distribution root, extension included. The CLI writes 4000 unless told otherwise. It is a required
   member, and the reason writing a tree can fail at all (document-tree page, "Write-time truncation and its
-  failure"; decision 0014).
+  failure"; decision 0012, which keeps `pathBudget` required).
 - **A `Library` or `Specs` distribution lists its dependencies by name** in the distribution manifest, with
   each dependency's content in its own `deps/` directory rather than inline.
 - **An `Application`'s dependencies are package definitions with a home in the tree**, written under `deps/`
@@ -616,7 +616,8 @@ What changed from the layout the CLI wrote before 0.4.0-alpha.7:
 - **`doc` and `access` stay inside each `def`/`spec` file**, not hoisted into the module manifest
   (document-tree page, "access (module manifest)" and "doc").
 - **File stems are escaped the way the reference binding escapes them**, and a stem the path budget had to
-  truncate is recorded in the module manifest's `fileNames`, which is present only when something was cut.
+  truncate is recorded in the module manifest's `fileNames`, which is present only when something was cut
+  (decision 0012, which defines the stem grammar, its truncation suffix and `fileNames`).
 - **A module specification carrying `annotations` is still refused** — a tree has nowhere to put them — now
   as `morphir::ir::document_tree::invalid_distribution_shape`.
 
@@ -674,8 +675,9 @@ aliases.
 Two refusals are new rather than renamed: `morphir::ir::detection::linked_manifest` above, and
 `morphir::ir::document_tree::invalid_path` for a tree nested past 256 directory levels.
 
-This layout and its refusals are decided in decisions 0012, 0014 and 0015, and pinned by MCK cases
-document-tree-0001 to 0009 (finos/morphir-rust#160).
+This layout and its refusals are decided in decision 0012 (the file-stem definition, its truncation suffix,
+`fileNames`, and `pathBudget` staying required) and decision 0015 (the nested dependency directory and its
+version segment), and pinned by MCK cases document-tree-0001 to 0009 (finos/morphir-rust#160).
 
 ---
 
