@@ -1,0 +1,1148 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "cases": [
+    {
+      "kind": "scenario",
+      "id": "local-registry.publication.two-writers-one-predecessor",
+      "family": "publication",
+      "description": "Writer A holds the lock first. Distinct release requests share the exact predecessor; B conflicts after A commits, with no automatic retry.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          },
+          {
+            "id": "machine-b",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "writer-a",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "asset",
+            "asset": "result-writer-a",
+            "assertions": [
+              {
+                "pointer": "/ok",
+                "equals": true
+              },
+              {
+                "pointer": "/kind",
+                "equals": "publication"
+              },
+              {
+                "pointer": "/outcome",
+                "equals": "committed"
+              }
+            ]
+          },
+          "name": "publish-library",
+          "input": {
+            "registry": "finance",
+            "bundle": {
+              "asset": "bundle-publish-a"
+            },
+            "record": {
+              "kind": "asset",
+              "asset": "record-publish-a"
+            },
+            "envelope": {
+              "kind": "asset",
+              "asset": "envelope-publish-a"
+            },
+            "predecessor": {
+              "kind": "asset",
+              "asset": "predecessor-one"
+            },
+            "proposal": {
+              "asset": "proposal-publish-a"
+            }
+          }
+        },
+        {
+          "id": "writer-b",
+          "actor": "machine-b",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "asset",
+            "asset": "result-writer-b",
+            "assertions": [
+              {
+                "pointer": "/ok",
+                "equals": false
+              },
+              {
+                "pointer": "/diagnostic/category",
+                "equals": "domain-rejection"
+              },
+              {
+                "pointer": "/diagnostic/code",
+                "equals": "publication-conflict"
+              },
+              {
+                "pointer": "/diagnostic/phase",
+                "equals": "publication"
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/kind",
+                "equals": "revision"
+              }
+            ]
+          },
+          "name": "publish-library",
+          "input": {
+            "registry": "finance",
+            "bundle": {
+              "asset": "bundle-publish-b"
+            },
+            "record": {
+              "kind": "asset",
+              "asset": "record-publish-b"
+            },
+            "envelope": {
+              "kind": "asset",
+              "asset": "envelope-publish-b"
+            },
+            "predecessor": {
+              "kind": "asset",
+              "asset": "predecessor-one"
+            },
+            "proposal": {
+              "asset": "proposal-publish-b"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "writer-a",
+          "barriers": [
+            {
+              "operation": "writer-a",
+              "boundary": "after",
+              "step": "predecessor-check",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "writer-a",
+            "boundary": "after",
+            "step": "predecessor-check",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "start",
+          "operation": "writer-b",
+          "barriers": [
+            {
+              "operation": "writer-b",
+              "boundary": "before",
+              "step": "writer-lock",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "writer-b",
+            "boundary": "before",
+            "step": "writer-lock",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "writer-a",
+            "boundary": "after",
+            "step": "predecessor-check",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "writer-a"
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "writer-b",
+            "boundary": "before",
+            "step": "writer-lock",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "writer-b"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-publication-two-writers-one-predecessor",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/registries/0/reserved",
+            "equals": {
+              "targets": "2",
+              "snapshot": "2",
+              "timestamp": "2"
+            }
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          },
+          {
+            "actor": "machine-b",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.publication.existing-release-conflict",
+      "family": "publication",
+      "description": "Different manifest/content identity under existing ReleaseId fails without overwrite.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "publish",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "asset",
+            "asset": "result-release-conflict",
+            "assertions": [
+              {
+                "pointer": "/ok",
+                "equals": false
+              },
+              {
+                "pointer": "/diagnostic/category",
+                "equals": "domain-rejection"
+              },
+              {
+                "pointer": "/diagnostic/code",
+                "equals": "release-conflict"
+              },
+              {
+                "pointer": "/diagnostic/phase",
+                "equals": "publication"
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/kind",
+                "equals": "release-conflict"
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/release",
+                "equals": {
+                  "packagePath": "example.com/finance/eligibility",
+                  "version": "1.2.0"
+                }
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/existingManifest",
+                "equals": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c"
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/existingContent",
+                "equals": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            ]
+          },
+          "name": "publish-library",
+          "input": {
+            "registry": "finance",
+            "bundle": {
+              "asset": "bundle-existing-conflict"
+            },
+            "record": {
+              "kind": "asset",
+              "asset": "record-existing-conflict"
+            },
+            "envelope": {
+              "kind": "asset",
+              "asset": "envelope-existing-conflict"
+            },
+            "predecessor": {
+              "kind": "asset",
+              "asset": "predecessor-one"
+            },
+            "proposal": {
+              "asset": "proposal-existing-conflict"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "publish",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "publish"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-publication-existing-release-conflict",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/registries/0/reserved",
+            "equals": {
+              "targets": "1",
+              "snapshot": "1",
+              "timestamp": "1"
+            }
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.publication.idempotent-preserves-yank",
+      "family": "publication",
+      "description": "Identical release retry verifies current policy, returns idempotent and leaves signed status and timestamp unchanged.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-yanked"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "retry",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "asset",
+            "asset": "result-idempotent-yanked",
+            "assertions": [
+              {
+                "pointer": "/ok",
+                "equals": true
+              },
+              {
+                "pointer": "/kind",
+                "equals": "publication"
+              },
+              {
+                "pointer": "/outcome",
+                "equals": "idempotent"
+              }
+            ]
+          },
+          "name": "publish-library",
+          "input": {
+            "registry": "finance",
+            "bundle": {
+              "asset": "bundle-existing"
+            },
+            "record": {
+              "kind": "asset",
+              "asset": "record-existing"
+            },
+            "envelope": {
+              "kind": "asset",
+              "asset": "envelope-existing"
+            },
+            "predecessor": {
+              "kind": "asset",
+              "asset": "predecessor-yanked"
+            },
+            "proposal": {
+              "asset": "proposal-existing"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "retry",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "retry"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-publication-idempotent-preserves-yank",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/registries/0/reserved",
+            "equals": {
+              "targets": "1",
+              "snapshot": "1",
+              "timestamp": "1"
+            }
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.publication.crash-before-timestamp",
+      "family": "publication",
+      "description": "Terminate at the fixed persistence boundary; restart keeps the complete prior timestamp view and never invents an operation result.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "interrupted",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "terminated",
+            "checkpoint": {
+              "operation": "interrupted",
+              "boundary": "after",
+              "step": "retained-timestamp-install",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            }
+          },
+          "name": "publish-library",
+          "input": {
+            "registry": "finance",
+            "bundle": {
+              "asset": "bundle-publish-a"
+            },
+            "record": {
+              "kind": "asset",
+              "asset": "record-publish-a"
+            },
+            "envelope": {
+              "kind": "asset",
+              "asset": "envelope-publish-a"
+            },
+            "predecessor": {
+              "kind": "asset",
+              "asset": "predecessor-one"
+            },
+            "proposal": {
+              "asset": "proposal-publish-a"
+            }
+          }
+        },
+        {
+          "id": "inspect",
+          "actor": "machine-a",
+          "at": "2027-01-02T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "asset",
+            "asset": "result-crash-before-timestamp",
+            "assertions": [
+              {
+                "pointer": "/ok",
+                "equals": true
+              },
+              {
+                "pointer": "/kind",
+                "equals": "registry-refreshed"
+              },
+              {
+                "pointer": "/registry",
+                "equals": "finance"
+              }
+            ]
+          },
+          "name": "refresh-library-registry",
+          "input": {
+            "registry": "finance"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "interrupted",
+          "barriers": [
+            {
+              "operation": "interrupted",
+              "boundary": "after",
+              "step": "retained-timestamp-install",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "interrupted",
+            "boundary": "after",
+            "step": "retained-timestamp-install",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "terminate",
+          "checkpoint": {
+            "operation": "interrupted",
+            "boundary": "after",
+            "step": "retained-timestamp-install",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "restart-client",
+          "actor": "machine-a"
+        },
+        {
+          "kind": "start",
+          "operation": "inspect",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "inspect"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-publication-crash-before-timestamp",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/registries/0/reserved",
+            "equals": {
+              "targets": "2",
+              "snapshot": "2",
+              "timestamp": "2"
+            }
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-02T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.publication.crash-after-timestamp",
+      "family": "publication",
+      "description": "Terminate immediately after timestamp replacement and before the final directory flush. A process restart observes the complete visible successor without claiming power-loss durability.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "interrupted",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "terminated",
+            "checkpoint": {
+              "operation": "interrupted",
+              "boundary": "after",
+              "step": "timestamp-replace",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            }
+          },
+          "name": "publish-library",
+          "input": {
+            "registry": "finance",
+            "bundle": {
+              "asset": "bundle-publish-a"
+            },
+            "record": {
+              "kind": "asset",
+              "asset": "record-publish-a"
+            },
+            "envelope": {
+              "kind": "asset",
+              "asset": "envelope-publish-a"
+            },
+            "predecessor": {
+              "kind": "asset",
+              "asset": "predecessor-one"
+            },
+            "proposal": {
+              "asset": "proposal-publish-a"
+            }
+          }
+        },
+        {
+          "id": "inspect",
+          "actor": "machine-a",
+          "at": "2027-01-02T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "asset",
+            "asset": "result-crash-after-timestamp",
+            "assertions": [
+              {
+                "pointer": "/ok",
+                "equals": true
+              },
+              {
+                "pointer": "/kind",
+                "equals": "registry-refreshed"
+              },
+              {
+                "pointer": "/registry",
+                "equals": "finance"
+              }
+            ]
+          },
+          "name": "refresh-library-registry",
+          "input": {
+            "registry": "finance"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "interrupted",
+          "barriers": [
+            {
+              "operation": "interrupted",
+              "boundary": "after",
+              "step": "timestamp-replace",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "interrupted",
+            "boundary": "after",
+            "step": "timestamp-replace",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "terminate",
+          "checkpoint": {
+            "operation": "interrupted",
+            "boundary": "after",
+            "step": "timestamp-replace",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "restart-client",
+          "actor": "machine-a"
+        },
+        {
+          "kind": "start",
+          "operation": "inspect",
+          "barriers": []
+        },
+        {
+          "kind": "join",
+          "operation": "inspect"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-publication-crash-after-timestamp",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/registries/0/reserved",
+            "equals": {
+              "targets": "2",
+              "snapshot": "2",
+              "timestamp": "2"
+            }
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-02T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.publication.flush-outcome-uncertain",
+      "family": "publication",
+      "description": "A normalized final directory flush failure after timestamp replacement reports uncertainty and leaves the visible complete successor; no rollback.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "publish",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "asset",
+            "asset": "result-flush-uncertain",
+            "assertions": [
+              {
+                "pointer": "/ok",
+                "equals": false
+              },
+              {
+                "pointer": "/diagnostic/category",
+                "equals": "operational-failure"
+              },
+              {
+                "pointer": "/diagnostic/code",
+                "equals": "commit-outcome-uncertain"
+              },
+              {
+                "pointer": "/diagnostic/phase",
+                "equals": "commit"
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/kind",
+                "equals": "uncertain"
+              },
+              {
+                "pointer": "/diagnostic/witnesses/0/registry",
+                "equals": "finance"
+              }
+            ]
+          },
+          "name": "publish-library",
+          "input": {
+            "registry": "finance",
+            "bundle": {
+              "asset": "bundle-publish-a"
+            },
+            "record": {
+              "kind": "asset",
+              "asset": "record-publish-a"
+            },
+            "envelope": {
+              "kind": "asset",
+              "asset": "envelope-publish-a"
+            },
+            "predecessor": {
+              "kind": "asset",
+              "asset": "predecessor-one"
+            },
+            "proposal": {
+              "asset": "proposal-publish-a"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "publish",
+          "barriers": [
+            {
+              "operation": "publish",
+              "boundary": "before",
+              "step": "timestamp-directory-flush",
+              "subject": {
+                "kind": "repository",
+                "registry": "finance"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "publish",
+            "boundary": "before",
+            "step": "timestamp-directory-flush",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "inject-fault",
+          "checkpoint": {
+            "operation": "publish",
+            "boundary": "before",
+            "step": "timestamp-directory-flush",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          },
+          "action": "flush",
+          "reason": "no-space"
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "publish",
+            "boundary": "before",
+            "step": "timestamp-directory-flush",
+            "subject": {
+              "kind": "repository",
+              "registry": "finance"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "publish"
+        },
+        {
+          "kind": "restart-client",
+          "actor": "machine-a"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-publication-flush-outcome-uncertain",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

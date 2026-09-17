@@ -1,0 +1,796 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "status": "candidate-definitions",
+  "schema": "../schemas/local-registry-case.schema.json",
+  "fixtures": [
+    "fixtures/local-registry/cases/bounds.json",
+    "fixtures/local-registry/cases/filesystem.json",
+    "fixtures/local-registry/cases/publication.json",
+    "fixtures/local-registry/cases/recovery.json",
+    "fixtures/local-registry/cases/replay.json",
+    "fixtures/local-registry/cases/trust.json",
+    "fixtures/local-registry/cases/wire.json"
+  ],
+  "assets": [
+    {
+      "id": "view-one",
+      "kind": "bound",
+      "type": "tree",
+      "purpose": "Complete valid registry view: root, timestamp, snapshot and targets version 1; original root through 2030-01-01, timestamp expires 2027-02-01T00:00:00Z, snapshot/targets through 2028-01-01. Active consumer 1.0.0 and provider 1.2.0, exact existing two-libraries manifest and IR bytes; valid distinct repository role keys and separate publisher keys. Preserve every numbered historical file.",
+      "path": "fixtures/local-registry/assets/signed/view-one.json",
+      "length": "30342",
+      "sha256": "sha256:16c1c8994db81ef0da1b2ee11200734595f0a2192d140da114f262c9231e64a2"
+    },
+    {
+      "id": "empty-cache",
+      "kind": "bound",
+      "type": "tree",
+      "purpose": "Empty ordinary cache tree; contains no metadata, package bytes or protected authorization.",
+      "path": "fixtures/local-registry/assets/signed/empty-cache.json",
+      "length": "20",
+      "sha256": "sha256:364b37738032a28a72829f4d2192b70bd9353c9ee8dddfc5b70c2785f995d6ac"
+    },
+    {
+      "id": "configuration-one",
+      "kind": "bound",
+      "type": "configuration",
+      "purpose": "Explicit out-of-band original repository identity and exact root-1 pin, alias finance mapped to registry root finance; bootstrap root bytes supplied separately. No authority comes from lock or registry.",
+      "path": "fixtures/local-registry/assets/signed/configuration-one.json",
+      "length": "4699",
+      "sha256": "sha256:6f8bcc7d4ec7bded4f162421ea95a43032aa1ef44a241901b4c964da76394a95"
+    },
+    {
+      "id": "policy-one",
+      "kind": "bound",
+      "type": "bytes",
+      "purpose": "Exact valid LibraryTrustPolicy bytes; repository grants example.com/finance; publisher rule grants same namespace using publisher-a and publisher-b, threshold 1; envelope has both signatures. continuedUse previous-authorization.",
+      "path": "fixtures/local-registry/assets/signed/trust-policy.json",
+      "length": "737",
+      "sha256": "sha256:c7d101fc34418695b1fe4b21ff5383328663102777592e20bc4a4ba004d7e29b"
+    },
+    {
+      "id": "lock-two",
+      "kind": "bound",
+      "type": "bytes",
+      "purpose": "Complete exact full lock bytes for view-one, original graph root loan-rules 1.0.0 and eligibility 1.2.0. Real evidence digests, canonical acquisition/evidence presentation matching unsigned worked shapes. All referenced files exist.",
+      "path": "fixtures/local-registry/assets/signed/morphir.lock",
+      "length": "4064",
+      "sha256": "sha256:5b310413fbedaacfdce521220721e2646e7cbdd08b89d1dbd4e8aeb08e3deb75"
+    },
+    {
+      "id": "observations-wire-valid-two-node",
+      "kind": "bound",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission.",
+      "path": "fixtures/local-registry/expected/observations-wire-valid-two-node.json",
+      "length": "8921",
+      "sha256": "sha256:ac4da5a6af758ad3b80f74761d419afce6bf900eff005a50fbc235aa9792e2ec"
+    },
+    {
+      "id": "lock-duplicate-acquisition",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "lock-two with an exact duplicate of acquisitions[0] appended at index 2; no other change."
+    },
+    {
+      "id": "observations-wire-duplicate-acquisition",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "lock-missing-acquisition",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "lock-two with acquisitions[0], the provider, removed; no other change."
+    },
+    {
+      "id": "observations-wire-missing-acquisition",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "lock-orphan-acquisition",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "lock-two with one extra acquisition for eligibility 1.3.0 outside the graph, with unique record and existing valid references."
+    },
+    {
+      "id": "observations-wire-orphan-acquisition",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "lock-unsupported-source",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "lock-two with acquisitions[0].source.kind archive, keeping other input bytes valid."
+    },
+    {
+      "id": "observations-wire-unsupported-source",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "lock-absolute-path",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "lock-two with acquisitions[0].source.path /tmp/eligibility."
+    },
+    {
+      "id": "observations-wire-absolute-path",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "lock-unknown-capability",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "lock-two with requiredCapabilities[3] equal future-signatures."
+    },
+    {
+      "id": "observations-wire-unknown-capability",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "lock-missing-evidence-reference",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "lock-two with acquisitions[0].statement equal absent-statement, retaining otherwise complete evidence."
+    },
+    {
+      "id": "observations-wire-missing-evidence-reference",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-record-identity-mismatch",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete freshly signed view-one variant: consumer registry record has irPackageName example/wrong, also reflected in its valid statement; manifest and lock retain example/loan-rules. Record/envelope hashes and lock evidence bind actual bytes; only cross-document identity is wrong."
+    },
+    {
+      "id": "lock-record-identity-mismatch",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "lock-two graph and source identities, with exact evidence/record hashes for view-record-identity-mismatch."
+    },
+    {
+      "id": "observations-wire-record-manifest-identity",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-namespace-sibling-prefix",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Valid registry for example.com/finance-other/loan-rules, outside repository namespace example.com/finance. All pins, signatures and bytes otherwise valid."
+    },
+    {
+      "id": "lock-namespace-sibling-prefix",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Complete lock pins view-namespace-sibling-prefix exactly; graph matches that variant's release identities."
+    },
+    {
+      "id": "observations-trust-namespace-sibling-prefix",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-unauthorized-role-reuse",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "The only consumer DSSE signature is by the repository targets role key, which is absent from the publisher rule. TUF authorization remains valid."
+    },
+    {
+      "id": "lock-unauthorized-role-reuse",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Complete lock pins view-unauthorized-role-reuse exactly; graph matches that variant's release identities."
+    },
+    {
+      "id": "observations-trust-unauthorized-role-reuse",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-wrong-dsse-type",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Consumer DSSE payloadType application/vnd.example.other+json with a valid Ed25519 signature over that exact wrong type. Valid TUF hashes and lock pins."
+    },
+    {
+      "id": "lock-wrong-dsse-type",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Complete lock pins view-wrong-dsse-type exactly; graph matches that variant's release identities."
+    },
+    {
+      "id": "observations-trust-wrong-dsse-type",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-duplicate-signer",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Consumer envelope has two signatures and different keyid hints by publisher-a only; publisher threshold is two distinct raw keys."
+    },
+    {
+      "id": "lock-duplicate-signer",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Complete lock pins view-duplicate-signer exactly; graph matches that variant's release identities."
+    },
+    {
+      "id": "policy-two-keys",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "policy-one with threshold 2 and keys publisher-a and publisher-b; no other change."
+    },
+    {
+      "id": "observations-trust-duplicate-signer",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-tampered-signature",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-one variant: alter one byte of each consumer publisher signature without breaking base64 or length. TUF target hash, length and lock pins authenticate the tampered envelope."
+    },
+    {
+      "id": "lock-tampered-signature",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Full lock pinning view-tampered-signature exactly."
+    },
+    {
+      "id": "observations-trust-statement-tamper",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "observations-trust-machine-a-expired-offline",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "copied-ordinary-cache",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete ordinary package and metadata cache matching machine A after fresh view-one restore. Contains no protected security state or grants. Exact trees fixed, not captured from testee."
+    },
+    {
+      "id": "observations-trust-machine-b-copied-cache",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "policy-strict",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "policy-one with continuedUse fresh-metadata; otherwise exact same effective authority."
+    },
+    {
+      "id": "observations-trust-strict-freshness",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "policy-withdraw-repository",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "policy-one with repositories empty; publisher keys unchanged."
+    },
+    {
+      "id": "observations-trust-repository-withdrawal",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "policy-withdraw-publisher",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "policy-one with publisherRules empty; repository authority unchanged."
+    },
+    {
+      "id": "observations-trust-publisher-withdrawal",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "policy-surviving-key",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "policy-one publisher rule retains only publisher-b, threshold 1. Both original signatures verify and were authorized at grant creation."
+    },
+    {
+      "id": "observations-trust-surviving-key",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-revoked",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete successor to view-one: timestamp/snapshot/targets version 2, fresh through 2028-01-01; consumer 1.0.0 revoked, provider active; immutable bytes and historical view retained."
+    },
+    {
+      "id": "result-a-learn-revoked",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed registry-refreshed result identifying exact accepted timestamp and snapshot bytes."
+    },
+    {
+      "id": "result-b-learn-revoked",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed registry-refreshed result identifying exact accepted timestamp and snapshot bytes."
+    },
+    {
+      "id": "observations-trust-known-revocation-both-machines",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "observations-trust-unknown-revocation",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "observations-recovery-lost-state",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "observations-recovery-corrupt-state",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "observations-trust-expiry-boundary",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "observations-trust-clock-rollback",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-two",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete fresh version-2 successor authorizing identical immutable consumer/provider bytes, preserving all view-one historical files. Timestamp/snapshot/targets expiry 2028-01-01."
+    },
+    {
+      "id": "observations-replay-newer-metadata-same-lock",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-with-eligibility-13",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete fresh successor with provider 1.3.0 added, retaining active 1.2.0 and consumer. All historical view-one files and immutable bytes remain."
+    },
+    {
+      "id": "observations-replay-exact-after-new-release",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-with-eligibility-13-missing",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-with-eligibility-13 tree, except provider 1.2.0 ir.json is intentionally absent. All manifests, evidence, 1.3.0 and consumer bytes remain valid. This intentional omission or corruption is part of a bound complete tree, not a missing fixture asset."
+    },
+    {
+      "id": "observations-replay-exact-missing-no-substitution",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed final named-output projection after consumer after-bundle-ready and provider failure. Consumer verified cache bundle and one eligible durable consumer grant exist; provider has neither completed promotion nor eligible grant. Include exact public registry inventory, normalized single-bundle cache inventory, empty destination, unchanged lock bytes, and required normalized root/floor/revocation/marker state. Exclude optional metadata caches, private indexes and unfinished staging. Bind all digests before admission."
+    },
+    {
+      "id": "view-with-eligibility-13-corrupt",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-with-eligibility-13 tree, except provider 1.2.0 ir.json is one fixed byte different, same length. All manifests, evidence, 1.3.0 and consumer bytes remain valid. This intentional omission or corruption is part of a bound complete tree, not a missing fixture asset."
+    },
+    {
+      "id": "result-corrupt-12",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed failure including every signed-asset-dependent digest; validate against Result and the fixed assertions before execution."
+    },
+    {
+      "id": "observations-replay-exact-corrupt-no-substitution",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed final named-output projection after consumer after-bundle-ready and provider failure. Consumer verified cache bundle and one eligible durable consumer grant exist; provider has neither completed promotion nor eligible grant. Include exact public registry inventory, normalized single-bundle cache inventory, empty destination, unchanged lock bytes, and required normalized root/floor/revocation/marker state. Exclude optional metadata caches, private indexes and unfinished staging. Bind all digests before admission."
+    },
+    {
+      "id": "view-missing-evidence",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-one tree except metadata/1.targets.json intentionally absent; lock still references it."
+    },
+    {
+      "id": "observations-trust-missing-evidence-file",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-root-two",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete fresh version-2 view with root 2, signed by both old and new root thresholds, rotated timestamp/snapshot role keys with valid TUF reset context. Preserve original root-1 bytes and full historical view-one."
+    },
+    {
+      "id": "result-rotate",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed refreshed result for the exact view named in this scenario."
+    },
+    {
+      "id": "observations-trust-root-rotation",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "result-learn-two",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed refreshed result for the exact view named in this scenario."
+    },
+    {
+      "id": "observations-trust-metadata-rollback",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "configuration-two",
+      "kind": "pending",
+      "type": "configuration",
+      "purpose": "Independently provision fixed original root-1 repository identity with exact bootstrap root-2 bytes and version; same finance binding. It does not recompute identity from root 2."
+    },
+    {
+      "id": "observations-trust-later-bootstrap-historical-continuity",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "policy-root-two",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "policy-one with explicit bootstrapRoot pin/version 2 and unchanged original repository identity."
+    },
+    {
+      "id": "view-root-two-missing-original",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-root-two but intentionally omit metadata/1.root.json; current root 2 remains fresh and authentic. Original identity alone does not supply historical root bytes."
+    },
+    {
+      "id": "observations-trust-historical-root-missing",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "predecessor-one",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Exact Revision JSON with kind timestamp and digest of view-one metadata/timestamp.json bytes."
+    },
+    {
+      "id": "predecessor-two",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Exact Revision JSON with kind timestamp and digest of proposal-publish-a successor metadata/timestamp.json bytes."
+    },
+    {
+      "id": "bundle-publish-a",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete fixed unpacked bundle for A new eligibility 1.3.0 release, valid fresh publication policy and immutable objects. Proposed complete successor targets/snapshot/timestamp versions 2; preserve current associations/statuses, expiry 2028-01-01."
+    },
+    {
+      "id": "record-publish-a",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Canonical record plus LF for publish-a, exact bundle and statement pins."
+    },
+    {
+      "id": "envelope-publish-a",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Exact valid DSSE bytes for publish-a and authorized test publisher keys."
+    },
+    {
+      "id": "proposal-publish-a",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Only fixed complete proposed signed targets, snapshot and timestamp metadata with numbered and current timestamp bytes: A new eligibility 1.3.0 release, valid fresh publication policy and immutable objects. Proposed complete successor targets/snapshot/timestamp versions 2; preserve current associations/statuses, expiry 2028-01-01."
+    },
+    {
+      "id": "bundle-publish-b",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete fixed unpacked bundle for A distinct eligibility 1.4.0 release, same predecessor-one, proposed role versions 2 and expiry 2028-01-01. It never replaces publish-a."
+    },
+    {
+      "id": "record-publish-b",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Canonical record plus LF for publish-b, exact bundle and statement pins."
+    },
+    {
+      "id": "envelope-publish-b",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Exact valid DSSE bytes for publish-b and authorized test publisher keys."
+    },
+    {
+      "id": "proposal-publish-b",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Only fixed complete proposed signed targets, snapshot and timestamp metadata with numbered and current timestamp bytes: A distinct eligibility 1.4.0 release, same predecessor-one, proposed role versions 2 and expiry 2028-01-01. It never replaces publish-a."
+    },
+    {
+      "id": "result-writer-a",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed publication result; exact timestamp digest is that of supplied proposal or current committed view for idempotence."
+    },
+    {
+      "id": "result-writer-b",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed failure including every signed-asset-dependent digest; validate against Result and the fixed assertions before execution."
+    },
+    {
+      "id": "observations-publication-two-writers-one-predecessor",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "bundle-existing-conflict",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Fixed valid bundle using existing eligibility ReleaseId 1.2.0 but different declared payload bytes and matching manifest/content identity."
+    },
+    {
+      "id": "record-existing-conflict",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Valid changed record for bundle-existing-conflict under existing ReleaseId."
+    },
+    {
+      "id": "envelope-existing-conflict",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Valid authorized DSSE statement for bundle-existing-conflict."
+    },
+    {
+      "id": "proposal-existing-conflict",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete signed proposed successor corresponding to conflicting existing release. Rejected before reservation/installation."
+    },
+    {
+      "id": "result-release-conflict",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed failure including every signed-asset-dependent digest; validate against Result and the fixed assertions before execution."
+    },
+    {
+      "id": "observations-publication-existing-release-conflict",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "view-yanked",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-one target structure at version 1 with provider status yanked, valid signatures and retained files. All immutable record/envelope/bundle bytes identical to original view-one."
+    },
+    {
+      "id": "bundle-existing",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Existing original eligibility 1.2.0 bundle exact bytes."
+    },
+    {
+      "id": "record-existing",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Existing original eligibility 1.2.0 canonical record exact bytes."
+    },
+    {
+      "id": "envelope-existing",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Existing original eligibility 1.2.0 DSSE envelope exact bytes."
+    },
+    {
+      "id": "predecessor-yanked",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Exact Revision JSON pinning view-yanked timestamp bytes."
+    },
+    {
+      "id": "proposal-existing",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Proposed complete successor for identical existing eligibility bytes. Must not be installed for idempotence; existing yanked status remains."
+    },
+    {
+      "id": "result-idempotent-yanked",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed publication result; exact timestamp digest is that of supplied proposal or current committed view for idempotence."
+    },
+    {
+      "id": "observations-publication-idempotent-preserves-yank",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "result-crash-before-timestamp",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed refreshed result for the exact view named in this scenario."
+    },
+    {
+      "id": "observations-publication-crash-before-timestamp",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed surviving registry view: view-one current timestamp; proposal-publish-a numbered metadata and immutable objects survive as unreferenced files. Reserved role versions 2 remain burned. No readiness or publication result for terminated operation."
+    },
+    {
+      "id": "result-crash-after-timestamp",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed refreshed result for the exact view named in this scenario."
+    },
+    {
+      "id": "observations-publication-crash-after-timestamp",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed surviving registry view: proposal-publish-a current timestamp and complete successor. Reserved role versions 2 remain burned. No readiness or publication result for terminated operation."
+    },
+    {
+      "id": "result-flush-uncertain",
+      "kind": "pending",
+      "type": "result",
+      "purpose": "Complete fixed failure including every signed-asset-dependent digest; validate against Result and the fixed assertions before execution."
+    },
+    {
+      "id": "observations-publication-flush-outcome-uncertain",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete visible successor proposal-publish-a after process restart; this test injects flush failure, not power loss. Public current timestamp is complete successor, reserved versions 2, no automatic rollback or success report."
+    },
+    {
+      "id": "view-fs-symlink",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-one including the exact negative filesystem setup: Replace provider ir.json with a symlink to a fixed regular file outside its bundle but within the isolated fixture root; reject without following it."
+    },
+    {
+      "id": "observations-filesystem-symlink",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed final named-output projection after consumer after-bundle-ready and provider failure. Consumer verified cache bundle and one eligible durable consumer grant exist; provider has neither completed promotion nor eligible grant. Include exact public registry inventory, normalized single-bundle cache inventory, empty destination, unchanged lock bytes, and required normalized root/floor/revocation/marker state. Exclude optional metadata caches, private indexes and unfinished staging. Bind all digests before admission."
+    },
+    {
+      "id": "view-fs-hardlink",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-one including the exact negative filesystem setup: Provider ir.json is a hardlink to fixed bytes in the isolated fixture, link count 2; reject before copy."
+    },
+    {
+      "id": "observations-filesystem-hardlink",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed final named-output projection after consumer after-bundle-ready and provider failure. Consumer verified cache bundle and one eligible durable consumer grant exist; provider has neither completed promotion nor eligible grant. Include exact public registry inventory, normalized single-bundle cache inventory, empty destination, unchanged lock bytes, and required normalized root/floor/revocation/marker state. Exclude optional metadata caches, private indexes and unfinished staging. Bind all digests before admission."
+    },
+    {
+      "id": "view-fs-special-file",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-one including the exact negative filesystem setup: Provider ir.json is a FIFO; reject without a blocking open."
+    },
+    {
+      "id": "observations-filesystem-special-file",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed final named-output projection after consumer after-bundle-ready and provider failure. Consumer verified cache bundle and one eligible durable consumer grant exist; provider has neither completed promotion nor eligible grant. Include exact public registry inventory, normalized single-bundle cache inventory, empty destination, unchanged lock bytes, and required normalized root/floor/revocation/marker state. Exclude optional metadata caches, private indexes and unfinished staging. Bind all digests before admission."
+    },
+    {
+      "id": "view-fs-case-collision",
+      "kind": "pending",
+      "type": "tree",
+      "purpose": "Complete view-one including the exact negative filesystem setup: Provider has both IR.json and ir.json; bounded enumeration rejects first ASCII unsafe entry. Host must represent both names or report required unsupported, never skip."
+    },
+    {
+      "id": "observations-filesystem-case-collision",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed final named-output projection after consumer after-bundle-ready and provider failure. Consumer verified cache bundle and one eligible durable consumer grant exist; provider has neither completed promotion nor eligible grant. Include exact public registry inventory, normalized single-bundle cache inventory, empty destination, unchanged lock bytes, and required normalized root/floor/revocation/marker state. Exclude optional metadata caches, private indexes and unfinished staging. Bind all digests before admission."
+    },
+    {
+      "id": "observations-filesystem-source-mutation",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed final named-output projection after consumer after-bundle-ready and provider failure. Consumer verified cache bundle and one eligible durable consumer grant exist; provider has neither completed promotion nor eligible grant. Include exact public registry inventory, normalized single-bundle cache inventory, empty destination, unchanged lock bytes, and required normalized root/floor/revocation/marker state. Exclude optional metadata caches, private indexes and unfinished staging. Bind all digests before admission."
+    },
+    {
+      "id": "observations-filesystem-provider-fails-after-consumer",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete fixed final named-output projection after consumer after-bundle-ready and provider failure. Consumer verified cache bundle and one eligible durable consumer grant exist; provider has neither completed promotion nor eligible grant. Include exact public registry inventory, normalized single-bundle cache inventory, empty destination, unchanged lock bytes, and required normalized root/floor/revocation/marker state. Exclude optional metadata caches, private indexes and unfinished staging. Bind all digests before admission."
+    },
+    {
+      "id": "lock-over-byte-bound",
+      "kind": "pending",
+      "type": "bytes",
+      "purpose": "Exact 16,777,217-byte raw input consisting of a valid lock JSON prefix and ASCII whitespace to the first byte over lock-bytes=16,777,216. No runtime fixture generation."
+    },
+    {
+      "id": "observations-bounds-profile-lock-bytes",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "observations-bounds-local-lock-bytes",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "Complete final named public-registry, promoted-bundle cache and requested-destination inventories, unchanged input-lock byte hashes, normalized protected state and publication reservations. Optional metadata caches, private indexes, partial staging and private storage filenames are excluded. Bind every digest before admission."
+    },
+    {
+      "id": "observations-recovery-revocation-write-failure-marker",
+      "kind": "pending",
+      "type": "observations",
+      "purpose": "After one-shot state-write failure, retained marker/evidence survive. Restart durably commits consumer revocation under recorded 2027-01-02T00:00:00Z clock and clears marker before replay at expiry; no new grant or present freshness comes from recovery. Final logical inventories and root/floors fixed; old revoked grant excluded from eligible grants."
+    }
+  ]
+}

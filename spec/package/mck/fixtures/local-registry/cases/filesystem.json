@@ -1,0 +1,1304 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "cases": [
+    {
+      "kind": "scenario",
+      "id": "local-registry.filesystem.symlink",
+      "family": "filesystem",
+      "description": "Replace provider ir.json with a symlink to a fixed regular file outside its bundle but within the isolated fixture root; reject without following it.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-fs-symlink"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "unsafe-path",
+                "phase": "bundle",
+                "witnesses": [
+                  {
+                    "kind": "path",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json"
+                    },
+                    "rule": "symlink"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-fs-symlink"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": [
+            {
+              "operation": "restore",
+              "boundary": "after",
+              "step": "bundle-ready",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-inventory",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-filesystem-symlink",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/root",
+            "equals": {
+              "owner": "machine-a",
+              "kind": "cache"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/entries/1/path",
+            "equals": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.filesystem.hardlink",
+      "family": "filesystem",
+      "description": "Provider ir.json is a hardlink to fixed bytes in the isolated fixture, link count 2; reject before copy.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-fs-hardlink"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "unsafe-path",
+                "phase": "bundle",
+                "witnesses": [
+                  {
+                    "kind": "path",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json"
+                    },
+                    "rule": "hardlink"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-fs-hardlink"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": [
+            {
+              "operation": "restore",
+              "boundary": "after",
+              "step": "bundle-ready",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-inventory",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-filesystem-hardlink",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/root",
+            "equals": {
+              "owner": "machine-a",
+              "kind": "cache"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/entries/1/path",
+            "equals": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.filesystem.special-file",
+      "family": "filesystem",
+      "description": "Provider ir.json is a FIFO; reject without a blocking open.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-fs-special-file"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "unsafe-path",
+                "phase": "bundle",
+                "witnesses": [
+                  {
+                    "kind": "path",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json"
+                    },
+                    "rule": "special-file"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-fs-special-file"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": [
+            {
+              "operation": "restore",
+              "boundary": "after",
+              "step": "bundle-ready",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-inventory",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-filesystem-special-file",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/root",
+            "equals": {
+              "owner": "machine-a",
+              "kind": "cache"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/entries/1/path",
+            "equals": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.filesystem.case-collision",
+      "family": "filesystem",
+      "description": "Provider has both IR.json and ir.json; bounded enumeration rejects first ASCII unsafe entry. Host must represent both names or report required unsupported, never skip.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-fs-case-collision"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "unsafe-path",
+                "phase": "bundle",
+                "witnesses": [
+                  {
+                    "kind": "path",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/IR.json"
+                    },
+                    "rule": "case-collision"
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-fs-case-collision"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": [
+            {
+              "operation": "restore",
+              "boundary": "after",
+              "step": "bundle-ready",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-inventory",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-filesystem-case-collision",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/root",
+            "equals": {
+              "owner": "machine-a",
+              "kind": "cache"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/entries/1/path",
+            "equals": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.filesystem.source-mutation",
+      "family": "filesystem",
+      "description": "After copying but before final source recheck, add an entry absent from the initial inventory; report source-changed and no graph readiness.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "domain-rejection",
+                "code": "source-changed",
+                "phase": "bundle",
+                "witnesses": [
+                  {
+                    "kind": "changed",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": [
+            {
+              "operation": "restore",
+              "boundary": "after",
+              "step": "bundle-ready",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-inventory",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-recheck",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-recheck",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "filesystem",
+          "change": {
+            "kind": "create-entry",
+            "root": {
+              "owner": "finance",
+              "kind": "registry"
+            },
+            "entry": {
+              "kind": "file",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/extra.json",
+              "bytes": {
+                "kind": "hex",
+                "value": "7b7d0a"
+              }
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-recheck",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-filesystem-source-mutation",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/root",
+            "equals": {
+              "owner": "machine-a",
+              "kind": "cache"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/entries/1/path",
+            "equals": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scenario",
+      "id": "local-registry.filesystem.provider-fails-after-consumer",
+      "family": "filesystem",
+      "description": "Consumer verified cache promotion and durable grant both complete before provider inventory fails. Both remain observable, but no graph becomes usable.",
+      "required": true,
+      "setup": {
+        "registries": [
+          {
+            "id": "finance",
+            "tree": {
+              "asset": "view-one"
+            },
+            "publisher": "explicitly-initialize"
+          }
+        ],
+        "actors": [
+          {
+            "id": "machine-a",
+            "configuration": {
+              "asset": "configuration-one"
+            },
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            },
+            "security": "explicitly-initialize",
+            "cache": {
+              "asset": "empty-cache"
+            },
+            "staging": "empty",
+            "destination": "empty"
+          }
+        ]
+      },
+      "operations": [
+        {
+          "id": "restore",
+          "actor": "machine-a",
+          "at": "2027-01-01T00:00:00Z",
+          "policy": {
+            "kind": "asset",
+            "asset": "policy-one"
+          },
+          "limits": [],
+          "expected": {
+            "kind": "inline",
+            "result": {
+              "ok": false,
+              "diagnostic": {
+                "category": "operational-failure",
+                "code": "missing-content",
+                "phase": "bundle",
+                "witnesses": [
+                  {
+                    "kind": "missing",
+                    "subject": {
+                      "kind": "object",
+                      "registry": "finance",
+                      "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "name": "replay-library",
+          "input": {
+            "lock": {
+              "kind": "asset",
+              "asset": "lock-two"
+            },
+            "authorizationView": {
+              "kind": "supplied",
+              "tree": {
+                "asset": "view-one"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "start",
+          "operation": "restore",
+          "barriers": [
+            {
+              "operation": "restore",
+              "boundary": "after",
+              "step": "bundle-ready",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+              }
+            },
+            {
+              "operation": "restore",
+              "boundary": "before",
+              "step": "source-inventory",
+              "subject": {
+                "kind": "object",
+                "registry": "finance",
+                "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "after",
+            "step": "bundle-ready",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+            }
+          }
+        },
+        {
+          "kind": "await",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "filesystem",
+          "change": {
+            "kind": "remove",
+            "root": {
+              "owner": "finance",
+              "kind": "registry"
+            },
+            "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json"
+          }
+        },
+        {
+          "kind": "release",
+          "checkpoint": {
+            "operation": "restore",
+            "boundary": "before",
+            "step": "source-inventory",
+            "subject": {
+              "kind": "object",
+              "registry": "finance",
+              "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+            }
+          }
+        },
+        {
+          "kind": "join",
+          "operation": "restore"
+        }
+      ],
+      "expectedObservations": {
+        "asset": "observations-filesystem-provider-fails-after-consumer",
+        "assertions": [
+          {
+            "pointer": "/readyGraphs",
+            "equals": []
+          },
+          {
+            "pointer": "/security/0/grants/0/release",
+            "equals": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/root",
+            "equals": {
+              "owner": "machine-a",
+              "kind": "cache"
+            }
+          },
+          {
+            "pointer": "/filesystems/1/entries/1/path",
+            "equals": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+          }
+        ]
+      },
+      "observe": {
+        "at": "2027-01-01T00:00:00Z",
+        "policies": [
+          {
+            "actor": "machine-a",
+            "policy": {
+              "kind": "asset",
+              "asset": "policy-one"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

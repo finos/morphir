@@ -1,0 +1,21 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "kind": "LibraryReleaseStatement",
+  "release": {
+    "packagePath": "example.com/finance/loan-rules",
+    "version": "1.0.0"
+  },
+  "irPackageName": "example/loan-rules",
+  "dependencies": [
+    {
+      "irPackageName": "example/eligibility",
+      "packagePath": "example.com/finance/eligibility",
+      "versionRange": {
+        "minimumInclusive": "1.0.0",
+        "maximumExclusive": "2.0.0"
+      }
+    }
+  ],
+  "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+  "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+}

@@ -1,0 +1,266 @@
+{
+  "security": [
+    {
+      "actor": "machine-a",
+      "condition": "readable",
+      "repositories": [
+        {
+          "registry": "finance",
+          "currentRoot": "1",
+          "floors": {
+            "timestamp": "1",
+            "snapshot": "1",
+            "targets": "1"
+          },
+          "lastFreshAuthorization": {
+            "kind": "at",
+            "time": "2027-01-01T00:00:00Z"
+          }
+        }
+      ],
+      "grants": [
+        {
+          "registry": "finance",
+          "release": {
+            "packagePath": "example.com/finance/eligibility",
+            "version": "1.2.0"
+          },
+          "record": "sha256:3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251",
+          "statement": "sha256:4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1",
+          "manifest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+          "content": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+          "at": "2027-01-01T00:00:00Z",
+          "keys": [
+            "4bd74eeea636378d476d9e885a3ac0f610b8649d5be70fdb1e54e742a67d7384",
+            "ea3cf4e0f710cf0198b289c99105e784ff2403ae6920d1035d6dbf51e7e48dd8"
+          ]
+        },
+        {
+          "registry": "finance",
+          "release": {
+            "packagePath": "example.com/finance/loan-rules",
+            "version": "1.0.0"
+          },
+          "record": "sha256:35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0",
+          "statement": "sha256:abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a",
+          "manifest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+          "content": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+          "at": "2027-01-01T00:00:00Z",
+          "keys": [
+            "4bd74eeea636378d476d9e885a3ac0f610b8649d5be70fdb1e54e742a67d7384",
+            "ea3cf4e0f710cf0198b289c99105e784ff2403ae6920d1035d6dbf51e7e48dd8"
+          ]
+        }
+      ],
+      "revocations": [],
+      "marker": "none",
+      "observedAt": "2027-01-01T00:00:00Z",
+      "policy": {
+        "kind": "asset",
+        "asset": "policy-one"
+      }
+    }
+  ],
+  "filesystems": [
+    {
+      "root": {
+        "owner": "finance",
+        "kind": "registry"
+      },
+      "entries": [
+        {
+          "kind": "directory",
+          "path": "bundles"
+        },
+        {
+          "kind": "directory",
+          "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+        },
+        {
+          "kind": "file",
+          "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
+          "length": "1276",
+          "sha256": "sha256:b1884eeb8364f96c6405cc45f2fe07a006c22f066a4136656ad05dda9c9a94cc"
+        },
+        {
+          "kind": "file",
+          "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json",
+          "length": "712",
+          "sha256": "sha256:e98ea924e66b96a5050e2c3a690f9534db32f5971401d2965791546872ecb7a3"
+        },
+        {
+          "kind": "directory",
+          "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+        },
+        {
+          "kind": "file",
+          "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json",
+          "length": "1050",
+          "sha256": "sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43"
+        },
+        {
+          "kind": "file",
+          "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json",
+          "length": "509",
+          "sha256": "sha256:0a91b5e3a5e377fa4557212fc5b561a66067d67292123136575e46ce5a3fd0b7"
+        },
+        {
+          "kind": "directory",
+          "path": "metadata"
+        },
+        {
+          "kind": "file",
+          "path": "metadata/1.root.json",
+          "length": "2145",
+          "sha256": "sha256:655cacea8dc5a51e17a82f0c6c9065fadeef995edde1414bb93980b8f68b8c8a"
+        },
+        {
+          "kind": "file",
+          "path": "metadata/1.snapshot.json",
+          "length": "611",
+          "sha256": "sha256:8e77cde272b228a6c84293566ceefa4d3fa7c32c0e3b66e9524eb28763388bdb"
+        },
+        {
+          "kind": "file",
+          "path": "metadata/1.targets.json",
+          "length": "2411",
+          "sha256": "sha256:6a496fd6feba6be5e02a5b81fa8b70ab5f4e87469d3a09aa1522882d07fc1898"
+        },
+        {
+          "kind": "file",
+          "path": "metadata/1.timestamp.json",
+          "length": "612",
+          "sha256": "sha256:86a1dc9216e9bf51c7f077b59af785d38796c1c21d55c3faa8b7311571003bc0"
+        },
+        {
+          "kind": "file",
+          "path": "metadata/timestamp.json",
+          "length": "612",
+          "sha256": "sha256:86a1dc9216e9bf51c7f077b59af785d38796c1c21d55c3faa8b7311571003bc0"
+        },
+        {
+          "kind": "directory",
+          "path": "targets"
+        },
+        {
+          "kind": "directory",
+          "path": "targets/records"
+        },
+        {
+          "kind": "file",
+          "path": "targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json",
+          "length": "796",
+          "sha256": "sha256:35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0"
+        },
+        {
+          "kind": "file",
+          "path": "targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json",
+          "length": "641",
+          "sha256": "sha256:3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251"
+        },
+        {
+          "kind": "directory",
+          "path": "targets/statements"
+        },
+        {
+          "kind": "file",
+          "path": "targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json",
+          "length": "1030",
+          "sha256": "sha256:4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1"
+        },
+        {
+          "kind": "file",
+          "path": "targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json",
+          "length": "1238",
+          "sha256": "sha256:abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a"
+        }
+      ]
+    },
+    {
+      "root": {
+        "owner": "machine-a",
+        "kind": "cache"
+      },
+      "entries": [
+        {
+          "kind": "directory",
+          "path": "bundles"
+        },
+        {
+          "kind": "directory",
+          "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+        },
+        {
+          "kind": "file",
+          "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
+          "length": "1276",
+          "sha256": "sha256:b1884eeb8364f96c6405cc45f2fe07a006c22f066a4136656ad05dda9c9a94cc"
+        },
+        {
+          "kind": "file",
+          "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json",
+          "length": "712",
+          "sha256": "sha256:e98ea924e66b96a5050e2c3a690f9534db32f5971401d2965791546872ecb7a3"
+        },
+        {
+          "kind": "directory",
+          "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+        },
+        {
+          "kind": "file",
+          "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json",
+          "length": "1050",
+          "sha256": "sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43"
+        },
+        {
+          "kind": "file",
+          "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json",
+          "length": "509",
+          "sha256": "sha256:0a91b5e3a5e377fa4557212fc5b561a66067d67292123136575e46ce5a3fd0b7"
+        }
+      ]
+    },
+    {
+      "root": {
+        "owner": "machine-a",
+        "kind": "destination"
+      },
+      "entries": []
+    }
+  ],
+  "registries": [
+    {
+      "registry": "finance",
+      "timestamp": {
+        "kind": "timestamp",
+        "digest": "sha256:86a1dc9216e9bf51c7f077b59af785d38796c1c21d55c3faa8b7311571003bc0"
+      },
+      "reserved": {
+        "targets": "1",
+        "snapshot": "1",
+        "timestamp": "1"
+      }
+    }
+  ],
+  "lockBytes": [
+    {
+      "asset": "lock-two",
+      "sha256": "sha256:5b310413fbedaacfdce521220721e2646e7cbdd08b89d1dbd4e8aeb08e3deb75"
+    }
+  ],
+  "readyGraphs": [
+    {
+      "operation": "restore",
+      "releases": [
+        {
+          "packagePath": "example.com/finance/loan-rules",
+          "version": "1.0.0"
+        },
+        {
+          "packagePath": "example.com/finance/eligibility",
+          "version": "1.2.0"
+        }
+      ]
+    }
+  ]
+}
