@@ -97,7 +97,8 @@ All three reports identify corpus hash
 The fixed cases cover validation phases, replay, backtracking, scoped updates, graph ordering,
 and diagnostic witness ranking. They do not verify acquisition, payloads, trust, or API compatibility.
 
-The parent branch is based on `2ff3416a` and pins these merged implementation commits:
+The parent branch includes main through `5152a96d`, including the YAML integration in #819,
+and pins these merged implementation commits:
 
 - TypeScript `100b7aa02359f57cbf0cd3db7cb2fbb3c1bb3b45`, [PR #18](https://github.com/finos/morphir-typescript/pull/18).
 - Rust `1c522051555eaefb076697cc3f0c7159670aeaa7`, [PR #154](https://github.com/finos/morphir-rust/pull/154).

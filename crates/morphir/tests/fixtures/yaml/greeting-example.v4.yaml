@@ -1,0 +1,1031 @@
+formatVersion: 4
+distribution:
+  Library:
+    packageName: elm-compat
+    dependencies: {}
+    def:
+      modules:
+        api:
+          Public:
+            types:
+              api-error:
+                Public:
+                  doc: " Possible API errors."
+                  CustomTypeDefinition:
+                    typeParams: []
+                    access: Public
+                    constructors:
+                      internal-error: []
+                      invalid-request: [[arg-1, "morphir/SDK:string#string"]]
+                      order-not-found: [[arg-1, "morphir/SDK:string#string"]]
+              request:
+                Public:
+                  doc: " Represents an API request to create or modify an order."
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp:
+                      Record:
+                        fields:
+                          action: morphir/SDK:string#string
+                          order-id:
+                            Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                          products:
+                            Reference:
+                              - morphir/SDK:list#list
+                              - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+              response:
+                Public:
+                  doc: " Represents an API response."
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp:
+                      Record:
+                        fields:
+                          success: morphir/SDK:basics#bool
+                          message: morphir/SDK:string#string
+                          order-id:
+                            Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+            values:
+              create-order:
+                Public:
+                  doc: " Create a new order from a list of products."
+                  ExpressionBody:
+                    inputTypes:
+                      order-id: morphir/SDK:string#string
+                      products:
+                        Reference:
+                          - morphir/SDK:list#list
+                          - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                    outputType: elm-compat:main#customer-order
+                    body:
+                      Record:
+                        attributes:
+                          inferredType: elm-compat:main#customer-order
+                        fields:
+                          order-id:
+                            Variable:
+                              attributes:
+                                inferredType: morphir/SDK:string#string
+                              name: order-id
+                          products:
+                            Variable:
+                              attributes:
+                                inferredType:
+                                  Reference:
+                                    - morphir/SDK:list#list
+                                    - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                              name: products
+                          status:
+                            Constructor:
+                              attributes:
+                                inferredType: elm-compat:main#order-status
+                              fqname: elm-compat:main#pending
+              get-order-status:
+                Public:
+                  doc: " Get the status of an order as a string response."
+                  ExpressionBody:
+                    inputTypes:
+                      order: elm-compat:main#customer-order
+                    outputType: elm-compat:api#response
+                    body:
+                      LetDefinition:
+                        attributes:
+                          inferredType: elm-compat:api#response
+                        name: status-str
+                        definition:
+                          ExpressionBody:
+                            inputTypes: {}
+                            outputType: morphir/SDK:string#string
+                            body:
+                              PatternMatch:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                                value:
+                                  Field:
+                                    attributes:
+                                      inferredType: elm-compat:main#order-status
+                                    target:
+                                      Variable:
+                                        attributes:
+                                          inferredType: elm-compat:main#customer-order
+                                        name: order
+                                    name: status
+                                cases:
+                                  - pattern:
+                                      ConstructorPattern:
+                                        attributes:
+                                          inferredType: elm-compat:main#order-status
+                                        fqname: elm-compat:main#pending
+                                        patterns: []
+                                    body:
+                                      Literal:
+                                        attributes:
+                                          inferredType: morphir/SDK:string#string
+                                        literal:
+                                          StringLiteral: Order is pending
+                                  - pattern:
+                                      ConstructorPattern:
+                                        attributes:
+                                          inferredType: elm-compat:main#order-status
+                                        fqname: elm-compat:main#confirmed
+                                        patterns: []
+                                    body:
+                                      Literal:
+                                        attributes:
+                                          inferredType: morphir/SDK:string#string
+                                        literal:
+                                          StringLiteral: Order has been confirmed
+                                  - pattern:
+                                      ConstructorPattern:
+                                        attributes:
+                                          inferredType: elm-compat:main#order-status
+                                        fqname: elm-compat:main#shipped
+                                        patterns: []
+                                    body:
+                                      Literal:
+                                        attributes:
+                                          inferredType: morphir/SDK:string#string
+                                        literal:
+                                          StringLiteral: Order has been shipped
+                                  - pattern:
+                                      ConstructorPattern:
+                                        attributes:
+                                          inferredType: elm-compat:main#order-status
+                                        fqname: elm-compat:main#delivered
+                                        patterns: []
+                                    body:
+                                      Literal:
+                                        attributes:
+                                          inferredType: morphir/SDK:string#string
+                                        literal:
+                                          StringLiteral: Order has been delivered
+                                  - pattern:
+                                      ConstructorPattern:
+                                        attributes:
+                                          inferredType: elm-compat:main#order-status
+                                        fqname: elm-compat:main#cancelled
+                                        patterns: []
+                                    body:
+                                      Literal:
+                                        attributes:
+                                          inferredType: morphir/SDK:string#string
+                                        literal:
+                                          StringLiteral: Order was cancelled
+                        in:
+                          Record:
+                            attributes:
+                              inferredType: elm-compat:api#response
+                            fields:
+                              message:
+                                Variable:
+                                  attributes:
+                                    inferredType: morphir/SDK:string#string
+                                  name: status-str
+                              order-id:
+                                Apply:
+                                  attributes:
+                                    inferredType:
+                                      Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                  function:
+                                    Constructor:
+                                      attributes:
+                                        inferredType:
+                                          Function:
+                                            parameterType: morphir/SDK:string#string
+                                            returnType:
+                                              Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                      fqname: morphir/SDK:maybe#just
+                                  argument:
+                                    Field:
+                                      attributes:
+                                        inferredType: morphir/SDK:string#string
+                                      target:
+                                        Variable:
+                                          attributes:
+                                            inferredType: elm-compat:main#customer-order
+                                          name: order
+                                      name: order-id
+                              success:
+                                Literal:
+                                  attributes:
+                                    inferredType: morphir/SDK:basics#bool
+                                  literal:
+                                    BoolLiteral: true
+              process-request:
+                Public:
+                  doc: " Process an API request and return a response."
+                  ExpressionBody:
+                    inputTypes:
+                      request: elm-compat:api#request
+                    outputType: elm-compat:api#response
+                    body:
+                      PatternMatch:
+                        attributes:
+                          inferredType: elm-compat:api#response
+                        value:
+                          Field:
+                            attributes:
+                              inferredType: morphir/SDK:string#string
+                            target:
+                              Variable:
+                                attributes:
+                                  inferredType: elm-compat:api#request
+                                name: request
+                            name: action
+                        cases:
+                          - pattern:
+                              LiteralPattern:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                                literal:
+                                  StringLiteral: create
+                            body:
+                              IfThenElse:
+                                attributes:
+                                  inferredType: elm-compat:api#response
+                                condition:
+                                  Apply:
+                                    attributes:
+                                      inferredType: morphir/SDK:basics#bool
+                                    function:
+                                      Reference:
+                                        attributes:
+                                          inferredType:
+                                            Function:
+                                              parameterType:
+                                                Reference:
+                                                  - morphir/SDK:list#list
+                                                  - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                              returnType: morphir/SDK:basics#bool
+                                        fqname: morphir/SDK:list#is-empty
+                                    argument:
+                                      Field:
+                                        attributes:
+                                          inferredType:
+                                            Reference:
+                                              - morphir/SDK:list#list
+                                              - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                        target:
+                                          Variable:
+                                            attributes:
+                                              inferredType: elm-compat:api#request
+                                            name: request
+                                        name: products
+                                then:
+                                  Record:
+                                    attributes:
+                                      inferredType: elm-compat:api#response
+                                    fields:
+                                      message:
+                                        Literal:
+                                          attributes:
+                                            inferredType: morphir/SDK:string#string
+                                          literal:
+                                            StringLiteral: Cannot create order with no products
+                                      order-id:
+                                        Constructor:
+                                          attributes:
+                                            inferredType:
+                                              Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                          fqname: morphir/SDK:maybe#nothing
+                                      success:
+                                        Literal:
+                                          attributes:
+                                            inferredType: morphir/SDK:basics#bool
+                                          literal:
+                                            BoolLiteral: false
+                                else:
+                                  Record:
+                                    attributes:
+                                      inferredType: elm-compat:api#response
+                                    fields:
+                                      message:
+                                        Literal:
+                                          attributes:
+                                            inferredType: morphir/SDK:string#string
+                                          literal:
+                                            StringLiteral: Order created successfully
+                                      order-id:
+                                        Apply:
+                                          attributes:
+                                            inferredType:
+                                              Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                          function:
+                                            Constructor:
+                                              attributes:
+                                                inferredType:
+                                                  Function:
+                                                    parameterType: morphir/SDK:string#string
+                                                    returnType:
+                                                      Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                              fqname: morphir/SDK:maybe#just
+                                          argument:
+                                            Literal:
+                                              attributes:
+                                                inferredType: morphir/SDK:string#string
+                                              literal:
+                                                StringLiteral: new-order-id
+                                      success:
+                                        Literal:
+                                          attributes:
+                                            inferredType: morphir/SDK:basics#bool
+                                          literal:
+                                            BoolLiteral: true
+                          - pattern:
+                              LiteralPattern:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                                literal:
+                                  StringLiteral: status
+                            body:
+                              PatternMatch:
+                                attributes:
+                                  inferredType: elm-compat:api#response
+                                value:
+                                  Field:
+                                    attributes:
+                                      inferredType:
+                                        Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                    target:
+                                      Variable:
+                                        attributes:
+                                          inferredType: elm-compat:api#request
+                                        name: request
+                                    name: order-id
+                                cases:
+                                  - pattern:
+                                      ConstructorPattern:
+                                        attributes:
+                                          inferredType:
+                                            Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                        fqname: morphir/SDK:maybe#just
+                                        patterns:
+                                          - AsPattern:
+                                              attributes:
+                                                inferredType: morphir/SDK:string#string
+                                              pattern:
+                                                WildcardPattern:
+                                                  attributes:
+                                                    inferredType: morphir/SDK:string#string
+                                              name: id
+                                    body:
+                                      Record:
+                                        attributes:
+                                          inferredType: elm-compat:api#response
+                                        fields:
+                                          message:
+                                            Literal:
+                                              attributes:
+                                                inferredType: morphir/SDK:string#string
+                                              literal:
+                                                StringLiteral: Order status retrieved
+                                          order-id:
+                                            Apply:
+                                              attributes:
+                                                inferredType:
+                                                  Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                              function:
+                                                Constructor:
+                                                  attributes:
+                                                    inferredType:
+                                                      Function:
+                                                        parameterType: morphir/SDK:string#string
+                                                        returnType:
+                                                          Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                                  fqname: morphir/SDK:maybe#just
+                                              argument:
+                                                Variable:
+                                                  attributes:
+                                                    inferredType: morphir/SDK:string#string
+                                                  name: id
+                                          success:
+                                            Literal:
+                                              attributes:
+                                                inferredType: morphir/SDK:basics#bool
+                                              literal:
+                                                BoolLiteral: true
+                                  - pattern:
+                                      ConstructorPattern:
+                                        attributes:
+                                          inferredType:
+                                            Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                        fqname: morphir/SDK:maybe#nothing
+                                        patterns: []
+                                    body:
+                                      Record:
+                                        attributes:
+                                          inferredType: elm-compat:api#response
+                                        fields:
+                                          message:
+                                            Literal:
+                                              attributes:
+                                                inferredType: morphir/SDK:string#string
+                                              literal:
+                                                StringLiteral: Order ID required for status check
+                                          order-id:
+                                            Constructor:
+                                              attributes:
+                                                inferredType:
+                                                  Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                              fqname: morphir/SDK:maybe#nothing
+                                          success:
+                                            Literal:
+                                              attributes:
+                                                inferredType: morphir/SDK:basics#bool
+                                              literal:
+                                                BoolLiteral: false
+                          - pattern:
+                              WildcardPattern:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                            body:
+                              Record:
+                                attributes:
+                                  inferredType: elm-compat:api#response
+                                fields:
+                                  message:
+                                    Apply:
+                                      attributes:
+                                        inferredType: morphir/SDK:string#string
+                                      function:
+                                        Apply:
+                                          attributes:
+                                            inferredType:
+                                              Function:
+                                                parameterType: morphir/SDK:string#string
+                                                returnType: morphir/SDK:string#string
+                                          function:
+                                            Reference:
+                                              attributes:
+                                                inferredType:
+                                                  Function:
+                                                    parameterType: morphir/SDK:string#string
+                                                    returnType:
+                                                      Function:
+                                                        parameterType: morphir/SDK:string#string
+                                                        returnType: morphir/SDK:string#string
+                                              fqname: morphir/SDK:basics#append
+                                          argument:
+                                            Literal:
+                                              attributes:
+                                                inferredType: morphir/SDK:string#string
+                                              literal:
+                                                StringLiteral: "Unknown action: "
+                                      argument:
+                                        Field:
+                                          attributes:
+                                            inferredType: morphir/SDK:string#string
+                                          target:
+                                            Variable:
+                                              attributes:
+                                                inferredType: elm-compat:api#request
+                                              name: request
+                                          name: action
+                                  order-id:
+                                    Constructor:
+                                      attributes:
+                                        inferredType:
+                                          Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+                                      fqname: morphir/SDK:maybe#nothing
+                                  success:
+                                    Literal:
+                                      attributes:
+                                        inferredType: morphir/SDK:basics#bool
+                                      literal:
+                                        BoolLiteral: false
+            doc: [" API module demonstrating request/response patterns.", "", "This module provides types and functions for a simple API layer,", demonstrating how Morphir handles common API patterns.]
+        main:
+          Public:
+            types:
+              customer-order:
+                Public:
+                  doc: " A customer order containing products and quantities."
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp:
+                      Record:
+                        fields:
+                          order-id: morphir/SDK:string#string
+                          products:
+                            Reference:
+                              - morphir/SDK:list#list
+                              - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                          status: elm-compat:main#order-status
+              order-status:
+                Public:
+                  doc: " Possible states of an order."
+                  CustomTypeDefinition:
+                    typeParams: []
+                    access: Public
+                    constructors:
+                      cancelled: []
+                      confirmed: []
+                      delivered: []
+                      pending: []
+                      shipped: []
+              product:
+                Public:
+                  doc: " A product with price information."
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp:
+                      Record:
+                        fields:
+                          id: elm-compat:main#product-id
+                          name: morphir/SDK:string#string
+                          price: morphir/SDK:basics#float
+              product-id:
+                Public:
+                  doc: " A unique identifier for products."
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp: morphir/SDK:string#string
+              quantity:
+                Public:
+                  doc: " Represents a quantity of items."
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp: morphir/SDK:basics#int
+            values:
+              apply-discount:
+                Public:
+                  doc: [" Apply a percentage discount to a price.", "", "    applyDiscount 10 100.0 == 90.0", ""]
+                  ExpressionBody:
+                    inputTypes:
+                      discount-percent: morphir/SDK:basics#float
+                      original-price: morphir/SDK:basics#float
+                    outputType: morphir/SDK:basics#float
+                    body:
+                      LetDefinition:
+                        attributes:
+                          inferredType: morphir/SDK:basics#float
+                        name: discount
+                        definition:
+                          ExpressionBody:
+                            inputTypes: {}
+                            outputType: t-8
+                            body:
+                              Apply:
+                                attributes:
+                                  inferredType: morphir/SDK:basics#float
+                                function:
+                                  Apply:
+                                    attributes:
+                                      inferredType:
+                                        Function:
+                                          parameterType: morphir/SDK:basics#float
+                                          returnType: morphir/SDK:basics#float
+                                    function:
+                                      Reference:
+                                        attributes:
+                                          inferredType:
+                                            Function:
+                                              parameterType: morphir/SDK:basics#float
+                                              returnType:
+                                                Function:
+                                                  parameterType: morphir/SDK:basics#float
+                                                  returnType: morphir/SDK:basics#float
+                                        fqname: morphir/SDK:basics#multiply
+                                    argument:
+                                      Variable:
+                                        attributes:
+                                          inferredType: morphir/SDK:basics#float
+                                        name: original-price
+                                argument:
+                                  Apply:
+                                    attributes:
+                                      inferredType: morphir/SDK:basics#float
+                                    function:
+                                      Apply:
+                                        attributes:
+                                          inferredType:
+                                            Function:
+                                              parameterType: morphir/SDK:basics#float
+                                              returnType: morphir/SDK:basics#float
+                                        function:
+                                          Reference:
+                                            attributes:
+                                              inferredType:
+                                                Function:
+                                                  parameterType: morphir/SDK:basics#float
+                                                  returnType:
+                                                    Function:
+                                                      parameterType: morphir/SDK:basics#float
+                                                      returnType: morphir/SDK:basics#float
+                                            fqname: morphir/SDK:basics#divide
+                                        argument:
+                                          Variable:
+                                            attributes:
+                                              inferredType: morphir/SDK:basics#float
+                                            name: discount-percent
+                                    argument:
+                                      Literal:
+                                        attributes:
+                                          inferredType: morphir/SDK:basics#float
+                                        literal:
+                                          FloatLiteral: 100.0
+                        in:
+                          Apply:
+                            attributes:
+                              inferredType: morphir/SDK:basics#float
+                            function:
+                              Apply:
+                                attributes:
+                                  inferredType:
+                                    Function:
+                                      parameterType: morphir/SDK:basics#float
+                                      returnType: morphir/SDK:basics#float
+                                function:
+                                  Reference:
+                                    attributes:
+                                      inferredType:
+                                        Function:
+                                          parameterType: morphir/SDK:basics#float
+                                          returnType:
+                                            Function:
+                                              parameterType: morphir/SDK:basics#float
+                                              returnType: morphir/SDK:basics#float
+                                    fqname: morphir/SDK:basics#subtract
+                                argument:
+                                  Variable:
+                                    attributes:
+                                      inferredType: morphir/SDK:basics#float
+                                    name: original-price
+                            argument:
+                              Variable:
+                                attributes:
+                                  inferredType: morphir/SDK:basics#float
+                                name: discount
+              calculate-total:
+                Public:
+                  doc: [" Calculate the total price of an order.", "", "    calculateTotal { orderId = \"1\", products = [ ( product, 2 ) ], status = Pending }", ""]
+                  ExpressionBody:
+                    inputTypes:
+                      order: elm-compat:main#customer-order
+                    outputType: morphir/SDK:basics#float
+                    body:
+                      Apply:
+                        attributes:
+                          inferredType: morphir/SDK:basics#float
+                        function:
+                          Reference:
+                            attributes:
+                              inferredType:
+                                Function:
+                                  parameterType:
+                                    Reference: ["morphir/SDK:list#list", "morphir/SDK:basics#float"]
+                                  returnType: morphir/SDK:basics#float
+                            fqname: morphir/SDK:list#sum
+                        argument:
+                          Apply:
+                            attributes:
+                              inferredType:
+                                Reference: ["morphir/SDK:list#list", "morphir/SDK:basics#float"]
+                            function:
+                              Apply:
+                                attributes:
+                                  inferredType:
+                                    Function:
+                                      parameterType:
+                                        Reference:
+                                          - morphir/SDK:list#list
+                                          - Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                                      returnType:
+                                        Reference: ["morphir/SDK:list#list", "morphir/SDK:basics#float"]
+                                function:
+                                  Reference:
+                                    attributes:
+                                      inferredType:
+                                        Function:
+                                          parameterType:
+                                            Function:
+                                              parameterType:
+                                                Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                                              returnType: morphir/SDK:basics#float
+                                          returnType:
+                                            Function:
+                                              parameterType:
+                                                Reference:
+                                                  - morphir/SDK:list#list
+                                                  - Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                                              returnType:
+                                                Reference: ["morphir/SDK:list#list", "morphir/SDK:basics#float"]
+                                    fqname: morphir/SDK:list#map
+                                argument:
+                                  Lambda:
+                                    attributes:
+                                      inferredType:
+                                        Function:
+                                          parameterType:
+                                            Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                                          returnType: morphir/SDK:basics#float
+                                    pattern:
+                                      TuplePattern:
+                                        attributes:
+                                          inferredType:
+                                            Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                                        patterns:
+                                          - AsPattern:
+                                              attributes:
+                                                inferredType: elm-compat:main#product
+                                              pattern:
+                                                WildcardPattern:
+                                                  attributes:
+                                                    inferredType: elm-compat:main#product
+                                              name: product
+                                          - AsPattern:
+                                              attributes:
+                                                inferredType: morphir/SDK:basics#int
+                                              pattern:
+                                                WildcardPattern:
+                                                  attributes:
+                                                    inferredType: morphir/SDK:basics#int
+                                              name: qty
+                                    body:
+                                      Apply:
+                                        attributes:
+                                          inferredType: morphir/SDK:basics#float
+                                        function:
+                                          Apply:
+                                            attributes:
+                                              inferredType:
+                                                Function:
+                                                  parameterType: morphir/SDK:basics#float
+                                                  returnType: morphir/SDK:basics#float
+                                            function:
+                                              Reference:
+                                                attributes:
+                                                  inferredType:
+                                                    Function:
+                                                      parameterType: morphir/SDK:basics#float
+                                                      returnType:
+                                                        Function:
+                                                          parameterType: morphir/SDK:basics#float
+                                                          returnType: morphir/SDK:basics#float
+                                                fqname: morphir/SDK:basics#multiply
+                                            argument:
+                                              Field:
+                                                attributes:
+                                                  inferredType: morphir/SDK:basics#float
+                                                target:
+                                                  Variable:
+                                                    attributes:
+                                                      inferredType: elm-compat:main#product
+                                                    name: product
+                                                name: price
+                                        argument:
+                                          Apply:
+                                            attributes:
+                                              inferredType: morphir/SDK:basics#float
+                                            function:
+                                              Reference:
+                                                attributes:
+                                                  inferredType:
+                                                    Function:
+                                                      parameterType: morphir/SDK:basics#int
+                                                      returnType: morphir/SDK:basics#float
+                                                fqname: morphir/SDK:basics#to-float
+                                            argument:
+                                              Variable:
+                                                attributes:
+                                                  inferredType: morphir/SDK:basics#int
+                                                name: qty
+                            argument:
+                              Field:
+                                attributes:
+                                  inferredType:
+                                    Reference:
+                                      - morphir/SDK:list#list
+                                      - Tuple: ["elm-compat:main#product", "morphir/SDK:basics#int"]
+                                target:
+                                  Variable:
+                                    attributes:
+                                      inferredType: elm-compat:main#customer-order
+                                    name: order
+                                name: products
+              is-valid-order:
+                Public:
+                  doc: " Check if an order is valid (has at least one product with positive quantity)."
+                  ExpressionBody:
+                    inputTypes:
+                      order: elm-compat:main#customer-order
+                    outputType: morphir/SDK:basics#bool
+                    body:
+                      PatternMatch:
+                        attributes:
+                          inferredType: morphir/SDK:basics#bool
+                        value:
+                          Field:
+                            attributes:
+                              inferredType:
+                                Reference:
+                                  - morphir/SDK:list#list
+                                  - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                            target:
+                              Variable:
+                                attributes:
+                                  inferredType: elm-compat:main#customer-order
+                                name: order
+                            name: products
+                        cases:
+                          - pattern:
+                              EmptyListPattern:
+                                attributes:
+                                  inferredType:
+                                    Reference:
+                                      - morphir/SDK:list#list
+                                      - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                            body:
+                              Literal:
+                                attributes:
+                                  inferredType: morphir/SDK:basics#bool
+                                literal:
+                                  BoolLiteral: false
+                          - pattern:
+                              WildcardPattern:
+                                attributes:
+                                  inferredType:
+                                    Reference:
+                                      - morphir/SDK:list#list
+                                      - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                            body:
+                              Apply:
+                                attributes:
+                                  inferredType: morphir/SDK:basics#bool
+                                function:
+                                  Apply:
+                                    attributes:
+                                      inferredType:
+                                        Function:
+                                          parameterType:
+                                            Reference:
+                                              - morphir/SDK:list#list
+                                              - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                          returnType: morphir/SDK:basics#bool
+                                    function:
+                                      Reference:
+                                        attributes:
+                                          inferredType:
+                                            Function:
+                                              parameterType:
+                                                Function:
+                                                  parameterType:
+                                                    Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                                  returnType: morphir/SDK:basics#bool
+                                              returnType:
+                                                Function:
+                                                  parameterType:
+                                                    Reference:
+                                                      - morphir/SDK:list#list
+                                                      - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                                  returnType: morphir/SDK:basics#bool
+                                        fqname: morphir/SDK:list#all
+                                    argument:
+                                      Lambda:
+                                        attributes:
+                                          inferredType:
+                                            Function:
+                                              parameterType:
+                                                Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                              returnType: morphir/SDK:basics#bool
+                                        pattern:
+                                          TuplePattern:
+                                            attributes:
+                                              inferredType:
+                                                Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                            patterns:
+                                              - WildcardPattern:
+                                                  attributes:
+                                                    inferredType: elm-compat:main#product
+                                              - AsPattern:
+                                                  attributes:
+                                                    inferredType: elm-compat:main#quantity
+                                                  pattern:
+                                                    WildcardPattern:
+                                                      attributes:
+                                                        inferredType: elm-compat:main#quantity
+                                                  name: qty
+                                        body:
+                                          Apply:
+                                            attributes:
+                                              inferredType: morphir/SDK:basics#bool
+                                            function:
+                                              Apply:
+                                                attributes:
+                                                  inferredType:
+                                                    Function:
+                                                      parameterType: elm-compat:main#quantity
+                                                      returnType: morphir/SDK:basics#bool
+                                                function:
+                                                  Reference:
+                                                    attributes:
+                                                      inferredType:
+                                                        Function:
+                                                          parameterType: elm-compat:main#quantity
+                                                          returnType:
+                                                            Function:
+                                                              parameterType: elm-compat:main#quantity
+                                                              returnType: morphir/SDK:basics#bool
+                                                    fqname: morphir/SDK:basics#greater-than
+                                                argument:
+                                                  Variable:
+                                                    attributes:
+                                                      inferredType: elm-compat:main#quantity
+                                                    name: qty
+                                            argument:
+                                              Literal:
+                                                attributes:
+                                                  inferredType: elm-compat:main#quantity
+                                                literal:
+                                                  IntegerLiteral: 0
+                                argument:
+                                  Field:
+                                    attributes:
+                                      inferredType:
+                                        Reference:
+                                          - morphir/SDK:list#list
+                                          - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                    target:
+                                      Variable:
+                                        attributes:
+                                          inferredType: elm-compat:main#customer-order
+                                        name: order
+                                    name: products
+              order-status-to-string:
+                Public:
+                  doc: " Convert an order status to a human-readable string."
+                  ExpressionBody:
+                    inputTypes:
+                      status: elm-compat:main#order-status
+                    outputType: morphir/SDK:string#string
+                    body:
+                      PatternMatch:
+                        attributes:
+                          inferredType: morphir/SDK:string#string
+                        value:
+                          Variable:
+                            attributes:
+                              inferredType: elm-compat:main#order-status
+                            name: status
+                        cases:
+                          - pattern:
+                              ConstructorPattern:
+                                attributes:
+                                  inferredType: elm-compat:main#order-status
+                                fqname: elm-compat:main#pending
+                                patterns: []
+                            body:
+                              Literal:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                                literal:
+                                  StringLiteral: Pending
+                          - pattern:
+                              ConstructorPattern:
+                                attributes:
+                                  inferredType: elm-compat:main#order-status
+                                fqname: elm-compat:main#confirmed
+                                patterns: []
+                            body:
+                              Literal:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                                literal:
+                                  StringLiteral: Confirmed
+                          - pattern:
+                              ConstructorPattern:
+                                attributes:
+                                  inferredType: elm-compat:main#order-status
+                                fqname: elm-compat:main#shipped
+                                patterns: []
+                            body:
+                              Literal:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                                literal:
+                                  StringLiteral: Shipped
+                          - pattern:
+                              ConstructorPattern:
+                                attributes:
+                                  inferredType: elm-compat:main#order-status
+                                fqname: elm-compat:main#delivered
+                                patterns: []
+                            body:
+                              Literal:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                                literal:
+                                  StringLiteral: Delivered
+                          - pattern:
+                              ConstructorPattern:
+                                attributes:
+                                  inferredType: elm-compat:main#order-status
+                                fqname: elm-compat:main#cancelled
+                                patterns: []
+                            body:
+                              Literal:
+                                attributes:
+                                  inferredType: morphir/SDK:string#string
+                                literal:
+                                  StringLiteral: Cancelled
+            doc: [" Main module demonstrating Morphir-compatible Elm types and functions.", "", This module provides a simple e-commerce domain model for testing, the morphir-elm toolchain integration.]

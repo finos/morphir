@@ -55,7 +55,10 @@ windows-sys = { version = "0.61", features = [
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde-saphyr = { version = "1", default-features = false, features = ["deserialize", "serialize"] }
-# Match morphir-rust's YAML event parser, including readable scan errors.
+# The IR YAML profile reader in `morphir-core` walks this parser's event stream. `morphir-core`
+# takes it from the workspace, and a path dependency on it inherits from this root, so the pin
+# lives here as well as in `ecosystem/morphir-rust/Cargo.toml` and is exact: the version the
+# submodule's tests are written against is the version the CLI ships.
 granit-parser = { version = "=1.2.0", default-features = false, features = ["std", "error_messages"] }
 stacker = "0.1"
 toml = "1.0.0"

@@ -225,3 +225,47 @@ fn concrete_v3_json_and_yaml_convert_in_both_directions() {
         serde_json::from_slice(&std::fs::read(json).unwrap()).unwrap();
     assert_eq!(converted, original);
 }
+
+/// The canonical YAML style is the reference binding's, byte for byte. The fixture is
+/// the TypeScript binding's `writeYaml` over the value tree of the same migration (see
+/// `docs/spec/ir/schemas/v4/yaml-profile.md`); if this test fails, the two writers
+/// disagree and the kit's `yaml canonical` fences settle which one is wrong.
+#[test]
+fn migrated_yaml_matches_the_reference_writer_byte_for_byte() {
+    let temp = TempDir::new().unwrap();
+    let output_path = temp.path().join("greeting.yaml");
+
+    assert_success(&migrate(&greeting_v3(), &output_path, &[]));
+
+    let actual = std::fs::read_to_string(&output_path)
+        .unwrap()
+        .replace("\r\n", "\n");
+    let expected = include_str!("fixtures/yaml/greeting-example.v4.yaml").replace("\r\n", "\n");
+
+    if actual != expected {
+        let first = actual
+            .lines()
+            .zip(expected.lines())
+            .enumerate()
+            .find(|(_, (a, e))| a != e);
+        match first {
+            Some((index, (a, e))) => panic!(
+                "line {}: the CLI wrote\n  {a}\nthe reference writer wrote\n  {e}",
+                index + 1
+            ),
+            None => {
+                // `.lines()` ignores a trailing newline, so two texts that agree on
+                // every line can still land here when they differ only in trailing
+                // newline count (or trailing whitespace after the last line). Report
+                // byte lengths, which do distinguish them, instead of the equal line
+                // counts `.lines()` would otherwise print.
+                panic!(
+                    "the two texts agree line-for-line via `.lines()` but are not equal \
+                     — likely a trailing-newline difference: CLI {} bytes, reference {} bytes",
+                    actual.len(),
+                    expected.len()
+                )
+            }
+        }
+    }
+}
