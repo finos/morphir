@@ -27,6 +27,11 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+mod version;
+use morphir_common::ir_transport::IrVersion;
+pub use version::parse_ir_version;
+use version::{VersionedIr, selected_ir_version};
+
 /// Options for the compile command
 #[derive(Debug, Default)]
 pub struct CompileOptions {
@@ -44,6 +49,8 @@ pub struct CompileOptions {
     pub config_path: Option<String>,
     /// Declared workspace-relative member path or exact project name
     pub project: Option<String>,
+    /// Override the project's IR format version.
+    pub ir_version: Option<IrVersion>,
     /// Output JSON format
     pub json: bool,
     /// Output JSON lines format
@@ -55,6 +62,12 @@ pub struct CompileOptions {
 /// Run the compile command
 pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
     if should_use_single_file_process(&options) {
+        if options.ir_version == Some(IrVersion::V4) {
+            return Err(CliError::Validation {
+                message: "Single-file Elm compilation supports only IR v3".into(),
+            }
+            .into());
+        }
         return run_single_file_compile(options).await;
     }
 
@@ -1076,6 +1089,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         package_name,
         config_path,
         project,
+        ir_version,
         json,
         json_lines,
         out: out_overrides,
@@ -1157,6 +1171,18 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     let prepared = out.prepare_dest(&task)?;
     let paths = prepared.paths;
     let storage = crate::commands::ir_storage::IrStorage::from_config(context.config.ir.as_ref())?;
+    let ir_version = selected_ir_version(ir_version, context.config.ir.as_ref())?;
+    if ir_version == IrVersion::V3 && storage.layout == morphir_devkit::IrLayout::DocumentTree {
+        return Err(CliError::Validation {
+            message: "IR v3 supports single-file storage; document-tree storage requires IR v4"
+                .into(),
+        }
+        .into());
+    }
+    let requested_version = match ir_version {
+        IrVersion::V3 => "3",
+        IrVersion::V4 => "4.0.0",
+    };
     let (documents, source_root_uri) = collect_source_documents(&input_path, &language)?;
     let emit_parse_stage = context
         .config
@@ -1179,7 +1205,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     let resolved = registry
         .resolve_frontend(
             &language,
-            "4.0.0",
+            requested_version,
             morphir_daemon::InvocationPolicy::PreferDirect,
         )
         .map_err(|error| CliError::Extension {
@@ -1196,7 +1222,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         dependencies: vec![],
         options: ExtensionCompileOptions {
             types_only: false,
-            ir_version: "4.0.0".into(),
+            ir_version: requested_version.into(),
             extra: HashMap::from([
                 ("outputDir".into(), serde_json::json!(paths.dest)),
                 ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
@@ -1236,8 +1262,8 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         write_compile_output(format, &output)?;
         return Err(CliError::Compilation { message }.into());
     }
-    let ir_file = validate_v4_compile_result(&result)?;
-    let descriptor = crate::commands::ir_storage::write_v4(&paths.dest, &storage, &ir_file)?;
+    let ir_file = VersionedIr::validate(&result, ir_version)?;
+    let descriptor = ir_file.write(&paths.dest, &storage)?;
     let mut record = TaskResult::new(&task, &out.module);
     record.language = Some(language_name);
     record.value = vec![descriptor.path.clone()];
@@ -1251,9 +1277,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     // The task is finished: its record is written and its install is done, so
     // the next run of this task may start.
     drop(prepared.lock);
-    let ir = serde_json::to_value(&ir_file).map_err(|error| CliError::Extension {
-        message: format!("Failed to serialize validated Morphir IR v4: {error}"),
-    })?;
+    let ir = ir_file.json()?;
     let output = CompileOutput {
         success: true,
         ir: Some(ir),
@@ -1443,6 +1467,24 @@ fn normalize_ir_version_text(version: &str) -> Option<NormalizedFormatVersion> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn compile_version_uses_cli_then_project_then_v4_default() {
+        use morphir_common::ir_transport::IrVersion;
+        let configured: IrSection =
+            serde_json::from_value(serde_json::json!({"format_version": 3})).unwrap();
+        assert_eq!(selected_ir_version(None, None).unwrap(), IrVersion::V4);
+        assert_eq!(
+            selected_ir_version(None, Some(&configured)).unwrap(),
+            IrVersion::V3
+        );
+        assert_eq!(
+            selected_ir_version(Some(IrVersion::V4), Some(&configured)).unwrap(),
+            IrVersion::V4
+        );
+        let invalid: IrSection =
+            serde_json::from_value(serde_json::json!({"format_version": 2})).unwrap();
+        assert!(selected_ir_version(None, Some(&invalid)).is_err());
+    }
     use super::*;
     use async_trait::async_trait;
     use morphir_common::config::model::MorphirConfig;
@@ -1531,6 +1573,7 @@ mod tests {
             package_name: None,
             config_path: None,
             project: None,
+            ir_version: None,
             json: false,
             json_lines: false,
             out: OutOverrides {

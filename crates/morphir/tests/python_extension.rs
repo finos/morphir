@@ -2,6 +2,33 @@
 
 use std::{fs, path::PathBuf, process::Command};
 
+fn assert_project_model(project: &std::path::Path, selected: &str, expected: &serde_json::Value) {
+    tokio::runtime::Runtime::new().unwrap().block_on(async {
+        use morphir::commands::ui::provider::{
+            WorkspaceCapability, native::NativeWorkspaceProvider,
+        };
+        let provider = NativeWorkspaceProvider::discover_with_options(
+            project,
+            "python-model",
+            morphir_devkit::ConfigLoadOptions::project_only(),
+        )
+        .unwrap();
+        let source = provider.initial_sources().pop().unwrap();
+        let snapshot = provider.open(&source).await.unwrap();
+        let id = &snapshot
+            .projects
+            .iter()
+            .find(|item| item.relative_path == selected)
+            .unwrap()
+            .id;
+        let model = provider.load_project_model(&source, id).await.unwrap();
+        assert_eq!(
+            &serde_json::from_str::<serde_json::Value>(&model.content).unwrap(),
+            expected
+        );
+    });
+}
+
 #[test]
 #[ignore = "requires MORPHIR_PYTHON_BUNDLE pointing to a packaged Python WASM guest"]
 fn python_bundle_compiles_and_generates_offline() {
@@ -114,6 +141,48 @@ fn python_bundle_compiles_and_generates_offline() {
     };
     assert_eq!(read_ir("compiled"), read_ir("recompiled"));
 
+    // The project selects v3; an explicit CLI version overrides it without editing config.
+    let original_config = fs::read_to_string(project.join("morphir.toml")).unwrap();
+    fs::write(
+        project.join("morphir.toml"),
+        format!("{original_config}\n[ir]\nformat_version = 3\n"),
+    )
+    .unwrap();
+    run(&["compile", "--output", "compiled-v3"]);
+    let classic = read_ir("compiled-v3");
+    assert_eq!(classic["formatVersion"], 3);
+    assert_eq!(classic["distribution"][0], "Library");
+    assert_project_model(&project, ".", &classic);
+    run(&["generate", "--target", "python", "--output", "generated-v3"]);
+    run(&[
+        "compile",
+        "--input",
+        "generated-v3",
+        "--ir-version",
+        "3.0.0",
+        "--output",
+        "recompiled-v3",
+    ]);
+    assert_eq!(read_ir("recompiled-v3"), classic);
+    run(&["compile", "--ir-version", "4", "--output", "overridden-v4"]);
+    assert_eq!(read_ir("overridden-v4")["formatVersion"], 4);
+    fs::write(
+        project.join("morphir.toml"),
+        format!("{original_config}\n[ir]\nformat_version = 3\nformat = 'yaml'\n"),
+    )
+    .unwrap();
+    run(&["compile", "--output", "compiled-v3-yaml"]);
+    assert!(project.join("compiled-v3-yaml/morphir-ir.yaml").is_file());
+    assert_project_model(&project, ".", &classic);
+    run(&[
+        "generate",
+        "--target",
+        "python",
+        "--output",
+        "generated-v3-yaml",
+    ]);
+    assert!(project.join("generated-v3-yaml/domain/rules.py").is_file());
+
     fs::write(project.join("morphir.toml"), "[workspace]\nmembers = ['packages/*']\ndefault_member = 'packages/toml'\n[frontend]\nlanguage = 'python'\n").unwrap();
     for (name, filename, config) in [
         (
@@ -171,30 +240,7 @@ fn python_bundle_compiles_and_generates_offline() {
                 .get("Public")
                 .is_some()
         );
-        tokio::runtime::Runtime::new().unwrap().block_on(async {
-            use morphir::commands::ui::provider::{
-                WorkspaceCapability, native::NativeWorkspaceProvider,
-            };
-            let provider = NativeWorkspaceProvider::discover_with_options(
-                &project,
-                "python-model",
-                morphir_devkit::ConfigLoadOptions::project_only(),
-            )
-            .unwrap();
-            let source = provider.initial_sources().pop().unwrap();
-            let snapshot = provider.open(&source).await.unwrap();
-            let id = &snapshot
-                .projects
-                .iter()
-                .find(|item| item.relative_path == selected)
-                .unwrap()
-                .id;
-            let model = provider.load_project_model(&source, id).await.unwrap();
-            assert_eq!(
-                serde_json::from_str::<serde_json::Value>(&model.content).unwrap(),
-                ir
-            );
-        });
+        assert_project_model(&project, &selected, &ir);
         run(&[
             "generate",
             "--project",
