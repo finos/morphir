@@ -1,0 +1,5 @@
+formatVersion: 4
+path: api
+doc: " API module demonstrating request/response patterns.\n\nThis module provides types and functions for a simple API layer,\ndemonstrating how Morphir handles common API patterns.\n"
+types: [api-error, request, response]
+values: [create-order, get-order-status, process-request]

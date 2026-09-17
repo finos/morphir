@@ -1,0 +1,16 @@
+formatVersion: 4
+name: customer-order
+def:
+  Public:
+    doc: " A customer order containing products and quantities.\n"
+    TypeAliasDefinition:
+      typeParams: []
+      typeExp:
+        Record:
+          fields:
+            order-id: morphir/SDK:string#string
+            products:
+              Reference:
+                - morphir/SDK:list#list
+                - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+            status: elm-compat:main#order-status

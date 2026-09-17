@@ -1,0 +1,14 @@
+formatVersion: 4
+name: order-status
+def:
+  Public:
+    doc: " Possible states of an order.\n"
+    CustomTypeDefinition:
+      typeParams: []
+      access: Public
+      constructors:
+        cancelled: []
+        confirmed: []
+        delivered: []
+        pending: []
+        shipped: []

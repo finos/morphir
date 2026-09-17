@@ -1,0 +1,17 @@
+formatVersion: 4
+name: request
+def:
+  Public:
+    doc: " Represents an API request to create or modify an order.\n"
+    TypeAliasDefinition:
+      typeParams: []
+      typeExp:
+        Record:
+          fields:
+            action: morphir/SDK:string#string
+            order-id:
+              Reference: ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"]
+            products:
+              Reference:
+                - morphir/SDK:list#list
+                - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
