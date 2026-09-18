@@ -61,8 +61,12 @@ fn python_bundle_compiles_and_generates_offline() {
         project.join("src/domain/rules.py"),
         concat!(
             "from .models import Point\n",
+            "from collections.abc import Callable\n",
             "def choose(flag: bool, first: Point, second: Point) -> Point:\n",
             "    if flag:\n        return first\n    else:\n        return second\n",
+            "def apply(transform: Callable[[Point], Point], value: Point) -> Point:\n    return transform(value)\n",
+            "def retain(first: Point) -> Callable[[Point], Point]:\n    return lambda second: choose(True, first, second)\n",
+            "def use(value: Point) -> Point:\n    return apply(retain(value), value)\n",
         ),
     )
     .unwrap();
