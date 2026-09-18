@@ -1,0 +1,427 @@
+{
+  "profile": "restore-filesystem-assurance",
+  "profileVersion": "0.1.0-draft.1",
+  "cases": [
+    {
+      "id": "assurance.explicit-portable",
+      "selection": {
+        "profile": "restore-filesystem-assurance",
+        "profileVersion": "0.1.0-draft.1",
+        "mode": "portable"
+      },
+      "provider": {
+        "identity": {
+          "id": "synthetic-provider",
+          "version": "test-only"
+        },
+        "qualification": {
+          "kind": "qualified",
+          "entries": [
+            {
+              "mode": "portable",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-portable"
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "receipt": {
+          "kind": "selected",
+          "context": {
+            "selection": {
+              "profile": "restore-filesystem-assurance",
+              "profileVersion": "0.1.0-draft.1",
+              "mode": "portable"
+            },
+            "provider": {
+              "id": "synthetic-provider",
+              "version": "test-only"
+            },
+            "qualification": {
+              "mode": "portable",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-portable"
+              ]
+            }
+          }
+        },
+        "accesses": 1
+      }
+    },
+    {
+      "id": "assurance.hardened-unavailable",
+      "selection": {
+        "profile": "restore-filesystem-assurance",
+        "profileVersion": "0.1.0-draft.1",
+        "mode": "hardened"
+      },
+      "provider": {
+        "identity": {
+          "id": "synthetic-provider",
+          "version": "test-only"
+        },
+        "qualification": {
+          "kind": "qualified",
+          "entries": [
+            {
+              "mode": "portable",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-portable"
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "receipt": {
+          "kind": "rejected",
+          "selection": {
+            "profile": "restore-filesystem-assurance",
+            "profileVersion": "0.1.0-draft.1",
+            "mode": "hardened"
+          },
+          "provider": {
+            "id": "synthetic-provider",
+            "version": "test-only"
+          },
+          "reason": "mode-unavailable"
+        },
+        "accesses": 0
+      }
+    },
+    {
+      "id": "assurance.no-implicit-portable",
+      "selection": {
+        "profile": "restore-filesystem-assurance",
+        "profileVersion": "0.1.0-draft.1",
+        "mode": "portable"
+      },
+      "provider": {
+        "identity": {
+          "id": "synthetic-provider",
+          "version": "test-only"
+        },
+        "qualification": {
+          "kind": "qualified",
+          "entries": [
+            {
+              "mode": "hardened",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-hardened"
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "receipt": {
+          "kind": "rejected",
+          "selection": {
+            "profile": "restore-filesystem-assurance",
+            "profileVersion": "0.1.0-draft.1",
+            "mode": "portable"
+          },
+          "provider": {
+            "id": "synthetic-provider",
+            "version": "test-only"
+          },
+          "reason": "mode-unavailable"
+        },
+        "accesses": 0
+      }
+    },
+    {
+      "id": "assurance.unqualified",
+      "selection": {
+        "profile": "restore-filesystem-assurance",
+        "profileVersion": "0.1.0-draft.1",
+        "mode": "portable"
+      },
+      "provider": {
+        "identity": {
+          "id": "synthetic-provider",
+          "version": "test-only"
+        },
+        "qualification": {
+          "kind": "unqualified"
+        }
+      },
+      "expected": {
+        "receipt": {
+          "kind": "rejected",
+          "selection": {
+            "profile": "restore-filesystem-assurance",
+            "profileVersion": "0.1.0-draft.1",
+            "mode": "portable"
+          },
+          "provider": {
+            "id": "synthetic-provider",
+            "version": "test-only"
+          },
+          "reason": "provider-unqualified"
+        },
+        "accesses": 0
+      }
+    },
+    {
+      "id": "assurance.both-select-hardened",
+      "selection": {
+        "profile": "restore-filesystem-assurance",
+        "profileVersion": "0.1.0-draft.1",
+        "mode": "hardened"
+      },
+      "provider": {
+        "identity": {
+          "id": "synthetic-provider",
+          "version": "test-only"
+        },
+        "qualification": {
+          "kind": "qualified",
+          "entries": [
+            {
+              "mode": "portable",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-portable"
+              ]
+            },
+            {
+              "mode": "hardened",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-hardened"
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "receipt": {
+          "kind": "selected",
+          "context": {
+            "selection": {
+              "profile": "restore-filesystem-assurance",
+              "profileVersion": "0.1.0-draft.1",
+              "mode": "hardened"
+            },
+            "provider": {
+              "id": "synthetic-provider",
+              "version": "test-only"
+            },
+            "qualification": {
+              "mode": "hardened",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-hardened"
+              ]
+            }
+          }
+        },
+        "accesses": 1
+      }
+    },
+    {
+      "id": "assurance.both-select-portable",
+      "selection": {
+        "profile": "restore-filesystem-assurance",
+        "profileVersion": "0.1.0-draft.1",
+        "mode": "portable"
+      },
+      "provider": {
+        "identity": {
+          "id": "synthetic-provider",
+          "version": "test-only"
+        },
+        "qualification": {
+          "kind": "qualified",
+          "entries": [
+            {
+              "mode": "hardened",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-hardened"
+              ]
+            },
+            {
+              "mode": "portable",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-portable"
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "receipt": {
+          "kind": "selected",
+          "context": {
+            "selection": {
+              "profile": "restore-filesystem-assurance",
+              "profileVersion": "0.1.0-draft.1",
+              "mode": "portable"
+            },
+            "provider": {
+              "id": "synthetic-provider",
+              "version": "test-only"
+            },
+            "qualification": {
+              "mode": "portable",
+              "environment": {
+                "runtime": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "os": {
+                  "name": "synthetic",
+                  "version": "test-only"
+                },
+                "architecture": "synthetic",
+                "filesystem": "synthetic",
+                "assumptions": [
+                  "Test metadata only; no filesystem provider is qualified."
+                ]
+              },
+              "evidence": [
+                "synthetic:test-only-portable"
+              ]
+            }
+          }
+        },
+        "accesses": 1
+      }
+    }
+  ]
+}
