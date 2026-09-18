@@ -25,7 +25,7 @@ morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
 toml = { workspace = true }
 
 [dev-dependencies]
-cucumber = { version = "0.22", features = ["output-json"] }
+cucumber = { version = "0.23", features = ["output-json"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [[test]]
