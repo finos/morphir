@@ -62,12 +62,6 @@ pub struct CompileOptions {
 /// Run the compile command
 pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
     if should_use_single_file_process(&options) {
-        if options.ir_version == Some(IrVersion::V4) {
-            return Err(CliError::Validation {
-                message: "Single-file Elm compilation supports only IR v3".into(),
-            }
-            .into());
-        }
         return run_single_file_compile(options).await;
     }
 
@@ -638,6 +632,12 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     // order; this one now matches it.
     let prepared = out.prepare_dest(&task)?;
     let paths = prepared.paths;
+    if options.ir_version == Some(IrVersion::V4) {
+        return Err(CliError::Validation {
+            message: "Single-file Elm compilation supports only IR v3".into(),
+        }
+        .into());
+    }
     let source = read_single_source(&input_path)?;
     let descriptor = crate::commands::ir_storage::v3_json_descriptor();
     warn_if_ir_storage_settings_are_ignored(config_context.as_ref(), &descriptor);
@@ -1592,6 +1592,43 @@ mod tests {
             "the previous successful record must have been replaced by a tombstone"
         );
         assert!(record.value.is_empty(), "{:?}", record.value);
+    }
+
+    #[tokio::test]
+    async fn rejecting_single_file_elm_v4_invalidates_previous_compile() {
+        let temp = TempDir::new().unwrap();
+        let overrides = OutOverrides {
+            flag: Some(temp.path().join("out")),
+            env: None,
+        };
+        let out = OutContext::resolve(None, &overrides, temp.path());
+        let task = TaskId::compile();
+        let paths = out.task(&task).unwrap();
+        std::fs::create_dir_all(&paths.dest).unwrap();
+        let artifact = paths.dest.join("morphir-ir.json");
+        std::fs::write(&artifact, "previous IR").unwrap();
+        let mut previous = TaskResult::new(&task, &out.module);
+        previous.value = vec!["morphir-ir.json".into()];
+        previous.write(&paths.result).unwrap();
+
+        let error = run_compile(CompileOptions {
+            input: Some(
+                temp.path()
+                    .join("Models.elm")
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+            ir_version: Some(IrVersion::V4),
+            out: overrides,
+            ..Default::default()
+        })
+        .await
+        .expect_err("single-file Elm must reject v4");
+        assert!(error.to_string().contains("supports only IR v3"), "{error}");
+        let record = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(record.tombstone, "stale IR must not remain current");
+        assert!(record.value.is_empty());
+        assert!(!artifact.exists());
     }
 
     #[test]
