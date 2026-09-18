@@ -15,12 +15,20 @@ inputs:
     description: Shared rust-cache namespace across jobs.
     required: false
     default: morphir-rust
+  save-cache:
+    description: >-
+      Let this job write the shared cargo cache. Jobs that share a key race to
+      save it and the first one to finish wins, so exactly one job per key
+      should set this: the one that builds the most. Saving is still limited to
+      the default branch and tags, the only scopes other runs can restore from.
+    required: false
+    default: "false"
 runs:
   using: composite
   steps:
     - name: Run sccache
       if: inputs.enable-sccache == 'true'
-      uses: mozilla-actions/sccache-action@v0.0.10
+      uses: mozilla-actions/sccache-action@v0.0.11
 
     - name: Configure sccache
       if: inputs.enable-sccache == 'true'
@@ -28,6 +36,15 @@ runs:
       run: |
         echo 'SCCACHE_GHA_ENABLED=true' >> "$GITHUB_ENV"
         echo 'RUSTC_WRAPPER=sccache' >> "$GITHUB_ENV"
+
+    # An entry written from a pull request is scoped to that pull request, so
+    # no other run can read it, yet it counts against the repository's cache
+    # quota and evicts the entries main wrote. Pull requests read main's
+    # entries and write nothing.
+    - name: Make sccache read-only outside the default branch
+      if: inputs.enable-sccache == 'true' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      run: echo 'SCCACHE_GHA_RW_MODE=READ_ONLY' >> "$GITHUB_ENV"
 
     - name: Install mold linker
       if: inputs.install-mold == 'true'
@@ -40,8 +57,12 @@ runs:
     - name: Cache cargo
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: ". -> target"
+        # The second workspace holds the MCK adapter and the WASM guests that
+        # CI builds from the submodule into its own target directory.
+        workspaces: |
+          . -> target
+          ecosystem/morphir-rust -> target
         shared-key: ${{ inputs.shared-key }}
         add-job-id-key: false
         cache-on-failure: true
-        save-if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
+        save-if: ${{ inputs.save-cache == 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) }}

@@ -17,7 +17,6 @@ use morphir_daemon::extensions::{
 };
 use morphir_devkit::{
     ConfigContext, IrDescriptor, TaskId, TaskResult, discover_config, ensure_morphir_structure,
-    load_config_context, resolve_path_relative_to_config,
 };
 use morphir_distribution::{ExtensionId, VerifiedExtensionArtifact, activate_installed};
 use morphir_extension_sdk::{
@@ -29,6 +28,11 @@ use starbase::AppResult;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+
+mod version;
+use morphir_common::ir_transport::IrVersion;
+pub use version::parse_ir_version;
+use version::{VersionedIr, selected_ir_version};
 
 /// Options for the compile command
 #[derive(Debug, Default)]
@@ -45,8 +49,10 @@ pub struct CompileOptions {
     pub package_name: Option<String>,
     /// Path to configuration file
     pub config_path: Option<String>,
-    /// Project name (currently unused)
+    /// Declared workspace-relative member path or exact project name
     pub project: Option<String>,
+    /// Override the project's IR format version.
+    pub ir_version: Option<IrVersion>,
     /// Output JSON format
     pub json: bool,
     /// Output JSON lines format
@@ -319,6 +325,28 @@ fn fallback_elm_module_name(input: &Path) -> String {
         .unwrap_or_else(|| "Main".into())
 }
 
+fn prepare_configured_single_file_context(
+    options: &CompileOptions,
+    input: &Path,
+    source: &str,
+    config: Option<&ConfigContext>,
+    output: PathBuf,
+) -> Result<SingleFileCompileContext, CliError> {
+    // This route submits one document, so its synthesized exposure must not
+    // require other modules from the surrounding project.
+    prepare_single_file_context(
+        &[input.to_path_buf()],
+        source,
+        options.language.as_deref(),
+        options.package_name.as_deref().or_else(|| {
+            config
+                .and_then(|context| context.current_project.as_ref())
+                .map(|project| project.name.as_str())
+        }),
+        output,
+    )
+}
+
 fn file_uri(path: &Path) -> Result<String, CliError> {
     let text = path.to_str().ok_or_else(|| CliError::Validation {
         message: format!("Source path is not valid UTF-8: '{}'", path.display()),
@@ -560,14 +588,35 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
             message: "Single-file compilation requires --input".into(),
         })?;
     let input_path = absolute_from(&start_dir, Path::new(input_value));
-    let config_path = options
+    let mut config_path = options
         .config_path
         .as_deref()
         .map(Path::new)
         .map(|path| absolute_from(&start_dir, path));
+    if config_path.is_none() && options.project.is_some() {
+        config_path = discover_config(&start_dir).map_err(|error| CliError::Config { error })?;
+        if config_path.is_none() {
+            return Err(CliError::Config {
+                error: anyhow::anyhow!("--project requires a Morphir configuration"),
+            }
+            .into());
+        }
+    }
     let config_context = config_path
         .as_deref()
-        .map(load_config_context)
+        .map(|path| {
+            morphir_devkit::load_config_context_with(
+                path,
+                &morphir_devkit::ConfigLoadOptions {
+                    project: options
+                        .project
+                        .clone()
+                        .map(morphir_devkit::config::ProjectSelection::Explicit)
+                        .unwrap_or_default(),
+                    ..Default::default()
+                },
+            )
+        })
         .transpose()
         .map_err(|error| CliError::Config { error })?;
     let config_dir = config_path.as_deref().and_then(Path::parent);
@@ -586,15 +635,21 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     // order; this one now matches it.
     let prepared = out.prepare_dest(&task)?;
     let paths = prepared.paths;
+    if options.ir_version == Some(IrVersion::V4) {
+        return Err(CliError::Validation {
+            message: "Single-file Elm compilation supports only IR v3".into(),
+        }
+        .into());
+    }
     let source = read_single_source(&input_path)?;
     let descriptor = crate::commands::ir_storage::v3_json_descriptor();
     warn_if_ir_storage_settings_are_ignored(config_context.as_ref(), &descriptor);
     let output_path = paths.dest.join(&descriptor.path);
-    let context = prepare_single_file_context(
-        std::slice::from_ref(&input_path),
+    let context = prepare_configured_single_file_context(
+        &options,
+        &input_path,
         &source,
-        options.language.as_deref(),
-        options.package_name.as_deref(),
+        config_context.as_ref(),
         output_path,
     )?;
     let environment = filtered_process_environment();
@@ -1083,7 +1138,8 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         output,
         package_name,
         config_path,
-        project: _project,
+        project,
+        ir_version,
         json,
         json_lines,
         no_cache,
@@ -1099,7 +1155,20 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
                 error: anyhow::anyhow!("No morphir.toml, morphir.yaml, or morphir.json found"),
             })?
     };
-    let context = load_config_context(&config_file).map_err(|error| CliError::Config { error })?;
+    let selection = project
+        .map(morphir_devkit::config::ProjectSelection::Explicit)
+        .unwrap_or_default();
+    let context = morphir_devkit::load_config_context_with(
+        &config_file,
+        &morphir_devkit::ConfigLoadOptions {
+            project: selection,
+            ..Default::default()
+        },
+    )
+    .map_err(|error| CliError::Config { error })?;
+    let project_root = context.project_root.as_deref().ok_or_else(|| CliError::Config {
+        error: anyhow::anyhow!("Workspace has no selected project; use --project with a declared member path or exact project name"),
+    })?;
     ensure_morphir_structure(&context.morphir_dir).map_err(|error| CliError::Config { error })?;
     let language = language
         .or_else(|| {
@@ -1145,7 +1214,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
                 })
             })
             .unwrap_or_else(|| PathBuf::from("src"));
-        resolve_path_relative_to_config(&configured, &context.config_path)
+        absolute_from(project_root, &configured)
     };
     report_config_warnings(&context);
     let out = OutContext::resolve(Some(&context), &out_overrides, &start_dir);
@@ -1153,6 +1222,18 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     let prepared = out.prepare_dest(&task)?;
     let paths = prepared.paths;
     let storage = crate::commands::ir_storage::IrStorage::from_config(context.config.ir.as_ref())?;
+    let ir_version = selected_ir_version(ir_version, context.config.ir.as_ref())?;
+    if ir_version == IrVersion::V3 && storage.layout == morphir_devkit::IrLayout::DocumentTree {
+        return Err(CliError::Validation {
+            message: "IR v3 supports single-file storage; document-tree storage requires IR v4"
+                .into(),
+        }
+        .into());
+    }
+    let requested_version = match ir_version {
+        IrVersion::V3 => "3",
+        IrVersion::V4 => "4.0.0",
+    };
     let (documents, source_root_uri) = collect_source_documents(&input_path, &language)?;
     let emit_parse_stage = context
         .config
@@ -1179,7 +1260,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     let resolved = registry
         .resolve_frontend(
             &language,
-            "4.0.0",
+            requested_version,
             morphir_daemon::InvocationPolicy::PreferDirect,
         )
         .map_err(|error| match requested_extension {
@@ -1196,10 +1277,11 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             },
         })?;
     let language_name = language.clone();
-    let ir_version = advertised_ir_version(&resolved.capability().ir_versions, "4.0.0");
+    let negotiated_ir_version =
+        advertised_ir_version(&resolved.capability().ir_versions, requested_version);
     let extension_options = ExtensionCompileOptions {
         types_only: false,
-        ir_version: ir_version.clone(),
+        ir_version: negotiated_ir_version,
         extra: HashMap::from([
             ("outputDir".into(), serde_json::json!(paths.dest)),
             ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
@@ -1232,12 +1314,12 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     let request = CompileRequest {
         language_id: language,
         documents,
-        // A project compile exposes every module it found: the CLI has no
-        // exposure list of its own, and an empty list would now mean the
-        // opposite — a package that exposes nothing.
+        // The project's declared exposure, when it has one: absent means the
+        // compile exposes every module it found, where an empty list would now
+        // mean the opposite — a package that exposes nothing.
         package: CompilePackage {
             name: package_name.clone(),
-            exposed_modules: None,
+            exposed_modules: context.exposed_modules().map(<[String]>::to_vec),
         },
         dependencies: vec![],
         baseline,
@@ -1282,8 +1364,8 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         write_compile_output(format, &output)?;
         return Err(CliError::Compilation { message }.into());
     }
-    let ir_file = validate_v4_compile_result(&result)?;
-    let descriptor = crate::commands::ir_storage::write_v4(&paths.dest, &storage, &ir_file)?;
+    let ir_file = VersionedIr::validate(&result, ir_version)?;
+    let descriptor = ir_file.write(&paths.dest, &storage)?;
     let mut record = TaskResult::new(&task, &out.module);
     record.language = Some(language_name);
     record.value = vec![descriptor.path.clone()];
@@ -1297,9 +1379,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     // The task is finished: its record is written and its install is done, so
     // the next run of this task may start.
     drop(prepared.lock);
-    let ir = serde_json::to_value(&ir_file).map_err(|error| CliError::Extension {
-        message: format!("Failed to serialize validated Morphir IR v4: {error}"),
-    })?;
+    let ir = ir_file.json()?;
     let output = CompileOutput {
         success: true,
         ir: Some(ir),
@@ -1482,6 +1562,7 @@ fn language_file_extension(language: &str) -> Result<&'static str, CliError> {
         "gleam" => Ok("gleam"),
         "elm" => Ok("elm"),
         "python" => Ok("py"),
+        "rust" => Ok("rs"),
         _ => Err(CliError::Validation {
             message: format!("Unknown language: {language}"),
         }),
@@ -1709,6 +1790,24 @@ fn normalize_ir_version_text(version: &str) -> Option<NormalizedFormatVersion> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn compile_version_uses_cli_then_project_then_v4_default() {
+        use morphir_common::ir_transport::IrVersion;
+        let configured: IrSection =
+            serde_json::from_value(serde_json::json!({"format_version": 3})).unwrap();
+        assert_eq!(selected_ir_version(None, None).unwrap(), IrVersion::V4);
+        assert_eq!(
+            selected_ir_version(None, Some(&configured)).unwrap(),
+            IrVersion::V3
+        );
+        assert_eq!(
+            selected_ir_version(Some(IrVersion::V4), Some(&configured)).unwrap(),
+            IrVersion::V4
+        );
+        let invalid: IrSection =
+            serde_json::from_value(serde_json::json!({"format_version": 2})).unwrap();
+        assert!(selected_ir_version(None, Some(&invalid)).is_err());
+    }
     use super::*;
     use async_trait::async_trait;
     use morphir_common::config::model::MorphirConfig;
@@ -1725,6 +1824,36 @@ mod tests {
     use tempfile::TempDir;
 
     const ELM_SOURCE: &str = "module Example exposing (add)\n\nadd left right = left + right\n";
+
+    #[test]
+    fn single_file_elm_does_not_require_unsubmitted_project_modules() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("morphir.toml");
+        std::fs::write(
+            &path,
+            "[project]\nname = 'local/example'\nexposed_modules = ['Example', 'Other']\n",
+        )
+        .unwrap();
+        let config = morphir_devkit::load_config_context_with(
+            &path,
+            &morphir_devkit::ConfigLoadOptions::project_only(),
+        )
+        .unwrap();
+        let context = prepare_configured_single_file_context(
+            &CompileOptions::default(),
+            &temp.path().join("Example.elm"),
+            ELM_SOURCE,
+            Some(&config),
+            temp.path().join("output.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            context.package.exposed_modules,
+            Some(vec!["Example".into()])
+        );
+        validate_compile_success(&context, &example_compile_result(vec!["Example".into()]))
+            .unwrap();
+    }
 
     /// A single-file compile whose input has since been deleted must leave a
     /// TOMBSTONE, not the previous run's successful record: `generate` treats
@@ -1767,6 +1896,7 @@ mod tests {
             package_name: None,
             config_path: None,
             project: None,
+            ir_version: None,
             json: false,
             json_lines: false,
             no_cache: false,
@@ -1786,6 +1916,43 @@ mod tests {
             "the previous successful record must have been replaced by a tombstone"
         );
         assert!(record.value.is_empty(), "{:?}", record.value);
+    }
+
+    #[tokio::test]
+    async fn rejecting_single_file_elm_v4_invalidates_previous_compile() {
+        let temp = TempDir::new().unwrap();
+        let overrides = OutOverrides {
+            flag: Some(temp.path().join("out")),
+            env: None,
+        };
+        let out = OutContext::resolve(None, &overrides, temp.path());
+        let task = TaskId::compile();
+        let paths = out.task(&task).unwrap();
+        std::fs::create_dir_all(&paths.dest).unwrap();
+        let artifact = paths.dest.join("morphir-ir.json");
+        std::fs::write(&artifact, "previous IR").unwrap();
+        let mut previous = TaskResult::new(&task, &out.module);
+        previous.value = vec!["morphir-ir.json".into()];
+        previous.write(&paths.result).unwrap();
+
+        let error = run_compile(CompileOptions {
+            input: Some(
+                temp.path()
+                    .join("Models.elm")
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+            ir_version: Some(IrVersion::V4),
+            out: overrides,
+            ..Default::default()
+        })
+        .await
+        .expect_err("single-file Elm must reject v4");
+        assert!(error.to_string().contains("supports only IR v3"), "{error}");
+        let record = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(record.tombstone, "stale IR must not remain current");
+        assert!(record.value.is_empty());
+        assert!(!artifact.exists());
     }
 
     #[test]
@@ -1905,6 +2072,30 @@ mod tests {
 
     fn extension_id(value: &str) -> ExtensionId {
         ExtensionId::parse(value).unwrap()
+    }
+
+    #[test]
+    fn rust_source_collection_reads_rs_files_and_preserves_module_paths() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        std::fs::create_dir(root.join("domain")).unwrap();
+        let source = "pub fn positive(value: i64) -> bool { value > 0 }\n";
+        let path = root.join("domain/rules.rs");
+        std::fs::write(&path, source).unwrap();
+        std::fs::write(root.join("README.md"), "Not Rust source").unwrap();
+
+        let (documents, source_root) = collect_source_documents(&root, "rust").unwrap();
+
+        assert_eq!(source_root, file_uri(&root).unwrap());
+        assert_eq!(documents.len(), 1);
+        assert_eq!(documents[0].uri, file_uri(&path).unwrap());
+        assert_eq!(documents[0].language_id, "rust");
+        assert_eq!(documents[0].text, source);
+
+        let (single_file, source_root) = collect_source_documents(&path, "rust").unwrap();
+        assert_eq!(single_file.len(), 1);
+        assert_eq!(single_file[0].text, source);
+        assert_eq!(source_root, file_uri(path.parent().unwrap()).unwrap());
     }
 
     #[test]
@@ -2056,8 +2247,8 @@ mod tests {
         assert!(context.document.uri.ends_with("/Example.elm"));
         assert_eq!(context.package.name, "local/example");
         assert_eq!(
-            context.package.exposed_modules.as_deref(),
-            Some(&["Example".to_string()][..])
+            context.package.exposed_modules,
+            Some(vec!["Example".into()])
         );
         assert_eq!(context.output_path, output);
     }

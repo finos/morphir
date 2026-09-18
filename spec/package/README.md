@@ -63,3 +63,29 @@ distributed registries and advanced multi-version graphs remain separate stages.
 
 Executable extensions and installable tools retain separate contracts. Nothing here
 requires their manifests or lifecycles to adopt the model-package format.
+
+The accepted [restore filesystem assurance design](restore-filesystem-assurance.md)
+targets portable restore on Linux, macOS and Windows first, with hardened providers
+following separately. Package authentication and durable trust state remain mandatory.
+The existing draft.3 execution requirements are the hardened baseline; portable mode
+needs its own explicitly identified execution/report profile and qualification evidence.
+No package artifact format changes or implemented platform support follow from this decision.
+
+Run `mise run package:assurance-check` to check the fixed synthetic
+[preflight vectors](mck/restore-assurance-preflight-vectors.json) through the shared MCK
+support entrypoint. The package CI job runs this task and checks that MCK's packaged
+schemas match the canonical [request](schemas/package-restore-assurance-protocol.schema.json)
+and [receipt](schemas/package-restore-assurance-report.schema.json) schemas owned here.
+`package:schema-check` validates those canonical schemas against their metaschema.
+The preflight check covers selection, receipts and callback counts. It does not perform
+filesystem access or establish authentication, restore compatibility, provider qualification
+or durability. The public portable adapter and qualified restore providers remain future work.
+
+Run `mise run package:publisher-check` to verify publisher signatures on the two fixed
+[signed release statements](mck/fixtures/local-registry/assets/signed/README.md) through
+the shared MCK support entrypoint. The package CI job runs this check. It checks all
+verified authorized raw keys, exact envelope and payload bytes, and evidence bound to
+the requested release. This signature evidence does not establish TUF or repository
+authentication, graph readiness, durable authorization grants, filesystem guarantees,
+restore compatibility or a complete draft.3 corpus pass. The shared MCK requires Node.js
+24 or later; the separate Morphir IR package retains Node.js 20 support.

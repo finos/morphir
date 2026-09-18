@@ -1,10 +1,15 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const tasks = Bun.TOML.parse(readFileSync(new URL("../.config/mise/config.toml", import.meta.url), "utf8")) as {
 	tasks: Record<string, { run: string[] }>;
 };
-type Job = { needs?: string[]; if?: string; steps: { run?: string; uses?: string; if?: string; with?: Record<string, string> }[] };
+type Job = {
+	needs?: string[];
+	if?: string;
+	"continue-on-error"?: boolean | string;
+	steps: { run?: string; uses?: string; if?: string; "continue-on-error"?: boolean | string; with?: Record<string, string> }[];
+};
 const workflow = Bun.YAML.parse(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")) as { jobs: Record<string, Job> };
 
 test("Rust package task builds a locked adapter and delegates verdicts to shared MCK", () => {
@@ -38,6 +43,47 @@ test("package schema validation covers every indexed resolution fixture", () => 
 	}
 });
 
+test("assurance task executes parent vectors through shared MCK support", () => {
+	expect(tasks.tasks["package:assurance-check"]?.run).toEqual([
+		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+		"bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-assurance-parent-integration.ts --source .",
+	]);
+});
+
+test("publisher task checks fixed parent statements through shared MCK support", () => {
+	expect(tasks.tasks["package:publisher-check"]?.run).toEqual([
+		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+		"bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-publisher-parent-integration.ts --source .",
+	]);
+});
+
+test("package CI requires one publisher check after assurance without suppressing failure", () => {
+	const job = workflow.jobs["package-mck"];
+	const publisherSteps = job?.steps.filter((step) => step.run === "mise run package:publisher-check") ?? [];
+	expect(publisherSteps).toHaveLength(1);
+	expect(publisherSteps[0]?.if).toBe("${{ !cancelled() && steps.integration.outcome == 'success' }}");
+	expect(publisherSteps[0]?.["continue-on-error"]).toBeUndefined();
+	expect(job?.["continue-on-error"]).toBeUndefined();
+	const assuranceIndex = job?.steps.findIndex((step) => step.run === "mise run package:assurance-check") ?? -1;
+	const publisherIndex = job?.steps.findIndex((step) => step.run === "mise run package:publisher-check") ?? -1;
+	expect(assuranceIndex).toBeGreaterThanOrEqual(0);
+	expect(publisherIndex).toBeGreaterThan(assuranceIndex);
+});
+
+for (const schema of ["package-restore-assurance-protocol.schema.json", "package-restore-assurance-report.schema.json"]) {
+	test(`shared MCK ${schema} mirrors the canonical parent schema`, () => {
+		const canonical = new URL(`../spec/package/schemas/${schema}`, import.meta.url);
+		expect(existsSync(canonical)).toBe(true);
+		const mirror = new URL(`../ecosystem/morphir-typescript/packages/mck/${schema}`, import.meta.url);
+		expect(JSON.parse(readFileSync(mirror, "utf8"))).toEqual(JSON.parse(readFileSync(canonical, "utf8")));
+	});
+
+	test(`package schema check validates canonical ${schema}`, () => {
+		const runs = tasks.tasks["package:schema-check"]?.run ?? [];
+		expect(runs.some((run) => run.startsWith("jsonschema metaschema ") && run.split(" ").includes(`spec/package/schemas/${schema}`))).toBe(true);
+	});
+}
+
 test("package CI covers each input and always uploads its report", () => {
 	const filters = workflow.jobs.changes?.steps.find((step) => step.with?.filters)?.with?.filters ?? "";
 	const paths = (Bun.YAML.parse(filters) as Record<string, string[]>)["package-mck"] ?? [];
@@ -50,7 +96,7 @@ test("package CI covers each input and always uploads its report", () => {
 	expect(job?.steps.find((step) => step.run === "mise run package:check:rust")?.if)
 		.toBe("${{ !cancelled() && steps.integration.outcome == 'success' }}");
 	expect(job?.steps.some((step) => step.run === "mise run package:check")).toBe(true);
-	for (const task of ["package:resolution-check", "package:resolution-check:rust"]) {
+	for (const task of ["package:resolution-check", "package:resolution-check:rust", "package:assurance-check"]) {
 		expect(job?.steps.some((step) => step.run === `mise run ${task}`)).toBe(true);
 		expect(job?.steps.find((step) => step.run === `mise run ${task}`)?.if)
 			.toBe("${{ !cancelled() && steps.integration.outcome == 'success' }}");

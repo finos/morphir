@@ -120,17 +120,52 @@ Neither result completes Stage 0 or produces an installable `morphir.lock`.
 
 ## Candidate local-registry contract
 
+The accepted [filesystem assurance design](../restore-filesystem-assurance.md) targets
+portable restore on Linux, macOS and Windows before hardened providers. The existing
+54 draft.3 cases retain their original, hardened requirements and fixed expectations.
+Portable execution requires its own explicitly versioned execution/report profile,
+declared complete required-case set and provider evidence in the shared MCK core.
+Do not relabel this corpus, skip hardened cases to produce a portable pass, or add
+mode fields to closed messages without versioned schema support. Existing pending assets
+remain pending. Definition validation is not evidence for either filesystem mode.
+
+`restore-assurance-preflight-vectors.json` supplies fixed expectations for the separate
+internal `restore-filesystem-assurance` profile, version `0.1.0-draft.1`. Its six synthetic
+cases check explicit selection, exact-mode qualification, refusal of unavailable modes
+and preflight receipts. The shared TypeScript MCK checks these fixtures through its
+`local-registry-assurance-parent-integration.ts` support entry point. They are not additions
+to the 54-case corpus and do not define a complete portable suite. The synthetic evidence
+references qualify no provider or platform. See [internal host preflight](../restore-filesystem-assurance.md#internal-host-preflight)
+for the request and receipt boundary; no public portable adapter or runtime restore is
+implied by these checks.
+
 The [draft.3 local Library contract](../local-library-contract.md) defines candidate full-lock
 and immutable registry-record shapes. The [unsigned example](fixtures/local-registry/unsigned/README.md)
 is review material, not a new passing corpus. Its lock and record examples deliberately use
 nonconforming `UNSIGNED:` values where signed evidence is unavailable.
 The separate [signed example](fixtures/local-registry/assets/signed/README.md) supplies
 complete bytes and verification instructions. User signed-fixture review was approved
-on 2026-09-17; runtime execution remains unimplemented.
+on 2026-09-17; full draft.3 runtime execution remains unimplemented.
 
 The existing driver does not execute draft.3. Its schema, trust and filesystem cases require
 shared TypeScript MCK support and independent Rust operations before interoperability can be claimed.
 Do not include these unsigned shapes in draft.1 or draft.2 case counts or corpus provenance.
+
+### Publisher-signature integration
+
+Run `mise run package:publisher-check` from the parent repository root. It invokes the
+shared TypeScript MCK's `local-registry-publisher-parent-integration.ts --source .`
+support entrypoint against the two fixed signed statements. The check verifies all
+authorized signing keys, including both keys when the policy threshold is one,
+preserves exact envelope and payload bytes, and checks that evidence binds the requested
+release even when the signed payload names another release. Existing signed assets and
+their historical reproduction instructions remain unchanged.
+
+This is a publisher-signature evidence check. It does not establish TUF or repository
+authentication, graph readiness, durable authorization grants, filesystem guarantees,
+restore compatibility or a full 54-case draft.3 corpus pass. Execution stays in the
+shared MCK; this parent task adds no verifier, fixtures or schemas. The shared MCK
+requires Node.js 24 or later. The separate Morphir IR package retains Node.js 20 support.
 
 ### Definition status and admission
 

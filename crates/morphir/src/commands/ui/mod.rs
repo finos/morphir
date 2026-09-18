@@ -33,7 +33,10 @@ pub struct UiArgs {
     pub no_open: bool,
 }
 
-pub async fn run_ui(args: UiArgs) -> Result<Option<u8>, miette::Report> {
+pub async fn run_ui(
+    args: UiArgs,
+    out: crate::commands::out_context::OutOverrides,
+) -> Result<Option<u8>, miette::Report> {
     let workspace = match args.workspace {
         Some(path) => path,
         None => std::env::current_dir()
@@ -58,11 +61,13 @@ pub async fn run_ui(args: UiArgs) -> Result<Option<u8>, miette::Report> {
                 &session_id,
                 Some(extension_id),
             )
-            .map_err(miette::Report::new)?,
+            .map_err(miette::Report::new)?
+            .with_out_overrides(out.clone()),
         ),
         None => Arc::new(
             NativeWorkspaceProvider::discover(&workspace, &session_id)
-                .map_err(miette::Report::new)?,
+                .map_err(miette::Report::new)?
+                .with_out_overrides(out),
         ),
     };
     let host = BoundUiHost::bind(

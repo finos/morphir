@@ -5,6 +5,12 @@ on 2026-09-17. Shared MCK and package runtime implementation may proceed.
 This document specifies no implemented package client or interoperability claim.
 It supplements the [local Library contract](local-library-contract.md).
 
+The [filesystem assurance modes](restore-filesystem-assurance.md) do not weaken this
+trust profile. Portable and hardened restore both require repository and publisher
+authentication, revocation enforcement, durable rollback state and recovery. A filesystem
+mode is host policy, not package authority, and cannot make a failed trust-state commit
+successful. Missing platform guarantees must not trigger weaker verification.
+
 ## Adopted protocols and boundaries
 
 Repository authentication follows [TUF 1.0.36, pinned source](https://github.com/theupdateframework/specification/blob/59e601ed29c0d2e497264ae8b31c11b8ef07df1e/tuf-spec.md).
@@ -22,6 +28,27 @@ Model packages remain a separate artifact domain and execute no package-controll
 Repository authority and publisher authority are independent requirements. A TUF targets
 signature does not authorize a package publisher. A publisher signature does not authorize
 a repository, location, release status or first restore. A lock supplies neither authority.
+
+## Consumer key-management requirement
+
+Ordinary package consumption must not require routine manual key or certificate
+management. A consumer must not need a private signing key, a GPG keyring or an
+X.509 certificate to verify and use published Libraries under this profile.
+
+Initial provisioning must still establish independently trusted repository identities,
+bootstrap pins and namespace-scoped publisher policy. An organization or trusted tooling
+may provision that configuration. A lock, downloaded package or self-signed repository
+root cannot authorize itself. After provisioning, the client must perform verification
+and supported authenticated root updates without asking consumers to copy keys for
+each package. Failures must explain whether the consumer can retry or an administrator
+must update policy or recover trust; bypassing verification is not a recovery step.
+
+Publishers and registry operators retain signing, key protection, metadata renewal,
+rotation and recovery responsibilities. The low-level publication operation accepts
+caller-signed bytes and does not hold private keys. Signing services and onboarding
+commands remain separate implementation work, not capabilities supplied by this profile.
+This requirement adds no OpenPGP signature format, certificate infrastructure or implicit
+trust defaults. Remote-registry access credentials are outside this local profile.
 
 ## Local trust policy
 

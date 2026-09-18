@@ -371,7 +371,9 @@ pub struct PlaygroundSourceDocument {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PlaygroundPackage {
     pub name: String,
-    pub exposed_modules: Vec<String>,
+    /// Omitted exposes all modules; an explicit empty list exposes none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exposed_modules: Option<Vec<String>>,
 }
 
 /// Result of `morphir.playground.compile`. Omits `deny_unknown_fields` (unlike
@@ -704,7 +706,7 @@ mod tests {
             }],
             package: PlaygroundPackage {
                 name: "local/main".into(),
-                exposed_modules: vec!["Main".into()],
+                exposed_modules: Some(vec!["Main".into()]),
             },
             ir_version: "3".into(),
             options: serde_json::json!({}),

@@ -2,6 +2,33 @@
 
 use std::{fs, path::PathBuf, process::Command};
 
+fn assert_project_model(project: &std::path::Path, selected: &str, expected: &serde_json::Value) {
+    tokio::runtime::Runtime::new().unwrap().block_on(async {
+        use morphir::commands::ui::provider::{
+            WorkspaceCapability, native::NativeWorkspaceProvider,
+        };
+        let provider = NativeWorkspaceProvider::discover_with_options(
+            project,
+            "python-model",
+            morphir_devkit::ConfigLoadOptions::project_only(),
+        )
+        .unwrap();
+        let source = provider.initial_sources().pop().unwrap();
+        let snapshot = provider.open(&source).await.unwrap();
+        let id = &snapshot
+            .projects
+            .iter()
+            .find(|item| item.relative_path == selected)
+            .unwrap()
+            .id;
+        let model = provider.load_project_model(&source, id).await.unwrap();
+        assert_eq!(
+            &serde_json::from_str::<serde_json::Value>(&model.content).unwrap(),
+            expected
+        );
+    });
+}
+
 #[test]
 #[ignore = "requires MORPHIR_PYTHON_BUNDLE pointing to a packaged Python WASM guest"]
 fn python_bundle_compiles_and_generates_offline() {
@@ -15,19 +42,31 @@ fn python_bundle_compiles_and_generates_offline() {
     let home = root.path().join("home");
     let repository = root.path().join("repository");
     fs::create_dir(&project).unwrap();
+    fs::create_dir_all(project.join("src/domain")).unwrap();
     fs::write(
         project.join("morphir.toml"),
-        "[project]\nname = \"acme/example\"\nversion = \"0.1.0\"\n\
+        "[project]\nname = \"acme/example\"\nversion = \"0.1.0\"\nsource_directory = \"src\"\n\
          [frontend]\nlanguage = \"python\"\nemit_parse_stage = false\n",
     )
     .unwrap();
     fs::write(
-        project.join("models.py"),
+        project.join("src/domain/models.py"),
         concat!(
             "from dataclasses import dataclass\n",
             "@dataclass(frozen=True)\nclass Point:\n    coordinates: tuple[int, int]\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        project.join("src/domain/rules.py"),
+        concat!(
+            "from .models import Point\n",
+            "from collections.abc import Callable\n",
             "def choose(flag: bool, first: Point, second: Point) -> Point:\n",
             "    if flag:\n        return first\n    else:\n        return second\n",
+            "def apply(transform: Callable[[Point], Point], value: Point) -> Point:\n    return transform(value)\n",
+            "def retain(first: Point) -> Callable[[Point], Point]:\n    return lambda second: choose(True, first, second)\n",
+            "def use(value: Point) -> Point:\n    return apply(retain(value), value)\n",
         ),
     )
     .unwrap();
@@ -76,7 +115,7 @@ fn python_bundle_compiles_and_generates_offline() {
         "--language",
         "python",
         "--input",
-        "models.py",
+        "src",
         "--output",
         "compiled",
     ]);
@@ -89,13 +128,14 @@ fn python_bundle_compiles_and_generates_offline() {
         "--output",
         "generated",
     ]);
-    assert!(project.join("generated/models.py").is_file());
+    assert!(project.join("generated/domain/models.py").is_file());
+    assert!(project.join("generated/domain/rules.py").is_file());
     run(&[
         "compile",
         "--language",
         "python",
         "--input",
-        "generated/models.py",
+        "generated",
         "--output",
         "recompiled",
     ]);
@@ -104,4 +144,183 @@ fn python_bundle_compiles_and_generates_offline() {
             .unwrap()
     };
     assert_eq!(read_ir("compiled"), read_ir("recompiled"));
+
+    // The project selects v3; an explicit CLI version overrides it without editing config.
+    let original_config = fs::read_to_string(project.join("morphir.toml")).unwrap();
+    fs::write(
+        project.join("morphir.toml"),
+        format!("{original_config}\n[ir]\nformat_version = 3\n"),
+    )
+    .unwrap();
+    run(&["compile", "--output", "compiled-v3"]);
+    let classic = read_ir("compiled-v3");
+    assert_eq!(classic["formatVersion"], 3);
+    assert_eq!(classic["distribution"][0], "Library");
+    assert_project_model(&project, ".", &classic);
+    run(&["generate", "--target", "python", "--output", "generated-v3"]);
+    run(&[
+        "compile",
+        "--input",
+        "generated-v3",
+        "--ir-version",
+        "3.0.0",
+        "--output",
+        "recompiled-v3",
+    ]);
+    assert_eq!(read_ir("recompiled-v3"), classic);
+    run(&["compile", "--ir-version", "4", "--output", "overridden-v4"]);
+    assert_eq!(read_ir("overridden-v4")["formatVersion"], 4);
+    fs::write(
+        project.join("morphir.toml"),
+        format!("{original_config}\n[ir]\nformat_version = 3\nformat = 'yaml'\n"),
+    )
+    .unwrap();
+    run(&["compile", "--output", "compiled-v3-yaml"]);
+    assert!(project.join("compiled-v3-yaml/morphir-ir.yaml").is_file());
+    assert_project_model(&project, ".", &classic);
+    run(&[
+        "generate",
+        "--target",
+        "python",
+        "--output",
+        "generated-v3-yaml",
+    ]);
+    assert!(project.join("generated-v3-yaml/domain/rules.py").is_file());
+
+    fs::write(project.join("morphir.toml"), "[workspace]\nmembers = ['packages/*']\ndefault_member = 'packages/toml'\n[frontend]\nlanguage = 'python'\n").unwrap();
+    for (name, filename, config) in [
+        (
+            "toml",
+            "morphir.toml",
+            "[project]\nname = 'acme/toml'\nversion = '1.0.0'\nsource_directory = 'models'\nexposed_modules = ['domain.rules']\n",
+        ),
+        (
+            "yaml",
+            "morphir.yaml",
+            "project:\n  name: acme/yaml\n  version: 1.0.0\n  source_directory: models\n  exposed_modules: [domain.rules]\n",
+        ),
+        (
+            "json",
+            "morphir.json",
+            r#"{"name":"acme/json","sourceDirectory":"models","exposedModules":["domain.rules"]}"#,
+        ),
+    ] {
+        let member = project.join("packages").join(name);
+        fs::create_dir_all(member.join("models/domain")).unwrap();
+        fs::copy(
+            project.join("src/domain/models.py"),
+            member.join("models/domain/models.py"),
+        )
+        .unwrap();
+        fs::copy(
+            project.join("src/domain/rules.py"),
+            member.join("models/domain/rules.py"),
+        )
+        .unwrap();
+        fs::write(member.join(filename), config).unwrap();
+        let selected = format!("packages/{name}");
+        let output_dir = format!("selected-{name}");
+        let generated_dir = format!("workspace-generated-{name}");
+        let overridden_dir = format!("overridden-{name}");
+        run(&[
+            "compile",
+            "--project",
+            &selected,
+            "--language",
+            "python",
+            "--output",
+            &output_dir,
+        ]);
+        let ir = read_ir(&output_dir);
+        let library = &ir["distribution"]["Library"];
+        assert_eq!(library["packageName"], format!("acme/{name}"));
+        assert!(
+            library["def"]["modules"]["domain/models"]
+                .get("Private")
+                .is_some()
+        );
+        assert!(
+            library["def"]["modules"]["domain/rules"]
+                .get("Public")
+                .is_some()
+        );
+        assert_project_model(&project, &selected, &ir);
+        run(&[
+            "generate",
+            "--project",
+            &selected,
+            "--target",
+            "python",
+            "--output",
+            &generated_dir,
+        ]);
+        assert!(
+            project
+                .join(&generated_dir)
+                .join("domain/models.py")
+                .is_file()
+        );
+        run(&[
+            "compile",
+            "--project",
+            &selected,
+            "--language",
+            "python",
+            "--input",
+            &generated_dir,
+            "--package-name",
+            "acme/override",
+            "--output",
+            &overridden_dir,
+        ]);
+        assert_eq!(
+            read_ir(&overridden_dir)["distribution"]["Library"]["packageName"],
+            "acme/override"
+        );
+
+        fs::write(
+            member.join(filename),
+            config.replace("domain.rules", "Missing"),
+        )
+        .unwrap();
+        let failed = Command::new(env!("CARGO_BIN_EXE_morphir"))
+            .args(["compile", "--project", &selected, "--language", "python"])
+            .current_dir(&project)
+            .env("MORPHIR_HOME", &home)
+            .output()
+            .unwrap();
+        assert!(
+            !failed.status.success(),
+            "Unknown exposure was accepted for {filename}"
+        );
+        assert!(String::from_utf8_lossy(&failed.stderr).contains("unknown source module"));
+        let private_config = config
+            .replace("'domain.rules'", "")
+            .replace("\"domain.rules\"", "")
+            .replace("domain.rules", "");
+        fs::write(member.join(filename), private_config).unwrap();
+        let private_output = format!("all-private-{name}");
+        run(&[
+            "compile",
+            "--project",
+            &selected,
+            "--language",
+            "python",
+            "--output",
+            &private_output,
+        ]);
+        assert!(
+            read_ir(&private_output)["distribution"]["Library"]["def"]["modules"]
+                .as_object()
+                .unwrap()
+                .values()
+                .all(|module| module.get("Private").is_some())
+        );
+        fs::write(member.join(filename), config).unwrap();
+    }
+    run(&["compile", "--output", "default-member"]);
+    assert_eq!(
+        read_ir("default-member")["distribution"]["Library"]["packageName"],
+        "acme/toml"
+    );
 }

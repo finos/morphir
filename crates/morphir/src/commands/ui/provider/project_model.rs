@@ -1,7 +1,17 @@
 //! Confined loading for generated project models shared by every workspace provider.
 
+mod compiled;
+
+use crate::commands::out_context::{OutContext, OutOverrides};
+use morphir_devkit::{ConfigLoadOptions, discover_config_at, load_config_context_with};
 use std::io::Read as _;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
+
+pub(super) struct ProjectModelConfig {
+    pub workspace: PathBuf,
+    pub options: ConfigLoadOptions,
+    pub out: OutOverrides,
+}
 
 use cap_fs_ext::{DirExt as _, FollowSymlinks, OpenOptionsFollowExt as _, OpenOptionsSyncExt as _};
 use cap_std::fs::{Dir, File, OpenOptions};
@@ -33,30 +43,71 @@ pub(super) async fn load_project_model(
     source: &WorkbenchSourceRef,
     snapshot: WorkspaceSnapshot,
     project_id: &str,
+    config: ProjectModelConfig,
 ) -> Result<ProjectModelOpenResult, CliError> {
     let workspace = workspace.try_clone().map_err(CliError::from)?;
     let source = source.clone();
     let project_id = project_id.to_owned();
-    tokio::task::spawn_blocking(move || load(&workspace, &source, snapshot, &project_id))
-        .await
-        .map_err(|error| protocol_error(format!("Project model loader failed: {error}")))?
+    tokio::task::spawn_blocking(move || {
+        let project = snapshot
+            .projects
+            .iter()
+            .find(|project| project.id == project_id)
+            .ok_or_else(|| protocol_error(format!("Unknown workspace project '{project_id}'")))?;
+        // Validate the provider's path before using it to discover configuration.
+        open_project_directory(&workspace, &project.relative_path)?;
+        let project_root = config.workspace.join(&project.relative_path);
+        let context = discover_config_at(&project_root)
+            .map_err(CliError::from)?
+            .map(|path| {
+                let mut options = config.options.clone();
+                // The snapshot already selected this project, including a workspace root project.
+                options.project = morphir_devkit::config::ProjectSelection::Current;
+                load_config_context_with(&path, &options)
+            })
+            .transpose()
+            .map_err(CliError::from)?;
+        let cwd = std::env::current_dir()?;
+        let explicit_output = config.out.flag.is_some()
+            || config
+                .out
+                .env
+                .as_ref()
+                .is_some_and(|value| !value.is_empty());
+        let base = if context.is_none() && !explicit_output {
+            &project_root
+        } else {
+            &cwd
+        };
+        let out = OutContext::resolve(context.as_ref(), &config.out, base);
+        let output_root = if explicit_output {
+            // An explicit process override grants this additional directory.
+            Dir::open_ambient_dir(&out.root, cap_std::ambient_authority())
+        } else {
+            let relative = out.root.strip_prefix(&config.workspace).map_err(|_| {
+                protocol_error("Configured output root leaves the opened workspace")
+            })?;
+            compiled::open_directory(&workspace, relative)
+        };
+        let content = match output_root {
+            Ok(root) => compiled::load(&root, &out.module)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error.into()),
+        };
+        load_resolved(
+            &workspace,
+            &source,
+            snapshot,
+            &project_id,
+            &NoopProjectModelHooks,
+            content,
+        )
+    })
+    .await
+    .map_err(|error| protocol_error(format!("Project model loader failed: {error}")))?
 }
 
-fn load(
-    workspace: &Dir,
-    source: &WorkbenchSourceRef,
-    snapshot: WorkspaceSnapshot,
-    project_id: &str,
-) -> Result<ProjectModelOpenResult, CliError> {
-    load_with_hooks(
-        workspace,
-        source,
-        snapshot,
-        project_id,
-        &NoopProjectModelHooks,
-    )
-}
-
+#[cfg(all(test, unix))]
 fn load_with_hooks<H: ProjectModelHooks + ?Sized>(
     workspace: &Dir,
     source: &WorkbenchSourceRef,
@@ -64,43 +115,26 @@ fn load_with_hooks<H: ProjectModelHooks + ?Sized>(
     project_id: &str,
     hooks: &H,
 ) -> Result<ProjectModelOpenResult, CliError> {
+    load_resolved(workspace, source, snapshot, project_id, hooks, None)
+}
+
+fn load_resolved<H: ProjectModelHooks + ?Sized>(
+    workspace: &Dir,
+    source: &WorkbenchSourceRef,
+    snapshot: WorkspaceSnapshot,
+    project_id: &str,
+    hooks: &H,
+    compiled_content: Option<String>,
+) -> Result<ProjectModelOpenResult, CliError> {
     let project = snapshot
         .projects
         .into_iter()
         .find(|project| project.id == project_id)
         .ok_or_else(|| protocol_error(format!("Unknown workspace project '{project_id}'")))?;
-    let mut artifact = open_project_artifact(workspace, &project.relative_path)?;
-    hooks.after_artifact_open().map_err(CliError::from)?;
-    let metadata = artifact.metadata().map_err(CliError::from)?;
-    if !metadata.is_file() {
-        return Err(protocol_error(format!(
-            "Project model is not a file: {}/morphir-ir.json",
-            project.relative_path
-        )));
-    }
-    if metadata.len() > MAX_PROJECT_MODEL_BYTES {
-        return Err(protocol_error(format!(
-            "Project model exceeds {MAX_PROJECT_MODEL_BYTES} bytes: {}/morphir-ir.json",
-            project.relative_path
-        )));
-    }
-    let mut bytes = Vec::with_capacity(metadata.len().min(MAX_PROJECT_MODEL_BYTES) as usize);
-    artifact
-        .by_ref()
-        .take(MAX_PROJECT_MODEL_BYTES + 1)
-        .read_to_end(&mut bytes)
-        .map_err(CliError::from)?;
-    if bytes.is_empty() {
-        return Err(protocol_error("Project model must not be empty"));
-    }
-    if bytes.len() as u64 > MAX_PROJECT_MODEL_BYTES {
-        return Err(protocol_error(format!(
-            "Project model exceeds {MAX_PROJECT_MODEL_BYTES} bytes: {}/morphir-ir.json",
-            project.relative_path
-        )));
-    }
-    let content = String::from_utf8(bytes)
-        .map_err(|_| protocol_error("Project model must contain valid UTF-8"))?;
+    let content = match compiled_content {
+        Some(content) => content,
+        None => read_legacy(workspace, &project.relative_path, hooks)?,
+    };
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
     let model_source = WorkbenchSourceRef {
         provider_id: source.provider_id.clone(),
@@ -123,11 +157,49 @@ fn load_with_hooks<H: ProjectModelHooks + ?Sized>(
     })
 }
 
+fn read_legacy<H: ProjectModelHooks + ?Sized>(
+    workspace: &Dir,
+    relative_path: &str,
+    hooks: &H,
+) -> Result<String, CliError> {
+    let mut artifact = open_project_artifact(workspace, relative_path)?;
+    hooks.after_artifact_open().map_err(CliError::from)?;
+    let metadata = artifact.metadata().map_err(CliError::from)?;
+    if !metadata.is_file() {
+        return Err(protocol_error(format!(
+            "Project model is not a file: {}/morphir-ir.json",
+            relative_path
+        )));
+    }
+    if metadata.len() > MAX_PROJECT_MODEL_BYTES {
+        return Err(protocol_error(format!(
+            "Project model exceeds {MAX_PROJECT_MODEL_BYTES} bytes: {}/morphir-ir.json",
+            relative_path
+        )));
+    }
+    let mut bytes = Vec::with_capacity(metadata.len().min(MAX_PROJECT_MODEL_BYTES) as usize);
+    artifact
+        .by_ref()
+        .take(MAX_PROJECT_MODEL_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(CliError::from)?;
+    if bytes.is_empty() {
+        return Err(protocol_error("Project model must not be empty"));
+    }
+    if bytes.len() as u64 > MAX_PROJECT_MODEL_BYTES {
+        return Err(protocol_error(format!(
+            "Project model exceeds {MAX_PROJECT_MODEL_BYTES} bytes: {}/morphir-ir.json",
+            relative_path
+        )));
+    }
+    String::from_utf8(bytes).map_err(|_| protocol_error("Project model must contain valid UTF-8"))
+}
+
 pub(super) fn open_workspace(workspace: &Path) -> Result<Dir, CliError> {
     Dir::open_ambient_dir(workspace, cap_std::ambient_authority()).map_err(CliError::from)
 }
 
-fn open_project_artifact(workspace: &Dir, relative_path: &str) -> Result<File, CliError> {
+fn open_project_directory(workspace: &Dir, relative_path: &str) -> Result<Dir, CliError> {
     let mut directory = workspace.try_clone().map_err(CliError::from)?;
     if relative_path != "." {
         let components = Path::new(relative_path).components().collect::<Vec<_>>();
@@ -149,6 +221,11 @@ fn open_project_artifact(workspace: &Dir, relative_path: &str) -> Result<File, C
                 .map_err(CliError::from)?;
         }
     }
+    Ok(directory)
+}
+
+fn open_project_artifact(workspace: &Dir, relative_path: &str) -> Result<File, CliError> {
+    let directory = open_project_directory(workspace, relative_path)?;
     let metadata = directory
         .symlink_metadata("morphir-ir.json")
         .map_err(CliError::from)?;
@@ -294,9 +371,19 @@ mod tests {
         let workspace = open_workspace(root.path()).unwrap();
 
         let started = std::time::Instant::now();
-        let error = load_project_model(&workspace, &source, snapshot, &project_id)
-            .await
-            .unwrap_err();
+        let error = load_project_model(
+            &workspace,
+            &source,
+            snapshot,
+            &project_id,
+            ProjectModelConfig {
+                workspace: root.path().to_path_buf(),
+                options: ConfigLoadOptions::project_only(),
+                out: OutOverrides::default(),
+            },
+        )
+        .await
+        .unwrap_err();
         let elapsed = started.elapsed();
         writer.join().unwrap();
 
@@ -349,9 +436,19 @@ mod tests {
         };
 
         let workspace = open_workspace(root.path()).unwrap();
-        let error = load_project_model(&workspace, &source, snapshot, &project_id)
-            .await
-            .unwrap_err();
+        let error = load_project_model(
+            &workspace,
+            &source,
+            snapshot,
+            &project_id,
+            ProjectModelConfig {
+                workspace: root.path().to_path_buf(),
+                options: ConfigLoadOptions::project_only(),
+                out: OutOverrides::default(),
+            },
+        )
+        .await
+        .unwrap_err();
 
         assert!(error.to_string().contains("leaves the workspace root"));
     }

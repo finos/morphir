@@ -79,9 +79,12 @@ enum Commands {
         /// Explicit config file path. An Elm command is a development override for the installed extension.
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
+        /// IR version 3 or 4. Overrides ir.format_version in the selected project.
+        #[arg(long, value_parser = commands::compile::parse_ir_version)]
+        ir_version: Option<morphir_common::ir_transport::IrVersion>,
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -106,7 +109,7 @@ enum Commands {
         /// Explicit config file path
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
         /// Override a backend option as KEY=VALUE. May be repeated.
@@ -542,7 +545,7 @@ enum GleamAction {
         /// Explicit config file path
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
     },
@@ -557,7 +560,7 @@ enum GleamAction {
         /// Explicit config file path
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
     },
@@ -575,7 +578,7 @@ enum GleamAction {
         /// Explicit config file path
         #[arg(long)]
         config: Option<String>,
-        /// Project name (for workspaces)
+        /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
     },
@@ -792,6 +795,7 @@ impl AppSession for MorphirSession {
                 package_name,
                 config,
                 project,
+                ir_version,
                 json,
                 json_lines,
                 no_cache,
@@ -804,6 +808,7 @@ impl AppSession for MorphirSession {
                     package_name: package_name.clone(),
                     config_path: config.clone(),
                     project: project.clone(),
+                    ir_version: *ir_version,
                     json: *json,
                     json_lines: *json_lines,
                     no_cache: *no_cache,
@@ -836,7 +841,7 @@ impl AppSession for MorphirSession {
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
             Commands::Migrate(args) => args.run(),
-            Commands::Ui(args) => commands::ui::run_ui(args.clone()).await,
+            Commands::Ui(args) => commands::ui::run_ui(args.clone(), self.out.clone()).await,
             Commands::Desktop(args) => run_desktop(&self.operation_id, args.clone()),
             Commands::Playground(args) => commands::playground::run_playground(args.clone()).await,
             Commands::Config { action } => match action {

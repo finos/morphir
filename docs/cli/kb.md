@@ -15,7 +15,7 @@ Manage the knowledge base under kb/ — OKF bundles and concept documents
 - [`morphir kb list [FLAGS]`](kb/list.md)
 - [`morphir kb new-bundle <FLAGS>`](kb/new-bundle.md)
 - [`morphir kb query <FLAGS>`](kb/query.md)
-- [`morphir kb refresh [FLAGS] <SUBCOMMAND>`](kb/refresh.md)
+- [`morphir kb refresh [FLAGS] [SUBCOMMAND]`](kb/refresh.md)
 - [`morphir kb search [FLAGS]`](kb/search.md)
 - [`morphir kb show <FLAGS>`](kb/show.md)
 - [`morphir kb sync <SUBCOMMAND>`](kb/sync.md)

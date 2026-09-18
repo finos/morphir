@@ -896,6 +896,20 @@ TLS and transport digests protect acquisition. They do not establish package pub
 
 The implementation should reuse reviewed standards and libraries for signatures and delegation. It must not invent cryptographic primitives.
 
+### Consumer key-management requirement
+
+Ordinary package consumption must not require routine manual key or certificate management.
+Consumers need independently provisioned public trust configuration, not private signing keys,
+a GPG keyring or X.509 certificates. Organizations or trusted tooling may provision the configuration.
+After provisioning, clients perform verification and supported authenticated root updates automatically.
+Packages, locks and self-signed roots cannot grant themselves authority.
+
+Publishers and registry operators still manage signing authority, key protection, metadata renewal,
+rotation and recovery. The package publication operation accepts caller-signed bytes rather than holding keys.
+The [trust profile](../../../../spec/package/package-trust-profile.md#consumer-key-management-requirement)
+records this separation as a requirement. Onboarding commands and managed signing integrations remain unimplemented.
+This requirement does not select GPG support, add certificate infrastructure or weaken verification on failure.
+
 ### Approved local Library profile
 
 The first complete-lock profile covers published Libraries in a local-directory registry, using unpacked bundles.
@@ -975,6 +989,26 @@ contract and fixtures. That tooling was squash-merged with user approval as
 [Parent PR #824](https://github.com/finos/morphir/pull/824) still requires separate merge approval.
 The complete two-Library lock and signed registry fixture must precede runtime implementation.
 MCK cases remain in the parent repository; execution and reference support use the shared TypeScript core, with independent Rust behavior through its adapter.
+
+### Restore filesystem assurance
+
+The first restore delivery targets Linux, macOS and Windows in
+[portable mode](/glossary.md#portable-restore). It assumes caller-controlled local
+directories without hostile concurrent filesystem modification. Package bytes remain
+untrusted; repository and publisher authentication, exact replay and durable trust state
+remain mandatory. Platform support still requires tested providers on each OS.
+
+[Decision 0002](/decisions/0002-portable-restore-with-explicit-filesystem-assurance.md)
+records why this boundary replaced hardened-only first delivery. The
+[assurance addendum](../../../../spec/package/restore-filesystem-assurance.md) defines
+selection, failure behavior and MCK evidence. A hardened request must fail when its
+provider is unavailable; no automatic fallback changes the caller's requirement.
+
+The original draft.3 filesystem requirements remain the hardened baseline. Portable
+mode gets separately identified execution/report contracts and required cases through
+the shared MCK core. Neither mode changes package identity, `morphir.lock`, IR naming,
+or the separation between model packages, executable extensions and installable tools.
+Seatbelt and specially mounted volumes are not baseline consumer requirements.
 
 ### Verification sequence
 
@@ -1315,6 +1349,8 @@ Scope:
 - Convention exports
 - Workspace overrides and snapshots
 - Explicit local trust policy
+- Portable restore on qualified Linux, macOS and Windows local filesystems, with
+  hardened filesystem assurance delivered separately
 - Package release statements signed and verified through an explicitly trusted local development key
 - Core build, resolve, pack, verify, publish, sync, and tree operations
 

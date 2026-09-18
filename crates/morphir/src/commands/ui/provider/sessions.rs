@@ -615,7 +615,7 @@ mod tests {
             documents: vec![],
             package: CompilePackage {
                 name: "example/test".into(),
-                exposed_modules: None,
+                exposed_modules: Some(vec![]),
             },
             dependencies: vec![],
             baseline: None,

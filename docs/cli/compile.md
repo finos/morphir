@@ -12,7 +12,8 @@ Compile source code to Morphir IR
 - **`-o --output <OUTPUT>`** — Install task outputs into this directory after the run. Canonical output stays under .morphir/out
 - **`--package-name <PACKAGE_NAME>`** — Package name override
 - **`--config <CONFIG>`** — Explicit config file path. An Elm command is a development override for the installed extension
-- **`--project <PROJECT>`** — Project name (for workspaces)
+- **`--project <PROJECT>`** — Declared workspace-relative member path or exact project name
+- **`--ir-version <IR_VERSION>`** — IR version 3 or 4. Overrides ir.format_version in the selected project
 - **`--json`** — Output as JSON
 - **`--json-lines`** — Output as JSON Lines (streaming)
 - **`--no-cache`** — Ignore the incremental compile cache for this run

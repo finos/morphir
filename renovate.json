@@ -5,7 +5,15 @@
   ],
   "prHourlyLimit": 5,
   "prConcurrentLimit": 10,
+  "cloneSubmodules": true,
+  "cloneSubmodulesFilter": ["ecosystem/morphir-rust"],
   "packageRules": [
+    {
+      "description": "granit-parser is pinned to the version in ecosystem/morphir-rust, and serde-saphyr releases require a matching granit-parser; bump both together with the submodule",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["granit-parser", "serde-saphyr"],
+      "enabled": false
+    },
     {
       "description": "Group Rust/Cargo dependency updates",
       "groupName": "rust",

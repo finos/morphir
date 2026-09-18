@@ -203,6 +203,11 @@ impl PlaygroundCapability for NativePlaygroundProvider {
             })?;
         let provider_id = resolved.info().id.clone();
         let request = compile_request(params);
+        request
+            .source_paths()
+            .map_err(|error| CliError::Validation {
+                message: error.to_string(),
+            })?;
         let invocation =
             self.invoker
                 .compile(&self.home, &self.working_directory, &resolved, request);
@@ -414,13 +419,11 @@ fn compile_request(params: PlaygroundCompileParams) -> CompileRequest {
                 text: document.text,
             })
             .collect(),
-        // The playground protocol has always spelled "no exposure list" as an
-        // empty array; the SDK now spells it `None`, and reads an empty list
-        // as a package that exposes nothing.
+        // The playground protocol now spells exposure exactly as the SDK does:
+        // omitted exposes every module, an explicit empty list exposes none.
         package: CompilePackage {
             name: params.package.name,
-            exposed_modules: Some(params.package.exposed_modules)
-                .filter(|modules| !modules.is_empty()),
+            exposed_modules: params.package.exposed_modules,
         },
         dependencies: Vec::new(),
         baseline: None,
@@ -1028,7 +1031,7 @@ mod tests {
             }],
             package: PlaygroundPackage {
                 name: "playground/main".into(),
-                exposed_modules: vec!["Main".into()],
+                exposed_modules: Some(vec!["Main".into()]),
             },
             ir_version: IR_VERSION.into(),
             options: serde_json::json!({}),
@@ -1487,7 +1490,7 @@ mod tests {
         // Gleam module names are snake_case, unlike the Elm-shaped default.
         params.documents[0].uri = "file:///src/hello.gleam".into();
         params.package.name = "example/hello".into();
-        params.package.exposed_modules = vec![];
+        params.package.exposed_modules = Some(vec![]);
         let compiled = provider
             .compile(params)
             .await

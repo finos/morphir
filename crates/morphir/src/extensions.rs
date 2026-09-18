@@ -81,6 +81,11 @@ pub async fn invoke_frontend(
     resolved: &ResolvedFrontend,
     request: CompileRequest,
 ) -> Result<CompileResult, CliError> {
+    request
+        .source_paths()
+        .map_err(|error| CliError::Validation {
+            message: error.to_string(),
+        })?;
     match resolved.invocation_mode() {
         InvocationMode::NativeDirect => {
             // A native provider compiles synchronously, so running it inline
@@ -413,7 +418,7 @@ mod tests {
             }],
             package: CompilePackage {
                 name: "example/hello".into(),
-                exposed_modules: None,
+                exposed_modules: Some(vec![]),
             },
             dependencies: vec![],
             baseline: None,

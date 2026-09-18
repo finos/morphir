@@ -2,6 +2,10 @@
 
 ## 2026-09-17
 
+* **Approval**: Accepted [decision 0002](/decisions/0002-portable-restore-with-explicit-filesystem-assurance.md). First delivery targets portable restore on Linux, macOS and Windows. Hardened providers follow separately; authentication, durable trust state and refusal of silent downgrade remain mandatory. The [assurance addendum](../../../../spec/package/restore-filesystem-assurance.md) defines the boundary. Platform qualification and mode-aware MCK execution remain unfinished; this is not a compatibility claim.
+
+* **Approval**: Recorded that ordinary package consumption must not require routine manual key or certificate management. Public trust provisioning remains explicit; signing administration stays with publishers and registry operators. User approved starting shared MCK definition validation and executable admission. Runtime restore, onboarding tooling and GPG support are not implemented by this slice.
+
 * **Update**: Squash-merged [TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21) with user approval as `6f180b84357cdca8fa55544e6579c0c8ba95b10e`, after green CI and a check of all review channels. Updated the parent submodule pin and fixture reproduction instructions to that merged commit. [Parent PR #824](https://github.com/finos/morphir/pull/824) remains unmerged and needs separate approval.
 
 * **Publication**: User authorized commits, pushes and PR creation, with merge approval remaining separate. Published shared fixture tooling in [TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21), commit `7a99f3810c6ea8ad35f6bfe8ae90e5a1439218ab`. The parent contract and fixture PR follows; its submodule pin must advance to the merged tooling commit before landing. Fresh local TypeScript CI passes 1,105 tests, and explicit fixture integration verifies 19 exact files, two Libraries and four independently verified TUF targets.

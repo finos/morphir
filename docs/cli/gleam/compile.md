@@ -10,4 +10,4 @@ Compile Gleam source to Morphir IR
 - **`-o --output <OUTPUT>`** — Install task outputs into this directory after the run. Canonical output stays under .morphir/out
 - **`--package-name <PACKAGE_NAME>`** — Package name override
 - **`--config <CONFIG>`** — Explicit config file path
-- **`--project <PROJECT>`** — Project name (for workspaces)
+- **`--project <PROJECT>`** — Declared workspace-relative member path or exact project name
