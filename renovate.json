@@ -9,9 +9,9 @@
   "cloneSubmodulesFilter": ["ecosystem/morphir-rust"],
   "packageRules": [
     {
-      "description": "granit-parser is pinned to the version in ecosystem/morphir-rust; bump it together with the submodule",
+      "description": "granit-parser is pinned to the version in ecosystem/morphir-rust, and serde-saphyr releases require a matching granit-parser; bump both together with the submodule",
       "matchManagers": ["cargo"],
-      "matchPackageNames": ["granit-parser"],
+      "matchPackageNames": ["granit-parser", "serde-saphyr"],
       "enabled": false
     },
     {
