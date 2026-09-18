@@ -780,6 +780,105 @@ targets = ["gleam"]
     src_dir
 }
 
+/// Write a two-module Elm project: `My.Types` names a type from `My.Other`.
+fn write_elm_project(project_root: &std::path::Path) -> PathBuf {
+    // Pin project outputs locally; discovery otherwise inherits an ancestor's
+    // .morphir directory, including one in the developer's home directory.
+    std::fs::create_dir_all(project_root.join(".morphir")).unwrap();
+    let src_dir = project_root.join("src/My");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::write(
+        src_dir.join("Other.elm"),
+        "module My.Other exposing (Currency)\n\n\ntype alias Currency =\n    String\n",
+    )
+    .unwrap();
+    std::fs::write(
+        src_dir.join("Types.elm"),
+        "module My.Types exposing (Amount, Kind(..))\n\
+         \n\
+         import My.Other exposing (Currency)\n\
+         \n\
+         \n\
+         type alias Amount =\n    \
+             { currency : Currency, value : Int }\n\
+         \n\
+         \n\
+         type Kind\n    \
+             = Simple\n    \
+             | Detailed Amount\n",
+    )
+    .unwrap();
+    std::fs::write(
+        project_root.join("morphir.toml"),
+        r#"[project]
+name = "example/domain"
+version = "1.0.0"
+source_directory = "src"
+
+[frontend]
+language = "elm"
+"#,
+    )
+    .unwrap();
+    src_dir
+}
+
+#[test]
+fn elm_native_compile_produces_v4_ir_for_a_types_only_project() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    let compile = run_morphir(
+        &["compile", "--extension", "morphir-elm-native"],
+        &home,
+        &project,
+    );
+
+    assert!(
+        compile.status.success(),
+        "compile failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let output = project.join(".morphir/out/compile.dest/morphir-ir.json");
+    let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["formatVersion"], 4);
+    let ir_file: morphir_core::ir::v4::IRFile = serde_json::from_slice(&bytes).unwrap();
+    let morphir_core::ir::v4::Distribution::Library(library) = &ir_file.distribution else {
+        panic!(
+            "an Elm compile publishes a library: {:?}",
+            ir_file.distribution
+        );
+    };
+    let modules: Vec<_> = library.def.modules.keys().cloned().collect();
+    assert_eq!(
+        modules.len(),
+        2,
+        "both Elm modules reach the IR: {modules:?}"
+    );
+}
+
+// The native Elm binding is opt-in: reaching it takes `--extension`. Without
+// one, an Elm compile still asks for the `morphir-elm` extension, and says so
+// when it is not installed.
+#[test]
+fn elm_native_is_not_the_default_elm_provider() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    let compile = run_morphir(&["compile", "--input", "src/My/Types.elm"], &home, &project);
+
+    assert!(!compile.status.success());
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    assert!(stderr.contains("morphir-elm"), "{stderr}");
+    assert!(!stderr.contains("morphir-elm-native"), "{stderr}");
+}
+
 fn add_test_repository(
     name: &str,
     index: &std::path::Path,
@@ -1071,30 +1170,30 @@ fn compile_reports_the_selected_extension_when_it_is_not_installed() {
     );
 }
 
+// `--extension` names the provider that must answer, so an id that provides
+// nothing for the project's language is an error rather than a hint the
+// resolver may ignore.
 #[test]
-fn compile_rejects_explicit_extension_selection_on_the_legacy_path() {
+fn compile_rejects_an_extension_that_does_not_provide_the_language() {
     let temp = TempDir::new().unwrap();
-    let source = temp.path().join("Example.gleam");
-    std::fs::write(&source, "pub fn value() { 1 }\n").unwrap();
+    write_gleam_project(temp.path());
 
     let output = run_morphir(
-        &[
-            "compile",
-            "--language",
-            "gleam",
-            "--input",
-            source.to_str().unwrap(),
-            "--extension",
-            "morphir-other-gleam",
-        ],
+        &["compile", "--extension", "morphir-other-gleam"],
         &temp.path().join("home"),
         temp.path(),
     );
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
+    // The renderer wraps and gutters long messages, so compare the text
+    // without its layout.
+    let compact = stderr
+        .replace(['│', '×'], " ")
+        .split_whitespace()
+        .collect::<String>();
     assert!(
-        stderr.contains("Explicit extension selection currently requires"),
+        compact.contains("extension'morphir-other-gleam'doesnotprovidelanguage'gleam'"),
         "{stderr}"
     );
 }

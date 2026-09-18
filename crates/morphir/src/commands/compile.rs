@@ -59,14 +59,6 @@ pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
         return run_single_file_compile(options).await;
     }
 
-    if options.extension.is_some() {
-        return Err(CliError::Validation {
-            message: "Explicit extension selection currently requires single-file Elm compilation"
-                .into(),
-        }
-        .into());
-    }
-
     run_provider_compile(options).await
 }
 
@@ -296,9 +288,13 @@ fn prepare_single_file_context(
             version: 1,
             text: source.into(),
         },
+        // The single file being compiled is the package's public surface, so
+        // the request names it exactly. `None` would expose whatever the
+        // frontend found instead, which for one file is the same set but says
+        // something weaker than what this path actually means.
         package: CompilePackage {
             name: package_name,
-            exposed_modules: vec![module_name],
+            exposed_modules: Some(vec![module_name]),
         },
         output_path,
     })
@@ -597,17 +593,33 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let environment = filtered_process_environment();
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
     let extension_id = resolve_extension_id(&context.language_id, options.extension.as_deref())?;
-    let launch = compile_process(
-        config_context
-            .as_ref()
-            .zip(config_dir)
-            .map(|(context, directory)| (&context.config, directory)),
-        &extension_id,
-        config_dir.unwrap_or(&start_dir),
-        &home,
-        &environment,
-    )?;
-    let compile_result = invoke_frontend(launch, &context).await?;
+    let workspace = config_dir.unwrap_or(&start_dir);
+    // A built-in provider is reached in process; only an installed or
+    // configured extension is spawned.
+    let compile_result = match builtin_single_file_frontend(&extension_id, &context.language_id)? {
+        Some(resolved) => {
+            crate::extensions::invoke_frontend(
+                &home,
+                workspace,
+                &resolved,
+                single_file_request(&context),
+            )
+            .await?
+        }
+        None => {
+            let launch = compile_process(
+                config_context
+                    .as_ref()
+                    .zip(config_dir)
+                    .map(|(context, directory)| (&context.config, directory)),
+                &extension_id,
+                workspace,
+                &home,
+                &environment,
+            )?;
+            invoke_frontend(launch, &context).await?
+        }
+    };
     let diagnostics = convert_extension_diagnostics(&compile_result.diagnostics);
     let format = OutputFormat::from_flags(options.json, options.json_lines);
 
@@ -697,6 +709,7 @@ fn validate_compile_success(
         .package
         .exposed_modules
         .iter()
+        .flatten()
         .filter(|expected| !result.modules.contains(expected))
         .cloned()
         .collect::<Vec<_>>();
@@ -760,6 +773,7 @@ fn validate_distribution_identity(
         .package
         .exposed_modules
         .iter()
+        .flatten()
         .filter(|module| {
             let expected_path = path_from_string(module, '.');
             !ir_module_paths.contains(&&expected_path)
@@ -833,6 +847,47 @@ fn read_single_source(input_path: &Path) -> Result<String, CliError> {
     std::fs::read_to_string(input_path).map_err(|error| CliError::FileSystem { error })
 }
 
+/// Resolve a built-in provider for a single-file compile, or `None` when the
+/// requested extension id is not built in and the process path answers.
+///
+/// Resolution itself is the capability check the spawned path performs against
+/// a negotiated session: the registry only returns a provider that advertises
+/// compiling this language to Morphir IR 3.
+fn builtin_single_file_frontend(
+    extension_id: &ExtensionId,
+    language: &str,
+) -> Result<Option<morphir_daemon::ResolvedFrontend>, CliError> {
+    let registry = crate::extensions::extension_registry_for([], Some(extension_id.as_str()))?;
+    if registry.providers().is_empty() {
+        return Ok(None);
+    }
+    registry
+        .resolve_frontend(language, "3", morphir_daemon::InvocationPolicy::PreferDirect)
+        .map(Some)
+        .map_err(|error| CliError::Extension {
+            message: format!(
+                "Built-in extension '{extension_id}' must advertise {} compilation to Morphir IR 3: {error}",
+                display_language(language)
+            ),
+        })
+}
+
+/// The compile request a single-file compile sends, whichever provider answers it.
+fn single_file_request(context: &SingleFileCompileContext) -> CompileRequest {
+    CompileRequest {
+        language_id: context.language_id.clone(),
+        documents: vec![context.document.clone()],
+        package: context.package.clone(),
+        dependencies: Vec::new(),
+        options: ExtensionCompileOptions {
+            types_only: false,
+            ir_version: "3".into(),
+            extra: HashMap::new(),
+        },
+        baseline: None,
+    }
+}
+
 async fn invoke_frontend(
     launch: ProcessLaunch,
     context: &SingleFileCompileContext,
@@ -856,17 +911,7 @@ async fn invoke_frontend(
         })?;
     let ready = validate_frontend_session(ready, &context.language_id).await?;
 
-    let request = CompileRequest {
-        language_id: context.language_id.clone(),
-        documents: vec![context.document.clone()],
-        package: context.package.clone(),
-        dependencies: Vec::new(),
-        options: ExtensionCompileOptions {
-            types_only: false,
-            ir_version: "3".into(),
-            extra: HashMap::new(),
-        },
-    };
+    let request = single_file_request(context);
     match ready
         .invoke::<CompileResult>(methods::COMPILE, request)
         .await
@@ -1026,7 +1071,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
 
     let CompileOptions {
         language,
-        extension: _,
+        extension,
         input,
         output,
         package_name,
@@ -1118,28 +1163,44 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         morphir_distribution::list_installed(&home).map_err(|error| CliError::Extension {
             message: format!("Failed to list installed frontend providers: {error}"),
         })?;
-    let registry = crate::extensions::extension_registry(installed)?;
+    let requested_extension = extension
+        .as_deref()
+        .map(str::trim)
+        .filter(|id| !id.is_empty());
+    let registry = crate::extensions::extension_registry_for(installed, requested_extension)?;
     let resolved = registry
         .resolve_frontend(
             &language,
             "4.0.0",
             morphir_daemon::InvocationPolicy::PreferDirect,
         )
-        .map_err(|error| CliError::Extension {
-            message: format!("Failed to resolve frontend for '{language}': {error}"),
+        .map_err(|error| match requested_extension {
+            Some(id) => CliError::Extension {
+                message: format!(
+                    "extension '{id}' does not provide language '{language}': {error}"
+                ),
+            },
+            None => CliError::Extension {
+                message: format!("Failed to resolve frontend for '{language}': {error}"),
+            },
         })?;
     let language_name = language.clone();
+    let ir_version = advertised_ir_version(&resolved.capability().ir_versions, "4.0.0");
     let request = CompileRequest {
         language_id: language,
         documents,
+        // A project compile exposes every module it found: the CLI has no
+        // exposure list of its own, and an empty list would now mean the
+        // opposite — a package that exposes nothing.
         package: CompilePackage {
             name: package_name,
-            exposed_modules: vec![],
+            exposed_modules: None,
         },
         dependencies: vec![],
+        baseline: None,
         options: ExtensionCompileOptions {
             types_only: false,
-            ir_version: "4.0.0".into(),
+            ir_version,
             extra: HashMap::from([
                 ("outputDir".into(), serde_json::json!(paths.dest)),
                 ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
@@ -1369,6 +1430,26 @@ fn validate_v4_compile_result(
     Ok(ir_file)
 }
 
+/// The requested IR release, spelled the way this provider advertises it.
+///
+/// The registry matches advertised versions by normalized release, so two
+/// providers can both serve Morphir IR 4 while spelling it `"4"` and
+/// `"4.0.0"`. A frontend compares `options.irVersion` against its own
+/// spelling, so the host states the release in the provider's own terms rather
+/// than picking one spelling and making every provider accept it. An
+/// unrecognised release is passed through, and the provider rejects it.
+fn advertised_ir_version(advertised: &[String], requested: &str) -> String {
+    let release = normalize_ir_version_text(requested).map(|version| version.release);
+    advertised
+        .iter()
+        .find(|candidate| {
+            release.is_some()
+                && normalize_ir_version_text(candidate).map(|version| version.release) == release
+        })
+        .cloned()
+        .unwrap_or_else(|| requested.to_owned())
+}
+
 fn is_semantic_v4(version: &str) -> bool {
     normalize_ir_version_text(version).is_some_and(|normalized| {
         normalized.is_supported() && normalized.release == ReleaseTriplet::new(4, 0, 0)
@@ -1519,6 +1600,7 @@ mod tests {
             })),
             diagnostics: Vec::new(),
             modules: Vec::new(),
+            module_results: Vec::new(),
         }
     }
 
@@ -1732,7 +1814,10 @@ mod tests {
         assert!(context.document.uri.starts_with("file://"));
         assert!(context.document.uri.ends_with("/Example.elm"));
         assert_eq!(context.package.name, "local/example");
-        assert_eq!(context.package.exposed_modules, ["Example"]);
+        assert_eq!(
+            context.package.exposed_modules.as_deref(),
+            Some(&["Example".to_string()][..])
+        );
         assert_eq!(context.output_path, output);
     }
 
@@ -2513,7 +2598,7 @@ enabled = true
             },
             package: CompilePackage {
                 name: "local/example".into(),
-                exposed_modules: vec!["Example".into()],
+                exposed_modules: Some(vec!["Example".into()]),
             },
             output_path,
         }
@@ -2547,6 +2632,7 @@ enabled = true
             })),
             diagnostics: Vec::new(),
             modules,
+            module_results: Vec::new(),
         }
     }
 

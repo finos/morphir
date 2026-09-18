@@ -562,6 +562,7 @@ mod tests {
                 ir: Some(json!({})),
                 diagnostics: vec![],
                 modules: vec!["cold".into()],
+                module_results: Vec::new(),
             })
         }
 
@@ -613,9 +614,10 @@ mod tests {
             documents: vec![],
             package: CompilePackage {
                 name: "example/test".into(),
-                exposed_modules: vec![],
+                exposed_modules: None,
             },
             dependencies: vec![],
+            baseline: None,
             options: CompileOptions {
                 types_only: false,
                 ir_version: "4.0.0".into(),

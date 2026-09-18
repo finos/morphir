@@ -414,11 +414,16 @@ fn compile_request(params: PlaygroundCompileParams) -> CompileRequest {
                 text: document.text,
             })
             .collect(),
+        // The playground protocol has always spelled "no exposure list" as an
+        // empty array; the SDK now spells it `None`, and reads an empty list
+        // as a package that exposes nothing.
         package: CompilePackage {
             name: params.package.name,
-            exposed_modules: params.package.exposed_modules,
+            exposed_modules: Some(params.package.exposed_modules)
+                .filter(|modules| !modules.is_empty()),
         },
         dependencies: Vec::new(),
+        baseline: None,
         options: compile_options(params.ir_version, &params.options),
     }
 }
@@ -684,6 +689,7 @@ mod tests {
                 ir: None,
                 diagnostics: vec![],
                 modules: vec![],
+                module_results: Vec::new(),
             })
         }
 
@@ -1076,6 +1082,7 @@ mod tests {
                     related: vec![],
                 }],
                 modules: vec![],
+                module_results: Vec::new(),
             }),
             Arc::new(SessionReuseInvoker::new(RegistryOpener)),
         );
@@ -1187,6 +1194,7 @@ mod tests {
                 ir: None,
                 diagnostics: vec![],
                 modules: vec![],
+                module_results: Vec::new(),
             }),
             {
                 let sleeping = Arc::new(SleepingInvoker::new(Duration::from_secs(600)));
@@ -1281,6 +1289,7 @@ mod tests {
                 ir: None,
                 diagnostics: vec![],
                 modules: vec![],
+                module_results: Vec::new(),
             }),
             invoker.clone(),
         );
