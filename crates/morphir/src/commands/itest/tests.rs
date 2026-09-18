@@ -206,6 +206,10 @@ fn process_timeout_and_expected_failure_are_observable() {
 }
 
 #[test]
+#[expect(
+    clippy::zombie_processes,
+    reason = "the timeout test requires the driver to terminate this helper's descendant"
+)]
 fn timeout_child() {
     if std::env::var_os("EXAMPLE_DRIVER_TIMEOUT_CHILD").is_some() {
         if let Some(marker) = std::env::var_os("EXAMPLE_DRIVER_MARKER") {
@@ -279,6 +283,10 @@ fn normal_exit_also_terminates_descendants() {
 }
 
 #[test]
+#[expect(
+    clippy::zombie_processes,
+    reason = "the normal-exit test requires the driver to terminate the surviving descendant"
+)]
 fn exiting_parent() {
     if let Some(marker) = std::env::var_os("EXAMPLE_DRIVER_MARKER") {
         let _child = Command::new(std::env::current_exe().unwrap())

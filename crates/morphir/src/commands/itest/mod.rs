@@ -33,7 +33,9 @@ fn included(entry: &walkdir::DirEntry) -> bool {
 }
 
 fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
-    if let Some(filter) = filter {
+    if let Some(filter) = filter
+        && filter != "."
+    {
         model::relative_path(filter)?;
     }
     let mut scenarios = Vec::new();
@@ -61,7 +63,7 @@ fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
             .to_owned();
         let relative = directory.strip_prefix(root)?;
         let id = if relative.as_os_str().is_empty() {
-            "root".into()
+            ".".into()
         } else {
             relative.to_string_lossy().replace('\\', "/")
         };
@@ -128,7 +130,9 @@ fn run_suite(args: ItestArgs) -> Result<()> {
     let scenarios = discover(&args.root, None)?;
     let mut selected = select_tags(&scenarios, &args.tags)?;
     if let Some(filter) = &args.filter {
-        model::relative_path(filter)?;
+        if filter != "." {
+            model::relative_path(filter)?;
+        }
         selected.retain(|s| s.id == *filter || s.id.starts_with(&format!("{filter}/")));
         ensure!(
             !selected.is_empty(),

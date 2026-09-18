@@ -34,8 +34,10 @@ morphir itest examples --filter elm/single-file --keep-temp
 ```
 
 The root defaults to `examples`. The scenario ID is its containing directory
-relative to the search root, or `root` for a notebook directly in that root.
-`--filter` selects an exact ID or directory category. Repeated `--tag` options
+relative to the search root, or `.` for a notebook directly in that root.
+`--filter .` selects only that root-level notebook; `--filter root` selects a
+directory named `root` and its descendants. Other filters select an exact ID
+or directory category. Repeated `--tag` options
 require every tag. Empty suites and selections fail, including with `--list`.
 All discovered notebook structures and scenario metadata are validated before
 selection; Rego compilation occurs when the selected assertions execute.

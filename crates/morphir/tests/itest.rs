@@ -58,6 +58,39 @@ fn itest_lists_filters_and_drives_real_cli_commands() {
 }
 
 #[test]
+fn itest_distinguishes_search_root_from_a_directory_named_root() {
+    let temp = tempfile::tempdir().unwrap();
+    write_scenario(temp.path(), &scenario());
+    write_scenario(&temp.path().join("root"), &scenario());
+    for (filter, other) in [("root", "."), (".", "root")] {
+        let output = run(temp.path(), &["--filter", filter]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            output.status.success(),
+            "stdout={stdout} stderr={}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(stdout.contains(&format!("PASS {filter}:")), "{stdout}");
+        assert!(!stdout.contains(&format!("PASS {other}:")), "{stdout}");
+        assert!(
+            stdout.contains("1 passed; 0 failed; 1 not selected"),
+            "{stdout}"
+        );
+    }
+    let output = run(temp.path(), &["--list"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success());
+    assert!(
+        stdout.lines().any(|line| line.starts_with(".:")),
+        "{stdout}"
+    );
+    assert!(
+        stdout.lines().any(|line| line.starts_with("root:")),
+        "{stdout}"
+    );
+}
+
+#[test]
 fn itest_runs_the_checked_in_elm_example_and_failure_fixture() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let temp = tempfile::tempdir().unwrap();
