@@ -78,6 +78,28 @@ fn rejects_duplicate_ids_and_conflicting_or_case_colliding_file_paths() {
     }
 }
 
+#[test]
+fn rejects_unicode_equivalent_workspace_paths() {
+    for (first, second) in [
+        ("é.txt", "e\u{301}.txt"),
+        ("Straße.txt", "STRASSE.txt"),
+        ("Ａ.txt", "a.txt"),
+        ("é", "e\u{301}/nested.txt"),
+        ("e\u{301}/nested.txt", "é"),
+    ] {
+        let mut value = document();
+        value["cells"][0]["metadata"]["morphir"]["file"]["path"] = json!(first);
+        let mut cell = value["cells"][0].clone();
+        cell["id"] = json!("second");
+        cell["metadata"]["morphir"]["file"]["path"] = json!(second);
+        value["cells"].as_array_mut().unwrap().push(cell);
+        assert!(
+            Notebook::parse(&value.to_string()).is_err(),
+            "accepted equivalent paths {first:?} and {second:?}"
+        );
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn materialization_refuses_existing_files_and_symlinked_ancestors() {
@@ -96,6 +118,8 @@ fn materialization_refuses_existing_files_and_symlinked_ancestors() {
 fn rejects_nonportable_windows_file_names() {
     for path in [
         "src/CON.elm",
+        "CONIN$",
+        "src/conout$.txt",
         "aux",
         "src/Lpt9.txt",
         "src/name.",

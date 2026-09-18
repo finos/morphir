@@ -109,8 +109,10 @@ source in assertion cells, outside the project under test.
 
 Paths are normalized, relative, slash-separated paths without empty components,
 `..`, backslashes or drive prefixes. Windows device names, reserved punctuation and trailing dots/spaces are rejected.
-Duplicate paths, case collisions and file/
-directory conflicts fail validation. Materialization refuses existing files
+Duplicate paths, Unicode-normalization or case-fold collisions, and file/
+directory conflicts fail validation. Collision keys use NFKC, full case folding
+and NFC, while materialized filenames retain their authored spelling.
+Materialization refuses existing files
 and symlink ancestors. This shared notebook layer has no test-execution logic,
 so other Morphir workspace consumers can adopt it later.
 

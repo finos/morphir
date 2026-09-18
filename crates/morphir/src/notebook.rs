@@ -4,6 +4,8 @@ use anyhow::{Context, Result, ensure};
 use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashSet, fs, io::Write, path::Path};
+use unicode_casefold::UnicodeCaseFold as _;
+use unicode_normalization::UnicodeNormalization as _;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CellKind {
@@ -148,7 +150,7 @@ impl Notebook {
                     !file.language.trim().is_empty(),
                     "cell {id}: file language is empty"
                 );
-                let portable = file.path.to_lowercase();
+                let portable: String = file.path.nfkc().case_fold().nfc().collect();
                 ensure!(
                     !paths.iter().any(|path| path == &portable
                         || path.starts_with(&format!("{portable}/"))
@@ -242,15 +244,17 @@ pub fn relative_path(value: &str) -> Result<()> {
             .next()
             .unwrap_or_default()
             .to_ascii_uppercase();
-        let device = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
-            || ["COM", "LPT"].iter().any(|prefix| {
-                stem.strip_prefix(prefix).is_some_and(|suffix| {
-                    matches!(
-                        suffix,
-                        "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
-                    )
-                })
-            });
+        let device = matches!(
+            stem.as_str(),
+            "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+        ) || ["COM", "LPT"].iter().any(|prefix| {
+            stem.strip_prefix(prefix).is_some_and(|suffix| {
+                matches!(
+                    suffix,
+                    "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
+                )
+            })
+        });
         ensure!(!device, "reserved device name in workspace path: {part:?}");
     }
     Ok(())
