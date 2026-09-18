@@ -2834,11 +2834,15 @@ fn extension_uninstall_removes_active_state_but_retains_store_bytes() {
 #[test]
 #[ignore = "requires the real Bun-built morphir-elm-extension executable"]
 fn real_installed_morphir_elm_is_verified_and_activates_offline() {
+    // The extension is released on its own tag and reports that release's version, which is
+    // not the morphir-elm package version.
+    let version = std::env::var("MORPHIR_ELM_EXTENSION_VERSION")
+        .expect("set MORPHIR_ELM_EXTENSION_VERSION to the version of the extension release");
     verify_real_installed_elm_provider(
         "MORPHIR_ELM_EXTENSION_BIN",
         "morphir-elm",
         "Morphir Elm frontend",
-        "2.100.0",
+        &version,
         false,
     );
 }

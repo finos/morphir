@@ -48,6 +48,15 @@ export function parseExecutablePins(text: string): Record<string, ExecutablePin>
 	return pins;
 }
 
+/** The version a release tag such as extension/elm/v0.1.0 names. */
+export function pinnedVersion(tag: string): string {
+	const match = /\/v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$/.exec(tag);
+	if (match?.[1] === undefined) {
+		throw new Error(`'${tag}' does not end with a version`);
+	}
+	return match[1];
+}
+
 export function archiveUrl(pin: Pick<ExecutablePin, "repository" | "tag" | "archive">): string {
 	return `https://github.com/${pin.repository}/releases/download/${pin.tag}/${pin.archive}`;
 }
@@ -103,6 +112,8 @@ async function fetchExecutable(shortId: string, pin: ExecutablePin, output: stri
 		throw new Error(`${shortId}: ${pin.archive} does not hold ${pin.executable}`);
 	}
 	chmodSync(executable, 0o755);
+	// The install test gives the CLI this version; the extension must report the same one.
+	writeFileSync(join(directory, "version.txt"), `${pinnedVersion(pin.tag)}\n`);
 	console.log(`${shortId}: ${pin.tag} -> ${executable}`);
 }
 

@@ -169,6 +169,10 @@ class PathAwareCiTests(unittest.TestCase):
         self.assertIn(
             "${{ github.workspace }}/.dev/out/published-bundles/elm/morphir-elm-extension", job
         )
+        # The CLI refuses an extension whose reported version differs from the version it was
+        # installed with, so the install test gets the version of the pinned release.
+        self.assertIn("MORPHIR_ELM_EXTENSION_VERSION=", job)
+        self.assertIn(".dev/out/published-bundles/elm/version.txt", job)
         # The executable has to exist before the Elm integration tests use it.
         self.assertLess(
             job.index("mise run ci:fetch-published-bundles"),

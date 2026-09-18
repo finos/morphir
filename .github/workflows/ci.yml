@@ -351,7 +351,10 @@ jobs:
         # finos/morphir-elm. The owning repository checks that a new release
         # works with the released CLI; this job checks that a CLI change does
         # not break the published releases.
-        run: mise run ci:fetch-published-bundles
+        run: |
+          mise run ci:fetch-published-bundles
+          printf 'MORPHIR_ELM_EXTENSION_VERSION=%s\n' \
+            "$(cat .dev/out/published-bundles/elm/version.txt)" >> "$GITHUB_ENV"
 
       - name: Run Morphir Elm CLI integration tests
         env:

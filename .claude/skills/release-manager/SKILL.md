@@ -125,8 +125,12 @@ from the same release:
 gh release download extension/elm/v0.1.0 -R finos/morphir-elm \
   --pattern "*aarch64-apple-darwin.tgz" --dir /tmp/elm-ext
 tar -xzf /tmp/elm-ext/*.tgz -C /tmp/elm-ext
-MORPHIR_ELM_EXTENSION_BIN=/tmp/elm-ext/morphir-elm-extension \
-  cargo test --locked --package integration-tests --test elm_extension -- --ignored --nocapture
+export MORPHIR_ELM_EXTENSION_BIN=/tmp/elm-ext/morphir-elm-extension
+# The version of the pinned release. The CLI refuses an extension that reports another one.
+export MORPHIR_ELM_EXTENSION_VERSION=0.1.0
+cargo test --locked --package integration-tests --test elm_extension -- --ignored --nocapture
+cargo test --locked --package morphir --test cli_integration \
+  real_installed_morphir_elm_is_verified_and_activates_offline -- --ignored --nocapture
 ```
 
 Before a release, check finos/morphir-elm for a newer `extension/elm/v*` tag and
