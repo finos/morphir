@@ -449,7 +449,7 @@ run = "python .config/mise/tasks/submodules/add.py"
 # ===== CI Tasks =====
 [tasks."ci:fetch-published-bundles"]
 description = "Download the pinned published extension bundles into .dev/out/published-bundles"
-run = "python .config/mise/tasks/ci/fetch_published_bundles.py"
+run = "bun run tools/fetch-published-bundles.ts"
 
 [tasks."ci:validate-tool-release-metadata"]
 description = "Validate signed tool release metadata fixtures"

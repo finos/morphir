@@ -71,6 +71,7 @@ jobs:
               - '.config/mise/**'
               # pins the published extension bundles the CLI is tested against
               - '.config/published-extension-bundles.toml'
+              - 'tools/fetch-published-bundles*'
               # generated CLI docs are diff-checked against the CLI source
               - 'docs/cli/**'
               - 'docs/man/**'

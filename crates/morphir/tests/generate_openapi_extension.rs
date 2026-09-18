@@ -10,7 +10,7 @@ mod support;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::process::Output;
-use support::{CliMother, ecosystem_crate_version, ecosystem_target_directory};
+use support::{CliMother, ecosystem_target_directory, guest_metadata};
 
 struct OpenApiCliMother {
     mother: CliMother,
@@ -24,13 +24,18 @@ struct OpenApiCliMother {
 
 impl OpenApiCliMother {
     fn new(guest_path: impl AsRef<Path>) -> Self {
+        let (version, backend) = guest_metadata(
+            guest_path.as_ref(),
+            "morphir-openapi-extension",
+            json!({ "targets": ["openapi", "json-schema"], "irVersions": ["3", "4"] }),
+        );
         Self {
             mother: CliMother::new(
                 "morphir-openapi",
                 "morphir_openapi_extension.wasm",
                 "Morphir OpenAPI",
-                &ecosystem_crate_version("morphir-openapi-extension"),
-                json!({ "targets": ["openapi", "json-schema"], "irVersions": ["3", "4"] }),
+                &version,
+                backend,
                 guest_path,
             ),
             installed: std::cell::Cell::new(false),
