@@ -1086,9 +1086,9 @@ fn elm_native_fixing_a_broken_module_recompiles_only_it() {
     );
     let failed = read_elm_native_manifest(&project);
     assert_eq!(module_status(&failed, "My.Other"), "failed", "{failed}");
-    let dependent = module_status(&failed, "My.Types");
-    assert!(
-        dependent == "unchanged" || dependent == "compiled",
+    assert_eq!(
+        module_status(&failed, "My.Types"),
+        "unchanged",
         "a dependent resolves against the cached interface rather than blocking: {failed}"
     );
 

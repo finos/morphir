@@ -147,9 +147,10 @@ morphir compile --input Example.elm --extension morphir-elm-native
 and signatures but not value bodies. `morphir-elm` remains the default
 extension for Elm and is the only provider that compiles values, so keep
 using it for production Elm workflows. `morphir-elm-native` accepts an
-`elmPrelude` configuration option that points at an alternate `elm/core`-style
-prelude package for resolving built-in types; leave it unset to use the
-bundled default.
+`elmPrelude` configuration option. It accepts `"elm-core"` (the default,
+selected when the option is left unset), `"none"` (no implicit imports and no
+SDK type mapping), or an inline prelude object describing a custom set of
+built-in types.
 
 ## Incremental compile cache
 

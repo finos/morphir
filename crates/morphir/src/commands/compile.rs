@@ -1249,8 +1249,12 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     // The cache records what this run learned whether or not the run as a whole
     // succeeded: a partial failure is exactly the case the cache exists for,
     // because the modules that did compile should not compile again once the
-    // broken one is fixed.
-    if let Some((cache, key)) = cache.as_ref() {
+    // broken one is fixed. A whole-request rejection reports success: false
+    // with no module results at all — that carries no information about any
+    // module, so it must not overwrite a previous run's cache with emptiness.
+    if let Some((cache, key)) = cache.as_ref()
+        && cache_write_is_warranted(&result)
+    {
         store_compile_results(cache, key, &result.module_results);
     }
     let diagnostics = convert_extension_diagnostics(&result.diagnostics);
@@ -1330,8 +1334,8 @@ fn provider_supports_incremental(resolved: &morphir_daemon::ResolvedFrontend) ->
 /// Elm's prelude is the binding's to describe, so its digest comes from the
 /// binding rather than from the CLI's reading of the option: the function the
 /// frontend uses to decide whether a baseline is reusable is the one that keys
-/// the cache. A language with no prelude of its own falls back to the option as
-/// sent, which for every provider today is nothing at all.
+/// the cache. A language with no prelude of its own has no `elmPrelude` option
+/// to hash in the first place, so its cache key carries no prelude digest.
 fn cache_key(
     language: &str,
     resolved: &morphir_daemon::ResolvedFrontend,
@@ -1339,7 +1343,7 @@ fn cache_key(
 ) -> Option<cache::CacheKey> {
     let prelude_digest = if language == "elm" {
         match morphir_elm_binding::frontend::boundary::prelude_digest_for(options) {
-            Ok(digest) => digest,
+            Ok(digest) => Some(digest),
             Err(diagnostic) => {
                 tracing::debug!(
                     message = %diagnostic.message,
@@ -1349,33 +1353,43 @@ fn cache_key(
             }
         }
     } else {
-        let option = options
-            .extra
-            .get("elmPrelude")
-            .map(ToString::to_string)
-            .unwrap_or_else(|| "null".into());
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(option.as_bytes());
-        format!("sha256:{:x}", hasher.finalize())
+        None
     };
     Some(cache::CacheKey {
         extension_id: resolved.info().id.clone(),
         extension_version: resolved.info().version.clone(),
         ir_version: options.ir_version.clone(),
         types_only: options.types_only,
-        prelude_digest: Some(prelude_digest),
+        prelude_digest,
     })
+}
+
+/// Whether this run's result is worth writing to the cache.
+///
+/// A run that reported success, or that reported at least one module result,
+/// learned something worth remembering. A whole-request rejection — the
+/// provider's `validate()`-style refusal of the request itself, such as an
+/// unrecognised package name — reports neither: `success: false` and an empty
+/// `module_results`. That combination carries no information about any
+/// module, so writing it would empty a cache that a previous, genuinely
+/// productive run had built, and the next run would recompile everything for
+/// no reason connected to the sources at all.
+fn cache_write_is_warranted(result: &morphir_extension_sdk::CompileResult) -> bool {
+    result.success || !result.module_results.is_empty()
 }
 
 /// Record a compile's per-module results, reporting a cache that could not be
 /// written rather than failing the compile over it.
 ///
-/// A cache only exists for a provider that was sent a baseline, so an empty
-/// result list here means the run found no modules at all, not that the
-/// provider had nothing to say about them. Writing it empties the cache, which
-/// is the point: a baseline for modules the sources no longer hold would
-/// resurrect them on the next run.
+/// A cache only exists for a provider that was sent a baseline. An empty
+/// result list here means every module the run considered dropped out —
+/// never that the run found no modules at all, since an empty source set is
+/// refused before a provider is ever invoked (see `collect_source_documents`).
+/// Writing it empties the cache, which is the point: a baseline for modules
+/// the sources no longer hold would resurrect them on the next run. The
+/// caller only reaches this function when the run reported success, or
+/// reported at least one module result, so a whole-request rejection (no
+/// modules, no success) never empties a previously good cache.
 fn store_compile_results(
     cache: &cache::CompileCache,
     key: &cache::CacheKey,
@@ -1571,8 +1585,8 @@ fn advertised_ir_version(advertised: &[String], requested: &str) -> String {
 
 #[cfg(test)]
 mod incremental_tests {
-    use super::{cache_key, provider_supports_incremental};
-    use morphir_extension_sdk::CompileOptions as ExtensionCompileOptions;
+    use super::{cache_key, cache_write_is_warranted, provider_supports_incremental};
+    use morphir_extension_sdk::{CompileOptions as ExtensionCompileOptions, CompileResult};
 
     fn resolve(language: &str, extension: &str) -> morphir_daemon::ResolvedFrontend {
         crate::extensions::extension_registry_for([], Some(extension))
@@ -1626,6 +1640,72 @@ mod incremental_tests {
             key.prelude_digest,
             Some(morphir_elm_binding::frontend::boundary::prelude_digest_for(&options()).unwrap()),
         );
+    }
+
+    // A non-Elm language has no `elmPrelude` option to begin with, so its
+    // cache key must not hash a missing option into a digest that looks
+    // meaningful but describes nothing.
+    #[test]
+    fn a_non_elm_language_carries_no_prelude_digest() {
+        let resolved = resolve("gleam", "morphir-gleam-binding");
+        // `cache_key` itself does not consult `provider_supports_incremental`;
+        // it is only ever called once that check has passed, but it is a pure
+        // function of `(language, resolved, options)` and can be exercised
+        // directly here.
+        let key =
+            cache_key("gleam", &resolved, &options()).expect("gleam has no prelude to fail on");
+
+        assert_eq!(key.prelude_digest, None);
+    }
+
+    fn compile_result(
+        success: bool,
+        module_results: Vec<morphir_extension_sdk::ModuleResult>,
+    ) -> CompileResult {
+        CompileResult {
+            success,
+            ir_version: None,
+            ir: None,
+            diagnostics: Vec::new(),
+            modules: Vec::new(),
+            module_results,
+        }
+    }
+
+    // Requirement: a whole-request rejection — `success: false` and no module
+    // results at all — carries no information about any module, so it must
+    // not be written: writing it would empty a cache a previous, genuinely
+    // productive run had built.
+    #[test]
+    fn a_whole_request_rejection_does_not_warrant_a_cache_write() {
+        assert!(!cache_write_is_warranted(&compile_result(false, vec![])));
+    }
+
+    // Requirement: a partial failure still teaches the cache something — the
+    // modules that did compile should not compile again once the broken one
+    // is fixed — so it is written even though the run overall failed.
+    #[test]
+    fn a_partial_failure_still_warrants_a_cache_write() {
+        use morphir_extension_sdk::{ModuleResult, ModuleStatus};
+        let results = vec![ModuleResult {
+            name: "My.Other".into(),
+            uri: "file:///src/My/Other.elm".into(),
+            status: ModuleStatus::Compiled,
+            source_digest: Some("sha256:source".into()),
+            interface_digest: Some("sha256:interface".into()),
+            depends_on: Vec::new(),
+            ir: Some(serde_json::json!({ "module": "My.Other" })),
+            diagnostics: Vec::new(),
+        }];
+        assert!(cache_write_is_warranted(&compile_result(false, results)));
+    }
+
+    // Requirement: an ordinary successful run always warrants a write, even in
+    // the edge case where it reports no modules of its own (nothing else about
+    // it says "rejected").
+    #[test]
+    fn a_successful_run_always_warrants_a_cache_write() {
+        assert!(cache_write_is_warranted(&compile_result(true, vec![])));
     }
 }
 

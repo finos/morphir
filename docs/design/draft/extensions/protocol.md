@@ -307,8 +307,9 @@ The `package` field supplies language-neutral compilation context. A host compil
 
 `baseline` is optional and owned by the host: it carries what an earlier
 `morphir.frontend.compile` call returned in `moduleResults`, so a host that
-keeps no cache omits it and gets a full compile. A host should only send it to
-a frontend that advertised `incremental: true`. Each `baseline.modules` entry
+keeps no cache omits it and gets a full compile. A host must not send
+`baseline` to a frontend that advertises `incremental: false`. Each
+`baseline.modules` entry
 describes one module the host still trusts: `name` and `uri` identify it,
 `sourceDigest` is the digest of its source text as last seen, `interfaceDigest`
 is the digest of its resolved public interface, `dependsOn` lists the

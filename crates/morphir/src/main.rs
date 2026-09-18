@@ -67,7 +67,7 @@ enum Commands {
         /// Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider
         #[arg(long)]
         extension: Option<String>,
-        /// Input source directory or file. An installed or configured Elm process accepts one .elm file.
+        /// Input source directory or file. A single .elm file is compiled by the selected Elm provider: an installed process extension by default, or a builtin such as morphir-elm-native via --extension.
         #[arg(short, long)]
         input: Option<String>,
         /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
