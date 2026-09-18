@@ -25,6 +25,7 @@ pub async fn run_gleam_compile(
         package_name,
         config_path,
         project,
+        ir_version: None,
         json,
         json_lines,
         out,

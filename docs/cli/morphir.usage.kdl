@@ -34,6 +34,9 @@ cmd compile display_order=3 args_override_self=#false help="Compile source code 
     flag --project help="Declared workspace-relative member path or exact project name" {
         arg <PROJECT>
     }
+    flag --ir-version help="IR version 3 or 4. Overrides ir.format_version in the selected project" {
+        arg <IR_VERSION>
+    }
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
 }

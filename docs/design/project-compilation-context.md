@@ -32,6 +32,7 @@ an unambiguous project requires a selection.
 | `--input` | Replaces the configured source input; relative to the invocation directory. |
 | `--package-name` | Replaces the emitted package name; does not relocate project output. |
 | `--language` | Replaces the configured frontend language. |
+| `--ir-version` | Replaces `ir.format_version` for project compilation; v4 is the default. |
 | `--out-dir` | Overrides `MORPHIR_OUT_DIR`, then `workspace.out_dir`, then the default `.morphir/out`. |
 | `--output` | Installs a copy of the task product at the supplied location. |
 
@@ -46,6 +47,13 @@ The existing single-file Elm route is an isolated compilation: it synthesizes
 exposure for the one submitted module. A surrounding project's exposure list
 does not add unsubmitted modules to that request. Project-mode compilation,
 including Python, forwards the configured exposure list for its complete source set.
+
+Project compilation requests the selected IR version when resolving and invoking
+the frontend. A provider must advertise that version, and both its result and
+embedded document header must match the request. V3 supports JSON/YAML single-file
+storage; v4 also supports document trees. Task records retain the emitted version,
+so generation and workspace model loading read the correct transport. The isolated
+single-file Elm route remains v3-only and rejects an explicit v4 override.
 
 ## Source identity across MEP hosts
 

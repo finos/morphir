@@ -114,6 +114,52 @@ pub fn write_v4(dest: &Path, storage: &IrStorage, ir: &IRFile) -> Result<IrDescr
     })
 }
 
+/// Write classic IR v3 as a JSON or YAML single file.
+pub fn write_v3(
+    dest: &Path,
+    storage: &IrStorage,
+    ir: &morphir_core::ir::classic::Distribution,
+) -> Result<IrDescriptor, CliError> {
+    if storage.layout != IrLayout::SingleFile {
+        return Err(CliError::Validation {
+            message: "IR v3 requires single-file storage".into(),
+        });
+    }
+    let json = serde_json::to_vec_pretty(ir).map_err(|error| CliError::Compilation {
+        message: format!("Failed to serialize IR v3: {error}"),
+    })?;
+    std::fs::create_dir_all(dest).map_err(|error| CliError::FileSystem { error })?;
+    let target = dest.join(storage.relative_path());
+    if storage.format == FormatId::json() {
+        std::fs::write(target, json).map_err(|error| CliError::FileSystem { error })?;
+    } else {
+        let registry = CodecRegistry::with_builtins();
+        let input = codec(&registry, &FormatId::json())?;
+        let output = codec(&registry, &storage.format)?;
+        let mut file =
+            std::fs::File::create(target).map_err(|error| CliError::FileSystem { error })?;
+        let mut sink = output
+            .encoder(
+                &mut file,
+                &CodecOptions::new(IrVersion::V3, Layout::SingleFile, storage.format.clone()),
+            )
+            .map_err(transport)?;
+        input
+            .decode(
+                &mut Cursor::new(json),
+                &CodecOptions::new(IrVersion::V3, Layout::SingleFile, FormatId::json()),
+                sink.as_mut(),
+            )
+            .map_err(transport)?;
+    }
+    Ok(IrDescriptor {
+        path: storage.relative_path().into(),
+        layout: storage.layout,
+        format: storage.format.as_str().into(),
+        version: "v3".into(),
+    })
+}
+
 /// Descriptor for the classic (v3) JSON file single-file Elm compile writes.
 pub fn v3_json_descriptor() -> IrDescriptor {
     IrDescriptor {
@@ -345,6 +391,26 @@ mod tests {
         Distribution, FormatVersion, IRFile, LibraryContent, PackageDefinition,
     };
     use morphir_core::naming::PackageName;
+
+    #[test]
+    fn v3_single_files_roundtrip_and_tree_output_is_rejected_before_writing() {
+        let ir: morphir_core::ir::classic::Distribution = serde_json::from_value(serde_json::json!({"formatVersion":3,"distribution":["Library",[["example"]],[],{"modules":[]}]})).unwrap();
+        let temp = tempfile::tempdir().unwrap();
+        for format in ["json", "yaml"] {
+            let dest = temp.path().join(format);
+            let storage = IrStorage::from_config(Some(&section("single-file", format))).unwrap();
+            let descriptor = write_v3(&dest, &storage, &ir).unwrap();
+            assert_eq!(descriptor.version, "v3");
+            assert_eq!(
+                read_value(&dest, &descriptor).unwrap(),
+                serde_json::to_value(&ir).unwrap()
+            );
+        }
+        let dest = temp.path().join("tree");
+        let storage = IrStorage::from_config(Some(&section("document-tree", "json"))).unwrap();
+        assert!(write_v3(&dest, &storage, &ir).is_err());
+        assert!(!dest.exists());
+    }
 
     fn sample_ir() -> IRFile {
         IRFile {

@@ -82,6 +82,9 @@ enum Commands {
         /// Declared workspace-relative member path or exact project name
         #[arg(long)]
         project: Option<String>,
+        /// IR version 3 or 4. Overrides ir.format_version in the selected project.
+        #[arg(long, value_parser = commands::compile::parse_ir_version)]
+        ir_version: Option<morphir_common::ir_transport::IrVersion>,
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -789,6 +792,7 @@ impl AppSession for MorphirSession {
                 package_name,
                 config,
                 project,
+                ir_version,
                 json,
                 json_lines,
             } => {
@@ -800,6 +804,7 @@ impl AppSession for MorphirSession {
                     package_name: package_name.clone(),
                     config_path: config.clone(),
                     project: project.clone(),
+                    ir_version: *ir_version,
                     json: *json,
                     json_lines: *json_lines,
                     out: self.out.clone(),
