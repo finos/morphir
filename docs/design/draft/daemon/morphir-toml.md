@@ -103,7 +103,7 @@ keywords = ["domain", "orders", "e-commerce"]
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | string | Required | Package identifier in `org/name` format |
-| `version` | string | Required | Semantic version (e.g., `"1.0.0"`, `"2.1.0-beta.1"`) |
+| `version` | string | `"0.1.0"` | Semantic version (e.g., `"1.0.0"`, `"2.1.0-beta.1"`) |
 | `description` | string | `""` | Human-readable description |
 | `authors` | array | `[]` | List of authors (name and/or email) |
 | `license` | string | None | SPDX license identifier |

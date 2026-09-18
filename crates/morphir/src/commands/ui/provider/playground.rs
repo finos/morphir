@@ -203,6 +203,11 @@ impl PlaygroundCapability for NativePlaygroundProvider {
             })?;
         let provider_id = resolved.info().id.clone();
         let request = compile_request(params);
+        request
+            .source_paths()
+            .map_err(|error| CliError::Validation {
+                message: error.to_string(),
+            })?;
         let invocation =
             self.invoker
                 .compile(&self.home, &self.working_directory, &resolved, request);
@@ -1021,7 +1026,7 @@ mod tests {
             }],
             package: PlaygroundPackage {
                 name: "playground/main".into(),
-                exposed_modules: vec!["Main".into()],
+                exposed_modules: Some(vec!["Main".into()]),
             },
             ir_version: IR_VERSION.into(),
             options: serde_json::json!({}),
@@ -1474,7 +1479,7 @@ mod tests {
         // Gleam module names are snake_case, unlike the Elm-shaped default.
         params.documents[0].uri = "file:///src/hello.gleam".into();
         params.package.name = "example/hello".into();
-        params.package.exposed_modules = vec![];
+        params.package.exposed_modules = Some(vec![]);
         let compiled = provider
             .compile(params)
             .await

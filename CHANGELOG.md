@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Document-tree input spellings**: a `manifest.yml` root is recognised and read as a YAML document tree alongside `manifest.yaml` (it is never written back as `.yml`). `morphir generate -i` and every other path that probes a directory now ask the transport which manifests count, so the two agree
 
 ### Fixed
+- Project-mode `compile` and `generate` honor `--project` and resolve sources from the selected member. Configured module exposure reaches the frontend, including private Python modules. Connected workspace model loading follows compile records and their JSON/YAML file or document-tree artifacts, including output-root overrides; a failed compile cannot reopen a stale installed model.
 - Reading or rewriting a document tree never follows a symlink or junction, so neither can reach outside the tree root; a manifest that is itself a link is refused with `morphir::ir::detection::linked_manifest` rather than reported as a missing manifest
 
 ## [0.4.0-alpha.7] - 2026-09-17

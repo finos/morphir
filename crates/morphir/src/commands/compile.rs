@@ -15,7 +15,6 @@ use morphir_daemon::extensions::{
 };
 use morphir_devkit::{
     ConfigContext, IrDescriptor, TaskId, TaskResult, discover_config, ensure_morphir_structure,
-    load_config_context, resolve_path_relative_to_config,
 };
 use morphir_distribution::{ExtensionId, VerifiedExtensionArtifact, activate_installed};
 use morphir_extension_sdk::{
@@ -43,7 +42,7 @@ pub struct CompileOptions {
     pub package_name: Option<String>,
     /// Path to configuration file
     pub config_path: Option<String>,
-    /// Project name (currently unused)
+    /// Declared workspace-relative member path or exact project name
     pub project: Option<String>,
     /// Output JSON format
     pub json: bool,
@@ -298,7 +297,7 @@ fn prepare_single_file_context(
         },
         package: CompilePackage {
             name: package_name,
-            exposed_modules: vec![module_name],
+            exposed_modules: Some(vec![module_name]),
         },
         output_path,
     })
@@ -314,6 +313,28 @@ fn fallback_elm_module_name(input: &Path) -> String {
                 .map(|(module_name, _)| module_name)
         })
         .unwrap_or_else(|| "Main".into())
+}
+
+fn prepare_configured_single_file_context(
+    options: &CompileOptions,
+    input: &Path,
+    source: &str,
+    config: Option<&ConfigContext>,
+    output: PathBuf,
+) -> Result<SingleFileCompileContext, CliError> {
+    // This route submits one document, so its synthesized exposure must not
+    // require other modules from the surrounding project.
+    prepare_single_file_context(
+        &[input.to_path_buf()],
+        source,
+        options.language.as_deref(),
+        options.package_name.as_deref().or_else(|| {
+            config
+                .and_then(|context| context.current_project.as_ref())
+                .map(|project| project.name.as_str())
+        }),
+        output,
+    )
 }
 
 fn file_uri(path: &Path) -> Result<String, CliError> {
@@ -557,14 +578,35 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
             message: "Single-file compilation requires --input".into(),
         })?;
     let input_path = absolute_from(&start_dir, Path::new(input_value));
-    let config_path = options
+    let mut config_path = options
         .config_path
         .as_deref()
         .map(Path::new)
         .map(|path| absolute_from(&start_dir, path));
+    if config_path.is_none() && options.project.is_some() {
+        config_path = discover_config(&start_dir).map_err(|error| CliError::Config { error })?;
+        if config_path.is_none() {
+            return Err(CliError::Config {
+                error: anyhow::anyhow!("--project requires a Morphir configuration"),
+            }
+            .into());
+        }
+    }
     let config_context = config_path
         .as_deref()
-        .map(load_config_context)
+        .map(|path| {
+            morphir_devkit::load_config_context_with(
+                path,
+                &morphir_devkit::ConfigLoadOptions {
+                    project: options
+                        .project
+                        .clone()
+                        .map(morphir_devkit::config::ProjectSelection::Explicit)
+                        .unwrap_or_default(),
+                    ..Default::default()
+                },
+            )
+        })
         .transpose()
         .map_err(|error| CliError::Config { error })?;
     let config_dir = config_path.as_deref().and_then(Path::parent);
@@ -587,11 +629,11 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let descriptor = crate::commands::ir_storage::v3_json_descriptor();
     warn_if_ir_storage_settings_are_ignored(config_context.as_ref(), &descriptor);
     let output_path = paths.dest.join(&descriptor.path);
-    let context = prepare_single_file_context(
-        std::slice::from_ref(&input_path),
+    let context = prepare_configured_single_file_context(
+        &options,
+        &input_path,
         &source,
-        options.language.as_deref(),
-        options.package_name.as_deref(),
+        config_context.as_ref(),
         output_path,
     )?;
     let environment = filtered_process_environment();
@@ -697,6 +739,7 @@ fn validate_compile_success(
         .package
         .exposed_modules
         .iter()
+        .flatten()
         .filter(|expected| !result.modules.contains(expected))
         .cloned()
         .collect::<Vec<_>>();
@@ -760,6 +803,7 @@ fn validate_distribution_identity(
         .package
         .exposed_modules
         .iter()
+        .flatten()
         .filter(|module| {
             let expected_path = path_from_string(module, '.');
             !ir_module_paths.contains(&&expected_path)
@@ -1031,7 +1075,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         output,
         package_name,
         config_path,
-        project: _project,
+        project,
         json,
         json_lines,
         out: out_overrides,
@@ -1046,7 +1090,20 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
                 error: anyhow::anyhow!("No morphir.toml, morphir.yaml, or morphir.json found"),
             })?
     };
-    let context = load_config_context(&config_file).map_err(|error| CliError::Config { error })?;
+    let selection = project
+        .map(morphir_devkit::config::ProjectSelection::Explicit)
+        .unwrap_or_default();
+    let context = morphir_devkit::load_config_context_with(
+        &config_file,
+        &morphir_devkit::ConfigLoadOptions {
+            project: selection,
+            ..Default::default()
+        },
+    )
+    .map_err(|error| CliError::Config { error })?;
+    let project_root = context.project_root.as_deref().ok_or_else(|| CliError::Config {
+        error: anyhow::anyhow!("Workspace has no selected project; use --project with a declared member path or exact project name"),
+    })?;
     ensure_morphir_structure(&context.morphir_dir).map_err(|error| CliError::Config { error })?;
     let language = language
         .or_else(|| {
@@ -1092,7 +1149,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
                 })
             })
             .unwrap_or_else(|| PathBuf::from("src"));
-        resolve_path_relative_to_config(&configured, &context.config_path)
+        absolute_from(project_root, &configured)
     };
     report_config_warnings(&context);
     let out = OutContext::resolve(Some(&context), &out_overrides, &start_dir);
@@ -1134,7 +1191,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         documents,
         package: CompilePackage {
             name: package_name,
-            exposed_modules: vec![],
+            exposed_modules: context.exposed_modules().map(<[String]>::to_vec),
         },
         dependencies: vec![],
         options: ExtensionCompileOptions {
@@ -1402,6 +1459,36 @@ mod tests {
     use tempfile::TempDir;
 
     const ELM_SOURCE: &str = "module Example exposing (add)\n\nadd left right = left + right\n";
+
+    #[test]
+    fn single_file_elm_does_not_require_unsubmitted_project_modules() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("morphir.toml");
+        std::fs::write(
+            &path,
+            "[project]\nname = 'local/example'\nexposed_modules = ['Example', 'Other']\n",
+        )
+        .unwrap();
+        let config = morphir_devkit::load_config_context_with(
+            &path,
+            &morphir_devkit::ConfigLoadOptions::project_only(),
+        )
+        .unwrap();
+        let context = prepare_configured_single_file_context(
+            &CompileOptions::default(),
+            &temp.path().join("Example.elm"),
+            ELM_SOURCE,
+            Some(&config),
+            temp.path().join("output.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            context.package.exposed_modules,
+            Some(vec!["Example".into()])
+        );
+        validate_compile_success(&context, &example_compile_result(vec!["Example".into()]))
+            .unwrap();
+    }
 
     /// A single-file compile whose input has since been deleted must leave a
     /// TOMBSTONE, not the previous run's successful record: `generate` treats
@@ -1732,7 +1819,10 @@ mod tests {
         assert!(context.document.uri.starts_with("file://"));
         assert!(context.document.uri.ends_with("/Example.elm"));
         assert_eq!(context.package.name, "local/example");
-        assert_eq!(context.package.exposed_modules, ["Example"]);
+        assert_eq!(
+            context.package.exposed_modules,
+            Some(vec!["Example".into()])
+        );
         assert_eq!(context.output_path, output);
     }
 
@@ -2513,7 +2603,7 @@ enabled = true
             },
             package: CompilePackage {
                 name: "local/example".into(),
-                exposed_modules: vec!["Example".into()],
+                exposed_modules: Some(vec!["Example".into()]),
             },
             output_path,
         }

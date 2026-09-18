@@ -299,7 +299,7 @@ Package name override
 Explicit config file path. An Elm command is a development override for the installed extension
 .TP
 \fB\-\-project\fR \fI<PROJECT>\fR
-Project name (for workspaces)
+Declared workspace\-relative member path or exact project name
 .TP
 \fB\-\-json\fR
 Output as JSON
@@ -327,7 +327,7 @@ Install task outputs into this directory after the run. Canonical output stays u
 Explicit config file path
 .TP
 \fB\-\-project\fR \fI<PROJECT>\fR
-Project name (for workspaces)
+Declared workspace\-relative member path or exact project name
 .TP
 \fB\-\-option\fR \fI<KEY=VALUE>\fR
 Override a backend option as KEY=VALUE. May be repeated
@@ -1737,7 +1737,7 @@ Package name override
 Explicit config file path
 .TP
 \fB\-\-project\fR \fI<PROJECT>\fR
-Project name (for workspaces)
+Declared workspace\-relative member path or exact project name
 .SH "MORPHIR GLEAM GENERATE"
 Generate Gleam code from Morphir IR
 .PP
@@ -1756,7 +1756,7 @@ Install task outputs into this directory after the run. Canonical output stays u
 Explicit config file path
 .TP
 \fB\-\-project\fR \fI<PROJECT>\fR
-Project name (for workspaces)
+Declared workspace\-relative member path or exact project name
 .SH "MORPHIR GLEAM ROUNDTRIP"
 Roundtrip: compile then generate (for testing)
 .PP
@@ -1778,7 +1778,7 @@ Package name override
 Explicit config file path
 .TP
 \fB\-\-project\fR \fI<PROJECT>\fR
-Project name (for workspaces)
+Declared workspace\-relative member path or exact project name
 .SH "MORPHIR SCHEMA"
 Generate JSON Schema for Morphir IR
 .PP
