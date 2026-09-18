@@ -1,0 +1,12 @@
+[package]
+name = "morphir-opa"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Embedded Rego evaluator for Morphir using Regorus"
+
+[dependencies]
+morphir-evaluator = { path = "../morphir-evaluator" }
+regorus.workspace = true
+serde_json.workspace = true

@@ -36,6 +36,8 @@ async-trait = "0.1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 axum = { version = "0.8", features = ["ws"] }
 morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
+morphir-evaluator = { path = "../morphir-evaluator" }
+morphir-opa = { path = "../morphir-opa" }
 morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
 morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
@@ -51,6 +53,7 @@ uuid = { workspace = true }
 zip = { workspace = true }
 chrono = "0.4"
 walkdir = "2"
+shell-words = { workspace = true }
 fs2 = { workspace = true }
 same-file = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
@@ -82,10 +85,10 @@ tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
-rustix = { workspace = true }
+rustix = { workspace = true, features = ["process"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { workspace = true, features = ["Wdk_Storage_FileSystem", "Win32_System_IO"] }
+windows-sys = { workspace = true, features = ["Wdk_Storage_FileSystem", "Win32_System_IO", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp"] }
 
 [dev-dependencies]
 cucumber = { workspace = true }

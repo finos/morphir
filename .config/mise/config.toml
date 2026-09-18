@@ -358,6 +358,18 @@ depends = [
 ]
 
 # ===== Testing Tasks =====
+[tasks."test:examples"]
+description = "Run categorized notebook example scenarios through the Morphir CLI"
+run = "cargo run --locked --package morphir -- itest examples"
+
+[tasks."test:itest"]
+description = "Test the integration scenario driver and its real CLI acceptance cases"
+run = [
+    "cargo test --locked --package morphir --lib commands::itest",
+    "cargo test --locked --package morphir --test itest --test notebook --test eval",
+    "cargo test --locked --package morphir-evaluator --package morphir-opa",
+]
+
 [tasks.test]
 description = "Run tests"
 run = "cargo test --all-features --workspace"

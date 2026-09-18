@@ -11,6 +11,7 @@ mod log_lock;
 mod logging;
 pub mod output;
 
+pub use morphir::notebook;
 use morphir::observability;
 
 use commands::{
@@ -58,6 +59,10 @@ struct Cli {
 
 #[derive(Clone, Subcommand)]
 enum Commands {
+    /// Evaluate a program through a registered native provider
+    Eval(commands::eval::EvalArgs),
+    /// Run notebook integration scenarios through real CLI processes
+    Itest(commands::itest::ItestArgs),
     // ===== Core Commands =====
     /// Compile source code to Morphir IR
     Compile {
@@ -786,6 +791,8 @@ impl AppSession for MorphirSession {
 
     async fn execute(&mut self) -> AppResult<miette::Report> {
         match &self.command {
+            Commands::Eval(args) => commands::eval::run_eval(args.clone()).map(|()| None),
+            Commands::Itest(args) => commands::itest::run_itest(args.clone()),
             Commands::Validate { input } => run_validate(input.clone()),
             Commands::Compile {
                 language,

@@ -7,6 +7,7 @@ pub mod error;
 pub mod extensions;
 pub mod home;
 mod log_lock;
+pub mod notebook;
 pub mod observability;
 pub mod output;
 pub mod tui;
