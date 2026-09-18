@@ -1209,6 +1209,218 @@ fn elm_native_a_deleted_module_leaves_the_cache() {
     );
 }
 
+/// Append a `[elm]` table to a project's `morphir.toml`, replacing whatever
+/// prelude an earlier call configured.
+fn set_elm_prelude(project_root: &std::path::Path, table: &str) {
+    let path = project_root.join("morphir.toml");
+    let existing = std::fs::read_to_string(&path).unwrap();
+    let base = existing.split("\n[elm]\n").next().unwrap().to_owned();
+    std::fs::write(&path, format!("{base}\n[elm]\n{table}")).unwrap();
+}
+
+/// The `--json` envelope a compile wrote, whether or not it succeeded.
+fn compile_envelope(output: &std::process::Output) -> serde_json::Value {
+    serde_json::from_slice(&output.stdout).unwrap_or_else(|error| {
+        panic!(
+            "--json output is JSON ({error}): {}",
+            String::from_utf8_lossy(&output.stdout)
+        )
+    })
+}
+
+/// Requirement: `[elm] prelude` in `morphir.toml` reaches the native Elm
+/// provider. The default config compiles the fixture, which names `Int` from
+/// the `elm-core` prelude; asking for no prelude leaves that name unresolved,
+/// and the diagnostic says which prelude was in force.
+#[test]
+fn elm_native_prelude_is_configured_from_morphir_toml() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native", "--json"];
+
+    assert_compile_succeeded(
+        &run_morphir(&arguments, &home, &project),
+        "compile without an [elm] table",
+    );
+
+    set_elm_prelude(&project, "prelude = \"none\"\n");
+    let compile = run_morphir(&arguments, &home, &project);
+
+    assert!(
+        !compile.status.success(),
+        "`Int` has nowhere to come from without a prelude: stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let envelope = compile_envelope(&compile);
+    let diagnostics = envelope["diagnostics"]
+        .as_array()
+        .unwrap_or_else(|| panic!("the envelope lists diagnostics: {envelope}"));
+    assert!(
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic["code"] == "ELM_RESOLVE_NOT_FOUND"
+                && diagnostic["message"]
+                    .as_str()
+                    .is_some_and(|message| message.contains("prelude: none"))
+        }),
+        "the configured prelude is named in the diagnostic: {envelope}"
+    );
+}
+
+/// Requirement: a value that is neither a prelude name nor a table is refused
+/// before any provider runs, and the message names the key that is wrong.
+#[test]
+fn elm_native_rejects_a_prelude_of_the_wrong_type() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_elm_prelude(&project, "prelude = 3\n");
+
+    let compile = run_morphir(
+        &["compile", "--extension", "morphir-elm-native"],
+        &home,
+        &project,
+    );
+
+    assert!(
+        !compile.status.success(),
+        "a misconfigured prelude fails the run: stdout={}",
+        String::from_utf8_lossy(&compile.stdout)
+    );
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    assert!(stderr.contains("elm.prelude"), "{stderr}");
+}
+
+/// A two-module Elm project that names no type from any prelude, so it
+/// compiles whichever prelude is in force.
+fn write_prelude_neutral_elm_project(project_root: &std::path::Path) {
+    std::fs::create_dir_all(project_root.join(".morphir")).unwrap();
+    let src_dir = project_root.join("src/My");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::write(
+        src_dir.join("Other.elm"),
+        "module My.Other exposing (Currency)\n\n\ntype Currency\n    = Currency\n",
+    )
+    .unwrap();
+    std::fs::write(
+        src_dir.join("Types.elm"),
+        "module My.Types exposing (Amount)\n\
+         \n\
+         import My.Other exposing (Currency)\n\
+         \n\
+         \n\
+         type Amount\n    \
+             = Amount Currency\n",
+    )
+    .unwrap();
+    std::fs::write(
+        project_root.join("morphir.toml"),
+        "[project]\n\
+         name = \"example/domain\"\n\
+         version = \"1.0.0\"\n\
+         source_directory = \"src\"\n\
+         \n\
+         [frontend]\n\
+         language = \"elm\"\n",
+    )
+    .unwrap();
+}
+
+/// Requirement: changing the prelude invalidates the incremental cache. The
+/// provider digests the prelude into the compile context it reports, so a run
+/// under a different prelude compiles every module again rather than trusting
+/// a baseline that was resolved against the old one.
+#[test]
+fn elm_native_changing_the_prelude_recompiles_everything() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_prelude_neutral_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native"];
+
+    set_elm_prelude(&project, "prelude = \"none\"\n");
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    let first = read_elm_native_manifest(&project);
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "second compile");
+    let second = read_elm_native_manifest(&project);
+
+    set_elm_prelude(&project, "prelude = \"elm-core\"\n");
+    assert_compile_succeeded(
+        &run_morphir(&arguments, &home, &project),
+        "compile under another prelude",
+    );
+    let switched = read_elm_native_manifest(&project);
+
+    assert_eq!(module_status(&first, "My.Other"), "compiled", "{first}");
+    assert_eq!(module_status(&first, "My.Types"), "compiled", "{first}");
+    assert_eq!(module_status(&second, "My.Other"), "unchanged", "{second}");
+    assert_eq!(module_status(&second, "My.Types"), "unchanged", "{second}");
+    assert_eq!(
+        module_status(&switched, "My.Other"),
+        "compiled",
+        "a new prelude is a new compile context: {switched}"
+    );
+    assert_eq!(
+        module_status(&switched, "My.Types"),
+        "compiled",
+        "a new prelude is a new compile context: {switched}"
+    );
+}
+
+/// Requirement: a single-file compile that loaded a configuration honours the
+/// prelude it names. This route only loads one when `--config` or `--project`
+/// says so; without either it compiles the file alone under the provider's
+/// default prelude.
+#[test]
+fn elm_native_single_file_honours_a_configured_prelude() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_elm_prelude(&project, "prelude = \"none\"\n");
+    let input = ["compile", "--input", "src/My/Other.elm", "--extension"];
+
+    let without_config = run_morphir(
+        &[input.as_slice(), &["morphir-elm-native"]].concat(),
+        &home,
+        &project,
+    );
+    assert_compile_succeeded(&without_config, "single-file compile without a config");
+
+    let with_config = run_morphir(
+        &[
+            input.as_slice(),
+            &["morphir-elm-native", "--config", "morphir.toml", "--json"],
+        ]
+        .concat(),
+        &home,
+        &project,
+    );
+
+    assert!(
+        !with_config.status.success(),
+        "`String` has nowhere to come from without a prelude: stdout={} stderr={}",
+        String::from_utf8_lossy(&with_config.stdout),
+        String::from_utf8_lossy(&with_config.stderr)
+    );
+    let envelope = compile_envelope(&with_config);
+    let diagnostics = envelope["diagnostics"]
+        .as_array()
+        .unwrap_or_else(|| panic!("the envelope lists diagnostics: {envelope}"));
+    assert!(
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic["code"] == "ELM_RESOLVE_NOT_FOUND"
+                && diagnostic["message"]
+                    .as_str()
+                    .is_some_and(|message| message.contains("prelude: none"))
+        }),
+        "the configured prelude is named in the diagnostic: {envelope}"
+    );
+}
+
 /// Requirement: a damaged cache costs a rebuild, never a failure.
 #[test]
 fn elm_native_corrupt_cache_is_ignored() {

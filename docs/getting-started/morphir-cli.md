@@ -146,13 +146,55 @@ morphir compile --input Example.elm --extension morphir-elm-native
 `morphir-elm-native` is **types-only today**: it compiles type declarations
 and signatures but not value bodies. `morphir-elm` remains the default
 extension for Elm and is the only provider that compiles values, so keep
-using it for production Elm workflows. `morphir-elm-native` accepts an
-`elmPrelude` compile option over MEP: `"elm-core"` (the default), `"none"`
-(no implicit imports and no SDK type mapping), or an inline prelude object
-describing a custom set of built-in types. `morphir compile` does not expose
-this option yet, so CLI compiles always use `elm-core`; a config surface for
-it is a planned follow-up. Hosts that speak MEP directly can set `elmPrelude`
-themselves.
+using it for production Elm workflows.
+
+### Choosing the Elm prelude
+
+The prelude is the set of implicit imports and SDK module aliases every Elm
+module is compiled against. `morphir-elm-native` uses `elm-core` unless the
+project asks for something else. Name the prelude in `morphir.toml` under
+`[elm]`, in one of three forms.
+
+The default prelude, which resolves `Int`, `String`, `List` and the rest of
+the Elm core types:
+
+```toml
+[elm]
+prelude = "elm-core"
+```
+
+No prelude at all, so only names a module declares or imports itself are in
+scope:
+
+```toml
+[elm]
+prelude = "none"
+```
+
+Or a prelude the project describes itself, as a table with the same fields a
+prelude file uses (`id`, `implicit_import`, `module_alias`, and `package`):
+
+```toml
+[elm.prelude]
+id = "acme-std"
+
+[[elm.prelude.implicit_import]]
+module = "Acme.Std.Basics"
+exposing = ["Int", "String"]
+
+[[elm.prelude.module_alias]]
+source = "Core"
+target = "Acme.Std.Core"
+```
+
+The key travels to the provider as the `elmPrelude` compile option, so it
+applies to the native provider and is ignored by the JavaScript `morphir-elm`
+extension. It applies to a whole-project compile, and to a single-file compile
+that loaded a configuration through `--config` or `--project`; a single-file
+compile with neither flag uses the default prelude. Changing the prelude
+invalidates the incremental compile cache, so the next run compiles every
+module again. A value that is neither a name nor a table fails the run and
+names `elm.prelude`.
 
 ## Incremental compile cache
 

@@ -1,6 +1,7 @@
 //! Compile command for compiling source code to Morphir IR
 
 mod cache;
+mod elm_prelude;
 
 use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::CliError;
@@ -93,6 +94,10 @@ struct SingleFileCompileContext {
     document: SourceDocument,
     package: CompilePackage,
     output_path: PathBuf,
+    /// Provider-specific compile options this route sends, such as the Elm
+    /// prelude a loaded configuration asks for. Empty when nothing configured
+    /// one, so the provider applies its own defaults.
+    extra: HashMap<String, serde_json::Value>,
 }
 
 fn has_elm_extension(input: &Path) -> bool {
@@ -319,6 +324,7 @@ fn prepare_single_file_context(
             exposed_modules: Some(vec![module_name]),
         },
         output_path,
+        extra: HashMap::new(),
     })
 }
 
@@ -343,7 +349,7 @@ fn prepare_configured_single_file_context(
 ) -> Result<SingleFileCompileContext, CliError> {
     // This route submits one document, so its synthesized exposure must not
     // require other modules from the surrounding project.
-    prepare_single_file_context(
+    let mut context = prepare_single_file_context(
         &[input.to_path_buf()],
         source,
         options.language.as_deref(),
@@ -353,7 +359,19 @@ fn prepare_configured_single_file_context(
                 .map(|project| project.name.as_str())
         }),
         output,
-    )
+    )?;
+    // Only a run that loaded a configuration has a prelude to read: this route
+    // loads one for `--config` or `--project` and otherwise compiles the file
+    // on its own, where the provider's default prelude applies.
+    if context.language_id == "elm"
+        && let Some(config) = config
+        && let Some(prelude) = elm_prelude::from_config(&config.effective)?
+    {
+        context
+            .extra
+            .insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+    }
+    Ok(context)
 }
 
 fn file_uri(path: &Path) -> Result<String, CliError> {
@@ -953,7 +971,7 @@ fn single_file_request(context: &SingleFileCompileContext) -> CompileRequest {
         options: ExtensionCompileOptions {
             types_only: false,
             ir_version: "3".into(),
-            extra: HashMap::new(),
+            extra: context.extra.clone(),
         },
         baseline: None,
     }
@@ -1294,18 +1312,26 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     let language_name = language.clone();
     let negotiated_ir_version =
         advertised_ir_version(&resolved.capability().ir_versions, requested_version);
+    let mut extra = HashMap::from([
+        ("outputDir".into(), serde_json::json!(paths.dest)),
+        ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
+        ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
+        (
+            "emitParseStageFatal".into(),
+            serde_json::json!(emit_parse_stage_fatal),
+        ),
+    ]);
+    // The prelude is an Elm notion, so it only reaches a provider that was
+    // asked to compile Elm; another language's provider never sees the option.
+    if language.eq_ignore_ascii_case("elm")
+        && let Some(prelude) = elm_prelude::from_config(&context.effective)?
+    {
+        extra.insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+    }
     let extension_options = ExtensionCompileOptions {
         types_only: false,
         ir_version: negotiated_ir_version,
-        extra: HashMap::from([
-            ("outputDir".into(), serde_json::json!(paths.dest)),
-            ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
-            ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
-            (
-                "emitParseStageFatal".into(),
-                serde_json::json!(emit_parse_stage_fatal),
-            ),
-        ]),
+        extra,
     };
     let workspace = context
         .project_root
@@ -3055,6 +3081,7 @@ enabled = true
                 exposed_modules: Some(vec!["Example".into()]),
             },
             output_path,
+            extra: HashMap::new(),
         }
     }
 
