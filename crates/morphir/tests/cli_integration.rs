@@ -946,10 +946,44 @@ fn elm_native_compiles_a_single_file_to_v3_ir() {
     );
 }
 
-/// The compile cache's manifest for the two-module Elm project. The package is
-/// `example/domain`, which is one path segment once sanitised.
+/// The compile cache's manifest for the two-module Elm project. Each directory
+/// name is the readable name plus a digest of it, so the path is found rather
+/// than spelled out: one provider compiled one package under this workspace.
 fn elm_native_manifest_path(project_root: &std::path::Path) -> PathBuf {
-    project_root.join(".morphir/cache/compile/morphir-elm-native/example_domain/manifest.json")
+    let compile = project_root.join(".morphir/cache/compile");
+    let one_child = |directory: &std::path::Path, what: &str| -> PathBuf {
+        let mut entries: Vec<PathBuf> = std::fs::read_dir(directory)
+            .unwrap_or_else(|error| panic!("{what} under {}: {error}", directory.display()))
+            .map(|entry| entry.unwrap().path())
+            .collect();
+        entries.sort();
+        assert_eq!(
+            entries.len(),
+            1,
+            "exactly one {what} under {}: {entries:?}",
+            directory.display()
+        );
+        entries.remove(0)
+    };
+    let provider = one_child(&compile, "provider directory");
+    assert!(
+        provider
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("morphir-elm-native-"),
+        "the provider directory names its provider: {provider:?}"
+    );
+    let package = one_child(&provider, "package directory");
+    assert!(
+        package
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("example_domain-"),
+        "the package directory names its package: {package:?}"
+    );
+    package.join("manifest.json")
 }
 
 fn read_elm_native_manifest(project_root: &std::path::Path) -> serde_json::Value {
@@ -1119,6 +1153,59 @@ fn elm_native_no_cache_flag_skips_the_cache() {
     assert!(
         modules.contains(&"My.Other".to_owned()) && modules.contains(&"My.Types".to_owned()),
         "a run without a baseline compiles everything: {envelope}"
+    );
+}
+
+/// Requirement: a module deleted from the sources is deleted from the cache,
+/// so the next run is never offered a baseline for source that is gone.
+///
+/// Deleting every module cannot be reached from here — an empty source set is
+/// refused before any provider runs — so the case that matters is the one that
+/// can happen: a module goes, the rest stay.
+#[test]
+fn elm_native_a_deleted_module_leaves_the_cache() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    let src_dir = write_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native"];
+
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    let modules_dir = elm_native_manifest_path(&project)
+        .parent()
+        .unwrap()
+        .join("modules");
+    assert_eq!(
+        std::fs::read_dir(&modules_dir).unwrap().count(),
+        2,
+        "the first compile caches both modules"
+    );
+
+    // `My.Types` imports `My.Other`, so the one that can go is the dependent.
+    std::fs::remove_file(src_dir.join("Types.elm")).unwrap();
+    assert_compile_succeeded(
+        &run_morphir(&arguments, &home, &project),
+        "compile after a deletion",
+    );
+    let manifest = read_elm_native_manifest(&project);
+
+    assert!(
+        manifest["modules"]["My.Types"].is_null(),
+        "a deleted module is out of the manifest: {manifest}"
+    );
+    assert_eq!(
+        module_status(&manifest, "My.Other"),
+        "unchanged",
+        "{manifest}"
+    );
+    let cached: Vec<String> = std::fs::read_dir(&modules_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(
+        cached.len(),
+        1,
+        "the deleted module's file is gone too: {cached:?}"
     );
 }
 

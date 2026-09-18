@@ -18,6 +18,7 @@
 
 use morphir_extension_sdk::{BaselineModule, CompileBaseline, ModuleResult, ModuleStatus};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -103,8 +104,8 @@ impl CompileCache {
         let manifest = self.read_manifest(key)?;
         let modules = manifest
             .modules
-            .iter()
-            .filter_map(|(name, entry)| self.baseline_module(name, entry))
+            .keys()
+            .filter_map(|name| self.baseline_module(name))
             .collect::<Vec<_>>();
         Some(CompileBaseline {
             modules,
@@ -128,6 +129,11 @@ impl CompileCache {
                 write_atomically(&self.module_path(&result.name), &encoded)?;
             }
         }
+        // The sweep runs before the manifest is written, so a failure here
+        // leaves module files the manifest does not mention. That is harmless:
+        // the key still matches, and a read only ever loads the file named by a
+        // manifest entry, so an unmentioned file is invisible until a later
+        // successful write removes it.
         self.remove_dropped_module_files(&modules_dir, results)?;
         let manifest = Manifest {
             schema_version: SCHEMA_VERSION.to_owned(),
@@ -212,7 +218,12 @@ impl CompileCache {
 
     /// The baseline entry for one manifest module, or `None` when its file is
     /// missing, unreadable, or does not carry what a baseline entry needs.
-    fn baseline_module(&self, name: &str, entry: &ManifestModule) -> Option<BaselineModule> {
+    ///
+    /// Everything but the name comes from the module file. The manifest's copy
+    /// of the digests and dependencies is there to be read by a person, not to
+    /// be mixed with the file's: two sources for one field would mean a
+    /// baseline that matches neither.
+    fn baseline_module(&self, name: &str) -> Option<BaselineModule> {
         let path = self.module_path(name);
         let bytes = match std::fs::read(&path) {
             Ok(bytes) => bytes,
@@ -243,11 +254,7 @@ impl CompileCache {
             uri: cached.uri,
             source_digest: cached.source_digest?,
             interface_digest: cached.interface_digest?,
-            depends_on: if cached.depends_on.is_empty() {
-                entry.depends_on.clone()
-            } else {
-                cached.depends_on
-            },
+            depends_on: cached.depends_on,
             ir: cached.ir?,
         })
     }
@@ -281,16 +288,28 @@ impl CompileCache {
 /// Make `name` safe to use as one path segment: anything outside
 /// `[A-Za-z0-9._-]` becomes `_`, so a module or package name cannot escape the
 /// cache directory or spell something the filesystem refuses.
-pub fn sanitise(name: &str) -> String {
-    name.chars()
-        .map(|character| {
-            if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
-                character
-            } else {
-                '_'
-            }
-        })
-        .collect()
+///
+/// Replacing characters loses information — `A/B` and `A_B` flatten to the same
+/// thing — so the segment ends in a short digest of the name it came from. The
+/// readable part is still readable; the digest is what makes the segment the
+/// name's alone.
+fn sanitise(name: &str) -> String {
+    let readable = name.chars().map(|character| {
+        if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
+            character
+        } else {
+            '_'
+        }
+    });
+    let mut hasher = Sha256::new();
+    hasher.update(name.as_bytes());
+    let digest = hasher.finalize();
+    let mut segment: String = readable.collect();
+    segment.push('-');
+    for byte in &digest[..4] {
+        segment.push_str(&format!("{byte:02x}"));
+    }
+    segment
 }
 
 /// Write `bytes` to `path` through a temp file in the same directory, so a
@@ -440,7 +459,7 @@ mod tests {
                 ],
             )
             .unwrap();
-        std::fs::remove_file(cache.root().join("modules/My.Types.json")).unwrap();
+        std::fs::remove_file(cache.module_path("My.Types")).unwrap();
 
         let baseline = cache
             .read_baseline(&key())
@@ -487,15 +506,15 @@ mod tests {
             .unwrap();
 
         assert!(
-            cache.root().join("modules/My.Other.json").exists(),
+            cache.module_path("My.Other").exists(),
             "a failed module keeps its last good file"
         );
         assert!(
-            cache.root().join("modules/My.Types.json").exists(),
+            cache.module_path("My.Types").exists(),
             "an unchanged module keeps its file"
         );
         assert!(
-            !cache.root().join("modules/My.Gone.json").exists(),
+            !cache.module_path("My.Gone").exists(),
             "a module absent from the results loses its file"
         );
         let baseline = cache
@@ -536,16 +555,78 @@ mod tests {
             .unwrap()
             .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
             .collect();
-        assert_eq!(module_files, vec!["My.Other.json".to_owned()]);
+        assert_eq!(
+            module_files,
+            vec![
+                cache
+                    .module_path("My.Other")
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            ]
+        );
     }
 
     // A package or module name is not a path: it can carry separators a
-    // filesystem would read as directories.
+    // filesystem would read as directories. Flattening those is lossy, so the
+    // segment keeps a digest of the name it stands for and two names cannot
+    // land on one directory.
     #[test]
     fn a_name_is_reduced_to_one_safe_path_segment() {
-        assert_eq!(sanitise("example/domain"), "example_domain");
-        assert_eq!(sanitise("../escape"), ".._escape");
-        assert_eq!(sanitise("My.Types-1_0"), "My.Types-1_0");
+        assert!(
+            sanitise("example/domain").starts_with("example_domain-"),
+            "{}",
+            sanitise("example/domain")
+        );
+        assert!(sanitise("../escape").starts_with(".._escape-"));
+        assert!(sanitise("My.Types-1_0").starts_with("My.Types-1_0-"));
+        assert_ne!(
+            sanitise("A/B"),
+            sanitise("A_B"),
+            "two names that flatten alike must still be told apart"
+        );
+        assert_eq!(
+            sanitise("A/B"),
+            sanitise("A/B"),
+            "and the segment is stable"
+        );
+        assert_eq!(
+            sanitise("A/B").len(),
+            "A_B".len() + 1 + 8,
+            "the digest is eight hex characters after a dash"
+        );
+    }
+
+    // Requirement: a run whose sources no longer hold any module empties the
+    // cache. Keeping the previous entries would offer the next run a baseline
+    // for modules that are gone, and the provider would reuse IR for source
+    // that no longer exists.
+    #[test]
+    fn writing_empty_results_clears_the_cache() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = CompileCache::open(temp.path(), "morphir-elm-native", "example/domain");
+        cache
+            .write_results(
+                &key(),
+                &[
+                    module("My.Other", ModuleStatus::Compiled),
+                    module("My.Types", ModuleStatus::Compiled),
+                ],
+            )
+            .unwrap();
+
+        cache.write_results(&key(), &[]).unwrap();
+
+        assert!(!cache.module_path("My.Other").exists());
+        assert!(!cache.module_path("My.Types").exists());
+        let baseline = cache
+            .read_baseline(&key())
+            .expect("an empty cache is still a readable one");
+        assert!(
+            baseline.modules.is_empty(),
+            "nothing is offered from an emptied cache: {baseline:?}"
+        );
     }
 
     // Requirement: the manifest is a readable record of the run, keyed and

@@ -2,8 +2,6 @@
 
 mod cache;
 
-pub use cache::{CacheKey, CompileCache};
-
 use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::CliError;
 use crate::error::convert_extension_diagnostics;
@@ -1356,7 +1354,10 @@ fn cache_key(
             .get("elmPrelude")
             .map(ToString::to_string)
             .unwrap_or_else(|| "null".into());
-        morphir_elm_binding::digest::sha256_hex(option.as_bytes())
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(option.as_bytes());
+        format!("sha256:{:x}", hasher.finalize())
     };
     Some(cache::CacheKey {
         extension_id: resolved.info().id.clone(),
@@ -1369,14 +1370,17 @@ fn cache_key(
 
 /// Record a compile's per-module results, reporting a cache that could not be
 /// written rather than failing the compile over it.
+///
+/// A cache only exists for a provider that was sent a baseline, so an empty
+/// result list here means the run found no modules at all, not that the
+/// provider had nothing to say about them. Writing it empties the cache, which
+/// is the point: a baseline for modules the sources no longer hold would
+/// resurrect them on the next run.
 fn store_compile_results(
     cache: &cache::CompileCache,
     key: &cache::CacheKey,
     results: &[morphir_extension_sdk::ModuleResult],
 ) {
-    if results.is_empty() {
-        return;
-    }
     if let Err(error) = cache.write_results(key, results) {
         tracing::debug!(
             root = %cache.root().display(),
