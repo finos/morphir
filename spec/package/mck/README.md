@@ -145,11 +145,27 @@ is review material, not a new passing corpus. Its lock and record examples delib
 nonconforming `UNSIGNED:` values where signed evidence is unavailable.
 The separate [signed example](fixtures/local-registry/assets/signed/README.md) supplies
 complete bytes and verification instructions. User signed-fixture review was approved
-on 2026-09-17; runtime execution remains unimplemented.
+on 2026-09-17; full draft.3 runtime execution remains unimplemented.
 
 The existing driver does not execute draft.3. Its schema, trust and filesystem cases require
 shared TypeScript MCK support and independent Rust operations before interoperability can be claimed.
 Do not include these unsigned shapes in draft.1 or draft.2 case counts or corpus provenance.
+
+### Publisher-signature integration
+
+Run `mise run package:publisher-check` from the parent repository root. It invokes the
+shared TypeScript MCK's `local-registry-publisher-parent-integration.ts --source .`
+support entrypoint against the two fixed signed statements. The check verifies all
+authorized signing keys, including both keys when the policy threshold is one,
+preserves exact envelope and payload bytes, and checks that evidence binds the requested
+release even when the signed payload names another release. Existing signed assets and
+their historical reproduction instructions remain unchanged.
+
+This is a publisher-signature evidence check. It does not establish TUF or repository
+authentication, graph readiness, durable authorization grants, filesystem guarantees,
+restore compatibility or a full 54-case draft.3 corpus pass. Execution stays in the
+shared MCK; this parent task adds no verifier, fixtures or schemas. The shared MCK
+requires Node.js 24 or later. The separate Morphir IR package retains Node.js 20 support.
 
 ### Definition status and admission
 

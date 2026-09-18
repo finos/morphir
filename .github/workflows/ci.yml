@@ -563,6 +563,9 @@ jobs:
       - name: Check synthetic restore assurance preflight vectors
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
         run: mise run package:assurance-check
+      - name: Check publisher signatures for fixed release statements
+        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+        run: mise run package:publisher-check
       - name: Run independent Rust package implementation
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
         run: mise run package:check:rust
