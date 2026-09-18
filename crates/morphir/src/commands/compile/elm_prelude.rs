@@ -1,29 +1,31 @@
 //! The Elm prelude a compile asks the Elm provider for, read from the
 //! project's configuration.
 //!
-//! `morphir.toml` names it in a language-scoped table:
+//! `morphir.toml` names it in the frontend's language-specific table, the
+//! shape `docs/design/draft/daemon/morphir-toml.md` specifies for per-language
+//! settings:
 //!
 //! ```toml
-//! [elm]
+//! [frontend.elm]
 //! prelude = "none"
 //! ```
 //!
 //! or, for a prelude the project describes itself:
 //!
 //! ```toml
-//! [elm.prelude]
+//! [frontend.elm.prelude]
 //! id = "acme-std"
 //!
-//! [[elm.prelude.module_alias]]
+//! [[frontend.elm.prelude.module_alias]]
 //! source = "Core"
 //! target = "Acme.Std.Core"
 //! ```
 //!
-//! The table is not part of the typed configuration model, so it is read off
-//! the merged configuration value every loader already carries
-//! (`ConfigContext::effective`). That value is serialization independent, so
-//! the same key works in `morphir.yaml`, in a user override, and through
-//! `MORPHIR_ELM__PRELUDE`.
+//! `FrontendSection` collects every key it does not name itself into
+//! `settings`, so `[frontend.elm]` arrives in the typed configuration model
+//! without the model having to know about Elm. The model is
+//! serialization independent, so the same key works in `morphir.yaml` and in a
+//! user override as well.
 //!
 //! The value travels to the provider untouched as the `elmPrelude` compile
 //! option: a string names a built-in prelude, a table describes one with the
@@ -32,28 +34,34 @@
 //! key is one of those two shapes.
 
 use crate::error::CliError;
+use morphir_common::config::model::FrontendSection;
 use serde_json::Value;
 
 /// The configuration key that names the prelude.
-pub const CONFIG_KEY: &str = "elm.prelude";
+pub const CONFIG_KEY: &str = "frontend.elm.prelude";
 
 /// The compile option the Elm provider reads the prelude as.
 pub const OPTION_KEY: &str = "elmPrelude";
 
-/// [`CONFIG_KEY`] as a JSON pointer into a merged configuration value.
-const CONFIG_POINTER: &str = "/elm/prelude";
-
 /// The `elmPrelude` compile option a configuration asks for, or `None` when it
 /// says nothing and the provider's own default applies.
-pub fn from_config(effective: &Value) -> Result<Option<Value>, CliError> {
-    match effective.pointer(CONFIG_POINTER) {
-        None | Some(Value::Null) => Ok(None),
-        Some(value @ (Value::String(_) | Value::Object(_))) => Ok(Some(value.clone())),
-        Some(other) => Err(CliError::Config {
+pub fn from_config(frontend: Option<&FrontendSection>) -> Result<Option<Value>, CliError> {
+    let Some(configured) = frontend
+        .and_then(|frontend| frontend.settings.get("elm"))
+        .and_then(|elm| elm.get("prelude"))
+    else {
+        return Ok(None);
+    };
+    let value = serde_json::to_value(configured).map_err(|error| CliError::Config {
+        error: anyhow::anyhow!("{CONFIG_KEY} could not be read: {error}"),
+    })?;
+    match value {
+        Value::String(_) | Value::Object(_) => Ok(Some(value)),
+        other => Err(CliError::Config {
             error: anyhow::anyhow!(
                 "{CONFIG_KEY} is {}, but it must name a built-in prelude \
                  (\"elm-core\" or \"none\") or be a table describing one",
-                shape_of(other)
+                shape_of(&other)
             ),
         }),
     }
@@ -76,24 +84,43 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    /// The frontend section a `morphir.toml` decodes to, built the way the
+    /// loader builds it: from the merged, serialization-independent value.
+    fn frontend(value: serde_json::Value) -> FrontendSection {
+        serde_json::from_value(value).expect("the frontend section decodes")
+    }
+
     /// A configuration that says nothing about the prelude sends no option, so
     /// the provider applies its own default rather than the CLI restating it.
     #[test]
     fn a_configuration_without_the_key_sends_no_option() {
-        assert_eq!(from_config(&json!({})).unwrap(), None);
-        assert_eq!(from_config(&json!({"elm": {}})).unwrap(), None);
+        assert_eq!(from_config(None).unwrap(), None);
+        assert_eq!(from_config(Some(&frontend(json!({})))).unwrap(), None);
+        assert_eq!(
+            from_config(Some(&frontend(json!({"elm": {}})))).unwrap(),
+            None
+        );
     }
 
     #[test]
     fn the_empty_prelude_is_sent_by_name() {
-        let option = from_config(&json!({"elm": {"prelude": "none"}})).unwrap();
+        let option = from_config(Some(&frontend(json!({"elm": {"prelude": "none"}})))).unwrap();
         assert_eq!(option, Some(json!("none")));
     }
 
     #[test]
     fn the_default_prelude_is_sent_by_name() {
-        let option = from_config(&json!({"elm": {"prelude": "elm-core"}})).unwrap();
+        let option = from_config(Some(&frontend(json!({"elm": {"prelude": "elm-core"}})))).unwrap();
         assert_eq!(option, Some(json!("elm-core")));
+    }
+
+    /// The prelude sits beside the keys the frontend section names itself, and
+    /// reading it leaves them alone.
+    #[test]
+    fn the_prelude_shares_the_section_with_the_language() {
+        let section = frontend(json!({"language": "elm", "elm": {"prelude": "none"}}));
+        assert_eq!(section.language.as_deref(), Some("elm"));
+        assert_eq!(from_config(Some(&section)).unwrap(), Some(json!("none")));
     }
 
     /// An inline prelude keeps the field names its TOML form uses, because the
@@ -102,21 +129,21 @@ mod tests {
     #[test]
     fn an_inline_prelude_travels_as_a_json_object() {
         let configured = toml::from_str::<toml::Value>(
-            "[elm.prelude]\n\
+            "[frontend.elm.prelude]\n\
              id = \"acme-std\"\n\
              \n\
-             [[elm.prelude.implicit_import]]\n\
+             [[frontend.elm.prelude.implicit_import]]\n\
              module = \"Acme.Std.Basics\"\n\
              exposing = [\"Int\"]\n\
              \n\
-             [[elm.prelude.module_alias]]\n\
+             [[frontend.elm.prelude.module_alias]]\n\
              source = \"Core\"\n\
              target = \"Acme.Std.Core\"\n",
         )
         .expect("the configured table parses");
         let effective = serde_json::to_value(configured).expect("TOML converts to JSON");
 
-        let option = from_config(&effective).unwrap();
+        let option = from_config(Some(&frontend(effective["frontend"].clone()))).unwrap();
 
         assert_eq!(
             option,
@@ -134,13 +161,13 @@ mod tests {
     #[test]
     fn a_value_of_the_wrong_type_names_the_key() {
         for wrong in [json!(3), json!(true), json!(["elm-core"])] {
-            let failure = from_config(&json!({"elm": {"prelude": wrong}}))
+            let failure = from_config(Some(&frontend(json!({"elm": {"prelude": wrong}}))))
                 .expect_err("a prelude must be a name or a table");
             let CliError::Config { error } = failure else {
                 panic!("a misconfigured prelude is a configuration error: {failure:?}");
             };
             let message = error.to_string();
-            assert!(message.contains("elm.prelude"), "{message}");
+            assert!(message.contains("frontend.elm.prelude"), "{message}");
             assert!(message.contains("elm-core"), "{message}");
             assert!(message.contains("none"), "{message}");
         }

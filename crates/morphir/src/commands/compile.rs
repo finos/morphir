@@ -365,7 +365,7 @@ fn prepare_configured_single_file_context(
     // on its own, where the provider's default prelude applies.
     if context.language_id == "elm"
         && let Some(config) = config
-        && let Some(prelude) = elm_prelude::from_config(&config.effective)?
+        && let Some(prelude) = elm_prelude::from_config(config.config.frontend.as_ref())?
     {
         context
             .extra
@@ -1324,7 +1324,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     // The prelude is an Elm notion, so it only reaches a provider that was
     // asked to compile Elm; another language's provider never sees the option.
     if language.eq_ignore_ascii_case("elm")
-        && let Some(prelude) = elm_prelude::from_config(&context.effective)?
+        && let Some(prelude) = elm_prelude::from_config(context.config.frontend.as_ref())?
     {
         extra.insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
     }

@@ -153,13 +153,14 @@ using it for production Elm workflows.
 The prelude is the set of implicit imports and SDK module aliases every Elm
 module is compiled against. `morphir-elm-native` uses `elm-core` unless the
 project asks for something else. Name the prelude in `morphir.toml` under
-`[elm]`, in one of three forms.
+`[frontend.elm]`, the frontend's language-specific table, in one of three
+forms.
 
 The default prelude, which resolves `Int`, `String`, `List` and the rest of
 the Elm core types:
 
 ```toml
-[elm]
+[frontend.elm]
 prelude = "elm-core"
 ```
 
@@ -167,7 +168,7 @@ No prelude at all, so only names a module declares or imports itself are in
 scope:
 
 ```toml
-[elm]
+[frontend.elm]
 prelude = "none"
 ```
 
@@ -175,14 +176,14 @@ Or a prelude the project describes itself, as a table with the same fields a
 prelude file uses (`id`, `implicit_import`, `module_alias`, and `package`):
 
 ```toml
-[elm.prelude]
+[frontend.elm.prelude]
 id = "acme-std"
 
-[[elm.prelude.implicit_import]]
+[[frontend.elm.prelude.implicit_import]]
 module = "Acme.Std.Basics"
 exposing = ["Int", "String"]
 
-[[elm.prelude.module_alias]]
+[[frontend.elm.prelude.module_alias]]
 source = "Core"
 target = "Acme.Std.Core"
 ```
@@ -194,7 +195,7 @@ that loaded a configuration through `--config` or `--project`; a single-file
 compile with neither flag uses the default prelude. Changing the prelude
 invalidates the incremental compile cache, so the next run compiles every
 module again. A value that is neither a name nor a table fails the run and
-names `elm.prelude`.
+names `frontend.elm.prelude`.
 
 ## Incremental compile cache
 

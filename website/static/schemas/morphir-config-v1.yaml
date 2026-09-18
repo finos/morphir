@@ -477,62 +477,61 @@ properties:
       language: { type: string }
       emit_parse_stage: { type: boolean }
       emit_parse_stage_fatal: { type: boolean }
-
-  elm:
-    description: "Settings the Elm frontend reads, sent to the provider as compile options."
-    type: object
-    additionalProperties: true
-    properties:
-      prelude:
-        description: "The implicit imports and SDK module aliases every Elm module is compiled against: the name of a built-in prelude, or a table describing one."
-        oneOf:
-          - type: string
-          - type: object
-            additionalProperties: true
-            properties:
-              id: { type: string }
-              implicit_import:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: true
-                  properties:
-                    module: { type: string }
-                    exposing:
-                      type: array
-                      items: { type: string }
-              module_alias:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: true
-                  properties:
-                    source: { type: string }
-                    target: { type: string }
-              package:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: true
-                  properties:
-                    name: { type: string }
-                    module:
-                      type: array
-                      items:
-                        type: object
-                        additionalProperties: true
-                        properties:
-                          name: { type: string }
-                          types:
-                            type: array
-                            items:
-                              type: object
-                              additionalProperties: true
-                              properties:
-                                name: { type: string }
-                                constructors:
-                                  type: array
-                                  items: { type: string }
+      elm:
+        description: "Settings the Elm frontend reads, sent to the provider as compile options."
+        type: object
+        additionalProperties: true
+        properties:
+          prelude:
+            description: "The implicit imports and SDK module aliases every Elm module is compiled against: the name of a built-in prelude, or a table describing one."
+            oneOf:
+              - type: string
+              - type: object
+                additionalProperties: true
+                properties:
+                  id: { type: string }
+                  implicit_import:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        module: { type: string }
+                        exposing:
+                          type: array
+                          items: { type: string }
+                  module_alias:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        source: { type: string }
+                        target: { type: string }
+                  package:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        name: { type: string }
+                        module:
+                          type: array
+                          items:
+                            type: object
+                            additionalProperties: true
+                            properties:
+                              name: { type: string }
+                              types:
+                                type: array
+                                items:
+                                  type: object
+                                  additionalProperties: true
+                                  properties:
+                                    name: { type: string }
+                                    constructors:
+                                      type: array
+                                      items: { type: string }
 
   sources:
     description: "Remote source settings (morphir_common::remote::config::RemoteSourceConfig). Fields serialize in camelCase."

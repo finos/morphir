@@ -1209,13 +1209,13 @@ fn elm_native_a_deleted_module_leaves_the_cache() {
     );
 }
 
-/// Append a `[elm]` table to a project's `morphir.toml`, replacing whatever
-/// prelude an earlier call configured.
+/// Append a `[frontend.elm]` table to a project's `morphir.toml`, replacing
+/// whatever prelude an earlier call configured.
 fn set_elm_prelude(project_root: &std::path::Path, table: &str) {
     let path = project_root.join("morphir.toml");
     let existing = std::fs::read_to_string(&path).unwrap();
-    let base = existing.split("\n[elm]\n").next().unwrap().to_owned();
-    std::fs::write(&path, format!("{base}\n[elm]\n{table}")).unwrap();
+    let base = existing.split("\n[frontend.elm]\n").next().unwrap();
+    std::fs::write(&path, format!("{base}\n[frontend.elm]\n{table}")).unwrap();
 }
 
 /// The `--json` envelope a compile wrote, whether or not it succeeded.
@@ -1228,10 +1228,10 @@ fn compile_envelope(output: &std::process::Output) -> serde_json::Value {
     })
 }
 
-/// Requirement: `[elm] prelude` in `morphir.toml` reaches the native Elm
-/// provider. The default config compiles the fixture, which names `Int` from
-/// the `elm-core` prelude; asking for no prelude leaves that name unresolved,
-/// and the diagnostic says which prelude was in force.
+/// Requirement: `[frontend.elm] prelude` in `morphir.toml` reaches the native
+/// Elm provider. The default config compiles the fixture, which names `Int`
+/// from the `elm-core` prelude; asking for no prelude leaves that name
+/// unresolved, and the diagnostic says which prelude was in force.
 #[test]
 fn elm_native_prelude_is_configured_from_morphir_toml() {
     let temp = TempDir::new().unwrap();
@@ -1242,7 +1242,7 @@ fn elm_native_prelude_is_configured_from_morphir_toml() {
 
     assert_compile_succeeded(
         &run_morphir(&arguments, &home, &project),
-        "compile without an [elm] table",
+        "compile without a [frontend.elm] table",
     );
 
     set_elm_prelude(&project, "prelude = \"none\"\n");
@@ -1291,7 +1291,7 @@ fn elm_native_rejects_a_prelude_of_the_wrong_type() {
         String::from_utf8_lossy(&compile.stdout)
     );
     let stderr = String::from_utf8_lossy(&compile.stderr);
-    assert!(stderr.contains("elm.prelude"), "{stderr}");
+    assert!(stderr.contains("frontend.elm.prelude"), "{stderr}");
 }
 
 /// A two-module Elm project that names no type from any prelude, so it

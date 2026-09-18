@@ -223,6 +223,14 @@ language = "ocaml"
 |-------|------|---------|-------------|
 | `elm_version` | string | `"0.19"` | Elm language version |
 | `optimize` | bool | `false` | Enable optimizations |
+| `prelude` | string or table | `"elm-core"` | Implicit imports and SDK module aliases every module is compiled against |
+
+`prelude` is implemented today and read by the native `morphir-elm-native`
+provider, which receives it as the `elmPrelude` compile option; the JavaScript
+`morphir-elm` extension ignores it. It is either the name of a built-in
+prelude (`"elm-core"` or `"none"`) or a `[frontend.elm.prelude]` table holding
+`id`, `implicit_import`, `module_alias`, and `package`. See [Choosing the Elm
+prelude](../../../getting-started/morphir-cli.md#choosing-the-elm-prelude).
 
 #### `[frontend.morphir-dsl]`
 

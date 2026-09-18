@@ -161,14 +161,17 @@ format = "json"
 to `single-file`, `vfs` maps to `document-tree`) and prints a warning; an
 explicit `layout` wins if both are set.
 
-### [elm]
+### [frontend.elm]
 
-Settings the Elm frontend reads. Today the section holds one key, `prelude`,
+Settings the Elm frontend reads. Today the table holds one key, `prelude`,
 which names the set of implicit imports and SDK module aliases every Elm module
 is compiled against:
 
 ```toml
-[elm]
+[frontend]
+language = "elm"
+
+[frontend.elm]
 # "elm-core" (the default) or "none"
 prelude = "elm-core"
 ```
@@ -177,10 +180,10 @@ A project that supplies its own prelude writes it as a table instead, using the
 same fields a prelude file uses:
 
 ```toml
-[elm.prelude]
+[frontend.elm.prelude]
 id = "acme-std"
 
-[[elm.prelude.module_alias]]
+[[frontend.elm.prelude.module_alias]]
 source = "Core"
 target = "Acme.Std.Core"
 ```
