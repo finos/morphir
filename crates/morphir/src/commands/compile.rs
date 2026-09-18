@@ -126,9 +126,18 @@ fn resolve_extension_id(language: &str, explicit: Option<&str>) -> Result<Extens
     // The provider path trims `--extension` before it resolves; a single-file
     // compile accepts the same typing, so `--extension " morphir-elm-native "`
     // means the same thing on both paths.
-    let value = explicit
-        .map(|id| id.trim().to_owned())
-        .unwrap_or_else(|| format!("morphir-{language}"));
+    let value = match explicit {
+        Some(id) => {
+            let trimmed = id.trim();
+            if trimmed.is_empty() {
+                return Err(CliError::Validation {
+                    message: "--extension was given an empty value; pass an extension id such as `morphir-elm-native` or omit the flag".into(),
+                });
+            }
+            trimmed.to_owned()
+        }
+        None => format!("morphir-{language}"),
+    };
     ExtensionId::parse(value).map_err(|error| CliError::Extension {
         message: format!("Invalid extension id: {error}"),
     })
@@ -1252,10 +1261,16 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         morphir_distribution::list_installed(&home).map_err(|error| CliError::Extension {
             message: format!("Failed to list installed frontend providers: {error}"),
         })?;
-    let requested_extension = extension
-        .as_deref()
-        .map(str::trim)
-        .filter(|id| !id.is_empty());
+    let requested_extension = match extension.as_deref().map(str::trim) {
+        Some("") => {
+            return Err(CliError::Validation {
+                message: "--extension was given an empty value; pass an extension id such as `morphir-elm-native` or omit the flag".into(),
+            }
+            .into());
+        }
+        Some(id) => Some(id),
+        None => None,
+    };
     let registry = crate::extensions::extension_registry_for(installed, requested_extension)?;
     let resolved = registry
         .resolve_frontend(
@@ -2143,6 +2158,13 @@ mod tests {
         let provider = resolve_extension_id("elm", Some(" morphir-scala-elm ")).unwrap();
 
         assert_eq!(provider.as_str(), "morphir-scala-elm");
+    }
+
+    #[test]
+    fn rejects_an_empty_explicit_provider() {
+        let error = resolve_extension_id("elm", Some("   ")).unwrap_err();
+
+        assert!(error.to_string().contains("empty value"), "{error}");
     }
 
     #[test]

@@ -1504,6 +1504,31 @@ fn compile_rejects_an_invalid_explicit_extension_id() {
 }
 
 #[test]
+fn compile_rejects_an_empty_extension_id() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    let compile = run_morphir(&["compile", "--extension", ""], &home, &project);
+
+    assert!(
+        !compile.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    assert!(stderr.contains("empty value"), "{stderr}");
+    assert!(
+        !project
+            .join(".morphir/out/compile.dest/morphir-ir.json")
+            .exists(),
+        "an empty --extension must not reach a provider and write IR"
+    );
+}
+
+#[test]
 fn compile_reports_the_selected_extension_when_it_is_not_installed() {
     let temp = TempDir::new().unwrap();
     let source = temp.path().join("Example.elm");
