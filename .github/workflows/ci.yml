@@ -62,8 +62,6 @@ jobs:
               # crates/morphir path-depends on crates inside this submodule,
               # so a ref bump changes compiled source
               - 'ecosystem/morphir-rust'
-              # crates/morphir tests the configured Elm process extension
-              - 'ecosystem/morphir-elm'
               # crates/morphir acquires and runs the Scala Elm process extension
               - 'ecosystem/morphir-scala'
               - '.gitmodules'
@@ -219,69 +217,7 @@ jobs:
       - name: Run clippy
         run: cargo clippy --locked --package morphir --package integration-tests --all-targets -- -D warnings
 
-  # Build Morphir Elm process extension — parallel with lint + Scala
-  build-elm-extension:
-    name: Build Elm extension
-    runs-on: ubuntu-latest
-    needs: changes
-    if: ${{ needs.changes.outputs.rust == 'true' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Install mise
-        uses: jdx/mise-action@v4
-        with:
-          cache_save: ${{ github.ref == 'refs/heads/main' }}
-
-      - name: Initialize environment
-        run: mise run init -- --ci
-
-      # The extension is built from the submodule alone, so its commit is the
-      # whole cache key. A hit skips the tool install and the build.
-      - name: Resolve morphir-elm submodule SHA
-        id: elm-submodule
-        run: echo "sha=$(git rev-parse HEAD:ecosystem/morphir-elm)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Elm extension build
-        id: elm-cache
-        uses: actions/cache@v6
-        with:
-          path: ecosystem/morphir-elm/dist/morphir-elm-extension
-          key: morphir-elm-extension-${{ runner.os }}-${{ runner.arch }}-${{ steps.elm-submodule.outputs.sha }}
-
-      - name: Install Morphir Elm tools
-        if: steps.elm-cache.outputs.cache-hit != 'true'
-        env:
-          MISE_AUTO_INSTALL: "false"
-        run: |
-          mise -C ecosystem/morphir-elm install
-          test "$(mise -C ecosystem/morphir-elm exec -- bun --version)" = "1.4.0"
-          test "$(mise -C ecosystem/morphir-elm exec -- elm --version)" = "0.19.1"
-
-      - name: Install Morphir Elm dependencies
-        if: steps.elm-cache.outputs.cache-hit != 'true'
-        env:
-          MISE_AUTO_INSTALL: "false"
-        run: >-
-          mise -C ecosystem/morphir-elm exec --
-          bun install --frozen-lockfile --ignore-scripts
-
-      - name: Build Morphir Elm process extension
-        if: steps.elm-cache.outputs.cache-hit != 'true'
-        env:
-          MISE_AUTO_INSTALL: "false"
-        run: mise -C ecosystem/morphir-elm run build:mep-extension
-
-      - name: Upload Elm extension artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: morphir-elm-extension
-          path: ecosystem/morphir-elm/dist/morphir-elm-extension/
-          if-no-files-found: error
-          retention-days: 1
-
-  # Build Morphir Scala Elm process extension — parallel with lint + Elm
+  # Build Morphir Scala Elm process extension — parallel with lint
   build-scala-extension:
     name: Build Scala extension
     runs-on: ubuntu-latest
@@ -340,7 +276,7 @@ jobs:
   morphir-cli-test:
     name: morphir CLI (test + integration)
     runs-on: ubuntu-latest
-    needs: [changes, lint, build-elm-extension, build-scala-extension]
+    needs: [changes, lint, build-scala-extension]
     if: ${{ needs.changes.outputs.rust == 'true' }}
     env:
       # The workspace release profile uses fat LTO with one codegen unit. That
@@ -364,25 +300,6 @@ jobs:
 
       - name: Add Rust components
         run: rustup component add rustfmt clippy
-
-      - name: Download Elm extension
-        uses: actions/download-artifact@v8
-        with:
-          name: morphir-elm-extension
-          path: ecosystem/morphir-elm/dist/morphir-elm-extension
-
-      - name: Prepare Elm extension
-        run: |
-          echo "Listing Elm artifact:"
-          ls -R ecosystem/morphir-elm/dist/morphir-elm-extension || true
-          ELM_BIN=$(find ecosystem/morphir-elm/dist/morphir-elm-extension -name "morphir-elm-extension" -type f | head -n 1)
-          if [ -z "$ELM_BIN" ]; then
-            echo "::error::morphir-elm-extension not found"
-            exit 1
-          fi
-          chmod +x "$ELM_BIN"
-          echo "Elm binary at $ELM_BIN:"
-          ls -la "$ELM_BIN"
 
       - name: Download Scala extension
         uses: actions/download-artifact@v8
@@ -427,10 +344,22 @@ jobs:
       - name: Build
         run: cargo build --locked --release --package morphir
 
+      - name: Fetch the published extensions
+        # The extensions users install, at the tags and digests pinned in
+        # .config/published-extension-bundles.toml: four WASM bundles from
+        # finos/morphir-rust and the Elm process extension from
+        # finos/morphir-elm. The owning repository checks that a new release
+        # works with the released CLI; this job checks that a CLI change does
+        # not break the published releases.
+        run: |
+          mise run ci:fetch-published-bundles
+          printf 'MORPHIR_ELM_EXTENSION_VERSION=%s\n' \
+            "$(cat .dev/out/published-bundles/elm/version.txt)" >> "$GITHUB_ENV"
+
       - name: Run Morphir Elm CLI integration tests
         env:
           MORPHIR_ELM_EXTENSION_BIN: >-
-            ${{ github.workspace }}/ecosystem/morphir-elm/dist/morphir-elm-extension/morphir-elm-extension
+            ${{ github.workspace }}/.dev/out/published-bundles/elm/morphir-elm-extension
         run: |
           cargo test --locked --package integration-tests --test elm_extension \
             -- --ignored --nocapture
@@ -449,13 +378,6 @@ jobs:
       - name: Run CLI integration tests
         # integration-tests finds the CLI binary in target/release/morphir
         run: cargo test --locked --package integration-tests
-
-      - name: Fetch the published extension bundles
-        # The bundles users install, at the tags pinned in
-        # .config/published-extension-bundles.toml. finos/morphir-rust owns the
-        # check that a new bundle works with the released CLI; this job owns the
-        # check that a CLI change does not break the published bundles.
-        run: mise run ci:fetch-published-bundles
 
       - name: Run the CLI against the published extension bundles
         # --release makes CARGO_BIN_EXE_morphir the optimized binary built
@@ -673,7 +595,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]
+    needs: [changes, lint, build-scala-extension, morphir-cli-test, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]
     if: always()
     steps:
       - name: Check results
@@ -696,7 +618,6 @@ jobs:
             exit 1
           fi
           require "${{ needs.changes.outputs.rust }}" lint "${{ needs.lint.result }}"
-          require "${{ needs.changes.outputs.rust }}" build-elm-extension "${{ needs.build-elm-extension.result }}"
           require "${{ needs.changes.outputs.rust }}" build-scala-extension "${{ needs.build-scala-extension.result }}"
           require "${{ needs.changes.outputs.rust }}" morphir-cli-test "${{ needs.morphir-cli-test.result }}"
           require "${{ needs.changes.outputs.rust }}" check-cli-docs "${{ needs.check-cli-docs.result }}"
