@@ -164,9 +164,13 @@ The order of precedence is `--extension`, then
 `[frontend.<language>] extension`, then the language's default provider. A
 configured id that does not provide the language fails the run and says so. A
 value that is not a usable extension id — blank, of the wrong type, or
-malformed — fails the run naming `frontend.<language>.extension`, and it does
-so whether or not `--extension` was passed: the flag chooses which provider
-runs, it does not excuse a broken `morphir.toml`.
+malformed — is a configuration error naming `frontend.<language>.extension`,
+unless `--extension` is given. When it is, the flag's provider is used and the
+broken value is ignored, with a warning on stderr that names the key and says
+what was wrong with it. Other configuration errors, such as an ambiguous
+`[frontend.<language>]` table from two spellings that differ only in case,
+still fail the run whether or not `--extension` was given: only a malformed
+`extension` value is excused by the flag.
 
 The key applies to a whole-project compile, and to a single-file compile that
 loaded a configuration through `--config` or `--project`; a single-file compile
