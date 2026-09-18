@@ -107,16 +107,30 @@ Run it locally when a command's help text changed and commit the result.
 The CLI ships with no extensions. Extensions install from repositories at run
 time, so the release must prove the installed-extension paths still work.
 
-**Process extensions (Elm, Scala).** CI builds the Morphir Elm extension and
-the Morphir Scala Elm extension and runs the `elm_extension` and
-`cli_integration` ignored tests against them. A green CI run on the release
-commit covers these. To run the Elm path locally:
+**Process extensions (Elm, Scala).** CI downloads the Morphir Elm extension
+that finos/morphir-elm releases on its own tag, `extension/elm/v<version>`, from
+the `vnext` branch. The pin is `[executables.elm]` in
+`.config/published-extension-bundles.toml` (repository, tag, archive and the
+archive's `sha256`), for the `x86_64-unknown-linux-gnu` archive that CI runs.
+CI still builds the Morphir Scala Elm extension from its submodule, because
+finos/morphir-scala publishes no extension artifact. CI runs the
+`elm_extension` and `cli_integration` ignored tests against both. A green CI
+run on the release commit covers these.
+
+`mise run ci:fetch-published-bundles` unpacks the pinned Linux executable. To
+run the Elm path on another platform, download the archive for that platform
+from the same release:
 
 ```bash
-mise -C ecosystem/morphir-elm run build:mep-extension
-MORPHIR_ELM_EXTENSION_BIN="$PWD/ecosystem/morphir-elm/dist/morphir-elm-extension/morphir-elm-extension" \
+gh release download extension/elm/v0.1.0 -R finos/morphir-elm \
+  --pattern "*aarch64-apple-darwin.tgz" --dir /tmp/elm-ext
+tar -xzf /tmp/elm-ext/*.tgz -C /tmp/elm-ext
+MORPHIR_ELM_EXTENSION_BIN=/tmp/elm-ext/morphir-elm-extension \
   cargo test --locked --package integration-tests --test elm_extension -- --ignored --nocapture
 ```
+
+Before a release, check finos/morphir-elm for a newer `extension/elm/v*` tag and
+move the pin.
 
 **WASM extensions (Avro, OpenAPI, Python, Rust).** finos/morphir does not build
 the guests. finos/morphir-rust owns the check that a new bundle works with the

@@ -24,3 +24,14 @@ sha256 = "b08aed79700df8d8613c681e0a3dc1de21b3a8163b318bf4470b340383441091"
 tag = "extension/rust/v0.1.0"
 artifact = "morphir-rust-binding-0.1.0"
 sha256 = "1bd693be41250b6ce4cafc4d94be82967d50b99af9e01da5d6f880c01bc8947a"
+
+# A process extension is one executable per platform, released as an archive by the repository
+# that owns it. CI runs on x86_64 Linux, so that archive is the one pinned. `sha256` is the digest
+# of the archive.
+
+[executables.elm]
+repository = "finos/morphir-elm"
+tag = "extension/elm/v0.1.0"
+archive = "morphir-elm-extension-0.1.0-x86_64-unknown-linux-gnu.tgz"
+sha256 = "b5abf2ee7c1fad2c4cffa13c08e384f1878e6be1a999a397151931e33fe6cdd2"
+executable = "morphir-elm-extension"

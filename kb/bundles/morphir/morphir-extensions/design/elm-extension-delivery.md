@@ -59,13 +59,13 @@ flowchart LR
   user[User sets<br/>extensions.morphir-elm command]
   install[morphir extension install]
   tag --> wf --> rel
-  rel -.->|proposed| pin --> ci
+  rel --> pin --> ci
   rel --> user
   rel -.->|not possible yet| install
 ```
 
-**Figure 1:** How the extension moves from a tag to its consumers. Solid edges exist. Dashed edges are
-proposed or blocked.
+**Figure 1:** How the extension moves from a tag to its consumers. Solid edges exist. The dashed edge
+is blocked.
 
 ### Done: a release on its own tag
 
@@ -86,20 +86,24 @@ a GitHub release. The release holds one archive and one `.sha256` file per platf
 
 The tag `extension/elm/v0.1.0` was pushed on 2026-09-18. Its first workflow run failed before it built
 anything: the workflow ran the unit tests before the step that creates the files they import.
-finos/morphir-elm#1287 moves the tests after the build. No release is published yet.
+finos/morphir-elm#1287 moved the tests after the build, and a second run for the same tag published
+the release on 2026-09-18. It holds 13 files: six archives, six `.sha256` files and the descriptor.
+The release is not marked as latest, so `v2.100.0` stays the latest morphir-elm release.
 
-### Next: finos/morphir pins the release
+### Done: finos/morphir pins the release
 
-finos/morphir CI builds the Elm extension from the `ecosystem/morphir-elm` submodule in a
-`Build Elm extension` job (source `ci`), because no published artifact existed. The four WASM bundles
-already follow a different rule: CI downloads the bundles pinned in
+finos/morphir CI used to build the Elm extension from the `ecosystem/morphir-elm` submodule in a
+`Build Elm extension` job, because no published artifact existed. The four WASM bundles already
+followed a different rule: CI downloads the bundles pinned in
 `.config/published-extension-bundles.toml` and checks each against a `sha256` recorded in the
 repository (source `bundle-pins`).
 
-The proposed change applies the same rule to the Elm extension. The pin file gains an entry for the
-`x86_64-unknown-linux-gnu` archive, the fetcher learns to read a repository name and to unpack an
-executable, and the build job goes away. bd issue `morphir-xgd9.10` tracks it, together with the same
-work for the Scala extension, which has not started.
+The Elm extension now follows the same rule. The pin file has an `[executables.elm]` entry with the
+repository, the tag, the `x86_64-unknown-linux-gnu` archive and the archive's `sha256`. The fetcher
+downloads the archive, checks the digest, unpacks the executable, and CI passes its path to the tests
+in `MORPHIR_ELM_EXTENSION_BIN`. The build job is gone, and a bump of the morphir-elm
+submodule no longer starts the Rust jobs. bd issue `morphir-xgd9.10` tracks the same work for the
+Scala extension, which has not started.
 
 The rule behind both is an ownership split. The repository that owns an extension checks that its
 extension works with the released CLI. finos/morphir checks that a CLI change does not break the
@@ -131,9 +135,8 @@ is publication and installation of process bundles in finos/morphir-rust. Nobody
 
 ## Unresolved
 
-- No release workflow run has passed yet (see above), and five of the six cross-compiled executables
-  have never run. The workflow tests three platforms natively; `aarch64-unknown-linux-gnu`,
-  `x86_64-apple-darwin` and `x86_64-pc-windows-msvc` are built and never run.
+- Three of the six executables have never run. The workflow tests three platforms natively.
+  `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin` and `x86_64-pc-windows-msvc` are built only.
 - Process-bundle install has no owner and no issue.
 - This capability has no Intent document yet. The work so far was tracked in bd (`morphir-xgd9.10`) and
   in GitHub pull requests.

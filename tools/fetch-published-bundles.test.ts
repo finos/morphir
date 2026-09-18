@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { assetUrls, parsePins, verifyGuest } from "./fetch-published-bundles";
+import { archiveUrl, assetUrls, parseExecutablePins, parsePins, verifyGuest } from "./fetch-published-bundles";
 
 const root = join(import.meta.dir, "..");
 const pinsText = readFileSync(join(root, ".config/published-extension-bundles.toml"), "utf8");
@@ -40,5 +40,33 @@ describe("published extension bundle pins", () => {
 		expect(() => verifyGuest("avro", guest, digest)).not.toThrow();
 		// A release asset that was replaced, together with its .sha256 file, still fails.
 		expect(() => verifyGuest("avro", Buffer.from("replaced"), digest)).toThrow(/avro.*does not match the pinned sha256/);
+	});
+
+	test("an executable pin names its repository, tag, archive, digest and executable", () => {
+		const pins = parseExecutablePins(pinsText);
+		expect(Object.keys(pins)).toEqual(["elm"]);
+		const elm = pins.elm;
+		expect(elm.repository).toBe("finos/morphir-elm");
+		expect(elm.tag).toMatch(/^extension\/elm\/v\d+\.\d+\.\d+$/);
+		// CI runs on x86_64 Linux, so that is the archive it pins.
+		expect(elm.archive).toBe(`morphir-elm-extension-${elm.tag.split("/v")[1]}-x86_64-unknown-linux-gnu.tgz`);
+		expect(elm.executable).toBe("morphir-elm-extension");
+		expect(elm.sha256).toMatch(/^[0-9a-f]{64}$/);
+	});
+
+	test("an executable pin without a repository or a digest is refused", () => {
+		const pin = 'tag = "extension/elm/v0.1.0"\narchive = "a.tgz"\nexecutable = "a"\n';
+		expect(() => parseExecutablePins(`[executables.elm]\n${pin}sha256 = "${"0".repeat(64)}"\n`)).toThrow(
+			/repository/,
+		);
+		expect(() => parseExecutablePins(`[executables.elm]\nrepository = "finos/morphir-elm"\n${pin}`)).toThrow(
+			/sha256/,
+		);
+	});
+
+	test("an archive is fetched from the repository the pin names", () => {
+		expect(archiveUrl({ repository: "finos/morphir-elm", tag: "extension/elm/v0.1.0", archive: "a.tgz" })).toBe(
+			"https://github.com/finos/morphir-elm/releases/download/extension/elm/v0.1.0/a.tgz",
+		);
 	});
 });

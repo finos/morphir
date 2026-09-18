@@ -68,7 +68,6 @@ class PathAwareCiTests(unittest.TestCase):
             "- 'crates/**'",
             "- 'Cargo.lock'",
             "- 'ecosystem/morphir-rust'",
-            "- 'ecosystem/morphir-elm'",
             "- 'ecosystem/morphir-scala'",
             "- 'website/static/ir/examples/**'",
             "- '.github/actions/setup-rust-ci/**'",
@@ -160,11 +159,21 @@ class PathAwareCiTests(unittest.TestCase):
         job = job_body(self.ci, "package-mck")
         self.assertIn("save-if: ${{ github.ref == 'refs/heads/main' }}", job)
 
-    def test_elm_extension_build_is_cached_by_submodule_commit(self) -> None:
-        job = job_body(self.ci, "build-elm-extension")
-        self.assertIn("git rev-parse HEAD:ecosystem/morphir-elm", job)
-        self.assertIn("uses: actions/cache@v6", job)
-        self.assertIn("steps.elm-cache.outputs.cache-hit != 'true'", job)
+    def test_elm_extension_comes_from_its_published_release(self) -> None:
+        # finos/morphir-elm owns the build. CI downloads the pinned release archive, so it has
+        # no Elm build job and a morphir-elm submodule bump does not start the Rust jobs.
+        self.assertNotIn("build-elm-extension", self.ci)
+        self.assertNotIn("build:mep-extension", self.ci)
+        self.assertNotIn("- 'ecosystem/morphir-elm'", filter_body(self.ci, "rust"))
+        job = job_body(self.ci, "morphir-cli-test")
+        self.assertIn(
+            "${{ github.workspace }}/.dev/out/published-bundles/elm/morphir-elm-extension", job
+        )
+        # The executable has to exist before the Elm integration tests use it.
+        self.assertLess(
+            job.index("mise run ci:fetch-published-bundles"),
+            job.index("--test elm_extension"),
+        )
 
     # ----- critical path -----
 
