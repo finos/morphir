@@ -19,7 +19,7 @@ This guide provides detailed instructions for converting Morphir IR between diff
   - [V3 → V4](#v3--v4)
   - [Files written by CLIs before 0.4.0-alpha.7](#files-written-by-clis-before-040-alpha7)
   - [Format-version support tables and the renamed diagnostic](#format-version-support-tables-and-the-renamed-diagnostic)
-  - [Document-tree layout in 0.4.0-alpha.8](#document-tree-layout-in-040-alpha8)
+  - [Document-tree layout in 0.4.0-beta.1](#document-tree-layout-in-040-beta1)
 - [Backward Migration (Downgrading)](#backward-migration-downgrading)
   - [V4 → V3](#v4--v3)
   - [V3 → V2](#v3--v2)
@@ -495,7 +495,8 @@ Before the v4 vocabulary settled, the Rust CLI and some published examples wrote
 names and shapes that differ from the ones the v4 schema and the Morphir Compatibility Kit (the
 [MCK](https://github.com/finos/morphir/tree/main/spec/ir/mck)) pin as canonical. Release 0.4.0-alpha.7
 decodes files carrying those older spellings, but reports a `legacy_spelling` warning at each place it
-does so. Release 0.4.0-alpha.8 closes that window: the same spellings are then refused as unknown members.
+does so. Release 0.4.0-beta.1 keeps that window open. A later release closes it: the same spellings are then
+refused as unknown members.
 
 A `legacy_spelling` warning is a normal decode-time diagnostic, the same kind a CLI or binding reports for
 any other v4 finding, pointed at the member's JSON pointer cursor. It means the member decoded successfully
@@ -551,8 +552,8 @@ never opens the output path directly. It encodes into a temporary file created b
 that temporary file over the destination once encoding has finished, so the original content at the input
 path is never truncated while it is still being read.
 
-Run this on any file written by a pre-0.4.0-alpha.7 CLI before upgrading to 0.4.0-alpha.8, so it decodes
-without warnings and keeps decoding after the window closes.
+Run this on any file written by a pre-0.4.0-alpha.7 CLI, so it decodes without warnings and keeps
+decoding after the window closes.
 
 This vocabulary and its one-release window are decided in decisions 0004 to 0015: decision 0004 (record
 fields under `fields`), decision 0006 (the member names and the window itself), decision 0007
@@ -576,11 +577,11 @@ file changes; only the reader's acceptance rule and the diagnostic code do. This
 
 ---
 
-### Document-tree layout in 0.4.0-alpha.8
+### Document-tree layout in 0.4.0-beta.1
 
 A distribution can be stored as a directory of small files rather than one document. That layout — the
 **document tree** — is specified on the [document-tree page](./v4/document-tree-files.md) and pinned by MCK
-cases document-tree-0001 to 0009. Release 0.4.0-alpha.8 makes the Rust CLI write and read the layout that
+cases document-tree-0001 to 0009. Release 0.4.0-beta.1 makes the Rust CLI write and read the layout that
 page describes. Trees written by earlier releases are refused rather than reinterpreted.
 
 #### The canonical shape
@@ -597,7 +598,7 @@ Every path segment is the escaped spelling of a name, and the extension is the p
 homogeneous, so one profile spells every file in it (document-tree page, "Serialization profile" and
 "Directory Structure").
 
-What changed from the layout the CLI wrote before 0.4.0-alpha.8:
+What changed from the layout the CLI wrote before 0.4.0-beta.1:
 
 - **Dependencies live under `deps/`, not `pkg/`.** A dependency's package path ends in a `@` segment, the
   slot a package version would occupy, so one dependency's directory can never be a prefix of another's:
@@ -630,16 +631,16 @@ that a tree predates the change rather than being merely malformed. Reading such
 morphir::ir::document_tree::missing_member: missing member pathBudget (at manifest#/)
 ```
 
-carrying the guidance `this tree predates 0.4.0-alpha.8; regenerate it with morphir migrate`.
+carrying the guidance `this tree predates 0.4.0-beta.1; regenerate it with morphir migrate`.
 
 There is no in-place upgrade, because the old tree can no longer be read: write the distribution to a single
-file with the CLI that produced the tree, then lay that file out again with 0.4.0-alpha.8 or later.
+file with the CLI that produced the tree, then lay that file out again with 0.4.0-beta.1 or later.
 
 ```bash
 # with the CLI that wrote the tree (0.4.0-alpha.7 or earlier)
 morphir migrate <old-tree> -o model.json --output-layout single-file
 
-# with 0.4.0-alpha.8 or later
+# with 0.4.0-beta.1 or later
 morphir migrate model.json -o <new-tree> --output-layout vfs
 ```
 
