@@ -112,6 +112,46 @@ retained-root confinement. MCK must not count a skipped required case as compati
 either mode. The parent owns cases and fixed results; finos/morphir-typescript owns their
 execution, comparison and reporting. Independent implementations reuse that shared core.
 
+### Internal host preflight
+
+The first implementation step is an internal shared-MCK preflight boundary, identified as
+`restore-filesystem-assurance` version `0.1.0-draft.1`. This version identifies host selection
+and its receipt, not a new package artifact contract or an executable portable suite.
+The request contains `selection` and `provider`. Selection explicitly names the profile,
+`profileVersion` and mode. The provider has an identity and either an `unqualified` status
+or separate qualification entries for its supported modes. Each entry records runtime,
+OS, architecture, filesystem, assumptions and evidence references. A hardened entry does
+not implicitly advertise portable support, nor does an OS name qualify either mode.
+
+These inputs come from trusted host policy. Parsing a qualification entry checks its
+structure; it does not verify evidence or qualify a backend. Real provider qualification,
+including how evidence is established and bound to the current environment, remains a
+separate delivery requirement. Never load this policy from package-controlled bytes.
+
+The guard validates both inputs and selects the exact requested mode before invoking the
+package-access callback. Unsupported profile versions, unknown modes and malformed input
+are protocol errors. An unqualified provider or unavailable mode returns a rejected
+receipt without calling the callback. Successful selection passes a copied, deeply
+immutable context and invokes the callback once. Callback failures propagate unchanged;
+the guard neither retries nor selects a weaker mode.
+
+A selected receipt records the selection, provider identity and matching qualification
+entry. A rejected receipt records the selection, provider identity and rejection reason.
+This repository owns the canonical closed
+[request schema](schemas/package-restore-assurance-protocol.schema.json) and
+[receipt schema](schemas/package-restore-assurance-report.schema.json). The shared MCK
+ships packaged mirrors for execution. Parent integration tests compare their parsed JSON
+with these canonical schemas and fail on drift. A selected receipt is not `graph-ready`,
+proof of authentication, a continued-use grant or a compatibility pass. Deserializing one
+does not authorize a later operation. The guard must select from trusted host inputs for
+each invocation.
+
+The [fixed preflight vectors](mck/restore-assurance-preflight-vectors.json) use only
+synthetic provider metadata. They check selection, receipts and callback counts, not
+filesystem access or platform support. Exception tests establish no-downgrade behavior,
+not crash/restart durability. Full portable execution/report integration, a complete
+required-case set and qualified providers are still required before public adapter use.
+
 ## Delivery gate
 
 Qualify portable restore independently on Linux, macOS and Windows local filesystems.

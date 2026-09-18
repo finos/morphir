@@ -129,6 +129,16 @@ Do not relabel this corpus, skip hardened cases to produce a portable pass, or a
 mode fields to closed messages without versioned schema support. Existing pending assets
 remain pending. Definition validation is not evidence for either filesystem mode.
 
+`restore-assurance-preflight-vectors.json` supplies fixed expectations for the separate
+internal `restore-filesystem-assurance` profile, version `0.1.0-draft.1`. Its six synthetic
+cases check explicit selection, exact-mode qualification, refusal of unavailable modes
+and preflight receipts. The shared TypeScript MCK checks these fixtures through its
+`local-registry-assurance-parent-integration.ts` support entry point. They are not additions
+to the 54-case corpus and do not define a complete portable suite. The synthetic evidence
+references qualify no provider or platform. See [internal host preflight](../restore-filesystem-assurance.md#internal-host-preflight)
+for the request and receipt boundary; no public portable adapter or runtime restore is
+implied by these checks.
+
 The [draft.3 local Library contract](../local-library-contract.md) defines candidate full-lock
 and immutable registry-record shapes. The [unsigned example](fixtures/local-registry/unsigned/README.md)
 is review material, not a new passing corpus. Its lock and record examples deliberately use
