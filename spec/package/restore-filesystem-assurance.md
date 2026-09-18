@@ -137,9 +137,11 @@ the guard neither retries nor selects a weaker mode.
 
 A selected receipt records the selection, provider identity and matching qualification
 entry. A rejected receipt records the selection, provider identity and rejection reason.
-The shared MCK owns the closed request and receipt schemas,
-`package-restore-assurance-protocol.schema.json` and
-`package-restore-assurance-report.schema.json`. A selected receipt is not `graph-ready`,
+This repository owns the canonical closed
+[request schema](schemas/package-restore-assurance-protocol.schema.json) and
+[receipt schema](schemas/package-restore-assurance-report.schema.json). The shared MCK
+ships packaged mirrors for execution. Parent integration tests compare their parsed JSON
+with these canonical schemas and fail on drift. A selected receipt is not `graph-ready`,
 proof of authentication, a continued-use grant or a compatibility pass. Deserializing one
 does not authorize a later operation. The guard must select from trusted host inputs for
 each invocation.

@@ -560,6 +560,9 @@ jobs:
           bun test tools/rust-mck-command.test.ts tools/package-ci.test.ts
       - name: Run TypeScript package implementation
         run: mise run package:check
+      - name: Check synthetic restore assurance preflight vectors
+        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+        run: mise run package:assurance-check
       - name: Run independent Rust package implementation
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
         run: mise run package:check:rust
