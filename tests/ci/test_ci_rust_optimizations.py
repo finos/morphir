@@ -43,7 +43,7 @@ class CiRustOptimizationTests(unittest.TestCase):
 
     def test_setup_rust_ci_action_shares_cargo_cache(self) -> None:
         self.assertIn("inputs.enable-sccache == 'true'", self.setup_rust_ci_action)
-        self.assertIn("mozilla-actions/sccache-action@v0.0.10", self.setup_rust_ci_action)
+        self.assertIn("mozilla-actions/sccache-action@v0.0.11", self.setup_rust_ci_action)
         self.assertIn("shared-key: ${{ inputs.shared-key }}", self.setup_rust_ci_action)
         self.assertIn("add-job-id-key: false", self.setup_rust_ci_action)
         self.assertIn("cache-on-failure: true", self.setup_rust_ci_action)
