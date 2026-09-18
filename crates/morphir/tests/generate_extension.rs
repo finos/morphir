@@ -42,7 +42,12 @@ impl std::ops::Deref for AvroCliMother {
     }
 }
 
+/// The guest under test: the published `.wasm` that `MORPHIR_AVRO_GUEST` names, which is what CI uses, or
+/// the guest built from the pinned `ecosystem/morphir-rust` checkout.
 fn avro_guest_path() -> PathBuf {
+    if let Some(guest) = std::env::var_os("MORPHIR_AVRO_GUEST") {
+        return PathBuf::from(guest);
+    }
     ecosystem_target_directory()
         .join("wasm32-unknown-unknown")
         .join("release")

@@ -1,0 +1,21 @@
+# Published finos/morphir-rust extension bundles that CI runs the CLI against.
+#
+# These are the bundles users install. A CLI change that breaks one of them turns CI red.
+# For a deliberate protocol change, publish a compatible bundle from finos/morphir-rust first,
+# then move the pin here in the same pull request as the CLI change.
+
+[bundles.avro]
+tag = "extension/avro/v0.1.1"
+artifact = "morphir-avro-extension-0.1.1"
+
+[bundles.openapi]
+tag = "extension/openapi/v0.1.0"
+artifact = "morphir-openapi-extension-0.1.0"
+
+[bundles.python]
+tag = "extension/python/v0.2.0"
+artifact = "morphir-python-binding-0.2.0"
+
+[bundles.rust]
+tag = "extension/rust/v0.1.0"
+artifact = "morphir-rust-binding-0.1.0"

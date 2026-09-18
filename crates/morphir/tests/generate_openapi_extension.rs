@@ -90,7 +90,12 @@ fn classic_schema_library() -> Value {
     serde_json::from_str(include_str!("fixtures/openapi/classic-schema-library.json")).unwrap()
 }
 
+/// The guest under test: the published `.wasm` that `MORPHIR_OPENAPI_GUEST` names, which is what CI uses, or
+/// the guest built from the pinned `ecosystem/morphir-rust` checkout.
 fn openapi_guest_path() -> PathBuf {
+    if let Some(guest) = std::env::var_os("MORPHIR_OPENAPI_GUEST") {
+        return PathBuf::from(guest);
+    }
     ecosystem_target_directory()
         .join("wasm32-unknown-unknown")
         .join("release")

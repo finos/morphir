@@ -69,6 +69,8 @@ jobs:
               - '.gitmodules'
               # pins the Rust toolchain these jobs build with
               - '.config/mise/**'
+              # pins the published extension bundles the CLI is tested against
+              - '.config/published-extension-bundles.toml'
               # generated CLI docs are diff-checked against the CLI source
               - 'docs/cli/**'
               - 'docs/man/**'
@@ -411,9 +413,8 @@ jobs:
       - name: Set up Rust CI
         uses: ./.github/actions/setup-rust-ci
         with:
-          # This job builds the most (debug tests, the release binary, the
-          # submodule's WASM guests), so it is the one writer of the shared
-          # cargo cache. lint and check-cli-docs only restore it.
+          # This job builds the most (debug tests and the release binary), so
+          # it is the one writer of the shared cargo cache. lint and check-cli-docs only restore it.
           save-cache: "true"
 
       - name: Run tests
@@ -448,49 +449,29 @@ jobs:
         # integration-tests finds the CLI binary in target/release/morphir
         run: cargo test --locked --package integration-tests
 
-      - name: Add WASM target
-        run: rustup target add wasm32-unknown-unknown
+      - name: Fetch the published extension bundles
+        # The bundles users install, at the tags pinned in
+        # .config/published-extension-bundles.toml. finos/morphir-rust owns the
+        # check that a new bundle works with the released CLI; this job owns the
+        # check that a CLI change does not break the published bundles.
+        run: mise run ci:fetch-published-bundles
 
-      - name: Build WASM extension guests
-        # setup-rust-ci exports RUSTFLAGS for the mold linker; rust-lld
-        # rejects -fuse-ld=mold for the wasm32 target.
-        env:
-          RUSTFLAGS: ""
-        run: >-
-          cargo build --locked --release
-          --manifest-path ecosystem/morphir-rust/Cargo.toml
-          -p morphir-avro-extension -p morphir-openapi-extension
-          -p morphir-python-binding -p morphir-rust-binding
-          --target wasm32-unknown-unknown
-
-      - name: Run WASM extension integration tests
+      - name: Run the CLI against the published extension bundles
         # --release makes CARGO_BIN_EXE_morphir the optimized binary built
         # above. These tests compile and run WASM guests through the CLI, and
         # the debug binary spent 4 minutes doing that.
-        run: >-
-          cargo test --locked --release --package morphir
-          --test generate_extension --test generate_openapi_extension
-          -- --ignored --nocapture
-
-      - name: Package and test the Python extension through the CLI
         env:
-          MORPHIR_PYTHON_BUNDLE: ${{ github.workspace }}/.dev/out/python-bundle
+          BUNDLES: ${{ github.workspace }}/.dev/out/published-bundles
         run: |
-          python3 -B ecosystem/morphir-rust/scripts/package_extension.py \
-            --short-id python \
-            --wasm ecosystem/morphir-rust/target/wasm32-unknown-unknown/release/morphir_python_binding.wasm \
-            --output "$MORPHIR_PYTHON_BUNDLE"
-          cargo test --locked --release --package morphir --test python_extension -- --ignored --nocapture
-
-      - name: Package and test the Rust extension through the CLI
-        env:
-          MORPHIR_RUST_BUNDLE: ${{ github.workspace }}/.dev/out/rust-bundle
-        run: |
-          python3 -B ecosystem/morphir-rust/scripts/package_extension.py \
-            --short-id rust \
-            --wasm ecosystem/morphir-rust/target/wasm32-unknown-unknown/release/morphir_rust_binding.wasm \
-            --output "$MORPHIR_RUST_BUNDLE"
-          cargo test --locked --release --package morphir --test rust_extension -- --ignored --nocapture
+          MORPHIR_AVRO_GUEST="$(ls "$BUNDLES"/avro/*.wasm)"
+          MORPHIR_OPENAPI_GUEST="$(ls "$BUNDLES"/openapi/*.wasm)"
+          MORPHIR_PYTHON_BUNDLE="$BUNDLES/python"
+          MORPHIR_RUST_BUNDLE="$BUNDLES/rust"
+          export MORPHIR_AVRO_GUEST MORPHIR_OPENAPI_GUEST MORPHIR_PYTHON_BUNDLE MORPHIR_RUST_BUNDLE
+          cargo test --locked --release --package morphir \
+            --test generate_extension --test generate_openapi_extension \
+            --test python_extension --test rust_extension \
+            -- --ignored --nocapture
 
   # Generate and diff-check CLI reference docs — parallel with extension builds
   # and integration tests (only needs a debug morphir build, not extensions).
