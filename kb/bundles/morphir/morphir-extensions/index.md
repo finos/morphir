@@ -13,3 +13,7 @@ Compile-time extensions to the Morphir CLI: frontend and process providers, thei
 ## Decisions
 
 * [Two Elm frontend providers](/decisions/0001-two-elm-frontend-providers.md) - The CLI keeps morphir-elm as the default Elm frontend and morphir-elm-native as an opt-in provider until the native one reaches value and type-inference parity.
+
+## Design
+
+* [A JavaScript runtime mode for extensions: exploration](/design/js-extension-runtime-exploration.md) - Compares ways to host JavaScript extensions in the Morphir CLI and records why the Elm extension stays a process extension for now.
