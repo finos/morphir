@@ -113,8 +113,11 @@ fn infer_language(input: &Path, override_value: Option<&str>) -> Result<String, 
 }
 
 fn resolve_extension_id(language: &str, explicit: Option<&str>) -> Result<ExtensionId, CliError> {
+    // The provider path trims `--extension` before it resolves; a single-file
+    // compile accepts the same typing, so `--extension " morphir-elm-native "`
+    // means the same thing on both paths.
     let value = explicit
-        .map(str::to_owned)
+        .map(|id| id.trim().to_owned())
         .unwrap_or_else(|| format!("morphir-{language}"));
     ExtensionId::parse(value).map_err(|error| CliError::Extension {
         message: format!("Invalid extension id: {error}"),
@@ -1181,7 +1184,10 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
                 ),
             },
             None => CliError::Extension {
-                message: format!("Failed to resolve frontend for '{language}': {error}"),
+                message: format!(
+                    "Failed to resolve frontend for '{language}': {error}. Install the \
+                     'morphir-{language}' extension, or name another provider with --extension"
+                ),
             },
         })?;
     let language_name = language.clone();
@@ -1432,11 +1438,13 @@ fn validate_v4_compile_result(
 
 /// The requested IR release, spelled the way this provider advertises it.
 ///
-/// The registry matches advertised versions by normalized release, so two
-/// providers can both serve Morphir IR 4 while spelling it `"4"` and
-/// `"4.0.0"`. A frontend compares `options.irVersion` against its own
-/// spelling, so the host states the release in the provider's own terms rather
-/// than picking one spelling and making every provider accept it. An
+/// This is a temporary CLI-side shim, not the intended design. The registry
+/// matches advertised versions by normalized release, so two providers can both
+/// serve Morphir IR 4 while spelling it `"4"` and `"4.0.0"` — but each frontend
+/// then compares `options.irVersion` against its own spelling as a string and
+/// rejects the other. Restating the release in the provider's own terms keeps
+/// both working until the bindings accept every spelling that normalizes to the
+/// same release (a part-1 follow-up), at which point this can go. An
 /// unrecognised release is passed through, and the provider rejects it.
 fn advertised_ir_version(advertised: &[String], requested: &str) -> String {
     let release = normalize_ir_version_text(requested).map(|version| version.release);
@@ -1704,13 +1712,10 @@ mod tests {
     }
 
     #[test]
-    fn rejects_surrounding_whitespace_in_an_explicit_provider() {
-        let error = resolve_extension_id("elm", Some(" morphir-scala-elm ")).unwrap_err();
+    fn trims_surrounding_whitespace_in_an_explicit_provider() {
+        let provider = resolve_extension_id("elm", Some(" morphir-scala-elm ")).unwrap();
 
-        assert!(
-            error.to_string().contains("Invalid extension id"),
-            "{error}"
-        );
+        assert_eq!(provider.as_str(), "morphir-scala-elm");
     }
 
     #[test]

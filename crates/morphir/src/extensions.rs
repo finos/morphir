@@ -32,6 +32,10 @@ pub fn extension_registry(
 /// against. A registry restricted to an id that provides nothing for the
 /// requested language then fails resolution, which is the same answer as
 /// "that extension does not provide this language".
+///
+/// The native Elm provider is opt-in: it is registered only when `only` names
+/// it, so a command that does not ask for it by id behaves as though it were
+/// not built in at all.
 pub fn extension_registry_for(
     installed: impl IntoIterator<Item = InstalledExtensionSnapshot>,
     only: Option<&str>,
@@ -45,8 +49,9 @@ pub fn extension_registry_for(
             message: format!("Failed to construct native Elm provider: {error}"),
         })?;
     let mut registry = ExtensionRegistry::new();
-    for (language, builtin) in [("Gleam", gleam), ("Elm", elm)] {
-        if only.is_some_and(|id| id != builtin.info().id) {
+    for (language, builtin, opt_in) in [("Gleam", gleam, false), ("Elm", elm, true)] {
+        let requested = only == Some(builtin.info().id.as_str());
+        if (opt_in && !requested) || only.is_some_and(|id| id != builtin.info().id) {
             continue;
         }
         registry

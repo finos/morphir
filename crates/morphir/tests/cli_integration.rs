@@ -824,7 +824,7 @@ language = "elm"
 }
 
 #[test]
-fn elm_native_compile_produces_v4_ir_for_a_types_only_project() {
+fn elm_native_compile_produces_v4_ir_for_a_two_module_project() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
@@ -871,12 +871,79 @@ fn elm_native_is_not_the_default_elm_provider() {
     let project = temp.path().join("project");
     write_elm_project(&project);
 
-    let compile = run_morphir(&["compile", "--input", "src/My/Types.elm"], &home, &project);
+    for arguments in [
+        vec!["compile", "--input", "src/My/Types.elm"],
+        vec!["compile"],
+    ] {
+        let compile = run_morphir(&arguments, &home, &project);
 
-    assert!(!compile.status.success());
-    let stderr = String::from_utf8_lossy(&compile.stderr);
-    assert!(stderr.contains("morphir-elm"), "{stderr}");
-    assert!(!stderr.contains("morphir-elm-native"), "{stderr}");
+        assert!(
+            !compile.status.success(),
+            "{arguments:?} must not reach a provider: stdout={} stderr={}",
+            String::from_utf8_lossy(&compile.stdout),
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        let stderr = String::from_utf8_lossy(&compile.stderr);
+        assert!(
+            !stderr.contains("morphir-elm-native"),
+            "{arguments:?}: {stderr}"
+        );
+        assert!(stderr.contains("morphir-elm"), "{arguments:?}: {stderr}");
+    }
+    assert!(
+        !project
+            .join(".morphir/out/compile.dest/morphir-ir.json")
+            .exists(),
+        "an unselected native provider must not have written IR"
+    );
+}
+
+/// The single-file route reaches the native binding in process and writes IR 3.
+#[test]
+fn elm_native_compiles_a_single_file_to_v3_ir() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    let compile = run_morphir(
+        &[
+            "compile",
+            "--input",
+            // A single-file compile sees only this file, so it must not import
+            // a sibling module: `My.Types` imports `My.Other`.
+            "src/My/Other.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+        &home,
+        &project,
+    );
+
+    assert!(
+        compile.status.success(),
+        "compile failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let output = project.join(".morphir/out/compile.dest/morphir-ir.json");
+    let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["formatVersion"], 3, "{json}");
+    // Morphir IR 3 spells a distribution positionally:
+    // ["Library", packageName, dependencies, packageDefinition].
+    let distribution = json["distribution"]
+        .as_array()
+        .unwrap_or_else(|| panic!("v3 distribution is an array: {json}"));
+    assert_eq!(distribution[0], "Library", "{json}");
+    let modules = distribution[3]["modules"]
+        .as_array()
+        .unwrap_or_else(|| panic!("a library definition lists modules: {json}"));
+    assert_eq!(
+        modules.len(),
+        1,
+        "a single-file compile publishes one module: {json}"
+    );
 }
 
 fn add_test_repository(
