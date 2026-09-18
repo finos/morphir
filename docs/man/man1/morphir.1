@@ -284,10 +284,10 @@ Compile source code to Morphir IR
 Source language (e.g., gleam, elm)
 .TP
 \fB\-\-extension\fR \fI<EXTENSION>\fR
-Extension provider id for single\-file Elm compilation. Defaults to morphir\- followed by the language name
+Extension id that provides the language (for example `morphir\-elm\-native`); defaults to the language's default provider
 .TP
 \fB\-i, \-\-input\fR \fI<INPUT>\fR
-Input source directory or file. An installed or configured Elm process accepts one .elm file
+Input source directory or file. A single .elm file is compiled by the selected Elm provider: an installed process extension by default, or a builtin such as morphir\-elm\-native via \-\-extension
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
 Install task outputs into this directory after the run. Canonical output stays under .morphir/out
@@ -309,6 +309,9 @@ Output as JSON
 .TP
 \fB\-\-json\-lines\fR
 Output as JSON Lines (streaming)
+.TP
+\fB\-\-no\-cache\fR
+Ignore the incremental compile cache for this run
 .SH "MORPHIR GENERATE"
 Generate code from Morphir IR
 .PP

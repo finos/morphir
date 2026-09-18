@@ -225,6 +225,105 @@
         },
         "emit_parse_stage_fatal": {
           "type": "boolean"
+        },
+        "elm": {
+          "description": "Settings the Elm frontend reads, sent to the provider as compile options.",
+          "type": "object",
+          "properties": {
+            "prelude": {
+              "description": "The implicit imports and SDK module aliases every Elm module is compiled against: the name of a built-in prelude, or a table describing one.",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "implicit_import": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "module": {
+                            "type": "string"
+                          },
+                          "exposing": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "module_alias": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "source": {
+                            "type": "string"
+                          },
+                          "target": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "package": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "module": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "types": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "constructors": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    },
+                                    "additionalProperties": true
+                                  }
+                                }
+                              },
+                              "additionalProperties": true
+                            }
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
         }
       },
       "additionalProperties": true

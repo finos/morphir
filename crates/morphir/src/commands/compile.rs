@@ -1,5 +1,8 @@
 //! Compile command for compiling source code to Morphir IR
 
+mod cache;
+mod elm_prelude;
+
 use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::CliError;
 use crate::error::convert_extension_diagnostics;
@@ -37,7 +40,7 @@ use version::{VersionedIr, selected_ir_version};
 pub struct CompileOptions {
     /// Language to compile (e.g., "gleam", "elm")
     pub language: Option<String>,
-    /// Extension provider id for single-file Elm compilation. Defaults to morphir- followed by the language name.
+    /// Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider
     pub extension: Option<String>,
     /// Input path or directory
     pub input: Option<String>,
@@ -55,6 +58,8 @@ pub struct CompileOptions {
     pub json: bool,
     /// Output JSON lines format
     pub json_lines: bool,
+    /// Ignore the workspace's incremental compile cache for this run.
+    pub no_cache: bool,
     /// Out root overrides.
     pub out: OutOverrides,
 }
@@ -63,14 +68,6 @@ pub struct CompileOptions {
 pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
     if should_use_single_file_process(&options) {
         return run_single_file_compile(options).await;
-    }
-
-    if options.extension.is_some() {
-        return Err(CliError::Validation {
-            message: "Explicit extension selection currently requires single-file Elm compilation"
-                .into(),
-        }
-        .into());
     }
 
     run_provider_compile(options).await
@@ -97,6 +94,10 @@ struct SingleFileCompileContext {
     document: SourceDocument,
     package: CompilePackage,
     output_path: PathBuf,
+    /// Provider-specific compile options this route sends, such as the Elm
+    /// prelude a loaded configuration asks for. Empty when nothing configured
+    /// one, so the provider applies its own defaults.
+    extra: HashMap<String, serde_json::Value>,
 }
 
 fn has_elm_extension(input: &Path) -> bool {
@@ -127,9 +128,21 @@ fn infer_language(input: &Path, override_value: Option<&str>) -> Result<String, 
 }
 
 fn resolve_extension_id(language: &str, explicit: Option<&str>) -> Result<ExtensionId, CliError> {
-    let value = explicit
-        .map(str::to_owned)
-        .unwrap_or_else(|| format!("morphir-{language}"));
+    // The provider path trims `--extension` before it resolves; a single-file
+    // compile accepts the same typing, so `--extension " morphir-elm-native "`
+    // means the same thing on both paths.
+    let value = match explicit {
+        Some(id) => {
+            let trimmed = id.trim();
+            if trimmed.is_empty() {
+                return Err(CliError::Validation {
+                    message: "--extension was given an empty value; pass an extension id such as `morphir-elm-native` or omit the flag".into(),
+                });
+            }
+            trimmed.to_owned()
+        }
+        None => format!("morphir-{language}"),
+    };
     ExtensionId::parse(value).map_err(|error| CliError::Extension {
         message: format!("Invalid extension id: {error}"),
     })
@@ -302,11 +315,16 @@ fn prepare_single_file_context(
             version: 1,
             text: source.into(),
         },
+        // The single file being compiled is the package's public surface, so
+        // the request names it exactly. `None` would expose whatever the
+        // frontend found instead, which for one file is the same set but says
+        // something weaker than what this path actually means.
         package: CompilePackage {
             name: package_name,
             exposed_modules: Some(vec![module_name]),
         },
         output_path,
+        extra: HashMap::new(),
     })
 }
 
@@ -331,7 +349,7 @@ fn prepare_configured_single_file_context(
 ) -> Result<SingleFileCompileContext, CliError> {
     // This route submits one document, so its synthesized exposure must not
     // require other modules from the surrounding project.
-    prepare_single_file_context(
+    let mut context = prepare_single_file_context(
         &[input.to_path_buf()],
         source,
         options.language.as_deref(),
@@ -341,7 +359,19 @@ fn prepare_configured_single_file_context(
                 .map(|project| project.name.as_str())
         }),
         output,
-    )
+    )?;
+    // Only a run that loaded a configuration has a prelude to read: this route
+    // loads one for `--config` or `--project` and otherwise compiles the file
+    // on its own, where the provider's default prelude applies.
+    if context.language_id == "elm"
+        && let Some(config) = config
+        && let Some(prelude) = elm_prelude::from_config(config.config.frontend.as_ref())?
+    {
+        context
+            .extra
+            .insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+    }
+    Ok(context)
 }
 
 fn file_uri(path: &Path) -> Result<String, CliError> {
@@ -652,17 +682,33 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let environment = filtered_process_environment();
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
     let extension_id = resolve_extension_id(&context.language_id, options.extension.as_deref())?;
-    let launch = compile_process(
-        config_context
-            .as_ref()
-            .zip(config_dir)
-            .map(|(context, directory)| (&context.config, directory)),
-        &extension_id,
-        config_dir.unwrap_or(&start_dir),
-        &home,
-        &environment,
-    )?;
-    let compile_result = invoke_frontend(launch, &context).await?;
+    let workspace = config_dir.unwrap_or(&start_dir);
+    // A built-in provider is reached in process; only an installed or
+    // configured extension is spawned.
+    let compile_result = match builtin_single_file_frontend(&extension_id, &context.language_id)? {
+        Some(resolved) => {
+            crate::extensions::invoke_frontend(
+                &home,
+                workspace,
+                &resolved,
+                single_file_request(&context),
+            )
+            .await?
+        }
+        None => {
+            let launch = compile_process(
+                config_context
+                    .as_ref()
+                    .zip(config_dir)
+                    .map(|(context, directory)| (&context.config, directory)),
+                &extension_id,
+                workspace,
+                &home,
+                &environment,
+            )?;
+            invoke_frontend(launch, &context).await?
+        }
+    };
     let diagnostics = convert_extension_diagnostics(&compile_result.diagnostics);
     let format = OutputFormat::from_flags(options.json, options.json_lines);
 
@@ -890,6 +936,47 @@ fn read_single_source(input_path: &Path) -> Result<String, CliError> {
     std::fs::read_to_string(input_path).map_err(|error| CliError::FileSystem { error })
 }
 
+/// Resolve a built-in provider for a single-file compile, or `None` when the
+/// requested extension id is not built in and the process path answers.
+///
+/// Resolution itself is the capability check the spawned path performs against
+/// a negotiated session: the registry only returns a provider that advertises
+/// compiling this language to Morphir IR 3.
+fn builtin_single_file_frontend(
+    extension_id: &ExtensionId,
+    language: &str,
+) -> Result<Option<morphir_daemon::ResolvedFrontend>, CliError> {
+    let registry = crate::extensions::extension_registry_for([], Some(extension_id.as_str()))?;
+    if registry.providers().is_empty() {
+        return Ok(None);
+    }
+    registry
+        .resolve_frontend(language, "3", morphir_daemon::InvocationPolicy::PreferDirect)
+        .map(Some)
+        .map_err(|error| CliError::Extension {
+            message: format!(
+                "Built-in extension '{extension_id}' must advertise {} compilation to Morphir IR 3: {error}",
+                display_language(language)
+            ),
+        })
+}
+
+/// The compile request a single-file compile sends, whichever provider answers it.
+fn single_file_request(context: &SingleFileCompileContext) -> CompileRequest {
+    CompileRequest {
+        language_id: context.language_id.clone(),
+        documents: vec![context.document.clone()],
+        package: context.package.clone(),
+        dependencies: Vec::new(),
+        options: ExtensionCompileOptions {
+            types_only: false,
+            ir_version: "3".into(),
+            extra: context.extra.clone(),
+        },
+        baseline: None,
+    }
+}
+
 async fn invoke_frontend(
     launch: ProcessLaunch,
     context: &SingleFileCompileContext,
@@ -913,17 +1000,7 @@ async fn invoke_frontend(
         })?;
     let ready = validate_frontend_session(ready, &context.language_id).await?;
 
-    let request = CompileRequest {
-        language_id: context.language_id.clone(),
-        documents: vec![context.document.clone()],
-        package: context.package.clone(),
-        dependencies: Vec::new(),
-        options: ExtensionCompileOptions {
-            types_only: false,
-            ir_version: "3".into(),
-            extra: HashMap::new(),
-        },
-    };
+    let request = single_file_request(context);
     match ready
         .invoke::<CompileResult>(methods::COMPILE, request)
         .await
@@ -1083,7 +1160,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
 
     let CompileOptions {
         language,
-        extension: _,
+        extension,
         input,
         output,
         package_name,
@@ -1092,6 +1169,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         ir_version,
         json,
         json_lines,
+        no_cache,
         out: out_overrides,
     } = options;
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
@@ -1201,45 +1279,110 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         morphir_distribution::list_installed(&home).map_err(|error| CliError::Extension {
             message: format!("Failed to list installed frontend providers: {error}"),
         })?;
-    let registry = crate::extensions::extension_registry(installed)?;
+    let requested_extension = match extension.as_deref().map(str::trim) {
+        Some("") => {
+            return Err(CliError::Validation {
+                message: "--extension was given an empty value; pass an extension id such as `morphir-elm-native` or omit the flag".into(),
+            }
+            .into());
+        }
+        Some(id) => Some(id),
+        None => None,
+    };
+    let registry = crate::extensions::extension_registry_for(installed, requested_extension)?;
     let resolved = registry
         .resolve_frontend(
             &language,
             requested_version,
             morphir_daemon::InvocationPolicy::PreferDirect,
         )
-        .map_err(|error| CliError::Extension {
-            message: format!("Failed to resolve frontend for '{language}': {error}"),
+        .map_err(|error| match requested_extension {
+            Some(id) => CliError::Extension {
+                message: format!(
+                    "extension '{id}' does not provide language '{language}': {error}"
+                ),
+            },
+            None => CliError::Extension {
+                message: format!(
+                    "Failed to resolve frontend for '{language}': {error}. Install the \
+                     'morphir-{language}' extension, or name another provider with --extension"
+                ),
+            },
         })?;
     let language_name = language.clone();
-    let request = CompileRequest {
-        language_id: language,
-        documents,
-        package: CompilePackage {
-            name: package_name,
-            exposed_modules: context.exposed_modules().map(<[String]>::to_vec),
-        },
-        dependencies: vec![],
-        options: ExtensionCompileOptions {
-            types_only: false,
-            ir_version: requested_version.into(),
-            extra: HashMap::from([
-                ("outputDir".into(), serde_json::json!(paths.dest)),
-                ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
-                ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
-                (
-                    "emitParseStageFatal".into(),
-                    serde_json::json!(emit_parse_stage_fatal),
-                ),
-            ]),
-        },
+    let negotiated_ir_version =
+        advertised_ir_version(&resolved.capability().ir_versions, requested_version);
+    let mut extra = HashMap::from([
+        ("outputDir".into(), serde_json::json!(paths.dest)),
+        ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
+        ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
+        (
+            "emitParseStageFatal".into(),
+            serde_json::json!(emit_parse_stage_fatal),
+        ),
+    ]);
+    // The prelude is an Elm notion, so it only reaches a provider that was
+    // asked to compile Elm; another language's provider never sees the option.
+    if language.eq_ignore_ascii_case("elm")
+        && let Some(prelude) = elm_prelude::from_config(context.config.frontend.as_ref())?
+    {
+        extra.insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+    }
+    let extension_options = ExtensionCompileOptions {
+        types_only: false,
+        ir_version: negotiated_ir_version,
+        extra,
     };
     let workspace = context
         .project_root
         .as_deref()
         .or_else(|| context.config_path.parent())
         .unwrap_or(&start_dir);
+    // The cache is only meaningful for a provider that accepts a baseline and
+    // answers with per-module results; for any other provider there is nothing
+    // to send and nothing to keep.
+    let cache = if no_cache || !provider_supports_incremental(&resolved) {
+        None
+    } else {
+        Some((
+            cache::CompileCache::open(workspace, resolved.info().id.as_str(), &package_name),
+            cache_key(&resolved, &extension_options),
+        ))
+    };
+    let baseline = cache
+        .as_ref()
+        .and_then(|(cache, key)| cache.read_baseline(key));
+    let request = CompileRequest {
+        language_id: language,
+        documents,
+        // The project's declared exposure, when it has one: absent means the
+        // compile exposes every module it found, where an empty list would now
+        // mean the opposite — a package that exposes nothing.
+        package: CompilePackage {
+            name: package_name.clone(),
+            exposed_modules: context.exposed_modules().map(<[String]>::to_vec),
+        },
+        dependencies: vec![],
+        baseline,
+        options: extension_options,
+    };
     let result = crate::extensions::invoke_frontend(&home, workspace, &resolved, request).await?;
+    // The cache records what this run learned whether or not the run as a whole
+    // succeeded: a partial failure is exactly the case the cache exists for,
+    // because the modules that did compile should not compile again once the
+    // broken one is fixed. A whole-request rejection reports success: false
+    // with no module results at all — that carries no information about any
+    // module, so it must not overwrite a previous run's cache with emptiness.
+    if let Some((cache, key)) = cache.as_ref()
+        && cache_write_is_warranted(&result)
+    {
+        store_compile_results(
+            cache,
+            key,
+            result.context_digest.clone(),
+            &result.module_results,
+        );
+    }
     let diagnostics = convert_extension_diagnostics(&result.diagnostics);
     let format = OutputFormat::from_flags(json, json_lines);
     let has_error = result
@@ -1291,6 +1434,83 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     };
     write_compile_output(format, &output)?;
     Ok(None)
+}
+
+/// Whether the resolved provider accepts `CompileRequest.baseline` and answers
+/// with `CompileResult.moduleResults`.
+///
+/// The registry normalizes one frontend capability per resolved provider from
+/// whichever source describes it — a builtin's [`NativeExtension`] metadata for
+/// a native-direct provider, the discovered and persisted metadata an installed
+/// MEP provider was registered with — so both kinds are read the same way here,
+/// exactly as `validate_frontend_capabilities` reads the negotiated capability
+/// once a session exists.
+///
+/// [`NativeExtension`]: morphir_extension_sdk::NativeExtension
+fn provider_supports_incremental(resolved: &morphir_daemon::ResolvedFrontend) -> bool {
+    resolved.capability().incremental
+}
+
+/// The key this run's results are cached under.
+///
+/// The compile context — IR version, `typesOnly`, prelude, and dependency
+/// interfaces — is no longer part of the key: an incremental extension now
+/// computes its own digest of that context and returns it as
+/// `CompileResult.context_digest`, which the cache stores and echoes back as
+/// `CompileBaseline.context_digest`. The extension, not the CLI, decides
+/// whether a baseline's context digest still matches, so the key here only
+/// needs to name the provider and the shape of what it was asked for.
+fn cache_key(
+    resolved: &morphir_daemon::ResolvedFrontend,
+    options: &ExtensionCompileOptions,
+) -> cache::CacheKey {
+    cache::CacheKey {
+        extension_id: resolved.info().id.clone(),
+        extension_version: resolved.info().version.clone(),
+        ir_version: options.ir_version.clone(),
+        types_only: options.types_only,
+    }
+}
+
+/// Whether this run's result is worth writing to the cache.
+///
+/// A run that reported success, or that reported at least one module result,
+/// learned something worth remembering. A whole-request rejection — the
+/// provider's `validate()`-style refusal of the request itself, such as an
+/// unrecognised package name — reports neither: `success: false` and an empty
+/// `module_results`. That combination carries no information about any
+/// module, so writing it would empty a cache that a previous, genuinely
+/// productive run had built, and the next run would recompile everything for
+/// no reason connected to the sources at all.
+fn cache_write_is_warranted(result: &morphir_extension_sdk::CompileResult) -> bool {
+    result.success || !result.module_results.is_empty()
+}
+
+/// Record a compile's per-module results, reporting a cache that could not be
+/// written rather than failing the compile over it.
+///
+/// A cache only exists for a provider that was sent a baseline. An empty
+/// result list here means every module the run considered dropped out —
+/// never that the run found no modules at all, since an empty source set is
+/// refused before a provider is ever invoked (see `collect_source_documents`).
+/// Writing it empties the cache, which is the point: a baseline for modules
+/// the sources no longer hold would resurrect them on the next run. The
+/// caller only reaches this function when the run reported success, or
+/// reported at least one module result, so a whole-request rejection (no
+/// modules, no success) never empties a previously good cache.
+fn store_compile_results(
+    cache: &cache::CompileCache,
+    key: &cache::CacheKey,
+    context_digest: Option<String>,
+    results: &[morphir_extension_sdk::ModuleResult],
+) {
+    if let Err(error) = cache.write_results(key, context_digest, results) {
+        tracing::debug!(
+            root = %cache.root().display(),
+            %error,
+            "the incremental compile cache could not be written"
+        );
+    }
 }
 
 fn collect_source_documents(
@@ -1451,6 +1671,149 @@ fn validate_v4_compile_result(
     Ok(ir_file)
 }
 
+/// The requested IR release, spelled the way this provider advertises it.
+///
+/// This is a temporary CLI-side shim, not the intended design. The registry
+/// matches advertised versions by normalized release, so two providers can both
+/// serve Morphir IR 4 while spelling it `"4"` and `"4.0.0"` — but each frontend
+/// then compares `options.irVersion` against its own spelling as a string and
+/// rejects the other. Restating the release in the provider's own terms keeps
+/// both working until the bindings accept every spelling that normalizes to the
+/// same release (a part-1 follow-up), at which point this can go. An
+/// unrecognised release is passed through, and the provider rejects it.
+fn advertised_ir_version(advertised: &[String], requested: &str) -> String {
+    let release = normalize_ir_version_text(requested).map(|version| version.release);
+    advertised
+        .iter()
+        .find(|candidate| {
+            release.is_some()
+                && normalize_ir_version_text(candidate).map(|version| version.release) == release
+        })
+        .cloned()
+        .unwrap_or_else(|| requested.to_owned())
+}
+
+#[cfg(test)]
+mod incremental_tests {
+    use super::{cache_key, cache_write_is_warranted, provider_supports_incremental};
+    use morphir_extension_sdk::{CompileOptions as ExtensionCompileOptions, CompileResult};
+
+    fn resolve(language: &str, extension: &str) -> morphir_daemon::ResolvedFrontend {
+        crate::extensions::extension_registry_for([], Some(extension))
+            .unwrap()
+            .resolve_frontend(
+                language,
+                "4.0.0",
+                morphir_daemon::InvocationPolicy::PreferDirect,
+            )
+            .unwrap()
+    }
+
+    fn options() -> ExtensionCompileOptions {
+        ExtensionCompileOptions {
+            types_only: false,
+            ir_version: "4.0.0".into(),
+            extra: std::collections::HashMap::new(),
+        }
+    }
+
+    // Requirement: only a provider that advertises `frontend.incremental` is
+    // sent a baseline. A provider that compiles everything every time has
+    // nothing to remember, and offering it a baseline would be a request it
+    // never agreed to answer.
+    #[test]
+    fn only_an_incremental_provider_is_cached() {
+        assert!(provider_supports_incremental(&resolve(
+            "elm",
+            "morphir-elm-native"
+        )));
+        assert!(!provider_supports_incremental(&resolve(
+            "gleam",
+            "morphir-gleam-binding"
+        )));
+    }
+
+    // The key names the provider and the shape of what it was asked for. The
+    // compile context itself — including the prelude — is no longer part of
+    // it: an incremental extension computes its own digest of that context
+    // and returns it in the result, which the cache stores and echoes back as
+    // the next baseline's `contextDigest` instead.
+    #[test]
+    fn the_key_names_the_provider_and_the_request_shape() {
+        let resolved = resolve("elm", "morphir-elm-native");
+        let key = cache_key(&resolved, &options());
+
+        assert_eq!(key.extension_id, "morphir-elm-native");
+        assert_eq!(key.extension_version, resolved.info().version);
+        assert_eq!(key.ir_version, "4.0.0");
+        assert!(!key.types_only);
+    }
+
+    // `cache_key` is a pure function of `(resolved, options)`: a non-Elm
+    // provider is keyed exactly the same way, since neither carries a
+    // prelude any more.
+    #[test]
+    fn a_non_elm_provider_is_keyed_the_same_way() {
+        let resolved = resolve("gleam", "morphir-gleam-binding");
+        let key = cache_key(&resolved, &options());
+
+        assert_eq!(key.extension_id, "morphir-gleam-binding");
+        assert_eq!(key.ir_version, "4.0.0");
+        assert!(!key.types_only);
+    }
+
+    fn compile_result(
+        success: bool,
+        module_results: Vec<morphir_extension_sdk::ModuleResult>,
+    ) -> CompileResult {
+        CompileResult {
+            success,
+            ir_version: None,
+            ir: None,
+            diagnostics: Vec::new(),
+            modules: Vec::new(),
+            module_results,
+            context_digest: None,
+        }
+    }
+
+    // Requirement: a whole-request rejection — `success: false` and no module
+    // results at all — carries no information about any module, so it must
+    // not be written: writing it would empty a cache a previous, genuinely
+    // productive run had built.
+    #[test]
+    fn a_whole_request_rejection_does_not_warrant_a_cache_write() {
+        assert!(!cache_write_is_warranted(&compile_result(false, vec![])));
+    }
+
+    // Requirement: a partial failure still teaches the cache something — the
+    // modules that did compile should not compile again once the broken one
+    // is fixed — so it is written even though the run overall failed.
+    #[test]
+    fn a_partial_failure_still_warrants_a_cache_write() {
+        use morphir_extension_sdk::{ModuleResult, ModuleStatus};
+        let results = vec![ModuleResult {
+            name: "My.Other".into(),
+            uri: "file:///src/My/Other.elm".into(),
+            status: ModuleStatus::Compiled,
+            source_digest: Some("sha256:source".into()),
+            interface_digest: Some("sha256:interface".into()),
+            depends_on: Vec::new(),
+            ir: Some(serde_json::json!({ "module": "My.Other" })),
+            diagnostics: Vec::new(),
+        }];
+        assert!(cache_write_is_warranted(&compile_result(false, results)));
+    }
+
+    // Requirement: an ordinary successful run always warrants a write, even in
+    // the edge case where it reports no modules of its own (nothing else about
+    // it says "rejected").
+    #[test]
+    fn a_successful_run_always_warrants_a_cache_write() {
+        assert!(cache_write_is_warranted(&compile_result(true, vec![])));
+    }
+}
+
 fn is_semantic_v4(version: &str) -> bool {
     normalize_ir_version_text(version).is_some_and(|normalized| {
         normalized.is_supported() && normalized.release == ReleaseTriplet::new(4, 0, 0)
@@ -1577,6 +1940,7 @@ mod tests {
             ir_version: None,
             json: false,
             json_lines: false,
+            no_cache: false,
             out: OutOverrides {
                 flag: Some(out_dir),
                 env: None,
@@ -1687,6 +2051,8 @@ mod tests {
             })),
             diagnostics: Vec::new(),
             modules: Vec::new(),
+            module_results: Vec::new(),
+            context_digest: None,
         }
     }
 
@@ -1814,13 +2180,17 @@ mod tests {
     }
 
     #[test]
-    fn rejects_surrounding_whitespace_in_an_explicit_provider() {
-        let error = resolve_extension_id("elm", Some(" morphir-scala-elm ")).unwrap_err();
+    fn trims_surrounding_whitespace_in_an_explicit_provider() {
+        let provider = resolve_extension_id("elm", Some(" morphir-scala-elm ")).unwrap();
 
-        assert!(
-            error.to_string().contains("Invalid extension id"),
-            "{error}"
-        );
+        assert_eq!(provider.as_str(), "morphir-scala-elm");
+    }
+
+    #[test]
+    fn rejects_an_empty_explicit_provider() {
+        let error = resolve_extension_id("elm", Some("   ")).unwrap_err();
+
+        assert!(error.to_string().contains("empty value"), "{error}");
     }
 
     #[test]
@@ -2711,6 +3081,7 @@ enabled = true
                 exposed_modules: Some(vec!["Example".into()]),
             },
             output_path,
+            extra: HashMap::new(),
         }
     }
 
@@ -2742,6 +3113,8 @@ enabled = true
             })),
             diagnostics: Vec::new(),
             modules,
+            module_results: Vec::new(),
+            context_digest: None,
         }
     }
 

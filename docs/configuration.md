@@ -161,6 +161,37 @@ format = "json"
 to `single-file`, `vfs` maps to `document-tree`) and prints a warning; an
 explicit `layout` wins if both are set.
 
+### [frontend.elm]
+
+Settings the Elm frontend reads. Today the table holds one key, `prelude`,
+which names the set of implicit imports and SDK module aliases every Elm module
+is compiled against:
+
+```toml
+[frontend]
+language = "elm"
+
+[frontend.elm]
+# "elm-core" (the default) or "none"
+prelude = "elm-core"
+```
+
+A project that supplies its own prelude writes it as a table instead, using the
+same fields a prelude file uses:
+
+```toml
+[frontend.elm.prelude]
+id = "acme-std"
+
+[[frontend.elm.prelude.module_alias]]
+source = "Core"
+target = "Acme.Std.Core"
+```
+
+The native `morphir-elm-native` provider reads this setting; the JavaScript
+`morphir-elm` extension ignores it. See [Choosing the Elm
+prelude](getting-started/morphir-cli.md#choosing-the-elm-prelude).
+
 ### [codegen]
 
 Code generation settings:

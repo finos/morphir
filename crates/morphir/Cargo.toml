@@ -41,6 +41,7 @@ morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
 morphir-extension-sdk = { path = "../../ecosystem/morphir-rust/crates/morphir-extension-sdk" }
 morphir-gleam-binding = { path = "../../ecosystem/morphir-rust/crates/morphir-gleam-binding" }
+morphir-elm-binding = { path = "../../ecosystem/morphir-rust/crates/morphir-elm-binding" }
 morphir-distribution = { path = "../../ecosystem/morphir-rust/crates/morphir-distribution" }
 morphir-workspace = { path = "../../ecosystem/morphir-rust/crates/morphir-workspace" }
 morphir-okf = { path = "../../ecosystem/morphir-rust/crates/morphir-okf" }
@@ -54,6 +55,7 @@ fs2 = { workspace = true }
 same-file = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+sha2 = "0.10"
 serde-saphyr = { workspace = true }
 tempfile = { workspace = true }
 toml = { workspace = true }

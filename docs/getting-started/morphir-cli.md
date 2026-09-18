@@ -126,6 +126,107 @@ The Rust CLI includes:
 
 Run `morphir --help` for the current command list. Some commands are experimental and hidden unless you pass `--help-all`.
 
+## Native Elm provider (`morphir-elm-native`)
+
+`morphir compile` selects the frontend that compiles a language through the
+`--extension` flag. By default, compiling Elm sources uses the `morphir-elm`
+extension, the mature JavaScript frontend that ships from
+[finos/morphir-elm](https://github.com/finos/morphir-elm) and produces both
+types and values. This repository also ships an experimental, built-in native
+Elm frontend, `morphir-elm-native`, written in Rust.
+
+Select it explicitly, either for a project or for a single file:
+
+```sh
+morphir compile --extension morphir-elm-native
+
+morphir compile --input Example.elm --extension morphir-elm-native
+```
+
+`morphir-elm-native` is **types-only today**: it compiles type declarations
+and signatures but not value bodies. `morphir-elm` remains the default
+extension for Elm and is the only provider that compiles values, so keep
+using it for production Elm workflows.
+
+### Choosing the Elm prelude
+
+The prelude is the set of implicit imports and SDK module aliases every Elm
+module is compiled against. `morphir-elm-native` uses `elm-core` unless the
+project asks for something else. Name the prelude in `morphir.toml` under
+`[frontend.elm]`, the frontend's language-specific table, in one of three
+forms.
+
+The default prelude, which resolves `Int`, `String`, `List` and the rest of
+the Elm core types:
+
+```toml
+[frontend.elm]
+prelude = "elm-core"
+```
+
+No prelude at all, so only names a module declares or imports itself are in
+scope:
+
+```toml
+[frontend.elm]
+prelude = "none"
+```
+
+Or a prelude the project describes itself, as a table with the same fields a
+prelude file uses (`id`, `implicit_import`, `module_alias`, and `package`):
+
+```toml
+[frontend.elm.prelude]
+id = "acme-std"
+
+[[frontend.elm.prelude.implicit_import]]
+module = "Acme.Std.Basics"
+exposing = ["Int", "String"]
+
+[[frontend.elm.prelude.module_alias]]
+source = "Core"
+target = "Acme.Std.Core"
+```
+
+The key travels to the provider as the `elmPrelude` compile option, so it
+applies to the native provider and is ignored by the JavaScript `morphir-elm`
+extension. It applies to a whole-project compile, and to a single-file compile
+that loaded a configuration through `--config` or `--project`; a single-file
+compile with neither flag uses the default prelude. Changing the prelude
+invalidates the incremental compile cache, so the next run compiles every
+module again. A value that is neither a name nor a table fails the run and
+names `frontend.elm.prelude`.
+
+## Incremental compile cache
+
+Frontends that advertise the `incremental` capability, including
+`morphir-elm-native`, can reuse work from a previous compile instead of
+recompiling every module. The cache lives under
+`<workspace>/.morphir/cache/compile/<extension>/<package>/`, as a manifest
+file plus one file per cached module.
+
+A module is reused when its source digest and the interface digests of every
+module it depends on match the cached baseline; otherwise it is recompiled.
+Reuse never causes a failure: a missing, unreadable, or corrupt cache entry is
+treated as no baseline for that module rather than an error, and cache writes
+are atomic so an interrupted run cannot leave a half-written entry behind.
+
+A partial failure (one or more modules fail or are blocked by a failed
+dependency) still exits with status 1, leaves the previously installed
+`morphir-ir.json` untouched, and updates the cache only for modules that
+compiled successfully; failed and blocked modules keep their last good cache
+entry.
+
+Pass `--no-cache` to skip reading and writing the cache and force a full
+recompile:
+
+```sh
+morphir compile --extension morphir-elm-native --no-cache
+```
+
+Only providers that advertise `incremental` use the cache at all; other
+extensions ignore `--no-cache` and always compile fully.
+
 ## Build from source
 
 ```shell

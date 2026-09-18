@@ -195,6 +195,15 @@ The workspace may be absent for configuration-free compilation. Version 0.1 send
 
 Initialization fails with a protocol-version error if the peers have no version in common. The host must not infer support for a method that the extension did not advertise.
 
+### Frontend capabilities
+
+`compile` says whether the frontend accepts `morphir.frontend.compile` at all.
+`incremental` says whether the frontend accepts `CompileRequest.baseline` and
+returns `CompileResult.moduleResults`; a host must not send a `baseline` to a
+frontend that advertises `incremental: false`. `fragments` is reserved for a
+future source-fragment compilation mode; it has no defined meaning in 0.1, and
+a host must not act on it.
+
 ## Capability methods
 
 Version 0.1 defines these operation methods:
@@ -277,6 +286,18 @@ Passing content rather than paths has four consequences:
     "options": {
       "typesOnly": false,
       "irVersion": "3"
+    },
+    "baseline": {
+      "modules": [
+        {
+          "name": "My.Types",
+          "uri": "file:///work/My/Types.elm",
+          "sourceDigest": "sha256:aa",
+          "interfaceDigest": "sha256:bb",
+          "dependsOn": ["My.Other"],
+          "ir": {}
+        }
+      ]
     }
   }
 }
@@ -289,6 +310,24 @@ public; an explicit empty array means all are private. A nonempty array selects
 exactly the public modules, with other modules retained as private package
 definitions. Unknown names are errors. Frontends that cannot implement the
 requested visibility must report that limitation instead of changing access.
+
+`baseline` is optional and owned by the host: it carries what an earlier
+`morphir.frontend.compile` call returned in `moduleResults` and
+`contextDigest`, so a host that keeps no cache omits it and gets a full
+compile. A host must not send `baseline` to a frontend that advertises
+`incremental: false`. Each `baseline.modules` entry
+describes one module the host still trusts: `name` and `uri` identify it,
+`sourceDigest` is the digest of its source text as last seen, `interfaceDigest`
+is the digest of its resolved public interface, `dependsOn` lists the
+in-package modules it depends on, and `ir` is the module's previously compiled
+IR. `baseline.contextDigest` is optional and echoes the digest an incremental
+frontend returned as `CompileResult.contextDigest` on the run that produced
+this baseline. A host stores that digest next to the module results it keeps
+and sends it back unchanged; it does not compute or interpret it. A frontend
+whose own digest of the current compile context — IR version, `typesOnly`,
+prelude, and dependency interfaces — differs from `baseline.contextDigest`, or
+a baseline that carries none, ignores the whole baseline rather than reuse
+entries computed against something else.
 
 `options.sourceRootUri` supplies the absolute source root for stable relative
 document identities. Relative document paths retain their nesting. Multiple
@@ -328,16 +367,64 @@ Large dependency transfer and content-addressed references are deferred until me
     "irVersion": "3",
     "ir": {},
     "diagnostics": [],
-    "modules": ["Example"]
+    "modules": ["Example"],
+    "moduleResults": [
+      {
+        "name": "Example",
+        "uri": "file:///work/Example.elm",
+        "status": "compiled",
+        "sourceDigest": "sha256:cc",
+        "interfaceDigest": "sha256:dd",
+        "dependsOn": [],
+        "ir": {},
+        "diagnostics": []
+      }
+    ],
+    "contextDigest": "sha256:ff"
   }
 }
 ```
 
 `ir` contains the Morphir IR distribution as JSON, not a JSON-encoded string. The host validates the returned IR against the declared version before writing it or passing it to another extension.
 
+`contextDigest` is returned only by a frontend that advertised
+`incremental: true`, and covers everything a module's compiled form depends on
+besides its own source: the IR version, the frontend's configuration
+(including its prelude, for a language that has one), and the dependency
+distributions supplied with the request. A host stores it next to the module
+results it keeps and echoes it back as `baseline.contextDigest` on the next
+request; it never computes or compares the digest itself. Its absence means
+the frontend computes none, in which case a host still stores `moduleResults`
+but sends no `contextDigest` on the next baseline.
+
+`moduleResults` is present only from a frontend that advertised
+`incremental: true`, and has one entry per module the request touched. Each
+entry's `status` is one of four values: `compiled` means the module was
+parsed, resolved and emitted in this call; `unchanged` means its source
+digest matched the baseline and no module in its `dependsOn` had a new
+interface digest, so the baseline IR was reused; `failed` means the module
+could not be compiled, and its diagnostics explain why; `blocked` means a
+dependency failed and no baseline interface was available to resolve against.
+`sourceDigest` and `interfaceDigest` are the digests of the module's source
+text and resolved public interface; both are present when known. `dependsOn`
+lists the in-package modules the entry depends on, including every in-package
+import plus resolved references, deliberately wider than actual use so
+incremental runs equal clean runs. `ir` is present only when
+`status` is `compiled`; an `unchanged` entry omits it because the host already
+holds that module's IR from the baseline. `modules` lists the names of
+`compiled` and `unchanged` modules only, so a host that ignores
+`moduleResults` still sees a correct module list. The top-level `ir` is the
+merged distribution of every `compiled` and `unchanged` module; it is present
+even when `success` is `false`, so a host can keep the modules that did
+compile.
+
 ### Compilation failure
 
 Valid source that fails parsing, type checking, or Morphir validation returns a normal result with `success` set to `false`. A compilation failure is not a JSON-RPC failure.
+
+An incremental frontend can fail some modules while compiling others in the
+same call. `Example.Broken` fails, `Example.Ok` compiles, and the top-level
+`ir` still carries the distribution for the modules that did compile:
 
 ```json
 {
@@ -345,13 +432,15 @@ Valid source that fails parsing, type checking, or Morphir validation returns a 
   "id": "compile-1",
   "result": {
     "success": false,
+    "irVersion": "3",
+    "ir": {},
     "diagnostics": [
       {
         "severity": "error",
         "code": "elm.type-mismatch",
         "message": "This expression does not match the declared type.",
         "location": {
-          "uri": "file:///work/Example.elm",
+          "uri": "file:///work/Example/Broken.elm",
           "range": {
             "start": { "line": 3, "character": 10 },
             "end": { "line": 3, "character": 15 }
@@ -359,10 +448,48 @@ Valid source that fails parsing, type checking, or Morphir validation returns a 
         }
       }
     ],
-    "modules": []
+    "modules": ["Example.Ok"],
+    "moduleResults": [
+      {
+        "name": "Example.Broken",
+        "uri": "file:///work/Example/Broken.elm",
+        "status": "failed",
+        "sourceDigest": "sha256:ee",
+        "dependsOn": [],
+        "diagnostics": [
+          {
+            "severity": "error",
+            "code": "elm.type-mismatch",
+            "message": "This expression does not match the declared type.",
+            "location": {
+              "uri": "file:///work/Example/Broken.elm",
+              "range": {
+                "start": { "line": 3, "character": 10 },
+                "end": { "line": 3, "character": 15 }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Example.Ok",
+        "uri": "file:///work/Example/Ok.elm",
+        "status": "compiled",
+        "sourceDigest": "sha256:ff",
+        "interfaceDigest": "sha256:gg",
+        "dependsOn": [],
+        "ir": {},
+        "diagnostics": []
+      }
+    ]
   }
 }
 ```
+
+`success` is `false` because not every module resolved to `compiled` or
+`unchanged`. `modules` and the top-level `ir` still reflect only the modules
+that did compile, so a host on a non-incremental path can keep using them the
+same way it always has.
 
 Lines and characters are zero-based. Ranges use an inclusive start and exclusive end. This matches LSP positions and avoids conversion in editor clients.
 
@@ -522,6 +649,11 @@ implementing 0.1 had shipped, so no deployed host was broken by the change,
 and the version stayed at 0.1 rather than moving to 0.2. A protocol version
 that has already been released must not repeat this — a required field added
 after release needs a major version, per the rule above.
+
+`CompileRequest.baseline`, `CompileBaseline.contextDigest`,
+`CompileResult.moduleResults`, and `CompileResult.contextDigest` are additive
+optional fields added under the same pre-release rule while MEP 0.1 has not
+yet shipped. Receivers that do not implement them ignore them.
 
 ## Security and permissions
 

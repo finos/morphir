@@ -96,6 +96,8 @@ mod tests {
                 json!({"formatVersion":3,"distribution":["Library",[["example"]],[],{"modules":[]}]}),
             ),
             modules: vec![],
+            module_results: vec![],
+            context_digest: None,
             diagnostics: vec![],
         };
         assert!(VersionedIr::validate(&result, IrVersion::V3).is_ok());

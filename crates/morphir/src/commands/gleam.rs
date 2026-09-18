@@ -28,6 +28,8 @@ pub async fn run_gleam_compile(
         ir_version: None,
         json,
         json_lines,
+        // The Gleam frontend is not incremental, so there is no cache to skip.
+        no_cache: false,
         out,
     })
     .await

@@ -419,11 +419,14 @@ fn compile_request(params: PlaygroundCompileParams) -> CompileRequest {
                 text: document.text,
             })
             .collect(),
+        // The playground protocol now spells exposure exactly as the SDK does:
+        // omitted exposes every module, an explicit empty list exposes none.
         package: CompilePackage {
             name: params.package.name,
             exposed_modules: params.package.exposed_modules,
         },
         dependencies: Vec::new(),
+        baseline: None,
         options: compile_options(params.ir_version, &params.options),
     }
 }
@@ -689,6 +692,8 @@ mod tests {
                 ir: None,
                 diagnostics: vec![],
                 modules: vec![],
+                module_results: Vec::new(),
+                context_digest: None,
             })
         }
 
@@ -1081,6 +1086,8 @@ mod tests {
                     related: vec![],
                 }],
                 modules: vec![],
+                module_results: Vec::new(),
+                context_digest: None,
             }),
             Arc::new(SessionReuseInvoker::new(RegistryOpener)),
         );
@@ -1192,6 +1199,8 @@ mod tests {
                 ir: None,
                 diagnostics: vec![],
                 modules: vec![],
+                module_results: Vec::new(),
+                context_digest: None,
             }),
             {
                 let sleeping = Arc::new(SleepingInvoker::new(Duration::from_secs(600)));
@@ -1286,6 +1295,8 @@ mod tests {
                 ir: None,
                 diagnostics: vec![],
                 modules: vec![],
+                module_results: Vec::new(),
+                context_digest: None,
             }),
             invoker.clone(),
         );

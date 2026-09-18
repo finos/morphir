@@ -562,6 +562,8 @@ mod tests {
                 ir: Some(json!({})),
                 diagnostics: vec![],
                 modules: vec!["cold".into()],
+                module_results: Vec::new(),
+                context_digest: None,
             })
         }
 
@@ -616,6 +618,7 @@ mod tests {
                 exposed_modules: Some(vec![]),
             },
             dependencies: vec![],
+            baseline: None,
             options: CompileOptions {
                 types_only: false,
                 ir_version: "4.0.0".into(),

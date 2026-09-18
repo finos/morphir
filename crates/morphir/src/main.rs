@@ -64,10 +64,10 @@ enum Commands {
         /// Source language (e.g., gleam, elm)
         #[arg(short, long)]
         language: Option<String>,
-        /// Extension provider id for single-file Elm compilation. Defaults to morphir- followed by the language name.
+        /// Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider
         #[arg(long)]
         extension: Option<String>,
-        /// Input source directory or file. An installed or configured Elm process accepts one .elm file.
+        /// Input source directory or file. A single .elm file is compiled by the selected Elm provider: an installed process extension by default, or a builtin such as morphir-elm-native via --extension.
         #[arg(short, long)]
         input: Option<String>,
         /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
@@ -91,6 +91,9 @@ enum Commands {
         /// Output as JSON Lines (streaming)
         #[arg(long)]
         json_lines: bool,
+        /// Ignore the incremental compile cache for this run
+        #[arg(long)]
+        no_cache: bool,
     },
     /// Generate code from Morphir IR
     Generate {
@@ -795,6 +798,7 @@ impl AppSession for MorphirSession {
                 ir_version,
                 json,
                 json_lines,
+                no_cache,
             } => {
                 run_compile(CompileOptions {
                     language: language.clone(),
@@ -807,6 +811,7 @@ impl AppSession for MorphirSession {
                     ir_version: *ir_version,
                     json: *json,
                     json_lines: *json_lines,
+                    no_cache: *no_cache,
                     out: self.out.clone(),
                 })
                 .await

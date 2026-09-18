@@ -8,6 +8,7 @@ use morphir_daemon::extensions::{
     ResolvedFrontend, Session, SessionHandle, activate_transport, protocol::methods, spawn_session,
 };
 use morphir_distribution::{InstalledExtensionSnapshot, activate_installed_snapshot};
+use morphir_elm_binding::ElmExtension;
 use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo};
 use morphir_extension_sdk::{
     CompileRequest, CompileResult, GenerateRequest, GenerateResult, NativeExtension,
@@ -20,18 +21,50 @@ use std::path::Path;
 pub fn extension_registry(
     installed: impl IntoIterator<Item = InstalledExtensionSnapshot>,
 ) -> Result<ExtensionRegistry, CliError> {
+    extension_registry_for(installed, None)
+}
+
+/// Construct the provider registry, optionally restricted to one provider id.
+///
+/// `--extension <id>` is a choice of provider, not a preference: the registry
+/// resolves by language and origin, so the only way to make the caller's choice
+/// binding is to leave every other provider out of the registry it resolves
+/// against. A registry restricted to an id that provides nothing for the
+/// requested language then fails resolution, which is the same answer as
+/// "that extension does not provide this language".
+///
+/// The native Elm provider is opt-in: it is registered only when `only` names
+/// it, so a command that does not ask for it by id behaves as though it were
+/// not built in at all.
+pub fn extension_registry_for(
+    installed: impl IntoIterator<Item = InstalledExtensionSnapshot>,
+    only: Option<&str>,
+) -> Result<ExtensionRegistry, CliError> {
     let gleam =
         NativeExtension::frontend_backend(GleamExtension).map_err(|error| CliError::Extension {
             message: format!("Failed to construct native Gleam provider: {error}"),
         })?;
-    let mut registry = ExtensionRegistry::new();
-    registry
-        .register_builtin(gleam)
-        .map_err(|error| CliError::Extension {
-            message: format!("Failed to register native Gleam provider: {error}"),
+    let elm =
+        NativeExtension::frontend_backend(ElmExtension).map_err(|error| CliError::Extension {
+            message: format!("Failed to construct native Elm provider: {error}"),
         })?;
+    let mut registry = ExtensionRegistry::new();
+    for (language, builtin, opt_in) in [("Gleam", gleam, false), ("Elm", elm, true)] {
+        let requested = only == Some(builtin.info().id.as_str());
+        if (opt_in && !requested) || only.is_some_and(|id| id != builtin.info().id) {
+            continue;
+        }
+        registry
+            .register_builtin(builtin)
+            .map_err(|error| CliError::Extension {
+                message: format!("Failed to register native {language} provider: {error}"),
+            })?;
+    }
     for snapshot in installed {
         let id = snapshot.installed().extension_id().to_string();
+        if only.is_some_and(|only| only != id) {
+            continue;
+        }
         registry
             .register_installed(snapshot)
             .map_err(|error| CliError::Extension {
@@ -388,6 +421,7 @@ mod tests {
                 exposed_modules: Some(vec![]),
             },
             dependencies: vec![],
+            baseline: None,
             options: CompileOptions {
                 types_only: false,
                 ir_version: "4.0.0".into(),

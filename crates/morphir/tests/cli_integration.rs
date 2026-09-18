@@ -780,6 +780,677 @@ targets = ["gleam"]
     src_dir
 }
 
+/// Write a two-module Elm project: `My.Types` names a type from `My.Other`.
+fn write_elm_project(project_root: &std::path::Path) -> PathBuf {
+    // Pin project outputs locally; discovery otherwise inherits an ancestor's
+    // .morphir directory, including one in the developer's home directory.
+    std::fs::create_dir_all(project_root.join(".morphir")).unwrap();
+    let src_dir = project_root.join("src/My");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::write(
+        src_dir.join("Other.elm"),
+        "module My.Other exposing (Currency)\n\n\ntype alias Currency =\n    String\n",
+    )
+    .unwrap();
+    std::fs::write(
+        src_dir.join("Types.elm"),
+        "module My.Types exposing (Amount, Kind(..))\n\
+         \n\
+         import My.Other exposing (Currency)\n\
+         \n\
+         \n\
+         type alias Amount =\n    \
+             { currency : Currency, value : Int }\n\
+         \n\
+         \n\
+         type Kind\n    \
+             = Simple\n    \
+             | Detailed Amount\n",
+    )
+    .unwrap();
+    std::fs::write(
+        project_root.join("morphir.toml"),
+        r#"[project]
+name = "example/domain"
+version = "1.0.0"
+source_directory = "src"
+
+[frontend]
+language = "elm"
+"#,
+    )
+    .unwrap();
+    src_dir
+}
+
+#[test]
+fn elm_native_compile_produces_v4_ir_for_a_two_module_project() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    let compile = run_morphir(
+        &["compile", "--extension", "morphir-elm-native"],
+        &home,
+        &project,
+    );
+
+    assert!(
+        compile.status.success(),
+        "compile failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let output = project.join(".morphir/out/compile.dest/morphir-ir.json");
+    let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["formatVersion"], 4);
+    let ir_file: morphir_core::ir::v4::IRFile = serde_json::from_slice(&bytes).unwrap();
+    let morphir_core::ir::v4::Distribution::Library(library) = &ir_file.distribution else {
+        panic!(
+            "an Elm compile publishes a library: {:?}",
+            ir_file.distribution
+        );
+    };
+    let modules: Vec<_> = library.def.modules.keys().cloned().collect();
+    assert_eq!(
+        modules.len(),
+        2,
+        "both Elm modules reach the IR: {modules:?}"
+    );
+}
+
+// The native Elm binding is opt-in: reaching it takes `--extension`. Without
+// one, an Elm compile still asks for the `morphir-elm` extension, and says so
+// when it is not installed.
+#[test]
+fn elm_native_is_not_the_default_elm_provider() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    for arguments in [
+        vec!["compile", "--input", "src/My/Types.elm"],
+        vec!["compile"],
+    ] {
+        let compile = run_morphir(&arguments, &home, &project);
+
+        assert!(
+            !compile.status.success(),
+            "{arguments:?} must not reach a provider: stdout={} stderr={}",
+            String::from_utf8_lossy(&compile.stdout),
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        let stderr = String::from_utf8_lossy(&compile.stderr);
+        assert!(
+            !stderr.contains("morphir-elm-native"),
+            "{arguments:?}: {stderr}"
+        );
+        assert!(stderr.contains("morphir-elm"), "{arguments:?}: {stderr}");
+    }
+    assert!(
+        !project
+            .join(".morphir/out/compile.dest/morphir-ir.json")
+            .exists(),
+        "an unselected native provider must not have written IR"
+    );
+}
+
+/// The single-file route reaches the native binding in process and writes IR 3.
+#[test]
+fn elm_native_compiles_a_single_file_to_v3_ir() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    let compile = run_morphir(
+        &[
+            "compile",
+            "--input",
+            // A single-file compile sees only this file, so it must not import
+            // a sibling module: `My.Types` imports `My.Other`.
+            "src/My/Other.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+        &home,
+        &project,
+    );
+
+    assert!(
+        compile.status.success(),
+        "compile failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let output = project.join(".morphir/out/compile.dest/morphir-ir.json");
+    let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["formatVersion"], 3, "{json}");
+    // Morphir IR 3 spells a distribution positionally:
+    // ["Library", packageName, dependencies, packageDefinition].
+    let distribution = json["distribution"]
+        .as_array()
+        .unwrap_or_else(|| panic!("v3 distribution is an array: {json}"));
+    assert_eq!(distribution[0], "Library", "{json}");
+    let modules = distribution[3]["modules"]
+        .as_array()
+        .unwrap_or_else(|| panic!("a library definition lists modules: {json}"));
+    assert_eq!(
+        modules.len(),
+        1,
+        "a single-file compile publishes one module: {json}"
+    );
+}
+
+/// The compile cache's manifest for the two-module Elm project. Each directory
+/// name is the readable name plus a digest of it, so the path is found rather
+/// than spelled out: one provider compiled one package under this workspace.
+fn elm_native_manifest_path(project_root: &std::path::Path) -> PathBuf {
+    let compile = project_root.join(".morphir/cache/compile");
+    let one_child = |directory: &std::path::Path, what: &str| -> PathBuf {
+        let mut entries: Vec<PathBuf> = std::fs::read_dir(directory)
+            .unwrap_or_else(|error| panic!("{what} under {}: {error}", directory.display()))
+            .map(|entry| entry.unwrap().path())
+            .collect();
+        entries.sort();
+        assert_eq!(
+            entries.len(),
+            1,
+            "exactly one {what} under {}: {entries:?}",
+            directory.display()
+        );
+        entries.remove(0)
+    };
+    let provider = one_child(&compile, "provider directory");
+    assert!(
+        provider
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("morphir-elm-native-"),
+        "the provider directory names its provider: {provider:?}"
+    );
+    let package = one_child(&provider, "package directory");
+    assert!(
+        package
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("example_domain-"),
+        "the package directory names its package: {package:?}"
+    );
+    package.join("manifest.json")
+}
+
+fn read_elm_native_manifest(project_root: &std::path::Path) -> serde_json::Value {
+    let path = elm_native_manifest_path(project_root);
+    let bytes = std::fs::read(&path)
+        .unwrap_or_else(|error| panic!("manifest at {}: {error}", path.display()));
+    serde_json::from_slice(&bytes)
+        .unwrap_or_else(|error| panic!("manifest at {} is JSON: {error}", path.display()))
+}
+
+fn module_status(manifest: &serde_json::Value, module: &str) -> String {
+    manifest["modules"][module]["status"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{module} has a status: {manifest}"))
+        .to_owned()
+}
+
+fn assert_compile_succeeded(output: &std::process::Output, label: &str) {
+    assert!(
+        output.status.success(),
+        "{label} failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// Requirement: the second compile of an untouched project reuses everything.
+/// This is the whole point of the cache: the CLI hands back what the last run
+/// produced, and the provider answers that nothing needs compiling again.
+#[test]
+fn elm_native_second_compile_reuses_unchanged_modules() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native"];
+
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    let first = read_elm_native_manifest(&project);
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "second compile");
+    let second = read_elm_native_manifest(&project);
+
+    assert_eq!(module_status(&first, "My.Other"), "compiled", "{first}");
+    assert_eq!(module_status(&first, "My.Types"), "compiled", "{first}");
+    assert_eq!(module_status(&second, "My.Other"), "unchanged", "{second}");
+    assert_eq!(module_status(&second, "My.Types"), "unchanged", "{second}");
+}
+
+/// Requirement: a partial failure publishes nothing and keeps the cache
+/// useful. After the break is fixed, only the module that was broken is
+/// compiled again; its dependent was resolved against the cached interface all
+/// along and stays unchanged.
+///
+/// The IR a failed run must leave alone is the installed one: a task's own
+/// `.dest` is emptied when the run starts, by the tombstone rule in
+/// `docs/design/out-directory.md`, so the last good IR a reader can see is the
+/// copy installed under `--output`.
+#[test]
+fn elm_native_fixing_a_broken_module_recompiles_only_it() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    let src_dir = write_elm_project(&project);
+    let arguments = [
+        "compile",
+        "--extension",
+        "morphir-elm-native",
+        "--output",
+        "dist",
+    ];
+    let other = src_dir.join("Other.elm");
+    let good = std::fs::read(&other).unwrap();
+
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    let ir_path = project.join("dist/morphir-ir.json");
+    let ir_after_first = std::fs::read(&ir_path).expect("the first compile installs IR");
+
+    std::fs::write(
+        &other,
+        "module My.Other exposing (Currency)\n\n\ntype alias Currency =\n    Nonexistent\n",
+    )
+    .unwrap();
+    let broken = run_morphir(&arguments, &home, &project);
+    assert!(
+        !broken.status.success(),
+        "a broken module fails the compile: stdout={} stderr={}",
+        String::from_utf8_lossy(&broken.stdout),
+        String::from_utf8_lossy(&broken.stderr)
+    );
+    assert_eq!(
+        std::fs::read(&ir_path).unwrap(),
+        ir_after_first,
+        "a failed compile leaves the installed morphir-ir.json exactly as it was"
+    );
+    assert!(
+        !project
+            .join(".morphir/out/compile.dest/morphir-ir.json")
+            .exists(),
+        "a failed compile publishes no IR of its own"
+    );
+    let failed = read_elm_native_manifest(&project);
+    assert_eq!(module_status(&failed, "My.Other"), "failed", "{failed}");
+    assert_eq!(
+        module_status(&failed, "My.Types"),
+        "unchanged",
+        "a dependent resolves against the cached interface rather than blocking: {failed}"
+    );
+
+    // Fix it to something that is not byte-for-byte what the last good compile
+    // saw — restoring the exact bytes would be `unchanged`, which says nothing
+    // about recompiling. The comment leaves the module's interface alone, so
+    // its dependent has no reason to compile again.
+    let fixed_source = [good.as_slice(), b"\n\n-- back in business\n"].concat();
+    std::fs::write(&other, &fixed_source).unwrap();
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "fixed compile");
+    let fixed = read_elm_native_manifest(&project);
+
+    assert_eq!(module_status(&fixed, "My.Other"), "compiled", "{fixed}");
+    assert_eq!(module_status(&fixed, "My.Types"), "unchanged", "{fixed}");
+}
+
+/// Requirement: `--no-cache` is a full opt out. The run neither reads the cache
+/// nor writes it, so the manifest an earlier run left is untouched.
+#[test]
+fn elm_native_no_cache_flag_skips_the_cache() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    assert_compile_succeeded(
+        &run_morphir(
+            &["compile", "--extension", "morphir-elm-native"],
+            &home,
+            &project,
+        ),
+        "first compile",
+    );
+    let before = read_elm_native_manifest(&project);
+    let second = run_morphir(
+        &[
+            "compile",
+            "--extension",
+            "morphir-elm-native",
+            "--no-cache",
+            "--json",
+        ],
+        &home,
+        &project,
+    );
+    assert_compile_succeeded(&second, "--no-cache compile");
+    let after = read_elm_native_manifest(&project);
+
+    assert_eq!(
+        before["updatedAt"], after["updatedAt"],
+        "--no-cache must not rewrite the manifest: {after}"
+    );
+    assert_eq!(before, after);
+    let envelope: serde_json::Value = serde_json::from_slice(&second.stdout)
+        .unwrap_or_else(|error| panic!("--json output is JSON ({error}): {:?}", second.stdout));
+    let modules: Vec<String> = envelope["modules"]
+        .as_array()
+        .unwrap_or_else(|| panic!("the envelope lists modules: {envelope}"))
+        .iter()
+        .map(|module| module.as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        modules.contains(&"My.Other".to_owned()) && modules.contains(&"My.Types".to_owned()),
+        "a run without a baseline compiles everything: {envelope}"
+    );
+}
+
+/// Requirement: a module deleted from the sources is deleted from the cache,
+/// so the next run is never offered a baseline for source that is gone.
+///
+/// Deleting every module cannot be reached from here — an empty source set is
+/// refused before any provider runs — so the case that matters is the one that
+/// can happen: a module goes, the rest stay.
+#[test]
+fn elm_native_a_deleted_module_leaves_the_cache() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    let src_dir = write_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native"];
+
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    let modules_dir = elm_native_manifest_path(&project)
+        .parent()
+        .unwrap()
+        .join("modules");
+    assert_eq!(
+        std::fs::read_dir(&modules_dir).unwrap().count(),
+        2,
+        "the first compile caches both modules"
+    );
+
+    // `My.Types` imports `My.Other`, so the one that can go is the dependent.
+    std::fs::remove_file(src_dir.join("Types.elm")).unwrap();
+    assert_compile_succeeded(
+        &run_morphir(&arguments, &home, &project),
+        "compile after a deletion",
+    );
+    let manifest = read_elm_native_manifest(&project);
+
+    assert!(
+        manifest["modules"]["My.Types"].is_null(),
+        "a deleted module is out of the manifest: {manifest}"
+    );
+    assert_eq!(
+        module_status(&manifest, "My.Other"),
+        "unchanged",
+        "{manifest}"
+    );
+    let cached: Vec<String> = std::fs::read_dir(&modules_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(
+        cached.len(),
+        1,
+        "the deleted module's file is gone too: {cached:?}"
+    );
+}
+
+/// Append a `[frontend.elm]` table to a project's `morphir.toml`, replacing
+/// whatever prelude an earlier call configured.
+fn set_elm_prelude(project_root: &std::path::Path, table: &str) {
+    let path = project_root.join("morphir.toml");
+    let existing = std::fs::read_to_string(&path).unwrap();
+    let base = existing.split("\n[frontend.elm]\n").next().unwrap();
+    std::fs::write(&path, format!("{base}\n[frontend.elm]\n{table}")).unwrap();
+}
+
+/// The `--json` envelope a compile wrote, whether or not it succeeded.
+fn compile_envelope(output: &std::process::Output) -> serde_json::Value {
+    serde_json::from_slice(&output.stdout).unwrap_or_else(|error| {
+        panic!(
+            "--json output is JSON ({error}): {}",
+            String::from_utf8_lossy(&output.stdout)
+        )
+    })
+}
+
+/// Requirement: `[frontend.elm] prelude` in `morphir.toml` reaches the native
+/// Elm provider. The default config compiles the fixture, which names `Int`
+/// from the `elm-core` prelude; asking for no prelude leaves that name
+/// unresolved, and the diagnostic says which prelude was in force.
+#[test]
+fn elm_native_prelude_is_configured_from_morphir_toml() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native", "--json"];
+
+    assert_compile_succeeded(
+        &run_morphir(&arguments, &home, &project),
+        "compile without a [frontend.elm] table",
+    );
+
+    set_elm_prelude(&project, "prelude = \"none\"\n");
+    let compile = run_morphir(&arguments, &home, &project);
+
+    assert!(
+        !compile.status.success(),
+        "`Int` has nowhere to come from without a prelude: stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let envelope = compile_envelope(&compile);
+    let diagnostics = envelope["diagnostics"]
+        .as_array()
+        .unwrap_or_else(|| panic!("the envelope lists diagnostics: {envelope}"));
+    assert!(
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic["code"] == "ELM_RESOLVE_NOT_FOUND"
+                && diagnostic["message"]
+                    .as_str()
+                    .is_some_and(|message| message.contains("prelude: none"))
+        }),
+        "the configured prelude is named in the diagnostic: {envelope}"
+    );
+}
+
+/// Requirement: a value that is neither a prelude name nor a table is refused
+/// before any provider runs, and the message names the key that is wrong.
+#[test]
+fn elm_native_rejects_a_prelude_of_the_wrong_type() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_elm_prelude(&project, "prelude = 3\n");
+
+    let compile = run_morphir(
+        &["compile", "--extension", "morphir-elm-native"],
+        &home,
+        &project,
+    );
+
+    assert!(
+        !compile.status.success(),
+        "a misconfigured prelude fails the run: stdout={}",
+        String::from_utf8_lossy(&compile.stdout)
+    );
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    assert!(stderr.contains("frontend.elm.prelude"), "{stderr}");
+}
+
+/// A two-module Elm project that names no type from any prelude, so it
+/// compiles whichever prelude is in force.
+fn write_prelude_neutral_elm_project(project_root: &std::path::Path) {
+    std::fs::create_dir_all(project_root.join(".morphir")).unwrap();
+    let src_dir = project_root.join("src/My");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::write(
+        src_dir.join("Other.elm"),
+        "module My.Other exposing (Currency)\n\n\ntype Currency\n    = Currency\n",
+    )
+    .unwrap();
+    std::fs::write(
+        src_dir.join("Types.elm"),
+        "module My.Types exposing (Amount)\n\
+         \n\
+         import My.Other exposing (Currency)\n\
+         \n\
+         \n\
+         type Amount\n    \
+             = Amount Currency\n",
+    )
+    .unwrap();
+    std::fs::write(
+        project_root.join("morphir.toml"),
+        "[project]\n\
+         name = \"example/domain\"\n\
+         version = \"1.0.0\"\n\
+         source_directory = \"src\"\n\
+         \n\
+         [frontend]\n\
+         language = \"elm\"\n",
+    )
+    .unwrap();
+}
+
+/// Requirement: changing the prelude invalidates the incremental cache. The
+/// provider digests the prelude into the compile context it reports, so a run
+/// under a different prelude compiles every module again rather than trusting
+/// a baseline that was resolved against the old one.
+#[test]
+fn elm_native_changing_the_prelude_recompiles_everything() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_prelude_neutral_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native"];
+
+    set_elm_prelude(&project, "prelude = \"none\"\n");
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    let first = read_elm_native_manifest(&project);
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "second compile");
+    let second = read_elm_native_manifest(&project);
+
+    set_elm_prelude(&project, "prelude = \"elm-core\"\n");
+    assert_compile_succeeded(
+        &run_morphir(&arguments, &home, &project),
+        "compile under another prelude",
+    );
+    let switched = read_elm_native_manifest(&project);
+
+    assert_eq!(module_status(&first, "My.Other"), "compiled", "{first}");
+    assert_eq!(module_status(&first, "My.Types"), "compiled", "{first}");
+    assert_eq!(module_status(&second, "My.Other"), "unchanged", "{second}");
+    assert_eq!(module_status(&second, "My.Types"), "unchanged", "{second}");
+    assert_eq!(
+        module_status(&switched, "My.Other"),
+        "compiled",
+        "a new prelude is a new compile context: {switched}"
+    );
+    assert_eq!(
+        module_status(&switched, "My.Types"),
+        "compiled",
+        "a new prelude is a new compile context: {switched}"
+    );
+}
+
+/// Requirement: a single-file compile that loaded a configuration honours the
+/// prelude it names. This route only loads one when `--config` or `--project`
+/// says so; without either it compiles the file alone under the provider's
+/// default prelude.
+#[test]
+fn elm_native_single_file_honours_a_configured_prelude() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_elm_prelude(&project, "prelude = \"none\"\n");
+    let input = ["compile", "--input", "src/My/Other.elm", "--extension"];
+
+    let without_config = run_morphir(
+        &[input.as_slice(), &["morphir-elm-native"]].concat(),
+        &home,
+        &project,
+    );
+    assert_compile_succeeded(&without_config, "single-file compile without a config");
+
+    let with_config = run_morphir(
+        &[
+            input.as_slice(),
+            &["morphir-elm-native", "--config", "morphir.toml", "--json"],
+        ]
+        .concat(),
+        &home,
+        &project,
+    );
+
+    assert!(
+        !with_config.status.success(),
+        "`String` has nowhere to come from without a prelude: stdout={} stderr={}",
+        String::from_utf8_lossy(&with_config.stdout),
+        String::from_utf8_lossy(&with_config.stderr)
+    );
+    let envelope = compile_envelope(&with_config);
+    let diagnostics = envelope["diagnostics"]
+        .as_array()
+        .unwrap_or_else(|| panic!("the envelope lists diagnostics: {envelope}"));
+    assert!(
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic["code"] == "ELM_RESOLVE_NOT_FOUND"
+                && diagnostic["message"]
+                    .as_str()
+                    .is_some_and(|message| message.contains("prelude: none"))
+        }),
+        "the configured prelude is named in the diagnostic: {envelope}"
+    );
+}
+
+/// Requirement: a damaged cache costs a rebuild, never a failure.
+#[test]
+fn elm_native_corrupt_cache_is_ignored() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native"];
+
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    std::fs::write(elm_native_manifest_path(&project), b"{ not a manifest").unwrap();
+    assert_compile_succeeded(
+        &run_morphir(&arguments, &home, &project),
+        "compile over a corrupt cache",
+    );
+    let manifest = read_elm_native_manifest(&project);
+
+    assert_eq!(manifest["schemaVersion"], "2", "{manifest}");
+    assert_eq!(
+        module_status(&manifest, "My.Other"),
+        "compiled",
+        "{manifest}"
+    );
+    assert_eq!(
+        module_status(&manifest, "My.Types"),
+        "compiled",
+        "{manifest}"
+    );
+}
+
 fn add_test_repository(
     name: &str,
     index: &std::path::Path,
@@ -985,12 +1656,12 @@ fn compile_help_documents_explicit_extension_selection() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("--extension <EXTENSION>"), "{stdout}");
-    assert!(stdout.contains("single-file Elm compilation"), "{stdout}");
+    assert!(stdout.contains("morphir-elm-native"), "{stdout}");
     // Clap wraps help to the terminal width, so compare against text with its
     // whitespace collapsed rather than against the wrapped lines.
     let flowed = stdout.split_whitespace().collect::<Vec<_>>().join(" ");
     assert!(
-        flowed.contains("Defaults to morphir- followed by the language name"),
+        flowed.contains("defaults to the language's default provider"),
         "{stdout}"
     );
     // Deliberately not `morphir-{language}`. Help text is copied verbatim into
@@ -1045,6 +1716,31 @@ fn compile_rejects_an_invalid_explicit_extension_id() {
 }
 
 #[test]
+fn compile_rejects_an_empty_extension_id() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    let compile = run_morphir(&["compile", "--extension", ""], &home, &project);
+
+    assert!(
+        !compile.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    assert!(stderr.contains("empty value"), "{stderr}");
+    assert!(
+        !project
+            .join(".morphir/out/compile.dest/morphir-ir.json")
+            .exists(),
+        "an empty --extension must not reach a provider and write IR"
+    );
+}
+
+#[test]
 fn compile_reports_the_selected_extension_when_it_is_not_installed() {
     let temp = TempDir::new().unwrap();
     let source = temp.path().join("Example.elm");
@@ -1071,30 +1767,30 @@ fn compile_reports_the_selected_extension_when_it_is_not_installed() {
     );
 }
 
+// `--extension` names the provider that must answer, so an id that provides
+// nothing for the project's language is an error rather than a hint the
+// resolver may ignore.
 #[test]
-fn compile_rejects_explicit_extension_selection_on_the_legacy_path() {
+fn compile_rejects_an_extension_that_does_not_provide_the_language() {
     let temp = TempDir::new().unwrap();
-    let source = temp.path().join("Example.gleam");
-    std::fs::write(&source, "pub fn value() { 1 }\n").unwrap();
+    write_gleam_project(temp.path());
 
     let output = run_morphir(
-        &[
-            "compile",
-            "--language",
-            "gleam",
-            "--input",
-            source.to_str().unwrap(),
-            "--extension",
-            "morphir-other-gleam",
-        ],
+        &["compile", "--extension", "morphir-other-gleam"],
         &temp.path().join("home"),
         temp.path(),
     );
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
+    // The renderer wraps and gutters long messages, so compare the text
+    // without its layout.
+    let compact = stderr
+        .replace(['│', '×'], " ")
+        .split_whitespace()
+        .collect::<String>();
     assert!(
-        stderr.contains("Explicit extension selection currently requires"),
+        compact.contains("extension'morphir-other-gleam'doesnotprovidelanguage'gleam'"),
         "{stderr}"
     );
 }
