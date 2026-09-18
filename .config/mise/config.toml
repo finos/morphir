@@ -219,6 +219,13 @@ run = [
     "bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-assurance-parent-integration.ts --source .",
 ]
 
+[tasks."package:publisher-check"]
+description = "Check publisher-signature evidence for fixed statements through shared MCK support (not restore compatibility)"
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-publisher-parent-integration.ts --source .",
+]
+
 [tasks."package:check"]
 description = "Run draft MCK package cases through the shared TypeScript core and executable adapter"
 run = [

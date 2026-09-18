@@ -4,7 +4,12 @@ import { existsSync, readFileSync } from "node:fs";
 const tasks = Bun.TOML.parse(readFileSync(new URL("../.config/mise/config.toml", import.meta.url), "utf8")) as {
 	tasks: Record<string, { run: string[] }>;
 };
-type Job = { needs?: string[]; if?: string; steps: { run?: string; uses?: string; if?: string; with?: Record<string, string> }[] };
+type Job = {
+	needs?: string[];
+	if?: string;
+	"continue-on-error"?: boolean | string;
+	steps: { run?: string; uses?: string; if?: string; "continue-on-error"?: boolean | string; with?: Record<string, string> }[];
+};
 const workflow = Bun.YAML.parse(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")) as { jobs: Record<string, Job> };
 
 test("Rust package task builds a locked adapter and delegates verdicts to shared MCK", () => {
@@ -43,6 +48,26 @@ test("assurance task executes parent vectors through shared MCK support", () => 
 		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
 		"bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-assurance-parent-integration.ts --source .",
 	]);
+});
+
+test("publisher task checks fixed parent statements through shared MCK support", () => {
+	expect(tasks.tasks["package:publisher-check"]?.run).toEqual([
+		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+		"bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-publisher-parent-integration.ts --source .",
+	]);
+});
+
+test("package CI requires one publisher check after assurance without suppressing failure", () => {
+	const job = workflow.jobs["package-mck"];
+	const publisherSteps = job?.steps.filter((step) => step.run === "mise run package:publisher-check") ?? [];
+	expect(publisherSteps).toHaveLength(1);
+	expect(publisherSteps[0]?.if).toBe("${{ !cancelled() && steps.integration.outcome == 'success' }}");
+	expect(publisherSteps[0]?.["continue-on-error"]).toBeUndefined();
+	expect(job?.["continue-on-error"]).toBeUndefined();
+	const assuranceIndex = job?.steps.findIndex((step) => step.run === "mise run package:assurance-check") ?? -1;
+	const publisherIndex = job?.steps.findIndex((step) => step.run === "mise run package:publisher-check") ?? -1;
+	expect(assuranceIndex).toBeGreaterThanOrEqual(0);
+	expect(publisherIndex).toBeGreaterThan(assuranceIndex);
 });
 
 for (const schema of ["package-restore-assurance-protocol.schema.json", "package-restore-assurance-report.schema.json"]) {

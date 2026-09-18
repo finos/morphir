@@ -1383,6 +1383,7 @@ fn language_file_extension(language: &str) -> Result<&'static str, CliError> {
         "gleam" => Ok("gleam"),
         "elm" => Ok("elm"),
         "python" => Ok("py"),
+        "rust" => Ok("rs"),
         _ => Err(CliError::Validation {
             message: format!("Unknown language: {language}"),
         }),
@@ -1746,6 +1747,30 @@ mod tests {
 
     fn extension_id(value: &str) -> ExtensionId {
         ExtensionId::parse(value).unwrap()
+    }
+
+    #[test]
+    fn rust_source_collection_reads_rs_files_and_preserves_module_paths() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        std::fs::create_dir(root.join("domain")).unwrap();
+        let source = "pub fn positive(value: i64) -> bool { value > 0 }\n";
+        let path = root.join("domain/rules.rs");
+        std::fs::write(&path, source).unwrap();
+        std::fs::write(root.join("README.md"), "Not Rust source").unwrap();
+
+        let (documents, source_root) = collect_source_documents(&root, "rust").unwrap();
+
+        assert_eq!(source_root, file_uri(&root).unwrap());
+        assert_eq!(documents.len(), 1);
+        assert_eq!(documents[0].uri, file_uri(&path).unwrap());
+        assert_eq!(documents[0].language_id, "rust");
+        assert_eq!(documents[0].text, source);
+
+        let (single_file, source_root) = collect_source_documents(&path, "rust").unwrap();
+        assert_eq!(single_file.len(), 1);
+        assert_eq!(single_file[0].text, source);
+        assert_eq!(source_root, file_uri(path.parent().unwrap()).unwrap());
     }
 
     #[test]
