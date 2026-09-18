@@ -20,7 +20,7 @@ runs:
   steps:
     - name: Run sccache
       if: inputs.enable-sccache == 'true'
-      uses: mozilla-actions/sccache-action@v0.0.10
+      uses: mozilla-actions/sccache-action@v0.0.11
 
     - name: Configure sccache
       if: inputs.enable-sccache == 'true'
