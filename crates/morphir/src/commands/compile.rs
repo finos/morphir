@@ -2,6 +2,8 @@
 
 mod cache;
 mod elm_prelude;
+mod frontend_extension;
+mod frontend_settings;
 
 use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::CliError;
@@ -40,7 +42,9 @@ use version::{VersionedIr, selected_ir_version};
 pub struct CompileOptions {
     /// Language to compile (e.g., "gleam", "elm")
     pub language: Option<String>,
-    /// Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider
+    /// Extension id that provides the language (for example `morphir-elm-native`);
+    /// overrides `[frontend.<language>] extension`, and defaults to the
+    /// language's default provider
     pub extension: Option<String>,
     /// Input path or directory
     pub input: Option<String>,
@@ -127,7 +131,19 @@ fn infer_language(input: &Path, override_value: Option<&str>) -> Result<String, 
     }
 }
 
-fn resolve_extension_id(language: &str, explicit: Option<&str>) -> Result<ExtensionId, CliError> {
+/// The provider id this run compiles with: `--extension` when it names one,
+/// then `[frontend.<language>] extension`, then the language's default
+/// provider.
+///
+/// `configured` is already trimmed and known non-empty, because the reader
+/// refuses a blank value naming the configuration key. Only a run that loaded
+/// a configuration has one at all: this route loads one for `--config` or
+/// `--project`, and otherwise compiles the file on its own.
+fn resolve_extension_id(
+    language: &str,
+    explicit: Option<&str>,
+    configured: Option<&str>,
+) -> Result<ExtensionId, CliError> {
     // The provider path trims `--extension` before it resolves; a single-file
     // compile accepts the same typing, so `--extension " morphir-elm-native "`
     // means the same thing on both paths.
@@ -141,7 +157,10 @@ fn resolve_extension_id(language: &str, explicit: Option<&str>) -> Result<Extens
             }
             trimmed.to_owned()
         }
-        None => format!("morphir-{language}"),
+        None => match configured {
+            Some(id) => id.to_owned(),
+            None => format!("morphir-{language}"),
+        },
     };
     ExtensionId::parse(value).map_err(|error| CliError::Extension {
         message: format!("Invalid extension id: {error}"),
@@ -681,7 +700,20 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     )?;
     let environment = filtered_process_environment();
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
-    let extension_id = resolve_extension_id(&context.language_id, options.extension.as_deref())?;
+    // The configured provider reaches the registry exactly the way the flag
+    // does, so the opt-in built-ins are as reachable from `morphir.toml` as
+    // they are from `--extension`.
+    let configured_extension = frontend_extension::from_config(
+        config_context
+            .as_ref()
+            .and_then(|context| context.config.frontend.as_ref()),
+        &context.language_id,
+    )?;
+    let extension_id = resolve_extension_id(
+        &context.language_id,
+        options.extension.as_deref(),
+        configured_extension.as_deref(),
+    )?;
     let workspace = config_dir.unwrap_or(&start_dir);
     // A built-in provider is reached in process; only an installed or
     // configured extension is spawned.
@@ -1279,7 +1311,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         morphir_distribution::list_installed(&home).map_err(|error| CliError::Extension {
             message: format!("Failed to list installed frontend providers: {error}"),
         })?;
-    let requested_extension = match extension.as_deref().map(str::trim) {
+    let flag_extension = match extension.as_deref().map(str::trim) {
         Some("") => {
             return Err(CliError::Validation {
                 message: "--extension was given an empty value; pass an extension id such as `morphir-elm-native` or omit the flag".into(),
@@ -1289,6 +1321,13 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         Some(id) => Some(id),
         None => None,
     };
+    // A configured provider restricts the registry exactly the way the flag
+    // does, because that restriction is what makes a choice of provider
+    // binding — and what makes an opt-in built-in such as
+    // `morphir-elm-native` registered at all.
+    let requested_extension =
+        frontend_extension::resolve(flag_extension, context.config.frontend.as_ref(), &language)?;
+    let requested_extension = requested_extension.as_deref();
     let registry = crate::extensions::extension_registry_for(installed, requested_extension)?;
     let resolved = registry
         .resolve_frontend(
@@ -2157,21 +2196,21 @@ mod tests {
 
     #[test]
     fn defaults_the_provider_to_the_language_extension() {
-        let provider = resolve_extension_id("elm", None).unwrap();
+        let provider = resolve_extension_id("elm", None, None).unwrap();
 
         assert_eq!(provider.as_str(), "morphir-elm");
     }
 
     #[test]
     fn accepts_an_explicit_provider_distinct_from_the_language() {
-        let provider = resolve_extension_id("elm", Some("morphir-scala-elm")).unwrap();
+        let provider = resolve_extension_id("elm", Some("morphir-scala-elm"), None).unwrap();
 
         assert_eq!(provider.as_str(), "morphir-scala-elm");
     }
 
     #[test]
     fn rejects_an_invalid_explicit_provider() {
-        let error = resolve_extension_id("elm", Some("Morphir Scala Elm")).unwrap_err();
+        let error = resolve_extension_id("elm", Some("Morphir Scala Elm"), None).unwrap_err();
 
         assert!(
             error.to_string().contains("Invalid extension id"),
@@ -2181,16 +2220,33 @@ mod tests {
 
     #[test]
     fn trims_surrounding_whitespace_in_an_explicit_provider() {
-        let provider = resolve_extension_id("elm", Some(" morphir-scala-elm ")).unwrap();
+        let provider = resolve_extension_id("elm", Some(" morphir-scala-elm "), None).unwrap();
 
         assert_eq!(provider.as_str(), "morphir-scala-elm");
     }
 
     #[test]
     fn rejects_an_empty_explicit_provider() {
-        let error = resolve_extension_id("elm", Some("   ")).unwrap_err();
+        let error = resolve_extension_id("elm", Some("   "), None).unwrap_err();
 
         assert!(error.to_string().contains("empty value"), "{error}");
+    }
+
+    /// A configured provider is used when the flag is silent, and stands aside
+    /// the moment the flag names one.
+    #[test]
+    fn a_configured_provider_stands_in_for_the_default() {
+        let provider = resolve_extension_id("elm", None, Some("morphir-elm-native")).unwrap();
+
+        assert_eq!(provider.as_str(), "morphir-elm-native");
+    }
+
+    #[test]
+    fn an_explicit_provider_overrides_a_configured_one() {
+        let provider =
+            resolve_extension_id("elm", Some("morphir-elm"), Some("morphir-elm-native")).unwrap();
+
+        assert_eq!(provider.as_str(), "morphir-elm");
     }
 
     #[test]
