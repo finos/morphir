@@ -883,7 +883,7 @@ fn elm_native_is_not_the_default_elm_provider() {
             String::from_utf8_lossy(&compile.stdout),
             String::from_utf8_lossy(&compile.stderr)
         );
-        let stderr = String::from_utf8_lossy(&compile.stderr);
+        let stderr = compacted_stderr(&compile);
         assert!(
             !stderr.contains("morphir-elm-native"),
             "{arguments:?}: {stderr}"
@@ -1209,6 +1209,19 @@ fn elm_native_a_deleted_module_leaves_the_cache() {
     );
 }
 
+/// A run's stderr with all whitespace removed.
+///
+/// miette wraps long messages and prefixes continuation lines with a gutter,
+/// so an id can be split across two lines. Assertions that an id is present —
+/// or, more importantly, absent — have to look at text the wrapping cannot
+/// change, or `morphir-elm-native` broken over a line reads as `morphir-elm`.
+fn compacted_stderr(output: &std::process::Output) -> String {
+    String::from_utf8_lossy(&output.stderr)
+        .split_whitespace()
+        .filter(|piece| *piece != "│")
+        .collect()
+}
+
 /// Append a `[frontend.elm]` table to a project's `morphir.toml`, replacing
 /// whatever an earlier call put there.
 fn set_frontend_elm_table(project_root: &std::path::Path, table: &str) {
@@ -1476,12 +1489,53 @@ fn the_extension_flag_overrides_a_configured_extension() {
         String::from_utf8_lossy(&compile.stdout),
         String::from_utf8_lossy(&compile.stderr)
     );
-    let stderr = String::from_utf8_lossy(&compile.stderr);
+    let stderr = compacted_stderr(&compile);
     assert!(stderr.contains("morphir-elm"), "{stderr}");
     assert!(
         !stderr.contains("morphir-elm-native"),
         "the configured provider stood aside: {stderr}"
     );
+}
+
+/// Requirement: a key that is not a usable extension id fails the run on both
+/// compile paths, naming the key, even when `--extension` names the provider
+/// that would actually run. The flag chooses a provider; it does not make a
+/// broken `morphir.toml` acceptable, and a key reported on only some runs is a
+/// key nobody can rely on.
+#[test]
+fn a_misconfigured_key_fails_both_paths_even_with_the_flag() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = 3\n");
+
+    for arguments in [
+        vec!["compile", "--extension", "morphir-elm-native"],
+        vec![
+            "compile",
+            "--input",
+            "src/My/Other.elm",
+            "--config",
+            "morphir.toml",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    ] {
+        let compile = run_morphir(&arguments, &home, &project);
+
+        assert!(
+            !compile.status.success(),
+            "{arguments:?} must not compile past a broken key: stdout={} stderr={}",
+            String::from_utf8_lossy(&compile.stdout),
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        let stderr = compacted_stderr(&compile);
+        assert!(
+            stderr.contains("frontend.elm.extension"),
+            "{arguments:?}: {stderr}"
+        );
+    }
 }
 
 /// Requirement: a configured id that provides some other language fails with
@@ -1504,10 +1558,7 @@ fn a_configured_extension_that_does_not_provide_the_language_is_refused() {
     let stderr = String::from_utf8_lossy(&compile.stderr);
     // miette wraps and gutters the message, so the pieces are asserted rather
     // than the sentence.
-    let compact: String = stderr
-        .split_whitespace()
-        .filter(|piece| *piece != "│")
-        .collect();
+    let compact = compacted_stderr(&compile);
     assert!(
         compact.contains("extension'morphir-gleam-binding'doesnotprovide"),
         "{stderr}"
@@ -1564,7 +1615,7 @@ fn single_file_honours_a_configured_extension_only_with_a_config() {
         String::from_utf8_lossy(&without_config.stdout),
         String::from_utf8_lossy(&without_config.stderr)
     );
-    let stderr = String::from_utf8_lossy(&without_config.stderr);
+    let stderr = compacted_stderr(&without_config);
     assert!(stderr.contains("morphir-elm"), "{stderr}");
     assert!(!stderr.contains("morphir-elm-native"), "{stderr}");
 }

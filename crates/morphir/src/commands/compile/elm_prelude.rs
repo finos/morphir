@@ -47,7 +47,7 @@ pub const OPTION_KEY: &str = "elmPrelude";
 /// The `elmPrelude` compile option a configuration asks for, or `None` when it
 /// says nothing and the provider's own default applies.
 pub fn from_config(frontend: Option<&FrontendSection>) -> Result<Option<Value>, CliError> {
-    let Some(configured) = language_setting(frontend, "elm", "prelude") else {
+    let Some(configured) = language_setting(frontend, "elm", "prelude")? else {
         return Ok(None);
     };
     let value = serde_json::to_value(configured).map_err(|error| CliError::Config {

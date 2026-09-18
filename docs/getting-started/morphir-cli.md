@@ -162,11 +162,17 @@ morphir compile --input Example.elm --extension morphir-elm-native
 
 The order of precedence is `--extension`, then
 `[frontend.<language>] extension`, then the language's default provider. A
-configured id that does not provide the language fails the run and says so; a
-blank value fails the run and names `frontend.<language>.extension`. The key
-applies to a whole-project compile, and to a single-file compile that loaded a
-configuration through `--config` or `--project`; a single-file compile with
-neither flag uses the default provider.
+configured id that does not provide the language fails the run and says so. A
+value that is not a usable extension id — blank, of the wrong type, or
+malformed — fails the run naming `frontend.<language>.extension`, and it does
+so whether or not `--extension` was passed: the flag chooses which provider
+runs, it does not excuse a broken `morphir.toml`.
+
+The key applies to a whole-project compile, and to a single-file compile that
+loaded a configuration through `--config` or `--project`; a single-file compile
+with neither flag uses the default provider. The Morphir Playground and
+`morphir ui` read it too, from the workspace they were launched in, so a
+browser compile uses the same provider the command line does.
 
 `morphir-elm-native` is **types-only today**: it compiles type declarations
 and signatures but not value bodies. `morphir-elm` remains the default
