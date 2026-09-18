@@ -698,13 +698,20 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
     // Both compile paths settle the provider through the same function, so the
     // flag, the configuration and a malformed key mean the same thing on each.
-    let requested_extension = frontend_extension::resolve(
+    let resolved_extension = frontend_extension::resolve(
         options.extension.as_deref(),
         config_context
             .as_ref()
             .and_then(|context| context.config.frontend.as_ref()),
         &context.language_id,
     )?;
+    let frontend_extension::Resolved {
+        extension: requested_extension,
+        warning: extension_warning,
+    } = resolved_extension;
+    if let Some(warning) = &extension_warning {
+        eprintln!("warning: {warning}");
+    }
     let extension_id = resolve_extension_id(&context.language_id, requested_extension.as_deref())?;
     let workspace = config_dir.unwrap_or(&start_dir);
     // A built-in provider is reached in process; only an installed or
@@ -733,8 +740,9 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
             invoke_frontend(launch, &context).await?
         }
     };
-    let diagnostics = convert_extension_diagnostics(&compile_result.diagnostics);
+    let mut diagnostics = convert_extension_diagnostics(&compile_result.diagnostics);
     let format = OutputFormat::from_flags(options.json, options.json_lines);
+    prepend_extension_warning(&mut diagnostics, extension_warning.as_deref(), format);
 
     if !compile_result.success {
         if !compile_result
@@ -1148,6 +1156,40 @@ fn write_distribution(
     std::fs::write(output_path, bytes).map_err(|error| CliError::FileSystem { error })
 }
 
+/// Carries a `--extension`-overriding-a-malformed-key warning into the
+/// output's diagnostics, for `--json` and `--json-lines`, which have no other
+/// place for the CLI to say anything: their stdout is the envelope, so a
+/// warning that only went to stderr would be invisible to a caller that reads
+/// JSON. The human format has no such gap — [`write_compile_output`] already
+/// writes every diagnostic to stderr — so nothing is added there, or this
+/// warning would print twice.
+fn prepend_extension_warning(
+    diagnostics: &mut Vec<crate::output::Diagnostic>,
+    warning: Option<&str>,
+    format: crate::output::OutputFormat,
+) {
+    use crate::output::{Diagnostic, OutputFormat};
+
+    let Some(warning) = warning else { return };
+    if matches!(format, OutputFormat::Human) {
+        return;
+    }
+    diagnostics.insert(
+        0,
+        Diagnostic {
+            level: "warning".to_string(),
+            message: warning.to_string(),
+            code: None,
+            related: Vec::new(),
+            file: None,
+            line: None,
+            column: None,
+            uri: None,
+            range: None,
+        },
+    );
+}
+
 fn write_compile_output(
     format: crate::output::OutputFormat,
     output: &crate::output::CompileOutput,
@@ -1317,8 +1359,15 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     // does, because that restriction is what makes a choice of provider
     // binding — and what makes an opt-in built-in such as
     // `morphir-elm-native` registered at all.
-    let requested_extension =
+    let resolved_extension =
         frontend_extension::resolve(flag_extension, context.config.frontend.as_ref(), &language)?;
+    let frontend_extension::Resolved {
+        extension: requested_extension,
+        warning: extension_warning,
+    } = resolved_extension;
+    if let Some(warning) = &extension_warning {
+        eprintln!("warning: {warning}");
+    }
     let requested_extension = requested_extension.as_deref();
     let registry = crate::extensions::extension_registry_for(installed, requested_extension)?;
     let resolved = registry
@@ -1414,8 +1463,9 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             &result.module_results,
         );
     }
-    let diagnostics = convert_extension_diagnostics(&result.diagnostics);
+    let mut diagnostics = convert_extension_diagnostics(&result.diagnostics);
     let format = OutputFormat::from_flags(json, json_lines);
+    prepend_extension_warning(&mut diagnostics, extension_warning.as_deref(), format);
     let has_error = result
         .diagnostics
         .iter()

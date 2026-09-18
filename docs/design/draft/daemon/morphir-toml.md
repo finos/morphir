@@ -234,9 +234,10 @@ an extension id, such as `"morphir-elm-native"`, and selects that provider the
 same way `--extension` does, including opt-in built-ins. `--extension`
 overrides it, and with neither the language's default provider applies. An id
 that does not provide the language fails the run. A value that is not a usable
-extension id — blank, of the wrong type, or malformed — fails the run naming
-`frontend.<language>.extension`, whether or not `--extension` was passed: the
-flag chooses a provider, it does not excuse a broken configuration.
+extension id — blank, of the wrong type, or malformed — is a configuration
+error naming `frontend.<language>.extension`, unless `--extension` is given.
+When it is, the flag's provider is used and the broken key is ignored, with a
+warning on stderr.
 
 `prelude` is implemented today and read by the native `morphir-elm-native`
 provider, which receives it as the `elmPrelude` compile option; the JavaScript

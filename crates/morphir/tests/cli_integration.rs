@@ -1497,13 +1497,13 @@ fn the_extension_flag_overrides_a_configured_extension() {
     );
 }
 
-/// Requirement: a key that is not a usable extension id fails the run on both
-/// compile paths, naming the key, even when `--extension` names the provider
-/// that would actually run. The flag chooses a provider; it does not make a
-/// broken `morphir.toml` acceptable, and a key reported on only some runs is a
-/// key nobody can rely on.
+/// Requirement: a key that is not a usable extension id no longer fails the
+/// run on either compile path when `--extension` names the provider that will
+/// actually run: the flag already settles which provider is used, so the run
+/// proceeds with the flag's id and a warning naming the broken key goes to
+/// stderr, never stdout — stdout stays the command's real output.
 #[test]
-fn a_misconfigured_key_fails_both_paths_even_with_the_flag() {
+fn a_misconfigured_key_is_ignored_with_a_warning_when_the_flag_is_given() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
@@ -1524,9 +1524,96 @@ fn a_misconfigured_key_fails_both_paths_even_with_the_flag() {
     ] {
         let compile = run_morphir(&arguments, &home, &project);
 
+        assert_compile_succeeded(
+            &compile,
+            &format!("{arguments:?} with a broken key ignored"),
+        );
+        let stderr = compacted_stderr(&compile);
+        assert!(stderr.contains("warning:"), "{arguments:?}: {stderr}");
+        assert!(
+            stderr.contains("frontend.elm.extension"),
+            "{arguments:?}: {stderr}"
+        );
+        let stdout = String::from_utf8_lossy(&compile.stdout).to_lowercase();
+        assert!(
+            !stdout.contains("warning"),
+            "{arguments:?}: warnings never reach stdout: {stdout}"
+        );
+        assert!(
+            !stdout.contains("frontend.elm.extension"),
+            "{arguments:?}: {stdout}"
+        );
+    }
+}
+
+/// Requirement: the same lenience applies under `--json` and `--json-lines`,
+/// where stdout is the envelope: the warning still goes to stderr only, and
+/// stdout parses as JSON with nothing else mixed into it.
+#[test]
+fn a_misconfigured_key_ignored_with_the_flag_keeps_json_stdout_clean() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = 3\n");
+
+    for arguments in [
+        vec!["compile", "--extension", "morphir-elm-native", "--json"],
+        vec![
+            "compile",
+            "--input",
+            "src/My/Other.elm",
+            "--config",
+            "morphir.toml",
+            "--extension",
+            "morphir-elm-native",
+            "--json",
+        ],
+    ] {
+        let compile = run_morphir(&arguments, &home, &project);
+
+        assert_compile_succeeded(
+            &compile,
+            &format!("{arguments:?} with a broken key ignored"),
+        );
+        let stdout = String::from_utf8_lossy(&compile.stdout);
+        serde_json::from_str::<serde_json::Value>(&stdout).unwrap_or_else(|error| {
+            panic!("{arguments:?}: --json output is JSON ({error}): {stdout}")
+        });
+        let stderr = compacted_stderr(&compile);
+        assert!(stderr.contains("warning:"), "{arguments:?}: {stderr}");
+        assert!(
+            stderr.contains("frontend.elm.extension"),
+            "{arguments:?}: {stderr}"
+        );
+    }
+}
+
+/// Requirement: without `--extension` to fall back on, a malformed key is
+/// still a configuration error, naming the key, exactly as before.
+#[test]
+fn a_misconfigured_key_still_fails_without_the_flag() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = 3\n");
+
+    for arguments in [
+        vec!["compile"],
+        vec![
+            "compile",
+            "--input",
+            "src/My/Other.elm",
+            "--config",
+            "morphir.toml",
+        ],
+    ] {
+        let compile = run_morphir(&arguments, &home, &project);
+
         assert!(
             !compile.status.success(),
-            "{arguments:?} must not compile past a broken key: stdout={} stderr={}",
+            "{arguments:?} must fail without a flag to fall back on: stdout={} stderr={}",
             String::from_utf8_lossy(&compile.stdout),
             String::from_utf8_lossy(&compile.stderr)
         );

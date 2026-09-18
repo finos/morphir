@@ -24,10 +24,9 @@
 //! as `morphir-elm-native` reachable without the flag, and what makes an id
 //! that provides some other language fail with the same message the flag gets.
 //!
-//! A malformed key is a configuration error whatever the run does with it. The
-//! flag decides which provider is used, not whether the project's own
-//! configuration is well formed, so `--extension` overrides the key's value
-//! but never excuses a value that is not a usable extension id.
+//! A malformed key is a configuration error, unless `--extension` is given: the
+//! flag already settles which provider the run uses, so a broken key it would
+//! otherwise have overridden is reported as a warning instead, not a failure.
 
 use super::frontend_settings::{language_setting, shape_of};
 use crate::error::CliError;
@@ -80,23 +79,56 @@ pub fn from_config(
     Ok(Some(trimmed.to_owned()))
 }
 
+/// What a run does with the configured provider for a language.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Resolved<'a> {
+    /// The provider a run uses: the flag when it names one, then the
+    /// configuration, then nothing, which leaves the language's default
+    /// provider.
+    pub extension: Option<std::borrow::Cow<'a, str>>,
+    /// Set only when `--extension` was given and the configured key was
+    /// malformed: the flag's id is used regardless, but the key is unusable
+    /// and a caller should tell the user so, on stderr.
+    pub warning: Option<String>,
+}
+
 /// The provider a run uses: the flag when it names one, then the
 /// configuration, then nothing, which leaves the language's default provider.
 ///
-/// The key is read first and every run, so a malformed one fails the run
-/// whether or not `--extension` was passed: the flag chooses a provider, it
-/// does not excuse a broken `morphir.toml`. The flag itself is validated by
-/// its own caller, which reports an empty `--extension` as a flag error.
+/// A malformed key is a configuration error when there is no flag to fall
+/// back on: with nothing to override it, a broken `morphir.toml` must not
+/// silently resolve to the language's default provider. But when `--extension`
+/// names a provider, that flag already settles which provider the run uses,
+/// so a malformed key no longer needs to fail the run — it is reported as a
+/// warning instead, naming the key and reusing the same text the key would
+/// have failed with on its own, so the two messages agree.
 pub fn resolve<'a>(
     flag: Option<&'a str>,
     frontend: Option<&FrontendSection>,
     language: &str,
-) -> Result<Option<std::borrow::Cow<'a, str>>, CliError> {
-    let configured = from_config(frontend, language)?;
-    Ok(match flag {
-        Some(id) => Some(std::borrow::Cow::Borrowed(id)),
-        None => configured.map(std::borrow::Cow::Owned),
-    })
+) -> Result<Resolved<'a>, CliError> {
+    match flag {
+        Some(id) => match from_config(frontend, language) {
+            Ok(_) => Ok(Resolved {
+                extension: Some(std::borrow::Cow::Borrowed(id)),
+                warning: None,
+            }),
+            Err(CliError::Config { error }) => Ok(Resolved {
+                extension: Some(std::borrow::Cow::Borrowed(id)),
+                warning: Some(format!(
+                    "{error}; ignored because --extension {id} was given"
+                )),
+            }),
+            Err(other) => Err(other),
+        },
+        None => {
+            let configured = from_config(frontend, language)?;
+            Ok(Resolved {
+                extension: configured.map(std::borrow::Cow::Owned),
+                warning: None,
+            })
+        }
+    }
 }
 
 #[cfg(test)]
@@ -194,30 +226,56 @@ mod tests {
     #[test]
     fn the_flag_overrides_the_configured_id() {
         let section = frontend(json!({"elm": {"extension": "morphir-elm-native"}}));
-        assert_eq!(
-            resolve(Some("morphir-elm"), Some(&section), "elm")
-                .unwrap()
-                .as_deref(),
-            Some("morphir-elm")
-        );
-        assert_eq!(
-            resolve(None, Some(&section), "elm").unwrap().as_deref(),
-            Some("morphir-elm-native")
-        );
-        assert_eq!(resolve(None, None, "elm").unwrap(), None);
+        let resolved = resolve(Some("morphir-elm"), Some(&section), "elm").unwrap();
+        assert_eq!(resolved.extension.as_deref(), Some("morphir-elm"));
+        assert_eq!(resolved.warning, None);
+
+        let resolved = resolve(None, Some(&section), "elm").unwrap();
+        assert_eq!(resolved.extension.as_deref(), Some("morphir-elm-native"));
+        assert_eq!(resolved.warning, None);
+
+        assert_eq!(resolve(None, None, "elm").unwrap().extension, None);
     }
 
-    /// A malformed key fails the run even when the flag names the provider
-    /// that will actually be used: the flag chooses a provider, it does not
-    /// make a broken `morphir.toml` acceptable, and a key that is only
-    /// reported on some runs is a key nobody can trust.
+    /// A well-formed key never produces a warning, flag or no flag: a warning
+    /// is only for a key the flag had to ignore because it could not be used.
     #[test]
-    fn a_misconfigured_key_is_an_error_even_with_the_flag() {
+    fn a_well_formed_key_with_the_flag_is_silent() {
+        let section = frontend(json!({"elm": {"extension": "morphir-elm-native"}}));
+        let resolved = resolve(Some("morphir-elm"), Some(&section), "elm").unwrap();
+        assert_eq!(resolved.extension.as_deref(), Some("morphir-elm"));
+        assert_eq!(resolved.warning, None);
+    }
+
+    /// With the flag given, a malformed key no longer fails the run: the flag
+    /// already settles which provider is used, so the key is ignored and
+    /// reported as a warning that names the key and the flag's id, reusing
+    /// the same text the key would have failed with on its own.
+    #[test]
+    fn a_misconfigured_key_is_a_warning_with_the_flag() {
         for wrong in [json!(3), json!(""), json!("Morphir Elm Native")] {
             let section = frontend(json!({"elm": {"extension": wrong}}));
 
-            let failure = resolve(Some("morphir-elm"), Some(&section), "elm")
-                .expect_err("a malformed key fails whatever the flag says");
+            let resolved = resolve(Some("morphir-elm-native"), Some(&section), "elm")
+                .expect("a malformed key no longer fails the run when the flag is given");
+
+            assert_eq!(resolved.extension.as_deref(), Some("morphir-elm-native"));
+            let warning = resolved.warning.expect("a malformed key warns");
+            assert!(warning.contains("frontend.elm.extension"), "{warning}");
+            assert!(warning.contains("morphir-elm-native"), "{warning}");
+        }
+    }
+
+    /// Without the flag, a malformed key is still a configuration error: there
+    /// is nothing to fall back on, so the run must not silently use the
+    /// language's default provider in place of a broken key.
+    #[test]
+    fn a_misconfigured_key_is_still_an_error_without_the_flag() {
+        for wrong in [json!(3), json!(""), json!("Morphir Elm Native")] {
+            let section = frontend(json!({"elm": {"extension": wrong}}));
+
+            let failure = resolve(None, Some(&section), "elm")
+                .expect_err("a malformed key fails without a flag to fall back on");
 
             let CliError::Config { error } = failure else {
                 panic!("a misconfigured provider is a configuration error: {failure:?}");
