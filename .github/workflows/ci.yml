@@ -423,7 +423,8 @@ jobs:
         run: >-
           cargo build --locked --release
           --manifest-path ecosystem/morphir-rust/Cargo.toml
-          -p morphir-avro-extension -p morphir-openapi-extension -p morphir-python-binding
+          -p morphir-avro-extension -p morphir-openapi-extension
+          -p morphir-python-binding -p morphir-rust-binding
           --target wasm32-unknown-unknown
 
       - name: Run WASM extension integration tests
@@ -441,6 +442,16 @@ jobs:
             --wasm ecosystem/morphir-rust/target/wasm32-unknown-unknown/release/morphir_python_binding.wasm \
             --output "$MORPHIR_PYTHON_BUNDLE"
           cargo test --locked --package morphir --test python_extension -- --ignored --nocapture
+
+      - name: Package and test the Rust extension through the CLI
+        env:
+          MORPHIR_RUST_BUNDLE: ${{ github.workspace }}/.dev/out/rust-bundle
+        run: |
+          python3 -B ecosystem/morphir-rust/scripts/package_extension.py \
+            --short-id rust \
+            --wasm ecosystem/morphir-rust/target/wasm32-unknown-unknown/release/morphir_rust_binding.wasm \
+            --output "$MORPHIR_RUST_BUNDLE"
+          cargo test --locked --package morphir --test rust_extension -- --ignored --nocapture
 
   # Generate and diff-check CLI reference docs — parallel with extension builds
   # and integration tests (only needs a debug morphir build, not extensions).
