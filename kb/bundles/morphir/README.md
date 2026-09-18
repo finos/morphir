@@ -5,6 +5,7 @@ Knowledge bundles about Morphir itself: the CLI, the IR, and the ecosystem repos
 | Bundle | Description |
 | ------ | ----------- |
 | [morphir-cli](morphir-cli/index.md) | The Rust morphir command line: its commands, behavior and design, as shipped from finos/morphir. |
+| [morphir-extensions](morphir-extensions/index.md) | Compile-time extensions to the Morphir CLI: frontend and process providers, their identities and selection. |
 | [morphir-ir](morphir-ir/index.md) | The Morphir IR: its data model, naming, canonical serialization and distribution formats. |
 | [morphir-package-system](morphir-package-system/index.md) | The proposed Morphir model package system defines artifact boundaries, release identity, dependency resolution, registry behavior, trust, and staged delivery. |
 

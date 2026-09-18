@@ -40,6 +40,7 @@ under `bundles/` or be grouped one level deeper by subject.
 | Bundle | Description |
 | ------ | ----------- |
 | [morphir/morphir-cli](bundles/morphir/morphir-cli/index.md) | The Rust morphir command line: its commands, behavior and design, as shipped from finos/morphir. |
+| [morphir/morphir-extensions](bundles/morphir/morphir-extensions/index.md) | Compile-time extensions to the Morphir CLI: frontend and process providers, their identities and selection. |
 | [morphir/morphir-ir](bundles/morphir/morphir-ir/index.md) | The Morphir IR: its data model, naming, canonical serialization and distribution formats. |
 | [morphir/morphir-package-system](bundles/morphir/morphir-package-system/index.md) | The proposed Morphir model package system defines artifact boundaries, release identity, dependency resolution, registry behavior, trust, and staged delivery. |
 
