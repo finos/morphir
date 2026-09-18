@@ -6,8 +6,9 @@ sidebar_label: Example integration tests
 # Example integration tests
 
 `morphir itest` discovers `scenario.ipynb` notebooks recursively and exercises
-real Morphir CLI commands. Notebook cells combine the explanation, project
-files, commands and Rego assertions in one document. Milestone 0 uses an embedded
+real Morphir CLI commands. Notebooks define explanations, commands and Rego
+assertions for ordinary on-disk projects. They can also supply optional project
+files in cells, including entirely self-contained examples. Milestone 0 uses an embedded
 Regorus evaluator, so the baseline suite requires no OPA executable or downloaded
 extension. See [the evaluation architecture](evaluation.md) for the native
 Morphir evaluator and WASM follow-up design.
@@ -88,12 +89,49 @@ language highlighting in every editor. Execute the notebook with `morphir itest`
 | IR output | `ir:v3`, `ir:v4` |
 | Expected behavior | `kind:positive`, `kind:negative` |
 | Prerequisites | `suite:offline` |
+| Workspace inputs | `workspace:directory`, `workspace:notebook` |
 
 Tags are unique, nonempty strings of lowercase ASCII letters, digits, colon,
 hyphen, underscore or period. They select scenarios; they do not declare a
 feature supported or skip a failing test.
 
-## Workspace file cells
+## Workspace inputs
+
+By default, the directory containing `scenario.ipynb` is the workspace source.
+Keep normal project files on disk:
+
+```text
+single-file/
+  Example.elm
+  scenario.ipynb
+```
+
+The driver copies the project into a temporary workspace before executing any
+commands. Source files and directories are preserved; command outputs remain in
+the temporary copy. File cells are optional additions to that copy.
+
+The optional `metadata.morphir.itest.workspace` field selects another source:
+
+```json
+{"kind": "directory", "path": "project", "exclude": ["installed"]}
+```
+
+`path` is `.` or a portable relative subdirectory of the scenario directory.
+Omitting the entire field is equivalent to `{"kind":"directory","path":"."}`.
+The optional `exclude` list contains relative file or directory paths, not globs.
+Directory exclusions include descendants. Use it for custom generated outputs.
+
+The copy omits `scenario.ipynb`, `.git`, `node_modules`, `target`, `elm-stuff`,
+`dist` and `out` entries, plus `.morphir/cache`. Other `.morphir` inputs, including
+`.morphir/morphir.toml`, are preserved. Git ignore files are not interpreted.
+Symlinks and special files are rejected; ordinary files retain their bytes and
+permissions, and empty directories are copied.
+
+For a self-contained notebook that deliberately ignores adjacent project files,
+use `{"kind":"notebook"}`. Its project inputs come entirely from file cells.
+Both forms run through the CLI and need no Jupyter kernel.
+
+### Optional file cells
 
 A cell with `metadata.morphir.file` declares an input file:
 
@@ -103,9 +141,10 @@ A cell with `metadata.morphir.file` declares an input file:
 
 Its source is the literal file contents. JSON, TOML, YAML, Elm and other text
 files use the same convention. Every declared file is materialized before the
-first command, regardless of cell position. A notebook supplies its complete
-workspace; neighboring files are not implicitly copied. Keep the assertion
-source in assertion cells, outside the project under test.
+first command, regardless of cell position. Disk files and notebook file cells
+can be combined. Duplicate files, portable-name collisions and file/directory
+conflicts fail rather than silently replacing inputs. Keep the assertion source
+in assertion cells, outside the project under test.
 
 Paths are normalized, relative, slash-separated paths without empty components,
 `..`, backslashes or drive prefixes. Windows device names, reserved punctuation and trailing dots/spaces are rejected.

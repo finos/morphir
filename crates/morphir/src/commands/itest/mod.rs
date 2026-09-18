@@ -3,6 +3,7 @@ mod model;
 mod runner;
 #[cfg(windows)]
 mod windows_job;
+mod workspace;
 #[cfg(test)]
 use runner::execute;
 use runner::run;
@@ -20,6 +21,7 @@ use std::{
 #[derive(Debug)]
 struct Scenario {
     pub id: String,
+    pub directory: PathBuf,
     pub notebook: Notebook,
     pub metadata: Metadata,
     pub steps: Vec<Step>,
@@ -84,6 +86,7 @@ fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
             .with_context(|| format!("scenario {id}: {}", entry.path().display()))?;
         scenarios.push(Scenario {
             id,
+            directory,
             notebook,
             metadata,
             steps,

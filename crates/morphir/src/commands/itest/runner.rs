@@ -171,7 +171,7 @@ fn run_in_temporary(scenario: &Scenario, binary: &Path, root: &Path) -> Result<(
     let project = root.join("project");
     fs::create_dir_all(&project)?;
     fs::create_dir_all(root.join("home"))?;
-    scenario.notebook.materialize(&project)?;
+    super::workspace::materialize(scenario, &project)?;
     fs::create_dir_all(project.join(".morphir"))?;
     for (index, step) in scenario.steps.iter().enumerate() {
         let logs = root.join(format!("step-{}", index + 1));

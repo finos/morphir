@@ -9,8 +9,10 @@ status: stable
 # Example-driven CLI validation
 
 `morphir itest` recursively discovers `scenario.ipynb` under categorized example
-directories. Each notebook supplies prose, source/configuration files, literal
-CLI commands and Rego assertions. The driver materializes a fresh workspace and
+directories. Each notebook supplies prose, literal CLI commands and Rego
+assertions. Project files remain on disk by default; optional file cells can
+add inputs or provide an entire workspace. The driver copies the scenario
+directory into a fresh workspace and
 uses the same Morphir executable for workflow commands and `morphir eval`.
 
 ```sh
@@ -31,6 +33,13 @@ explain intent. File cells carry logical paths and language metadata; paths are
 separate from nbformat cell IDs. Command cells declare case names, captures and
 timeouts. Assertion cells contain Rego modules and name the preceding command
 and rule entrypoints. No Markdown/JSON assertion DSL is retained.
+
+On-disk workspaces are the default, not a requirement to embed project files in
+the notebook. Optional `metadata.morphir.itest.workspace` selects a relative
+project directory and exclusions with `kind: "directory"`, or deliberately
+uses only file cells with `kind: "notebook"`. Mixed disk and cell inputs are
+supported, with collisions rejected. Commands run on temporary copies so the
+example source tree is not changed.
 
 Repeated tags require all selected dimensions. Categories may contain more
 categories without driver edits. All selected commands and named assertions

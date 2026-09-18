@@ -381,9 +381,11 @@ Watch mode provides better responsiveness and resource efficiency by reacting to
 
 Use `morphir itest` to verify workflows through real CLI subprocesses. Runnable
 projects live under categorized `examples/` directories and carry `scenario.ipynb`.
-Keep scenario context and tags in notebook metadata, source/configuration in file
-cells, literal CLI commands in command cells and named Rego rules in assertion
-cells. The embedded evaluator is a native provider; native Morphir IR evaluation
+Keep scenario context and tags in notebook metadata, literal CLI commands in
+command cells and named Rego rules in assertion cells. Project source and config
+files stay on disk by default; the driver copies the scenario directory into a
+temporary workspace. Optional file cells can add inputs or provide an explicitly
+selected notebook-only workspace. The embedded evaluator is a native provider; native Morphir IR evaluation
 and WASM hosts are fast-follow work described in
 [the evaluation architecture](docs/developers/evaluation.md). Start with one failing scenario, establish its cause, then
 make the smallest fix and retain the passing case as regression coverage.

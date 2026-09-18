@@ -101,6 +101,99 @@ fn validates_every_executable_cell_before_running() {
 }
 
 #[test]
+fn workspace_metadata_rejects_invalid_paths_and_unknown_modes() {
+    for workspace in [
+        json!({"kind":"directory","path":"../outside"}),
+        json!({"kind":"directory","path":"/outside"}),
+        json!({"kind":"directory","path":"." ,"exclude":["../outside"]}),
+        json!({"kind":"directory"}),
+        json!({"kind":"notebook","path":"."}),
+        json!({"kind":"typo"}),
+    ] {
+        let mut value = notebook();
+        value["metadata"]["morphir"]["itest"]["workspace"] = workspace;
+        assert!(parse(&value).is_err(), "accepted {value}");
+    }
+}
+
+#[test]
+fn disk_workspace_copies_inputs_and_preserves_config_without_build_outputs() {
+    let source = tempfile::tempdir().unwrap();
+    let target = tempfile::tempdir().unwrap();
+    let mut value = notebook();
+    value["metadata"]["morphir"]["itest"]["workspace"] =
+        json!({"kind":"directory","path":".","exclude":["installed"]});
+    fs::write(source.path().join("scenario.ipynb"), value.to_string()).unwrap();
+    for path in [
+        ".morphir/morphir.toml",
+        ".morphir/out/stale",
+        "installed/stale",
+        ".git/config",
+        "node_modules/cache",
+        "src/input.bin",
+    ] {
+        let file = source.path().join(path);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(file, [0, 255, 1]).unwrap();
+    }
+    fs::create_dir(source.path().join("empty")).unwrap();
+    let scenarios = support::discover(source.path(), None).unwrap();
+    super::workspace::materialize(&scenarios[0], target.path()).unwrap();
+    for path in [".morphir/morphir.toml", "src/input.bin"] {
+        assert_eq!(fs::read(target.path().join(path)).unwrap(), [0, 255, 1]);
+    }
+    assert!(target.path().join("empty").is_dir());
+    for path in [
+        ".morphir/out",
+        "installed",
+        ".git",
+        "node_modules",
+        "scenario.ipynb",
+    ] {
+        assert!(!target.path().join(path).exists(), "copied excluded {path}");
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn disk_workspace_refuses_symlinks() {
+    let source = tempfile::tempdir().unwrap();
+    let target = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+    fs::write(source.path().join("scenario.ipynb"), notebook().to_string()).unwrap();
+    std::os::unix::fs::symlink(outside.path(), source.path().join("linked")).unwrap();
+    let scenarios = support::discover(source.path(), None).unwrap();
+    let error = super::workspace::materialize(&scenarios[0], target.path()).unwrap_err();
+    assert!(error.to_string().contains("symlink"), "{error:#}");
+}
+
+#[test]
+fn disk_workspace_checks_directory_aliases_across_file_cells() {
+    for (directory, inline, accepted) in [
+        ("ＦＯＯ", "foo", false),
+        ("SRC", "src/extra.txt", false),
+        ("src", "src/extra.txt", true),
+    ] {
+        let source = tempfile::tempdir().unwrap();
+        let target = tempfile::tempdir().unwrap();
+        fs::create_dir(source.path().join(directory)).unwrap();
+        let mut value = notebook();
+        value["cells"].as_array_mut().unwrap().push(json!({
+            "id":"extra", "cell_type":"raw", "source":"inline",
+            "metadata":{"morphir":{"file":{"path":inline,"language":"text"}}}
+        }));
+        fs::write(source.path().join("scenario.ipynb"), value.to_string()).unwrap();
+        let scenarios = support::discover(source.path(), None).unwrap();
+        let result = super::workspace::materialize(&scenarios[0], target.path());
+        assert_eq!(
+            result.is_ok(),
+            accepted,
+            "{directory:?} + {inline:?}: {result:?}"
+        );
+    }
+}
+
+#[test]
 fn accepts_literal_quoted_arguments_without_shell_expansion() {
     let mut value = notebook();
     value["cells"][0]["source"] =

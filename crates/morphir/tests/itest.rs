@@ -26,11 +26,12 @@ fn write_scenario(root: &std::path::Path, notebook: &Value) {
 }
 
 fn run(root: &std::path::Path, args: &[&str]) -> std::process::Output {
+    let home = tempfile::tempdir().unwrap();
     Command::new(env!("CARGO_BIN_EXE_morphir"))
         .arg("itest")
         .arg(root)
         .args(args)
-        .env("MORPHIR_HOME", root.join("outer-home"))
+        .env("MORPHIR_HOME", home.path())
         .env("MORPHIR_LOG_FILE", "false")
         .output()
         .unwrap()
@@ -147,6 +148,7 @@ fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
     fs::create_dir_all(&config).unwrap();
     fs::write(config.join("morphir.toml"), "invalid TOML {{{").unwrap();
     let mut notebook = scenario();
+    notebook["metadata"]["morphir"]["itest"]["workspace"] = json!({"kind":"notebook"});
     notebook["cells"][1]["source"] = json!("morphir config show --json");
     notebook["cells"][2]["source"] =
         json!("package cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 0 }");
@@ -156,7 +158,7 @@ fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
         json!({"file":{"path":".morphir/morphir.toml","language":"toml"}}),
     ));
     write_scenario(&example, &notebook);
-    // Neighboring files are deliberately not workspace inputs.
+    // Notebook-only mode deliberately excludes neighboring project files.
     fs::write(example.join("morphir.toml"), "invalid TOML {{{").unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
         .arg("itest")
@@ -172,6 +174,84 @@ fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+#[test]
+fn itest_copies_disk_workspaces_and_combines_optional_notebook_files() {
+    for workspace in [None, Some("project")] {
+        let temp = tempfile::tempdir().unwrap();
+        let project = workspace.map_or_else(|| temp.path().to_owned(), |p| temp.path().join(p));
+        fs::create_dir_all(&project).unwrap();
+        let source = "module Example exposing (Amount)\n\ntype alias Amount = Int\n";
+        fs::write(project.join("Example.elm"), source).unwrap();
+        fs::write(project.join("binary.dat"), [0, 255, 1]).unwrap();
+        let mut notebook = scenario();
+        if let Some(path) = workspace {
+            notebook["metadata"]["morphir"]["itest"]["workspace"] =
+                json!({"kind":"directory","path":path});
+            // Only the selected directory is a workspace input.
+            fs::write(temp.path().join("morphir.toml"), "invalid TOML {{{").unwrap();
+        }
+        notebook["cells"][1]["source"] = json!(
+            "morphir compile --input Example.elm --extension morphir-elm-native --package-name examples/disk --output installed --json"
+        );
+        notebook["cells"][1]["metadata"]["morphir"]["itest"]["name"] =
+            json!("Compile disk source with notebook additions");
+        notebook["cells"][1]["metadata"]["morphir"]["itest"]["captures"] = json!([
+            {"name":"ir","path":"installed/morphir-ir.json","format":"json"},
+            {"name":"extra","path":"extra.txt","format":"text"},
+            {"name":"binary","path":"binary.dat","format":"exists"}
+        ]);
+        notebook["cells"][2]["source"] = json!(
+            "package cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 0; input.artifacts.ir.value.formatVersion == 3; input.artifacts.extra.value == \"notebook addition\"; input.artifacts.binary.kind == \"file\" }"
+        );
+        notebook["cells"].as_array_mut().unwrap().push(code(
+            "extra",
+            "notebook addition",
+            json!({"file":{"path":"extra.txt","language":"text"}}),
+        ));
+        write_scenario(temp.path(), &notebook);
+        let output = run(temp.path(), &[]);
+        assert!(
+            output.status.success(),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            fs::read_to_string(project.join("Example.elm")).unwrap(),
+            source
+        );
+        assert!(!project.join("installed").exists());
+        assert!(!project.join("extra.txt").exists());
+        assert!(!project.join(".morphir").exists());
+    }
+}
+
+#[test]
+fn itest_rejects_collisions_between_disk_and_notebook_files() {
+    for path in ["extra.txt", "EXTRA.txt", "extra.txt/nested"] {
+        let temp = tempfile::tempdir().unwrap();
+        let mut notebook = scenario();
+        notebook["cells"].as_array_mut().unwrap().push(code(
+            "extra",
+            "notebook contents",
+            json!({"file":{"path":path,"language":"text"}}),
+        ));
+        write_scenario(temp.path(), &notebook);
+        fs::write(temp.path().join("extra.txt"), "disk contents").unwrap();
+        let output = run(temp.path(), &[]);
+        assert!(!output.status.success(), "accepted conflicting {path}");
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("conflicting workspace path"),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            fs::read_to_string(temp.path().join("extra.txt")).unwrap(),
+            "disk contents"
+        );
+    }
 }
 
 #[test]

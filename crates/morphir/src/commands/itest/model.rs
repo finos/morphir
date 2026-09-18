@@ -12,6 +12,28 @@ pub struct Metadata {
     pub description: String,
     pub tags: Vec<String>,
     pub provider: ProviderId,
+    #[serde(default)]
+    pub workspace: Workspace,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum Workspace {
+    Directory {
+        path: String,
+        #[serde(default)]
+        exclude: Vec<String>,
+    },
+    Notebook {},
+}
+
+impl Default for Workspace {
+    fn default() -> Self {
+        Self::Directory {
+            path: ".".into(),
+            exclude: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,6 +92,14 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
     );
     let metadata: Metadata =
         serde_json::from_value(profile["itest"].clone()).context("invalid scenario metadata")?;
+    if let Workspace::Directory { path, exclude } = &metadata.workspace {
+        if path != "." {
+            relative_path(path).context("invalid workspace directory")?;
+        }
+        for path in exclude {
+            relative_path(path).context("invalid workspace exclusion")?;
+        }
+    }
     ensure!(
         !metadata.title.trim().is_empty() && !metadata.description.trim().is_empty(),
         "scenario needs title and description"

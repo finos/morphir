@@ -3,7 +3,12 @@
 use anyhow::{Context, Result, ensure};
 use serde::Deserialize;
 use serde_json::Value;
-use std::{collections::HashSet, fs, io::Write, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    io::Write,
+    path::Path,
+};
 use unicode_casefold::UnicodeCaseFold as _;
 use unicode_normalization::UnicodeNormalization as _;
 
@@ -88,7 +93,6 @@ impl Notebook {
             .as_array()
             .context("notebook cells must be an array")?;
         let mut ids = HashSet::new();
-        let mut paths: Vec<String> = Vec::new();
         let mut cells = Vec::new();
         let mut files = Vec::new();
         for value in raw_cells {
@@ -145,20 +149,10 @@ impl Notebook {
                 );
                 let file: FileMetadata = serde_json::from_value(file.clone())
                     .with_context(|| format!("cell {id}: invalid workspace file metadata"))?;
-                relative_path(&file.path)?;
                 ensure!(
                     !file.language.trim().is_empty(),
                     "cell {id}: file language is empty"
                 );
-                let portable: String = file.path.nfkc().case_fold().nfc().collect();
-                ensure!(
-                    !paths.iter().any(|path| path == &portable
-                        || path.starts_with(&format!("{portable}/"))
-                        || portable.starts_with(&format!("{path}/"))),
-                    "duplicate or conflicting workspace path {:?}",
-                    file.path
-                );
-                paths.push(portable);
                 files.push(WorkspaceFile {
                     path: file.path,
                     source: source.clone(),
@@ -171,6 +165,10 @@ impl Notebook {
                 morphir,
             });
         }
+        validate_workspace_paths(
+            files.iter().map(|file| file.path.as_str()),
+            std::iter::empty(),
+        )?;
         Ok(Self {
             document,
             cells,
@@ -184,6 +182,21 @@ impl Notebook {
     }
     pub fn cells(&self) -> &[Cell] {
         &self.cells
+    }
+
+    /// Check disk inputs and file cells as one workspace before writing either.
+    pub fn validate_additional_paths<'a>(
+        &'a self,
+        paths: impl IntoIterator<Item = &'a str>,
+        directories: impl IntoIterator<Item = &'a str>,
+    ) -> Result<()> {
+        validate_workspace_paths(
+            self.files
+                .iter()
+                .map(|file| file.path.as_str())
+                .chain(paths),
+            directories,
+        )
     }
 
     /// Populate a fresh workspace; never replace existing files or follow symlinks.
@@ -217,6 +230,70 @@ impl Notebook {
         }
         Ok(())
     }
+}
+
+/// Validate the complete set before copying disk inputs or materializing cells.
+fn validate_workspace_paths<'a>(
+    files: impl IntoIterator<Item = &'a str>,
+    directories: impl IntoIterator<Item = &'a str>,
+) -> Result<()> {
+    let mut entries = HashMap::new();
+    for (path, kind) in directories
+        .into_iter()
+        .map(|path| (path, WorkspacePathKind::Directory))
+        .chain(
+            files
+                .into_iter()
+                .map(|path| (path, WorkspacePathKind::File)),
+        )
+    {
+        relative_path(path)?;
+        for (separator, _) in path.match_indices('/') {
+            insert_workspace_path(
+                &mut entries,
+                &path[..separator],
+                WorkspacePathKind::Directory,
+            )?;
+        }
+        insert_workspace_path(&mut entries, path, kind)?;
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WorkspacePathKind {
+    File,
+    Directory,
+}
+
+fn insert_workspace_path<'a>(
+    entries: &mut HashMap<String, (&'a str, WorkspacePathKind)>,
+    path: &'a str,
+    kind: WorkspacePathKind,
+) -> Result<()> {
+    let key: String = path.nfkc().case_fold().nfc().collect();
+    if let Some((previous, previous_kind)) = entries.get(&key) {
+        ensure!(
+            kind == WorkspacePathKind::Directory && *previous_kind == kind && *previous == path,
+            "duplicate or conflicting workspace path {path:?} with {previous:?}"
+        );
+        return Ok(());
+    }
+    // Keep normalized prefix conflicts conservative even when compatibility
+    // normalization introduces a slash from a single authored component.
+    ensure!(
+        !entries
+            .iter()
+            .any(
+                |(existing, (_, existing_kind))| (*existing_kind == WorkspacePathKind::File
+                    && key.starts_with(&format!("{existing}/")))
+                    || (kind == WorkspacePathKind::File
+                        && existing.starts_with(&format!("{key}/")))
+            ),
+        "duplicate or conflicting workspace path {path:?}"
+    );
+    entries.insert(key, (path, kind));
+    Ok(())
 }
 
 /// The shared profile uses normalized, portable, confined paths.

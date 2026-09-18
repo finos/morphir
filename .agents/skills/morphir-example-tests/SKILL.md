@@ -26,13 +26,18 @@ source fixtures under `crates/morphir/tests/fixtures/itest/`.
 
 ## Author and verify
 
-1. Create a self-contained `scenario.ipynb` using nbformat 4.5. Put scenario
+1. Create a `scenario.ipynb` using nbformat 4.5. Put scenario
    title, description, tags and `provider: "rego"` in notebook
    `metadata.morphir.itest`, with `metadata.morphir.version: 1`.
    Use Markdown cells for explanations. Keep valid unique cell IDs separate
    from file paths. Preserve unrelated metadata and newlines.
-2. Put source/configuration contents in workspace file cells with
-   `metadata.morphir.file` path and language. Neighboring files are not copied.
+2. Keep ordinary source/configuration files on disk beside the notebook. The
+   scenario directory is copied into an isolated workspace by default. Use
+   `workspace: {kind: "directory", path: "project", exclude: ["installed"]}`
+   in scenario metadata to choose a subdirectory or exclude custom outputs.
+   Optional file cells with `metadata.morphir.file` path and language add inputs;
+   conflicting disk and cell paths fail. Use `workspace: {kind: "notebook"}`
+   only for a self-contained notebook that ignores adjacent project files.
    Commands are code cells containing literal `morphir ...` invocations;
    case names, captures and timeouts belong to their `morphir.itest` metadata.
 3. Put complete Rego modules in assertion cells. Reference a preceding command

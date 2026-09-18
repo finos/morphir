@@ -65,6 +65,7 @@ fn rejects_duplicate_ids_and_conflicting_or_case_colliding_file_paths() {
         ("second", "src/Example.elm"),
         ("second", "src"),
         ("second", "SRC/example.elm"),
+        ("second", "SRC/other.elm"),
     ] {
         let mut value = document();
         let mut cell = value["cells"][0].clone();

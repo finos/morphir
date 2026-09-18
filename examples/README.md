@@ -17,9 +17,10 @@ morphir itest examples --tag language:elm --tag frontend:elm-native
 ```
 
 Multiple tags require all listed tags. Every scenario declares its purpose and
-tags in notebook metadata. Markdown cells explain the workflow; file cells hold
-the project inputs, command cells invoke the CLI, and Rego cells assert outcomes.
-The driver materializes the notebook workspace and runs actual CLI processes
+tags in notebook metadata. Markdown cells explain the workflow, command cells
+invoke the CLI, and Rego cells assert outcomes. Project files stay on disk by
+default; optional file cells can supply additional inputs or an entire workspace.
+The driver copies the scenario directory into a temporary workspace and runs actual CLI processes
 with a separate Morphir home. The embedded Regorus provider evaluates assertions.
 
 ## Executable examples
