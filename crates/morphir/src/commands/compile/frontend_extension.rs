@@ -24,9 +24,12 @@
 //! as `morphir-elm-native` reachable without the flag, and what makes an id
 //! that provides some other language fail with the same message the flag gets.
 //!
-//! A malformed key is a configuration error, unless `--extension` is given: the
-//! flag already settles which provider the run uses, so a broken key it would
-//! otherwise have overridden is reported as a warning instead, not a failure.
+//! A malformed `extension` value is a configuration error, unless `--extension`
+//! is given: the flag already settles which provider the run uses, so a
+//! broken value it would otherwise have overridden is reported as a warning
+//! instead, not a failure. That leniency is only for the value itself; any
+//! other configuration error — an ambiguous `[frontend.<language>]` table, for
+//! instance — is not about `extension` at all and still fails the run.
 
 use super::frontend_settings::{language_setting, shape_of};
 use crate::error::CliError;
@@ -36,6 +39,70 @@ use morphir_distribution::ExtensionId;
 /// The configuration key that names the provider, for a given language.
 pub fn config_key(language: &str) -> String {
     format!("frontend.{language}.extension")
+}
+
+/// Why a configured id was not returned to a caller.
+///
+/// The two variants exist so that [`resolve`] can tell malformed *value*
+/// apart from every other reason the lookup can fail — an ambiguous
+/// `[frontend.<language>]` table (two spellings that differ only in case),
+/// today the only other case — without resorting to matching on message text.
+/// Only the value is the flag's business: `--extension` names a provider, so
+/// a broken `extension` value it overrides no longer matters, but an
+/// ambiguous table is not about the `extension` key at all, and stays an
+/// error whatever the flag says.
+enum Unresolved {
+    /// `[frontend.<language>] extension` names something that is not a usable
+    /// extension id: wrong type, blank, or invalid syntax. The message
+    /// already names the key.
+    MalformedValue(String),
+    /// Any other reason the lookup itself failed, already a [`CliError`].
+    Lookup(CliError),
+}
+
+impl From<Unresolved> for CliError {
+    fn from(unresolved: Unresolved) -> Self {
+        match unresolved {
+            Unresolved::MalformedValue(message) => CliError::Config {
+                error: anyhow::anyhow!(message),
+            },
+            Unresolved::Lookup(error) => error,
+        }
+    }
+}
+
+/// [`from_config`]'s work, keeping a malformed `extension` value distinct from
+/// every other reason the lookup can fail — see [`Unresolved`].
+fn from_config_typed(
+    frontend: Option<&FrontendSection>,
+    language: &str,
+) -> Result<Option<String>, Unresolved> {
+    let Some(configured) =
+        language_setting(frontend, language, "extension").map_err(Unresolved::Lookup)?
+    else {
+        return Ok(None);
+    };
+    let key = config_key(language);
+    let Some(id) = configured.as_str() else {
+        let shape = serde_json::to_value(configured)
+            .map(|value| shape_of(&value))
+            .unwrap_or("not a string");
+        return Err(Unresolved::MalformedValue(format!(
+            "{key} is {shape}, but it must name an extension id such as \
+             \"morphir-elm-native\""
+        )));
+    };
+    let trimmed = id.trim();
+    if trimmed.is_empty() {
+        return Err(Unresolved::MalformedValue(format!(
+            "{key} is empty; name an extension id such as \
+             \"morphir-elm-native\" or remove the key"
+        )));
+    }
+    ExtensionId::parse(trimmed).map_err(|error| {
+        Unresolved::MalformedValue(format!("{key} is not a valid extension id: {error}"))
+    })?;
+    Ok(Some(trimmed.to_owned()))
 }
 
 /// The extension id a configuration names for this language, or `None` when it
@@ -49,34 +116,7 @@ pub fn from_config(
     frontend: Option<&FrontendSection>,
     language: &str,
 ) -> Result<Option<String>, CliError> {
-    let Some(configured) = language_setting(frontend, language, "extension")? else {
-        return Ok(None);
-    };
-    let key = config_key(language);
-    let Some(id) = configured.as_str() else {
-        let shape = serde_json::to_value(configured)
-            .map(|value| shape_of(&value))
-            .unwrap_or("not a string");
-        return Err(CliError::Config {
-            error: anyhow::anyhow!(
-                "{key} is {shape}, but it must name an extension id such as \
-                 \"morphir-elm-native\""
-            ),
-        });
-    };
-    let trimmed = id.trim();
-    if trimmed.is_empty() {
-        return Err(CliError::Config {
-            error: anyhow::anyhow!(
-                "{key} is empty; name an extension id such as \
-                 \"morphir-elm-native\" or remove the key"
-            ),
-        });
-    }
-    ExtensionId::parse(trimmed).map_err(|error| CliError::Config {
-        error: anyhow::anyhow!("{key} is not a valid extension id: {error}"),
-    })?;
-    Ok(Some(trimmed.to_owned()))
+    from_config_typed(frontend, language).map_err(CliError::from)
 }
 
 /// What a run does with the configured provider for a language.
@@ -95,31 +135,36 @@ pub struct Resolved<'a> {
 /// The provider a run uses: the flag when it names one, then the
 /// configuration, then nothing, which leaves the language's default provider.
 ///
-/// A malformed key is a configuration error when there is no flag to fall
-/// back on: with nothing to override it, a broken `morphir.toml` must not
-/// silently resolve to the language's default provider. But when `--extension`
-/// names a provider, that flag already settles which provider the run uses,
-/// so a malformed key no longer needs to fail the run — it is reported as a
-/// warning instead, naming the key and reusing the same text the key would
-/// have failed with on its own, so the two messages agree.
+/// A malformed `extension` *value* is a configuration error when there is no
+/// flag to fall back on: with nothing to override it, a broken `morphir.toml`
+/// must not silently resolve to the language's default provider. But when
+/// `--extension` names a provider, that flag already settles which provider
+/// the run uses, so a malformed value no longer needs to fail the run — it is
+/// reported as a warning instead, naming the key and reusing the same text the
+/// key would have failed with on its own, so the two messages agree.
+///
+/// Any other configuration error — today, only an ambiguous
+/// `[frontend.<language>]` table from two spellings that differ only in case —
+/// is not about the `extension` key at all, so the flag does not excuse it:
+/// it fails the run whether or not `--extension` was given.
 pub fn resolve<'a>(
     flag: Option<&'a str>,
     frontend: Option<&FrontendSection>,
     language: &str,
 ) -> Result<Resolved<'a>, CliError> {
     match flag {
-        Some(id) => match from_config(frontend, language) {
+        Some(id) => match from_config_typed(frontend, language) {
             Ok(_) => Ok(Resolved {
                 extension: Some(std::borrow::Cow::Borrowed(id)),
                 warning: None,
             }),
-            Err(CliError::Config { error }) => Ok(Resolved {
+            Err(Unresolved::MalformedValue(message)) => Ok(Resolved {
                 extension: Some(std::borrow::Cow::Borrowed(id)),
                 warning: Some(format!(
-                    "{error}; ignored because --extension {id} was given"
+                    "{message}; ignored because --extension {id} was given"
                 )),
             }),
-            Err(other) => Err(other),
+            Err(Unresolved::Lookup(error)) => Err(error),
         },
         None => {
             let configured = from_config(frontend, language)?;
@@ -301,5 +346,32 @@ mod tests {
         };
         let message = error.to_string();
         assert!(message.contains("frontend.elm.extension"), "{message}");
+    }
+
+    /// An ambiguous table is not about the `extension` key at all — the flag
+    /// does not excuse it, whether or not either spelling even holds an
+    /// `extension` key.
+    #[test]
+    fn ambiguous_tables_stay_an_error_with_the_flag() {
+        for section in [
+            frontend(json!({
+                "Gleam": {"extension": "morphir-gleam-binding"},
+                "GLEAM": {},
+            })),
+            frontend(json!({
+                "Gleam": {},
+                "GLEAM": {},
+            })),
+        ] {
+            let failure = resolve(Some("morphir-gleam-binding"), Some(&section), "gleam")
+                .expect_err("an ambiguous table is not excused by the flag");
+
+            let CliError::Config { error } = failure else {
+                panic!("an ambiguous frontend table is a configuration error: {failure:?}");
+            };
+            let message = error.to_string();
+            assert!(message.contains("frontend.GLEAM"), "{message}");
+            assert!(message.contains("frontend.Gleam"), "{message}");
+        }
     }
 }

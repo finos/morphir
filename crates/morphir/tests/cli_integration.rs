@@ -1625,6 +1625,55 @@ fn a_misconfigured_key_still_fails_without_the_flag() {
     }
 }
 
+/// Requirement: an ambiguous `[frontend.<language>]` table — two spellings
+/// that differ only in case — is not about the `extension` key at all, so
+/// `--extension` does not excuse it: the run still fails, naming both
+/// spellings, on both compile paths.
+#[test]
+fn ambiguous_frontend_tables_still_fail_with_the_flag() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    // Neither spelling may match "elm" exactly, or the exact one wins and the
+    // table is not ambiguous at all — see
+    // `frontend_settings::an_exact_spelling_wins_over_one_that_differs_in_case`.
+    let config_path = project.join("morphir.toml");
+    let existing = std::fs::read_to_string(&config_path).unwrap();
+    std::fs::write(
+        &config_path,
+        format!(
+            "{existing}\n[frontend.Elm]\nextension = \"morphir-elm-native\"\n\n[frontend.ELM]\n"
+        ),
+    )
+    .unwrap();
+
+    for arguments in [
+        vec!["compile", "--extension", "morphir-elm-native"],
+        vec![
+            "compile",
+            "--input",
+            "src/My/Other.elm",
+            "--config",
+            "morphir.toml",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    ] {
+        let compile = run_morphir(&arguments, &home, &project);
+
+        assert!(
+            !compile.status.success(),
+            "{arguments:?} must fail on an ambiguous table even with the flag: stdout={} stderr={}",
+            String::from_utf8_lossy(&compile.stdout),
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        let stderr = compacted_stderr(&compile);
+        assert!(stderr.contains("frontend.Elm"), "{arguments:?}: {stderr}");
+        assert!(stderr.contains("frontend.ELM"), "{arguments:?}: {stderr}");
+    }
+}
+
 /// Requirement: a configured id that provides some other language fails with
 /// the same message the flag gets, naming the language it could not provide.
 #[test]
