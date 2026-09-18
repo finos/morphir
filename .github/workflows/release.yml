@@ -14,6 +14,12 @@ on:
 permissions:
   contents: read
 
+# One release run per tag at a time. A second run for the same tag waits; a
+# release that is packaging or uploading is never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -89,6 +95,7 @@ jobs:
           install-mold: ${{ runner.os == 'Linux' }}
           enable-sccache: ${{ runner.arch != 'ARM64' }}
           shared-key: morphir-release-${{ matrix.target }}
+          save-cache: "true"
 
       - name: Build CLI
         run: cargo build --locked --release --package morphir --target ${{ matrix.target }}

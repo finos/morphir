@@ -9,13 +9,17 @@ on:
     branches:
       - main
 
-# Cancel in-progress runs when a new run supersedes them. Pull requests are keyed
-# by number rather than by head branch: two forks can both offer a branch called
-# `main`, and keying on the branch name would let one fork's push cancel the
-# other's run.
+# Cancel a pull request's in-progress run when a new push supersedes it. Pull
+# requests are keyed by number rather than by head branch: two forks can both
+# offer a branch called `main`, and keying on the branch name would let one
+# fork's push cancel the other's run.
+#
+# Push runs (main, setup/**) are never cancelled. They are the only runs that
+# save the shared caches, and every commit on main keeps its own result. A
+# second push to the same branch waits for the first instead.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -29,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
+      rust-conformance: ${{ steps.filter.outputs.rust-conformance }}
       docs: ${{ steps.filter.outputs.docs }}
       mck: ${{ steps.filter.outputs.mck }}
       package-mck: ${{ steps.filter.outputs.package-mck }}
@@ -76,9 +81,19 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-rust-ci/**'
               - '.github/actions/cache-scala-native-image/**'
-              # morphir-cli-test runs the kit against the Rust binding, so its fences are an input
+              # crates/morphir tests read the published examples as fixtures, and
+              # `mise run migrate:validate` migrates and validates them
+              - 'website/static/ir/examples/**'
+            # Inputs of the kit run against the Rust binding and of the migrate
+            # validation. The morphir crate neither compiles nor tests against
+            # them, so they start the conformance job and not the Rust pipeline.
+            # That job also runs for every `rust` change, so the inputs both
+            # share (the Rust submodule, the examples, the toolchain pins, this
+            # workflow) are listed under `rust` only.
+            rust-conformance:
+              # mck:run-rust runs the kit against the Rust binding, so its fences are an input
               - 'spec/ir/mck/**'
-              # the kit driver and the Rust binding's adapter live here
+              # the kit driver lives here
               - 'ecosystem/morphir-typescript'
               # adjudicates the Rust binding's MCK report against its allowed-failing list
               - 'tools/check-mck-report.ts'
@@ -87,8 +102,6 @@ jobs:
               - 'tools/rust-mck-command*'
               # validates the output of `mise run migrate:validate` against the v4 schema
               - 'website/scripts/validate-migrated-ir.js'
-              # fixtures `mise run migrate:validate` migrates and validates
-              - 'website/static/ir/examples/**'
               # the v4 schema `mise run migrate:validate` validates migrated IR against
               - 'website/static/schemas/morphir-ir-v4.json'
               # migrate:validate depends on website:install, and validate-migrated-ir.js imports ajv/ajv-formats from it
@@ -148,10 +161,9 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/morphir/Cargo.toml'
-              - 'tests/ci/test_release_workflow.py'
-              - 'tests/ci/test_scala_extension_workflow.py'
-              - 'tests/ci/test_ci_rust_optimizations.py'
-              - 'tests/ci/test_select_release_assets.py'
+              # every test here asserts workflow or action content
+              - 'tests/ci/**'
+              - '.github/actions/**'
               - '.github/scripts/select_release_assets.py'
               - '.github/workflows/ci.yml'
 
@@ -186,6 +198,8 @@ jobs:
 
       - name: Install mise
         uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Initialize environment
         run: mise run init -- --ci
@@ -214,11 +228,27 @@ jobs:
 
       - name: Install mise
         uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Initialize environment
         run: mise run init -- --ci
 
+      # The extension is built from the submodule alone, so its commit is the
+      # whole cache key. A hit skips the tool install and the build.
+      - name: Resolve morphir-elm submodule SHA
+        id: elm-submodule
+        run: echo "sha=$(git rev-parse HEAD:ecosystem/morphir-elm)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Elm extension build
+        id: elm-cache
+        uses: actions/cache@v6
+        with:
+          path: ecosystem/morphir-elm/dist/morphir-elm-extension
+          key: morphir-elm-extension-${{ runner.os }}-${{ runner.arch }}-${{ steps.elm-submodule.outputs.sha }}
+
       - name: Install Morphir Elm tools
+        if: steps.elm-cache.outputs.cache-hit != 'true'
         env:
           MISE_AUTO_INSTALL: "false"
         run: |
@@ -227,6 +257,7 @@ jobs:
           test "$(mise -C ecosystem/morphir-elm exec -- elm --version)" = "0.19.1"
 
       - name: Install Morphir Elm dependencies
+        if: steps.elm-cache.outputs.cache-hit != 'true'
         env:
           MISE_AUTO_INSTALL: "false"
         run: >-
@@ -234,6 +265,7 @@ jobs:
           bun install --frozen-lockfile --ignore-scripts
 
       - name: Build Morphir Elm process extension
+        if: steps.elm-cache.outputs.cache-hit != 'true'
         env:
           MISE_AUTO_INSTALL: "false"
         run: mise -C ecosystem/morphir-elm run build:mep-extension
@@ -258,6 +290,8 @@ jobs:
 
       - name: Install mise
         uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Initialize environment
         run: mise run init -- --ci
@@ -305,12 +339,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes, lint, build-elm-extension, build-scala-extension]
     if: ${{ needs.changes.outputs.rust == 'true' }}
+    env:
+      # The workspace release profile uses fat LTO with one codegen unit. That
+      # final link is not cacheable and took 8.5 minutes of this job. CI only
+      # needs an optimized binary for the integration tests; release.yml builds
+      # the shipped binary with the full profile. The override is job-wide so
+      # that every step sees the same profile and cargo does not rebuild.
+      CARGO_PROFILE_RELEASE_LTO: "off"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
       - name: Install mise
         uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Initialize environment
         run: mise run init -- --ci
@@ -366,22 +410,14 @@ jobs:
 
       - name: Set up Rust CI
         uses: ./.github/actions/setup-rust-ci
+        with:
+          # This job builds the most (debug tests, the release binary, the
+          # submodule's WASM guests), so it is the one writer of the shared
+          # cargo cache. lint and check-cli-docs only restore it.
+          save-cache: "true"
 
       - name: Run tests
         run: cargo test --locked --package morphir
-
-      - name: Run the kit against the Rust binding
-        run: mise run mck:run-rust
-
-      - name: Upload the Rust binding's MCK report
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: mck-report-morphir-rust
-          path: .dev/out/mck/morphir-rust.json
-
-      - name: Validate migrated IR against the v4 schema
-        run: mise run migrate:validate
 
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata
@@ -428,8 +464,11 @@ jobs:
           --target wasm32-unknown-unknown
 
       - name: Run WASM extension integration tests
+        # --release makes CARGO_BIN_EXE_morphir the optimized binary built
+        # above. These tests compile and run WASM guests through the CLI, and
+        # the debug binary spent 4 minutes doing that.
         run: >-
-          cargo test --locked --package morphir
+          cargo test --locked --release --package morphir
           --test generate_extension --test generate_openapi_extension
           -- --ignored --nocapture
 
@@ -441,7 +480,7 @@ jobs:
             --short-id python \
             --wasm ecosystem/morphir-rust/target/wasm32-unknown-unknown/release/morphir_python_binding.wasm \
             --output "$MORPHIR_PYTHON_BUNDLE"
-          cargo test --locked --package morphir --test python_extension -- --ignored --nocapture
+          cargo test --locked --release --package morphir --test python_extension -- --ignored --nocapture
 
       - name: Package and test the Rust extension through the CLI
         env:
@@ -451,7 +490,7 @@ jobs:
             --short-id rust \
             --wasm ecosystem/morphir-rust/target/wasm32-unknown-unknown/release/morphir_rust_binding.wasm \
             --output "$MORPHIR_RUST_BUNDLE"
-          cargo test --locked --package morphir --test rust_extension -- --ignored --nocapture
+          cargo test --locked --release --package morphir --test rust_extension -- --ignored --nocapture
 
   # Generate and diff-check CLI reference docs — parallel with extension builds
   # and integration tests (only needs a debug morphir build, not extensions).
@@ -466,6 +505,8 @@ jobs:
 
       - name: Install mise
         uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Initialize environment
         run: mise run init -- --ci
@@ -499,6 +540,8 @@ jobs:
 
       - name: Install mise
         uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Initialize (CI mode)
         run: mise run init -- --ci
@@ -536,15 +579,51 @@ jobs:
       - name: Validate draft package schemas and examples
         run: mise run package:schema-check
 
-      - name: Run the MCK package suite through the shared TypeScript core
-        run: mise run package:check
-
+      # The package suite itself runs in the package-mck job, whose filter
+      # covers every input of `package:check`.
       - name: Upload MCK reports
         uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mck-reports
           path: .dev/out/mck
+
+  # Kit run against the Rust binding and the migrate validation. Both build
+  # from the shared cargo cache and neither needs the extensions, so they run
+  # beside the CLI test job instead of inside it.
+  rust-conformance:
+    name: Rust conformance (MCK + migrate)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.rust-conformance == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install mise
+        uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Set up Rust CI
+        uses: ./.github/actions/setup-rust-ci
+
+      - name: Run the kit against the Rust binding
+        run: mise run mck:run-rust
+
+      - name: Upload the Rust binding's MCK report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mck-report-morphir-rust
+          path: .dev/out/mck/morphir-rust.json
+
+      - name: Validate migrated IR against the v4 schema
+        if: ${{ !cancelled() }}
+        run: mise run migrate:validate
 
   package-mck:
     name: MCK package compatibility (TypeScript + Rust)
@@ -556,11 +635,14 @@ jobs:
         with:
           submodules: recursive
       - uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
       - name: Cache Rust adapter build
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: ecosystem/morphir-rust -> target
           shared-key: package-mck
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install integration test types
         run: bun install --frozen-lockfile
         working-directory: tools
@@ -609,57 +691,43 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, release-workflow, desktop-demo, package-mck]
+    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]
     if: always()
     steps:
       - name: Check results
         run: |
-          # Check if rust jobs were required and passed
-          if [[ "${{ needs.changes.outputs.rust }}" == "true" ]]; then
-            if [[ "${{ needs.lint.result }}" != "success" ]]; then
-              echo "lint failed (result: ${{ needs.lint.result }})"
-              exit 1
+          # This is the one required status check. A job the change did not
+          # select is skipped, and a skipped job passes here; a selected job
+          # has to succeed.
+          failed=0
+          require() {
+            # require <selected> <job> <result>
+            if [[ "$1" == "true" && "$3" != "success" ]]; then
+              echo "::error::$2 was required and did not succeed (result: $3)"
+              failed=1
             fi
-            if [[ "${{ needs.build-elm-extension.result }}" != "success" ]]; then
-              echo "build-elm-extension failed (result: ${{ needs.build-elm-extension.result }})"
-              exit 1
-            fi
-            if [[ "${{ needs.build-scala-extension.result }}" != "success" ]]; then
-              echo "build-scala-extension failed (result: ${{ needs.build-scala-extension.result }})"
-              exit 1
-            fi
-            if [[ "${{ needs.morphir-cli-test.result }}" != "success" ]]; then
-              echo "morphir-cli-test failed (result: ${{ needs.morphir-cli-test.result }})"
-              exit 1
-            fi
-            if [[ "${{ needs.check-cli-docs.result }}" != "success" ]]; then
-              echo "check-cli-docs failed (result: ${{ needs.check-cli-docs.result }})"
-              exit 1
-            fi
+          }
+          # Without the filter outputs nothing below would be selected, and
+          # the gate would pass without having checked anything.
+          if [[ "${{ needs.changes.result }}" != "success" ]]; then
+            echo "::error::change detection did not succeed (result: ${{ needs.changes.result }})"
+            exit 1
           fi
-          # Check if docs job was required and passed
+          require "${{ needs.changes.outputs.rust }}" lint "${{ needs.lint.result }}"
+          require "${{ needs.changes.outputs.rust }}" build-elm-extension "${{ needs.build-elm-extension.result }}"
+          require "${{ needs.changes.outputs.rust }}" build-scala-extension "${{ needs.build-scala-extension.result }}"
+          require "${{ needs.changes.outputs.rust }}" morphir-cli-test "${{ needs.morphir-cli-test.result }}"
+          require "${{ needs.changes.outputs.rust }}" check-cli-docs "${{ needs.check-cli-docs.result }}"
+          if [[ "${{ needs.changes.outputs.rust }}" == "true" || "${{ needs.changes.outputs.rust-conformance }}" == "true" ]]; then
+            require true rust-conformance "${{ needs.rust-conformance.result }}"
+          fi
           if [[ "${{ needs.changes.outputs.docs }}" == "true" || "${{ needs.changes.outputs.mck }}" == "true" ]]; then
-            if [[ "${{ needs.docs.result }}" != "success" ]]; then
-              echo "docs failed"
-              exit 1
-            fi
+            require true docs "${{ needs.docs.result }}"
           fi
-          if [[ "${{ needs.changes.outputs.release }}" == "true" ]]; then
-            if [[ "${{ needs.release-workflow.result }}" != "success" ]]; then
-              echo "release workflow validation failed"
-              exit 1
-            fi
-          fi
-          if [[ "${{ needs.changes.outputs.desktop-demo }}" == "true" ]]; then
-            if [[ "${{ needs.desktop-demo.result }}" != "success" ]]; then
-              echo "Desktop demo tests failed"
-              exit 1
-            fi
-          fi
-          if [[ "${{ needs.changes.outputs.package-mck }}" == "true" ]]; then
-            if [[ "${{ needs.package-mck.result }}" != "success" ]]; then
-              echo "MCK package compatibility failed"
-              exit 1
-            fi
+          require "${{ needs.changes.outputs.release }}" release-workflow "${{ needs.release-workflow.result }}"
+          require "${{ needs.changes.outputs.desktop-demo }}" desktop-demo "${{ needs.desktop-demo.result }}"
+          require "${{ needs.changes.outputs.package-mck }}" package-mck "${{ needs.package-mck.result }}"
+          if [[ "$failed" != "0" ]]; then
+            exit 1
           fi
           echo "All required checks passed!"
