@@ -35,7 +35,7 @@ use std::path::{Path, PathBuf};
 pub struct CompileOptions {
     /// Language to compile (e.g., "gleam", "elm")
     pub language: Option<String>,
-    /// Extension provider id for single-file Elm compilation. Defaults to morphir- followed by the language name.
+    /// Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider
     pub extension: Option<String>,
     /// Input path or directory
     pub input: Option<String>,

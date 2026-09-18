@@ -370,7 +370,9 @@ could not be compiled, and its diagnostics explain why; `blocked` means a
 dependency failed and no baseline interface was available to resolve against.
 `sourceDigest` and `interfaceDigest` are the digests of the module's source
 text and resolved public interface; both are present when known. `dependsOn`
-lists the in-package modules the entry depends on. `ir` is present only when
+lists the in-package modules the entry depends on, including every in-package
+import plus resolved references, deliberately wider than actual use so
+incremental runs equal clean runs. `ir` is present only when
 `status` is `compiled`; an `unchanged` entry omits it because the host already
 holds that module's IR from the baseline. `modules` lists the names of
 `compiled` and `unchanged` modules only, so a host that ignores

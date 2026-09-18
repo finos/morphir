@@ -7,7 +7,7 @@ Compile source code to Morphir IR
 
 ## Flags
 - **`-l --language <LANGUAGE>`** — Source language (e.g., gleam, elm)
-- **`--extension <EXTENSION>`** — Extension provider id for single-file Elm compilation. Defaults to morphir- followed by the language name
+- **`--extension <EXTENSION>`** — Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider
 - **`-i --input <INPUT>`** — Input source directory or file. An installed or configured Elm process accepts one .elm file
 - **`-o --output <OUTPUT>`** — Install task outputs into this directory after the run. Canonical output stays under .morphir/out
 - **`--package-name <PACKAGE_NAME>`** — Package name override
@@ -15,3 +15,4 @@ Compile source code to Morphir IR
 - **`--project <PROJECT>`** — Project name (for workspaces)
 - **`--json`** — Output as JSON
 - **`--json-lines`** — Output as JSON Lines (streaming)
+- **`--no-cache`** — Ignore the incremental compile cache for this run

@@ -126,6 +126,61 @@ The Rust CLI includes:
 
 Run `morphir --help` for the current command list. Some commands are experimental and hidden unless you pass `--help-all`.
 
+## Native Elm provider (`morphir-elm-native`)
+
+`morphir compile` selects the frontend that compiles a language through the
+`--extension` flag. By default, compiling Elm sources uses the `morphir-elm`
+extension, the mature JavaScript frontend that ships from
+[finos/morphir-elm](https://github.com/finos/morphir-elm) and produces both
+types and values. This repository also ships an experimental, built-in native
+Elm frontend, `morphir-elm-native`, written in Rust.
+
+Select it explicitly, either for a project or for a single file:
+
+```sh
+morphir compile --extension morphir-elm-native
+
+morphir compile --input Example.elm --extension morphir-elm-native
+```
+
+`morphir-elm-native` is **types-only today**: it compiles type declarations
+and signatures but not value bodies. `morphir-elm` remains the default
+extension for Elm and is the only provider that compiles values, so keep
+using it for production Elm workflows. `morphir-elm-native` accepts an
+`elmPrelude` configuration option that points at an alternate `elm/core`-style
+prelude package for resolving built-in types; leave it unset to use the
+bundled default.
+
+## Incremental compile cache
+
+Frontends that advertise the `incremental` capability, including
+`morphir-elm-native`, can reuse work from a previous compile instead of
+recompiling every module. The cache lives under
+`<workspace>/.morphir/cache/compile/<extension>/<package>/`, as a manifest
+file plus one file per cached module.
+
+A module is reused when its source digest and the interface digests of every
+module it depends on match the cached baseline; otherwise it is recompiled.
+Reuse never causes a failure: a missing, unreadable, or corrupt cache entry is
+treated as no baseline for that module rather than an error, and cache writes
+are atomic so an interrupted run cannot leave a half-written entry behind.
+
+A partial failure (one or more modules fail or are blocked by a failed
+dependency) still exits with status 1, leaves the previously installed
+`morphir-ir.json` untouched, and updates the cache only for modules that
+compiled successfully; failed and blocked modules keep their last good cache
+entry.
+
+Pass `--no-cache` to skip reading and writing the cache and force a full
+recompile:
+
+```sh
+morphir compile --extension morphir-elm-native --no-cache
+```
+
+Only providers that advertise `incremental` use the cache at all; other
+extensions ignore `--no-cache` and always compile fully.
+
 ## Build from source
 
 ```shell
