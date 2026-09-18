@@ -50,9 +50,8 @@ possible, and it would make JavaScript extensions portable and installable. We j
 that is cheap to embed runs the Elm compiler at an acceptable speed. The one engine we judge fast
 enough would add an estimated 68 to 90 percent to the CLI binary.
 
-This note belongs to one capability: delivering the Elm extension so that it is portable and
-installable. [Two Elm frontend providers](/decisions/0001-two-elm-frontend-providers.md) is the other
-document in that story, and finos/morphir#857 (source `issue`) tracks the follow-up. The note records
+This note belongs to one capability, and [Elm extension delivery](/design/elm-extension-delivery.md)
+tells that capability's story. finos/morphir#857 (source `issue`) tracks the follow-up to this survey. The note records
 the options compared on 2026-09-18, so the next person does not repeat the survey. The size figures
 are measured. No speed or fuel figure is measured; each one is marked as a judgement where it appears.
 
@@ -162,9 +161,10 @@ could load warm. We judge it the practical way to run the Elm compiler at about 
 `mozjs` also has a JIT, but we judge its build harder.
 
 The cost is size and build risk. V8 adds an estimated 30 to 40 MB to the binary (not measured here).
-The `v8` crate downloads a prebuilt library per target. We assume its support for Windows ARM64 and
-musl is weak; the crate's target list was not checked for this note. Both matter because the CLI
-releases for six targets.
+The `v8` crate downloads a prebuilt library per target. We assume its support for Windows ARM64 is
+weak; the crate's target list was not checked for this note. That matters because
+`aarch64-pc-windows-msvc` is one of the six targets the CLI releases for (source
+`cli-release-workflow`). The CLI has no musl target, so musl support does not bear on this.
 
 ### Bun
 
@@ -194,8 +194,8 @@ Considered and rejected for now:
 - Native QuickJS or Boa. The engine is small to embed, but a new runtime brings a sandbox, limits and
   a third artifact kind to maintain. We judge that too much for an engine that is too slow for the one
   extension that needs it.
-- V8, because it adds an estimated 68 to 90 percent to the binary, and we assume it puts two of six
-  release targets at risk.
+- V8, because it adds an estimated 68 to 90 percent to the binary, and we assume it puts one of six
+  release targets, Windows ARM64, at risk.
 - `mozjs`, because it has the same size cost as V8 with a build we judge harder.
 - Nova and Brimstone, because neither is ready for production use.
 - Bun, because it cannot be embedded.
@@ -214,12 +214,15 @@ then becomes the default. If so, a JavaScript runtime added for Elm alone has a 
 
 No speed or fuel claim in this note is measured. We estimate that one to two days of work would replace
 the judgements with numbers. The measurement runs the Elm compiler on the morphir-elm reference model
-and records time, memory and fuel under four engines:
+and records wall time and peak memory under four engines:
 
 - `extism-js` inside the current WASM host
 - native `rquickjs`
 - `boa_engine`
 - Node, as the V8 baseline
+
+Fuel exists only in the WASM host, so the measurement records it for `extism-js` alone. Wall time is
+the figure that compares all four.
 
 These findings would change the position:
 
