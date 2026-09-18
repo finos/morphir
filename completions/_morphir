@@ -36,7 +36,7 @@ cmd compile display_order=3 args_override_self=#false help="Compile source code 
     flag "-l --language" help="Source language (e.g., gleam, elm)" {
         arg <LANGUAGE>
     }
-    flag --extension help="Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider" {
+    flag --extension help="Extension id that provides the language (for example `morphir-elm-native`); overrides `[frontend.<language>] extension`, and defaults to the language's default provider" {
         arg <EXTENSION>
     }
     flag "-i --input" help="Input source directory or file. A single .elm file is compiled by the selected Elm provider: an installed process extension by default, or a builtin such as morphir-elm-native via --extension" {
