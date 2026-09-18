@@ -39,8 +39,8 @@ cmd eval display_order=3 args_override_self=#false help="Evaluate a program thro
     flag --json help="Print the versioned evaluation report as JSON"
     complete file type=path
 }
-cmd itest display_order=4 args_override_self=#false help="Run notebook integration scenarios through real CLI processes" unknown_flags=error {
-    flag --filter help="Select one example path or category relative to the search root" {
+cmd itest display_order=4 args_override_self=#false help="Run notebook or Markdown integration scenarios through real CLI processes" unknown_flags=error {
+    flag --filter help="Select an example path, category or Markdown path#scenario relative to the search root" {
         arg <FILTER>
     }
     flag --tag help="Require this exact tag; repeat to require all supplied tags" var=#true {
@@ -48,7 +48,7 @@ cmd itest display_order=4 args_override_self=#false help="Run notebook integrati
     }
     flag --list help="List matching scenarios and their purpose without executing commands"
     flag --keep-temp help="Retain isolated projects, homes and per-step logs for diagnosis"
-    arg "[ROOT]" help="Directory to search recursively for scenario.ipynb files" required=#false default=examples
+    arg "[ROOT]" help="Directory to search recursively for scenario.ipynb or scenarios.md files" required=#false default=examples
     complete root type=path
 }
 cmd compile display_order=5 args_override_self=#false help="Compile source code to Morphir IR" unknown_flags=error {

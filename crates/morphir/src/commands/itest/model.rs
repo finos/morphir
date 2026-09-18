@@ -24,6 +24,7 @@ pub enum Workspace {
         #[serde(default)]
         exclude: Vec<String>,
     },
+    #[serde(alias = "inline")]
     Notebook {},
 }
 

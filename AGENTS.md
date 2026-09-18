@@ -380,8 +380,13 @@ Watch mode provides better responsiveness and resource efficiency by reacting to
 ### Executable CLI examples
 
 Use `morphir itest` to verify workflows through real CLI subprocesses. Runnable
-projects live under categorized `examples/` directories and carry `scenario.ipynb`.
-Keep scenario context and tags in notebook metadata, literal CLI commands in
+projects live under categorized `examples/` directories and carry `scenario.ipynb`
+or `scenarios.md`, one document per directory. Markdown uses YAML frontmatter,
+`##` headings for independent scenarios and paired `yaml morphir:command`,
+`yaml morphir:assertion` or `yaml morphir:file` metadata and language source fences.
+Prose may separate paired fences; `###` headings organize steps. Select one
+Markdown scenario with `--filter 'category/example#heading-id'`.
+Keep scenario context and tags in frontmatter or notebook metadata, literal CLI commands in
 command cells and named Rego rules in assertion cells. Project source and config
 files stay on disk by default; the driver copies the scenario directory into a
 temporary workspace. Optional file cells can add inputs or provide an explicitly

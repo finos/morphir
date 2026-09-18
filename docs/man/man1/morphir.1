@@ -22,7 +22,7 @@ Relocate the out root, which defaults to .morphir/out under the workspace root. 
 Evaluate a program through a registered native provider
 .TP
 \fBitest\fR
-Run notebook integration scenarios through real CLI processes
+Run notebook or Markdown integration scenarios through real CLI processes
 .TP
 \fBcompile\fR
 Compile source code to Morphir IR
@@ -292,7 +292,7 @@ Path to a version 1 evaluation request JSON file
 \fB\-\-json\fR
 Print the versioned evaluation report as JSON
 .SH "MORPHIR ITEST"
-Run notebook integration scenarios through real CLI processes
+Run notebook or Markdown integration scenarios through real CLI processes
 .PP
 \fBUsage:\fR morphir itest [OPTIONS] [<ROOT>]
 .PP
@@ -300,7 +300,7 @@ Run notebook integration scenarios through real CLI processes
 .PP
 .TP
 \fB\-\-filter\fR \fI<FILTER>\fR
-Select one example path or category relative to the search root
+Select an example path, category or Markdown path#scenario relative to the search root
 .TP
 \fB\-\-tag\fR \fI<TAGS>\fR
 Require this exact tag; repeat to require all supplied tags
@@ -314,7 +314,7 @@ Retain isolated projects, homes and per\-step logs for diagnosis
 .PP
 .TP
 \fB<ROOT>\fR
-Directory to search recursively for scenario.ipynb files
+Directory to search recursively for scenario.ipynb or scenarios.md files
 .RS
 \fIDefault: \fRexamples
 .RE

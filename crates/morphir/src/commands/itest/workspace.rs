@@ -15,7 +15,7 @@ fn excluded(path: &Path, exclusions: &[String]) -> bool {
         )
     }) || path
         .file_name()
-        .is_some_and(|name| name == "scenario.ipynb")
+        .is_some_and(|name| name == "scenario.ipynb" || name == "scenarios.md")
         || path.starts_with(".morphir/cache")
         || exclusions.iter().any(|excluded| path.starts_with(excluded))
 }

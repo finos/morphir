@@ -3,15 +3,15 @@
 
 - **Usage:** `morphir itest [FLAGS] [ROOT]`
 
-Run notebook integration scenarios through real CLI processes
+Run notebook or Markdown integration scenarios through real CLI processes
 
 ## Arguments
-- **`[ROOT]`** — Directory to search recursively for scenario.ipynb files
+- **`[ROOT]`** — Directory to search recursively for scenario.ipynb or scenarios.md files
 
   **Default:** `examples`
 
 ## Flags
-- **`--filter <FILTER>`** — Select one example path or category relative to the search root
+- **`--filter <FILTER>`** — Select an example path, category or Markdown path#scenario relative to the search root
 - **`--tag <TAGS>…`** — Require this exact tag; repeat to require all supplied tags
 - **`--list`** — List matching scenarios and their purpose without executing commands
 - **`--keep-temp`** — Retain isolated projects, homes and per-step logs for diagnosis

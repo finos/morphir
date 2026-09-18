@@ -37,6 +37,161 @@ fn run(root: &std::path::Path, args: &[&str]) -> std::process::Output {
         .unwrap()
 }
 
+const MARKDOWN: &str = r#"---
+version: 1
+title: Compile disk Elm from Markdown
+description: Compile disk inputs, preserve inline file contents and capture v3 IR.
+tags: [language:elm, suite:offline]
+provider: rego
+---
+
+# Compile an ordinary project
+
+## Compile types
+
+This unmarked command is documentation and must never execute:
+
+```sh
+morphir --not-a-real-option
+```
+
+```yaml morphir:file
+id: extra
+path: extra.txt
+```
+
+```text
+inline addition
+```
+
+```yaml morphir:command
+id: compile
+name: Compile on-disk source
+timeout_seconds: 30
+stdout_json: true
+captures:
+  - {name: ir, path: installed/morphir-ir.json, format: json}
+  - {name: extra, path: extra.txt, format: text}
+  - {name: scenario, path: scenarios.md, format: exists}
+```
+
+This command compiles the disk file. Prose between paired fences is allowed.
+
+```sh
+morphir compile --input Example.elm --extension morphir-elm-native --package-name examples/markdown --output installed --json
+```
+
+```yaml morphir:assertion
+id: compiled
+command: compile
+entrypoints: [data.markdown_test.compiles]
+```
+
+```rego
+package markdown_test
+import rego.v1
+
+compiles if {
+    input.exitCode == 0
+    input.stdoutJson.success == true
+    input.artifacts.ir.value.formatVersion == 3
+    input.artifacts.extra.value == "inline addition\n"
+    input.artifacts.scenario.kind == "missing"
+}
+```
+"#;
+
+#[test]
+fn itest_markdown_drives_cli_with_disk_and_inline_files() {
+    let temp = tempfile::tempdir().unwrap();
+    let example = temp.path().join("elm/markdown");
+    fs::create_dir_all(&example).unwrap();
+    let source = "module Example exposing (Name)\n\ntype alias Name = String\n";
+    fs::write(example.join("Example.elm"), source).unwrap();
+    fs::write(example.join("scenarios.md"), MARKDOWN).unwrap();
+    write_scenario(&temp.path().join("cli/notebook"), &scenario());
+    for args in [
+        vec!["--list"],
+        vec!["--filter", "elm", "--tag", "suite:offline"],
+    ] {
+        let output = run(temp.path(), &args);
+        assert!(
+            output.status.success(),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout).contains("elm/markdown#compile-types"));
+    }
+    assert_eq!(
+        fs::read_to_string(example.join("Example.elm")).unwrap(),
+        source
+    );
+    assert!(!example.join("extra.txt").exists());
+    assert!(!example.join("installed").exists());
+    let wrong = MARKDOWN.replace("input.exitCode == 0", "input.exitCode == 99");
+    fs::write(example.join("scenarios.md"), wrong).unwrap();
+    let output = run(temp.path(), &["--filter", "elm"]);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("compiled") && stderr.contains("compiles"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn itest_markdown_headings_are_independent_selectable_scenarios() {
+    let temp = tempfile::tempdir().unwrap();
+    // IDs and file paths may be reused in a different scenario.
+    let first = MARKDOWN.replace("## Compile types", "## First run {#first}");
+    let second = MARKDOWN
+        .split("## Compile types")
+        .nth(1)
+        .unwrap()
+        .replace("inline addition", "second scenario");
+    fs::write(
+        temp.path().join("scenarios.md"),
+        format!("{first}\n## Second run\n{second}"),
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join("Example.elm"),
+        "module Example exposing (Name)\ntype alias Name = String\n",
+    )
+    .unwrap();
+    let output = run(temp.path(), &[]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("2 passed; 0 failed"), "{stdout}");
+    for id in [".#first", ".#second-run"] {
+        let output = run(temp.path(), &["--filter", id]);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("1 passed; 0 failed; 1 not selected")
+        );
+    }
+    assert!(!temp.path().join("extra.txt").exists());
+}
+
+#[test]
+fn itest_rejects_two_scenario_documents_in_one_directory() {
+    let temp = tempfile::tempdir().unwrap();
+    write_scenario(temp.path(), &scenario());
+    fs::write(temp.path().join("scenarios.md"), MARKDOWN).unwrap();
+    let output = run(temp.path(), &["--list"]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("multiple scenario documents"));
+}
+
 #[test]
 fn itest_lists_filters_and_drives_real_cli_commands() {
     let temp = tempfile::tempdir().unwrap();
@@ -114,7 +269,11 @@ fn itest_runs_the_checked_in_elm_example_and_failure_fixture() {
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
-        assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed; 0 failed"));
+        let expected = if suite == root.join("examples") { 3 } else { 1 };
+        assert!(
+            String::from_utf8_lossy(&output.stdout)
+                .contains(&format!("{expected} passed; 0 failed"))
+        );
         assert!(!temp.path().join("wrong-out").exists());
     }
 }

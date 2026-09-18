@@ -2,7 +2,7 @@
 
 These examples are projects you can read, copy and run with the consolidated
 `morphir` CLI. Categories can contain further subdirectories. A `scenario.ipynb`
-file makes an example executable by `morphir itest`.
+or `scenarios.md` file makes an example executable by `morphir itest`.
 
 ```sh
 mise run test:examples
@@ -17,7 +17,10 @@ morphir itest examples --tag language:elm --tag frontend:elm-native
 ```
 
 Multiple tags require all listed tags. Every scenario declares its purpose and
-tags in notebook metadata. Markdown cells explain the workflow, command cells
+tags in notebook metadata or Markdown YAML frontmatter. Markdown `##` headings
+separate independent scenarios; `--filter 'cli/basics#version'` selects one.
+Marked YAML fences describe the next source fence, with prose permitted between
+them. Both formats share execution and validation. Markdown cells explain the workflow, command cells
 invoke the CLI, and Rego cells assert outcomes. Project files stay on disk by
 default; optional file cells can supply additional inputs or an entire workspace.
 The driver copies the scenario directory into a temporary workspace and runs actual CLI processes
@@ -28,6 +31,7 @@ with a separate Morphir home. The embedded Regorus provider evaluates assertions
 | Example | What its scenario proves |
 | --- | --- |
 | [Elm single file](elm/single-file/scenario.ipynb) | Native type compilation to v3 IR, public record/custom-type structure, task result and installation |
+| [CLI basics](cli/basics/scenarios.md) | Version reporting and public command help in independent Markdown scenarios |
 
 Passing this example does not establish Elm function lowering or evaluation.
 The native frontend is types-only; reference Elm functions need the real
@@ -35,7 +39,7 @@ The native frontend is types-only; reference Elm functions need the real
 
 ## Existing material awaiting adoption
 
-These files remain available, but they have no `scenario.ipynb` and are not
+These files remain available, but they have no `scenario.ipynb` or `scenarios.md` and are not
 verified by `itest`. Their old `test.yaml` files are not driver inputs.
 
 | Location | Current scope |

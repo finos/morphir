@@ -4,7 +4,7 @@ Thank you for contributing to Morphir. Read the [contribution and governance pol
 
 For changes to CLI user workflows, add or update a categorized executable example.
 The [integration scenario guide](docs/developers/example-integration-tests.md)
-describes notebook scenarios, metadata tags, Rego assertions and `morphir itest`.
+describes notebook and Markdown scenarios, metadata tags, Rego assertions and `morphir itest`.
 
 ## Populate the required submodules
 
