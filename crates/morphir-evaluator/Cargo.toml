@@ -1,0 +1,12 @@
+[package]
+name = "morphir-evaluator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Host-independent Morphir evaluation request and report contract"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

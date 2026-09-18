@@ -18,6 +18,12 @@ Print version
 Relocate the out root, which defaults to .morphir/out under the workspace root. MORPHIR_OUT_DIR does the same
 .SH COMMANDS
 .TP
+\fBeval\fR
+Evaluate a program through a registered native provider
+.TP
+\fBitest\fR
+Run notebook integration scenarios through real CLI processes
+.TP
 \fBcompile\fR
 Compile source code to Morphir IR
 .TP
@@ -272,6 +278,46 @@ Generate JSON Schema for Morphir IR
 .TP
 \fBversion\fR
 Print version information
+.SH "MORPHIR EVAL"
+Evaluate a program through a registered native provider
+.PP
+\fBUsage:\fR morphir eval [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-request\fR \fI<FILE>\fR
+Path to a version 1 evaluation request JSON file
+.TP
+\fB\-\-json\fR
+Print the versioned evaluation report as JSON
+.SH "MORPHIR ITEST"
+Run notebook integration scenarios through real CLI processes
+.PP
+\fBUsage:\fR morphir itest [OPTIONS] [<ROOT>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-filter\fR \fI<FILTER>\fR
+Select one example path or category relative to the search root
+.TP
+\fB\-\-tag\fR \fI<TAGS>\fR
+Require this exact tag; repeat to require all supplied tags
+.TP
+\fB\-\-list\fR
+List matching scenarios and their purpose without executing commands
+.TP
+\fB\-\-keep\-temp\fR
+Retain isolated projects, homes and per\-step logs for diagnosis
+\fBArguments:\fR
+.PP
+.TP
+\fB<ROOT>\fR
+Directory to search recursively for scenario.ipynb files
+.RS
+\fIDefault: \fRexamples
+.RE
 .SH "MORPHIR COMPILE"
 Compile source code to Morphir IR
 .PP

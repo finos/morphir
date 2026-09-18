@@ -2,6 +2,10 @@
 
 Thank you for contributing to Morphir. Read the [contribution and governance policies](docs/developers/contributing.md) before opening a pull request. The [development guide](DEVELOPING.md) covers tools, builds, tests, and the usual development workflow.
 
+For changes to CLI user workflows, add or update a categorized executable example.
+The [integration scenario guide](docs/developers/example-integration-tests.md)
+describes notebook scenarios, metadata tags, Rego assertions and `morphir itest`.
+
 ## Populate the required submodules
 
 This repository uses Git submodules under `ecosystem/`. Before running a `mise` task, review the repository configuration and trust it, then populate the submodules:

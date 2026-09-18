@@ -14,6 +14,8 @@
 
 ## Subcommands
 
+- [`morphir eval <--request <FILE>> [--json]`](eval.md)
+- [`morphir itest [FLAGS] [ROOT]`](itest.md)
 - [`morphir compile [FLAGS]`](compile.md)
 - [`morphir generate [FLAGS]`](generate.md)
 - [`morphir migrate [FLAGS] <INPUT>`](migrate.md)

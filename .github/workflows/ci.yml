@@ -56,6 +56,8 @@ jobs:
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             rust:
+              # itest runs the same categorized projects readers use
+              - 'examples/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/**'

@@ -377,6 +377,25 @@ Watch mode provides better responsiveness and resource efficiency by reacting to
 
 ## Documentation
 
+### Executable CLI examples
+
+Use `morphir itest` to verify workflows through real CLI subprocesses. Runnable
+projects live under categorized `examples/` directories and carry `scenario.ipynb`.
+Keep scenario context and tags in notebook metadata, source/configuration in file
+cells, literal CLI commands in command cells and named Rego rules in assertion
+cells. The embedded evaluator is a native provider; native Morphir IR evaluation
+and WASM hosts are fast-follow work described in
+[the evaluation architecture](docs/developers/evaluation.md). Start with one failing scenario, establish its cause, then
+make the smallest fix and retain the passing case as regression coverage.
+
+Run `mise run test:examples -- --list` to inspect coverage,
+`mise run test:examples -- --filter elm/single-file` for one example, and
+`mise run test:itest` for driver checks. See the
+[authoring guide](docs/developers/example-integration-tests.md) and local
+[example skill](.agents/skills/morphir-example-tests/SKILL.md). Legacy `test.yaml`
+files are not executable coverage. Native Elm type compilation does not establish
+function lowering or evaluation; MCK remains responsible for compatibility contracts.
+
 The Docusaurus website is located in `website/`. To run locally:
 
 ```bash
