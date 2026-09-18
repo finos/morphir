@@ -1,5 +1,9 @@
 //! Compile command for compiling source code to Morphir IR
 
+mod cache;
+
+pub use cache::{CacheKey, CompileCache};
+
 use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::CliError;
 use crate::error::convert_extension_diagnostics;
@@ -49,6 +53,8 @@ pub struct CompileOptions {
     pub json: bool,
     /// Output JSON lines format
     pub json_lines: bool,
+    /// Ignore the workspace's incremental compile cache for this run.
+    pub no_cache: bool,
     /// Out root overrides.
     pub out: OutOverrides,
 }
@@ -1082,6 +1088,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         project: _project,
         json,
         json_lines,
+        no_cache,
         out: out_overrides,
     } = options;
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
@@ -1192,6 +1199,40 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         })?;
     let language_name = language.clone();
     let ir_version = advertised_ir_version(&resolved.capability().ir_versions, "4.0.0");
+    let extension_options = ExtensionCompileOptions {
+        types_only: false,
+        ir_version: ir_version.clone(),
+        extra: HashMap::from([
+            ("outputDir".into(), serde_json::json!(paths.dest)),
+            ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
+            ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
+            (
+                "emitParseStageFatal".into(),
+                serde_json::json!(emit_parse_stage_fatal),
+            ),
+        ]),
+    };
+    let workspace = context
+        .project_root
+        .as_deref()
+        .or_else(|| context.config_path.parent())
+        .unwrap_or(&start_dir);
+    // The cache is only meaningful for a provider that accepts a baseline and
+    // answers with per-module results; for any other provider there is nothing
+    // to send and nothing to keep.
+    let cache = if no_cache || !provider_supports_incremental(&resolved) {
+        None
+    } else {
+        cache_key(&language_name, &resolved, &extension_options).map(|key| {
+            (
+                cache::CompileCache::open(workspace, resolved.info().id.as_str(), &package_name),
+                key,
+            )
+        })
+    };
+    let baseline = cache
+        .as_ref()
+        .and_then(|(cache, key)| cache.read_baseline(key));
     let request = CompileRequest {
         language_id: language,
         documents,
@@ -1199,31 +1240,21 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         // exposure list of its own, and an empty list would now mean the
         // opposite — a package that exposes nothing.
         package: CompilePackage {
-            name: package_name,
+            name: package_name.clone(),
             exposed_modules: None,
         },
         dependencies: vec![],
-        baseline: None,
-        options: ExtensionCompileOptions {
-            types_only: false,
-            ir_version,
-            extra: HashMap::from([
-                ("outputDir".into(), serde_json::json!(paths.dest)),
-                ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
-                ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
-                (
-                    "emitParseStageFatal".into(),
-                    serde_json::json!(emit_parse_stage_fatal),
-                ),
-            ]),
-        },
+        baseline,
+        options: extension_options,
     };
-    let workspace = context
-        .project_root
-        .as_deref()
-        .or_else(|| context.config_path.parent())
-        .unwrap_or(&start_dir);
     let result = crate::extensions::invoke_frontend(&home, workspace, &resolved, request).await?;
+    // The cache records what this run learned whether or not the run as a whole
+    // succeeded: a partial failure is exactly the case the cache exists for,
+    // because the modules that did compile should not compile again once the
+    // broken one is fixed.
+    if let Some((cache, key)) = cache.as_ref() {
+        store_compile_results(cache, key, &result.module_results);
+    }
     let diagnostics = convert_extension_diagnostics(&result.diagnostics);
     let format = OutputFormat::from_flags(json, json_lines);
     let has_error = result
@@ -1277,6 +1308,82 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     };
     write_compile_output(format, &output)?;
     Ok(None)
+}
+
+/// Whether the resolved provider accepts `CompileRequest.baseline` and answers
+/// with `CompileResult.moduleResults`.
+///
+/// The registry normalizes one frontend capability per resolved provider from
+/// whichever source describes it — a builtin's [`NativeExtension`] metadata for
+/// a native-direct provider, the discovered and persisted metadata an installed
+/// MEP provider was registered with — so both kinds are read the same way here,
+/// exactly as `validate_frontend_capabilities` reads the negotiated capability
+/// once a session exists.
+///
+/// [`NativeExtension`]: morphir_extension_sdk::NativeExtension
+fn provider_supports_incremental(resolved: &morphir_daemon::ResolvedFrontend) -> bool {
+    resolved.capability().incremental
+}
+
+/// The key this run's results are cached under, or `None` when it cannot be
+/// computed — in which case the run keeps no cache rather than risking a
+/// baseline that describes something else.
+///
+/// Elm's prelude is the binding's to describe, so its digest comes from the
+/// binding rather than from the CLI's reading of the option: the function the
+/// frontend uses to decide whether a baseline is reusable is the one that keys
+/// the cache. A language with no prelude of its own falls back to the option as
+/// sent, which for every provider today is nothing at all.
+fn cache_key(
+    language: &str,
+    resolved: &morphir_daemon::ResolvedFrontend,
+    options: &ExtensionCompileOptions,
+) -> Option<cache::CacheKey> {
+    let prelude_digest = if language == "elm" {
+        match morphir_elm_binding::frontend::boundary::prelude_digest_for(options) {
+            Ok(digest) => digest,
+            Err(diagnostic) => {
+                tracing::debug!(
+                    message = %diagnostic.message,
+                    "the prelude digest could not be computed; compiling without a cache"
+                );
+                return None;
+            }
+        }
+    } else {
+        let option = options
+            .extra
+            .get("elmPrelude")
+            .map(ToString::to_string)
+            .unwrap_or_else(|| "null".into());
+        morphir_elm_binding::digest::sha256_hex(option.as_bytes())
+    };
+    Some(cache::CacheKey {
+        extension_id: resolved.info().id.clone(),
+        extension_version: resolved.info().version.clone(),
+        ir_version: options.ir_version.clone(),
+        types_only: options.types_only,
+        prelude_digest: Some(prelude_digest),
+    })
+}
+
+/// Record a compile's per-module results, reporting a cache that could not be
+/// written rather than failing the compile over it.
+fn store_compile_results(
+    cache: &cache::CompileCache,
+    key: &cache::CacheKey,
+    results: &[morphir_extension_sdk::ModuleResult],
+) {
+    if results.is_empty() {
+        return;
+    }
+    if let Err(error) = cache.write_results(key, results) {
+        tracing::debug!(
+            root = %cache.root().display(),
+            %error,
+            "the incremental compile cache could not be written"
+        );
+    }
 }
 
 fn collect_source_documents(
@@ -1458,6 +1565,66 @@ fn advertised_ir_version(advertised: &[String], requested: &str) -> String {
         .unwrap_or_else(|| requested.to_owned())
 }
 
+#[cfg(test)]
+mod incremental_tests {
+    use super::{cache_key, provider_supports_incremental};
+    use morphir_extension_sdk::CompileOptions as ExtensionCompileOptions;
+
+    fn resolve(language: &str, extension: &str) -> morphir_daemon::ResolvedFrontend {
+        crate::extensions::extension_registry_for([], Some(extension))
+            .unwrap()
+            .resolve_frontend(
+                language,
+                "4.0.0",
+                morphir_daemon::InvocationPolicy::PreferDirect,
+            )
+            .unwrap()
+    }
+
+    fn options() -> ExtensionCompileOptions {
+        ExtensionCompileOptions {
+            types_only: false,
+            ir_version: "4.0.0".into(),
+            extra: std::collections::HashMap::new(),
+        }
+    }
+
+    // Requirement: only a provider that advertises `frontend.incremental` is
+    // sent a baseline. A provider that compiles everything every time has
+    // nothing to remember, and offering it a baseline would be a request it
+    // never agreed to answer.
+    #[test]
+    fn only_an_incremental_provider_is_cached() {
+        assert!(provider_supports_incremental(&resolve(
+            "elm",
+            "morphir-elm-native"
+        )));
+        assert!(!provider_supports_incremental(&resolve(
+            "gleam",
+            "morphir-gleam-binding"
+        )));
+    }
+
+    // The key names the provider and the shape of what it was asked for, and
+    // carries the prelude digest the binding itself computes, so a run under
+    // another prelude cannot reuse these results.
+    #[test]
+    fn the_key_carries_the_binding_s_own_prelude_digest() {
+        let resolved = resolve("elm", "morphir-elm-native");
+        let key =
+            cache_key("elm", &resolved, &options()).expect("the default prelude has a digest");
+
+        assert_eq!(key.extension_id, "morphir-elm-native");
+        assert_eq!(key.extension_version, resolved.info().version);
+        assert_eq!(key.ir_version, "4.0.0");
+        assert!(!key.types_only);
+        assert_eq!(
+            key.prelude_digest,
+            Some(morphir_elm_binding::frontend::boundary::prelude_digest_for(&options()).unwrap()),
+        );
+    }
+}
+
 fn is_semantic_v4(version: &str) -> bool {
     normalize_ir_version_text(version).is_some_and(|normalized| {
         normalized.is_supported() && normalized.release == ReleaseTriplet::new(4, 0, 0)
@@ -1535,6 +1702,7 @@ mod tests {
             project: None,
             json: false,
             json_lines: false,
+            no_cache: false,
             out: OutOverrides {
                 flag: Some(out_dir),
                 env: None,

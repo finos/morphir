@@ -88,6 +88,9 @@ enum Commands {
         /// Output as JSON Lines (streaming)
         #[arg(long)]
         json_lines: bool,
+        /// Ignore the incremental compile cache for this run
+        #[arg(long)]
+        no_cache: bool,
     },
     /// Generate code from Morphir IR
     Generate {
@@ -791,6 +794,7 @@ impl AppSession for MorphirSession {
                 project,
                 json,
                 json_lines,
+                no_cache,
             } => {
                 run_compile(CompileOptions {
                     language: language.clone(),
@@ -802,6 +806,7 @@ impl AppSession for MorphirSession {
                     project: project.clone(),
                     json: *json,
                     json_lines: *json_lines,
+                    no_cache: *no_cache,
                     out: self.out.clone(),
                 })
                 .await

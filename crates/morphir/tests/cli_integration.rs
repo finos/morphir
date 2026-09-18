@@ -946,6 +946,212 @@ fn elm_native_compiles_a_single_file_to_v3_ir() {
     );
 }
 
+/// The compile cache's manifest for the two-module Elm project. The package is
+/// `example/domain`, which is one path segment once sanitised.
+fn elm_native_manifest_path(project_root: &std::path::Path) -> PathBuf {
+    project_root.join(".morphir/cache/compile/morphir-elm-native/example_domain/manifest.json")
+}
+
+fn read_elm_native_manifest(project_root: &std::path::Path) -> serde_json::Value {
+    let path = elm_native_manifest_path(project_root);
+    let bytes = std::fs::read(&path)
+        .unwrap_or_else(|error| panic!("manifest at {}: {error}", path.display()));
+    serde_json::from_slice(&bytes)
+        .unwrap_or_else(|error| panic!("manifest at {} is JSON: {error}", path.display()))
+}
+
+fn module_status(manifest: &serde_json::Value, module: &str) -> String {
+    manifest["modules"][module]["status"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{module} has a status: {manifest}"))
+        .to_owned()
+}
+
+fn assert_compile_succeeded(output: &std::process::Output, label: &str) {
+    assert!(
+        output.status.success(),
+        "{label} failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// Requirement: the second compile of an untouched project reuses everything.
+/// This is the whole point of the cache: the CLI hands back what the last run
+/// produced, and the provider answers that nothing needs compiling again.
+#[test]
+fn elm_native_second_compile_reuses_unchanged_modules() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native"];
+
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    let first = read_elm_native_manifest(&project);
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "second compile");
+    let second = read_elm_native_manifest(&project);
+
+    assert_eq!(module_status(&first, "My.Other"), "compiled", "{first}");
+    assert_eq!(module_status(&first, "My.Types"), "compiled", "{first}");
+    assert_eq!(module_status(&second, "My.Other"), "unchanged", "{second}");
+    assert_eq!(module_status(&second, "My.Types"), "unchanged", "{second}");
+}
+
+/// Requirement: a partial failure publishes nothing and keeps the cache
+/// useful. After the break is fixed, only the module that was broken is
+/// compiled again; its dependent was resolved against the cached interface all
+/// along and stays unchanged.
+///
+/// The IR a failed run must leave alone is the installed one: a task's own
+/// `.dest` is emptied when the run starts, by the tombstone rule in
+/// `docs/design/out-directory.md`, so the last good IR a reader can see is the
+/// copy installed under `--output`.
+#[test]
+fn elm_native_fixing_a_broken_module_recompiles_only_it() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    let src_dir = write_elm_project(&project);
+    let arguments = [
+        "compile",
+        "--extension",
+        "morphir-elm-native",
+        "--output",
+        "dist",
+    ];
+    let other = src_dir.join("Other.elm");
+    let good = std::fs::read(&other).unwrap();
+
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    let ir_path = project.join("dist/morphir-ir.json");
+    let ir_after_first = std::fs::read(&ir_path).expect("the first compile installs IR");
+
+    std::fs::write(
+        &other,
+        "module My.Other exposing (Currency)\n\n\ntype alias Currency =\n    Nonexistent\n",
+    )
+    .unwrap();
+    let broken = run_morphir(&arguments, &home, &project);
+    assert!(
+        !broken.status.success(),
+        "a broken module fails the compile: stdout={} stderr={}",
+        String::from_utf8_lossy(&broken.stdout),
+        String::from_utf8_lossy(&broken.stderr)
+    );
+    assert_eq!(
+        std::fs::read(&ir_path).unwrap(),
+        ir_after_first,
+        "a failed compile leaves the installed morphir-ir.json exactly as it was"
+    );
+    assert!(
+        !project
+            .join(".morphir/out/compile.dest/morphir-ir.json")
+            .exists(),
+        "a failed compile publishes no IR of its own"
+    );
+    let failed = read_elm_native_manifest(&project);
+    assert_eq!(module_status(&failed, "My.Other"), "failed", "{failed}");
+    let dependent = module_status(&failed, "My.Types");
+    assert!(
+        dependent == "unchanged" || dependent == "compiled",
+        "a dependent resolves against the cached interface rather than blocking: {failed}"
+    );
+
+    // Fix it to something that is not byte-for-byte what the last good compile
+    // saw — restoring the exact bytes would be `unchanged`, which says nothing
+    // about recompiling. The comment leaves the module's interface alone, so
+    // its dependent has no reason to compile again.
+    let fixed_source = [good.as_slice(), b"\n\n-- back in business\n"].concat();
+    std::fs::write(&other, &fixed_source).unwrap();
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "fixed compile");
+    let fixed = read_elm_native_manifest(&project);
+
+    assert_eq!(module_status(&fixed, "My.Other"), "compiled", "{fixed}");
+    assert_eq!(module_status(&fixed, "My.Types"), "unchanged", "{fixed}");
+}
+
+/// Requirement: `--no-cache` is a full opt out. The run neither reads the cache
+/// nor writes it, so the manifest an earlier run left is untouched.
+#[test]
+fn elm_native_no_cache_flag_skips_the_cache() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+
+    assert_compile_succeeded(
+        &run_morphir(
+            &["compile", "--extension", "morphir-elm-native"],
+            &home,
+            &project,
+        ),
+        "first compile",
+    );
+    let before = read_elm_native_manifest(&project);
+    let second = run_morphir(
+        &[
+            "compile",
+            "--extension",
+            "morphir-elm-native",
+            "--no-cache",
+            "--json",
+        ],
+        &home,
+        &project,
+    );
+    assert_compile_succeeded(&second, "--no-cache compile");
+    let after = read_elm_native_manifest(&project);
+
+    assert_eq!(
+        before["updatedAt"], after["updatedAt"],
+        "--no-cache must not rewrite the manifest: {after}"
+    );
+    assert_eq!(before, after);
+    let envelope: serde_json::Value = serde_json::from_slice(&second.stdout)
+        .unwrap_or_else(|error| panic!("--json output is JSON ({error}): {:?}", second.stdout));
+    let modules: Vec<String> = envelope["modules"]
+        .as_array()
+        .unwrap_or_else(|| panic!("the envelope lists modules: {envelope}"))
+        .iter()
+        .map(|module| module.as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        modules.contains(&"My.Other".to_owned()) && modules.contains(&"My.Types".to_owned()),
+        "a run without a baseline compiles everything: {envelope}"
+    );
+}
+
+/// Requirement: a damaged cache costs a rebuild, never a failure.
+#[test]
+fn elm_native_corrupt_cache_is_ignored() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    let arguments = ["compile", "--extension", "morphir-elm-native"];
+
+    assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
+    std::fs::write(elm_native_manifest_path(&project), b"{ not a manifest").unwrap();
+    assert_compile_succeeded(
+        &run_morphir(&arguments, &home, &project),
+        "compile over a corrupt cache",
+    );
+    let manifest = read_elm_native_manifest(&project);
+
+    assert_eq!(manifest["schemaVersion"], "1", "{manifest}");
+    assert_eq!(
+        module_status(&manifest, "My.Other"),
+        "compiled",
+        "{manifest}"
+    );
+    assert_eq!(
+        module_status(&manifest, "My.Types"),
+        "compiled",
+        "{manifest}"
+    );
+}
+
 fn add_test_repository(
     name: &str,
     index: &std::path::Path,
