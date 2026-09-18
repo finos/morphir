@@ -50,6 +50,24 @@ class CiRustOptimizationTests(unittest.TestCase):
         self.assertIn("default: morphir-rust", self.setup_rust_ci_action)
         self.assertIn("link-arg=-fuse-ld=mold", self.setup_rust_ci_action)
 
+    def test_ci_tests_published_bundles_and_builds_no_wasm_guest(self) -> None:
+        # finos/morphir-rust owns the guest builds. This repository checks that a CLI change
+        # does not break the bundles users already installed.
+        self.assertIn("mise run ci:fetch-published-bundles", self.ci_workflow)
+        self.assertNotIn("--target wasm32-unknown-unknown", self.ci_workflow)
+        self.assertNotIn("package_extension.py", self.ci_workflow)
+        for test in (
+            "generate_extension",
+            "generate_openapi_extension",
+            "python_extension",
+            "rust_extension",
+        ):
+            self.assertIn(f"--test {test}", self.ci_workflow)
+        # Moving a pin changes what the CLI is tested against, so it runs the Rust jobs.
+        self.assertIn(
+            "              - '.config/published-extension-bundles.toml'\n", self.ci_workflow
+        )
+
     def test_scala_build_caches_native_image_output(self) -> None:
         self.assertIn(
             "uses: ./.github/actions/cache-scala-native-image", self.scala_build_job

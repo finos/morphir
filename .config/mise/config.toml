@@ -447,6 +447,10 @@ description = "Add a new submodule under ecosystem/. Usage: mise run submodules:
 run = "python .config/mise/tasks/submodules/add.py"
 
 # ===== CI Tasks =====
+[tasks."ci:fetch-published-bundles"]
+description = "Download the pinned published extension bundles into .dev/out/published-bundles"
+run = "bun run tools/fetch-published-bundles.ts"
+
 [tasks."ci:validate-tool-release-metadata"]
 description = "Validate signed tool release metadata fixtures"
 run = "python .config/mise/tasks/ci/validate_tool_release_metadata.py"

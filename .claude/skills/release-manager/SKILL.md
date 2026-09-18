@@ -84,7 +84,6 @@ mise run test
 python3 -B -m unittest discover -s tests/ci
 
 # Documentation, tool metadata, schema, and naming-corpus checks
-mise run ci:validate-docs
 mise run ci:validate-tool-release-metadata
 mise run schema:validate
 mise run fixtures:naming-corpus-check
@@ -119,48 +118,53 @@ MORPHIR_ELM_EXTENSION_BIN="$PWD/ecosystem/morphir-elm/dist/morphir-elm-extension
   cargo test --locked --package integration-tests --test elm_extension -- --ignored --nocapture
 ```
 
-**WASM extensions (Avro, OpenAPI, Python).** CI builds all three guests
-from `ecosystem/morphir-rust` and runs the ignored `generate_extension` and
-`generate_openapi_extension` tests against them. To run them locally:
+**WASM extensions (Avro, OpenAPI, Python, Rust).** finos/morphir does not build
+the guests. finos/morphir-rust owns the check that a new bundle works with the
+released CLI. This repository owns the check that a CLI change does not break the
+bundles users already installed: CI downloads the bundles pinned in
+`.config/published-extension-bundles.toml` and runs the ignored extension tests
+against them. Run the same check with the release binary:
 
 ```bash
-rustup target add wasm32-unknown-unknown
-cargo build --locked --release --manifest-path ecosystem/morphir-rust/Cargo.toml \
-  -p morphir-avro-extension -p morphir-openapi-extension -p morphir-python-binding --target wasm32-unknown-unknown
-cargo test --locked -p morphir --test generate_extension --test generate_openapi_extension -- --ignored
+mise run ci:fetch-published-bundles
+B="$PWD/.dev/out/published-bundles"
+MORPHIR_AVRO_GUEST="$(ls "$B"/avro/*.wasm)" MORPHIR_OPENAPI_GUEST="$(ls "$B"/openapi/*.wasm)" \
+MORPHIR_PYTHON_BUNDLE="$B/python" MORPHIR_RUST_BUNDLE="$B/rust" \
+  cargo test --locked --release -p morphir \
+    --test generate_extension --test generate_openapi_extension \
+    --test python_extension --test rust_extension -- --ignored
 ```
 
-Then prove the published bundles against the release binary in a clean home.
-Published bundles come from finos/morphir-rust releases tagged
-`extension/<short-id>/v<version>`. The publish command requires the descriptor
-to be named `release.json` and the bundle directory to hold exactly the
-descriptor, the `.wasm` artifact, and its `.sha256` file:
+Before a release, check finos/morphir-rust releases for newer `extension/<id>/v*`
+tags and move the pins. When the CLI changes the extension protocol on purpose,
+publish a compatible bundle from finos/morphir-rust first, then move the pin in
+the same pull request as the CLI change.
+
+Then prove one bundle by hand in a clean home. `generate` needs a project
+configuration, so the steps run inside a directory with a `morphir.toml`:
 
 ```bash
 export MORPHIR_HOME="$(mktemp -d)"
-bin=target/release/morphir
-mkdir -p bundles/avro && gh release download extension/avro/v0.1.1 -R finos/morphir-rust --dir bundles/avro
-mv bundles/avro/*.release.json bundles/avro/release.json
+bin="$PWD/target/release/morphir"
+ir="$PWD/website/static/ir/examples/v3/greeting-example.json"
+work="$(mktemp -d)" && cd "$work"
+printf '[project]\nname = "Acme.Greeting"\nversion = "1.0.0"\n' > morphir.toml
 
 $bin extension repository init repo
 $bin extension repository add local --directory repo
-$bin extension repository publish local --bundle bundles/avro
+$bin extension repository publish local --bundle "$B/avro"
 $bin extension search avro
 $bin extension install --repository local morphir-avro
 $bin extension list
-$bin generate --target avro --input website/static/ir/examples/v3/greeting-example.json --output out/avro
+$bin generate --target avro --input "$ir" --output out/avro
 ```
 
-Repeat the same steps for `extension/openapi/v<version>` with
-`morphir-openapi` and the `openapi` and `json-schema` targets. Every command
-must succeed and the generate step must write artifacts.
+Every command must succeed and the generate step must write artifacts.
 
-For Python, download `extension/python/v<version>` and rename its namespaced
-descriptor to `release.json`. Set `MORPHIR_PYTHON_BUNDLE` to that directory and
-run `cargo test --locked -p morphir --test python_extension -- --ignored`.
-This exercises CLI publication, installation, compilation, generation and
-recompilation with a fresh Morphir Home after removing the source repository.
-CI packages the locally built Python guest and runs this test explicitly.
+**Native Elm provider.** `morphir-elm-native` is compiled into the CLI. Prove it
+with a project whose `morphir.toml` sets `[frontend] language = "elm"` and
+`[frontend.elm] extension = "morphir-elm-native"`: `morphir compile --ir-version 3`
+and `--ir-version 4` must both write `morphir-ir.json` with that `formatVersion`.
 
 ### Manual verification
 

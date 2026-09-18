@@ -15,20 +15,24 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use support::{
-    CliMother, assert_success, ecosystem_crate_version, ecosystem_target_directory, v3_library,
-    v4_library,
+    CliMother, assert_success, ecosystem_target_directory, guest_metadata, v3_library, v4_library,
 };
 
 struct AvroCliMother(CliMother);
 
 impl AvroCliMother {
     fn new(guest_path: impl AsRef<Path>) -> Self {
+        let (version, backend) = guest_metadata(
+            guest_path.as_ref(),
+            "morphir-avro-extension",
+            json!({ "targets": ["avro"], "irVersions": ["3", "4"] }),
+        );
         Self(CliMother::new(
             "morphir-avro",
             "morphir_avro_extension.wasm",
             "Morphir Avro",
-            &ecosystem_crate_version("morphir-avro-extension"),
-            json!({ "targets": ["avro"], "irVersions": ["3", "4"] }),
+            &version,
+            backend,
             guest_path,
         ))
     }
@@ -42,7 +46,12 @@ impl std::ops::Deref for AvroCliMother {
     }
 }
 
+/// The guest under test: the published `.wasm` that `MORPHIR_AVRO_GUEST` names, which is what CI uses, or
+/// the guest built from the pinned `ecosystem/morphir-rust` checkout.
 fn avro_guest_path() -> PathBuf {
+    if let Some(guest) = std::env::var_os("MORPHIR_AVRO_GUEST") {
+        return PathBuf::from(guest);
+    }
     ecosystem_target_directory()
         .join("wasm32-unknown-unknown")
         .join("release")

@@ -172,6 +172,30 @@ pub fn ecosystem_crate_version(package_name: &str) -> String {
         .to_owned()
 }
 
+/// The version and backend capabilities a guest is discovered with.
+///
+/// A published guest sits beside its `release.json`, and that descriptor is the truth about it:
+/// the pinned bundle can be older than the `ecosystem/morphir-rust` checkout, and the CLI refuses
+/// a guest whose discovery version disagrees with the one it reports. A guest built from the
+/// checkout has no descriptor, so it takes the crate version and the capabilities given here.
+pub fn guest_metadata(guest_path: &Path, package_name: &str, backend: Value) -> (String, Value) {
+    let descriptor = guest_path.with_file_name("release.json");
+    let Ok(text) = fs::read_to_string(&descriptor) else {
+        return (ecosystem_crate_version(package_name), backend);
+    };
+    let release: Value = serde_json::from_str(&text)
+        .unwrap_or_else(|error| panic!("{} is not JSON: {error}", descriptor.display()));
+    let version = release["version"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{} has no version", descriptor.display()))
+        .to_owned();
+    let capabilities = serde_json::json!({
+        "targets": release["targets"],
+        "irVersions": release["irVersions"],
+    });
+    (version, capabilities)
+}
+
 pub fn ecosystem_target_directory() -> PathBuf {
     let metadata = ecosystem_metadata();
     PathBuf::from(metadata["target_directory"].as_str().unwrap())

@@ -1,0 +1,26 @@
+# Published finos/morphir-rust extension bundles that CI runs the CLI against.
+#
+# These are the bundles users install. A CLI change that breaks one of them turns CI red.
+# `sha256` is the digest of the guest `.wasm`. It is checked against the download, so a release
+# asset that someone replaces does not run. For a deliberate protocol change, publish a compatible bundle from finos/morphir-rust first,
+# then move the pin here in the same pull request as the CLI change.
+
+[bundles.avro]
+tag = "extension/avro/v0.1.1"
+artifact = "morphir-avro-extension-0.1.1"
+sha256 = "ed6ea1b68b367d59ccb2b56f0a705d44ce7f65071c0ec9c26cbabab39b267965"
+
+[bundles.openapi]
+tag = "extension/openapi/v0.1.0"
+artifact = "morphir-openapi-extension-0.1.0"
+sha256 = "42d0631cd7c12f976a5b8b882377de5fe14a57717b3129ebab763b0a5b4d4e04"
+
+[bundles.python]
+tag = "extension/python/v0.2.0"
+artifact = "morphir-python-binding-0.2.0"
+sha256 = "b08aed79700df8d8613c681e0a3dc1de21b3a8163b318bf4470b340383441091"
+
+[bundles.rust]
+tag = "extension/rust/v0.1.0"
+artifact = "morphir-rust-binding-0.1.0"
+sha256 = "1bd693be41250b6ce4cafc4d94be82967d50b99af9e01da5d6f880c01bc8947a"
