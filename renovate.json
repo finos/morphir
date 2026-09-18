@@ -5,6 +5,8 @@
   ],
   "prHourlyLimit": 5,
   "prConcurrentLimit": 10,
+  "cloneSubmodules": true,
+  "cloneSubmodulesFilter": ["ecosystem/morphir-rust"],
   "packageRules": [
     {
       "description": "Group Rust/Cargo dependency updates",
