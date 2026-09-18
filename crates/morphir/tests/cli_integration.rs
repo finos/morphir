@@ -1226,7 +1226,7 @@ fn elm_native_corrupt_cache_is_ignored() {
     );
     let manifest = read_elm_native_manifest(&project);
 
-    assert_eq!(manifest["schemaVersion"], "1", "{manifest}");
+    assert_eq!(manifest["schemaVersion"], "2", "{manifest}");
     assert_eq!(
         module_status(&manifest, "My.Other"),
         "compiled",

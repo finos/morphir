@@ -690,6 +690,7 @@ mod tests {
                 diagnostics: vec![],
                 modules: vec![],
                 module_results: Vec::new(),
+                context_digest: None,
             })
         }
 
@@ -1083,6 +1084,7 @@ mod tests {
                 }],
                 modules: vec![],
                 module_results: Vec::new(),
+                context_digest: None,
             }),
             Arc::new(SessionReuseInvoker::new(RegistryOpener)),
         );
@@ -1195,6 +1197,7 @@ mod tests {
                 diagnostics: vec![],
                 modules: vec![],
                 module_results: Vec::new(),
+                context_digest: None,
             }),
             {
                 let sleeping = Arc::new(SleepingInvoker::new(Duration::from_secs(600)));
@@ -1290,6 +1293,7 @@ mod tests {
                 diagnostics: vec![],
                 modules: vec![],
                 module_results: Vec::new(),
+                context_digest: None,
             }),
             invoker.clone(),
         );

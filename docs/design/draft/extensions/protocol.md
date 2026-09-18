@@ -306,17 +306,21 @@ Passing content rather than paths has four consequences:
 The `package` field supplies language-neutral compilation context. A host compiling one file may synthesize it. For Elm, the adapter converts this value to the package information expected by the existing compiler.
 
 `baseline` is optional and owned by the host: it carries what an earlier
-`morphir.frontend.compile` call returned in `moduleResults`, so a host that
-keeps no cache omits it and gets a full compile. A host must not send
-`baseline` to a frontend that advertises `incremental: false`. Each
-`baseline.modules` entry
+`morphir.frontend.compile` call returned in `moduleResults` and
+`contextDigest`, so a host that keeps no cache omits it and gets a full
+compile. A host must not send `baseline` to a frontend that advertises
+`incremental: false`. Each `baseline.modules` entry
 describes one module the host still trusts: `name` and `uri` identify it,
 `sourceDigest` is the digest of its source text as last seen, `interfaceDigest`
 is the digest of its resolved public interface, `dependsOn` lists the
 in-package modules it depends on, and `ir` is the module's previously compiled
-IR. `baseline.preludeDigest` is optional and records the digest of the
-frontend configuration the baseline was built under; a frontend whose active
-configuration digest differs ignores the whole baseline rather than reuse
+IR. `baseline.contextDigest` is optional and echoes the digest an incremental
+frontend returned as `CompileResult.contextDigest` on the run that produced
+this baseline. A host stores that digest next to the module results it keeps
+and sends it back unchanged; it does not compute or interpret it. A frontend
+whose own digest of the current compile context — IR version, `typesOnly`,
+prelude, and dependency interfaces — differs from `baseline.contextDigest`, or
+a baseline that carries none, ignores the whole baseline rather than reuse
 entries computed against something else.
 
 Dependencies are Morphir IR distributions. Version 0.1 permits them inline:
@@ -354,12 +358,23 @@ Large dependency transfer and content-addressed references are deferred until me
         "ir": {},
         "diagnostics": []
       }
-    ]
+    ],
+    "contextDigest": "sha256:ff"
   }
 }
 ```
 
 `ir` contains the Morphir IR distribution as JSON, not a JSON-encoded string. The host validates the returned IR against the declared version before writing it or passing it to another extension.
+
+`contextDigest` is returned only by a frontend that advertised
+`incremental: true`, and covers everything a module's compiled form depends on
+besides its own source: the IR version, the frontend's configuration
+(including its prelude, for a language that has one), and the dependency
+distributions supplied with the request. A host stores it next to the module
+results it keeps and echoes it back as `baseline.contextDigest` on the next
+request; it never computes or compares the digest itself. Its absence means
+the frontend computes none, in which case a host still stores `moduleResults`
+but sends no `contextDigest` on the next baseline.
 
 `moduleResults` is present only from a frontend that advertised
 `incremental: true`, and has one entry per module the request touched. Each
@@ -614,10 +629,10 @@ and the version stayed at 0.1 rather than moving to 0.2. A protocol version
 that has already been released must not repeat this — a required field added
 after release needs a major version, per the rule above.
 
-`CompileRequest.baseline`, `CompileBaseline.preludeDigest`, and
-`CompileResult.moduleResults` are additive optional fields added under the
-same pre-release rule while MEP 0.1 has not yet shipped. Receivers that do not
-implement them ignore them.
+`CompileRequest.baseline`, `CompileBaseline.contextDigest`,
+`CompileResult.moduleResults`, and `CompileResult.contextDigest` are additive
+optional fields added under the same pre-release rule while MEP 0.1 has not
+yet shipped. Receivers that do not implement them ignore them.
 
 ## Security and permissions
 

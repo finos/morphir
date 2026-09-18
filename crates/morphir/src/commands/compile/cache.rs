@@ -25,13 +25,23 @@ use std::path::{Path, PathBuf};
 /// Layout version of the cache directory. A manifest written under any other
 /// version is not read, which is how a layout change invalidates old caches
 /// without needing to understand them.
-const SCHEMA_VERSION: &str = "1";
+///
+/// Bumped to "2" when `CacheKey` dropped `prelude_digest`: a manifest written
+/// under version "1" describes a key shape this module no longer reads, so it
+/// must be ignored rather than misread.
+const SCHEMA_VERSION: &str = "2";
 
-/// Everything a baseline's reusability depends on, apart from the sources.
+/// Everything a baseline's reusability depends on, apart from the sources and
+/// the compile context.
 ///
 /// A result compiled under a different extension, extension version, IR
-/// version, `typesOnly` setting, or prelude describes something else, so a run
-/// whose key differs starts from scratch.
+/// version, or `typesOnly` setting describes something else, so a run whose
+/// key differs starts from scratch. The compile context itself — IR version,
+/// `typesOnly`, prelude, and dependency interfaces — is no longer part of the
+/// key: the extension computes its own digest of that context and returns it
+/// as `CompileResult.context_digest`, which the manifest stores and the
+/// baseline echoes back as `CompileBaseline.context_digest`. The extension is
+/// the one that ignores a baseline whose context digest does not match.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheKey {
@@ -43,10 +53,6 @@ pub struct CacheKey {
     pub ir_version: String,
     /// Whether the compile asked for types only.
     pub types_only: bool,
-    /// Digest of the prelude the results were resolved against, when the
-    /// language has one.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prelude_digest: Option<String>,
 }
 
 /// One module's entry in the manifest: enough to describe the cache without
@@ -69,6 +75,11 @@ struct ManifestModule {
 struct Manifest {
     schema_version: String,
     key: CacheKey,
+    /// The compile context digest the extension returned with the results
+    /// this manifest records, echoed back as the next baseline's
+    /// `context_digest`. `None` when the provider did not supply one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    context_digest: Option<String>,
     #[serde(default)]
     modules: BTreeMap<String, ManifestModule>,
     updated_at: String,
@@ -109,18 +120,28 @@ impl CompileCache {
             .collect::<Vec<_>>();
         Some(CompileBaseline {
             modules,
-            prelude_digest: key.prelude_digest.clone(),
+            context_digest: manifest.context_digest,
         })
     }
 
-    /// Record `results` as the cache's new contents.
+    /// Record `results`, and the compile context digest they were produced
+    /// under, as the cache's new contents.
     ///
     /// Every `compiled` result is written out in full. `unchanged`, `failed`,
     /// and `blocked` results keep whatever file they already had: the first
     /// because the provider does not send back IR it reused, the other two
     /// because their last good IR is exactly what the next run needs. Modules
     /// absent from `results` are gone from the sources, so their files go too.
-    pub fn write_results(&self, key: &CacheKey, results: &[ModuleResult]) -> std::io::Result<()> {
+    ///
+    /// `context_digest` is `None` when the provider does not supply one; the
+    /// manifest then stores `None` and the next baseline carries none either,
+    /// which the extension treats as unreusable rather than a match.
+    pub fn write_results(
+        &self,
+        key: &CacheKey,
+        context_digest: Option<String>,
+        results: &[ModuleResult],
+    ) -> std::io::Result<()> {
         let modules_dir = self.root.join("modules");
         std::fs::create_dir_all(&modules_dir)?;
         for result in results {
@@ -138,6 +159,7 @@ impl CompileCache {
         let manifest = Manifest {
             schema_version: SCHEMA_VERSION.to_owned(),
             key: key.clone(),
+            context_digest,
             modules: results
                 .iter()
                 .map(|result| {
@@ -337,8 +359,11 @@ mod tests {
             extension_version: "0.1.0".into(),
             ir_version: "4.0.0".into(),
             types_only: false,
-            prelude_digest: Some("sha256:prelude".into()),
         }
+    }
+
+    fn context_digest() -> Option<String> {
+        Some("sha256:context".into())
     }
 
     fn module(name: &str, status: ModuleStatus) -> ModuleResult {
@@ -364,12 +389,14 @@ mod tests {
             module("My.Types", ModuleStatus::Compiled),
         ];
 
-        cache.write_results(&key(), &results).unwrap();
+        cache
+            .write_results(&key(), context_digest(), &results)
+            .unwrap();
         let baseline = cache
             .read_baseline(&key())
             .expect("a baseline is available");
 
-        assert_eq!(baseline.prelude_digest, key().prelude_digest);
+        assert_eq!(baseline.context_digest, context_digest());
         let names: Vec<_> = baseline
             .modules
             .iter()
@@ -390,7 +417,11 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let cache = CompileCache::open(temp.path(), "morphir-elm-native", "example/domain");
         cache
-            .write_results(&key(), &[module("My.Other", ModuleStatus::Compiled)])
+            .write_results(
+                &key(),
+                context_digest(),
+                &[module("My.Other", ModuleStatus::Compiled)],
+            )
             .unwrap();
 
         for changed in [
@@ -404,14 +435,6 @@ mod tests {
             },
             CacheKey {
                 types_only: true,
-                ..key()
-            },
-            CacheKey {
-                prelude_digest: Some("sha256:other".into()),
-                ..key()
-            },
-            CacheKey {
-                prelude_digest: None,
                 ..key()
             },
         ] {
@@ -428,7 +451,11 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let cache = CompileCache::open(temp.path(), "morphir-elm-native", "example/domain");
         cache
-            .write_results(&key(), &[module("My.Other", ModuleStatus::Compiled)])
+            .write_results(
+                &key(),
+                context_digest(),
+                &[module("My.Other", ModuleStatus::Compiled)],
+            )
             .unwrap();
         std::fs::write(cache.root().join("manifest.json"), b"{ not json").unwrap();
 
@@ -453,6 +480,7 @@ mod tests {
         cache
             .write_results(
                 &key(),
+                context_digest(),
                 &[
                     module("My.Other", ModuleStatus::Compiled),
                     module("My.Types", ModuleStatus::Compiled),
@@ -484,6 +512,7 @@ mod tests {
         cache
             .write_results(
                 &key(),
+                context_digest(),
                 &[
                     module("My.Other", ModuleStatus::Compiled),
                     module("My.Types", ModuleStatus::Compiled),
@@ -495,6 +524,7 @@ mod tests {
         cache
             .write_results(
                 &key(),
+                context_digest(),
                 &[
                     ModuleResult {
                         ir: None,
@@ -536,10 +566,18 @@ mod tests {
         let cache = CompileCache::open(temp.path(), "morphir-elm-native", "example/domain");
 
         cache
-            .write_results(&key(), &[module("My.Other", ModuleStatus::Compiled)])
+            .write_results(
+                &key(),
+                context_digest(),
+                &[module("My.Other", ModuleStatus::Compiled)],
+            )
             .unwrap();
         cache
-            .write_results(&key(), &[module("My.Other", ModuleStatus::Compiled)])
+            .write_results(
+                &key(),
+                context_digest(),
+                &[module("My.Other", ModuleStatus::Compiled)],
+            )
             .unwrap();
 
         let root_files: Vec<_> = std::fs::read_dir(cache.root())
@@ -609,6 +647,7 @@ mod tests {
         cache
             .write_results(
                 &key(),
+                context_digest(),
                 &[
                     module("My.Other", ModuleStatus::Compiled),
                     module("My.Types", ModuleStatus::Compiled),
@@ -616,7 +655,7 @@ mod tests {
             )
             .unwrap();
 
-        cache.write_results(&key(), &[]).unwrap();
+        cache.write_results(&key(), context_digest(), &[]).unwrap();
 
         assert!(!cache.module_path("My.Other").exists());
         assert!(!cache.module_path("My.Types").exists());
@@ -639,6 +678,7 @@ mod tests {
         cache
             .write_results(
                 &key(),
+                context_digest(),
                 &[
                     module("My.Other", ModuleStatus::Compiled),
                     ModuleResult {
@@ -652,11 +692,12 @@ mod tests {
         let manifest: serde_json::Value =
             serde_json::from_slice(&std::fs::read(cache.root().join("manifest.json")).unwrap())
                 .unwrap();
-        assert_eq!(manifest["schemaVersion"], "1");
+        assert_eq!(manifest["schemaVersion"], "2");
         assert_eq!(manifest["key"]["extensionId"], "morphir-elm-native");
         assert_eq!(manifest["key"]["irVersion"], "4.0.0");
         assert_eq!(manifest["key"]["typesOnly"], false);
-        assert_eq!(manifest["key"]["preludeDigest"], "sha256:prelude");
+        assert!(manifest["key"].get("preludeDigest").is_none());
+        assert_eq!(manifest["contextDigest"], "sha256:context");
         assert_eq!(manifest["modules"]["My.Other"]["status"], "compiled");
         assert_eq!(manifest["modules"]["My.Types"]["status"], "failed");
         assert_eq!(
@@ -669,5 +710,48 @@ mod tests {
                 .is_some_and(|value| !value.is_empty()),
             "{manifest}"
         );
+    }
+
+    // Requirement: the manifest's `contextDigest` is what the next baseline
+    // carries. It is the extension, not the CLI, that decides whether a
+    // baseline's context digest still matches, so the CLI's only job is to
+    // store what the last result reported and hand it back unchanged.
+    #[test]
+    fn a_manifest_context_digest_round_trips_into_the_baseline() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = CompileCache::open(temp.path(), "morphir-elm-native", "example/domain");
+        cache
+            .write_results(
+                &key(),
+                Some("sha256:round-trip".into()),
+                &[module("My.Other", ModuleStatus::Compiled)],
+            )
+            .unwrap();
+
+        let baseline = cache
+            .read_baseline(&key())
+            .expect("a baseline is available");
+
+        assert_eq!(
+            baseline.context_digest.as_deref(),
+            Some("sha256:round-trip")
+        );
+    }
+
+    // Requirement: a provider that supplies no context digest leaves the
+    // baseline with none either, rather than the CLI inventing one.
+    #[test]
+    fn a_missing_context_digest_carries_through_as_none() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = CompileCache::open(temp.path(), "morphir-elm-native", "example/domain");
+        cache
+            .write_results(&key(), None, &[module("My.Other", ModuleStatus::Compiled)])
+            .unwrap();
+
+        let baseline = cache
+            .read_baseline(&key())
+            .expect("a baseline is available");
+
+        assert_eq!(baseline.context_digest, None);
     }
 }

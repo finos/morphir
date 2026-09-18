@@ -1221,12 +1221,10 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     let cache = if no_cache || !provider_supports_incremental(&resolved) {
         None
     } else {
-        cache_key(&language_name, &resolved, &extension_options).map(|key| {
-            (
-                cache::CompileCache::open(workspace, resolved.info().id.as_str(), &package_name),
-                key,
-            )
-        })
+        Some((
+            cache::CompileCache::open(workspace, resolved.info().id.as_str(), &package_name),
+            cache_key(&resolved, &extension_options),
+        ))
     };
     let baseline = cache
         .as_ref()
@@ -1255,7 +1253,12 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     if let Some((cache, key)) = cache.as_ref()
         && cache_write_is_warranted(&result)
     {
-        store_compile_results(cache, key, &result.module_results);
+        store_compile_results(
+            cache,
+            key,
+            result.context_digest.clone(),
+            &result.module_results,
+        );
     }
     let diagnostics = convert_extension_diagnostics(&result.diagnostics);
     let format = OutputFormat::from_flags(json, json_lines);
@@ -1327,41 +1330,25 @@ fn provider_supports_incremental(resolved: &morphir_daemon::ResolvedFrontend) ->
     resolved.capability().incremental
 }
 
-/// The key this run's results are cached under, or `None` when it cannot be
-/// computed — in which case the run keeps no cache rather than risking a
-/// baseline that describes something else.
+/// The key this run's results are cached under.
 ///
-/// Elm's prelude is the binding's to describe, so its digest comes from the
-/// binding rather than from the CLI's reading of the option: the function the
-/// frontend uses to decide whether a baseline is reusable is the one that keys
-/// the cache. A language with no prelude of its own has no `elmPrelude` option
-/// to hash in the first place, so its cache key carries no prelude digest.
+/// The compile context — IR version, `typesOnly`, prelude, and dependency
+/// interfaces — is no longer part of the key: an incremental extension now
+/// computes its own digest of that context and returns it as
+/// `CompileResult.context_digest`, which the cache stores and echoes back as
+/// `CompileBaseline.context_digest`. The extension, not the CLI, decides
+/// whether a baseline's context digest still matches, so the key here only
+/// needs to name the provider and the shape of what it was asked for.
 fn cache_key(
-    language: &str,
     resolved: &morphir_daemon::ResolvedFrontend,
     options: &ExtensionCompileOptions,
-) -> Option<cache::CacheKey> {
-    let prelude_digest = if language == "elm" {
-        match morphir_elm_binding::frontend::boundary::prelude_digest_for(options) {
-            Ok(digest) => Some(digest),
-            Err(diagnostic) => {
-                tracing::debug!(
-                    message = %diagnostic.message,
-                    "the prelude digest could not be computed; compiling without a cache"
-                );
-                return None;
-            }
-        }
-    } else {
-        None
-    };
-    Some(cache::CacheKey {
+) -> cache::CacheKey {
+    cache::CacheKey {
         extension_id: resolved.info().id.clone(),
         extension_version: resolved.info().version.clone(),
         ir_version: options.ir_version.clone(),
         types_only: options.types_only,
-        prelude_digest,
-    })
+    }
 }
 
 /// Whether this run's result is worth writing to the cache.
@@ -1393,9 +1380,10 @@ fn cache_write_is_warranted(result: &morphir_extension_sdk::CompileResult) -> bo
 fn store_compile_results(
     cache: &cache::CompileCache,
     key: &cache::CacheKey,
+    context_digest: Option<String>,
     results: &[morphir_extension_sdk::ModuleResult],
 ) {
-    if let Err(error) = cache.write_results(key, results) {
+    if let Err(error) = cache.write_results(key, context_digest, results) {
         tracing::debug!(
             root = %cache.root().display(),
             %error,
@@ -1623,39 +1611,33 @@ mod incremental_tests {
         )));
     }
 
-    // The key names the provider and the shape of what it was asked for, and
-    // carries the prelude digest the binding itself computes, so a run under
-    // another prelude cannot reuse these results.
+    // The key names the provider and the shape of what it was asked for. The
+    // compile context itself — including the prelude — is no longer part of
+    // it: an incremental extension computes its own digest of that context
+    // and returns it in the result, which the cache stores and echoes back as
+    // the next baseline's `contextDigest` instead.
     #[test]
-    fn the_key_carries_the_binding_s_own_prelude_digest() {
+    fn the_key_names_the_provider_and_the_request_shape() {
         let resolved = resolve("elm", "morphir-elm-native");
-        let key =
-            cache_key("elm", &resolved, &options()).expect("the default prelude has a digest");
+        let key = cache_key(&resolved, &options());
 
         assert_eq!(key.extension_id, "morphir-elm-native");
         assert_eq!(key.extension_version, resolved.info().version);
         assert_eq!(key.ir_version, "4.0.0");
         assert!(!key.types_only);
-        assert_eq!(
-            key.prelude_digest,
-            Some(morphir_elm_binding::frontend::boundary::prelude_digest_for(&options()).unwrap()),
-        );
     }
 
-    // A non-Elm language has no `elmPrelude` option to begin with, so its
-    // cache key must not hash a missing option into a digest that looks
-    // meaningful but describes nothing.
+    // `cache_key` is a pure function of `(resolved, options)`: a non-Elm
+    // provider is keyed exactly the same way, since neither carries a
+    // prelude any more.
     #[test]
-    fn a_non_elm_language_carries_no_prelude_digest() {
+    fn a_non_elm_provider_is_keyed_the_same_way() {
         let resolved = resolve("gleam", "morphir-gleam-binding");
-        // `cache_key` itself does not consult `provider_supports_incremental`;
-        // it is only ever called once that check has passed, but it is a pure
-        // function of `(language, resolved, options)` and can be exercised
-        // directly here.
-        let key =
-            cache_key("gleam", &resolved, &options()).expect("gleam has no prelude to fail on");
+        let key = cache_key(&resolved, &options());
 
-        assert_eq!(key.prelude_digest, None);
+        assert_eq!(key.extension_id, "morphir-gleam-binding");
+        assert_eq!(key.ir_version, "4.0.0");
+        assert!(!key.types_only);
     }
 
     fn compile_result(
@@ -1669,6 +1651,7 @@ mod incremental_tests {
             diagnostics: Vec::new(),
             modules: Vec::new(),
             module_results,
+            context_digest: None,
         }
     }
 
@@ -1861,6 +1844,7 @@ mod tests {
             diagnostics: Vec::new(),
             modules: Vec::new(),
             module_results: Vec::new(),
+            context_digest: None,
         }
     }
 
@@ -2890,6 +2874,7 @@ enabled = true
             diagnostics: Vec::new(),
             modules,
             module_results: Vec::new(),
+            context_digest: None,
         }
     }
 

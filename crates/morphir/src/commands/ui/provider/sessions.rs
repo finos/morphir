@@ -563,6 +563,7 @@ mod tests {
                 diagnostics: vec![],
                 modules: vec!["cold".into()],
                 module_results: Vec::new(),
+                context_digest: None,
             })
         }
 
