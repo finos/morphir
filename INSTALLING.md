@@ -11,14 +11,14 @@ Morphir GitHub release for your operating system and processor.
 Install the current prerelease globally:
 
 ```shell
-mise use -g github:finos/morphir@0.4.0-alpha.7
+mise use -g github:finos/morphir@0.4.0-beta.1
 ```
 
 To pin Morphir in a project's `mise.toml`, add:
 
 ```toml
 [tools]
-"github:finos/morphir" = "0.4.0-alpha.7"
+"github:finos/morphir" = "0.4.0-beta.1"
 ```
 
 Run `mise install` after changing the configuration. Prereleases must be
@@ -81,9 +81,11 @@ if ($actual -ne $expected) { throw "Checksum verification failed" }
 
 ## Install the Python extension
 
-The CLI ships separately from language extensions. With CLI `0.4.0-alpha.7` or
-later, install the `morphir-python` WASM bundle to compile supported Python ADTs,
-fixed tuples and conditional functions to Morphir IR v4 and generate Python.
+The CLI ships separately from language extensions. With CLI `0.4.0-beta.1` or
+later, install the `morphir-python` WASM bundle `extension/python/v0.2.0` to compile
+supported Python ADTs, fixed tuples, conditional functions, typed calls and unary
+lambdas to Morphir IR v3 or v4 and generate Python. The earlier `v0.1.0` bundle does
+not compile with this CLI.
 See the [Python extension installation guide](https://github.com/finos/morphir-rust/blob/main/docs/tutorials/python-extension.md)
 for download, repository publication and installation commands, and the
 [binding README](https://github.com/finos/morphir-rust/blob/main/crates/morphir-python-binding/README.md)

@@ -2954,7 +2954,7 @@ dependencies = [
 
 [[package]]
 name = "integration-tests"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "cucumber",
@@ -3859,7 +3859,7 @@ dependencies = [
 
 [[package]]
 name = "morphir"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3927,7 +3927,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-common"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "cap-fs-ext 4.0.3",
@@ -3965,7 +3965,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-config"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "secrecy",
  "serde",
@@ -3977,7 +3977,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-core"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "bigdecimal",
@@ -3996,7 +3996,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-daemon"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4028,7 +4028,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-devkit"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "cap-std 4.0.3",
@@ -4047,7 +4047,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-distribution"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "flate2",
  "fs2",
@@ -4093,7 +4093,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-extension-sdk"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "extism-pdk",
  "morphir-workspace",
@@ -4106,7 +4106,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-gleam-binding"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "cap-fs-ext 4.0.3",
@@ -4133,7 +4133,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-kb"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "chrono",
  "morphir-okf",
@@ -4150,7 +4150,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-okf"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "pulldown-cmark",
  "regex",
@@ -4174,7 +4174,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-workspace"
-version = "0.4.0-alpha.7"
+version = "0.4.0-beta.1"
 dependencies = [
  "globset",
  "morphir-config",
