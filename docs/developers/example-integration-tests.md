@@ -39,6 +39,8 @@ relative to the search root, or `.` for a notebook directly in that root.
 directory named `root` and its descendants. Other filters select an exact ID
 or directory category. Repeated `--tag` options
 require every tag. Empty suites and selections fail, including with `--list`.
+Scenario directories must have UTF-8 names that follow the portable path rules
+below; discovery rejects names that would produce ambiguous or unselectable IDs.
 All discovered notebook structures and scenario metadata are validated before
 selection; Rego compilation occurs when the selected assertions execute.
 Listing prints the scenario's intent and tags without executing it.

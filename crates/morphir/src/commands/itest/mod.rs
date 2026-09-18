@@ -65,7 +65,18 @@ fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
         let id = if relative.as_os_str().is_empty() {
             ".".into()
         } else {
-            relative.to_string_lossy().replace('\\', "/")
+            let id = relative
+                .components()
+                .map(|component| {
+                    component
+                        .as_os_str()
+                        .to_str()
+                        .context("scenario directory name must be UTF-8")
+                })
+                .collect::<Result<Vec<_>>>()?
+                .join("/");
+            model::relative_path(&id)?;
+            id
         };
         let notebook = Notebook::parse(&fs::read_to_string(entry.path())?)
             .with_context(|| format!("scenario {id}: {}", entry.path().display()))?;

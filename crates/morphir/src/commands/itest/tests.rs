@@ -40,6 +40,33 @@ fn discovers_nested_examples_and_selects_whole_categories_and_all_tags() {
 }
 
 #[test]
+#[cfg(unix)]
+fn discovery_rejects_ambiguous_and_nonportable_directory_names() {
+    use std::ffi::OsString;
+    #[cfg(target_os = "linux")]
+    use std::os::unix::ffi::OsStringExt;
+
+    for name in [
+        OsString::from("a\\b"),
+        // APFS refuses invalid UTF-8 before discovery; Linux permits it.
+        #[cfg(target_os = "linux")]
+        OsString::from_vec(b"invalid-\xff".to_vec()),
+        OsString::from("trailing."),
+        OsString::from("CON"),
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        for directory in [temp.path().join(&name), temp.path().join("a/b")] {
+            fs::create_dir_all(&directory).unwrap();
+            fs::write(directory.join("scenario.ipynb"), notebook().to_string()).unwrap();
+        }
+        assert!(
+            support::discover(temp.path(), None).is_err(),
+            "accepted nonportable scenario directory {name:?}"
+        );
+    }
+}
+
+#[test]
 fn validates_every_executable_cell_before_running() {
     assert!(parse(&notebook()).is_ok());
     for (pointer, bad) in [
