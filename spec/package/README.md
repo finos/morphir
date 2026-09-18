@@ -80,3 +80,12 @@ and [receipt](schemas/package-restore-assurance-report.schema.json) schemas owne
 The preflight check covers selection, receipts and callback counts. It does not perform
 filesystem access or establish authentication, restore compatibility, provider qualification
 or durability. The public portable adapter and qualified restore providers remain future work.
+
+Run `mise run package:publisher-check` to verify publisher signatures on the two fixed
+[signed release statements](mck/fixtures/local-registry/assets/signed/README.md) through
+the shared MCK support entrypoint. The package CI job runs this check. It checks all
+verified authorized raw keys, exact envelope and payload bytes, and evidence bound to
+the requested release. This signature evidence does not establish TUF or repository
+authentication, graph readiness, durable authorization grants, filesystem guarantees,
+restore compatibility or a complete draft.3 corpus pass. The shared MCK requires Node.js
+24 or later; the separate Morphir IR package retains Node.js 20 support.
