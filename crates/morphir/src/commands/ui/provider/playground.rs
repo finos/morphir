@@ -14,6 +14,13 @@
 //! asks it to resolve a language or a target, so the playground offers
 //! exactly what the rest of the CLI offers — built-ins included — and cannot
 //! drift onto a private notion of which provider serves what.
+//!
+//! That includes the project's choice of provider. A workspace that names one
+//! in `[frontend.<language>] extension` gets it here too, restricting the
+//! registry the way `--extension` does, so a project configured for an opt-in
+//! built-in such as `morphir-elm-native` is not quietly compiled by a
+//! different provider in the browser than on the command line. There is no
+//! flag to override it with: the playground has only the configuration.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -22,11 +29,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use morphir_common::config::model::FrontendSection;
 use morphir_daemon::ExtensionRegistry;
 use morphir_daemon::extensions::{
     CapabilityMetadataScope, InvocationMode, InvocationPolicy, ProviderMetadata, ProviderOrigin,
     ResolvedBackend, ResolvedFrontend,
 };
+use morphir_devkit::{ConfigLoadOptions, discover_config, load_config_context_with};
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::{
     Artifact, CompileOptions, CompilePackage, CompileRequest, CompileResult, Diagnostic,
@@ -34,6 +43,7 @@ use morphir_extension_sdk::{
 };
 use serde_json::Value;
 
+use crate::commands::compile::frontend_extension;
 use crate::commands::ui::protocol::{
     PlaygroundArtifact, PlaygroundCatalog, PlaygroundCompileParams, PlaygroundCompileResult,
     PlaygroundDiagnostic, PlaygroundFrontend, PlaygroundGenerateParams, PlaygroundGenerateResult,
@@ -41,7 +51,7 @@ use crate::commands::ui::protocol::{
     PlaygroundRange, PlaygroundTarget, ProviderKind, ProviderManifest, ProviderStatus,
 };
 use crate::error::CliError;
-use crate::extensions::extension_registry;
+use crate::extensions::extension_registry_for;
 use crate::home::MorphirHome;
 
 use super::PlaygroundCapability;
@@ -59,9 +69,15 @@ const INVOCATION_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Answers "which providers does this session have?".
 ///
+/// The argument is the provider id the request is restricted to, or `None` for
+/// every provider this session can reach. It is the same restriction
+/// `--extension` applies on the command line, and it is what registers an
+/// opt-in built-in at all.
+///
 /// Injectable so a test can register its own providers without installing an
 /// extension into a Morphir home.
-type RegistrySource = Arc<dyn Fn() -> Result<ExtensionRegistry, CliError> + Send + Sync>;
+type RegistrySource =
+    Arc<dyn Fn(Option<&str>) -> Result<ExtensionRegistry, CliError> + Send + Sync>;
 
 /// How the playground reaches a resolved provider.
 ///
@@ -113,6 +129,12 @@ enum Invocation<R> {
 pub struct NativePlaygroundProvider {
     home: MorphirHome,
     registry: RegistrySource,
+    /// The workspace's `[frontend]` section, when one was found and loaded, so
+    /// a compile can read the provider the project asked for. `None` when the
+    /// playground was launched outside a workspace, or when the configuration
+    /// could not be read at all — the playground is a scratch surface and must
+    /// still open.
+    frontend: Option<FrontendSection>,
     invoker: Arc<dyn ExtensionInvoker>,
     /// Where an installed extension process runs. See
     /// [`extension_working_directory`]: the playground never writes here, it
@@ -126,13 +148,21 @@ pub struct NativePlaygroundProvider {
 
 impl NativePlaygroundProvider {
     /// Build a provider that offers the built-in providers plus whatever is
-    /// installed in `home`.
+    /// installed in `home`, reading the workspace configuration, if any, from
+    /// the directory the CLI was launched in.
     pub fn new(home: MorphirHome) -> Self {
+        let workspace = extension_working_directory(&home);
+        Self::in_workspace(home, &workspace)
+    }
+
+    /// As [`new`](Self::new), for a session that knows its workspace.
+    pub fn in_workspace(home: MorphirHome, workspace: &Path) -> Self {
         let registry_home = home.clone();
         let working_directory = extension_working_directory(&home);
         Self::with_parts(
             home,
-            Arc::new(move || installed_registry(&registry_home)),
+            Arc::new(move |only| installed_registry(&registry_home, only)),
+            workspace_frontend(workspace),
             // Session-reusing on purpose: a provider with a session mode pays
             // activation and the MEP handshake once per session instead of
             // once per click. See the sessions module for the reuse and
@@ -146,6 +176,7 @@ impl NativePlaygroundProvider {
     fn with_parts(
         home: MorphirHome,
         registry: RegistrySource,
+        frontend: Option<FrontendSection>,
         invoker: Arc<dyn ExtensionInvoker>,
         working_directory: PathBuf,
         timeout: Duration,
@@ -153,6 +184,7 @@ impl NativePlaygroundProvider {
         Self {
             home,
             registry,
+            frontend,
             invoker,
             working_directory,
             timeout,
@@ -177,15 +209,23 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         }
     }
 
+    /// The catalog lists every provider this session can reach, unrestricted.
+    /// A per-language restriction belongs to one compile, not to the list of
+    /// what exists: applying the Elm entry here would drop every other
+    /// language's provider from the picker.
     async fn catalog(&self) -> Result<PlaygroundCatalog, CliError> {
-        Ok(project_catalog(&(self.registry)()?))
+        Ok(project_catalog(&(self.registry)(None)?))
     }
 
     async fn compile(
         &self,
         params: PlaygroundCompileParams,
     ) -> Result<PlaygroundCompileResult, CliError> {
-        let registry = (self.registry)()?;
+        // The project's choice of provider for this language, read exactly as
+        // `morphir compile` reads it. There is no flag to override it here.
+        let configured =
+            frontend_extension::from_config(self.frontend.as_ref(), &params.language_id)?;
+        let registry = (self.registry)(configured.as_deref())?;
         // The registry checks the language, the compile flag, and the IR
         // version together, and reports which providers were considered, so
         // there is nothing left for this layer to re-check.
@@ -195,11 +235,19 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                 &params.ir_version,
                 InvocationPolicy::PreferDirect,
             )
-            .map_err(|error| CliError::Validation {
-                message: format!(
-                    "No extension compiles language '{}' at Morphir IR version '{}': {error}",
-                    params.language_id, params.ir_version
-                ),
+            .map_err(|error| match configured.as_deref() {
+                Some(id) => CliError::Validation {
+                    message: format!(
+                        "extension '{id}' does not provide language '{}': {error}",
+                        params.language_id
+                    ),
+                },
+                None => CliError::Validation {
+                    message: format!(
+                        "No extension compiles language '{}' at Morphir IR version '{}': {error}",
+                        params.language_id, params.ir_version
+                    ),
+                },
             })?;
         let provider_id = resolved.info().id.clone();
         let request = compile_request(params);
@@ -240,7 +288,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         &self,
         params: PlaygroundGenerateParams,
     ) -> Result<PlaygroundGenerateResult, CliError> {
-        let registry = (self.registry)()?;
+        // A target is a backend, and the key selects a frontend for a source
+        // language, so generate resolves against every provider.
+        let registry = (self.registry)(None)?;
         let resolved = registry
             .resolve_backend(
                 &params.target,
@@ -303,11 +353,46 @@ async fn bounded<R>(
     }
 }
 
-fn installed_registry(home: &MorphirHome) -> Result<ExtensionRegistry, CliError> {
+fn installed_registry(
+    home: &MorphirHome,
+    only: Option<&str>,
+) -> Result<ExtensionRegistry, CliError> {
     let installed = list_installed(home).map_err(|error| CliError::Extension {
         message: format!("Failed to list installed extensions: {error}"),
     })?;
-    extension_registry(installed)
+    extension_registry_for(installed, only)
+}
+
+/// The `[frontend]` section of the workspace's configuration, if it has one.
+///
+/// The playground opens whether or not there is a project here, and whether or
+/// not that project's configuration is readable, so neither is an error: a
+/// configuration that cannot be loaded is reported once, as a warning, and the
+/// session carries on with no configured provider. A
+/// `[frontend.<language>] extension` that is itself malformed is a different
+/// matter, and still fails the compile that reads it.
+fn workspace_frontend(workspace: &Path) -> Option<FrontendSection> {
+    let config_path = match discover_config(workspace) {
+        Ok(found) => found?,
+        Err(error) => {
+            tracing::warn!(
+                %error,
+                "Unable to look for a Morphir configuration; the playground will use default providers"
+            );
+            return None;
+        }
+    };
+    match load_config_context_with(&config_path, &ConfigLoadOptions::default()) {
+        Ok(context) => context.config.frontend,
+        Err(error) => {
+            tracing::warn!(
+                %error,
+                config = %config_path.display(),
+                "Unable to load the Morphir configuration; the playground will use default providers"
+            );
+            None
+        }
+    }
 }
 
 /// Project the registry's provider metadata into the browser-facing catalog.
@@ -977,11 +1062,12 @@ mod tests {
         let root_path = home_root.path().to_path_buf();
         let provider = NativePlaygroundProvider::with_parts(
             home,
-            Arc::new(move || {
+            Arc::new(move |_only| {
                 let mut registry = ExtensionRegistry::new();
                 register(&mut registry);
                 Ok(registry)
             }),
+            None,
             invoker,
             working.path().to_path_buf(),
             timeout,
@@ -1419,7 +1505,8 @@ mod tests {
     #[tokio::test]
     async fn an_installed_provider_shadows_the_built_in_it_replaces() {
         let (_root, snapshot) = installed_snapshot("installed-gleam", "gleam", "gleam");
-        let registry = extension_registry(vec![snapshot]).expect("the registry assembles");
+        let registry =
+            extension_registry_for(vec![snapshot], None).expect("the registry assembles");
         let resolved = registry
             .resolve_frontend("gleam", IR_VERSION, InvocationPolicy::PreferDirect)
             .expect("the registry resolves Gleam");
@@ -1467,6 +1554,146 @@ mod tests {
     /// told not to, and `outputDir` defaults to the process working
     /// directory — so this is the test that would catch the playground
     /// forwarding options it should have stripped.
+    /// A workspace whose `morphir.toml` names a provider, so the playground
+    /// has something to read.
+    fn workspace_naming(extension: &str) -> tempfile::TempDir {
+        let workspace = tempfile::tempdir().expect("a scratch workspace");
+        std::fs::write(
+            workspace.path().join("morphir.toml"),
+            format!(
+                "[project]\n\
+                 name = \"example/domain\"\n\
+                 version = \"1.0.0\"\n\
+                 source_directory = \"src\"\n\
+                 \n\
+                 [frontend]\n\
+                 language = \"elm\"\n\
+                 \n\
+                 [frontend.elm]\n\
+                 extension = \"{extension}\"\n"
+            ),
+        )
+        .expect("the configuration is written");
+        workspace
+    }
+
+    const ELM_MODULE: &str = "module Main exposing (Currency)\n\n\ntype Currency\n    = Currency\n";
+
+    /// The params an Elm playground compile sends. The native Elm binding
+    /// advertises the bare IR releases, not the triplet the Gleam fixtures use.
+    fn elm_compile_params() -> PlaygroundCompileParams {
+        PlaygroundCompileParams {
+            ir_version: "4".into(),
+            ..compile_params("elm", ELM_MODULE)
+        }
+    }
+
+    /// The message a `CliError` carries, including the source a `Config`
+    /// error keeps its detail in.
+    fn full_message(failure: &CliError) -> String {
+        match failure {
+            CliError::Config { error } => error.to_string(),
+            other => other.to_string(),
+        }
+    }
+
+    /// Requirement: the playground honours `[frontend.<language>] extension`.
+    /// The native Elm provider is opt-in, so it is registered only when
+    /// something asks for it by id. On the command line that is `--extension`;
+    /// here it is the project's own configuration, and without it a browser
+    /// compile would silently use a different provider from the one
+    /// `morphir compile` uses in the same directory.
+    #[tokio::test]
+    async fn a_configured_provider_is_used_for_a_playground_compile() {
+        let (_root, home) = scratch_home();
+        let workspace = workspace_naming("morphir-elm-native");
+        let provider = NativePlaygroundProvider::in_workspace(home, workspace.path());
+
+        let result = provider
+            .compile(elm_compile_params())
+            .await
+            .expect("the configured provider compiles Elm");
+
+        assert!(result.success, "{result:?}");
+        assert!(result.ir.is_some(), "{result:?}");
+    }
+
+    /// The control for the test above: with no key, Elm resolves against an
+    /// unrestricted registry, where the opt-in native provider is absent and
+    /// nothing is installed in this home.
+    #[tokio::test]
+    async fn without_the_key_the_playground_does_not_reach_the_opt_in_provider() {
+        let (_root, home) = scratch_home();
+        let workspace = tempfile::tempdir().expect("a scratch workspace");
+        let provider = NativePlaygroundProvider::in_workspace(home, workspace.path());
+
+        let failure = provider
+            .compile(elm_compile_params())
+            .await
+            .expect_err("an empty home compiles no Elm");
+
+        assert!(
+            failure.to_string().contains("No extension compiles"),
+            "{failure}"
+        );
+    }
+
+    /// A configured id that provides some other language fails the same way it
+    /// does on the command line, naming the id and the language.
+    #[tokio::test]
+    async fn a_configured_provider_that_does_not_provide_the_language_is_refused() {
+        let (_root, home) = scratch_home();
+        let workspace = workspace_naming("morphir-gleam-binding");
+        let provider = NativePlaygroundProvider::in_workspace(home, workspace.path());
+
+        let failure = provider
+            .compile(elm_compile_params())
+            .await
+            .expect_err("a Gleam provider compiles no Elm");
+
+        let message = failure.to_string();
+        assert!(message.contains("morphir-gleam-binding"), "{message}");
+        assert!(
+            message.contains("does not provide language 'elm'"),
+            "{message}"
+        );
+    }
+
+    /// A malformed key fails the compile that reads it, naming the key, rather
+    /// than being dropped because the playground has no flag to blame.
+    #[tokio::test]
+    async fn a_malformed_key_fails_a_playground_compile() {
+        let (_root, home) = scratch_home();
+        let workspace = workspace_naming("   ");
+        let provider = NativePlaygroundProvider::in_workspace(home, workspace.path());
+
+        let failure = provider
+            .compile(elm_compile_params())
+            .await
+            .expect_err("a blank provider id is refused");
+
+        assert!(
+            full_message(&failure).contains("frontend.elm.extension"),
+            "{failure}"
+        );
+    }
+
+    /// The key is a frontend key for one language, so it never restricts the
+    /// catalog, which is the list of everything this session can reach.
+    #[tokio::test]
+    async fn a_configured_provider_does_not_shrink_the_catalog() {
+        let (_root, home) = scratch_home();
+        let workspace = workspace_naming("morphir-elm-native");
+        let provider = NativePlaygroundProvider::in_workspace(home, workspace.path());
+
+        let catalog = provider.catalog().await.expect("a catalog is projected");
+
+        assert!(
+            catalog.frontend("gleam").is_some(),
+            "another language's provider is still offered: {catalog:?}"
+        );
+    }
+
     #[tokio::test]
     async fn builtin_gleam_compiles_and_generates_without_writing_files() {
         let (root, home) = scratch_home();
@@ -1474,7 +1701,8 @@ mod tests {
         let cwd = std::env::current_dir().unwrap();
         let provider = NativePlaygroundProvider::with_parts(
             home.clone(),
-            Arc::new(move || installed_registry(&home)),
+            Arc::new(move |only| installed_registry(&home, only)),
+            None,
             Arc::new(SessionReuseInvoker::new(RegistryOpener)),
             working.path().to_path_buf(),
             INVOCATION_TIMEOUT,
@@ -1536,7 +1764,8 @@ mod tests {
     #[tokio::test]
     async fn capabilities_the_catalog_cannot_know_are_reported_as_unknown() {
         let (_root, snapshot) = installed_snapshot("installed-elm", "elm", "installed-target");
-        let registry = extension_registry(vec![snapshot]).expect("the registry assembles");
+        let registry =
+            extension_registry_for(vec![snapshot], None).expect("the registry assembles");
 
         let catalog = project_catalog(&registry);
 

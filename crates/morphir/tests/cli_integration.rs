@@ -883,7 +883,7 @@ fn elm_native_is_not_the_default_elm_provider() {
             String::from_utf8_lossy(&compile.stdout),
             String::from_utf8_lossy(&compile.stderr)
         );
-        let stderr = String::from_utf8_lossy(&compile.stderr);
+        let stderr = compacted_stderr(&compile);
         assert!(
             !stderr.contains("morphir-elm-native"),
             "{arguments:?}: {stderr}"
@@ -1209,9 +1209,22 @@ fn elm_native_a_deleted_module_leaves_the_cache() {
     );
 }
 
+/// A run's stderr with all whitespace removed.
+///
+/// miette wraps long messages and prefixes continuation lines with a gutter,
+/// so an id can be split across two lines. Assertions that an id is present —
+/// or, more importantly, absent — have to look at text the wrapping cannot
+/// change, or `morphir-elm-native` broken over a line reads as `morphir-elm`.
+fn compacted_stderr(output: &std::process::Output) -> String {
+    String::from_utf8_lossy(&output.stderr)
+        .split_whitespace()
+        .filter(|piece| *piece != "│")
+        .collect()
+}
+
 /// Append a `[frontend.elm]` table to a project's `morphir.toml`, replacing
-/// whatever prelude an earlier call configured.
-fn set_elm_prelude(project_root: &std::path::Path, table: &str) {
+/// whatever an earlier call put there.
+fn set_frontend_elm_table(project_root: &std::path::Path, table: &str) {
     let path = project_root.join("morphir.toml");
     let existing = std::fs::read_to_string(&path).unwrap();
     let base = existing.split("\n[frontend.elm]\n").next().unwrap();
@@ -1245,7 +1258,7 @@ fn elm_native_prelude_is_configured_from_morphir_toml() {
         "compile without a [frontend.elm] table",
     );
 
-    set_elm_prelude(&project, "prelude = \"none\"\n");
+    set_frontend_elm_table(&project, "prelude = \"none\"\n");
     let compile = run_morphir(&arguments, &home, &project);
 
     assert!(
@@ -1277,7 +1290,7 @@ fn elm_native_rejects_a_prelude_of_the_wrong_type() {
     let home = temp.path().join("home");
     let project = temp.path().join("project");
     write_elm_project(&project);
-    set_elm_prelude(&project, "prelude = 3\n");
+    set_frontend_elm_table(&project, "prelude = 3\n");
 
     let compile = run_morphir(
         &["compile", "--extension", "morphir-elm-native"],
@@ -1341,13 +1354,13 @@ fn elm_native_changing_the_prelude_recompiles_everything() {
     write_prelude_neutral_elm_project(&project);
     let arguments = ["compile", "--extension", "morphir-elm-native"];
 
-    set_elm_prelude(&project, "prelude = \"none\"\n");
+    set_frontend_elm_table(&project, "prelude = \"none\"\n");
     assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "first compile");
     let first = read_elm_native_manifest(&project);
     assert_compile_succeeded(&run_morphir(&arguments, &home, &project), "second compile");
     let second = read_elm_native_manifest(&project);
 
-    set_elm_prelude(&project, "prelude = \"elm-core\"\n");
+    set_frontend_elm_table(&project, "prelude = \"elm-core\"\n");
     assert_compile_succeeded(
         &run_morphir(&arguments, &home, &project),
         "compile under another prelude",
@@ -1380,7 +1393,7 @@ fn elm_native_single_file_honours_a_configured_prelude() {
     let home = temp.path().join("home");
     let project = temp.path().join("project");
     write_elm_project(&project);
-    set_elm_prelude(&project, "prelude = \"none\"\n");
+    set_frontend_elm_table(&project, "prelude = \"none\"\n");
     let input = ["compile", "--input", "src/My/Other.elm", "--extension"];
 
     let without_config = run_morphir(
@@ -1418,6 +1431,213 @@ fn elm_native_single_file_honours_a_configured_prelude() {
                     .is_some_and(|message| message.contains("prelude: none"))
         }),
         "the configured prelude is named in the diagnostic: {envelope}"
+    );
+}
+
+/// The modules a v4 IR file lists, read from the project's compile output.
+fn compiled_v4_modules(project_root: &std::path::Path) -> Vec<String> {
+    let output = project_root.join(".morphir/out/compile.dest/morphir-ir.json");
+    let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["formatVersion"], 4, "{json}");
+    let ir_file: morphir_core::ir::v4::IRFile = serde_json::from_slice(&bytes).unwrap();
+    let morphir_core::ir::v4::Distribution::Library(library) = &ir_file.distribution else {
+        panic!("a compile publishes a library: {:?}", ir_file.distribution);
+    };
+    library.def.modules.keys().cloned().collect()
+}
+
+/// Requirement: `[frontend.elm] extension` selects the provider, so a project
+/// that wants the opt-in native binding gets it without `--extension` on every
+/// run. The configured id restricts the registry exactly as the flag does,
+/// which is what registers the opt-in built-in at all.
+#[test]
+fn a_configured_extension_selects_the_provider_without_the_flag() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = \"morphir-elm-native\"\n");
+
+    let compile = run_morphir(&["compile"], &home, &project);
+
+    assert_compile_succeeded(&compile, "compile with a configured provider");
+    let modules = compiled_v4_modules(&project);
+    assert_eq!(
+        modules.len(),
+        2,
+        "both Elm modules reach the IR: {modules:?}"
+    );
+}
+
+/// Requirement: `--extension` overrides the configured provider. No process
+/// extension is installed in this test home, so naming `morphir-elm` fails
+/// rather than quietly falling back to the configured native binding.
+#[test]
+fn the_extension_flag_overrides_a_configured_extension() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = \"morphir-elm-native\"\n");
+
+    let compile = run_morphir(&["compile", "--extension", "morphir-elm"], &home, &project);
+
+    assert!(
+        !compile.status.success(),
+        "the flag's provider is not installed: stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let stderr = compacted_stderr(&compile);
+    assert!(stderr.contains("morphir-elm"), "{stderr}");
+    assert!(
+        !stderr.contains("morphir-elm-native"),
+        "the configured provider stood aside: {stderr}"
+    );
+}
+
+/// Requirement: a key that is not a usable extension id fails the run on both
+/// compile paths, naming the key, even when `--extension` names the provider
+/// that would actually run. The flag chooses a provider; it does not make a
+/// broken `morphir.toml` acceptable, and a key reported on only some runs is a
+/// key nobody can rely on.
+#[test]
+fn a_misconfigured_key_fails_both_paths_even_with_the_flag() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = 3\n");
+
+    for arguments in [
+        vec!["compile", "--extension", "morphir-elm-native"],
+        vec![
+            "compile",
+            "--input",
+            "src/My/Other.elm",
+            "--config",
+            "morphir.toml",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    ] {
+        let compile = run_morphir(&arguments, &home, &project);
+
+        assert!(
+            !compile.status.success(),
+            "{arguments:?} must not compile past a broken key: stdout={} stderr={}",
+            String::from_utf8_lossy(&compile.stdout),
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        let stderr = compacted_stderr(&compile);
+        assert!(
+            stderr.contains("frontend.elm.extension"),
+            "{arguments:?}: {stderr}"
+        );
+    }
+}
+
+/// Requirement: a configured id that provides some other language fails with
+/// the same message the flag gets, naming the language it could not provide.
+#[test]
+fn a_configured_extension_that_does_not_provide_the_language_is_refused() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = \"morphir-gleam-binding\"\n");
+
+    let compile = run_morphir(&["compile"], &home, &project);
+
+    assert!(
+        !compile.status.success(),
+        "a Gleam provider cannot compile Elm: stdout={}",
+        String::from_utf8_lossy(&compile.stdout)
+    );
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    // miette wraps and gutters the message, so the pieces are asserted rather
+    // than the sentence.
+    let compact = compacted_stderr(&compile);
+    assert!(
+        compact.contains("extension'morphir-gleam-binding'doesnotprovide"),
+        "{stderr}"
+    );
+    assert!(compact.contains("language'elm'"), "{stderr}");
+}
+
+/// Requirement: a blank value is a mistake, not a way of asking for the
+/// default, and the message names the key rather than an empty id.
+#[test]
+fn a_blank_configured_extension_names_the_key() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = \"\"\n");
+
+    let compile = run_morphir(&["compile"], &home, &project);
+
+    assert!(
+        !compile.status.success(),
+        "a blank provider id fails the run: stdout={}",
+        String::from_utf8_lossy(&compile.stdout)
+    );
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    assert!(stderr.contains("frontend.elm.extension"), "{stderr}");
+}
+
+/// Requirement: a single-file compile that loaded a configuration honours the
+/// provider it names. This route only loads one when `--config` or `--project`
+/// says so; without either the language's default provider applies, which for
+/// Elm is the installed `morphir-elm` extension.
+#[test]
+fn single_file_honours_a_configured_extension_only_with_a_config() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_frontend_elm_table(&project, "extension = \"morphir-elm-native\"\n");
+    let input = ["compile", "--input", "src/My/Other.elm"];
+
+    let with_config = run_morphir(
+        &[input.as_slice(), &["--config", "morphir.toml"]].concat(),
+        &home,
+        &project,
+    );
+    assert_compile_succeeded(&with_config, "single-file compile with a config");
+
+    let without_config = run_morphir(&input, &home, &project);
+
+    assert!(
+        !without_config.status.success(),
+        "without a config the default provider applies: stdout={} stderr={}",
+        String::from_utf8_lossy(&without_config.stdout),
+        String::from_utf8_lossy(&without_config.stderr)
+    );
+    let stderr = compacted_stderr(&without_config);
+    assert!(stderr.contains("morphir-elm"), "{stderr}");
+    assert!(!stderr.contains("morphir-elm-native"), "{stderr}");
+}
+
+/// Requirement: the key is per language. A Gleam project carrying an Elm
+/// provider entry compiles with the Gleam provider, untouched by it.
+#[test]
+fn another_languages_configured_extension_leaves_a_compile_alone() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_gleam_project(&project);
+    set_frontend_elm_table(&project, "extension = \"morphir-elm-native\"\n");
+
+    let compile = run_morphir(&["compile"], &home, &project);
+
+    assert_compile_succeeded(&compile, "Gleam compile beside an Elm provider entry");
+    let modules = compiled_v4_modules(&project);
+    assert_eq!(
+        modules.len(),
+        1,
+        "the Gleam module reaches the IR: {modules:?}"
     );
 }
 

@@ -230,6 +230,11 @@
           "description": "Settings the Elm frontend reads, sent to the provider as compile options.",
           "type": "object",
           "properties": {
+            "extension": {
+              "description": "The extension id that provides Elm, for example morphir-elm-native. Defaults to the language's default provider; --extension overrides it. The same key is valid under any frontend.<language> table.",
+              "type": "string",
+              "pattern": "^\\S(.*\\S)?$"
+            },
             "prelude": {
               "description": "The implicit imports and SDK module aliases every Elm module is compiled against: the name of a built-in prelude, or a table describing one.",
               "oneOf": [

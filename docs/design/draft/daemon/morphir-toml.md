@@ -185,6 +185,7 @@ language = "elm"
 
 # Language-specific settings
 [frontend.elm]
+extension = "morphir-elm-native"
 elm_version = "0.19"
 optimize = true
 
@@ -224,6 +225,18 @@ language = "ocaml"
 | `elm_version` | string | `"0.19"` | Elm language version |
 | `optimize` | bool | `false` | Enable optimizations |
 | `prelude` | string or table | `"elm-core"` | Implicit imports and SDK module aliases every module is compiled against |
+| `extension` | string | The language's default provider | Extension id of the frontend provider that compiles this language |
+
+`extension` is implemented today and is a per-language key: it is valid under
+any `[frontend.<language>]` table, because a provider belongs to a language and
+`[[frontend.rules]]` may send different paths to different languages. It names
+an extension id, such as `"morphir-elm-native"`, and selects that provider the
+same way `--extension` does, including opt-in built-ins. `--extension`
+overrides it, and with neither the language's default provider applies. An id
+that does not provide the language fails the run. A value that is not a usable
+extension id — blank, of the wrong type, or malformed — fails the run naming
+`frontend.<language>.extension`, whether or not `--extension` was passed: the
+flag chooses a provider, it does not excuse a broken configuration.
 
 `prelude` is implemented today and read by the native `morphir-elm-native`
 provider, which receives it as the `elmPrelude` compile option; the JavaScript

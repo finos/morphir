@@ -135,13 +135,44 @@ extension, the mature JavaScript frontend that ships from
 types and values. This repository also ships an experimental, built-in native
 Elm frontend, `morphir-elm-native`, written in Rust.
 
-Select it explicitly, either for a project or for a single file:
+Select it explicitly. A project that always wants it names it in
+`morphir.toml`, under `[frontend.elm]`, the frontend's language-specific
+table:
+
+```toml
+[frontend]
+language = "elm"
+
+[frontend.elm]
+extension = "morphir-elm-native"
+```
+
+`morphir compile` then uses the native provider with no flag. The same key is
+valid under any `[frontend.<language>]` table, because a provider belongs to a
+language.
+
+The `--extension` flag selects a provider for one run, and overrides the
+configured one:
 
 ```sh
 morphir compile --extension morphir-elm-native
 
 morphir compile --input Example.elm --extension morphir-elm-native
 ```
+
+The order of precedence is `--extension`, then
+`[frontend.<language>] extension`, then the language's default provider. A
+configured id that does not provide the language fails the run and says so. A
+value that is not a usable extension id — blank, of the wrong type, or
+malformed — fails the run naming `frontend.<language>.extension`, and it does
+so whether or not `--extension` was passed: the flag chooses which provider
+runs, it does not excuse a broken `morphir.toml`.
+
+The key applies to a whole-project compile, and to a single-file compile that
+loaded a configuration through `--config` or `--project`; a single-file compile
+with neither flag uses the default provider. The Morphir Playground and
+`morphir ui` read it too, from the workspace they were launched in, so a
+browser compile uses the same provider the command line does.
 
 `morphir-elm-native` is **types-only today**: it compiles type declarations
 and signatures but not value bodies. `morphir-elm` remains the default

@@ -74,7 +74,12 @@ pub async fn run_ui(
         session_id,
         SessionCapabilities {
             workspace: Some(provider),
-            playground: Some(Arc::new(NativePlaygroundProvider::new(home))),
+            // The playground reads the same workspace the UI was pointed at,
+            // so a project that configures its frontend provider gets it in
+            // the browser too.
+            playground: Some(Arc::new(NativePlaygroundProvider::in_workspace(
+                home, &workspace,
+            ))),
             ..Default::default()
         },
     )

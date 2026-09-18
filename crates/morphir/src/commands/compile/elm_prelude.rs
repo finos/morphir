@@ -33,6 +33,7 @@
 //! which tables it accepts, and says so itself; the CLI only insists that the
 //! key is one of those two shapes.
 
+use super::frontend_settings::{language_setting, shape_of};
 use crate::error::CliError;
 use morphir_common::config::model::FrontendSection;
 use serde_json::Value;
@@ -46,10 +47,7 @@ pub const OPTION_KEY: &str = "elmPrelude";
 /// The `elmPrelude` compile option a configuration asks for, or `None` when it
 /// says nothing and the provider's own default applies.
 pub fn from_config(frontend: Option<&FrontendSection>) -> Result<Option<Value>, CliError> {
-    let Some(configured) = frontend
-        .and_then(|frontend| frontend.settings.get("elm"))
-        .and_then(|elm| elm.get("prelude"))
-    else {
+    let Some(configured) = language_setting(frontend, "elm", "prelude")? else {
         return Ok(None);
     };
     let value = serde_json::to_value(configured).map_err(|error| CliError::Config {
@@ -64,18 +62,6 @@ pub fn from_config(frontend: Option<&FrontendSection>) -> Result<Option<Value>, 
                 shape_of(&other)
             ),
         }),
-    }
-}
-
-/// How to name a value's shape in the error above.
-fn shape_of(value: &Value) -> &'static str {
-    match value {
-        Value::Null => "empty",
-        Value::Bool(_) => "a boolean",
-        Value::Number(_) => "a number",
-        Value::Array(_) => "an array",
-        Value::String(_) => "a string",
-        Value::Object(_) => "a table",
     }
 }
 

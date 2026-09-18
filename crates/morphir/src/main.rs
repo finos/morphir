@@ -64,7 +64,7 @@ enum Commands {
         /// Source language (e.g., gleam, elm)
         #[arg(short, long)]
         language: Option<String>,
-        /// Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider
+        /// Extension id that provides the language (for example `morphir-elm-native`); overrides `[frontend.<language>] extension`, and defaults to the language's default provider
         #[arg(long)]
         extension: Option<String>,
         /// Input source directory or file. A single .elm file is compiled by the selected Elm provider: an installed process extension by default, or a builtin such as morphir-elm-native via --extension.

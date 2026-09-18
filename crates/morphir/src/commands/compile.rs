@@ -2,6 +2,10 @@
 
 mod cache;
 mod elm_prelude;
+/// Shared with the UI playground, which selects a provider from the same
+/// configuration key but has no `--extension` flag to override it with.
+pub(crate) mod frontend_extension;
+mod frontend_settings;
 
 use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::CliError;
@@ -40,7 +44,9 @@ use version::{VersionedIr, selected_ir_version};
 pub struct CompileOptions {
     /// Language to compile (e.g., "gleam", "elm")
     pub language: Option<String>,
-    /// Extension id that provides the language (for example `morphir-elm-native`); defaults to the language's default provider
+    /// Extension id that provides the language (for example `morphir-elm-native`);
+    /// overrides `[frontend.<language>] extension`, and defaults to the
+    /// language's default provider
     pub extension: Option<String>,
     /// Input path or directory
     pub input: Option<String>,
@@ -127,11 +133,20 @@ fn infer_language(input: &Path, override_value: Option<&str>) -> Result<String, 
     }
 }
 
-fn resolve_extension_id(language: &str, explicit: Option<&str>) -> Result<ExtensionId, CliError> {
+/// The provider id this run compiles with, given the id already settled by
+/// [`frontend_extension::resolve`] — `--extension` when it named one, then
+/// `[frontend.<language>] extension` — or the language's default provider when
+/// neither did.
+///
+/// A configured id arrives already trimmed and parsed, so the checks below
+/// only ever bite on a flag. Only a run that loaded a configuration can have
+/// one at all: this route loads one for `--config` or `--project`, and
+/// otherwise compiles the file on its own.
+fn resolve_extension_id(language: &str, requested: Option<&str>) -> Result<ExtensionId, CliError> {
     // The provider path trims `--extension` before it resolves; a single-file
     // compile accepts the same typing, so `--extension " morphir-elm-native "`
     // means the same thing on both paths.
-    let value = match explicit {
+    let value = match requested {
         Some(id) => {
             let trimmed = id.trim();
             if trimmed.is_empty() {
@@ -681,7 +696,16 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     )?;
     let environment = filtered_process_environment();
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
-    let extension_id = resolve_extension_id(&context.language_id, options.extension.as_deref())?;
+    // Both compile paths settle the provider through the same function, so the
+    // flag, the configuration and a malformed key mean the same thing on each.
+    let requested_extension = frontend_extension::resolve(
+        options.extension.as_deref(),
+        config_context
+            .as_ref()
+            .and_then(|context| context.config.frontend.as_ref()),
+        &context.language_id,
+    )?;
+    let extension_id = resolve_extension_id(&context.language_id, requested_extension.as_deref())?;
     let workspace = config_dir.unwrap_or(&start_dir);
     // A built-in provider is reached in process; only an installed or
     // configured extension is spawned.
@@ -1279,7 +1303,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         morphir_distribution::list_installed(&home).map_err(|error| CliError::Extension {
             message: format!("Failed to list installed frontend providers: {error}"),
         })?;
-    let requested_extension = match extension.as_deref().map(str::trim) {
+    let flag_extension = match extension.as_deref().map(str::trim) {
         Some("") => {
             return Err(CliError::Validation {
                 message: "--extension was given an empty value; pass an extension id such as `morphir-elm-native` or omit the flag".into(),
@@ -1289,6 +1313,13 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         Some(id) => Some(id),
         None => None,
     };
+    // A configured provider restricts the registry exactly the way the flag
+    // does, because that restriction is what makes a choice of provider
+    // binding — and what makes an opt-in built-in such as
+    // `morphir-elm-native` registered at all.
+    let requested_extension =
+        frontend_extension::resolve(flag_extension, context.config.frontend.as_ref(), &language)?;
+    let requested_extension = requested_extension.as_deref();
     let registry = crate::extensions::extension_registry_for(installed, requested_extension)?;
     let resolved = registry
         .resolve_frontend(

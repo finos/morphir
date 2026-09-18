@@ -81,7 +81,11 @@ run = "cargo fmt --all"
 
 [tasks."fmt:schema"]
 description = "Format JSON Schema files"
-run = "find website/static/schemas -type f -name '*.json' -print0 | xargs -0 jsonschema fmt"
+# The glob is expanded by the helper rather than by the shell, for the same
+# reason `fmt-check:schema` below does it: `find | xargs` is not portable, and
+# the default Windows shell carries neither, so `website:build-schemas` failed
+# there after writing the regenerated JSON.
+run = "bun run tools/jsonschema-glob.ts fmt website/static/schemas/*.json"
 
 [tasks.fmt-check]
 description = "Check all formatting"
