@@ -70,3 +70,13 @@ following separately. Package authentication and durable trust state remain mand
 The existing draft.3 execution requirements are the hardened baseline; portable mode
 needs its own explicitly identified execution/report profile and qualification evidence.
 No package artifact format changes or implemented platform support follow from this decision.
+
+Run `mise run package:assurance-check` to check the fixed synthetic
+[preflight vectors](mck/restore-assurance-preflight-vectors.json) through the shared MCK
+support entrypoint. The package CI job runs this task and checks that MCK's packaged
+schemas match the canonical [request](schemas/package-restore-assurance-protocol.schema.json)
+and [receipt](schemas/package-restore-assurance-report.schema.json) schemas owned here.
+`package:schema-check` validates those canonical schemas against their metaschema.
+The preflight check covers selection, receipts and callback counts. It does not perform
+filesystem access or establish authentication, restore compatibility, provider qualification
+or durability. The public portable adapter and qualified restore providers remain future work.
