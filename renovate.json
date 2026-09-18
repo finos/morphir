@@ -9,6 +9,12 @@
   "cloneSubmodulesFilter": ["ecosystem/morphir-rust"],
   "packageRules": [
     {
+      "description": "granit-parser is pinned to the version in ecosystem/morphir-rust; bump it together with the submodule",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["granit-parser"],
+      "enabled": false
+    },
+    {
       "description": "Group Rust/Cargo dependency updates",
       "groupName": "rust",
       "matchManagers": ["cargo"]
