@@ -119,6 +119,8 @@ jobs:
               - 'tests/bdd/fixtures/**'
               - 'tools/gen-naming-corpus.ts'
               - 'tools/check-vendored-fixture.ts'
+              # regenerates the JSON schemas and compares them with the committed ones
+              - 'tools/check-schemas-generated.ts'
               # the Bun tooling tests the docs job runs through `mise run tools:test`
               - 'tools/*.test.ts'
               - '.config/mise/**'
@@ -377,6 +379,16 @@ jobs:
 
       - name: Validate schemas against the metaschema
         run: mise run schema:validate
+
+      # Regenerates every JSON schema from its YAML source (installing the
+      # website dependencies first) and fails if a committed JSON differed.
+      # It runs before the sync check, so that check compares morphir-rust's
+      # copy with JSON known to match the YAML.
+      - name: Check the committed JSON schemas match their YAML sources
+        run: mise run check:schemas-generated
+
+      - name: Check morphir-rust embeds the generated configuration schema
+        run: mise run check:config-schema-sync
 
       - name: Validate published examples
         run: mise run examples:validate

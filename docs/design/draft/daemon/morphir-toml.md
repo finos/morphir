@@ -277,8 +277,11 @@ IR format and generation settings.
 # IR format version
 format_version = 4
 
-# Output mode
-mode = "vfs"  # "classic" or "vfs"
+# Storage layout compile writes
+layout = "single-file"  # "single-file" or "document-tree"
+
+# Serialization format compile writes
+format = "json"  # "json" or "yaml"
 
 # Strict mode (fail on warnings)
 strict_mode = false
@@ -295,7 +298,9 @@ include_docs = true
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `format_version` | integer | `4` | IR format version |
-| `mode` | string | `"vfs"` | Output mode: `"classic"` (single file) or `"vfs"` (directory tree) |
+| `layout` | string | `"single-file"` | Storage layout compile writes: `"single-file"` or `"document-tree"` |
+| `format` | string | `"json"` | Serialization format compile writes: `"json"` or `"yaml"` |
+| `mode` | string | | Deprecated alias for `layout`: `"classic"` means `"single-file"`, `"vfs"` means `"document-tree"`. Setting it prints a warning; an explicit `layout` wins |
 | `strict_mode` | bool | `false` | Treat warnings as errors |
 | `include_source_locations` | bool | `true` | Include source locations in IR |
 | `include_docs` | bool | `true` | Include documentation in IR |
