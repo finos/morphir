@@ -112,8 +112,10 @@ that finos/morphir-elm releases on its own tag, `extension/elm/v<version>`, from
 the `vnext` branch. The pin is `[executables.elm]` in
 `.config/published-extension-bundles.toml` (repository, tag, archive and the
 archive's `sha256`), for the `x86_64-unknown-linux-gnu` archive that CI runs.
-CI still builds the Morphir Scala Elm extension from its submodule, because
-finos/morphir-scala publishes no extension artifact. CI runs the
+CI also downloads the Morphir Scala Elm provider, `morphir-scala-elm`, which
+finos/morphir-scala releases with its root `v*` release as a raw executable.
+Its pin is `[executables.scala-elm]` with an `asset` in place of an `archive`,
+and its version equals the morphir-scala release version. CI runs the
 `elm_extension` and `cli_integration` ignored tests against both. A green CI
 run on the release commit covers these.
 
@@ -133,8 +135,20 @@ cargo test --locked --package morphir --test cli_integration \
   real_installed_morphir_elm_is_verified_and_activates_offline -- --ignored --nocapture
 ```
 
+The Scala provider test takes its executable and version the same way:
+
+```bash
+gh release download v0.5.0-M06 -R finos/morphir-scala \
+  --pattern "morphir-scala-elm-mac-aarch64-0.5.0-M06" --dir /tmp/scala-elm
+chmod +x /tmp/scala-elm/morphir-scala-elm-mac-aarch64-0.5.0-M06
+export MORPHIR_SCALA_ELM_EXTENSION_BIN=/tmp/scala-elm/morphir-scala-elm-mac-aarch64-0.5.0-M06
+export MORPHIR_SCALA_ELM_EXTENSION_VERSION=0.5.0-M06
+cargo test --locked --package morphir --test cli_integration \
+  real_installed_morphir_scala_elm_is_selected_and_activates_offline -- --ignored --exact --nocapture
+```
+
 Before a release, check finos/morphir-elm for a newer `extension/elm/v*` tag and
-move the pin.
+finos/morphir-scala for a newer `v*` release, and move the pins.
 
 **WASM extensions (Avro, OpenAPI, Python, Rust).** finos/morphir does not build
 the guests. finos/morphir-rust owns the check that a new bundle works with the
