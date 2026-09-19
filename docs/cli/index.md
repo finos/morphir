@@ -99,6 +99,8 @@
 - [`morphir mck check [--repo-root <DIR>] [--json] <DIR>`](mck/check.md)
 - [`morphir mck kit <SUBCOMMAND>`](mck/kit.md)
 - [`morphir mck kit status [FLAGS]`](mck/kit/status.md)
+- [`morphir mck kit vendor <FLAGS>`](mck/kit/vendor.md)
+- [`morphir mck kit update <FLAGS>`](mck/kit/update.md)
 - [`morphir gleam [--json] [--json-lines] <SUBCOMMAND>`](gleam.md)
 - [`morphir gleam compile [FLAGS]`](gleam/compile.md)
 - [`morphir gleam generate [FLAGS]`](gleam/generate.md)

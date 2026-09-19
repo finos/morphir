@@ -1,4 +1,5 @@
-//! End-to-end tests for `morphir mck check` and `morphir mck kit status`.
+//! End-to-end tests for `morphir mck check` and the `morphir mck kit`
+//! commands: `status`, `vendor` and `update`.
 //!
 //! The contract is `spec/mck/cli-contract.md`: stdout carries the result,
 //! diagnostics go to stderr, 0 is success, 1 a failed check or operational
@@ -7,7 +8,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Output;
 
-use serde_json::Value;
+use serde_json::{Value, json};
 use tempfile::TempDir;
 
 fn morphir(args: &[&str]) -> Output {
@@ -253,18 +254,321 @@ fn kit_status_fails_for_a_kit_with_errors() {
     );
 }
 
+/// The repository root, a finos/morphir checkout.
+fn repository_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn json_of(output: &Output) -> Value {
+    serde_json::from_str(&stdout(output))
+        .unwrap_or_else(|e| panic!("stdout is not JSON ({e}): {}", stdout(output)))
+}
+
+fn vendor_embedded(dest: &Path) -> Output {
+    morphir(&[
+        "mck",
+        "kit",
+        "vendor",
+        "--source",
+        "embedded",
+        "--dest",
+        dest.to_str().unwrap(),
+        "--json",
+    ])
+}
+
 #[test]
-fn a_managed_snapshot_is_refused_rather_than_read_as_a_raw_kit() {
+fn an_invalid_manifest_is_an_error_never_a_fallback_to_the_raw_kit() {
     let (root, kit) = repository(&[("types.md", GOOD_CASE)]);
     std::fs::write(root.path().join("mck-kit.lock.json"), "{}").unwrap();
     for args in [&["mck", "check"][..], &["mck", "kit", "status", "--kit"]] {
         let output = morphir(&[args, &[kit.to_str().unwrap()]].concat());
         assert_eq!(output.status.code(), Some(1), "{args:?}");
         assert!(
-            stderr(&output).contains("holds a managed kit snapshot (mck-kit.lock.json)"),
+            stderr(&output).contains("mck-kit.lock.json: missing \"lockVersion\""),
             "{}",
             stderr(&output)
         );
         assert_eq!(stdout(&output), "", "{args:?}");
     }
+}
+
+#[test]
+fn the_embedded_kit_vendors_offline_into_a_new_nested_directory_and_verifies() {
+    let work = TempDir::new().unwrap();
+    let dest = work.path().join("vendor").join("morphir-mck");
+    let output = vendor_embedded(&dest);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let vendored = json_of(&output);
+    assert_eq!(vendored["outcome"], "created");
+    assert_eq!(vendored["source"], "embedded");
+    assert!(
+        stderr(&output).contains("-text"),
+        "the .gitattributes advice goes to stderr"
+    );
+
+    // Both the snapshot root and its kit directory resolve to the managed kit.
+    for kit in [dest.clone(), dest.join("spec").join("ir").join("mck")] {
+        let status = morphir(&[
+            "mck",
+            "kit",
+            "status",
+            "--kit",
+            kit.to_str().unwrap(),
+            "--json",
+        ]);
+        assert_eq!(status.status.code(), Some(0), "{}", stderr(&status));
+        let status = json_of(&status);
+        assert_eq!(status["mode"], "vendored");
+        assert_eq!(status["snapshotDigest"], vendored["snapshotDigest"]);
+        assert_eq!(status["corpusHash"], vendored["corpusHash"]);
+        assert_eq!(status["driverContract"], 1);
+    }
+    let check = morphir(&[
+        "mck",
+        "check",
+        dest.join("spec").join("ir").join("mck").to_str().unwrap(),
+    ]);
+    assert_eq!(check.status.code(), Some(0), "{}", stderr(&check));
+
+    let again = vendor_embedded(&dest);
+    assert_eq!(again.status.code(), Some(0), "{}", stderr(&again));
+    assert_eq!(json_of(&again)["outcome"], "unchanged");
+    let update = morphir(&[
+        "mck",
+        "kit",
+        "update",
+        "--kit",
+        dest.to_str().unwrap(),
+        "--json",
+    ]);
+    assert_eq!(update.status.code(), Some(0), "{}", stderr(&update));
+    assert_eq!(json_of(&update)["outcome"], "unchanged");
+    assert_eq!(
+        std::fs::read_dir(work.path().join("vendor"))
+            .unwrap()
+            .count(),
+        1,
+        "no staging or backup directory left"
+    );
+}
+
+#[test]
+fn a_checkout_vendors_with_no_revision_and_its_embedded_twin_has_the_same_corpus() {
+    let work = TempDir::new().unwrap();
+    let from_checkout = work.path().join("checkout");
+    let output = morphir(&[
+        "mck",
+        "kit",
+        "vendor",
+        "--source",
+        repository_root().to_str().unwrap(),
+        "--dest",
+        from_checkout.to_str().unwrap(),
+        "--json",
+    ]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let checkout = json_of(&output);
+    assert_eq!(
+        (&checkout["source"], &checkout["revision"]),
+        (&json!("local"), &Value::Null)
+    );
+
+    let embedded = json_of(&vendor_embedded(&work.path().join("embedded")));
+    assert_eq!(checkout["corpusHash"], embedded["corpusHash"]);
+    assert_eq!(
+        checkout["snapshotDigest"], embedded["snapshotDigest"],
+        "same bytes, same digest, whatever the source"
+    );
+}
+
+#[test]
+fn an_edited_snapshot_fails_check_status_and_update_naming_the_file() {
+    let work = TempDir::new().unwrap();
+    let dest = work.path().join("kit");
+    assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
+    let types = dest.join("spec").join("ir").join("mck").join("types.md");
+    let original = std::fs::read(&types).unwrap();
+    std::fs::write(&types, [original.as_slice(), b"\n"].concat()).unwrap();
+    std::fs::write(
+        dest.join("spec").join("ir").join("mck").join("mine.md"),
+        "## mine-0001: m\n",
+    )
+    .unwrap();
+
+    for args in [
+        vec![
+            "mck",
+            "check",
+            dest.join("spec").join("ir").join("mck").to_str().unwrap(),
+        ],
+        vec!["mck", "kit", "status", "--kit", dest.to_str().unwrap()],
+        vec!["mck", "kit", "update", "--kit", dest.to_str().unwrap()],
+    ] {
+        let output = morphir(&args.iter().map(|s| &**s).collect::<Vec<_>>());
+        assert_eq!(output.status.code(), Some(1), "{args:?}");
+        let diagnostics = stderr(&output);
+        assert!(
+            diagnostics.contains("altered: spec/ir/mck/types.md"),
+            "{args:?}: {diagnostics}"
+        );
+        assert!(
+            diagnostics.contains("not in the manifest: spec/ir/mck/mine.md"),
+            "{args:?}: {diagnostics}"
+        );
+        assert_eq!(stdout(&output), "", "{args:?}");
+    }
+    assert!(
+        std::fs::read(&types).unwrap().ends_with(b"\n\n"),
+        "update left the edit alone"
+    );
+}
+
+#[test]
+fn a_snapshot_for_another_driver_contract_is_refused_before_use() {
+    let work = TempDir::new().unwrap();
+    let dest = work.path().join("kit");
+    assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
+    let manifest = dest.join("mck-kit.lock.json");
+    let text = std::fs::read_to_string(&manifest).unwrap();
+    std::fs::write(&manifest, text.replace(">=1, <2", ">=2, <3")).unwrap();
+    let output = morphir(&["mck", "check", dest.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output)
+            .contains("supports driver contract >=2, <3; this CLI implements contract 1"),
+        "{}",
+        stderr(&output)
+    );
+}
+
+#[test]
+fn vendor_refuses_unrelated_content_and_a_wrong_expected_digest_without_writing() {
+    let work = TempDir::new().unwrap();
+    let busy = work.path().join("busy");
+    std::fs::create_dir(&busy).unwrap();
+    std::fs::write(busy.join("mine.txt"), "keep").unwrap();
+    let output = vendor_embedded(&busy);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output).contains("is not empty"),
+        "{}",
+        stderr(&output)
+    );
+    assert_eq!(std::fs::read_dir(&busy).unwrap().count(), 1);
+
+    let dest = work.path().join("kit");
+    let wrong = format!("sha256-{}", "0".repeat(64));
+    let output = morphir(&[
+        "mck",
+        "kit",
+        "vendor",
+        "--source",
+        "embedded",
+        "--expect-digest",
+        &wrong,
+        "--dest",
+        dest.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output).contains("nothing was written"),
+        "{}",
+        stderr(&output)
+    );
+    assert!(!dest.exists());
+    assert_eq!(
+        std::fs::read_dir(work.path()).unwrap().count(),
+        1,
+        "only the busy directory"
+    );
+}
+
+#[test]
+fn source_and_revision_mistakes_are_usage_errors_before_anything_happens() {
+    let work = TempDir::new().unwrap();
+    let dest = work.path().join("kit");
+    let dest = dest.to_str().unwrap();
+    let full = "a2803f2cbfbb9baffe8a939e9462b18fd5bcdda0";
+    for (args, expected) in [
+        (
+            vec!["--source", "embedded", "--revision", full],
+            "--revision applies only to --source github:finos/morphir",
+        ),
+        (vec!["--source", "github:finos/morphir"], "needs --revision"),
+        (
+            vec!["--source", "github:finos/morphir", "--revision", "a2803f2"],
+            "not a full 40-character",
+        ),
+        (
+            vec!["--source", "github:finos/morphir", "--revision", "main"],
+            "branches, tags and short ids are not accepted",
+        ),
+        (
+            vec!["--source", "github:someone/fork", "--revision", full],
+            "only github:finos/morphir is supported",
+        ),
+        (
+            vec!["--source", "embedded", "--expect-digest", "abc"],
+            "--expect-digest:",
+        ),
+    ] {
+        let output = morphir(&[&["mck", "kit", "vendor", "--dest", dest][..], &args].concat());
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "{args:?}: {}",
+            stderr(&output)
+        );
+        assert!(
+            stderr(&output).contains(expected),
+            "{args:?}: {}",
+            stderr(&output)
+        );
+        assert_eq!(stdout(&output), "", "{args:?}");
+    }
+    assert_eq!(
+        std::fs::read_dir(work.path()).unwrap().count(),
+        0,
+        "nothing was created"
+    );
+}
+
+#[test]
+fn update_from_a_local_snapshot_needs_its_source_named() {
+    let work = TempDir::new().unwrap();
+    let dest = work.path().join("kit");
+    let output = morphir(&[
+        "mck",
+        "kit",
+        "vendor",
+        "--source",
+        repository_root().to_str().unwrap(),
+        "--dest",
+        dest.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let output = morphir(&["mck", "kit", "update", "--kit", dest.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output).contains("name it again with --source <path>"),
+        "{}",
+        stderr(&output)
+    );
+
+    let output = morphir(&[
+        "mck",
+        "kit",
+        "update",
+        "--kit",
+        dest.to_str().unwrap(),
+        "--source",
+        repository_root().to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(
+        stdout(&output).contains("is already the snapshot"),
+        "{}",
+        stdout(&output)
+    );
 }

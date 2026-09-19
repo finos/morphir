@@ -262,16 +262,22 @@ List decision records, grouped by state
 Show one decision record
 .TP
 \fBmck\fR
-Morphir Compatibility Kit: validate and identify compatibility kits
+Morphir Compatibility Kit: validate, identify and vendor compatibility kits
 .TP
 \fBmck check\fR
 Validate a kit directory without running an adapter
 .TP
 \fBmck kit\fR
-Inspect kit provenance and integrity
+Inspect, vendor and update kit data
 .TP
 \fBmck kit status\fR
 Identify a kit: source, revision, corpus hash and whether it is modified
+.TP
+\fBmck kit vendor\fR
+Write a verified, pinned copy of the kit into a new directory
+.TP
+\fBmck kit update\fR
+Replace a vendored snapshot, refusing if its files were edited
 .TP
 \fBgleam\fR
 Gleam language binding commands
@@ -1784,7 +1790,7 @@ Print the files, case ids and errors as JSON on stdout
 .PP
 .TP
 \fB<DIR>\fR
-The kit directory to validate, for example spec/ir/mck
+The kit directory to validate, for example spec/ir/mck, or a vendored snapshot's root
 .SH "MORPHIR MCK KIT STATUS"
 Identify a kit: source, revision, corpus hash and whether it is modified
 .PP
@@ -1794,13 +1800,57 @@ Identify a kit: source, revision, corpus hash and whether it is modified
 .PP
 .TP
 \fB\-\-kit\fR \fI<DIR>\fR
-A kit directory; the kit embedded in this CLI when omitted
+A kit directory or a vendored snapshot's root; the kit embedded in this CLI when omitted
 .TP
 \fB\-\-repo\-root\fR \fI<DIR>\fR
 Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)
 .TP
 \fB\-\-json\fR
 Print the status as JSON on stdout
+.SH "MORPHIR MCK KIT VENDOR"
+Write a verified, pinned copy of the kit into a new directory
+.PP
+\fBUsage:\fR morphir mck kit vendor [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-source\fR \fI<SOURCE>\fR
+Where the kit data comes from: `embedded` (this CLI's kit, offline), a local snapshot or finos/morphir checkout, or `github:finos/morphir`
+.TP
+\fB\-\-revision\fR \fI<COMMIT>\fR
+The full 40\-character commit to acquire; required with `github:finos/morphir` and refused with any other source
+.TP
+\fB\-\-expect\-digest\fR \fI<DIGEST>\fR
+Fail, writing nothing, unless the snapshot digest is exactly this
+.TP
+\fB\-\-dest\fR \fI<DIR>\fR
+The directory to create; it must not exist, or be empty
+.TP
+\fB\-\-json\fR
+Print the outcome as JSON on stdout
+.SH "MORPHIR MCK KIT UPDATE"
+Replace a vendored snapshot, refusing if its files were edited
+.PP
+\fBUsage:\fR morphir mck kit update [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+The root of the vendored snapshot to replace
+.TP
+\fB\-\-source\fR \fI<SOURCE>\fR
+Where the new kit data comes from; defaults to the snapshot's own source when that needs no further input (`embedded`)
+.TP
+\fB\-\-revision\fR \fI<COMMIT>\fR
+The full 40\-character commit to acquire; required with `github:finos/morphir` and refused with any other source
+.TP
+\fB\-\-expect\-digest\fR \fI<DIGEST>\fR
+Fail, changing nothing, unless the new snapshot digest is exactly this
+.TP
+\fB\-\-json\fR
+Print the outcome as JSON on stdout
 .SH "MORPHIR GLEAM"
 Gleam language binding commands
 .PP

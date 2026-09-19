@@ -19,6 +19,16 @@ pub const ALGORITHM: &str = "mck-file-map-sha256/1";
 pub struct ContentDigest(String);
 
 impl ContentDigest {
+    /// Accepts exactly `sha256-` followed by 64 lowercase hex digits.
+    pub fn parse(text: &str) -> Result<Self, String> {
+        match text.strip_prefix("sha256-") {
+            Some(hex) if is_sha256_hex(hex) => Ok(Self(text.to_owned())),
+            _ => Err(format!(
+                "\"{text}\" is not a sha256-<64 lowercase hex> digest"
+            )),
+        }
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -30,34 +40,46 @@ impl fmt::Display for ContentDigest {
     }
 }
 
+/// 64 lowercase hex digits: a SHA-256 as the digest lines spell it.
+pub fn is_sha256_hex(text: &str) -> bool {
+    text.len() == 64
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
 pub fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    hex(&Sha256::digest(bytes))
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 /// The digest of `files`, given as `(repository-relative path, bytes)`. The
 /// order of `files` does not matter; a path listed twice is hashed twice, so
 /// callers pass a map's entries.
 pub fn content_hash<'a>(files: impl IntoIterator<Item = (&'a str, &'a [u8])>) -> ContentDigest {
+    let hashed: Vec<(&str, String)> = files
+        .into_iter()
+        .map(|(path, bytes)| (path, sha256_hex(bytes)))
+        .collect();
+    digest_of_hashes(hashed.iter().map(|(path, hash)| (*path, hash.as_str())))
+}
+
+/// The same digest from each file's SHA-256 hex, as a manifest inventory
+/// records it, so a manifest can be checked without its files.
+pub fn digest_of_hashes<'a>(files: impl IntoIterator<Item = (&'a str, &'a str)>) -> ContentDigest {
     let mut files: Vec<_> = files.into_iter().collect();
     files.sort_by(|a, b| utf16_cmp(a.0, b.0));
     let mut outer = Sha256::new();
-    for (path, bytes) in files {
+    for (path, hash) in files {
         outer.update(path.as_bytes());
         outer.update([0]);
-        outer.update(sha256_hex(bytes).as_bytes());
+        outer.update(hash.as_bytes());
         outer.update(b"\n");
     }
-    ContentDigest(format!(
-        "sha256-{}",
-        outer
-            .finalize()
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect::<String>()
-    ))
+    ContentDigest(format!("sha256-{}", hex(&outer.finalize())))
 }
 
 #[cfg(test)]
@@ -112,6 +134,31 @@ mod tests {
             let mut paths: Vec<&str> = vector.files.iter().map(|f| f.path.as_str()).collect();
             paths.sort_by(|a, b| utf16_cmp(a, b));
             assert_eq!(paths, vector.sorted_paths, "vector {}", vector.name);
+        }
+    }
+
+    #[test]
+    fn digest_of_hashes_agrees_with_content_hash() {
+        let files = [("b", b"2".as_slice()), ("a", b"1".as_slice())];
+        let hashes: Vec<(&str, String)> = files.iter().map(|(p, b)| (*p, sha256_hex(b))).collect();
+        assert_eq!(
+            digest_of_hashes(hashes.iter().map(|(p, h)| (*p, h.as_str()))),
+            content_hash(files)
+        );
+    }
+
+    #[test]
+    fn parse_accepts_only_the_canonical_spelling() {
+        let good = content_hash([("a", b"1".as_slice())]);
+        assert_eq!(ContentDigest::parse(good.as_str()), Ok(good.clone()));
+        for bad in [
+            "sha256-",
+            "sha256-XYZ",
+            "sha512-00",
+            &good.as_str().to_uppercase(),
+            &format!("{good}0"),
+        ] {
+            assert!(ContentDigest::parse(bad).is_err(), "{bad}");
         }
     }
 

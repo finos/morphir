@@ -6,7 +6,7 @@
 Validate a kit directory without running an adapter
 
 ## Arguments
-- **`<DIR>`** — The kit directory to validate, for example spec/ir/mck
+- **`<DIR>`** — The kit directory to validate, for example spec/ir/mck, or a vendored snapshot's root
 
 ## Flags
 - **`--repo-root <DIR>`** — Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)

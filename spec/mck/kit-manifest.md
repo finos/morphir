@@ -1,7 +1,7 @@
 # MCK kit snapshots, manifest and acquisition
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: the digest algorithm, the embedded kit and managed-kit detection, which refuses a snapshot until verification lands (IR-1). Command spelling is in the [CLI contract](cli-contract.md).
+Implemented so far: the digest algorithm, the embedded kit, the manifest, managed-kit verification, and `kit vendor` and `kit update` from the `embedded` and local sources (IR-1, IR-1V). The `github:finos/morphir` source is not implemented yet. Command spelling is in the [CLI contract](cli-contract.md).
 
 An implementor of a binding or extension uses the installed `morphir` CLI to put a pinned copy of
 the kit in their own repository, commit it, and run it offline. They need neither a Morphir source
@@ -110,8 +110,9 @@ snapshot is byte-identical.
 - `source.kind` is `embedded`, `local` or `github`. `embedded` records the CLI version that
   exported it and the revision that CLI embedded. `local` records the revision only if the source
   snapshot had a manifest; a plain directory has `revision: null`.
-- `driverContract` is a range over the **driver contract version**, an integer the CLI publishes in
-  `morphir mck --version`. It starts at 1 and increases only when the runner's interpretation of a
+- `driverContract` is a range over the **driver contract version**, an integer the CLI reports as
+  `driverContract` in `morphir mck kit status` (and its `--json`). The CLI disables `--version` on
+  every subcommand, so `morphir mck --version` does not exist. It starts at 1 and increases only when the runner's interpretation of a
   kit changes incompatibly. A CLI whose contract is outside the range refuses the kit before
   starting an adapter, exit 1. It never fetches another kit and never downgrades silently.
 - There is no timestamp. A manifest is a function of its content and source.
@@ -183,7 +184,8 @@ Publishing is all-or-nothing.
 3. Promote by rename. If anything fails before this step, the staging directory is removed and the
    destination is untouched.
 
-`kit vendor` requires `--dest` to be absent or an empty directory. If it holds a manifest whose
+`kit vendor` requires `--dest` to be absent or an empty directory; missing parent directories are
+created, as `mkdir -p` would. If it holds a manifest whose
 digests equal the new snapshot, the command is a successful no-op. Anything else is refused, exit 1.
 There is no force option in this delivery.
 
@@ -210,16 +212,17 @@ Detection has no fallback and no ambiguity:
 
 | Condition | Mode | Behaviour |
 | --- | --- | --- |
-| `mck-kit.lock.json` exists at the repository root in use (`--repo-root`, or the inferred root) | Managed | `check`, `coverage`, `schema check` and `run` first verify every file against the manifest, reject extra files under managed paths, and check `driverContract`. Any mismatch fails before an adapter starts. |
+| The directory given is a snapshot root, or `mck-kit.lock.json` exists at the repository root in use (`--repo-root`, or the inferred root) | Managed | `check`, `kit status`, `coverage`, `schema check` and `run` first check `driverContract`, verify every listed file's size and SHA-256, reject any other file under the snapshot root except a `.gitattributes`, and confirm the kit's corpus hash is the recorded one. Any mismatch fails, naming each file, before a case is read or an adapter starts. |
 | No manifest there | Raw authoring | The checkout is used as is. `kit status` and the provenance sidecar report it as `local`, with a digest of the bytes that ran and `modified: true` unless it equals the embedded kit. |
-| No `--kit` | Embedded | The compiled-in kit, verified against its compiled-in manifest at startup. |
+| No `--kit` | Embedded | The compiled-in kit. Its bytes are part of the binary, so there is no separate manifest to check; `kit vendor --source embedded` writes one. |
 
 A manifest that is present but unreadable, or has an unknown `lockVersion`, is an error. It never
 downgrades the kit to raw mode. Raw mode is for intentional corpus edits inside finos/morphir and
 does not relax vendored CI checks.
 
 `kit status` verifies inventory, digests and provenance locally and prints the source, revision,
-both digests and the mode. Exit 1 on any mismatch. There is no remote comparison in this delivery.
+both digests, the mode and the driver contract. `--kit` may name the snapshot root or its kit
+directory. Exit 1 on any mismatch. There is no remote comparison in this delivery.
 
 ## Acceptance
 

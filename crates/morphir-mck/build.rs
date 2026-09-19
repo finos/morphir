@@ -1,5 +1,5 @@
-//! Embeds the IR kit: every file under `spec/ir/mck` plus every fixture a
-//! `text` fence names, so the packaged CLI checks and runs the kit offline
+//! Embeds the IR kit: every file under `spec/ir/mck`, every fixture a `text`
+//! fence names, and the fixed inputs every snapshot carries, so the packaged CLI checks and runs the kit offline
 //! with no checkout. The closure is computed with the crate's own parser,
 //! included by path; a kit that does not parse fails the build.
 
@@ -10,6 +10,9 @@ use std::process::Command;
 #[allow(dead_code)]
 #[path = "src/kit/syntax/mod.rs"]
 mod syntax;
+
+#[path = "src/kit/closure.rs"]
+mod closure;
 
 use syntax::case::parse_kit_file;
 use syntax::info_string::Language;
@@ -99,6 +102,12 @@ fn main() {
             if !keys.iter().any(|existing| existing == target) {
                 keys.push(target.to_owned());
             }
+        }
+    }
+
+    for fixed in closure::FIXED_INPUTS {
+        if !keys.iter().any(|existing| existing == fixed) {
+            keys.push((*fixed).to_owned());
         }
     }
 
