@@ -407,8 +407,8 @@ Reference Elm cases require explicit preparation as described in the
 [example catalog](examples/README.md). Installed Avro/OpenAPI examples use
 `suite:wasm-backends` after `ci:fetch-published-bundles` and
 `examples:prepare-backends`; scenarios perform publication and installation.
-Positive cases use v3 while separate cases record the published guests' current
-v4 rejection, tracked by `morphir-o6vm.16`. A passing `coverage:known-limitation`
+Main backend cases use default v4 output; `backends/v3-compatibility` retains
+explicit v3 generation coverage. A passing `coverage:known-limitation`
 scenario proves the documented rejection, not successful feature support.
 
 The Docusaurus website is located in `website/`. To run locally:

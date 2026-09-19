@@ -55,10 +55,10 @@ test("reject a missing descriptor before staging either bundle", () => fixture((
 	expect(existsSync(join(root, "examples"))).toBe(false);
 }));
 
-test("stage both bundles beside the v4 rejection scenarios", () => fixture((root, bundles) => {
+test("stage both bundles beside the v3 compatibility scenarios", () => fixture((root, bundles) => {
 	prepareBackendExamples(root, bundles);
 	for (const id of ["avro", "openapi"]) {
-		const staged = join(root, "examples/backends/v4-published-rejection/.itest", id);
+		const staged = join(root, "examples/backends/v3-compatibility", id, ".itest/bundle");
 		for (const name of [`${id}-guest.wasm`, `${id}-guest.wasm.sha256`, "release.json"]) {
 			expect(readFileSync(join(staged, name))).toEqual(readFileSync(join(bundles, id, name)));
 		}

@@ -24,7 +24,7 @@ export function prepareBackendExamples(root: string, bundles: string): void {
 	for (const { id, files } of prepared) {
 		const destinations = [
 			join(root, "examples/backends", id, ".itest/bundle"),
-			join(root, "examples/backends/v4-published-rejection/.itest", id),
+			join(root, "examples/backends/v3-compatibility", id, ".itest/bundle"),
 		];
 		for (const destination of destinations) {
 			rmSync(destination, { recursive: true, force: true });

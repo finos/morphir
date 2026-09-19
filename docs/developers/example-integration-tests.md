@@ -45,8 +45,9 @@ Installed Avro/OpenAPI cases use `suite:wasm-backends`. Run
 `mise run ci:fetch-published-bundles` followed by
 `mise run examples:prepare-backends` to stage pinned WASM bundles. Scenarios
 perform repository initialization, registration, publication and installation
-through the CLI. Positive cases use explicit v3 IR; separately tagged negative
-cases document the pinned releases' rejection of current v4 access wrappers.
+through the CLI. Main cases use default v4 IR and assert generated schemas;
+`backends/v3-compatibility` retains explicit v3 coverage. Select either IR version
+with an additional `--tag ir:v4` or `--tag ir:v3`.
 See the [backend preparation instructions](https://github.com/finos/morphir/blob/main/examples/README.md#prepare-the-installed-wasm-backend-scenarios).
 
 Use `coverage:known-limitation` with `kind:negative` for a scenario deliberately

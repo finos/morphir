@@ -38,9 +38,9 @@ provider evaluates assertions.
 | [YAML project](elm/yaml-project/scenarios.md) | Config discovery and a public native Elm record in v4 IR | Offline |
 | [Multi-project workspace](monorepo-workspace/scenarios.md) | Default selection, selecting each member by path/name, distinct package identities, isolated task outputs and installed IR copies | Offline |
 | [Gleam compile and generate](gleam/compile-generate/scenarios.md) | Function compilation, generated Gleam source and compile-to-generate task provenance | Offline |
-| [Installed Avro backend](backends/avro/scenarios.md) | Local bundle publication/installation, native Elm to v3, Avro record and primitive field mappings, task provenance and installed output | Pinned Avro 0.1.1 WASM bundle |
-| [Installed OpenAPI backend](backends/openapi/scenarios.md) | Local bundle publication/installation, native Elm to v3, JSON Schema and OpenAPI schema components, task provenance and installed outputs | Pinned OpenAPI 0.1.0 WASM bundle |
-| [Published backends with v4](backends/v4-published-rejection/scenarios.md) | The released Avro, JSON Schema and OpenAPI targets' **known rejection** of current canonical v4 access wrappers | Both pinned WASM bundles |
+| [Installed Avro backend](backends/avro/scenarios.md) | Local bundle publication/installation, native Elm to default v4, Avro record and primitive field mappings, task provenance and installed output | Pinned Avro 0.1.2 WASM bundle |
+| [Installed OpenAPI backend](backends/openapi/scenarios.md) | Local bundle publication/installation, native Elm to default v4, JSON Schema and OpenAPI schema components, task provenance and installed outputs | Pinned OpenAPI 0.1.1 WASM bundle |
+| [Avro v3 compatibility](backends/v3-compatibility/avro/scenarios.md) and [OpenAPI v3 compatibility](backends/v3-compatibility/openapi/scenarios.md) | Explicit v3 compilation and successful Avro, JSON Schema and OpenAPI generation with the same providers | Both pinned WASM bundles |
 | [CLI basics](cli/basics/scenarios.md) | Version reporting and public command help in independent Markdown scenarios | Offline |
 | [Classic multi-file Elm](morphir-elm-compat/scenarios.md) | Config discovery and the released provider's **known rejection** of multiple source documents | Reference Elm 0.1.0 |
 
@@ -101,13 +101,12 @@ directories. Each scenario uses real CLI commands to create/register a local
 repository, publish its bundle and install the provider in an isolated Morphir
 home. No download or installation happens in the preparation helper.
 
-Positive cases explicitly compile v3 IR. The pinned releases predate the
-canonical v4 `Public` wrapper and reject it with `invalid_ir`. Separate
-`kind:negative`, `coverage:known-limitation` cases retain that evidence; Beads
-`morphir-o6vm.16` tracks updated backend releases and pins. Their passing rejection
-checks do not establish v4 support. OpenAPI coverage checks schema components
-from types, not inferred API operations. Remove generated `.itest` directories
-to clean up.
+The main examples compile default v4 IR with canonical `Public` wrappers.
+The v3 compatibility projects check the same targets with explicit v3 output.
+Select one version with `--tag suite:wasm-backends --tag ir:v4` or
+`--tag suite:wasm-backends --tag ir:v3`.
+OpenAPI coverage checks schema components from types, not inferred API operations.
+Remove generated `.itest` directories to clean up.
 
 ## Existing material awaiting adoption
 

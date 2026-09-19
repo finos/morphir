@@ -18,9 +18,8 @@ Use `suite:offline` when no downloaded provider is available.
 For installed Avro/OpenAPI backends, fetch the pinned releases and run
 `mise run examples:prepare-backends`, then select `suite:wasm-backends`.
 Keep repository creation, publication and installation in scenario commands.
-Positive cases currently select v3 explicitly; `backends/v4-published-rejection`
-records the released guests' obsolete access-wrapper reader. Beads
-`morphir-o6vm.16` tracks replacing those negative cases after updated releases.
+Main backend cases compile default v4 output; `backends/v3-compatibility` retains
+explicit v3 generation coverage. Verify both when updating provider pins.
 
 ## Choose the claim
 

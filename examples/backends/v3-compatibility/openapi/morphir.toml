@@ -1,5 +1,5 @@
 [project]
-name = "examples/published"
+name = "examples/compatibility"
 version = "1.0.0"
 source_directory = "src"
 exposed_modules = ["Domain"]
@@ -8,4 +8,4 @@ exposed_modules = ["Domain"]
 language = "elm"
 
 [codegen]
-targets = ["avro", "json-schema", "openapi"]
+targets = ["json-schema", "openapi"]

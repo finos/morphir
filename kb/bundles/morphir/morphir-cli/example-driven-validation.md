@@ -140,11 +140,12 @@ bundles and `examples:prepare-backends` verifies and copies their bytes; scenari
 perform real repository init/add/publish/install commands. Avro record fields,
 JSON Schema properties and OpenAPI schema components have fixed expectations,
 with canonical task output compared to installed copies and compile provenance
-checked. Positive cases compile v3 explicitly. Published Avro 0.1.1 and OpenAPI
-0.1.0 reject current v4 `Public` access wrappers with `invalid_ir`; independent
-negative cases preserve this evidence. Beads `morphir-o6vm.16` tracks refreshed
-releases/pins and conversion to positive assertions. This coverage does not prove
-v4 backend support or API operation inference from functions.
+checked. Main cases compile default v4; separate compatibility projects retain
+explicit v3 coverage. Avro 0.1.2 and OpenAPI 0.1.1 refresh the guests that previously
+rejected canonical v4 `Public` access wrappers. The upstream released-CLI gate
+also exercises a fixed canonical v4 record alongside its v3 fixture, so the
+release check covers both advertised versions. This coverage does not prove API
+operation inference from functions.
 
 The original two-module `morphir-elm-compat` project revealed two gaps: classic
 configuration does not infer Elm, and the released extension rejects multiple

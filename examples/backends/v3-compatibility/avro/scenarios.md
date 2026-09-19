@@ -1,22 +1,21 @@
 ---
 version: 1
-title: Installed Avro backend
-description: Publish and install a pinned WASM backend, compile an on-disk Elm record, and verify generated schemas and task provenance through real CLI commands.
-tags: [language:elm, frontend:elm-native, backend:avro, config:toml, area:compile, area:generate, area:extension, ir:v4, kind:positive, suite:wasm-backends, workspace:directory]
+title: Installed Avro backend retains v3 compatibility
+description: Publish and install the pinned Avro backend, compile a customer record as v3 IR, and assert generated schemas and task provenance.
+tags: [language:elm, frontend:elm-native, backend:avro, config:toml, area:compile, area:generate, area:extension, ir:v3, kind:positive, suite:wasm-backends, workspace:directory]
 provider: rego
 workspace: {kind: directory, path: '.', exclude: [installed, repository]}
 ---
 
-# Installed Avro backend
+# Installed Avro backend retains v3 compatibility
 
 Prepare the pinned bundles with `mise run ci:fetch-published-bundles` and
-`mise run examples:prepare-backends`. Missing prerequisites fail. The driver
-copies this on-disk project into a temporary workspace with a fresh Morphir home.
-The commands below publish and install morphir-avro 0.1.2; they do not download it.
-Native Elm supplies types only. These assertions cover schemas, not function
-evaluation.
+`mise run examples:prepare-backends`. Each heading starts with a fresh workspace
+and Morphir home. These cases retain explicit v3 support alongside the default
+v4 workflows in the adjacent Avro and OpenAPI examples. They check type schemas,
+not function evaluation or inferred API operations.
 
-## Compile and generate {#compile-generate}
+## Avro from v3 IR {#avro}
 
 ### Create a local repository
 
@@ -142,7 +141,7 @@ captures:
 ```
 
 ```sh
-morphir compile --extension morphir-elm-native --json
+morphir compile --extension morphir-elm-native --ir-version 3 --json
 ```
 
 ```yaml morphir:assertion
@@ -159,11 +158,21 @@ passes if {
     input.exitCode == 0
     input.stdoutJson.success == true
     ir := input.artifacts.ir.value
-    ir.formatVersion == 4
-    ir.distribution.Library.packageName == "examples/avro"
-    record := ir.distribution.Library.def.modules.domain.Public.types.customer.Public.TypeAliasDefinition.typeExp.Record
-    record.fields.age.Reference.fqname == "morphir/SDK:basics#int"
-    record.fields.name.Reference.fqname == "morphir/SDK:string#string"
+    ir.formatVersion == 3
+    ir.distribution[0] == "Library"
+    ir.distribution[1] == [["examples"], ["compatibility"]]
+    modules := ir.distribution[3].modules
+    count(modules) == 1
+    modules[0][0] == [["domain"]]
+    modules[0][1].access == "Public"
+    types := modules[0][1].value.types
+    count(types) == 1
+    types[0][0] == ["customer"]
+    types[0][1].access == "Public"
+    alias := types[0][1].value.value
+    alias[0] == "TypeAliasDefinition"
+    alias[2][0] == "Record"
+    count(alias[2][2]) == 2
 }
 ```
 
@@ -176,8 +185,8 @@ timeout_seconds: 180
 stdout_json: true
 captures:
   - {name: result, path: .morphir/out/generate/avro.json, format: json}
-  - {name: schema, path: .morphir/out/generate/avro.dest/examples/avro/domain/Customer.avsc, format: json}
-  - {name: installed, path: installed/avro/examples/avro/domain/Customer.avsc, format: json}
+  - {name: schema, path: .morphir/out/generate/avro.dest/examples/compatibility/domain/Customer.avsc, format: json}
+  - {name: installed, path: installed/avro/examples/compatibility/domain/Customer.avsc, format: json}
 ```
 
 ```sh
@@ -203,7 +212,7 @@ passes if {
     schema == input.artifacts.installed.value
     schema.type == "record"
     schema.name == "Customer"
-    schema.namespace == "examples.avro.domain"
+    schema.namespace == "examples.compatibility.domain"
     count(schema.fields) == 2
     fields := {field.name: field.type | some field in schema.fields}
     fields == {"age": "long", "name": "string"}
