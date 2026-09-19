@@ -228,6 +228,10 @@ run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "bun run tools/run-mck-rust.ts --record .dev/out/mck/morphir-rust.ndjson --kit spec/ir/mck --report .dev/out/mck/morphir-rust-first-driver.json",
+    # No .exe here, unlike the wrapper above: that one stats the adapter before
+    # spawning it, so it has to spell the name the platform writes. A spawn
+    # needs no suffix, because Windows appends .exe to a program path that has
+    # no extension. Verified on Windows, where the extensionless file does not exist.
     "cargo run --locked -p morphir -- mck run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --kit spec/ir/mck --report .dev/out/mck/morphir-rust-rust-runner.json",
     "jsonschema validate spec/ir/mck/report.schema.json .dev/out/mck/morphir-rust-rust-runner.json",
     "bun run tools/compare-mck-reports.ts .dev/out/mck/morphir-rust-first-driver.json .dev/out/mck/morphir-rust-rust-runner.json",
