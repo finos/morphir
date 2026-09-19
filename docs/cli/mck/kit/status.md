@@ -6,6 +6,6 @@
 Identify a kit: source, revision, corpus hash and whether it is modified
 
 ## Flags
-- **`--kit <DIR>`** — A kit directory; the kit embedded in this CLI when omitted
+- **`--kit <DIR>`** — A kit directory or a vendored snapshot's root; the kit embedded in this CLI when omitted
 - **`--repo-root <DIR>`** — Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)
 - **`--json`** — Print the status as JSON on stdout

@@ -3,8 +3,10 @@
 
 - **Usage:** `morphir mck kit <SUBCOMMAND>`
 
-Inspect kit provenance and integrity
+Inspect, vendor and update kit data
 
 ## Subcommands
 
 - [`morphir mck kit status [FLAGS]`](../mck/kit/status.md)
+- [`morphir mck kit update <FLAGS>`](../mck/kit/update.md)
+- [`morphir mck kit vendor <FLAGS>`](../mck/kit/vendor.md)

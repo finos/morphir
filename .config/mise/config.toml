@@ -172,6 +172,19 @@ run = [
     "jsonschema validate spec/ir/mck/report.schema.json spec/ir/mck/report.example.json",
     "jsonschema metaschema spec/ir/mck/protocol.schema.json",
     "bun run tools/validate-mck-protocol.ts",
+    # Parent-owned kit data the Rust `morphir mck` tooling reads (spec/mck/kit-manifest.md).
+    "bun run tools/gen-mck-vocabulary.ts --check",
+    "jsonschema metaschema spec/mck/vocabulary.schema.json",
+    "jsonschema validate spec/mck/vocabulary.schema.json spec/mck/vocabulary.json",
+    "jsonschema metaschema spec/mck/mck-kit.lock.schema.json",
+    "jsonschema validate spec/mck/mck-kit.lock.schema.json spec/mck/mck-kit.lock.example.json",
+]
+
+[tasks."mck:vocabulary"]
+description = "Regenerate spec/mck/vocabulary.json from the TypeScript IR binding's vocabulary"
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "bun run tools/gen-mck-vocabulary.ts",
 ]
 
 [tasks."mck:schema-check"]

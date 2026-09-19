@@ -1,0 +1,53 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://morphir.finos.org/schemas/mck/vocabulary-v1.schema.json",
+	"title": "MCK IR coverage vocabulary",
+	"description": "The IR node variants and member spellings `morphir mck coverage` requires a kit case for. See spec/mck/cli-contract.md.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["vocabularyVersion", "irVersion", "description", "nodes", "aliases", "entries"],
+	"properties": {
+		"vocabularyVersion": { "const": 1 },
+		"irVersion": { "type": "integer", "minimum": 1 },
+		"description": { "type": "string" },
+		"nodes": {
+			"description": "Node kinds a case's `node=` key may name.",
+			"type": "array",
+			"minItems": 1,
+			"uniqueItems": true,
+			"items": { "$ref": "#/$defs/identifier" }
+		},
+		"aliases": {
+			"description": "Other names a case may use for a node kind.",
+			"type": "object",
+			"additionalProperties": { "$ref": "#/$defs/identifier" }
+		},
+		"entries": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["node", "variant", "members"],
+				"properties": {
+					"node": { "$ref": "#/$defs/identifier" },
+					"variant": { "type": "string", "minLength": 1 },
+					"members": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": ["name", "spelling"],
+							"properties": {
+								"name": { "type": "string", "minLength": 1 },
+								"spelling": { "enum": ["canonical", "legacy"] }
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"$defs": {
+		"identifier": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+	}
+}

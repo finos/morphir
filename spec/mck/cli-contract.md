@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: `check` and `kit status` for the embedded kit and raw checkouts (IR-1). The TypeScript driver in finos/morphir-typescript remains the
+Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from the `embedded` and local sources, including managed-snapshot verification (IR-1, IR-1V). The TypeScript driver in finos/morphir-typescript remains the
 authoritative gate until the cutover described in [migration.md](migration.md).
 
 This contract covers the IR suite. Package commands are added by
@@ -84,9 +84,10 @@ broken one surfaced only during `run`. A case file that is not valid UTF-8 is a 
 where the old driver substituted U+FFFD. This is departure 12 in
 [migration.md](migration.md#approved-departures-from-old-runner-behaviour).
 
-A directory holding a managed snapshot is verified against its manifest first
-([kit-manifest.md](kit-manifest.md#managed-and-raw-kits)). Until IR-1V lands that verification, a
-managed snapshot is refused with exit 1; it is never read as a raw kit.
+A snapshot root, or a kit directory whose repository root holds `mck-kit.lock.json`, is a managed
+snapshot. It is verified against its manifest before any case is read
+([kit-manifest.md](kit-manifest.md#managed-and-raw-kits)); a failure is exit 1 naming each missing,
+altered or extra file, and the kit is never read raw instead.
 
 ### `run`
 

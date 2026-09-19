@@ -9,9 +9,10 @@ use serde::Serialize;
 use super::embedded::{PROVENANCE, embedded_source};
 use super::hash::ALGORITHM;
 use super::load::{Kit, load_kit};
+use super::vendor::Managed;
+use crate::DRIVER_CONTRACT;
 
-/// The manifest that marks a vendored, managed snapshot (`spec/mck/kit-manifest.md`).
-pub const MANIFEST_NAME: &str = "mck-kit.lock.json";
+pub use super::manifest::MANIFEST_NAME;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -20,6 +21,8 @@ pub enum KitMode {
     Embedded,
     /// A raw authoring checkout: used as is, never reported as an upstream snapshot.
     Local,
+    /// A managed snapshot, verified against its `mck-kit.lock.json`.
+    Vendored,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -38,6 +41,13 @@ pub struct KitStatus {
     pub files: usize,
     pub cases: usize,
     pub errors: usize,
+    /// The driver contract this CLI implements.
+    pub driver_contract: u32,
+    /// Vendored only: the manifest's source kind and full-inventory digest.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snapshot_digest: Option<String>,
 }
 
 impl KitStatus {
@@ -92,7 +102,25 @@ fn status_of(
         files: kit.files.len(),
         cases: kit.cases.len(),
         errors: kit.errors.len(),
+        driver_contract: DRIVER_CONTRACT,
+        source: None,
+        snapshot_digest: None,
     })
+}
+
+/// The status of a managed snapshot `open_managed` has already verified.
+pub fn vendored_status(managed: &Managed) -> io::Result<KitStatus> {
+    let lock = &managed.lock;
+    let mut status = status_of(
+        &managed.kit,
+        KitMode::Vendored,
+        lock.source.revision().map(|r| r.as_str().to_owned()),
+        false,
+    )?;
+    status.label = managed.root.display().to_string();
+    status.source = Some(lock.source.kind());
+    status.snapshot_digest = Some(lock.snapshot_digest.as_str().to_owned());
+    Ok(status)
 }
 
 #[cfg(test)]
