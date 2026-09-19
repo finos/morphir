@@ -82,8 +82,15 @@ TypeScript binding, in-process, through its adapter, and through a recording pro
 Two further sources keep a shared bug or a binding gap from hiding a runner defect:
 
 - **Transcript replay.** [baseline/transcripts/](baseline/transcripts/) holds every request and
-  response of a full run. A replay adapter answers from it, so the Rust runner must send
-  byte-equivalent requests in the same order and produce the same report, without Bun or Node.
+  response of a full run, one per adapter. A replay adapter answers from it, so the Rust runner must
+  send byte-equivalent requests in the same order and produce the same report, without Bun or Node.
+  The two adapters answer differently: the TypeScript binding skips the version 3 cases it does not
+  support, and the Rust binding runs them, so the replays cover a skipping run and a complete one.
+- **Live comparison on one adapter.** `mise run mck:parity-rust` builds the pinned Rust adapter and
+  has both runners question that same build in one CI job, then compares the reports under the
+  exclusions above. A recording keeps its answers fixed; this keeps the binding fixed instead, so a
+  difference can only be the runner's. Its transcript is uploaded, and a future baseline is frozen
+  from it.
 - **Hostile adapters.** One fixture per failure class in the
   [CLI contract](cli-contract.md#failure-classes). Each must fail the run.
 

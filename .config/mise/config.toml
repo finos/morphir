@@ -217,6 +217,26 @@ run = [
     "bun run tools/check-mck-report.ts .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json",
 ]
 
+[tasks."mck:parity-rust"]
+description = "Run the kit against the pinned Rust adapter with both the first driver and the Rust runner, and hold their reports to each other"
+# The old/new comparison of spec/mck/migration.md, against a live adapter
+# rather than a recording: the same adapter build answers both runners in the
+# same job, so a difference is the runner's and not the binding's. The recorded
+# transcript is uploaded as evidence and is what a future baseline is frozen
+# from. This is migration tooling and goes away at cutover.
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
+    "bun run tools/run-mck-rust.ts --record .dev/out/mck/morphir-rust.ndjson --kit spec/ir/mck --report .dev/out/mck/morphir-rust-first-driver.json",
+    # No .exe here, unlike the wrapper above: that one stats the adapter before
+    # spawning it, so it has to spell the name the platform writes. A spawn
+    # needs no suffix, because Windows appends .exe to a program path that has
+    # no extension. Verified on Windows, where the extensionless file does not exist.
+    "cargo run --locked -p morphir -- mck run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --kit spec/ir/mck --report .dev/out/mck/morphir-rust-rust-runner.json",
+    "jsonschema validate spec/ir/mck/report.schema.json .dev/out/mck/morphir-rust-rust-runner.json",
+    "bun run tools/compare-mck-reports.ts .dev/out/mck/morphir-rust-first-driver.json .dev/out/mck/morphir-rust-rust-runner.json",
+]
+
 [tasks."migrate:validate"]
 description = "Migrate the published v3 example to v4 and validate the output against the v4 JSON Schema"
 # The validator is a website script, so it needs website/node_modules; `init`

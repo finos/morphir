@@ -75,6 +75,42 @@ test("rejects duplicate, conflicting, or malformed contract selection", () => {
 	}
 });
 
+test("recording puts the proxy in front of the adapter, which keeps its own arguments", () => {
+	const result = rustMckInvocation("/repo", "linux", [
+		"--record", "out/transcript.ndjson", "--kit", "kit", "--report", "report.json",
+	]);
+	expect(result.adapter).toEndWith("mck-adapter-rust");
+	expect(result.command.slice(2)).toEqual([
+		"run", "--adapter", "bun",
+		"--adapter-arg", path.join("/repo", "tools/record-mck-transcript.ts"),
+		"--adapter-arg", "out/transcript.ndjson",
+		"--adapter-arg", result.adapter,
+		"--kit", "kit", "--report", "report.json",
+	]);
+});
+
+test("a recorded package run still selects the adapter's package contract", () => {
+	const result = rustMckInvocation("/repo", "linux", [
+		"--suite", "package", "--contract", "0.1.0-draft.2", "--record", "t.ndjson",
+	]);
+	expect(result.command.slice(2)).toEqual([
+		"package", "run", "--adapter", "bun",
+		"--adapter-arg", path.join("/repo", "tools/record-mck-transcript.ts"),
+		"--adapter-arg", "t.ndjson",
+		"--adapter-arg", result.adapter,
+		"--adapter-arg", "--suite", "--adapter-arg", "package",
+		"--adapter-arg", "--contract", "--adapter-arg", "0.1.0-draft.2",
+		"--contract", "0.1.0-draft.2",
+	]);
+});
+
+test("rejects duplicate or malformed recording selection", () => {
+	for (const args of [["--record"], ["--record", "--kit", "kit"], ["--record=t.ndjson"],
+		["--record", "a.ndjson", "--record", "b.ndjson"]]) {
+		expect(() => rustMckInvocation("/repo", "linux", args)).toThrow("record");
+	}
+});
+
 test("caller cannot replace the platform-resolved adapter", () => {
 	for (const args of [["--adapter", "other"], ["--adapter=other"]]) {
 		expect(() => rustMckInvocation("/repo", "linux", args)).toThrow("supplies --adapter");

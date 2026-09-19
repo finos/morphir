@@ -1,11 +1,15 @@
 //! Parity with the first driver (`spec/mck/migration.md`, "Parity method").
 //!
-//! The Rust runner runs the kit against a replay of the frozen protocol
-//! transcript of the TypeScript adapter. The replay refuses any request that
-//! is not byte for byte the one the TypeScript driver sent at that point, so
-//! the runner must ask the same questions in the same order. The report it
-//! writes must then equal the frozen TypeScript report in every member but
-//! the durations, with the header's timestamp and versions taken from it.
+//! The Rust runner runs the kit against a replay of a frozen protocol
+//! transcript, once per adapter the first driver was recorded against. The
+//! replay refuses any request that is not byte for byte the one the old driver
+//! sent at that point, so the runner must ask the same questions in the same
+//! order. The report it writes must then equal that adapter's frozen report in
+//! every member but the durations, with the header's timestamp and versions
+//! taken from it.
+//!
+//! The two adapters exercise different answers: the TypeScript binding skips
+//! the version 3 cases it does not support, and the Rust binding runs them.
 
 use std::path::{Path, PathBuf};
 
@@ -78,10 +82,10 @@ fn without_durations(mut report: Value) -> Value {
     report
 }
 
-#[test]
-fn the_rust_runner_reproduces_the_typescript_report_from_the_same_answers() {
+/// Replays `binding`'s transcript and holds the run to its frozen report.
+fn parity(binding: &str, answered: usize, header: &str, summary: &str) {
     let baseline: Value = serde_json::from_str(
-        std::fs::read_to_string(repo().join("spec/mck/baseline/reports/morphir-typescript.json"))
+        std::fs::read_to_string(repo().join(format!("spec/mck/baseline/reports/{binding}.json")))
             .unwrap()
             .trim_start_matches('\u{FEFF}'),
     )
@@ -90,7 +94,7 @@ fn the_rust_runner_reproduces_the_typescript_report_from_the_same_answers() {
     assert_eq!(kit.errors, vec![]);
 
     let mut replay =
-        Replay::new(&repo().join("spec/mck/baseline/transcripts/morphir-typescript.ndjson"));
+        Replay::new(&repo().join(format!("spec/mck/baseline/transcripts/{binding}.ndjson")));
     let clock = || 0.0;
     let options = RunOptions {
         filter: None,
@@ -101,15 +105,13 @@ fn the_rust_runner_reproduces_the_typescript_report_from_the_same_answers() {
     };
     let run = run_kit(&kit, &mut replay, &options);
     assert_eq!(
-        replay.answered, 705,
+        replay.answered, answered,
         "every recorded exchange but exit was asked for"
     );
     assert_eq!(
         run.header.as_deref(),
-        Some(
-            "morphir-typescript supports IR format versions [4.0.0,4.1.0) (4.0.0 up to but not including 4.1.0)"
-        ),
-        "the header line the TypeScript driver printed"
+        Some(header),
+        "the header line the first driver printed"
     );
 
     let produced: Value = serde_json::from_str(&run.report.to_json()).unwrap();
@@ -127,8 +129,27 @@ fn the_rust_runner_reproduces_the_typescript_report_from_the_same_answers() {
         assert_eq!(p, e, "record {i} differs");
     }
     assert_eq!(produced, expected);
-    assert_eq!(
-        run.report.summary_line(),
-        "722 pass, 0 fail, 0 kit-error, 8 skipped"
+    assert_eq!(run.report.summary_line(), summary);
+}
+
+#[test]
+fn the_rust_runner_reproduces_the_typescript_report_from_the_same_answers() {
+    parity(
+        "morphir-typescript",
+        705,
+        "morphir-typescript supports IR format versions [4.0.0,4.1.0) (4.0.0 up to but not including 4.1.0)",
+        "722 pass, 0 fail, 0 kit-error, 8 skipped",
+    );
+}
+
+/// The Rust binding supports version 3 as well, so it answers the 8 exchanges
+/// the TypeScript binding declined and the run has no skips at all.
+#[test]
+fn the_rust_runner_reproduces_the_rust_bindings_report_from_the_same_answers() {
+    parity(
+        "morphir-rust",
+        713,
+        "morphir-rust supports IR format versions [3.0.0,3.1.0),[4.0.0,4.1.0) (3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0)",
+        "730 pass, 0 fail, 0 kit-error, 0 skipped",
     );
 }

@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from every source, including managed-snapshot verification (IR-1, IR-1V). `run` exists, with the adapter transport, version 1 reports and the provenance sidecar (IR-2); its parity with the first driver is proven against the frozen transcript and live against the TypeScript adapter. `coverage`, `schema check` and `report check` do not exist yet (IR-3). The TypeScript driver in finos/morphir-typescript remains the
+Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from every source, including managed-snapshot verification (IR-1, IR-1V). `run` exists, with the adapter transport, version 1 reports and the provenance sidecar (IR-2); its parity with the first driver is proven by replaying the frozen TypeScript and Rust transcripts, and live against both adapters. `coverage`, `schema check` and `report check` do not exist yet (IR-3). The TypeScript driver in finos/morphir-typescript remains the
 authoritative gate until the cutover described in [migration.md](migration.md).
 
 This contract covers the IR suite. Package commands are added by
@@ -263,8 +263,8 @@ kit is a raw authoring checkout and is never reported as matching an upstream sn
 
 - Rust unit tests for the parser, hash, comparison and report gate, using the
   [hash vectors](baseline/hash-vectors.json) literally.
-- A replay adapter that answers from the [baseline transcript](baseline/transcripts/), so the runner
-  is tested without Bun or Node.
+- A replay adapter that answers from each [baseline transcript](baseline/transcripts/), so the runner
+  is tested against both bindings' answers without Bun or Node.
 - Hostile adapter fixtures, one per failure class above, plus stdout flood, stderr flood and a child
   that ignores termination. Each must end in a failed run and must never produce a `pass`.
 - CLI tests: missing `--adapter` is exit 2 with no report and no spawn; empty selection is exit 1;

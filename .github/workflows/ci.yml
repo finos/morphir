@@ -102,6 +102,9 @@ jobs:
               # resolves and runs the Rust binding's MCK adapter
               - 'tools/run-mck-rust.ts'
               - 'tools/rust-mck-command*'
+              # record and compare the two runners' answers on that adapter
+              - 'tools/record-mck-transcript.ts'
+              - 'tools/compare-mck-reports.ts'
               # validates the output of `mise run migrate:validate` against the v4 schema
               - 'website/scripts/validate-migrated-ir.js'
               # the v4 schema `mise run migrate:validate` validates migrated IR against
@@ -471,6 +474,20 @@ jobs:
         with:
           name: mck-report-morphir-rust
           path: .dev/out/mck/morphir-rust.json
+
+      - name: Compare the first driver and the Rust runner on the same adapter
+        if: ${{ !cancelled() }}
+        run: mise run mck:parity-rust
+
+      - name: Upload the Rust adapter's parity evidence
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mck-parity-morphir-rust
+          path: |
+            .dev/out/mck/morphir-rust-first-driver.json
+            .dev/out/mck/morphir-rust-rust-runner.json
+            .dev/out/mck/morphir-rust.ndjson
 
       - name: Validate migrated IR against the v4 schema
         if: ${{ !cancelled() }}
