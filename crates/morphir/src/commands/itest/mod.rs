@@ -1,4 +1,5 @@
-//! Notebook scenarios executed through real Morphir CLI child processes.
+//! Notebook and Markdown scenarios executed through real Morphir CLI child processes.
+mod markdown;
 mod model;
 mod runner;
 #[cfg(windows)]
@@ -8,12 +9,15 @@ mod workspace;
 use runner::execute;
 use runner::run;
 #[cfg(test)]
+mod markdown_tests;
+#[cfg(test)]
 mod tests;
 
 use crate::notebook::Notebook;
 use anyhow::{Context, Result, bail, ensure};
 use model::{Metadata, Step};
 use std::{
+    collections::HashSet,
     fs,
     path::{Path, PathBuf},
 };
@@ -35,19 +39,18 @@ fn included(entry: &walkdir::DirEntry) -> bool {
 }
 
 fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
-    if let Some(filter) = filter
-        && filter != "."
-    {
-        model::relative_path(filter)?;
+    if let Some(filter) = filter {
+        validate_filter(filter)?;
     }
     let mut scenarios = Vec::new();
+    let mut directories = HashSet::new();
     for entry in walkdir::WalkDir::new(root)
         .follow_links(false)
         .into_iter()
         .filter_entry(included)
     {
         let entry = entry?;
-        if entry.file_name() != "scenario.ipynb" {
+        if entry.file_name() != "scenario.ipynb" && entry.file_name() != "scenarios.md" {
             continue;
         }
         ensure!(
@@ -63,6 +66,11 @@ fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
             .parent()
             .context("scenario has no directory")?
             .to_owned();
+        ensure!(
+            directories.insert(directory.clone()),
+            "multiple scenario documents in {}; keep either scenario.ipynb or scenarios.md",
+            directory.display()
+        );
         let relative = directory.strip_prefix(root)?;
         let id = if relative.as_os_str().is_empty() {
             ".".into()
@@ -78,19 +86,35 @@ fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
                 .collect::<Result<Vec<_>>>()?
                 .join("/");
             model::relative_path(&id)?;
+            ensure!(
+                !id.contains('#'),
+                "scenario directory cannot contain reserved '#' separator"
+            );
             id
         };
-        let notebook = Notebook::parse(&fs::read_to_string(entry.path())?)
-            .with_context(|| format!("scenario {id}: {}", entry.path().display()))?;
-        let (metadata, steps) = model::parse(&notebook)
-            .with_context(|| format!("scenario {id}: {}", entry.path().display()))?;
-        scenarios.push(Scenario {
-            id,
-            directory,
-            notebook,
-            metadata,
-            steps,
-        });
+        let text = fs::read_to_string(entry.path())?;
+        let documents = if entry.file_name() == "scenarios.md" {
+            markdown::parse(&text).map(|sections| {
+                sections
+                    .into_iter()
+                    .map(|(section, notebook)| (format!("{id}#{section}"), notebook))
+                    .collect()
+            })
+        } else {
+            Notebook::parse(&text).map(|notebook| vec![(id, notebook)])
+        }
+        .with_context(|| format!("scenario document {}", entry.path().display()))?;
+        for (id, notebook) in documents {
+            let (metadata, steps) = model::parse(&notebook)
+                .with_context(|| format!("scenario {id}: {}", entry.path().display()))?;
+            scenarios.push(Scenario {
+                id,
+                directory: directory.clone(),
+                notebook,
+                metadata,
+                steps,
+            });
+        }
     }
     scenarios.sort_by(|a, b| a.id.cmp(&b.id));
     ensure!(
@@ -99,10 +123,31 @@ fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
         root.display()
     );
     if let Some(filter) = filter {
-        scenarios.retain(|s| s.id == filter || s.id.starts_with(&format!("{filter}/")));
+        scenarios.retain(|s| matches_filter(&s.id, filter));
         ensure!(!scenarios.is_empty(), "no scenarios match path {filter:?}");
     }
     Ok(scenarios)
+}
+
+fn validate_filter(filter: &str) -> Result<()> {
+    let (directory, section) = filter
+        .split_once('#')
+        .map_or((filter, None), |(directory, section)| {
+            (directory, Some(section))
+        });
+    if directory != "." {
+        model::relative_path(directory)?;
+    }
+    if let Some(section) = section {
+        markdown::validate_id(section)?;
+    }
+    Ok(())
+}
+
+fn matches_filter(id: &str, filter: &str) -> bool {
+    id == filter
+        || (!filter.contains('#')
+            && (id.starts_with(&format!("{filter}/")) || id.starts_with(&format!("{filter}#"))))
 }
 
 fn select_tags<'a>(scenarios: &'a [Scenario], tags: &[String]) -> Result<Vec<&'a Scenario>> {
@@ -118,10 +163,10 @@ fn select_tags<'a>(scenarios: &'a [Scenario], tags: &[String]) -> Result<Vec<&'a
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct ItestArgs {
-    /// Directory to search recursively for scenario.ipynb files
+    /// Directory to search recursively for scenario.ipynb or scenarios.md files
     #[arg(default_value = "examples")]
     pub root: PathBuf,
-    /// Select one example path or category relative to the search root
+    /// Select an example path, category or Markdown path#scenario relative to the search root
     #[arg(long)]
     pub filter: Option<String>,
     /// Require this exact tag; repeat to require all supplied tags
@@ -144,10 +189,8 @@ fn run_suite(args: ItestArgs) -> Result<()> {
     let scenarios = discover(&args.root, None)?;
     let mut selected = select_tags(&scenarios, &args.tags)?;
     if let Some(filter) = &args.filter {
-        if filter != "." {
-            model::relative_path(filter)?;
-        }
-        selected.retain(|s| s.id == *filter || s.id.starts_with(&format!("{filter}/")));
+        validate_filter(filter)?;
+        selected.retain(|s| matches_filter(&s.id, filter));
         ensure!(
             !selected.is_empty(),
             "no scenarios match path {filter:?} and tags {:?}",

@@ -3898,6 +3898,7 @@ dependencies = [
  "morphir-opa",
  "morphir-workspace",
  "owo-colors",
+ "pulldown-cmark",
  "ratatui",
  "reqwest",
  "rustix 1.1.5",

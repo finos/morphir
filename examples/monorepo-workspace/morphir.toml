@@ -1,2 +1,6 @@
 [workspace]
 members = ["packages/*"]
+default_member = "packages/core"
+
+[frontend]
+language = "elm"

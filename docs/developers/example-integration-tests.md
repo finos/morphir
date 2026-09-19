@@ -5,8 +5,8 @@ sidebar_label: Example integration tests
 
 # Example integration tests
 
-`morphir itest` discovers `scenario.ipynb` notebooks recursively and exercises
-real Morphir CLI commands. Notebooks define explanations, commands and Rego
+`morphir itest` discovers `scenario.ipynb` and `scenarios.md` recursively and exercises
+real Morphir CLI commands. Both formats define explanations, commands and Rego
 assertions for ordinary on-disk projects. They can also supply optional project
 files in cells, including entirely self-contained examples. Milestone 0 uses an embedded
 Regorus evaluator, so the baseline suite requires no OPA executable or downloaded
@@ -21,7 +21,7 @@ before building:
 ```sh
 mise trust .config/mise/config.toml
 mise run submodules:init
-mise run test:examples
+mise run test:examples -- --tag suite:offline
 mise run test:examples -- --list
 mise run test:examples -- --filter elm --tag suite:offline
 mise run test:itest
@@ -34,17 +34,140 @@ morphir itest examples --list --tag language:elm
 morphir itest examples --filter elm/single-file --keep-temp
 ```
 
-The root defaults to `examples`. The scenario ID is its containing directory
+Reference Elm cases use `suite:elm-reference` and require an explicitly prepared
+extension 0.1.0 executable. Follow the
+[catalog preparation instructions](https://github.com/finos/morphir/blob/main/examples/README.md#prepare-the-reference-elm-scenarios)
+before selecting them or running all examples without a tag. The helper stages
+local fixture repositories; commands in each scenario register and install the
+provider into the isolated Morphir home. Missing prerequisites fail.
+
+Use `coverage:known-limitation` with `kind:negative` for a scenario deliberately
+checking a current rejection, and record its follow-up issue in the prose. Such
+a pass is not successful feature coverage; replace it with positive expectations
+when support lands.
+
+The root defaults to `examples`. A notebook's scenario ID is its containing directory
 relative to the search root, or `.` for a notebook directly in that root.
-`--filter .` selects only that root-level notebook; `--filter root` selects a
+Markdown scenario IDs append `#heading-id`, such as `cli/basics#version` or
+`.#version` at the search root. Quote filters containing `#` in the shell.
+`--filter .` selects scenarios directly in the search root; `--filter root` selects a
 directory named `root` and its descendants. Other filters select an exact ID
 or directory category. Repeated `--tag` options
 require every tag. Empty suites and selections fail, including with `--list`.
 Scenario directories must have UTF-8 names that follow the portable path rules
 below; discovery rejects names that would produce ambiguous or unselectable IDs.
-All discovered notebook structures and scenario metadata are validated before
+All discovered document structures and scenario metadata are validated before
 selection; Rego compilation occurs when the selected assertions execute.
 Listing prints the scenario's intent and tags without executing it.
+Use one supported document per directory. Having both `scenario.ipynb` and
+`scenarios.md` in one directory is an error. Scenario directory names cannot
+contain the reserved `#` separator.
+
+## Markdown scenarios
+
+Use `scenarios.md` for ordinary Markdown authoring. YAML frontmatter provides
+document context and shared scenario defaults. The fields below are required;
+`workspace` is optional and has the same behavior as notebook workspace metadata.
+
+````markdown
+---
+version: 1
+title: CLI basics
+description: Verify version reporting through the real CLI.
+tags: [area:cli, suite:offline]
+provider: rego
+---
+
+# CLI basics
+
+## Report version {#version}
+
+```yaml morphir:command
+id: run
+name: Report CLI version
+timeout_seconds: 10
+```
+
+Explanations may appear between the metadata and its source fence.
+
+```sh
+morphir --version
+```
+
+### Check the result
+
+```yaml morphir:assertion
+id: check
+command: run
+entrypoints: [data.version_test.reports_version]
+```
+
+```rego
+package version_test
+import rego.v1
+
+reports_version if {
+    input.exitCode == 0
+    some line in split(input.stdout, "\n")
+    startswith(line, "morphir ")
+}
+```
+````
+
+Each top-level second-level heading (`##`) starts an independent scenario with
+a fresh workspace and Morphir home. Its heading text becomes the scenario title;
+the frontmatter supplies its description, tags, provider and workspace settings.
+Use `###` and deeper headings to organize steps within a scenario. Commands and
+file additions do not carry over between scenarios, and block IDs may be reused
+in different scenarios.
+
+Without an explicit `{#id}`, the heading ID is its lowercase ASCII words joined
+by hyphens. IDs must be unique within the document and contain 1–64 lowercase
+ASCII letters, digits, hyphens or underscores. Use an explicit ID for a stable
+filter when changing a title, or for headings without ASCII words.
+For example, `--filter 'cli/basics#version'` runs only the version scenario;
+`--filter cli/basics` runs every scenario in that directory and its descendants.
+
+The three metadata markers are `yaml morphir:command`, `yaml morphir:assertion`
+and `yaml morphir:file`. Each metadata fence applies to the next fenced source
+block. Prose, lists and subheadings may separate the pair. A new `##` scenario
+heading or another metadata fence before the source is an error. Executable
+pairs must be top-level, with opening fences at column one, rather than nested
+in blockquotes or lists. Both backtick and tilde fences are supported.
+
+Metadata requires an `id` with the same rules as notebook cell IDs. Command and
+assertion fields match the corresponding notebook roles below, without `kind`,
+which comes from the marker. Commands contain literal `morphir ...` invocations;
+assertion source fences use `rego`. Source fences must name their language.
+Unpaired ordinary fences are documentation and do not execute. Unknown Morphir
+markers, unknown metadata fields, duplicate YAML keys, unclosed paired fences,
+dangling metadata and scenarios without commands/assertions fail validation.
+
+Optional file pairs use metadata such as:
+
+````markdown
+```yaml morphir:file
+id: example-source
+path: src/Example.elm
+```
+
+```elm
+module Example exposing (Name)
+
+type alias Name = String
+```
+````
+
+The language comes from the source fence. Source contents, including indentation
+and line endings, are preserved. Every file in a scenario is materialized before
+its first command. Use `workspace: {kind: inline}` in frontmatter to ignore
+adjacent disk inputs and use only that scenario's file fences. The `inline`
+spelling also works in notebooks; the existing `notebook` spelling remains valid.
+
+Both authoring formats load into the same scenario validator and run through the
+same CLI subprocess and evaluator pipeline. Markdown does not create or rewrite
+a notebook on disk. See [CLI basics](https://github.com/finos/morphir/blob/main/examples/cli/basics/scenarios.md)
+for a complete document containing two scenarios.
 
 ## Notebook and scenario metadata
 
@@ -69,7 +192,7 @@ Notebook `metadata.morphir` contains:
 }
 ```
 
-These scenario-wide fields replace Markdown frontmatter. All fields shown are
+These scenario-wide fields correspond to Markdown frontmatter. All fields shown are
 required. Title and description must explain what success proves. The `itest`
 object rejects unknown fields. The only evaluator provider in milestone 0 is
 `rego`; its implementation is the native `morphir-opa` crate using Regorus.
@@ -88,7 +211,8 @@ language highlighting in every editor. Execute the notebook with `morphir itest`
 | Workflow | `area:compile`, `area:install`, `area:workspace`, `area:generate` |
 | IR output | `ir:v3`, `ir:v4` |
 | Expected behavior | `kind:positive`, `kind:negative` |
-| Prerequisites | `suite:offline` |
+| Prerequisites | `suite:offline`, `suite:elm-reference` |
+| Known gaps | `coverage:known-limitation` with `kind:negative` |
 | Workspace inputs | `workspace:directory`, `workspace:notebook` |
 
 Tags are unique, nonempty strings of lowercase ASCII letters, digits, colon,
@@ -97,7 +221,7 @@ feature supported or skip a failing test.
 
 ## Workspace inputs
 
-By default, the directory containing `scenario.ipynb` is the workspace source.
+By default, the directory containing the scenario document is the workspace source.
 Keep normal project files on disk:
 
 ```text
@@ -121,7 +245,7 @@ Omitting the entire field is equivalent to `{"kind":"directory","path":"."}`.
 The optional `exclude` list contains relative file or directory paths, not globs.
 Directory exclusions include descendants. Use it for custom generated outputs.
 
-The copy omits `scenario.ipynb`, `.git`, `node_modules`, `target`, `elm-stuff`,
+The copy omits `scenario.ipynb`, `scenarios.md`, `.git`, `node_modules`, `target`, `elm-stuff`,
 `dist` and `out` entries, plus `.morphir/cache`. Other `.morphir` inputs, including
 `.morphir/morphir.toml`, are preserved. Git ignore files are not interpreted.
 Symlinks and special files are rejected; ordinary files retain their bytes and
@@ -281,7 +405,7 @@ logs of the invoking CLI too.
 
 1. Add the smallest missing workflow under `examples/<category>/<example>/`.
    Keep broken source fixtures under `crates/morphir/tests/fixtures/itest/`.
-2. State its claim, tags and literal expected behavior in the notebook. Run the
+2. State its claim, tags and literal expected behavior in the scenario document. Run the
    scenario before changing the implementation.
 3. Establish whether a failure is in source, expectation, driver or CLI. Retain
    a regression and make the smallest justified fix.
@@ -292,11 +416,13 @@ logs of the invoking CLI too.
 
 The [single-file Elm notebook](https://github.com/finos/morphir/blob/main/examples/elm/single-file/scenario.ipynb)
 verifies native type compilation and installation. It does not establish Elm
-function lowering or native Morphir IR evaluation. Classic JSON projects,
-TOML/YAML projects, workspaces and other frontends/backends remain increments.
+function lowering or native Morphir IR evaluation. The
+[example catalog](https://github.com/finos/morphir/blob/main/examples/README.md) also covers reference Elm functions,
+classic JSON, TOML/YAML projects, member selection and Gleam generation, with
+explicit prerequisites and limits for each claim.
 
 Old `scenario.md` and `test.yaml` files are not executable coverage.
 `examples:validate` checks published schema examples. MCK remains responsible
 for IR/package compatibility contracts; this driver tests CLI workflows.
-The Rust CI acceptance tests run the checked-in offline notebooks, and changes
+The Rust CI acceptance tests run the checked-in offline scenarios in both formats, and changes
 under `examples/**` trigger that job.

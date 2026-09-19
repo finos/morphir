@@ -1,7 +1,7 @@
 ---
 type: Design Note
 title: Elm extension delivery
-description: "How the morphir-elm process extension reaches users and CI: released on its own tag from vnext, pinned by finos/morphir, with install through the CLI still open."
+description: "How the morphir-elm process extension reaches users and CI: published executables, pinned releases, local index installation and the remaining process-bundle publication gap."
 tags: [extensions, elm, release, mep]
 status: draft
 sources:
@@ -29,7 +29,7 @@ sources:
 
 The `morphir-elm` extension is delivered as a process extension: one executable per platform, released
 from finos/morphir-elm on its own tag. finos/morphir pins a released archive and tests its CLI against
-it. Users cannot yet install the extension with `morphir extension install`; that part is open. This
+it. CLI installation works from a prepared local index; publishing a process bundle is still open. This
 note is the narrative home for that capability. It says what is done, what is next, and where the
 supporting documents are.
 
@@ -61,7 +61,7 @@ flowchart LR
   tag --> wf --> rel
   rel --> pin --> ci
   rel --> user
-  rel -.->|not possible yet| install
+  rel -.->|prepared local index| install
 ```
 
 **Figure 1:** How the extension moves from a tag to its consumers. Solid edges exist. The dashed edge
@@ -109,7 +109,7 @@ The rule behind both is an ownership split. The repository that owns an extensio
 extension works with the released CLI. finos/morphir checks that a CLI change does not break the
 extensions users already have.
 
-### Open: install through the CLI
+### Local installation and the publication gap
 
 `morphir extension repository publish` refuses any bundle that is not WASM (source `publish`). A user
 therefore downloads the archive for their platform and points the CLI at the executable:
@@ -122,7 +122,14 @@ enabled = true
 
 The release descriptor already carries what a process install needs: a platform, an archive and a
 digest per artifact. The CLI resolver already selects a process artifact by platform. The missing part
-is publication and installation of process bundles in finos/morphir-rust. Nobody has scoped that work.
+is publication of process bundles in finos/morphir-rust.
+
+The CLI can already install a process artifact from an authored local index. The
+example preparation helper stages a supplied executable, its digest and platform
+record in `.itest/elm`; `scenarios.md` then runs repository registration and
+`morphir extension install` in an isolated home. See
+[the example catalog](https://github.com/finos/morphir/blob/main/examples/README.md#prepare-the-reference-elm-scenarios).
+This bridges local testing without claiming process-bundle publication support.
 
 ## Related documents
 
@@ -137,7 +144,7 @@ is publication and installation of process bundles in finos/morphir-rust. Nobody
 
 - Three of the six executables have never run. The workflow tests three platforms natively.
   `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin` and `x86_64-pc-windows-msvc` are built only.
-- Process-bundle install has no owner and no issue.
+- Process-bundle publication remains open; local index installation is covered by CLI examples.
 - This capability has no Intent document yet. The work so far was tracked in bd (`morphir-xgd9.10`) and
   in GitHub pull requests.
 - If `morphir-elm-native` reaches value-lowering and type-inference parity, decision 0001 is revisited,

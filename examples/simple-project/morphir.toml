@@ -14,3 +14,6 @@ action = "morphir.pipeline.compile"
 kind = "command"
 cmd = ["echo", "Running tests..."]
 depends_on = ["build"]
+
+[frontend]
+language = "elm"

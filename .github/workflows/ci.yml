@@ -72,6 +72,7 @@ jobs:
               # pins the published extension bundles the CLI is tested against
               - '.config/published-extension-bundles.toml'
               - 'tools/fetch-published-bundles*'
+              - 'tools/prepare-elm-examples*'
               # generated CLI docs are diff-checked against the CLI source
               - 'docs/cli/**'
               - 'docs/man/**'
@@ -368,6 +369,8 @@ jobs:
           cargo test --locked --package morphir --test cli_integration \
             real_installed_morphir_elm_is_verified_and_activates_offline \
             -- --ignored --nocapture
+          mise run examples:prepare-elm
+          target/release/morphir itest examples --tag suite:elm-reference
 
       - name: Run Morphir Scala Elm CLI integration test
         env:
