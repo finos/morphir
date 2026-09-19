@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from every source, including managed-snapshot verification (IR-1, IR-1V). The TypeScript driver in finos/morphir-typescript remains the
+Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from every source, including managed-snapshot verification (IR-1, IR-1V). The adapter transport below (protocol validation, limits, failure classes, process-tree termination) exists in the engine; `run` does not yet (IR-2). The TypeScript driver in finos/morphir-typescript remains the
 authoritative gate until the cutover described in [migration.md](migration.md).
 
 This contract covers the IR suite. Package commands are added by
@@ -21,7 +21,9 @@ Each behaviour below is marked **kept** (same as the TypeScript driver at the
 | Adapter | Owned by each implementation. Decodes, encodes and handles document trees. |
 
 Case interpretation and comparison are pure functions, callable without a subprocess or global
-state. The engine never links an implementation's IR codec. It compares canonical strings under the
+state. The runner checks an adapter's `formatVersions` with its own implementation of the support
+tables in `docs/spec/ir/format-version.md`, tested against that page's conformance corpus; it never
+borrows a binding's. The engine never links an implementation's IR codec. It compares canonical strings under the
 existing rule: strip one trailing `\n` or `\r\n`, then compare line by line (kept).
 
 Suite identity, contract version, case id and capability requirement are validated domain types,
