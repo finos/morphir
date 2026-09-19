@@ -13,8 +13,10 @@
 //! transport, IR execution and reports follow in later slices of
 //! finos/morphir#851.
 
+pub mod format_version;
 pub mod json;
 pub mod kit;
+pub mod transport;
 
 /// The runner's interpretation of a kit, as an integer a vendored kit's
 /// manifest can bound (`driverContract`). It increases only when that

@@ -17,5 +17,19 @@ flate2.workspace = true
 tar.workspace = true
 unicode-normalization.workspace = true
 
+# Adapter sessions terminate the adapter's whole process tree: a process group
+# on Unix, a Job Object on Windows.
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true, features = ["process"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
+
 [dev-dependencies]
 tempfile.workspace = true
+
+# Adapter sessions against real processes; the test binary plays each adapter.
+[[test]]
+name = "transport"
+path = "tests/transport.rs"
+harness = false
