@@ -884,7 +884,29 @@ cmd kb display_order=20 subcommand_required=#true arg_required_else_help=#true a
         }
     }
 }
-cmd gleam display_order=21 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
+cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Morphir Compatibility Kit: validate and identify compatibility kits" unknown_flags=error {
+    cmd check display_order=0 args_override_self=#false help="Validate a kit directory without running an adapter" unknown_flags=error {
+        flag --repo-root help="Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)" {
+            arg <DIR>
+        }
+        flag --json help="Print the files, case ids and errors as JSON on stdout"
+        arg <DIR> help="The kit directory to validate, for example spec/ir/mck"
+        complete dir type=path
+    }
+    cmd kit display_order=1 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect kit provenance and integrity" unknown_flags=error {
+        cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {
+            flag --kit help="A kit directory; the kit embedded in this CLI when omitted" {
+                arg <DIR>
+            }
+            flag --repo-root help="Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)" {
+                arg <DIR>
+            }
+            flag --json help="Print the status as JSON on stdout"
+            complete dir type=path
+        }
+    }
+}
+cmd gleam display_order=22 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     cmd compile display_order=0 args_override_self=#false help="Compile Gleam source to Morphir IR" unknown_flags=error {
@@ -936,14 +958,14 @@ cmd gleam display_order=21 subcommand_required=#true arg_required_else_help=#tru
         }
     }
 }
-cmd schema display_order=22 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
+cmd schema display_order=23 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
     flag "-o --output" help="Output file path (optional)" {
         arg <OUTPUT>
     }
     complete output type=path
 }
-cmd version display_order=23 args_override_self=#false help="Print version information" unknown_flags=error {
+cmd version display_order=24 args_override_self=#false help="Print version information" unknown_flags=error {
     flag --json help="Output version info as JSON"
 }
-cmd usage hide=#true display_order=24 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
+cmd usage hide=#true display_order=25 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
 
