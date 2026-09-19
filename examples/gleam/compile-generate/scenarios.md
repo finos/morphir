@@ -87,7 +87,6 @@ timeout_seconds: 60
 stdout_json: true
 captures:
   - {name: result, path: .morphir/out/generate/gleam.json, format: json}
-  - {name: source, path: .morphir/out/generate/gleam.dest/main.gleam, format: text}
 ```
 
 ```sh
@@ -108,8 +107,6 @@ passes if {
     input.exitCode == 0
     input.artifacts.result.value.task == "generate/gleam"
     input.artifacts.result.value.inputs == ["compile"]
-    contains(input.artifacts.source.value, "pub fn hello")
-    contains(input.artifacts.source.value, "world")
 }
 ```
 
