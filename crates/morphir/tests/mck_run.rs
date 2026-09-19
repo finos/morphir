@@ -1,0 +1,318 @@
+//! `morphir mck run` end to end (`spec/mck/cli-contract.md`, "`run`").
+//!
+//! This binary is also the adapter: started as
+//! `mck_run --mck-test-adapter replay <transcript>` it answers from the frozen
+//! protocol transcript of the TypeScript adapter, refusing any request that
+//! is not byte for byte the one the first driver sent. So the whole command
+//! runs against real recorded answers with no other runtime installed.
+
+use std::io::{BufRead, Write};
+use std::path::{Path, PathBuf};
+use std::process::Output;
+
+use serde_json::Value;
+
+const ADAPTER_FLAG: &str = "--mck-test-adapter";
+
+fn repo() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn transcript() -> PathBuf {
+    repo().join("spec/mck/baseline/transcripts/morphir-typescript.ndjson")
+}
+
+fn replay_adapter(path: &Path) {
+    const REQUEST: &str = "{\"dir\":\"request\",\"message\":";
+    const RESPONSE: &str = "{\"dir\":\"response\",\"message\":";
+    let text = std::fs::read_to_string(path).unwrap();
+    let mut exchanges: Vec<(String, Option<String>)> = Vec::new();
+    for line in text.lines().filter(|l| !l.is_empty()) {
+        let raw = |prefix: &str| {
+            line.strip_prefix(prefix)
+                .and_then(|r| r.strip_suffix('}'))
+                .map(str::to_owned)
+        };
+        if let Some(request) = raw(REQUEST) {
+            exchanges.push((request, None));
+        } else if let Some(response) = raw(RESPONSE) {
+            exchanges.last_mut().unwrap().1 = Some(response);
+        }
+    }
+    let mut exchanges = exchanges.into_iter();
+    for line in std::io::stdin().lock().lines().map_while(Result::ok) {
+        let Some((expected, response)) = exchanges.next() else {
+            std::process::exit(2)
+        };
+        if line != expected {
+            eprint!("request differs from the transcript:\n sent     {line}\n recorded {expected}");
+            std::process::exit(2);
+        }
+        match response {
+            Some(response) => {
+                let mut out = std::io::stdout().lock();
+                writeln!(out, "{response}").unwrap();
+                out.flush().unwrap();
+            }
+            None => std::process::exit(0),
+        }
+    }
+}
+
+fn morphir(args: &[&str]) -> Output {
+    std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .env("MORPHIR_LOG_FILE", "false")
+        .env_remove("MORPHIR_LOG_DIR")
+        .env_remove("MORPHIR_OUT_DIR")
+        .args(args)
+        .output()
+        .expect("morphir runs")
+}
+
+fn stdout(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+fn stderr(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+fn read_json(path: &Path) -> Value {
+    serde_json::from_str(
+        std::fs::read_to_string(path)
+            .unwrap()
+            .trim_start_matches('\u{FEFF}'),
+    )
+    .unwrap()
+}
+
+fn without_volatile(mut report: Value) -> Value {
+    for key in ["startedAt", "driverVersion"] {
+        report.as_object_mut().unwrap().remove(key);
+    }
+    for record in report["records"].as_array_mut().unwrap() {
+        record.as_object_mut().unwrap().remove("durationMs");
+    }
+    report
+}
+
+// ---------------------------------------------------------------- tests
+
+fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("out").join("report.json");
+    let exe = std::env::current_exe().unwrap();
+    let transcript = transcript();
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--adapter",
+        exe.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "replay",
+        "--adapter-arg",
+        transcript.to_str().unwrap(),
+        "--kit",
+        repo().join("spec/ir/mck").to_str().unwrap(),
+        "--report",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(
+        stderr(&output).contains("morphir-typescript supports IR format versions [4.0.0,4.1.0) (4.0.0 up to but not including 4.1.0)"),
+        "the header goes to stderr: {}",
+        stderr(&output)
+    );
+    let lines: Vec<String> = stdout(&output).lines().map(str::to_owned).collect();
+    assert_eq!(lines[0], "722 pass, 0 fail, 0 kit-error, 8 skipped");
+    assert_eq!(
+        lines[1],
+        "skipped versions-0001 fence 0 [current]: version 3 not in capabilities"
+    );
+    assert_eq!(
+        lines.len(),
+        9,
+        "the summary and one line per non-pass record, nothing else"
+    );
+
+    let produced = read_json(&report);
+    let mut expected = read_json(&repo().join("spec/mck/baseline/reports/morphir-typescript.json"));
+    // A --kit checkout reports its own revision, as the first driver did.
+    expected["kitVersion"] = produced["kitVersion"].clone();
+    assert_eq!(without_volatile(produced), without_volatile(expected));
+
+    let provenance = read_json(&work.path().join("out").join("report.json.provenance.json"));
+    assert_eq!(provenance["provenanceVersion"], 1);
+    assert_eq!(provenance["kit"]["source"], "local");
+    assert_eq!(provenance["adapter"]["binding"], "morphir-typescript");
+    assert_eq!(provenance["adapter"]["command"][1], ADAPTER_FLAG);
+}
+
+fn a_run_without_an_adapter_is_a_usage_error_that_writes_nothing() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("report.json");
+    for args in [
+        vec!["mck", "run", "--report", report.to_str().unwrap()],
+        vec![
+            "mck",
+            "run",
+            "--adapter-arg",
+            "x",
+            "--report",
+            report.to_str().unwrap(),
+        ],
+    ] {
+        let output = morphir(&args);
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "{args:?}: {}",
+            stderr(&output)
+        );
+        assert!(stderr(&output).contains("--adapter"), "{}", stderr(&output));
+        assert_eq!(stdout(&output), "");
+    }
+    assert!(!report.exists(), "no report without an adapter");
+}
+
+fn an_unsupported_filter_is_a_usage_error() {
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--adapter",
+        "unused",
+        "--filter",
+        "types-(?=0001)",
+    ]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(
+        stderr(&output).contains("invalid --filter regex:"),
+        "{}",
+        stderr(&output)
+    );
+    let output = morphir(&["mck", "run", "--adapter", "unused", "--only", "("]);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "--only is an alias of --filter"
+    );
+}
+
+fn a_missing_adapter_program_fails_every_fence_and_still_reports() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("report.json");
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--adapter",
+        "definitely-not-an-mck-adapter",
+        "--filter",
+        "^types-0001$",
+        "--report",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1));
+    let produced = read_json(&report);
+    assert_eq!(produced["binding"], "unknown");
+    assert_eq!(produced["formatVersions"], "unknown");
+    let records = produced["records"].as_array().unwrap();
+    assert!(!records.is_empty());
+    assert!(records.iter().all(|r| {
+        r["result"] == "kit-error"
+            && r["message"]
+                .as_str()
+                .unwrap()
+                .starts_with("failed to start adapter: ")
+    }));
+}
+
+fn an_empty_selection_is_never_a_success() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("report.json");
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--adapter",
+        "definitely-not-an-mck-adapter",
+        "--filter",
+        "^nothing-0000$",
+        "--report",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output).contains("error: no cases selected"),
+        "{}",
+        stderr(&output)
+    );
+    assert_eq!(
+        stdout(&output).trim_end(),
+        "0 pass, 0 fail, 0 kit-error, 0 skipped"
+    );
+    assert_eq!(
+        read_json(&report)["records"],
+        Value::Array(vec![]),
+        "the empty report is still written"
+    );
+}
+
+// ---------------------------------------------------------------- runner
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some(ADAPTER_FLAG) {
+        assert_eq!(args.get(2).map(String::as_str), Some("replay"));
+        replay_adapter(Path::new(&args[3]));
+        return;
+    }
+    let tests: &[(&str, fn())] = &[
+        (
+            "a_full_run_against_recorded_answers_reproduces_the_typescript_report",
+            a_full_run_against_recorded_answers_reproduces_the_typescript_report,
+        ),
+        (
+            "a_run_without_an_adapter_is_a_usage_error_that_writes_nothing",
+            a_run_without_an_adapter_is_a_usage_error_that_writes_nothing,
+        ),
+        (
+            "an_unsupported_filter_is_a_usage_error",
+            an_unsupported_filter_is_a_usage_error,
+        ),
+        (
+            "a_missing_adapter_program_fails_every_fence_and_still_reports",
+            a_missing_adapter_program_fails_every_fence_and_still_reports,
+        ),
+        (
+            "an_empty_selection_is_never_a_success",
+            an_empty_selection_is_never_a_success,
+        ),
+    ];
+    let filter = args.iter().skip(1).find(|a| !a.starts_with('-')).cloned();
+    let mut failed = Vec::new();
+    let mut ran = 0;
+    for (name, test) in tests {
+        if filter.as_ref().is_some_and(|f| !name.contains(f.as_str())) {
+            continue;
+        }
+        ran += 1;
+        let outcome = std::panic::catch_unwind(test);
+        println!(
+            "test {name} ... {}",
+            if outcome.is_ok() { "ok" } else { "FAILED" }
+        );
+        if outcome.is_err() {
+            failed.push(*name);
+        }
+    }
+    println!(
+        "\ntest result: {}. {} passed; {} failed",
+        if failed.is_empty() { "ok" } else { "FAILED" },
+        ran - failed.len(),
+        failed.len()
+    );
+    if !failed.is_empty() {
+        std::process::exit(101);
+    }
+}

@@ -6,12 +6,16 @@
 //! carries the command's result, diagnostics go to stderr, 0 is success, 1 is
 //! a failed check or an operational error, and 2 is a usage error.
 
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use clap::Args;
+use morphir_mck::ir::{RunOptions, RunVerdict, Testee, run_kit, verdict};
 use morphir_mck::json::to_tab_json;
+use morphir_mck::kit::embedded::{PROVENANCE, embedded_source};
 use morphir_mck::kit::hash::ContentDigest;
 use morphir_mck::kit::manifest::{CommitId, Lock, LockSource, UPSTREAM_REPOSITORY};
+use morphir_mck::kit::snapshot::collect;
 use morphir_mck::kit::status::{
     KitMode, KitStatus, MANIFEST_NAME, embedded_status, local_status, vendored_status,
 };
@@ -20,6 +24,11 @@ use morphir_mck::kit::vendor::{
     default_update_source, describe, open_managed, update, vendor,
 };
 use morphir_mck::kit::{Kit, KitSource, load_kit};
+use morphir_mck::provenance::{
+    AdapterProvenance, Driver, KitProvenance, KitSourceKind, PROVENANCE_VERSION, Provenance,
+};
+use morphir_mck::report::iso_timestamp;
+use morphir_mck::transport::{Limits, Session};
 use serde_json::json;
 use starbase::AppResult;
 
@@ -534,4 +543,261 @@ pub async fn run_mck_kit_update(args: MckKitUpdateArgs) -> AppResult<miette::Rep
         }
     };
     finish(outcome)
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct MckRunArgs {
+    /// The implementation's adapter executable. Required: there is no
+    /// built-in binding and no discovery
+    #[arg(long, value_name = "EXE", required = true)]
+    pub adapter: OsString,
+
+    /// An argument for the adapter; repeat for more
+    #[arg(long = "adapter-arg", value_name = "ARG", allow_hyphen_values = true)]
+    pub adapter_args: Vec<OsString>,
+
+    /// A kit directory or vendored snapshot; the kit embedded in this CLI
+    /// when omitted
+    #[arg(long, value_name = "DIR")]
+    pub kit: Option<PathBuf>,
+
+    /// Repository root that `text` fences resolve against (inferred when the
+    /// kit path ends in spec/ir/mck)
+    #[arg(long, value_name = "DIR")]
+    pub repo_root: Option<PathBuf>,
+
+    /// Write the version 1 report here, and its provenance beside it
+    #[arg(long, value_name = "FILE")]
+    pub report: Option<PathBuf>,
+
+    /// Fail when any fence is skipped, not only when one fails
+    #[arg(long)]
+    pub strict: bool,
+
+    /// Run only the cases whose id matches this Rust regular expression,
+    /// unanchored
+    #[arg(long, alias = "only", value_name = "REGEX")]
+    pub filter: Option<String>,
+
+    /// How long one request may wait for its answer, in milliseconds
+    #[arg(long, value_name = "MS", default_value_t = 30_000, value_parser = clap::value_parser!(u64).range(1..))]
+    pub timeout: u64,
+
+    /// How long the whole adapter session may last, in milliseconds
+    #[arg(long, value_name = "MS", default_value_t = 1_800_000, value_parser = clap::value_parser!(u64).range(1..))]
+    pub session_timeout: u64,
+}
+
+/// An adapter that never started: every exchange reports why.
+struct Unstarted(String);
+
+impl Testee for Unstarted {
+    fn exchange(
+        &mut self,
+        _: &morphir_mck::transport::protocol::Request,
+    ) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+        Err(self.0.clone())
+    }
+}
+
+/// `git rev-parse HEAD` in a raw checkout, which is what the first driver
+/// reported as `kitVersion`. Git is optional: without it, or outside a
+/// repository, the answer is `unknown`.
+fn checkout_revision(dir: &Path) -> String {
+    let mut command = std::process::Command::new("git");
+    command
+        .arg("-C")
+        .arg(dir)
+        .args(["rev-parse", "HEAD"])
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        command.creation_flags(0x0800_0000);
+    }
+    command
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+        .filter(|revision| revision.len() == 40)
+        .unwrap_or_else(|| "unknown".to_owned())
+}
+
+/// The kit to run, what the report calls its version, and its provenance.
+fn kit_for_run(args: &MckRunArgs) -> Result<(Kit, String, KitProvenance), String> {
+    let digest = |kit: &Kit, source: morphir_mck::kit::manifest::LockSource| {
+        collect(kit)
+            .ok()
+            .map(|snapshot| snapshot.lock(source).snapshot_digest.as_str().to_owned())
+    };
+    let corpus = |kit: &Kit| {
+        kit.corpus_hash()
+            .ok()
+            .flatten()
+            .map(|h| h.as_str().to_owned())
+    };
+    match &args.kit {
+        None => {
+            let kit = load_kit(embedded_source())
+                .map_err(|error| format!("cannot read the embedded kit: {error}"))?;
+            let revision = PROVENANCE.revision.map(str::to_owned);
+            let snapshot = digest(
+                &kit,
+                morphir_mck::kit::manifest::LockSource::Local { revision: None },
+            );
+            let provenance = KitProvenance {
+                source: KitSourceKind::Embedded,
+                revision: revision.clone().filter(|_| !PROVENANCE.dirty),
+                snapshot_digest: snapshot,
+                corpus_hash: corpus(&kit),
+                modified: PROVENANCE.dirty,
+            };
+            Ok((
+                kit,
+                revision.unwrap_or_else(|| "unknown".to_owned()),
+                provenance,
+            ))
+        }
+        Some(dir) => match load_directory(dir, args.repo_root.as_deref())? {
+            Loaded::Managed(managed) => {
+                let revision = managed
+                    .lock
+                    .source
+                    .revision()
+                    .map(|r| r.as_str().to_owned());
+                let provenance = KitProvenance {
+                    source: KitSourceKind::Vendored,
+                    revision: revision.clone(),
+                    snapshot_digest: Some(managed.lock.snapshot_digest.as_str().to_owned()),
+                    corpus_hash: Some(managed.lock.corpus_hash.as_str().to_owned()),
+                    modified: false,
+                };
+                Ok((
+                    managed.kit,
+                    revision.unwrap_or_else(|| "unknown".to_owned()),
+                    provenance,
+                ))
+            }
+            Loaded::Raw(kit) => {
+                let modified = local_status(&kit).map(|s| s.modified).unwrap_or(true);
+                let provenance = KitProvenance {
+                    source: KitSourceKind::Local,
+                    revision: None,
+                    snapshot_digest: digest(
+                        &kit,
+                        morphir_mck::kit::manifest::LockSource::Local { revision: None },
+                    ),
+                    corpus_hash: corpus(&kit),
+                    modified,
+                };
+                Ok((kit, checkout_revision(dir), provenance))
+            }
+        },
+    }
+}
+
+pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
+    // Usage first: nothing starts until the arguments are known to be good.
+    let filter = match args.filter.as_deref().map(regex::Regex::new).transpose() {
+        Ok(filter) => filter,
+        Err(error) => return finish(Outcome::Usage(format!("invalid --filter regex: {error}"))),
+    };
+    let (kit, kit_version, kit_provenance) = match kit_for_run(&args) {
+        Ok(found) => found,
+        Err(message) => return finish(Outcome::Error(message)),
+    };
+    let limits = Limits {
+        request_timeout: std::time::Duration::from_millis(args.timeout),
+        session_timeout: std::time::Duration::from_millis(args.session_timeout),
+        ..Limits::DEFAULT
+    };
+    let command: Vec<String> = std::iter::once(&args.adapter)
+        .chain(&args.adapter_args)
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+
+    let started_at = iso_timestamp(std::time::SystemTime::now());
+    let origin = std::time::Instant::now();
+    let clock = move || origin.elapsed().as_secs_f64() * 1000.0;
+    let options = RunOptions {
+        filter: filter.as_ref(),
+        driver_version: env!("CARGO_PKG_VERSION").to_owned(),
+        kit_version,
+        started_at,
+        clock: &clock,
+    };
+
+    let (run, shutdown) = match Session::spawn(&args.adapter, &args.adapter_args, limits) {
+        Err(error) => (
+            run_kit(&kit, &mut Unstarted(error.to_string()), &options),
+            Ok(()),
+        ),
+        Ok(mut session) => {
+            // Ctrl-C takes the adapter's whole tree down with the CLI.
+            let terminator = session.terminator();
+            let interrupt = tokio::spawn(async move {
+                if tokio::signal::ctrl_c().await.is_ok() {
+                    terminator.kill();
+                    eprintln!("error: interrupted; the adapter was terminated");
+                    std::process::exit(130);
+                }
+            });
+            let run = tokio::task::block_in_place(|| run_kit(&kit, &mut session, &options));
+            let shutdown = tokio::task::block_in_place(|| session.close());
+            interrupt.abort();
+            (run, shutdown)
+        }
+    };
+
+    if let Some(header) = &run.header {
+        eprintln!("{header}");
+    }
+    if let Some(file) = &args.report {
+        let provenance = Provenance {
+            provenance_version: PROVENANCE_VERSION,
+            driver: Driver::current(),
+            kit: kit_provenance,
+            adapter: AdapterProvenance {
+                command,
+                binding: run.capabilities.as_ref().map(|c| c.binding.clone()),
+                format_versions: run.capabilities.as_ref().map(|c| c.format_versions.clone()),
+            },
+        };
+        if let Err(error) = run
+            .report
+            .write(file)
+            .and_then(|()| provenance.write_beside(file).map(drop))
+        {
+            return finish(Outcome::Error(format!(
+                "cannot write the report {}: {error}",
+                file.display()
+            )));
+        }
+    }
+    println!("{}", run.report.summary_line());
+    for record in run
+        .report
+        .records
+        .iter()
+        .filter(|r| r.result != morphir_mck::report::Outcome::Pass)
+    {
+        let path = record.path.map_or_else(String::new, |p| format!(" [{p}]"));
+        println!(
+            "{} {} fence {}{path}: {}",
+            record.result.as_str(),
+            record.case_id,
+            record.fence_index,
+            record.message.as_deref().unwrap_or("")
+        );
+    }
+    if let Err(error) = shutdown {
+        return finish(Outcome::Error(error.to_string()));
+    }
+    match verdict(&run.report, args.strict) {
+        RunVerdict::Passed => finish(Outcome::Passed),
+        RunVerdict::Failed => finish(Outcome::Failed),
+        RunVerdict::NothingSelected => finish(Outcome::Error("no cases selected".to_owned())),
+    }
 }

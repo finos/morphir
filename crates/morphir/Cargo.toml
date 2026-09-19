@@ -41,6 +41,8 @@ morphir-opa = { path = "../morphir-opa" }
 morphir-mck = { path = "../morphir-mck" }
 # `mck kit vendor --source github:finos/morphir` downloads one commit archive over HTTPS.
 reqwest.workspace = true
+# `mck run --filter` takes a Rust regular expression
+regex.workspace = true
 morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
 morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
@@ -106,6 +108,12 @@ tokio-tungstenite = "0.30"
 
 [build-dependencies]
 chrono = "0.4"
+
+# `mck run` end to end; the test binary doubles as a transcript-replay adapter.
+[[test]]
+name = "mck_run"
+path = "tests/mck_run.rs"
+harness = false
 
 [[test]]
 name = "cli_integration"
