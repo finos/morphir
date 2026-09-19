@@ -15,6 +15,7 @@ Compile-time extensions to the Morphir CLI: frontend and process providers, thei
 ## Decisions
 
 * [Two Elm frontend providers](/decisions/0001-two-elm-frontend-providers.md) - The CLI keeps morphir-elm as the default Elm frontend and morphir-elm-native as an opt-in provider until the native one reaches value and type-inference parity.
+* [Extensions declare IR capability sets](/decisions/0002-extension-capability-sets.md) - Every extension declares which IR features it handles, in a vocabulary the IR specification owns and the Morphir Compatibility Kit verifies, so the toolchain can plan and check a pipeline instead of discovering gaps at run time.
 
 ## Design
 

@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-19
+
+* **Creation**: Added [Extensions declare IR capability sets](/decisions/0002-extension-capability-sets.md).
+
 ## 2026-09-18
 
 * **Creation**: Bundle created.
