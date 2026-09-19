@@ -1,0 +1,10 @@
+[project]
+name = "examples/gleam-values"
+source_directory = "src"
+exposed_modules = ["main"]
+
+[frontend]
+language = "gleam"
+
+[codegen]
+targets = ["gleam"]
