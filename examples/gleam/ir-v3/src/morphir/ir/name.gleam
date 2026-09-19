@@ -1,0 +1,9 @@
+//// Name representation for the Morphir IR.
+//// A Name is made up of words that are used to identify types, values, and other
+//// named elements in the IR. The name is convention-agnostic and can be converted
+//// to various naming conventions (camelCase, snake_case, TitleCase, etc.).
+
+/// A Name is a list of words represented as lowercase strings.
+/// Names can be converted to various naming conventions.
+pub type Name =
+  List(String)
