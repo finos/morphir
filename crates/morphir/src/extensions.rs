@@ -50,7 +50,7 @@ pub fn extension_registry_for(
                 snapshot.installed().extension_id().as_str() == "morphir-gleam-binding"
             }) =>
         {
-            Some("morphir-gleam-native")
+            Some("morphir-gleam")
         }
         selector => selector,
     };
@@ -423,11 +423,7 @@ mod tests {
 
     #[test]
     fn gleam_native_selectors_resolve_to_the_same_native_provider() {
-        for selector in [
-            None,
-            Some("morphir-gleam-native"),
-            Some("morphir-gleam-binding"),
-        ] {
+        for selector in [None, Some("morphir-gleam"), Some("morphir-gleam-binding")] {
             let registry = super::extension_registry_for([], selector).unwrap();
             for policy in [
                 InvocationPolicy::PreferDirect,
@@ -435,8 +431,8 @@ mod tests {
             ] {
                 let frontend = registry.resolve_frontend("gleam", "4", policy).unwrap();
                 let backend = registry.resolve_backend("gleam", "4", policy).unwrap();
-                assert_eq!(frontend.info().id, "morphir-gleam-native");
-                assert_eq!(backend.info().id, "morphir-gleam-native");
+                assert_eq!(frontend.info().id, "morphir-gleam");
+                assert_eq!(backend.info().id, "morphir-gleam");
                 let expected = match policy {
                     InvocationPolicy::PreferDirect => super::InvocationMode::NativeDirect,
                     InvocationPolicy::ProtocolOnly => super::InvocationMode::NativeMep,

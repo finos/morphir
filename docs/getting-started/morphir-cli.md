@@ -232,12 +232,12 @@ invalidates the incremental compile cache, so the next run compiles every
 module again. A value that is neither a name nor a table fails the run and
 names `frontend.elm.prelude`.
 
-## Native Gleam provider (`morphir-gleam-native`)
+## Native Gleam provider (`morphir-gleam`)
 
 Gleam compilation and generation use the built-in Rust extension by default.
 It runs in process without installing an extension or a Gleam executable.
 For a Gleam project, select the provider explicitly with
-`morphir compile --extension morphir-gleam-native`, then generate code with
+`morphir compile --extension morphir-gleam`, then generate code with
 `morphir generate --target gleam`. `morphir extension list` reports its mode
 as `native-direct`.
 
@@ -250,7 +250,7 @@ The old `morphir-gleam-binding` selector remains an alias. If an installed
 extension has that exact old id, selecting it still uses that installation.
 An installed Gleam provider continues to take precedence for commands without
 an explicit selector. The native implementation also ships as an optional
-WASM package under the `morphir-gleam-native` extension id.
+WASM package under the `morphir-gleam` extension id.
 
 ## Incremental compile cache
 
