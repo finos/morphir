@@ -83,7 +83,7 @@ See the [Domain Modeling guide](docs/developers/domain-modeling.md).
 - There is one shared runner. Other implementations take part through an adapter, and `morphir mck run` always requires an explicit `--adapter`. Independent implementations under test do not require independent compatibility runners. Do not create a second checker, in any language.
 - Preserve supported IR contracts when adding versioned package operations. Keep implementation behavior separate from the runner's expected results; the engine never links an implementation's IR codec.
 
-See [the MCK ownership decision](kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md), which supersedes [decision 0001](kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md), and the proposed [CLI](spec/mck/cli-contract.md) and [kit manifest](spec/mck/kit-manifest.md) contracts.
+See [the MCK ownership decision](kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md), which supersedes [decision 0001](kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md), and the approved [CLI](spec/mck/cli-contract.md) and [kit manifest](spec/mck/kit-manifest.md) contracts.
 
 ### Test-Driven Development (TDD)
 
