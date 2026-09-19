@@ -1,0 +1,9 @@
+[project]
+name = "morphir/ir-model"
+source_directory = "src"
+
+[frontend]
+language = "gleam"
+
+[codegen]
+targets = ["gleam"]
