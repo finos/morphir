@@ -2625,8 +2625,8 @@ fn extension_list_reports_the_native_gleam_frontend_and_backend() {
     assert!(list.status.success());
     let stdout = String::from_utf8_lossy(&list.stdout);
     assert!(stdout.contains("Builtin Extensions"), "{stdout}");
-    assert!(stdout.contains("morphir-gleam-binding"), "{stdout}");
-    assert!(stdout.contains("Morphir Gleam Binding"), "{stdout}");
+    assert!(stdout.contains("morphir-gleam"), "{stdout}");
+    assert!(stdout.contains("Morphir Gleam"), "{stdout}");
     assert!(stdout.contains("frontend: gleam"), "{stdout}");
     assert!(stdout.contains("backend: gleam"), "{stdout}");
     assert!(stdout.contains("native-direct"), "{stdout}");
@@ -3038,6 +3038,83 @@ fn gleam_compile_rejects_a_missing_input_path() {
         "{stderr}"
     );
     assert!(stderr.contains("missing"), "{stderr}");
+}
+
+#[test]
+fn gleam_native_and_legacy_selectors_compile_the_same_ir() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    write_gleam_project(temp.path());
+    let output = temp
+        .path()
+        .join(".morphir/out/compile.dest/morphir-ir.json");
+    let mut results = Vec::new();
+    for selector in ["morphir-gleam", "morphir-gleam-binding"] {
+        let compile = run_morphir(&["compile", "--extension", selector], &home, temp.path());
+        assert!(
+            compile.status.success(),
+            "{selector}: {}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        let ir: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+        assert_eq!(ir["formatVersion"], 4);
+        results.push(ir);
+    }
+    assert_eq!(results[0], results[1]);
+}
+
+#[test]
+#[cfg(unix)]
+fn gleam_legacy_selector_preserves_an_installed_provider_with_that_id() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    write_gleam_project(temp.path());
+    let id = "morphir-gleam-binding";
+    let script = installed_gleam_frontend_process_script().replace("morphir-installed-gleam", id);
+    let index = write_test_index_with_frontend(
+        temp.path(),
+        id,
+        "Legacy Gleam",
+        "1.2.3",
+        script.as_bytes(),
+        ("gleam", ".gleam", "4.0.0"),
+    );
+    assert!(
+        add_test_repository("legacy", &index.root, &home, temp.path())
+            .status
+            .success()
+    );
+    let install = run_morphir(
+        &["extension", "install", id, "--repository", "legacy"],
+        &home,
+        temp.path(),
+    );
+    assert!(
+        install.status.success(),
+        "{}",
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let compile = run_morphir(&["compile", "--extension", id], &home, temp.path());
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let ir: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(
+            temp.path()
+                .join(".morphir/out/compile.dest/morphir-ir.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(
+        ir["distribution"]["Library"]["def"]["modules"]
+            .get("installed-sentinel")
+            .is_some(),
+        "{ir}"
+    );
 }
 
 #[test]

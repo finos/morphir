@@ -28,7 +28,7 @@ pub async fn run_gleam_compile(
         ir_version: None,
         json,
         json_lines,
-        // The Gleam frontend is not incremental, so there is no cache to skip.
+        // Reuse the workspace compile cache, as with the generic compile command.
         no_cache: false,
         out,
     })
