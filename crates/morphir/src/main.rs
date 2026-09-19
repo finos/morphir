@@ -30,8 +30,8 @@ use commands::{
     run_kb_intent_show, run_kb_intent_start, run_kb_intent_supersede, run_kb_list,
     run_kb_new_bundle, run_kb_query, run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown,
     run_kb_search, run_kb_show, run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push,
-    run_kb_sync_status, run_migrate, run_tool_install, run_tool_list, run_tool_uninstall,
-    run_tool_update, run_transform, run_validate, run_version,
+    run_kb_sync_status, run_mck_check, run_mck_kit_status, run_migrate, run_tool_install,
+    run_tool_list, run_tool_uninstall, run_tool_update, run_transform, run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -224,6 +224,11 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
     Kb {
         #[command(subcommand)]
         action: KbAction,
+    },
+    /// Morphir Compatibility Kit: validate and identify compatibility kits
+    Mck {
+        #[command(subcommand)]
+        action: MckAction,
     },
     /// Gleam language binding commands
     Gleam {
@@ -675,6 +680,25 @@ impl MigrateArgs {
     }
 }
 
+/// The `morphir mck` subcommand tree. The contract is `spec/mck/cli-contract.md`;
+/// the option structs live in `commands::mck`.
+#[derive(Clone, Subcommand)]
+enum MckAction {
+    /// Validate a kit directory without running an adapter
+    Check(commands::mck::MckCheckArgs),
+    /// Inspect kit provenance and integrity
+    Kit {
+        #[command(subcommand)]
+        action: MckKitAction,
+    },
+}
+
+#[derive(Clone, Subcommand)]
+enum MckKitAction {
+    /// Identify a kit: source, revision, corpus hash and whether it is modified
+    Status(commands::mck::MckKitStatusArgs),
+}
+
 /// The `morphir kb` subcommand tree — a drop-in port of the morphir-scala
 /// `kb` CLI. The option structs live in `commands::kb`.
 #[derive(Clone, Subcommand)]
@@ -997,6 +1021,12 @@ impl AppSession for MorphirSession {
             },
             Commands::Ir { action } => match action {
                 IrAction::Migrate(args) => args.run(),
+            },
+            Commands::Mck { action } => match action {
+                MckAction::Check(args) => run_mck_check(args.clone()),
+                MckAction::Kit {
+                    action: MckKitAction::Status(args),
+                } => run_mck_kit_status(args.clone()),
             },
             Commands::Kb { action } => match action {
                 KbAction::List(args) => run_kb_list(args.clone()),

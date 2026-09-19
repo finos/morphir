@@ -1,0 +1,5007 @@
+{
+	"description": "The TypeScript kit parser's reading of spec/ir/mck, per case file. A Rust parser test compares itself with this for every file whose sha256 still matches.",
+	"generatedBy": "finos/morphir-typescript packages/mck/src/kit at a5e3be0922ce2dad1920956a8c7bfe6616d515d5",
+	"files": [
+		{
+			"path": "spec/ir/mck/definitions.md",
+			"sha256": "c1212092c486b1a5af3853ca8298b0d82275786563a50d6fcfef25630f0af606",
+			"cases": [
+				{
+					"id": "definitions-0001",
+					"topic": "definitions",
+					"number": 1,
+					"title": "Access-controlled definition, three spellings",
+					"node": "AccessControlledTypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Closed by bead morphir-j442: the flattened form validates beside the tag form and the legacy form. The tag form is canonical."
+					],
+					"line": 3,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Public:\n  TypeAliasDefinition:\n    typeParams: []\n    typeExp: morphir/SDK:string#string\n",
+							"line": 7,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Public\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } } }\n",
+							"line": 14,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"access\": \"Public\", \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } }\n",
+							"line": 18,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"access\": \"Public\", \"value\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } } }\n",
+							"line": 22,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"pub\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } } }\n",
+							"line": 26,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "definitions-0002",
+					"topic": "definitions",
+					"number": 2,
+					"title": "Opaque type specification is an empty object",
+					"node": "TypeSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 30,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "OpaqueTypeSpecification: {}\n",
+							"line": 32,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"OpaqueTypeSpecification\": {} }\n",
+							"line": 36,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[\"OpaqueTypeSpecification\", []]\n",
+							"line": 40,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "definitions-0003",
+					"topic": "definitions",
+					"number": 3,
+					"title": "Custom type definition with constructors",
+					"node": "TypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0007 names a constructor's slots parameters in the model; the wire spelling, a list of `[name, type]` pairs per constructor, is unchanged."
+					],
+					"line": 44,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "CustomTypeDefinition:\n  typeParams: [a]\n  access: Public\n  constructors:\n    just: [[value, a]]\n    nothing: []\n",
+							"line": 48,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"CustomTypeDefinition\": { \"typeParams\": [\"a\"], \"access\": \"Public\", \"constructors\": { \"just\": [[\"value\", \"a\"]], \"nothing\": [] } } }\n",
+							"line": 57,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0004",
+					"topic": "definitions",
+					"number": 4,
+					"title": "Value specification",
+					"node": "ValueSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 61,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "inputs:\n  a: morphir/SDK:basics#int\n  b: morphir/SDK:basics#int\noutput: morphir/SDK:basics#int\n",
+							"line": 63,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"inputs\": { \"a\": \"morphir/SDK:basics#int\", \"b\": \"morphir/SDK:basics#int\" }, \"output\": \"morphir/SDK:basics#int\" }\n",
+							"line": 70,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"inputs\": [[\"a\", \"morphir/SDK:basics#int\"], [\"b\", \"morphir/SDK:basics#int\"]], \"output\": \"morphir/SDK:basics#int\" }\n",
+							"line": 74,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "definitions-0005",
+					"topic": "definitions",
+					"number": 5,
+					"title": "Expression body",
+					"node": "ValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 78,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "ExpressionBody:\n  inputTypes:\n    x: morphir/SDK:basics#int\n  outputType: morphir/SDK:basics#int\n  body:\n    Variable: x\n",
+							"line": 80,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"ExpressionBody\": { \"inputTypes\": { \"x\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"x\" } } }\n",
+							"line": 89,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0006",
+					"topic": "definitions",
+					"number": 6,
+					"title": "Documentation on a definition",
+					"node": "AccessControlledTypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0010: `doc` is a flattened member placed first beside the variant. The nested `{ \"doc\", \"value\" }` wrapper is accepted for the window of decision 0006. Bead morphir-ir-v4-stabilize.5."
+					],
+					"line": 93,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Public:\n  doc: The user's display name\n  TypeAliasDefinition:\n    typeParams: []\n    typeExp: morphir/SDK:string#string\n",
+							"line": 97,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Public\": { \"doc\": \"The user's display name\", \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } } }\n",
+							"line": 105,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"access\": \"Public\", \"doc\": \"The user's display name\", \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } }\n",
+							"line": 109,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Public\": { \"doc\": \"The user's display name\", \"value\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } } } }\n",
+							"line": 113,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "definitions-0007",
+					"topic": "definitions",
+					"number": 7,
+					"title": "Native and external bodies",
+					"node": "ValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0008: `ExternalBody` carries a list of per-target bindings and an optional fallback `body`, so a Gleam-style external with a body encodes faithfully. The single-binding spelling with `externalName` and `targetPlatform` at the top level is accepted for the window of decision 0006 as a one-entry list."
+					],
+					"line": 117,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "ExternalBody:\n  inputTypes:\n    msg: morphir/SDK:string#string\n  outputType: morphir/SDK:basics#unit\n  externals:\n    - targetPlatform: javascript\n      externalName: console.log\n",
+							"line": 121,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"ExternalBody\": { \"inputTypes\": { \"msg\": \"morphir/SDK:string#string\" }, \"outputType\": \"morphir/SDK:basics#unit\", \"externals\": [{ \"targetPlatform\": \"javascript\", \"externalName\": \"console.log\" }] } }\n",
+							"line": 131,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"ExternalBody\": { \"inputTypes\": { \"msg\": \"morphir/SDK:string#string\" }, \"outputType\": \"morphir/SDK:basics#unit\", \"externalName\": \"console.log\", \"targetPlatform\": \"javascript\" } }\n",
+							"line": 135,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "definitions-0008",
+					"topic": "definitions",
+					"number": 8,
+					"title": "External body with two bindings and a fallback",
+					"node": "ValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0008: targetPlatform values are unique within externals."
+					],
+					"line": 139,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "ExternalBody:\n  inputTypes:\n    x: morphir/SDK:basics#int\n  outputType: morphir/SDK:basics#int\n  externals:\n    - targetPlatform: erlang\n      externalName: math:abs\n    - targetPlatform: javascript\n      externalName: Math.abs\n  body:\n    Variable: x\n",
+							"line": 141,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"ExternalBody\": { \"inputTypes\": { \"x\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"externals\": [{ \"targetPlatform\": \"erlang\", \"externalName\": \"math:abs\" }, { \"targetPlatform\": \"javascript\", \"externalName\": \"Math.abs\" }], \"body\": { \"Variable\": \"x\" } } }\n",
+							"line": 155,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "duplicate_member"
+							},
+							"body": "{ \"ExternalBody\": { \"inputTypes\": { \"x\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"externals\": [{ \"targetPlatform\": \"javascript\", \"externalName\": \"a\" }, { \"targetPlatform\": \"javascript\", \"externalName\": \"b\" }] } }\n",
+							"line": 161,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "definitions-0009",
+					"topic": "definitions",
+					"number": 9,
+					"title": "Native body",
+					"node": "ValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 165,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "NativeBody:\n  inputTypes:\n    a: morphir/SDK:basics#int\n    b: morphir/SDK:basics#int\n  outputType: morphir/SDK:basics#int\n  nativeInfo:\n    hint:\n      Arithmetic: {}\n",
+							"line": 167,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"NativeBody\": { \"inputTypes\": { \"a\": \"morphir/SDK:basics#int\", \"b\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"nativeInfo\": { \"hint\": { \"Arithmetic\": {} } } } }\n",
+							"line": 178,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0010",
+					"topic": "definitions",
+					"number": 10,
+					"title": "Documentation on a value specification",
+					"node": "ModuleSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0010: a value specification's `doc` is first beside its own members; the nested `{ \"doc\", \"value\" }` wrapper is accepted for the window."
+					],
+					"line": 182,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "types: {}\nvalues:\n  add:\n    doc: Adds two integers\n    inputs:\n      a: morphir/SDK:basics#int\n      b: morphir/SDK:basics#int\n    output: morphir/SDK:basics#int\n",
+							"line": 186,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"types\": {}, \"values\": { \"add\": { \"doc\": \"Adds two integers\", \"inputs\": { \"a\": \"morphir/SDK:basics#int\", \"b\": \"morphir/SDK:basics#int\" }, \"output\": \"morphir/SDK:basics#int\" } } }\n",
+							"line": 197,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"types\": {}, \"values\": { \"add\": { \"doc\": \"Adds two integers\", \"value\": { \"inputs\": { \"a\": \"morphir/SDK:basics#int\", \"b\": \"morphir/SDK:basics#int\" }, \"output\": \"morphir/SDK:basics#int\" } } } }\n",
+							"line": 201,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "definitions-0011",
+					"topic": "definitions",
+					"number": 11,
+					"title": "Type alias specification",
+					"node": "TypeSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A specification states a type's shape without an access level; `typeParams` comes before `typeExp`, as it does in the matching definition (definitions-0001)."
+					],
+					"line": 205,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "TypeAliasSpecification:\n  typeParams: [a]\n  typeExp:\n    Reference: [\"morphir/SDK:list#list\", a]\n",
+							"line": 209,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"TypeAliasSpecification\": { \"typeParams\": [\"a\"], \"typeExp\": { \"Reference\": [\"morphir/SDK:list#list\", \"a\"] } } }\n",
+							"line": 216,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0012",
+					"topic": "definitions",
+					"number": 12,
+					"title": "Custom type specification",
+					"node": "TypeSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"The constructor map is the same `[name, type]` pair list the definition uses (definitions-0003); a specification has no `access` member, because the whole specification is the public face of the type."
+					],
+					"line": 220,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "CustomTypeSpecification:\n  typeParams: [a]\n  constructors:\n    just: [[value, a]]\n    nothing: []\n",
+							"line": 224,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"CustomTypeSpecification\": { \"typeParams\": [\"a\"], \"constructors\": { \"just\": [[\"value\", \"a\"]], \"nothing\": [] } } }\n",
+							"line": 232,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0013",
+					"topic": "definitions",
+					"number": 13,
+					"title": "Derived type specification",
+					"node": "TypeSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A derived type names the type it is built from and the two functions that convert between them. All four members are required, and the two conversions are FQNames, not expressions."
+					],
+					"line": 236,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "DerivedTypeSpecification:\n  typeParams: []\n  baseType: morphir/SDK:string#string\n  fromBaseType: my-org/project:module#from-string\n  toBaseType: my-org/project:module#to-string\n",
+							"line": 240,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"DerivedTypeSpecification\": { \"typeParams\": [], \"baseType\": \"morphir/SDK:string#string\", \"fromBaseType\": \"my-org/project:module#from-string\", \"toBaseType\": \"my-org/project:module#to-string\" } }\n",
+							"line": 248,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0014",
+					"topic": "definitions",
+					"number": 14,
+					"title": "Incomplete type definition, a hole with a type mismatch",
+					"node": "TypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0008 puts `Hole` in the value expressions; the v4 schema's `IncompleteTypeDefinitionBody` puts type-level incompleteness in a definition rather than in a type expression (types-0011). An `IncompleteTypeDefinition` carries its `typeParams`, an `incompleteness`, and an optional `partialTypeExp` — what the author had written when the definition stopped being complete. A `Hole`'s `reason` says why; `TypeMismatch` names the expected and the found type as strings."
+					],
+					"line": 252,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IncompleteTypeDefinition:\n  typeParams: [a]\n  incompleteness:\n    Hole:\n      reason:\n        TypeMismatch:\n          expected: morphir/SDK:basics#int\n          found: morphir/SDK:string#string\n",
+							"line": 256,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IncompleteTypeDefinition\": { \"typeParams\": [\"a\"], \"incompleteness\": { \"Hole\": { \"reason\": { \"TypeMismatch\": { \"expected\": \"morphir/SDK:basics#int\", \"found\": \"morphir/SDK:string#string\" } } } } } }\n",
+							"line": 267,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0015",
+					"topic": "definitions",
+					"number": 15,
+					"title": "Draft type definition with a partial type expression",
+					"node": "TypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`Draft` is the second incompleteness: the definition is deliberately unfinished rather than broken, so it takes an empty payload and no reason. The `partialTypeExp` it keeps is an ordinary type expression."
+					],
+					"line": 271,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IncompleteTypeDefinition:\n  typeParams: []\n  incompleteness:\n    Draft: {}\n  partialTypeExp: morphir/SDK:basics#int\n",
+							"line": 275,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IncompleteTypeDefinition\": { \"typeParams\": [], \"incompleteness\": { \"Draft\": {} }, \"partialTypeExp\": \"morphir/SDK:basics#int\" } }\n",
+							"line": 283,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0016",
+					"topic": "definitions",
+					"number": 16,
+					"title": "Incomplete value definition",
+					"node": "ValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0008 consequence 2: a hole inside a body and an incomplete body are different things. An `IncompleteBody` is the fourth value definition body; its `outputType` is optional, because an incomplete definition may not have one yet, and its `incompleteness` uses the same vocabulary the type side does. `DeletedDuringRefactor` spells its transaction identifier `tx-id` on the wire."
+					],
+					"line": 287,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IncompleteBody:\n  inputTypes:\n    x: morphir/SDK:basics#int\n  outputType: morphir/SDK:basics#int\n  incompleteness:\n    Hole:\n      reason:\n        DeletedDuringRefactor:\n          tx-id: tx-42\n",
+							"line": 291,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IncompleteBody\": { \"inputTypes\": { \"x\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"incompleteness\": { \"Hole\": { \"reason\": { \"DeletedDuringRefactor\": { \"tx-id\": \"tx-42\" } } } } } }\n",
+							"line": 303,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0017",
+					"topic": "definitions",
+					"number": 17,
+					"title": "Private access-controlled definition",
+					"node": "AccessControlledTypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`Private` is the other access level of definitions-0001 and takes the same three spellings. Decision 0010: the nested `{ \"doc\", \"value\" }` wrapper is accepted for the window of decision 0006 under `Private` exactly as it is under `Public` (definitions-0006). The fence below carries no `doc`, so it shows only the unwrapping half: the payload under `value` moves up beside the access tag."
+					],
+					"line": 307,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Private:\n  TypeAliasDefinition:\n    typeParams: []\n    typeExp: morphir/SDK:basics#int\n",
+							"line": 311,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Private\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:basics#int\" } } }\n",
+							"line": 318,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"access\": \"Private\", \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:basics#int\" } }\n",
+							"line": 322,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Private\": { \"value\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:basics#int\" } } } }\n",
+							"line": 326,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "definitions-0018",
+					"topic": "definitions",
+					"number": 18,
+					"title": "Access-controlled value definition, public",
+					"node": "AccessControlledValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"The value twin of definitions-0001 and definitions-0006. `readAccessControlled` is shared with the type side, so the same three access spellings and the same documentation rules apply; the node kind is its own, so the kit states it in its own case. Decision 0010: `doc` is flattened beside the variant, and the nested `{ \"doc\", \"value\" }` wrapper is accepted for the window of decision 0006.",
+						"The fence below is the nested wrapper: the definition sits under `value` instead of beside `doc`. A reader normalizes it to the canonical fence above and reports `legacy_spelling`."
+					],
+					"line": 330,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Public:\n  doc: Adds two integers\n  ExpressionBody:\n    inputTypes:\n      a: morphir/SDK:basics#int\n      b: morphir/SDK:basics#int\n    outputType: morphir/SDK:basics#int\n    body:\n      Variable: a\n",
+							"line": 334,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Public\": { \"doc\": \"Adds two integers\", \"ExpressionBody\": { \"inputTypes\": { \"a\": \"morphir/SDK:basics#int\", \"b\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"a\" } } } }\n",
+							"line": 346,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"access\": \"Public\", \"doc\": \"Adds two integers\", \"ExpressionBody\": { \"inputTypes\": { \"a\": \"morphir/SDK:basics#int\", \"b\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"a\" } } }\n",
+							"line": 350,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Public\": { \"doc\": \"Adds two integers\", \"value\": { \"ExpressionBody\": { \"inputTypes\": { \"a\": \"morphir/SDK:basics#int\", \"b\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"a\" } } } } }\n",
+							"line": 356,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "definitions-0019",
+					"topic": "definitions",
+					"number": 19,
+					"title": "Private access-controlled value definition",
+					"node": "AccessControlledValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`Private` on the value side, the twin of definitions-0017. The nested `{ \"value\" }` wrapper is accepted for the window of decision 0006 under `Private` exactly as it is under `Public` (definitions-0018); the fence below carries no `doc`, so it shows only the unwrapping half."
+					],
+					"line": 360,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Private:\n  ExpressionBody:\n    inputTypes: {}\n    outputType: morphir/SDK:basics#int\n    body:\n      Variable: x\n",
+							"line": 364,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Private\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"x\" } } } }\n",
+							"line": 373,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"access\": \"Private\", \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"x\" } } }\n",
+							"line": 377,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Private\": { \"value\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"x\" } } } } }\n",
+							"line": 381,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "definitions-0020",
+					"topic": "definitions",
+					"number": 20,
+					"title": "Annotations on a type specification",
+					"node": "TypeSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A specification may carry `annotations`, written first and only when non-empty. Each is either the compact string `pkg:mod#local` or `pkg:mod#local:free text` (the separator is the first colon after `#`), or the structured object `{ \"name\", \"arguments\" }` whose arguments are positional values or named `{ \"name\", \"value\" }` pairs. `arguments` is omitted when empty. Definitions never carry annotations (definitions-0023)."
+					],
+					"line": 385,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "TypeAliasSpecification:\n  annotations:\n    - my-org/project:annotations#deprecated:Use user-v2 instead\n    - name: my-org/project:annotations#since\n      arguments:\n        - Literal:\n            StringLiteral: 1.2.0\n        - name: reason\n          value:\n            Literal:\n              StringLiteral: renamed\n    - name: my-org/project:annotations#internal\n  typeParams: []\n  typeExp: morphir/SDK:string#string\n",
+							"line": 389,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"TypeAliasSpecification\": { \"annotations\": [\"my-org/project:annotations#deprecated:Use user-v2 instead\", { \"name\": \"my-org/project:annotations#since\", \"arguments\": [{ \"Literal\": { \"StringLiteral\": \"1.2.0\" } }, { \"name\": \"reason\", \"value\": { \"Literal\": { \"StringLiteral\": \"renamed\" } } }] }, { \"name\": \"my-org/project:annotations#internal\" }], \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } }\n",
+							"line": 406,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"TypeAliasSpecification\": { \"annotations\": [\"my-org/project:annotations#deprecated:Use user-v2 instead\", { \"name\": \"my-org/project:annotations#since\", \"arguments\": [{ \"Literal\": { \"StringLiteral\": \"1.2.0\" } }, { \"name\": \"reason\", \"value\": { \"Literal\": { \"StringLiteral\": \"renamed\" } } }] }, { \"name\": \"my-org/project:annotations#internal\", \"arguments\": [] }], \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } }\n",
+							"line": 410,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "definitions-0021",
+					"topic": "definitions",
+					"number": 21,
+					"title": "Annotations on a value specification",
+					"node": "ValueSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 414,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "annotations: [\"my-org/project:annotations#pure\"]\ninputs:\n  x: morphir/SDK:basics#int\noutput: morphir/SDK:basics#int\n",
+							"line": 416,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"annotations\": [\"my-org/project:annotations#pure\"], \"inputs\": { \"x\": \"morphir/SDK:basics#int\" }, \"output\": \"morphir/SDK:basics#int\" }\n",
+							"line": 423,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0022",
+					"topic": "definitions",
+					"number": 22,
+					"title": "Annotations on a module specification",
+					"node": "ModuleSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`annotations` comes first; `doc` stays last (decision 0010)."
+					],
+					"line": 427,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "annotations: [\"my-org/project:annotations#stable\"]\ntypes: {}\nvalues: {}\ndoc: The domain module\n",
+							"line": 431,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"annotations\": [\"my-org/project:annotations#stable\"], \"types\": {}, \"values\": {}, \"doc\": \"The domain module\" }\n",
+							"line": 438,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0023",
+					"topic": "definitions",
+					"number": 23,
+					"title": "A definition carries no annotations",
+					"node": "TypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Annotations belong to specifications, the public face; inside a definition the member is unknown."
+					],
+					"line": 442,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_member"
+							},
+							"body": "{ \"TypeAliasDefinition\": { \"annotations\": [], \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } }\n",
+							"line": 446,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "definitions-0024",
+					"topic": "definitions",
+					"number": 24,
+					"title": "A hole incompleteness keeps a partial body",
+					"node": "TypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A `Hole` says why under `reason` and may keep what the author had as `partialBody`, a type expression; the member is written only when present (definitions-0014 has none)."
+					],
+					"line": 450,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IncompleteTypeDefinition:\n  typeParams: []\n  incompleteness:\n    Hole:\n      reason:\n        UnresolvedReference:\n          target: my-org/project:module#missing\n      partialBody: morphir/SDK:basics#int\n",
+							"line": 454,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IncompleteTypeDefinition\": { \"typeParams\": [], \"incompleteness\": { \"Hole\": { \"reason\": { \"UnresolvedReference\": { \"target\": \"my-org/project:module#missing\" } }, \"partialBody\": \"morphir/SDK:basics#int\" } } } }\n",
+							"line": 465,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0025",
+					"topic": "definitions",
+					"number": 25,
+					"title": "An incomplete body keeps a partial value",
+					"node": "ValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"The value twin of definitions-0024: `partialBody` on an `IncompleteBody` is a value expression, written after `incompleteness` and only when present."
+					],
+					"line": 469,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IncompleteBody:\n  inputTypes: {}\n  outputType: morphir/SDK:basics#int\n  incompleteness:\n    Draft: {}\n  partialBody:\n    Literal:\n      IntegerLiteral: 1\n",
+							"line": 473,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IncompleteBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"incompleteness\": { \"Draft\": {} }, \"partialBody\": { \"Literal\": { \"IntegerLiteral\": 1 } } } }\n",
+							"line": 484,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0026",
+					"topic": "definitions",
+					"number": 26,
+					"title": "Draft is an incompleteness, not a hole reason",
+					"node": "TypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A hole's reason is `UnresolvedReference`, `DeletedDuringRefactor` or `TypeMismatch` (definitions-0014, 0016). `Draft` is the other incompleteness kind (definitions-0015) and names no reason; a reason must be a wrapper object."
+					],
+					"line": 488,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_node"
+							},
+							"body": "{ \"IncompleteTypeDefinition\": { \"typeParams\": [], \"incompleteness\": { \"Hole\": { \"reason\": { \"Draft\": {} } } } } }\n",
+							"line": 492,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_type"
+							},
+							"body": "{ \"IncompleteTypeDefinition\": { \"typeParams\": [], \"incompleteness\": { \"Hole\": { \"reason\": \"Draft\" } } } }\n",
+							"line": 496,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "definitions-0027",
+					"topic": "definitions",
+					"number": 27,
+					"title": "An input type is a bare type",
+					"node": "ValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Each entry of `inputTypes` is a type expression and nothing else; there is no per-parameter attributes member."
+					],
+					"line": 500,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_node"
+							},
+							"body": "{ \"ExpressionBody\": { \"inputTypes\": { \"x\": { \"typeAttributes\": {}, \"type\": \"morphir/SDK:basics#int\" } }, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"x\" } } }\n",
+							"line": 504,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "definitions-0028",
+					"topic": "definitions",
+					"number": 28,
+					"title": "Documentation is one string",
+					"node": "AccessControlledTypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`doc` is a string wherever a node carries it (decision 0010). An array of lines is accepted only in a module manifest file (document-tree page), never here."
+					],
+					"line": 508,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_type"
+							},
+							"body": "{ \"Public\": { \"doc\": [\"line one\", \"line two\"], \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } } }\n",
+							"line": 512,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "definitions-0029",
+					"topic": "definitions",
+					"number": 29,
+					"title": "A value specification without inputs writes none",
+					"node": "ValueSpecification",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`inputs` is omitted when empty and accepted when written empty."
+					],
+					"line": 516,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "output: morphir/SDK:basics#int\n",
+							"line": 520,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"output\": \"morphir/SDK:basics#int\" }\n",
+							"line": 524,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"inputs\": {}, \"output\": \"morphir/SDK:basics#int\" }\n",
+							"line": 528,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "definitions-0030",
+					"topic": "definitions",
+					"number": 30,
+					"title": "A platform-specific native hint names its platform",
+					"node": "ValueDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`PlatformSpecific` requires `platform`; a reader does not invent one."
+					],
+					"line": 532,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "missing_member"
+							},
+							"body": "{ \"NativeBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"nativeInfo\": { \"hint\": { \"PlatformSpecific\": {} } } } }\n",
+							"line": 536,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "definitions-0031",
+					"topic": "definitions",
+					"number": 31,
+					"title": "priv is not an access spelling",
+					"node": "AccessControlledTypeDefinition",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"The access spellings are `Public`, `public`, `pub`, `Private` and `private` (definitions-0001, 0017). `priv` is none of them."
+					],
+					"line": 540,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_access"
+							},
+							"body": "{ \"priv\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:basics#int\" } } }\n",
+							"line": 544,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_access"
+							},
+							"body": "{ \"access\": \"priv\", \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:basics#int\" } }\n",
+							"line": 548,
+							"index": 1
+						}
+					]
+				}
+			]
+		},
+		{
+			"path": "spec/ir/mck/distributions.md",
+			"sha256": "325958fed22e87393d1bfda11322e115945b2e36598d21770ed8c2ddcd4e68eb",
+			"cases": [
+				{
+					"id": "distributions-0001",
+					"topic": "distributions",
+					"number": 1,
+					"title": "Format version spellings",
+					"node": "FormatVersion",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Governed by `docs/spec/ir/format-version.md` and its corpus. Integer 4 is canonical for 4.0.0; a later minor is not supported."
+					],
+					"line": 3,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "4\n",
+							"line": 7,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "4\n",
+							"line": 11,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "\"4.0.0\"\n",
+							"line": 15,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_format_version_syntax"
+							},
+							"body": "\"4.0.0-beta\"\n",
+							"line": 19,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unsupported_format_version_minor"
+							},
+							"body": "\"4.1.0\"\n",
+							"line": 23,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "distributions-0002",
+					"topic": "distributions",
+					"number": 2,
+					"title": "Empty library",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 27,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies: {}\n    def:\n      modules: {}\n",
+							"line": 29,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Library\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": {} } } } }\n",
+							"line": 39,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"distribution\": { \"Library\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": {} } } }, \"formatVersion\": 4 }\n",
+							"line": 43,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "distributions-0003",
+					"topic": "distributions",
+					"number": 3,
+					"title": "A v3 tagged-array distribution is not a v4 document",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`tests/bdd/fixtures/ir/v4/v4-library-distribution.json` carried this shape. Bead morphir-ir-v4-stabilize.11."
+					],
+					"line": 47,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_distribution_shape"
+							},
+							"body": "{ \"formatVersion\": 4, \"distribution\": [\"Library\", \"example/v4-test\", {}, { \"modules\": [] }] }\n",
+							"line": 51,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "distributions-0004",
+					"topic": "distributions",
+					"number": 4,
+					"title": "Complete library, JSON and YAML agree",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"The published complete example and its YAML rendering are the same distribution. Both write record fields under `fields` (decision 0004), the SDK as `morphir/SDK` (decision 0011), and the list function's `parameterType` (decision 0007).",
+						"`website/static/ir/examples/v4/complete-example.json` is the human-readable form the docs site publishes: it is pretty-printed and spells its format version `\"4.0.0\"`, both of which a reader accepts and a writer never emits, so it is an `accepted` spelling. The `json canonical` fence below is the writer's own output for the same distribution, on one line with the integer format version (distributions-0001). The YAML file stays canonical: it is the reference text form."
+					],
+					"line": 55,
+					"fences": [
+						{
+							"language": "text",
+							"role": "accepted",
+							"keys": {},
+							"body": "website/static/ir/examples/v4/complete-example.json\n",
+							"line": 61,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Library\": { \"packageName\": \"regulation\", \"dependencies\": { \"morphir/SDK\": { \"modules\": { \"basics\": { \"types\": { \"int\": { \"OpaqueTypeSpecification\": {} }, \"float\": { \"OpaqueTypeSpecification\": {} }, \"bool\": { \"OpaqueTypeSpecification\": {} } }, \"values\": { \"add\": { \"inputs\": { \"a\": \"morphir/SDK:basics#int\", \"b\": \"morphir/SDK:basics#int\" }, \"output\": \"morphir/SDK:basics#int\" } } }, \"list\": { \"types\": { \"list\": { \"TypeAliasSpecification\": { \"typeParams\": [\"a\"], \"typeExp\": { \"Reference\": [\"morphir/SDK:list#list\", \"a\"] } } } }, \"values\": { \"map\": { \"inputs\": { \"f\": { \"Function\": { \"parameterType\": \"a\", \"returnType\": \"b\" } }, \"list\": { \"Reference\": [\"morphir/SDK:list#list\", \"a\"] } }, \"output\": { \"Reference\": [\"morphir/SDK:list#list\", \"b\"] } } } } } } }, \"def\": { \"modules\": { \"u-s/f-r-2052-a/data-tables\": { \"Public\": { \"types\": { \"data-tables\": { \"Public\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": { \"Record\": { \"fields\": { \"inflows\": \"regulation:u-s/f-r-2052-a/data-tables#inflows\", \"outflows\": \"regulation:u-s/f-r-2052-a/data-tables#outflows\", \"supplemental\": \"regulation:u-s/f-r-2052-a/data-tables#supplemental\" } } } } } }, \"inflows\": { \"Public\": { \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": { \"Record\": { \"fields\": { \"assets\": { \"Reference\": [\"morphir/SDK:list#list\", \"regulation:u-s/f-r-2052-a/data-tables/inflows#assets\"] } } } } } } } }, \"values\": { \"calculate-total\": { \"Public\": { \"ExpressionBody\": { \"inputTypes\": { \"tables\": \"regulation:u-s/f-r-2052-a/data-tables#data-tables\" }, \"outputType\": \"morphir/SDK:basics#float\", \"body\": { \"Literal\": { \"FloatLiteral\": 0.0 } } } } } }, \"doc\": \"Data tables module for regulatory reporting\" } } } } } } }\n",
+							"line": 65,
+							"index": 1
+						},
+						{
+							"language": "text",
+							"role": "canonical",
+							"keys": {},
+							"body": "spec/ir/mck/documents/complete-example.yaml\n",
+							"line": 69,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "distributions-0005",
+					"topic": "distributions",
+					"number": 5,
+					"title": "The SDK dependency is keyed morphir/SDK",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0011. `morphir/sdk` is a valid name for some other package, so it is not rejected; it is simply not the SDK."
+					],
+					"line": 73,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies:\n      morphir/SDK:\n        modules: {}\n    def:\n      modules: {}\n",
+							"line": 77,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Library\": { \"packageName\": \"example\", \"dependencies\": { \"morphir/SDK\": { \"modules\": {} } }, \"def\": { \"modules\": {} } } } }\n",
+							"line": 89,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "distributions-0006",
+					"topic": "distributions",
+					"number": 6,
+					"title": "Specs distribution",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A `Specs` distribution publishes a package's public face and nothing else: its member is `spec`, a package specification, where a `Library` carries `def`, a package definition. `packageName`, `dependencies` and `spec` are the three members the reader accepts; `dependencies` and `spec` may be omitted and default to empty, and a writer emits all three regardless (distributions-0002).",
+						"A `Specs` document has no `def`: an implementation is exactly what it does not carry."
+					],
+					"line": 93,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Specs:\n    packageName: example\n    dependencies:\n      morphir/SDK:\n        modules: {}\n    spec:\n      modules:\n        main:\n          types: {}\n          values:\n            greet:\n              inputs:\n                name: morphir/SDK:string#string\n              output: morphir/SDK:string#string\n",
+							"line": 97,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Specs\": { \"packageName\": \"example\", \"dependencies\": { \"morphir/SDK\": { \"modules\": {} } }, \"spec\": { \"modules\": { \"main\": { \"types\": {}, \"values\": { \"greet\": { \"inputs\": { \"name\": \"morphir/SDK:string#string\" }, \"output\": \"morphir/SDK:string#string\" } } } } } } } }\n",
+							"line": 116,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_member"
+							},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Specs\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": {} } } } }\n",
+							"line": 122,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "distributions-0007",
+					"topic": "distributions",
+					"number": 7,
+					"title": "Application distribution with entry points",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"An `Application` is an executable package. It carries `packageName`, `dependencies`, `def` and `entryPoints`; `entryPoints` is required, because an application with no way in is not one. The dependency map holds package definitions rather than specifications, because an application links its dependencies statically. An entry point is keyed by a name the author chooses and holds `target`, `kind`, and an optional `doc`; the writer emits `doc` only when it is present, so `build` below has none.",
+						"`doc` belongs to an entry point, not to the distribution. An `Application` accepts exactly the four members above, so a `doc` beside them is an unknown member rather than package documentation.",
+						"`kind` is drawn from a fixed set: `main`, `command`, `handler`, `job`, `policy`."
+					],
+					"line": 126,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Application:\n    packageName: example\n    dependencies: {}\n    def:\n      modules:\n        main:\n          Public:\n            types: {}\n            values:\n              run:\n                Public:\n                  ExpressionBody:\n                    inputTypes: {}\n                    outputType: morphir/SDK:basics#unit\n                    body:\n                      Unit: {}\n    entryPoints:\n      start:\n        target: example:main#run\n        kind: main\n        doc: The application entry point\n      build:\n        target: example:main#run\n        kind: command\n",
+							"line": 130,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Application\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": { \"main\": { \"Public\": { \"types\": {}, \"values\": { \"run\": { \"Public\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#unit\", \"body\": { \"Unit\": {} } } } } } } } } }, \"entryPoints\": { \"start\": { \"target\": \"example:main#run\", \"kind\": \"main\", \"doc\": \"The application entry point\" }, \"build\": { \"target\": \"example:main#run\", \"kind\": \"command\" } } } } }\n",
+							"line": 159,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_member"
+							},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Application\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": {} }, \"entryPoints\": {}, \"doc\": \"Applications document their entry points, not themselves\" } } }\n",
+							"line": 165,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_type"
+							},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Application\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": {} }, \"entryPoints\": { \"start\": { \"target\": \"example:main#run\", \"kind\": \"startup\" } } } } }\n",
+							"line": 171,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "distributions-0008",
+					"topic": "distributions",
+					"number": 8,
+					"title": "Later patch of a supported minor",
+					"node": "FormatVersion",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A patch of a supported minor is read; its canonical spelling stays the release string, since only the baseline collapses to the integer. Governed by `docs/spec/ir/format-version.md`, Revisions."
+					],
+					"line": 175,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "4.0.1\n",
+							"line": 179,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"4.0.1\"\n",
+							"line": 183,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "distributions-0009",
+					"topic": "distributions",
+					"number": 9,
+					"title": "A reserved $meta member belongs to document-tree files only",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`$meta` is reserved in the files of a document tree (document-tree-0005). A single document has no such member: at its root it is unknown."
+					],
+					"line": 187,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_member"
+							},
+							"body": "{ \"formatVersion\": 4, \"$meta\": { \"generator\": \"example\" }, \"distribution\": { \"Library\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": {} } } } }\n",
+							"line": 191,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "distributions-0010",
+					"topic": "distributions",
+					"number": 10,
+					"title": "An application's dependencies are package definitions",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"An `Application` links its dependencies statically (distributions-0007), so each entry of its `dependencies` is a package definition — access-controlled modules carrying definitions — where a `Library` or `Specs` entry is a package specification (distributions-0005, 0006)."
+					],
+					"line": 195,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Application:\n    packageName: example\n    dependencies:\n      my-org/shared:\n        modules:\n          util:\n            Public:\n              types: {}\n              values:\n                identity:\n                  Public:\n                    ExpressionBody:\n                      inputTypes:\n                        x: morphir/SDK:basics#int\n                      outputType: morphir/SDK:basics#int\n                      body:\n                        Variable: x\n    def:\n      modules:\n        main:\n          Public:\n            types: {}\n            values:\n              run:\n                Public:\n                  ExpressionBody:\n                    inputTypes: {}\n                    outputType: morphir/SDK:basics#unit\n                    body:\n                      Unit: {}\n    entryPoints:\n      start:\n        target: example:main#run\n        kind: main\n",
+							"line": 199,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Application\": { \"packageName\": \"example\", \"dependencies\": { \"my-org/shared\": { \"modules\": { \"util\": { \"Public\": { \"types\": {}, \"values\": { \"identity\": { \"Public\": { \"ExpressionBody\": { \"inputTypes\": { \"x\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"x\" } } } } } } } } } }, \"def\": { \"modules\": { \"main\": { \"Public\": { \"types\": {}, \"values\": { \"run\": { \"Public\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#unit\", \"body\": { \"Unit\": {} } } } } } } } } }, \"entryPoints\": { \"start\": { \"target\": \"example:main#run\", \"kind\": \"main\" } } } } }\n",
+							"line": 238,
+							"index": 1
+						}
+					]
+				}
+			]
+		},
+		{
+			"path": "spec/ir/mck/document-tree.md",
+			"sha256": "c4d3c166eac7001e7a1d5ba0852790ffc5f71a4c8a1ee93eea8d3c0cecb34356",
+			"cases": [
+				{
+					"id": "document-tree-0001",
+					"topic": "document-tree",
+					"number": 1,
+					"title": "Manifest file",
+					"node": "DistributionManifestFile",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"The root file is `manifest`, never `format`. `pathBudget` is required per decision 0001."
+					],
+					"line": 3,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution: Library\npackage: my-org/my-project\npathBudget: 4000\n",
+							"line": 7,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": \"Library\", \"package\": \"my-org/my-project\", \"pathBudget\": 4000 }\n",
+							"line": 14,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "document-tree-0002",
+					"topic": "document-tree",
+					"number": 2,
+					"title": "Module manifest, names only",
+					"node": "ModuleManifestFile",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 18,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\npath: my-org/domain\ntypes: [user, user-ID]\nvalues: [get-user]\n",
+							"line": 20,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"path\": \"my-org/domain\", \"types\": [\"user\", \"user-ID\"], \"values\": [\"get-user\"] }\n",
+							"line": 27,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"module\": \"my-org/domain\", \"types\": [\"user\", \"user-ID\"], \"values\": [\"get-user\"] }\n",
+							"line": 31,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "document-tree-0003",
+					"topic": "document-tree",
+					"number": 3,
+					"title": "Node filename is the escaped stem",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`user-ID` is stored as `user-_id.type.yaml`. Decision 0001."
+					],
+					"line": 35,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "manifest",
+								"set": "escape"
+							},
+							"body": "formatVersion: 4\ndistribution: Library\npackage: my-org/my-project\npathBudget: 4000\n",
+							"line": 39,
+							"index": 0
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/module",
+								"set": "escape"
+							},
+							"body": "formatVersion: 4\npath: domain\ntypes: [user-ID]\nvalues: []\n",
+							"line": 46,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/user-_id.type",
+								"set": "escape"
+							},
+							"body": "formatVersion: 4\nname: user-ID\ndef:\n  Public:\n    doc: The user's identifier\n    TypeAliasDefinition:\n      typeParams: []\n      typeExp: morphir/SDK:string#string\n",
+							"line": 53,
+							"index": 2
+						},
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: my-org/my-project\n    dependencies: {}\n    def:\n      modules:\n        domain:\n          Public:\n            types:\n              user-ID:\n                Public:\n                  doc: The user's identifier\n                  TypeAliasDefinition:\n                    typeParams: []\n                    typeExp: morphir/SDK:string#string\n            values: {}\n",
+							"line": 64,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "document-tree-0004",
+					"topic": "document-tree",
+					"number": 4,
+					"title": "A stem truncated for the path budget is recorded in fileNames",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0012. The budget is 64 characters from the distribution root. `pkg/my-org/my-project/domain/` is 29 characters and `.type.yaml` is 10, leaving 25 for the stem; a truncated stem keeps `25 - 10 = 15` characters of the escaped stem, drops any trailing `-` or `_`, and appends `__` plus the first 8 hex digits of the SHA-256 of the untruncated escaped stem. The module manifest maps the canonical name to the stem, and the name still appears under `types`."
+					],
+					"line": 84,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "manifest",
+								"set": "truncate"
+							},
+							"body": "formatVersion: 4\ndistribution: Library\npackage: my-org/my-project\npathBudget: 64\n",
+							"line": 88,
+							"index": 0
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/module",
+								"set": "truncate"
+							},
+							"body": "formatVersion: 4\npath: domain\ntypes: [customer-relationship-management-record]\nvalues: []\nfileNames:\n  customer-relationship-management-record: customer-relati__44a101f8\n",
+							"line": 95,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/customer-relati__44a101f8.type",
+								"set": "truncate"
+							},
+							"body": "formatVersion: 4\nname: customer-relationship-management-record\ndef:\n  Public:\n    TypeAliasDefinition:\n      typeParams: []\n      typeExp: morphir/SDK:string#string\n",
+							"line": 104,
+							"index": 2
+						},
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: my-org/my-project\n    dependencies: {}\n    def:\n      modules:\n        domain:\n          Public:\n            types:\n              customer-relationship-management-record:\n                Public:\n                  TypeAliasDefinition:\n                    typeParams: []\n                    typeExp: morphir/SDK:string#string\n            values: {}\n",
+							"line": 114,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "document-tree-0005",
+					"topic": "document-tree",
+					"number": 5,
+					"title": "A top-level $meta member is reserved and ignored",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0014. A reader never reports `unknown_member` for `$meta` at the top level of a document-tree file, and never writes one. `session.jsonl` is daemon workspace state, not part of a distribution."
+					],
+					"line": 133,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "manifest",
+								"set": "meta",
+								"mode": "read"
+							},
+							"body": "formatVersion: 4\ndistribution: Library\npackage: my-org/my-project\npathBudget: 4000\n$meta:\n  generator: example\n",
+							"line": 137,
+							"index": 0
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/module",
+								"set": "meta",
+								"mode": "read"
+							},
+							"body": "formatVersion: 4\npath: domain\ntypes: []\nvalues: []\n$meta:\n  generator: example\n",
+							"line": 146,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: my-org/my-project\n    dependencies: {}\n    def:\n      modules:\n        domain:\n          Public:\n            types: {}\n            values: {}\n",
+							"line": 155,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "document-tree-0006",
+					"topic": "document-tree",
+					"number": 6,
+					"title": "The same tree in the JSON profile",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A `file` set is written in one profile, and a tree says the same thing in either. This is `document-tree-0003`'s set spelled in the JSON profile: the logical paths are identical — they carry no extension — and only the bytes of each document change, so a reader and a writer that agree on the tree must agree on both profiles."
+					],
+					"line": 169,
+					"fences": [
+						{
+							"language": "json",
+							"role": "file",
+							"keys": {
+								"path": "manifest",
+								"set": "escape-json"
+							},
+							"body": "{ \"formatVersion\": 4, \"distribution\": \"Library\", \"package\": \"my-org/my-project\", \"pathBudget\": 4000 }\n",
+							"line": 173,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/module",
+								"set": "escape-json"
+							},
+							"body": "{ \"formatVersion\": 4, \"path\": \"domain\", \"types\": [\"user-ID\"], \"values\": [] }\n",
+							"line": 177,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/user-_id.type",
+								"set": "escape-json"
+							},
+							"body": "{ \"formatVersion\": 4, \"name\": \"user-ID\", \"def\": { \"Public\": { \"doc\": \"The user's identifier\", \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } } } }\n",
+							"line": 181,
+							"index": 2
+						},
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: my-org/my-project\n    dependencies: {}\n    def:\n      modules:\n        domain:\n          Public:\n            types:\n              user-ID:\n                Public:\n                  doc: The user's identifier\n                  TypeAliasDefinition:\n                    typeParams: []\n                    typeExp: morphir/SDK:string#string\n            values: {}\n",
+							"line": 185,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Library\": { \"packageName\": \"my-org/my-project\", \"dependencies\": {}, \"def\": { \"modules\": { \"domain\": { \"Public\": { \"types\": { \"user-ID\": { \"Public\": { \"doc\": \"The user's identifier\", \"TypeAliasDefinition\": { \"typeParams\": [], \"typeExp\": \"morphir/SDK:string#string\" } } } }, \"values\": {} } } } } } } }\n",
+							"line": 205,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "document-tree-0007",
+					"topic": "document-tree",
+					"number": 7,
+					"title": "A Private module",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A package definition's modules are access-controlled, so the module manifest carries an optional `access` member (document-tree page, \"access (module manifest)\"). It defaults to `Public` and a writer emits it only for a `Private` module, which keeps every existing manifest byte-identical while letting a private module round-trip through a tree."
+					],
+					"line": 209,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "manifest",
+								"set": "private"
+							},
+							"body": "formatVersion: 4\ndistribution: Library\npackage: my-org/my-project\npathBudget: 4000\n",
+							"line": 213,
+							"index": 0
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/module",
+								"set": "private"
+							},
+							"body": "formatVersion: 4\npath: domain\naccess: Private\ntypes: []\nvalues: []\n",
+							"line": 220,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: my-org/my-project\n    dependencies: {}\n    def:\n      modules:\n        domain:\n          Private:\n            types: {}\n            values: {}\n",
+							"line": 228,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Library\": { \"packageName\": \"my-org/my-project\", \"dependencies\": {}, \"def\": { \"modules\": { \"domain\": { \"Private\": { \"types\": {}, \"values\": {} } } } } } } }\n",
+							"line": 242,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "document-tree-0008",
+					"topic": "document-tree",
+					"number": 8,
+					"title": "A dependency lives under deps",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A tree holds its dependencies under `deps/<package path>/@<version>/`, laid out exactly as `pkg/` is below that segment. The segment beginning with `@` ends the package path, so a package named `a` and one named `a/b` can never claim the same directory; it is a bare `@` while the v4 model carries no package version (decision 0015). The distribution manifest lists each dependency package under `dependencies`, so discovery reads one file instead of walking `deps/`. A `Library` tree's dependencies are package specifications, so their node files carry `spec`."
+					],
+					"line": 246,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "manifest",
+								"set": "deps"
+							},
+							"body": "formatVersion: 4\ndistribution: Library\npackage: my-org/my-project\npathBudget: 4000\ndependencies: [morphir/SDK]\n",
+							"line": 250,
+							"index": 0
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/my-org/my-project/domain/module",
+								"set": "deps"
+							},
+							"body": "formatVersion: 4\npath: domain\ntypes: []\nvalues: []\n",
+							"line": 258,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "deps/morphir/_sdk/@/basics/module",
+								"set": "deps"
+							},
+							"body": "formatVersion: 4\npath: basics\ntypes: [int]\nvalues: []\n",
+							"line": 265,
+							"index": 2
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "deps/morphir/_sdk/@/basics/int.type",
+								"set": "deps"
+							},
+							"body": "formatVersion: 4\nname: int\nspec:\n  OpaqueTypeSpecification: {}\n",
+							"line": 272,
+							"index": 3
+						},
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: my-org/my-project\n    dependencies:\n      morphir/SDK:\n        modules:\n          basics:\n            types:\n              int:\n                OpaqueTypeSpecification: {}\n            values: {}\n    def:\n      modules:\n        domain:\n          Public:\n            types: {}\n            values: {}\n",
+							"line": 279,
+							"index": 4
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Library\": { \"packageName\": \"my-org/my-project\", \"dependencies\": { \"morphir/SDK\": { \"modules\": { \"basics\": { \"types\": { \"int\": { \"OpaqueTypeSpecification\": {} } }, \"values\": {} } } } }, \"def\": { \"modules\": { \"domain\": { \"Public\": { \"types\": {}, \"values\": {} } } } } } } }\n",
+							"line": 300,
+							"index": 5
+						}
+					]
+				},
+				{
+					"id": "document-tree-0009",
+					"topic": "document-tree",
+					"number": 9,
+					"title": "An application's dependencies are definitions under deps",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"An `Application` links its dependencies statically (distributions-0010), so the node files under its `deps/` carry `def`, access-controlled like the package's own, where a `Library` or `Specs` tree's carry `spec` (document-tree-0008). The entry points live in the distribution manifest."
+					],
+					"line": 304,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "manifest",
+								"set": "app-deps"
+							},
+							"body": "formatVersion: 4\ndistribution: Application\npackage: example\npathBudget: 4000\ndependencies: [my-org/shared]\nentryPoints:\n  start:\n    target: example:main#run\n    kind: main\n",
+							"line": 308,
+							"index": 0
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/example/main/module",
+								"set": "app-deps"
+							},
+							"body": "formatVersion: 4\npath: main\ntypes: []\nvalues: [run]\n",
+							"line": 320,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "pkg/example/main/run.value",
+								"set": "app-deps"
+							},
+							"body": "formatVersion: 4\nname: run\ndef:\n  Public:\n    ExpressionBody:\n      inputTypes: {}\n      outputType: morphir/SDK:basics#unit\n      body:\n        Unit: {}\n",
+							"line": 327,
+							"index": 2
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "deps/my-org/shared/@/util/module",
+								"set": "app-deps"
+							},
+							"body": "formatVersion: 4\npath: util\ntypes: []\nvalues: [identity]\n",
+							"line": 339,
+							"index": 3
+						},
+						{
+							"language": "yaml",
+							"role": "file",
+							"keys": {
+								"path": "deps/my-org/shared/@/util/identity.value",
+								"set": "app-deps"
+							},
+							"body": "formatVersion: 4\nname: identity\ndef:\n  Public:\n    ExpressionBody:\n      inputTypes:\n        x: morphir/SDK:basics#int\n      outputType: morphir/SDK:basics#int\n      body:\n        Variable: x\n",
+							"line": 346,
+							"index": 4
+						},
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Application:\n    packageName: example\n    dependencies:\n      my-org/shared:\n        modules:\n          util:\n            Public:\n              types: {}\n              values:\n                identity:\n                  Public:\n                    ExpressionBody:\n                      inputTypes:\n                        x: morphir/SDK:basics#int\n                      outputType: morphir/SDK:basics#int\n                      body:\n                        Variable: x\n    def:\n      modules:\n        main:\n          Public:\n            types: {}\n            values:\n              run:\n                Public:\n                  ExpressionBody:\n                    inputTypes: {}\n                    outputType: morphir/SDK:basics#unit\n                    body:\n                      Unit: {}\n    entryPoints:\n      start:\n        target: example:main#run\n        kind: main\n",
+							"line": 359,
+							"index": 5
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Application\": { \"packageName\": \"example\", \"dependencies\": { \"my-org/shared\": { \"modules\": { \"util\": { \"Public\": { \"types\": {}, \"values\": { \"identity\": { \"Public\": { \"ExpressionBody\": { \"inputTypes\": { \"x\": \"morphir/SDK:basics#int\" }, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"x\" } } } } } } } } } }, \"def\": { \"modules\": { \"main\": { \"Public\": { \"types\": {}, \"values\": { \"run\": { \"Public\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#unit\", \"body\": { \"Unit\": {} } } } } } } } } }, \"entryPoints\": { \"start\": { \"target\": \"example:main#run\", \"kind\": \"main\" } } } } }\n",
+							"line": 398,
+							"index": 6
+						}
+					]
+				}
+			]
+		},
+		{
+			"path": "spec/ir/mck/names.md",
+			"sha256": "bcefa7dfcd9c9b278140569d7f7133e52c9fb9a20adcd9dc1f280e9c047b04b2",
+			"cases": [
+				{
+					"id": "names-0001",
+					"topic": "names",
+					"number": 1,
+					"title": "Initialism as uppercase segment",
+					"node": "Name",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0001. A run of two or more single-letter legacy words decodes to one initialism."
+					],
+					"line": 5,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "value-in-USD\n",
+							"line": 9,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"value-in-USD\"\n",
+							"line": 13,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[\"value\", \"in\", \"u\", \"s\", \"d\"]\n",
+							"line": 17,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "names-0002",
+					"topic": "names",
+					"number": 2,
+					"title": "Single-letter type variable is a word",
+					"node": "Name",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0001, consequence 4. A run of one stays a word, so a type variable canonicalizes as `a`, never `(a)` or `A`."
+					],
+					"line": 21,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "a\n",
+							"line": 25,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"a\"\n",
+							"line": 29,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[\"a\"]\n",
+							"line": 33,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "names-0003",
+					"topic": "names",
+					"number": 3,
+					"title": "Retired parenthesized encoding is rejected",
+					"node": "Name",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0001 retired `value-in-(usd)`. GitHub #793 owns the books fixture that still carries it. A mixed-case segment such as Usd is also invalid: a segment is all lowercase or all uppercase, never mixed."
+					],
+					"line": 37,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_name"
+							},
+							"body": "\"value-in-(usd)\"\n",
+							"line": 41,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_name"
+							},
+							"body": "\"value-in-Usd\"\n",
+							"line": 45,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "names-0004",
+					"topic": "names",
+					"number": 4,
+					"title": "Path string and legacy array",
+					"node": "Path",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 49,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "morphir/SDK\n",
+							"line": 51,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"morphir/SDK\"\n",
+							"line": 55,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[[\"morphir\"], [\"s\", \"d\", \"k\"]]\n",
+							"line": 59,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "names-0005",
+					"topic": "names",
+					"number": 5,
+					"title": "FQName string and legacy array",
+					"node": "FQName",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 63,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "morphir/SDK:list#map\n",
+							"line": 65,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"morphir/SDK:list#map\"\n",
+							"line": 69,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[[[\"morphir\"], [\"s\", \"d\", \"k\"]], [[\"list\"]], [\"map\"]]\n",
+							"line": 73,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "names-0006",
+					"topic": "names",
+					"number": 6,
+					"title": "The SDK package name",
+					"node": "Path",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0011: the SDK's canonical package name is `morphir/SDK`, because morphir-elm's `Path.fromString` splits `SDK` into single-letter words that decision 0001 decodes as one initialism. `morphir/sdk` is a different, valid name and is not rejected; distributions-0005 pins the dependency key."
+					],
+					"line": 77,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "morphir/SDK\n",
+							"line": 81,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"morphir/SDK\"\n",
+							"line": 85,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[[\"morphir\"], [\"s\", \"d\", \"k\"]]\n",
+							"line": 89,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "names-0007",
+					"topic": "names",
+					"number": 7,
+					"title": "Legacy array items may be digits",
+					"node": "Name",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0012: both schemas use the core legacy word grammar `^[a-z0-9]+$`, so a digits-only word is legal. `[\"f\", \"r\", \"2052\", \"a\"]` decodes as the naming corpus records: the letter run `f r` is one initialism, `2052` breaks the run, and the trailing `a` is a run of one, so a word."
+					],
+					"line": 93,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "item-2\n",
+							"line": 97,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"item-2\"\n",
+							"line": 101,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[\"item\", \"2\"]\n",
+							"line": 105,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "names-0008",
+					"topic": "names",
+					"number": 8,
+					"title": "A digit word breaks an initialism run",
+					"node": "Name",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 109,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "FR-2052-a\n",
+							"line": 111,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"FR-2052-a\"\n",
+							"line": 115,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[\"f\", \"r\", \"2052\", \"a\"]\n",
+							"line": 119,
+							"index": 2
+						}
+					]
+				}
+			]
+		},
+		{
+			"path": "spec/ir/mck/patterns-and-literals.md",
+			"sha256": "91d652a7349a98ad6d840c2ec69be816f106da84ab04337e654236f3dfc2a6bc",
+			"cases": [
+				{
+					"id": "patterns-and-literals-0001",
+					"topic": "patterns-and-literals",
+					"number": 1,
+					"title": "Integer literal renamed",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`WholeNumberLiteral` is accepted on input and never written."
+					],
+					"line": 3,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IntegerLiteral: 42\n",
+							"line": 7,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IntegerLiteral\": 42 }\n",
+							"line": 11,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"WholeNumberLiteral\": 42 }\n",
+							"line": 15,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"IntegerLiteral\": { \"value\": 42 } }\n",
+							"line": 19,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0002",
+					"topic": "patterns-and-literals",
+					"number": 2,
+					"title": "Decimal literal keeps its text",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A decimal is carried as a string so no binding coerces it to a float."
+					],
+					"line": 23,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "DecimalLiteral: \"10.50\"\n",
+							"line": 27,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"DecimalLiteral\": \"10.50\" }\n",
+							"line": 31,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0003",
+					"topic": "patterns-and-literals",
+					"number": 3,
+					"title": "Tuple pattern",
+					"node": "Pattern",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 35,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "TuplePattern:\n  - WildcardPattern: {}\n  - AsPattern:\n      pattern:\n        WildcardPattern: {}\n      name: x\n",
+							"line": 37,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"TuplePattern\": [{ \"WildcardPattern\": {} }, { \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }] }\n",
+							"line": 46,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[{ \"WildcardPattern\": {} }, { \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }]\n",
+							"line": 50,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"TuplePattern\": { \"patterns\": [{ \"WildcardPattern\": {} }, { \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }] } }\n",
+							"line": 54,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"TuplePattern\": { \"attributes\": {}, \"patterns\": [{ \"WildcardPattern\": {} }, { \"AsPattern\": { \"attributes\": {}, \"pattern\": { \"WildcardPattern\": { \"attributes\": {} } }, \"name\": \"x\" } }] } }\n",
+							"line": 58,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0004",
+					"topic": "patterns-and-literals",
+					"number": 4,
+					"title": "Literal pattern shorthand",
+					"node": "Pattern",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 62,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "LiteralPattern:\n  IntegerLiteral: 42\n",
+							"line": 64,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"LiteralPattern\": { \"IntegerLiteral\": 42 } }\n",
+							"line": 69,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"LiteralPattern\": 42 }\n",
+							"line": 73,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"LiteralPattern\": { \"attributes\": {}, \"literal\": { \"IntegerLiteral\": 42 } } }\n",
+							"line": 77,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0005",
+					"topic": "patterns-and-literals",
+					"number": 5,
+					"title": "Document literal",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0013: the seventh literal carries a schema-less JSON-like tree verbatim, typed as `morphir/SDK:document#document`. Its payload is the document itself, so there is no `{ \"value\": .. }` spelling: `{ \"DocumentLiteral\": { \"value\": 1 } }` is the one-member document `{\"value\": 1}`. Number lexemes are preserved; a backend that reads `9007199254740993` through a 64-bit float fails this case visibly."
+					],
+					"line": 81,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "DocumentLiteral:\n  name: Alice\n  age: 30\n  tags: [admin, user]\n  metadata: null\n",
+							"line": 85,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"DocumentLiteral\": { \"name\": \"Alice\", \"age\": 30, \"tags\": [\"admin\", \"user\"], \"metadata\": null } }\n",
+							"line": 93,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0006",
+					"topic": "patterns-and-literals",
+					"number": 6,
+					"title": "Document literal keeps large integers",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 97,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "DocumentLiteral:\n  id: 9007199254740993\n  ratio: 0.10\n",
+							"line": 99,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"DocumentLiteral\": { \"id\": 9007199254740993, \"ratio\": 0.10 } }\n",
+							"line": 105,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0007",
+					"topic": "patterns-and-literals",
+					"number": 7,
+					"title": "A document cannot be pattern matched",
+					"node": "Pattern",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0013: no `LiteralPattern` on a document."
+					],
+					"line": 109,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "{ \"LiteralPattern\": { \"DocumentLiteral\": { \"name\": \"Alice\" } } }\n",
+							"line": 113,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0008",
+					"topic": "patterns-and-literals",
+					"number": 8,
+					"title": "Nullary patterns",
+					"node": "Pattern",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Wildcard, empty-list and unit patterns take an empty payload, or `attributes` alone."
+					],
+					"line": 117,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "WildcardPattern: {}\n",
+							"line": 121,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"WildcardPattern\": {} }\n",
+							"line": 125,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"WildcardPattern\": { \"attributes\": {} } }\n",
+							"line": 129,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0009",
+					"topic": "patterns-and-literals",
+					"number": 9,
+					"title": "Empty list and unit patterns",
+					"node": "Pattern",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 133,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "EmptyListPattern: {}\n",
+							"line": 135,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"EmptyListPattern\": {} }\n",
+							"line": 139,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"EmptyListPattern\": { \"attributes\": {} } }\n",
+							"line": 143,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0010",
+					"topic": "patterns-and-literals",
+					"number": 10,
+					"title": "Constructor pattern",
+					"node": "Pattern",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 147,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "ConstructorPattern:\n  fqname: morphir/SDK:maybe#just\n  patterns:\n    - AsPattern:\n        pattern:\n          WildcardPattern: {}\n        name: x\n",
+							"line": 149,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"ConstructorPattern\": { \"fqname\": \"morphir/SDK:maybe#just\", \"patterns\": [{ \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }] } }\n",
+							"line": 159,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"ConstructorPattern\": { \"attributes\": {}, \"fqname\": \"morphir/SDK:maybe#just\", \"patterns\": [{ \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }] } }\n",
+							"line": 163,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0011",
+					"topic": "patterns-and-literals",
+					"number": 11,
+					"title": "Head-tail and unit patterns",
+					"node": "Pattern",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 167,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "HeadTailPattern:\n  head:\n    AsPattern:\n      pattern:\n        WildcardPattern: {}\n      name: x\n  tail:\n    UnitPattern: {}\n",
+							"line": 169,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"HeadTailPattern\": { \"head\": { \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }, \"tail\": { \"UnitPattern\": {} } } }\n",
+							"line": 180,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"HeadTailPattern\": { \"attributes\": {}, \"head\": { \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }, \"tail\": { \"UnitPattern\": { \"attributes\": {} } } } }\n",
+							"line": 184,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0012",
+					"topic": "patterns-and-literals",
+					"number": 12,
+					"title": "Attributes are kept when compared with them",
+					"node": "Pattern",
+					"version": null,
+					"status": "active",
+					"compare": "attributes",
+					"prose": [],
+					"line": 188,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "AsPattern:\n  attributes:\n    source:\n      startLine: 2\n      startColumn: 1\n      endLine: 2\n      endColumn: 2\n  pattern:\n    WildcardPattern: {}\n  name: x\n",
+							"line": 190,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"AsPattern\": { \"attributes\": { \"source\": { \"startLine\": 2, \"startColumn\": 1, \"endLine\": 2, \"endColumn\": 2 } }, \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }\n",
+							"line": 203,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0013",
+					"topic": "patterns-and-literals",
+					"number": 13,
+					"title": "Character literal",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A `CharLiteral` carries one character as a string, because JSON has no character type. One character means one code point, so an astral character is a single `CharLiteral` and a two-character string is not a character at all."
+					],
+					"line": 207,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "CharLiteral: a\n",
+							"line": 211,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"CharLiteral\": \"a\" }\n",
+							"line": 215,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"CharLiteral\": { \"value\": \"a\" } }\n",
+							"line": 219,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "{ \"CharLiteral\": \"ab\" }\n",
+							"line": 223,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0014",
+					"topic": "patterns-and-literals",
+					"number": 14,
+					"title": "A date-looking plain scalar is a string",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"YAML 1.2 core has no implicit timestamps, and the YAML profile forbids implicit coercions, so a plain `2026-01-15` where a literal is expected is a `StringLiteral` and nothing else. YAML profile page, \"Scalar resolution\"."
+					],
+					"line": 227,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "StringLiteral: 2026-01-15\n",
+							"line": 231,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"StringLiteral\": \"2026-01-15\" }\n",
+							"line": 235,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0015",
+					"topic": "patterns-and-literals",
+					"number": 15,
+					"title": "Octal and hexadecimal integers are not accepted",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"An IR integer literal carries its decimal lexeme. YAML 1.2 core resolves `0o17` and `0xF` to integers, but neither is a JSON lexeme, so the profile refuses them with `invalid_literal` and asks for decimal instead of inventing a spelling. YAML profile page, \"Scalar resolution\"."
+					],
+					"line": 239,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IntegerLiteral: 15\n",
+							"line": 243,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IntegerLiteral\": 15 }\n",
+							"line": 247,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "IntegerLiteral: 0o17\n",
+							"line": 251,
+							"index": 2
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "IntegerLiteral: 0xF\n",
+							"line": 255,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0016",
+					"topic": "patterns-and-literals",
+					"number": 16,
+					"title": "A decimal literal is a decimal lexeme",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A `DecimalLiteral` is a genuine decimal, not text. Its payload is a string because JSON numbers are floats, but the string must spell a decimal: `[+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?`, no whitespace, no `_`, no hex, no `NaN` or `Infinity`. The lexeme is kept as written (patterns-and-literals-0002), so trailing zeros survive: `-0.00` is not `0`. Anything else is `invalid_literal`. v4 schema page, \"Literals\"."
+					],
+					"line": 259,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "DecimalLiteral: \"-0.00\"\n",
+							"line": 263,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"DecimalLiteral\": \"-0.00\" }\n",
+							"line": 267,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "{ \"DecimalLiteral\": \"ten\" }\n",
+							"line": 271,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "{ \"DecimalLiteral\": \"\" }\n",
+							"line": 275,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "{ \"DecimalLiteral\": \"1_000\" }\n",
+							"line": 279,
+							"index": 4
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "{ \"DecimalLiteral\": \"NaN\" }\n",
+							"line": 283,
+							"index": 5
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_literal"
+							},
+							"body": "{ \"DecimalLiteral\": 10.5 }\n",
+							"line": 287,
+							"index": 6
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0017",
+					"topic": "patterns-and-literals",
+					"number": 17,
+					"title": "A decimal lexeme may carry an exponent",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"The grammar admits an exponent; the lexeme stays as written, so a reader does not expand `1e-7` to `0.0000001`. In YAML the lexeme is quoted, because a plain `1e-7` would resolve to a float."
+					],
+					"line": 291,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "DecimalLiteral: \"1e-7\"\n",
+							"line": 295,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"DecimalLiteral\": \"1e-7\" }\n",
+							"line": 299,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0018",
+					"topic": "patterns-and-literals",
+					"number": 18,
+					"title": "A decimal lexeme may omit the integer part",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`.5` is a decimal lexeme, and so is `12.`; neither is rewritten."
+					],
+					"line": 303,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "DecimalLiteral: \".5\"\n",
+							"line": 307,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"DecimalLiteral\": \".5\" }\n",
+							"line": 311,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0019",
+					"topic": "patterns-and-literals",
+					"number": 19,
+					"title": "An integer literal has arbitrary precision",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"An `IntegerLiteral` carries a whole-number lexeme of any size; a binding that reads it through a 64-bit integer fails this case visibly. The lexeme is written back unchanged."
+					],
+					"line": 315,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IntegerLiteral: 18446744073709551616\n",
+							"line": 319,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IntegerLiteral\": 18446744073709551616 }\n",
+							"line": 323,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "patterns-and-literals-0020",
+					"topic": "patterns-and-literals",
+					"number": 20,
+					"title": "A negative integer literal below the 64-bit range",
+					"node": "Literal",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 327,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IntegerLiteral: -9223372036854775809\n",
+							"line": 329,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IntegerLiteral\": -9223372036854775809 }\n",
+							"line": 333,
+							"index": 1
+						}
+					]
+				}
+			]
+		},
+		{
+			"path": "spec/ir/mck/types.md",
+			"sha256": "b7ca2605ae95e3f9ffa78de4c1d68820ec5074b45d0dd2111a2052ec1e36bebf",
+			"cases": [
+				{
+					"id": "types-0001",
+					"topic": "types",
+					"number": 1,
+					"title": "Type variable",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 5,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "a\n",
+							"line": 7,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"a\"\n",
+							"line": 11,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Variable\": { \"attributes\": {}, \"name\": \"a\" } }\n",
+							"line": 15,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "types-0002",
+					"topic": "types",
+					"number": 2,
+					"title": "Reference without arguments",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 19,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "morphir/SDK:basics#int\n",
+							"line": 21,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"morphir/SDK:basics#int\"\n",
+							"line": 25,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Reference\": \"morphir/SDK:basics#int\" }\n",
+							"line": 29,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Reference\": { \"fqname\": \"morphir/SDK:basics#int\" } }\n",
+							"line": 33,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Reference\": { \"fqname\": \"morphir/SDK:basics#int\", \"args\": [] } }\n",
+							"line": 37,
+							"index": 4
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Reference\": { \"attributes\": {}, \"fqname\": \"morphir/SDK:basics#int\" } }\n",
+							"line": 41,
+							"index": 5
+						}
+					]
+				},
+				{
+					"id": "types-0003",
+					"topic": "types",
+					"number": 3,
+					"title": "Reference with one argument",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Closes bead morphir-ir-v4-stabilize.2 once the Rust decoder agrees."
+					],
+					"line": 45,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Reference: [\"morphir/SDK:list#list\", a]\n",
+							"line": 49,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Reference\": [\"morphir/SDK:list#list\", \"a\"] }\n",
+							"line": 53,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Reference\": { \"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"] } }\n",
+							"line": 57,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Reference\": { \"attributes\": {}, \"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"] } }\n",
+							"line": 61,
+							"index": 3
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"expect": "Tuple"
+							},
+							"body": "[\"morphir/SDK:list#list\", a]\n",
+							"line": 65,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "types-0004",
+					"topic": "types",
+					"number": 4,
+					"title": "Tuple type",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 69,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Tuple: [\"morphir/SDK:basics#int\", \"morphir/SDK:string#string\"]\n",
+							"line": 71,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Tuple\": [\"morphir/SDK:basics#int\", \"morphir/SDK:string#string\"] }\n",
+							"line": 75,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[\"morphir/SDK:basics#int\", \"morphir/SDK:string#string\"]\n",
+							"line": 79,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Tuple\": { \"elements\": [\"morphir/SDK:basics#int\", \"morphir/SDK:string#string\"] } }\n",
+							"line": 83,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Tuple\": { \"attributes\": {}, \"elements\": [\"morphir/SDK:basics#int\", \"morphir/SDK:string#string\"] } }\n",
+							"line": 87,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "types-0005",
+					"topic": "types",
+					"number": 5,
+					"title": "Record type",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0004: fields live under a `fields` member, so `attributes` can sit beside them. The field map directly under `Record`, which the schema documented until 2026-09-04, is accepted for the one-release window of decision 0006 and reported as `legacy_spelling`. The Rust encoder's `attrs` is the other window spelling a Record payload takes — it is a row of decision 0006's window table, not a decision of its own; this case pins it for type expressions and values-0013 pins it for values."
+					],
+					"line": 91,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Record:\n  fields:\n    name: morphir/SDK:string#string\n    age: morphir/SDK:basics#int\n",
+							"line": 95,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Record\": { \"fields\": { \"name\": \"morphir/SDK:string#string\", \"age\": \"morphir/SDK:basics#int\" } } }\n",
+							"line": 102,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Record\": { \"attributes\": {}, \"fields\": { \"name\": \"morphir/SDK:string#string\", \"age\": \"morphir/SDK:basics#int\" } } }\n",
+							"line": 106,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Record\": { \"attrs\": {}, \"fields\": { \"name\": \"morphir/SDK:string#string\", \"age\": \"morphir/SDK:basics#int\" } } }\n",
+							"line": 110,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Record\": { \"name\": \"morphir/SDK:string#string\", \"age\": \"morphir/SDK:basics#int\" } }\n",
+							"line": 114,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "types-0006",
+					"topic": "types",
+					"number": 6,
+					"title": "Extensible record type",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 118,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "ExtensibleRecord:\n  variable: r\n  fields:\n    email: morphir/SDK:string#string\n",
+							"line": 120,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"ExtensibleRecord\": { \"variable\": \"r\", \"fields\": { \"email\": \"morphir/SDK:string#string\" } } }\n",
+							"line": 127,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"ExtensibleRecord\": { \"attributes\": {}, \"variable\": \"r\", \"fields\": { \"email\": \"morphir/SDK:string#string\" } } }\n",
+							"line": 131,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "types-0007",
+					"topic": "types",
+					"number": 7,
+					"title": "Function type",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0007: a Function type declares a `parameterType`. `argumentType` (the pre-decision schema) and `arg`/`result` (the Rust encoder) are accepted for the window of decision 0006. Bead morphir-ir-v4-stabilize.3."
+					],
+					"line": 135,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Function:\n  parameterType: morphir/SDK:basics#int\n  returnType: morphir/SDK:string#string\n",
+							"line": 139,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Function\": { \"parameterType\": \"morphir/SDK:basics#int\", \"returnType\": \"morphir/SDK:string#string\" } }\n",
+							"line": 145,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Function\": { \"attributes\": {}, \"parameterType\": \"morphir/SDK:basics#int\", \"returnType\": \"morphir/SDK:string#string\" } }\n",
+							"line": 149,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Function\": { \"argumentType\": \"morphir/SDK:basics#int\", \"returnType\": \"morphir/SDK:string#string\" } }\n",
+							"line": 153,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Function\": { \"arg\": \"morphir/SDK:basics#int\", \"result\": \"morphir/SDK:string#string\" } }\n",
+							"line": 157,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "types-0008",
+					"topic": "types",
+					"number": 8,
+					"title": "Unit type",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 161,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Unit: {}\n",
+							"line": 163,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Unit\": {} }\n",
+							"line": 167,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Unit\": { \"attributes\": {} } }\n",
+							"line": 171,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "types-0009",
+					"topic": "types",
+					"number": 9,
+					"title": "Attributes on type expressions",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0005: `attributes` is the optional first member of every expanded payload, and an empty one is never written. `attrs` is the Rust encoder's spelling, accepted for the window of decision 0006."
+					],
+					"line": 175,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "a\n",
+							"line": 179,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "\"a\"\n",
+							"line": 183,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Variable\": { \"attributes\": {}, \"name\": \"a\" } }\n",
+							"line": 187,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Variable\": { \"attrs\": {}, \"name\": \"a\" } }\n",
+							"line": 191,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "types-0010",
+					"topic": "types",
+					"number": 10,
+					"title": "Attributes are kept when compared with them",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "attributes",
+					"prose": [
+						"A source location makes the expanded spelling the canonical one."
+					],
+					"line": 195,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Variable:\n  attributes:\n    source:\n      startLine: 1\n      startColumn: 1\n      endLine: 1\n      endColumn: 2\n  name: a\n",
+							"line": 199,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Variable\": { \"attributes\": { \"source\": { \"startLine\": 1, \"startColumn\": 1, \"endLine\": 1, \"endColumn\": 2 } }, \"name\": \"a\" } }\n",
+							"line": 210,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "types-0011",
+					"topic": "types",
+					"number": 11,
+					"title": "Incompleteness is not a type expression",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0008 makes `Hole` a value expression (values-0009). The type-level incompleteness vocabulary — `Hole` with its reason, and `Draft` — is the v4 schema's `IncompleteTypeDefinitionBody`, which belongs to a definition, not to a type expression. A reader that meets either tag where a type belongs refuses it as an unknown node. The spellings themselves are pinned where they are read: definitions-0014 for a `Hole` with a `TypeMismatch` reason, definitions-0015 for `Draft`, and definitions-0016 for a `DeletedDuringRefactor` reason on an incomplete value definition."
+					],
+					"line": 214,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_node"
+							},
+							"body": "{ \"Hole\": { \"reason\": { \"TypeMismatch\": { \"expected\": \"morphir/SDK:basics#int\", \"found\": \"morphir/SDK:string#string\" } } } }\n",
+							"line": 218,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_node"
+							},
+							"body": "{ \"Draft\": {} }\n",
+							"line": 222,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "types-0012",
+					"topic": "types",
+					"number": 12,
+					"title": "Attribute members are objects and nothing else is an attribute",
+					"node": "Type",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"`constraints` and `extensions` are objects (v4 schema page, `TypeAttributes`); a member the schema does not name is unknown."
+					],
+					"line": 226,
+					"fences": [
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_type"
+							},
+							"body": "{ \"Variable\": { \"attributes\": { \"constraints\": 5 }, \"name\": \"a\" } }\n",
+							"line": 230,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_member"
+							},
+							"body": "{ \"Variable\": { \"attributes\": { \"colour\": \"red\" }, \"name\": \"a\" } }\n",
+							"line": 234,
+							"index": 1
+						}
+					]
+				}
+			]
+		},
+		{
+			"path": "spec/ir/mck/values.md",
+			"sha256": "3872bb416fd1d47103208d92c3e698e3fdd8242023e8cf5347a5a9f5c6624898",
+			"cases": [
+				{
+					"id": "values-0001",
+					"topic": "values",
+					"number": 1,
+					"title": "Literal shorthands",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 5,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Literal:\n  IntegerLiteral: 42\n",
+							"line": 7,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Literal\": { \"IntegerLiteral\": 42 } }\n",
+							"line": 12,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Literal\": 42 }\n",
+							"line": 16,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "42\n",
+							"line": 20,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Literal\": { \"IntegerLiteral\": { \"value\": 42 } } }\n",
+							"line": 24,
+							"index": 4
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Literal\": { \"WholeNumberLiteral\": 42 } }\n",
+							"line": 28,
+							"index": 5
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Literal\": { \"attributes\": {}, \"literal\": { \"IntegerLiteral\": 42 } } }\n",
+							"line": 32,
+							"index": 6
+						}
+					]
+				},
+				{
+					"id": "values-0002",
+					"topic": "values",
+					"number": 2,
+					"title": "Variable and reference shorthands",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 36,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Variable: x\n",
+							"line": 38,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Variable\": \"x\" }\n",
+							"line": 42,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "\"x\"\n",
+							"line": 46,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Variable\": { \"attributes\": {}, \"name\": \"x\" } }\n",
+							"line": 50,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "values-0003",
+					"topic": "values",
+					"number": 3,
+					"title": "Reference shorthand",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 54,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Reference: morphir/SDK:basics#add\n",
+							"line": 56,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Reference\": \"morphir/SDK:basics#add\" }\n",
+							"line": 60,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "\"morphir/SDK:basics#add\"\n",
+							"line": 64,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Reference\": { \"attributes\": {}, \"fqname\": \"morphir/SDK:basics#add\" } }\n",
+							"line": 68,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "values-0004",
+					"topic": "values",
+					"number": 4,
+					"title": "Apply",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 72,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Apply:\n  function:\n    Reference: morphir/SDK:basics#negate\n  argument:\n    Literal:\n      IntegerLiteral: 1\n",
+							"line": 74,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Apply\": { \"function\": { \"Reference\": \"morphir/SDK:basics#negate\" }, \"argument\": { \"Literal\": { \"IntegerLiteral\": 1 } } } }\n",
+							"line": 83,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Apply\": { \"attributes\": {}, \"function\": { \"Reference\": \"morphir/SDK:basics#negate\" }, \"argument\": { \"Literal\": { \"IntegerLiteral\": 1 } } } }\n",
+							"line": 87,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0005",
+					"topic": "values",
+					"number": 5,
+					"title": "If-then-else member names",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0006: the schema's `then` and `else` are canonical; the Rust encoder's `thenBranch` and `elseBranch` are accepted for one release. Bead morphir-ir-v4-stabilize.3."
+					],
+					"line": 91,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "IfThenElse:\n  condition:\n    Literal:\n      BoolLiteral: true\n  then:\n    Literal:\n      IntegerLiteral: 1\n  else:\n    Literal:\n      IntegerLiteral: 2\n",
+							"line": 95,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"IfThenElse\": { \"condition\": { \"Literal\": { \"BoolLiteral\": true } }, \"then\": { \"Literal\": { \"IntegerLiteral\": 1 } }, \"else\": { \"Literal\": { \"IntegerLiteral\": 2 } } } }\n",
+							"line": 108,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"IfThenElse\": { \"attributes\": {}, \"condition\": { \"Literal\": { \"BoolLiteral\": true } }, \"then\": { \"Literal\": { \"IntegerLiteral\": 1 } }, \"else\": { \"Literal\": { \"IntegerLiteral\": 2 } } } }\n",
+							"line": 112,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"IfThenElse\": { \"condition\": { \"Literal\": { \"BoolLiteral\": true } }, \"thenBranch\": { \"Literal\": { \"IntegerLiteral\": 1 } }, \"elseBranch\": { \"Literal\": { \"IntegerLiteral\": 2 } } } }\n",
+							"line": 116,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "values-0006",
+					"topic": "values",
+					"number": 6,
+					"title": "Field access member names",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0006: `target` and `name`; the older `subject` and `fieldName` are accepted for one release."
+					],
+					"line": 120,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Field:\n  target:\n    Variable: record\n  name: field-name\n",
+							"line": 124,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Field\": { \"target\": { \"Variable\": \"record\" }, \"name\": \"field-name\" } }\n",
+							"line": 131,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Field\": { \"attributes\": {}, \"target\": { \"Variable\": \"record\" }, \"name\": \"field-name\" } }\n",
+							"line": 135,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Field\": { \"subject\": { \"Variable\": \"record\" }, \"fieldName\": \"field-name\" } }\n",
+							"line": 139,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "values-0007",
+					"topic": "values",
+					"number": 7,
+					"title": "Tuple value",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0009: a Tuple always carries its wrapper; a bare array at value position is a List."
+					],
+					"line": 143,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Tuple:\n  - Variable: x\n  - Literal:\n      IntegerLiteral: 1\n",
+							"line": 147,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n",
+							"line": 154,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Tuple\": { \"elements\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] } }\n",
+							"line": 158,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Tuple\": { \"attributes\": {}, \"elements\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] } }\n",
+							"line": 162,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"expect": "List"
+							},
+							"body": "[{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }]\n",
+							"line": 166,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "values-0008",
+					"topic": "values",
+					"number": 8,
+					"title": "Bare array and bare scalars at value position",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0009 closed bead morphir-ir-v4-stabilize.4: a bare array is a List, a bare number is an IntegerLiteral or FloatLiteral by its lexeme, and a bare boolean is a BoolLiteral. Writers keep the wrapped forms."
+					],
+					"line": 170,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "List:\n  - Literal:\n      IntegerLiteral: 1\n  - Literal:\n      IntegerLiteral: 2\n  - Literal:\n      IntegerLiteral: 3\n",
+							"line": 174,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n",
+							"line": 184,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "[1, 2, 3]\n",
+							"line": 188,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"List\": [1, 2, 3] }\n",
+							"line": 192,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"List\": { \"items\": [1, 2, 3] } }\n",
+							"line": 196,
+							"index": 4
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"List\": { \"attributes\": {}, \"items\": [1, 2, 3] } }\n",
+							"line": 200,
+							"index": 5
+						}
+					]
+				},
+				{
+					"id": "values-0009",
+					"topic": "values",
+					"number": 9,
+					"title": "Hole",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0008: Hole stays a value expression with an optional `expectedType`; the Native and External expressions are removed, and a reader refuses them as unknown nodes. Native and external operations are definition bodies (definitions-0007)."
+					],
+					"line": 204,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Hole:\n  reason:\n    UnresolvedReference:\n      target: my-org/project:module#deleted\n",
+							"line": 208,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Hole\": { \"reason\": { \"UnresolvedReference\": { \"target\": \"my-org/project:module#deleted\" } } } }\n",
+							"line": 215,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Hole\": { \"attributes\": {}, \"reason\": { \"UnresolvedReference\": { \"target\": \"my-org/project:module#deleted\" } } } }\n",
+							"line": 219,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_node"
+							},
+							"body": "{ \"Native\": { \"fqname\": \"morphir/SDK:basics#add\", \"nativeInfo\": { \"hint\": { \"Arithmetic\": {} } } } }\n",
+							"line": 223,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unknown_node"
+							},
+							"body": "{ \"External\": { \"externalName\": \"console.log\", \"targetPlatform\": \"javascript\" } }\n",
+							"line": 227,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "values-0010",
+					"topic": "values",
+					"number": 10,
+					"title": "Unit value",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 231,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Unit: {}\n",
+							"line": 233,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Unit\": {} }\n",
+							"line": 237,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Unit\": { \"attributes\": {} } }\n",
+							"line": 241,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0011",
+					"topic": "values",
+					"number": 11,
+					"title": "Bare scalars are literals",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0009. A bare `42` is an IntegerLiteral and a bare `true` a BoolLiteral; `4.0` is a FloatLiteral because its lexeme has a point. A bare string is never a StringLiteral (values-0002)."
+					],
+					"line": 245,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Literal:\n  BoolLiteral: true\n",
+							"line": 249,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Literal\": { \"BoolLiteral\": true } }\n",
+							"line": 254,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "true\n",
+							"line": 258,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0012",
+					"topic": "values",
+					"number": 12,
+					"title": "Bare number lexemes",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 262,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Literal:\n  FloatLiteral: 4.0\n",
+							"line": 264,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Literal\": { \"FloatLiteral\": 4.0 } }\n",
+							"line": 269,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "4.0\n",
+							"line": 273,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0013",
+					"topic": "values",
+					"number": 13,
+					"title": "Record value",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0004 applies to record values too; the direct field map is accepted for the window of decision 0006, and so is the Rust encoder's `attrs` spelling of `attributes`, a row of decision 0006's window table, which this case pins for values as types-0005 pins it for type expressions."
+					],
+					"line": 277,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Record:\n  fields:\n    name:\n      Variable: x\n    age:\n      Literal:\n        IntegerLiteral: 25\n",
+							"line": 281,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Record\": { \"fields\": { \"name\": { \"Variable\": \"x\" }, \"age\": { \"Literal\": { \"IntegerLiteral\": 25 } } } } }\n",
+							"line": 291,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Record\": { \"attributes\": {}, \"fields\": { \"name\": { \"Variable\": \"x\" }, \"age\": { \"Literal\": { \"IntegerLiteral\": 25 } } } } }\n",
+							"line": 295,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Record\": { \"attrs\": {}, \"fields\": { \"name\": { \"Variable\": \"x\" }, \"age\": { \"Literal\": { \"IntegerLiteral\": 25 } } } } }\n",
+							"line": 299,
+							"index": 3
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"Record\": { \"name\": { \"Variable\": \"x\" }, \"age\": { \"Literal\": { \"IntegerLiteral\": 25 } } } }\n",
+							"line": 303,
+							"index": 4
+						}
+					]
+				},
+				{
+					"id": "values-0014",
+					"topic": "values",
+					"number": 14,
+					"title": "Constructor and field function",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 307,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Constructor: morphir/SDK:maybe#just\n",
+							"line": 309,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n",
+							"line": 313,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Constructor\": { \"attributes\": {}, \"fqname\": \"morphir/SDK:maybe#just\" } }\n",
+							"line": 317,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0015",
+					"topic": "values",
+					"number": 15,
+					"title": "Field function",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 321,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "FieldFunction: name\n",
+							"line": 323,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"FieldFunction\": \"name\" }\n",
+							"line": 327,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"FieldFunction\": { \"attributes\": {}, \"name\": \"name\" } }\n",
+							"line": 331,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0016",
+					"topic": "values",
+					"number": 16,
+					"title": "Lambda",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 335,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Lambda:\n  pattern:\n    AsPattern:\n      pattern:\n        WildcardPattern: {}\n      name: x\n  body:\n    Variable: x\n",
+							"line": 337,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Lambda\": { \"pattern\": { \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }, \"body\": { \"Variable\": \"x\" } } }\n",
+							"line": 348,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Lambda\": { \"attributes\": {}, \"pattern\": { \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"x\" } }, \"body\": { \"Variable\": \"x\" } } }\n",
+							"line": 352,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0017",
+					"topic": "values",
+					"number": 17,
+					"title": "Let definition member names",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Decision 0006: `name`, `definition`, and `in`; the spec's older `valueName`, `valueDefinition`, and `inValue` are accepted for one release."
+					],
+					"line": 356,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "LetDefinition:\n  name: x\n  definition:\n    ExpressionBody:\n      inputTypes: {}\n      outputType: morphir/SDK:basics#int\n      body:\n        Literal:\n          IntegerLiteral: 1\n  in:\n    Variable: x\n",
+							"line": 360,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"LetDefinition\": { \"name\": \"x\", \"definition\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Literal\": { \"IntegerLiteral\": 1 } } } }, \"in\": { \"Variable\": \"x\" } } }\n",
+							"line": 374,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"LetDefinition\": { \"attributes\": {}, \"name\": \"x\", \"definition\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Literal\": { \"IntegerLiteral\": 1 } } } }, \"in\": { \"Variable\": \"x\" } } }\n",
+							"line": 378,
+							"index": 2
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {
+								"warning": "legacy_spelling"
+							},
+							"body": "{ \"LetDefinition\": { \"valueName\": \"x\", \"valueDefinition\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Literal\": { \"IntegerLiteral\": 1 } } } }, \"inValue\": { \"Variable\": \"x\" } } }\n",
+							"line": 382,
+							"index": 3
+						}
+					]
+				},
+				{
+					"id": "values-0018",
+					"topic": "values",
+					"number": 18,
+					"title": "Let recursion",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 386,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "LetRecursion:\n  definitions:\n    f:\n      ExpressionBody:\n        inputTypes: {}\n        outputType: morphir/SDK:basics#int\n        body:\n          Variable: f\n  in:\n    Variable: f\n",
+							"line": 388,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"LetRecursion\": { \"definitions\": { \"f\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"f\" } } } }, \"in\": { \"Variable\": \"f\" } } }\n",
+							"line": 401,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"LetRecursion\": { \"attributes\": {}, \"definitions\": { \"f\": { \"ExpressionBody\": { \"inputTypes\": {}, \"outputType\": \"morphir/SDK:basics#int\", \"body\": { \"Variable\": \"f\" } } } }, \"in\": { \"Variable\": \"f\" } } }\n",
+							"line": 405,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0019",
+					"topic": "values",
+					"number": 19,
+					"title": "Destructure",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 409,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Destructure:\n  pattern:\n    TuplePattern:\n      - AsPattern:\n          pattern:\n            WildcardPattern: {}\n          name: a\n      - WildcardPattern: {}\n  value:\n    Variable: pair\n  in:\n    Variable: a\n",
+							"line": 411,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Destructure\": { \"pattern\": { \"TuplePattern\": [{ \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"a\" } }, { \"WildcardPattern\": {} }] }, \"value\": { \"Variable\": \"pair\" }, \"in\": { \"Variable\": \"a\" } } }\n",
+							"line": 426,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"Destructure\": { \"attributes\": {}, \"pattern\": { \"TuplePattern\": [{ \"AsPattern\": { \"pattern\": { \"WildcardPattern\": {} }, \"name\": \"a\" } }, { \"WildcardPattern\": {} }] }, \"value\": { \"Variable\": \"pair\" }, \"in\": { \"Variable\": \"a\" } } }\n",
+							"line": 430,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0020",
+					"topic": "values",
+					"number": 20,
+					"title": "Pattern match",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 434,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "PatternMatch:\n  value:\n    Variable: x\n  cases:\n    - pattern:\n        LiteralPattern:\n          IntegerLiteral: 0\n      body:\n        Literal:\n          BoolLiteral: true\n    - pattern:\n        WildcardPattern: {}\n      body:\n        Literal:\n          BoolLiteral: false\n",
+							"line": 436,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"PatternMatch\": { \"value\": { \"Variable\": \"x\" }, \"cases\": [{ \"pattern\": { \"LiteralPattern\": { \"IntegerLiteral\": 0 } }, \"body\": { \"Literal\": { \"BoolLiteral\": true } } }, { \"pattern\": { \"WildcardPattern\": {} }, \"body\": { \"Literal\": { \"BoolLiteral\": false } } }] } }\n",
+							"line": 454,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"PatternMatch\": { \"attributes\": {}, \"value\": { \"Variable\": \"x\" }, \"cases\": [{ \"pattern\": { \"LiteralPattern\": { \"IntegerLiteral\": 0 } }, \"body\": { \"Literal\": { \"BoolLiteral\": true } } }, { \"pattern\": { \"WildcardPattern\": {} }, \"body\": { \"Literal\": { \"BoolLiteral\": false } } }] } }\n",
+							"line": 458,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0021",
+					"topic": "values",
+					"number": 21,
+					"title": "Update record",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [],
+					"line": 462,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "UpdateRecord:\n  target:\n    Variable: record\n  fields:\n    name:\n      Literal:\n        StringLiteral: new\n",
+							"line": 464,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"UpdateRecord\": { \"target\": { \"Variable\": \"record\" }, \"fields\": { \"name\": { \"Literal\": { \"StringLiteral\": \"new\" } } } } }\n",
+							"line": 474,
+							"index": 1
+						},
+						{
+							"language": "json",
+							"role": "accepted",
+							"keys": {},
+							"body": "{ \"UpdateRecord\": { \"attributes\": {}, \"target\": { \"Variable\": \"record\" }, \"fields\": { \"name\": { \"Literal\": { \"StringLiteral\": \"new\" } } } } }\n",
+							"line": 478,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "values-0022",
+					"topic": "values",
+					"number": 22,
+					"title": "Attributes are kept when compared with them",
+					"node": "Value",
+					"version": null,
+					"status": "active",
+					"compare": "attributes",
+					"prose": [],
+					"line": 482,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "Variable:\n  attributes:\n    source:\n      startLine: 3\n      startColumn: 5\n      endLine: 3\n      endColumn: 6\n  name: x\n",
+							"line": 484,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"Variable\": { \"attributes\": { \"source\": { \"startLine\": 3, \"startColumn\": 5, \"endLine\": 3, \"endColumn\": 6 } }, \"name\": \"x\" } }\n",
+							"line": 495,
+							"index": 1
+						}
+					]
+				}
+			]
+		},
+		{
+			"path": "spec/ir/mck/versions.md",
+			"sha256": "8b25a2ab521906882beeda1132b7f79dce4ea48919df67a0ee1ae9c1dafdb9cf",
+			"cases": [
+				{
+					"id": "versions-0001",
+					"topic": "versions",
+					"number": 1,
+					"title": "Reading a v3 literal into the model",
+					"node": "Value",
+					"version": 3,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A v3 tagged array with capitalized tags decodes to the same value the v4 spelling does."
+					],
+					"line": 3,
+					"fences": [
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "[\"Literal\", {}, [\"WholeNumberLiteral\", 42]]\n",
+							"line": 7,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "versions-0002",
+					"topic": "versions",
+					"number": 2,
+					"title": "Writing a Hole to v3 is refused",
+					"node": "Value",
+					"version": 3,
+					"status": "pending",
+					"compare": "stripped",
+					"prose": [
+						"The CLI refuses a v4 to v3 downgrade with `unsupported_v4_downgrade`. The kit grammar has no role for a write refusal yet; bead morphir-diwy specifies the rules for adding one. Until then this case is prose only."
+					],
+					"line": 11,
+					"fences": []
+				},
+				{
+					"id": "versions-0003",
+					"topic": "versions",
+					"number": 3,
+					"title": "One YAML document",
+					"node": "FormatVersion",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"The YAML profile admits exactly one document. A second document after `---`, or content after `...`, is refused rather than silently reading the first. YAML profile page, \"Reader restrictions\"."
+					],
+					"line": 15,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "4\n",
+							"line": 19,
+							"index": 0
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "invalid_yaml"
+							},
+							"body": "4\n---\n4\n",
+							"line": 23,
+							"index": 1
+						}
+					]
+				},
+				{
+					"id": "versions-0004",
+					"topic": "versions",
+					"number": 4,
+					"title": "No anchors, tags, merge keys or directives",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"Anchors, aliases, explicit tags, merge keys, and directives are presentation and schema machinery the profile does not carry: an IR document means the same thing wherever it is read, so nothing in it may be resolved against something else. Each is refused with `unsupported_yaml_feature`. YAML profile page, \"Reader restrictions\"."
+					],
+					"line": 29,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies: {}\n    def:\n      modules: {}\n",
+							"line": 33,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Library\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": {} } } } }\n",
+							"line": 43,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unsupported_yaml_feature"
+							},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies: &empty {}\n    def:\n      modules: *empty\n",
+							"line": 47,
+							"index": 2
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unsupported_yaml_feature"
+							},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies: !!map {}\n    def:\n      modules: {}\n",
+							"line": 57,
+							"index": 3
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unsupported_yaml_feature"
+							},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies: {}\n    def:\n      <<: {}\n      modules: {}\n",
+							"line": 67,
+							"index": 4
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "unsupported_yaml_feature"
+							},
+							"body": "%YAML 1.2\n---\nformatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies: {}\n    def:\n      modules: {}\n",
+							"line": 78,
+							"index": 5
+						}
+					]
+				},
+				{
+					"id": "versions-0005",
+					"topic": "versions",
+					"number": 5,
+					"title": "Duplicate keys",
+					"node": "Distribution",
+					"version": null,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"A repeated mapping key is refused with `duplicate_member`, the same diagnostic the JSON profile reports for a repeated object member: last-one-wins would make the same bytes mean different things in different readers. YAML profile page, \"Reader restrictions\".",
+						"These are read and written at version 3 by any binding that declares version 3 (the Rust binding does; the reference declares only 4 and skips them). They pin the classic mirror against morphir-elm's codecs."
+					],
+					"line": 90,
+					"fences": [
+						{
+							"language": "yaml",
+							"role": "canonical",
+							"keys": {},
+							"body": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies: {}\n    def:\n      modules: {}\n",
+							"line": 94,
+							"index": 0
+						},
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "{ \"formatVersion\": 4, \"distribution\": { \"Library\": { \"packageName\": \"example\", \"dependencies\": {}, \"def\": { \"modules\": {} } } } }\n",
+							"line": 104,
+							"index": 1
+						},
+						{
+							"language": "yaml",
+							"role": "rejected",
+							"keys": {
+								"diagnostic": "duplicate_member"
+							},
+							"body": "formatVersion: 4\nformatVersion: 4\ndistribution:\n  Library:\n    packageName: example\n    dependencies: {}\n    def:\n      modules: {}\n",
+							"line": 108,
+							"index": 2
+						}
+					]
+				},
+				{
+					"id": "versions-0006",
+					"topic": "versions",
+					"number": 6,
+					"title": "A v3 decimal literal keeps its text",
+					"node": "Literal",
+					"version": 3,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"morphir-elm encodes `DecimalLiteral` as a string (`Decimal.toString`); a binding that reads it through a float and writes `10.5` fails this case."
+					],
+					"line": 121,
+					"fences": [
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "[\"DecimalLiteral\", \"10.50\"]\n",
+							"line": 125,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "versions-0007",
+					"topic": "versions",
+					"number": 7,
+					"title": "A v3 derived type specification",
+					"node": "TypeSpecification",
+					"version": 3,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"morphir-elm's fourth specification: `[\"DerivedTypeSpecification\", params, { \"baseType\", \"fromBaseType\", \"toBaseType\" }]`, with the base type a v3 type and the two conversions v3 FQNames."
+					],
+					"line": 129,
+					"fences": [
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "[\"DerivedTypeSpecification\", [], { \"baseType\": [\"Reference\", {}, [[[\"morphir\"], [\"s\", \"d\", \"k\"]], [[\"string\"]], [\"string\"]], []], \"fromBaseType\": [[[\"my\"], [\"org\"]], [[\"module\"]], [\"from\", \"string\"]], \"toBaseType\": [[[\"my\"], [\"org\"]], [[\"module\"]], [\"to\", \"string\"]] }]\n",
+							"line": 133,
+							"index": 0
+						}
+					]
+				},
+				{
+					"id": "versions-0008",
+					"topic": "versions",
+					"number": 8,
+					"title": "v3 record fields are objects",
+					"node": "Type",
+					"version": 3,
+					"status": "active",
+					"compare": "stripped",
+					"prose": [
+						"morphir-elm writes a record field as `{ \"name\", \"tpe\" }`, never as a pair."
+					],
+					"line": 137,
+					"fences": [
+						{
+							"language": "json",
+							"role": "canonical",
+							"keys": {},
+							"body": "[\"Record\", {}, [{ \"name\": [\"first\"], \"tpe\": [\"Reference\", {}, [[[\"morphir\"], [\"s\", \"d\", \"k\"]], [[\"string\"]], [\"string\"]], []] }]]\n",
+							"line": 141,
+							"index": 0
+						}
+					]
+				}
+			]
+		}
+	]
+}

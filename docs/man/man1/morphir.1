@@ -261,6 +261,18 @@ List decision records, grouped by state
 \fBkb decision show\fR
 Show one decision record
 .TP
+\fBmck\fR
+Morphir Compatibility Kit: validate and identify compatibility kits
+.TP
+\fBmck check\fR
+Validate a kit directory without running an adapter
+.TP
+\fBmck kit\fR
+Inspect kit provenance and integrity
+.TP
+\fBmck kit status\fR
+Identify a kit: source, revision, corpus hash and whether it is modified
+.TP
 \fBgleam\fR
 Gleam language binding commands
 .TP
@@ -1755,6 +1767,40 @@ Also include the document body
 .TP
 \fB<ID>\fR
 Decision id or slug, e.g. 0004
+.SH "MORPHIR MCK CHECK"
+Validate a kit directory without running an adapter
+.PP
+\fBUsage:\fR morphir mck check [OPTIONS] <DIR>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-repo\-root\fR \fI<DIR>\fR
+Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)
+.TP
+\fB\-\-json\fR
+Print {files, cases, errors} as JSON on stdout
+\fBArguments:\fR
+.PP
+.TP
+\fB<DIR>\fR
+The kit directory to validate, for example spec/ir/mck
+.SH "MORPHIR MCK KIT STATUS"
+Identify a kit: source, revision, corpus hash and whether it is modified
+.PP
+\fBUsage:\fR morphir mck kit status [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+A kit directory; the kit embedded in this CLI when omitted
+.TP
+\fB\-\-repo\-root\fR \fI<DIR>\fR
+Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)
+.TP
+\fB\-\-json\fR
+Print the status as JSON on stdout
 .SH "MORPHIR GLEAM"
 Gleam language binding commands
 .PP

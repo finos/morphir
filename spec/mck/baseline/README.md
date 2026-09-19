@@ -46,6 +46,7 @@ runs them. `allowed-failing.json` for the Rust adapter is empty.
 | `reports/morphir-rust.json` | Version 1 report, Rust adapter | Artifact `mck-report-morphir-rust` of finos/morphir CI run [35407504580](https://github.com/finos/morphir/actions/runs/35407504580) on `main` at the parent pin, Linux |
 | `transcripts/morphir-typescript.ndjson` | Every protocol message of the TypeScript adapter run, as `{"dir":"request"\|"response","message":...}` lines | A recording proxy between the old driver and the adapter. 706 requests: 1 `capabilities`, 678 `decode`, 14 `readTree`, 12 `writeTree`, 1 `exit`. Largest message 4 635 bytes. It contains no machine-specific path. |
 | `corpus-inventory.json` | The 15 paths of the legacy corpus set and their hash | The old driver's `collectSnapshot` and `contentHash` |
+| `kit-cases.json` | The old parser's reading of every case file: ids, heading keys, prose, and each fence's info, body and line, with the file's SHA-256 | The old driver's `loadKit`, added with IR-1. `crates/morphir-mck/tests/typescript_parity.rs` compares the Rust parser with it for every file whose digest still matches |
 | `hash-vectors.json` | Literal vectors for `mck-file-map-sha256/1` | The old driver's `contentHash`; the `single` vector was recomputed independently with .NET SHA-256 |
 
 The proxied run's report equals `reports/morphir-typescript.json` under the parity exclusions, so

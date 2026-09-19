@@ -1,0 +1,18 @@
+[package]
+name = "morphir-mck"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Morphir Compatibility Kit engine: kit parsing, loading, hashing and provenance"
+# The build script embeds the IR kit. It reuses the crate's std-only kit
+# syntax modules by path, so it needs no build-dependencies.
+build = "build.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
