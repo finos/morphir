@@ -29,7 +29,7 @@ gap.
 
 | Option | Outcome | Why |
 | --- | --- | --- |
-| Capability sets in an IR-owned vocabulary, verified by the MCK | Chosen | Features are properties of the IR; the kit already proves them per binding, so a declaration cannot drift unnoticed |
+| Capability sets in an IR-owned vocabulary, verified by the MCK | Chosen | Features are properties of the IR, and the kit is where a claim about one can be put under test, so a declaration cannot drift unnoticed |
 | A vocabulary owned by the extension protocol | Rejected | Would duplicate the IR's own feature taxonomy and drift from the cases that define it |
 | Per-extension boolean flags, hand-maintained | Rejected | No evidence behind a claim; rots as bindings change |
 | Nothing declared; report gaps at run time only | Rejected | A host cannot choose a provider or check a pipeline before running it |
@@ -39,10 +39,14 @@ gap.
 The IR defines the features. The MCK already enumerates them case by case, grouped by the
 specification page that owns each area: `types`, `values`, `patterns-and-literals`, `names`,
 `definitions`, `distributions`, `versions`, `document-tree`. Adapter reports
-(`spec/mck/baseline/reports/*.json`) record pass or fail per case id per binding. So the question
-"which features does this binding handle" already has an empirical answer in CI; what is missing
-is a way for an extension to state the same thing in a request, and for the toolchain to act on
-it.
+(`spec/mck/baseline/reports/*.json`) record pass or fail per case id per binding. So the features
+already have names, and each name already has cases standing behind it.
+
+What the kit does not have yet is evidence at the level a capability set talks about. The IR suite
+drives codec operations — decode, re-encode, read and write a document tree — so its report says
+whether a binding can *carry* a feature through serialization, not whether an extension can
+*lower* or *generate* it. Two things are therefore missing: a way for an extension to state its
+capability set in a request, and cases that exercise the extension itself.
 
 Putting the vocabulary anywhere else would fork it. If the protocol owned the tags, the IR
 specification and the protocol would each carry a partial list of IR features and they would
@@ -88,11 +92,29 @@ in anticipation.
 
 ## Verification
 
-A declared capability is a claim; the MCK report is the evidence. For a binding enrolled in the
-kit, CI fails when the declaration and the report disagree in either direction: claiming `full`
-for an area with failing cases, and claiming `none` or excluding a tag whose cases pass. A binding
-not yet enrolled may declare, and its declaration is marked unverified rather than trusted.
-Enrollment is the expectation, not an option, and an unverified declaration is a gap to close.
+A declared capability is a claim and a kit report is the evidence, but only a report that exercises
+the operation being claimed.
+
+The IR suite does not. Its cases drive codec operations — `decode`, `readTree`, `writeTree` — and
+its records are pass or fail per case id, profile and role. That is evidence for one narrow claim:
+that a binding can carry a feature through serialization. It cannot confirm or refute a frontend's
+`lowers` or a backend's `accepts`, and reading it as if it could is wrong in both directions. The
+native Elm frontend is the example again: it lowers no values at all, yet every `values-NNNN` case
+passes through the Rust binding's codec, so the IR report would reject its honest `values: none`
+and would equally have accepted a false `values: full`.
+
+Capability evidence comes from extension-level cases instead: a source input, the extension invoked
+under MEP, and an assertion about the IR it produced or consumed, reported per feature tag. That is
+a second MCK suite beside the IR suite — the kit already expects to grow more than one, and the
+package suite is the other. The IR suite keeps owning the vocabulary; the extension suite produces
+the evidence for a declaration, and the IR suite's report remains a precondition on the binding
+underneath, since an extension cannot honestly claim to emit what its binding cannot serialize.
+
+With that suite in place, CI fails when a declaration and the extension report disagree in either
+direction: claiming `full` for an area with failing cases, and claiming `none` or excluding a tag
+whose cases pass. Until it exists, every declaration is unverified. An extension not yet enrolled
+may declare, and its declaration is marked unverified rather than trusted. Enrollment is the
+expectation, not an option, and an unverified declaration is a gap to close.
 
 Run-time reporting closes the loop. When an extension meets a construct it cannot handle, it
 reports it (see the unresolved item below). Anything reported that the declaration did not
@@ -123,14 +145,16 @@ selecting a provider or validating a pipeline.
 
 The IR specification gains a feature-tag registry under `spec/ir/mck`, tied to the cases that
 prove each tag. MEP capabilities gain a `lowers`-style field for frontends, and equivalents for
-backends and transforms, referencing that vocabulary. The MCK gains a check that compares a
-binding's declaration against its report.
+backends and transforms, referencing that vocabulary. The MCK gains an extension suite whose cases
+compile and generate through MEP rather than round-tripping documents, and a check comparing an
+extension's declaration against that suite's report. Building that suite is the cost of this
+decision, and nothing is verified before it lands.
 
 Extensions may be partial and say so. A types-only frontend is a frontend with a declared gap, not
 a frontend with a narrower contract, so the same provider improves over time without callers
 changing how they call it.
 
-Bindings that do not run the kit can still declare capabilities, but the declaration is
+Extensions that do not run the kit can still declare capabilities, but the declaration is
 unverified, and that distinction is visible rather than implied.
 
 ## Unresolved
@@ -147,6 +171,7 @@ than one revision.
 ## Revisit when
 
 Revisit when the first transform extension ships, since that is the first real test of the
-vocabulary pointing in both directions. Revisit the verification rule when a binding outside the
-kit needs its declaration trusted, and the tag granularity when an extension needs an exclusion
-the area-plus-tag shape cannot express.
+vocabulary pointing in both directions. Revisit the verification rule when the extension suite lands
+and its case shape is known, or sooner if an extension outside the kit needs its declaration
+trusted, and the tag granularity when an extension needs an exclusion the area-plus-tag shape
+cannot express.
