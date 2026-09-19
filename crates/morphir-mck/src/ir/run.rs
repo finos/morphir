@@ -341,7 +341,8 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
             .collect::<Vec<_>>()
     };
 
-    if run.case.status == Status::Pending {
+    // Pending is skipped only while the adapter lives (departure 14).
+    if run.case.status == Status::Pending && run.dead.is_none() {
         return Ok(all(Verdict::skipped("pending".to_owned())));
     }
     if let Some(unresolved) = run.members.iter().find_map(|t| t.body.as_ref().err()) {
@@ -448,12 +449,7 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
             },
             input: canonical_body,
         };
-        judge_tree_write(
-            label,
-            run.members,
-            manifest,
-            &write_tree(testee, &request)?,
-        )
+        judge_tree_write(label, run.members, manifest, &write_tree(testee, &request)?)
     };
 
     Ok(run
@@ -693,7 +689,10 @@ pub fn run_kit(kit: &Kit, testee: &mut dyn Testee, options: &RunOptions) -> Run 
             for target in targets.iter().filter(|t| t.role != Role::File) {
                 let started = clock();
                 let verdict = 'verdict: {
-                    if case.status == Status::Pending {
+                    // After an adapter failure a pending fence is a kit error
+                    // like any other, so a dead adapter never passes a run
+                    // (departure 14).
+                    if case.status == Status::Pending && dead.is_none() {
                         break 'verdict Verdict::skipped("pending".to_owned());
                     }
                     let body = match &target.body {
@@ -1026,6 +1025,86 @@ mod tests {
                     Some("adapter unavailable: adapter exited with code 3".into())
                 ),
             ]
+        );
+    }
+
+    /// A pending case is skipped only while the adapter is alive: after a
+    /// failure a dead adapter could otherwise pass an all-pending selection
+    /// (departure 14). A pending case may not carry file fences, so the set
+    /// path is reached only by a kit that already reports that error.
+    #[test]
+    fn pending_fences_after_an_adapter_failure_are_kit_errors() {
+        let kit = kit_of(&[
+            (
+                "spec/ir/mck/types.md",
+                "## types-0001: undecided {node=Type status=pending}\n```json rejected diagnostic=x\n1\n```\n",
+            ),
+            (
+                "spec/ir/mck/document-tree.md",
+                "## document-tree-0001: tree {node=Type status=pending}\n```yaml canonical\nUnit: {}\n```\n```yaml file path=manifest\npathBudget: 4000\n```\n",
+            ),
+        ]);
+        let run = run_with(
+            &kit,
+            None,
+            &mut Scripted(|_: &Request| {
+                Err::<Value, _>("failed to start adapter: nope".to_owned())
+            }),
+        );
+        let results: Vec<_> = outcomes(&run)
+            .into_iter()
+            .map(|(id, _, result, message)| (id, result, message))
+            .collect();
+        assert_eq!(
+            results,
+            vec![
+                (
+                    "document-tree-0001".into(),
+                    "kit-error",
+                    Some("spec/ir/mck/document-tree.md:2: pending case may not carry canonical, accepted, or file fences (document-tree-0001)".into())
+                ),
+                (
+                    "document-tree-0001".into(),
+                    "kit-error",
+                    Some("failed to start adapter: nope".into())
+                ),
+                (
+                    "document-tree-0001".into(),
+                    "kit-error",
+                    Some("failed to start adapter: nope".into())
+                ),
+                (
+                    "types-0001".into(),
+                    "kit-error",
+                    Some("failed to start adapter: nope".into())
+                ),
+            ]
+        );
+        assert_eq!(verdict(&run.report, false), RunVerdict::Failed);
+
+        let kit = kit_of(&[(
+            "spec/ir/mck/types.md",
+            &format!(
+                "{UNIT}## types-0002: undecided {{node=Type status=pending}}\n```json rejected diagnostic=x\n1\n```\n"
+            ),
+        )]);
+        let run = run_with(
+            &kit,
+            None,
+            &mut Scripted(|r: &Request| match r {
+                Request::Capabilities => Ok(caps(&["current"])),
+                _ => Err("adapter exited with code 3".to_owned()),
+            }),
+        );
+        assert_eq!(
+            outcomes(&run).last().unwrap().3.as_deref(),
+            Some("adapter unavailable: adapter exited with code 3")
+        );
+        assert!(
+            run.report
+                .records
+                .iter()
+                .all(|r| r.result == Outcome::KitError)
         );
     }
 

@@ -110,6 +110,7 @@ regression test, and any further one needs its own approval before it lands.
 | 11 | The report gate never compares the report's records with the kit | `report check` rejects missing, extra and duplicate records against the kit's expected inventory | #849 |
 | 12 | `check` never opens `text` fixtures and decodes case files lossily | `check` reports unusable fixtures and undecodable case files as kit errors | #849 (IR-1 fixture confinement) |
 | 13 | Capabilities with an open-ended `formatVersions` interval are not checked against `versions` | Every major such an interval holds, from its lower bound up to the highest listed major (or the domain floor, if higher), must be listed | #876 review; maintainer approval 2026-09-19 |
+| 14 | A pending case is skipped even after the adapter failed, so a dead adapter passes a selection of pending cases | After an adapter failure every fence is a kit error, pending ones included; pending is skipped only while the adapter lives | #879 review; maintainer approval 2026-09-19 |
 
 Departures 2, 4, 5, 6, 11, 12 and 13 cannot change a report for a well-behaved adapter, so they do not
 affect the parity comparison.

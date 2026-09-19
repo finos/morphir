@@ -214,6 +214,10 @@ After the first transport failure the session is broken for good (kept). The fai
 `kit-error` record, and every later fence records `adapter unavailable: <first failure>`. A broken
 session is never restarted within a run.
 
+Pending fences are no exception (hardened). The TypeScript driver skipped a pending case before
+consulting the failure, so a dead adapter could pass a selection of pending cases. This is departure
+14 in [migration.md](migration.md#approved-departures-from-old-runner-behaviour).
+
 On timeout or cancellation the adapter and its descendants are terminated and reaped: the process
 group on Unix, a Job Object on Windows. Ctrl-C does the same before the CLI exits.
 
