@@ -1,0 +1,10 @@
+[project]
+name = "examples/gleam-types"
+source_directory = "src"
+exposed_modules = ["model", "api"]
+
+[frontend]
+language = "gleam"
+
+[codegen]
+targets = ["gleam"]

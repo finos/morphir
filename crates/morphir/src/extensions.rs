@@ -36,10 +36,24 @@ pub fn extension_registry(
 /// The native Elm provider is opt-in: it is registered only when `only` names
 /// it, so a command that does not ask for it by id behaves as though it were
 /// not built in at all.
+///
+/// The former Gleam id is an alias for its native provider, unless an installed
+/// extension still uses that id. An exact installed selection remains binding.
 pub fn extension_registry_for(
     installed: impl IntoIterator<Item = InstalledExtensionSnapshot>,
     only: Option<&str>,
 ) -> Result<ExtensionRegistry, CliError> {
+    let installed: Vec<_> = installed.into_iter().collect();
+    let only = match only {
+        Some("morphir-gleam-binding")
+            if !installed.iter().any(|snapshot| {
+                snapshot.installed().extension_id().as_str() == "morphir-gleam-binding"
+            }) =>
+        {
+            Some("morphir-gleam")
+        }
+        selector => selector,
+    };
     let gleam =
         NativeExtension::frontend_backend(GleamExtension).map_err(|error| CliError::Extension {
             message: format!("Failed to construct native Gleam provider: {error}"),
@@ -406,6 +420,28 @@ mod tests {
     use serde_json::json;
     use std::collections::HashMap;
     use std::path::Path;
+
+    #[test]
+    fn gleam_native_selectors_resolve_to_the_same_native_provider() {
+        for selector in [None, Some("morphir-gleam"), Some("morphir-gleam-binding")] {
+            let registry = super::extension_registry_for([], selector).unwrap();
+            for policy in [
+                InvocationPolicy::PreferDirect,
+                InvocationPolicy::ProtocolOnly,
+            ] {
+                let frontend = registry.resolve_frontend("gleam", "4", policy).unwrap();
+                let backend = registry.resolve_backend("gleam", "4", policy).unwrap();
+                assert_eq!(frontend.info().id, "morphir-gleam");
+                assert_eq!(backend.info().id, "morphir-gleam");
+                let expected = match policy {
+                    InvocationPolicy::PreferDirect => super::InvocationMode::NativeDirect,
+                    InvocationPolicy::ProtocolOnly => super::InvocationMode::NativeMep,
+                };
+                assert_eq!(frontend.invocation_mode(), expected);
+                assert_eq!(backend.invocation_mode(), expected);
+            }
+        }
+    }
 
     fn compile_request(output_dir: &Path) -> CompileRequest {
         CompileRequest {

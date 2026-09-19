@@ -1,0 +1,3 @@
+import model
+
+pub type Customer = model.Customer(model.CustomerId)
