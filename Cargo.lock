@@ -2010,15 +2010,6 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
-dependencies = [
- "dirs-sys",
-]
-
-[[package]]
-name = "dirs"
 version = "7.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d57d423b3c82e89b9a24ca3091fee61f456a26edbd28d26c65906f4bc1dcd8f"
@@ -4036,9 +4027,9 @@ dependencies = [
 
 [[package]]
 name = "jupyter-protocol"
-version = "1.5.0"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ebf93748a4d7fff4b475da4f50d95b1ea6cf9ed528ed5ec26db8228eabc112a"
+checksum = "670197bfdc3b171334f450d9a3ae47999e8aec048579cc3c52f752cc8ff59843"
 dependencies = [
  "async-trait",
  "bytes",
@@ -4506,7 +4497,7 @@ dependencies = [
  "clap",
  "crossterm",
  "cucumber",
- "dirs 7.0.0",
+ "dirs",
  "ed25519-dalek",
  "fs2",
  "futures-util",
@@ -4573,7 +4564,7 @@ dependencies = [
  "cap-fs-ext 4.0.3",
  "cap-std 4.0.3",
  "cucumber",
- "dirs 6.0.0",
+ "dirs",
  "flate2",
  "fs2",
  "glob",
@@ -4624,7 +4615,7 @@ dependencies = [
  "granit-parser",
  "indexmap",
  "lasso",
- "num-bigint 0.4.8",
+ "num-bigint 0.5.1",
  "rstest",
  "schemars",
  "serde",
@@ -4641,7 +4632,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.23.1",
- "dirs 6.0.0",
+ "dirs",
  "extism",
  "jsonrpsee",
  "kameo",
@@ -4672,7 +4663,7 @@ version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "cap-std 4.0.3",
- "dirs 6.0.0",
+ "dirs",
  "keyring",
  "morphir-common",
  "morphir-config",
@@ -4722,7 +4713,7 @@ dependencies = [
  "regex-lite",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
@@ -4755,7 +4746,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-gleam-binding"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "cap-fs-ext 4.0.3",
@@ -4771,13 +4762,13 @@ dependencies = [
  "morphir-common",
  "morphir-core",
  "morphir-extension-sdk",
- "num-bigint 0.4.8",
+ "num-bigint 0.5.1",
  "percent-encoding",
  "pretty",
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "tokio",
  "url",
@@ -4871,9 +4862,9 @@ checksum = "1d87ecb2933e8aeadb3e3a02b828fed80a7528047e68b4f424523a0981a3a084"
 
 [[package]]
 name = "nbformat"
-version = "1.2.2"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89bd627a9b44814f546a1ce9dbc088599d3a030b8667b8816c07f2bd5a4507ba"
+checksum = "b2c06543f305caee515923b125a737c4d58079c063e25701f93f45077bb8d622"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6465,9 +6456,9 @@ dependencies = [
 
 [[package]]
 name = "rstest"
-version = "0.26.1"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5a3193c063baaa2a95a33f03035c8a72b83d97a54916055ba22d35ed3839d49"
+checksum = "948203e6d13b83e51a90d7cf236dd58a0065f23f4b902f00f306e7eb2bd09b9c"
 dependencies = [
  "futures-timer",
  "futures-util",
@@ -6476,9 +6467,9 @@ dependencies = [
 
 [[package]]
 name = "rstest_macros"
-version = "0.26.1"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c845311f0ff7951c5506121a9ad75aec44d083c31583b2ea5a30bcb0b0abba0"
+checksum = "a8d92eaf7b6e51e12471d71ddc72608e7151573de44099aacfbb1128177c0da4"
 dependencies = [
  "cfg-if",
  "glob",
@@ -7360,7 +7351,7 @@ version = "0.6.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1d9c6af2edf0ed6c466c07c9d6b8188999eaa3b504e49008f7c927d4eb49960"
 dependencies = [
- "dirs 7.0.0",
+ "dirs",
  "miette",
  "owo-colors",
  "supports-color",
