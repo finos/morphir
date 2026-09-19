@@ -6,8 +6,8 @@ sidebar_label: Example integration tests
 # Example integration tests
 
 `morphir itest` discovers `scenario.ipynb` and `scenarios.md` recursively and exercises
-real Morphir CLI commands. Both formats define explanations, commands and Rego
-assertions for ordinary on-disk projects. They can also supply optional project
+real Morphir CLI commands. Both formats define explanations, commands, Rego
+assertions and golden text comparisons for ordinary on-disk projects. They can also supply optional project
 files in cells, including entirely self-contained examples. Milestone 0 uses an embedded
 Regorus evaluator, so the baseline suite requires no OPA executable or downloaded
 extension. See [the evaluation architecture](evaluation.md) for the native
@@ -137,9 +137,10 @@ filter when changing a title, or for headings without ASCII words.
 For example, `--filter 'cli/basics#version'` runs only the version scenario;
 `--filter cli/basics` runs every scenario in that directory and its descendants.
 
-The three metadata markers are `yaml morphir:command`, `yaml morphir:assertion`
-and `yaml morphir:file`. Each metadata fence applies to the next fenced source
-block. Prose, lists and subheadings may separate the pair. A new `##` scenario
+The paired metadata markers are `yaml morphir:command`, `yaml morphir:assertion`,
+`yaml morphir:file` and inline `yaml morphir:golden`. Each metadata fence applies
+to the next fenced source block. A golden with `expected_file` instead stands
+alone, without a source fence. Prose, lists and subheadings may separate the pair. A new `##` scenario
 heading or another metadata fence before the source is an error. Executable
 pairs must be top-level, with opening fences at column one, rather than nested
 in blockquotes or lists. Both backtick and tilde fences are supported.
@@ -385,6 +386,92 @@ A capture uses format `json`, `text` or `exists`. A present file becomes
 `{"kind":"file"}` respectively. An absent path becomes `{"kind":"missing"}`.
 Present directories and symlinks are errors. Invalid requested JSON is an error;
 it does not become null. A decoded JSON null and an absent file stay distinct.
+
+## Golden text assertions
+
+Use golden assertions when the exact generated text is part of the expected
+behavior. They work alongside Rego assertions and reference a preceding command
+by its cell/block ID. A golden passes only when that command exits successfully
+and its selected text equals the authored expectation. The driver evaluates this
+rule through the same real `morphir eval` subprocess used for Rego assertions.
+Golden checks do not add another evaluator provider.
+
+For a checked-in expected file, the Markdown metadata fence stands alone:
+
+```yaml morphir:golden
+id: generated-source
+command: generate
+actual: .morphir/out/generate/gleam.dest/main.gleam
+expected_file: golden/main.gleam
+```
+
+`actual` is relative to the temporary project workspace. `expected_file` is
+relative to the directory containing the scenario document, even when
+`workspace.path` selects a subdirectory or the workspace is inline. Expected
+files need not be embedded in the document. All expectations are read before any
+scenario command runs, so generated output cannot replace the baseline mid-run.
+Both paths must be portable relative paths; symlinks and non-regular files fail.
+Missing files and invalid UTF-8 fail instead of becoming empty expectations.
+
+For inline expected text, omit `expected_file` and pair the metadata with a
+source fence. Its language is for highlighting; its contents are literal text.
+Prose may separate the fences as with existing paired blocks.
+
+````markdown
+```yaml morphir:golden
+id: generated-function
+command: generate
+actual: .morphir/out/generate/gleam.dest/main.gleam
+select: {kind: lines, start: 3, end: 5}
+```
+
+Compare this exact function, including indentation and the final newline:
+
+```gleam
+pub fn hello() {
+  "world"
+}
+```
+````
+
+A notebook uses the same fields under a code cell's
+`metadata.morphir.itest`, plus `"kind": "golden"`. The cell source holds the
+inline expected text. When `expected_file` is supplied, the cell source must be
+empty; combining the two is an error. Golden cells are expectations, not
+workspace files, and do not require `entrypoints`.
+
+The optional `select` field selects **actual** contents only. The entire
+expected contents are compared against that selection:
+
+| Selection | Behavior |
+| --- | --- |
+| Omitted or `{kind: all}` | Compare the complete file |
+| `{kind: lines, start: 3, end: 5}` | Compare lines 3 through 5, inclusive and numbered from 1 |
+| `{kind: between, start: "BEGIN", end: "END"}` | Compare the exact text after the start marker and before the end marker |
+
+Lines split at LF and retain their terminators, including CRLF. A final
+unterminated line counts; a trailing LF does not create an extra empty line.
+Zero, reversed and out-of-range line selections fail. Markers are literal,
+nonempty, distinct strings, each occurring exactly once in the actual file.
+Missing, repeated, overlapping or reversed markers fail. Marker selection does
+not trim whitespace or remove surrounding newlines. For example,
+`start: "BEGIN\n"` excludes that newline, while `start: "BEGIN"` retains it.
+
+Comparison defaults to `line_endings: exact`: whitespace, CRLF versus LF, and
+the final newline all matter. Use `line_endings: lf` to convert CRLF to LF on
+both sides **after selection**. It does not trim, reindent, replace lone CRs or
+add a final newline. Markers must match the original file's line endings.
+
+A mismatch reports the scenario, command, golden ID, actual path, selector,
+expected source and a bounded unified-style diagnostic diff. Missing final
+newlines and control characters are made visible. With `--keep-temp`, the
+assertion's `request.json` retains the selected actual and expected contents
+sent to the evaluator, including any explicit normalization. Diffs are diagnostic
+text, not patches to apply. There is no automatic golden-update mode: edit and
+review expectations intentionally.
+
+See the [Gleam example](https://github.com/finos/morphir/blob/main/examples/gleam/compile-generate/scenarios.md)
+for whole-file, line-range and marker checks alongside semantic Rego assertions.
 
 ## Isolation and diagnosis
 

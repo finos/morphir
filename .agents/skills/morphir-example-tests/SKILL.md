@@ -68,6 +68,18 @@ source fixtures under `crates/morphir/tests/fixtures/itest/`.
    stdout JSON decoding and artifact captures explicitly. Missing files, JSON
    null, undefined rules and errors are distinct. Never derive expected values
    from the implementation during a run.
+   For exact generated text, use `yaml morphir:golden` with `command`, `actual`
+   and either a paired literal source fence or a standalone `expected_file`.
+   Notebook code cells use `kind: golden`; file expectations require empty
+   source. Expected file paths are relative to the scenario directory and are
+   frozen before commands; actual paths are relative to the temporary project.
+   Use `select: {kind: lines, start: 3, end: 5}` for inclusive lines or
+   `select: {kind: between, start: "BEGIN", end: "END"}` for unique literal
+   markers. Omit selection for the whole file. Exact comparison is the default;
+   use `line_endings: lf` explicitly for CRLF normalization after selection.
+   Golden checks also require exit code zero. Review fixed expected content;
+   never regenerate it as part of the test run. Inspect the diff and retained
+   evaluation request when diagnosing mismatches.
 4. Follow root checkout setup before testing. Run
    `mise run test:examples -- --filter <category/example>` before changing the
    CLI. Verify independent Markdown headings, prose between paired fences and

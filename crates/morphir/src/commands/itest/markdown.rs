@@ -21,6 +21,7 @@ enum Block {
 enum Role {
     Command,
     Assertion,
+    Golden,
     File,
 }
 
@@ -37,6 +38,7 @@ impl Role {
         Ok(Some(match words[1] {
             "morphir:command" => Self::Command,
             "morphir:assertion" => Self::Assertion,
+            "morphir:golden" => Self::Golden,
             "morphir:file" => Self::File,
             other => bail!("unknown Morphir fence {other:?}"),
         }))
@@ -206,6 +208,10 @@ fn cell(role: Role, mut metadata: Map<String, Value>, info: &str, source: &str) 
             metadata.insert("language".into(), json!(language));
             json!({"file": metadata})
         }
+        Role::Golden => {
+            metadata.insert("kind".into(), json!("golden"));
+            json!({"itest":metadata})
+        }
         Role::Command | Role::Assertion => {
             let kind = if matches!(role, Role::Command) {
                 "command"
@@ -268,10 +274,16 @@ pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
                         pending.is_none(),
                         "metadata needs a source fence before another metadata fence"
                     );
-                    pending = Some((
-                        role,
-                        yaml(source).with_context(|| format!("Markdown body line {line}"))?,
-                    ));
+                    let metadata =
+                        yaml(source).with_context(|| format!("Markdown body line {line}"))?;
+                    if matches!(role, Role::Golden) && metadata.contains_key("expected_file") {
+                        // A disk expectation has no inline source fence.
+                        let cell = cell(role, metadata, "text", "")
+                            .with_context(|| format!("Markdown body line {line}"))?;
+                        sections.last_mut().unwrap().cells.push(cell);
+                    } else {
+                        pending = Some((role, metadata));
+                    }
                 } else if let Some((role, metadata)) = pending.take() {
                     let cell = cell(role, metadata, &info, source)
                         .with_context(|| format!("Markdown body line {line}"))?;
