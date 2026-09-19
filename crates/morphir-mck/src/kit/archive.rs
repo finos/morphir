@@ -22,11 +22,10 @@ use std::path::Path;
 
 use flate2::read::GzDecoder;
 use tar::EntryType;
-use unicode_normalization::UnicodeNormalization;
 
 use super::closure::FIXED_INPUTS;
 use super::load::load_kit;
-use super::manifest::{CommitId, MAX_FILES, MAX_PATH_BYTES, check_snapshot_path};
+use super::manifest::{CommitId, MAX_FILES, MAX_PATH_BYTES, check_snapshot_path, portable_key};
 use super::snapshot::{Snapshot, SnapshotError, collect};
 use super::source::{KIT_PATH, KitSource};
 
@@ -200,7 +199,7 @@ fn scan(
             )));
         }
         check_snapshot_path(relative).map_err(ArchiveError::Unsafe)?;
-        let folded: String = relative.nfc().collect::<String>().to_ascii_lowercase();
+        let folded = portable_key(relative);
         if let Some(previous) = pass.folded.get(&folded) {
             return Err(ArchiveError::Unsafe(if previous == relative {
                 format!("\"{relative}\" appears twice")
