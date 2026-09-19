@@ -39,6 +39,8 @@ sha2 = "0.10"
 # Kit archives from github:finos/morphir (morphir-mck)
 flate2 = "1"
 tar = { version = "0.4", default-features = false }
+# `mck kit vendor --source github:finos/morphir` (crates/morphir)
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 
 # TUI
 ratatui = "0.30"

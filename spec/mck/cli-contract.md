@@ -43,7 +43,9 @@ morphir mck kit update --kit <dir> [--source <source>] [--revision <commit>] [--
 ```
 
 For `kit vendor` and `kit update`, `--revision` is required with `--source github:finos/morphir` and
-is usage error 2 with any other source.
+is usage error 2 with any other source. `kit update --revision <commit>` without `--source` updates a
+snapshot whose manifest records the GitHub source, and is usage error 2 for any other snapshot. The
+existing snapshot is verified before anything is downloaded.
 
 `kit vendor`, `kit update` and the managed-kit rules are specified in [kit-manifest.md](kit-manifest.md).
 `kit sync` is retired and has no successor: parent builds embed the corpus directly.

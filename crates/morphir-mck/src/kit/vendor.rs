@@ -500,7 +500,7 @@ pub fn default_update_source(lock: &Lock) -> Result<VendorSource, VendorError> {
             "this snapshot was copied from a local directory; name it again with --source <path>".to_owned(),
         )),
         LockSource::Github { .. } => Err(VendorError::Refused(
-            "this snapshot came from github:finos/morphir; pass --source github:finos/morphir --revision <commit>".to_owned(),
+            "this snapshot came from github:finos/morphir; pass --revision <full commit> to update it".to_owned(),
         )),
     }
 }
@@ -510,11 +510,8 @@ pub fn default_update_source(lock: &Lock) -> Result<VendorSource, VendorError> {
 /// new one is staged and verified, the old one renamed aside, the new one
 /// renamed in, and the old one deleted; a failed second rename restores the
 /// old one. Nothing is committed to version control.
-pub fn update(
-    root: &Path,
-    source: &VendorSource,
-    expected: Option<&ContentDigest>,
-) -> Result<UpdateOutcome, VendorError> {
+/// The checks an update runs on the existing snapshot before it looks at the`n/// new source: no leftovers beside it, a manifest, and a snapshot that`n/// verifies. Returns its manifest. A caller that must fetch the new source`n/// runs this first, so a snapshot that will be refused costs no download.
+pub fn check_updatable(root: &Path) -> Result<Lock, VendorError> {
     check_leftovers(root)?;
     if !manifest_path(root).is_file() {
         return Err(VendorError::Refused(format!(
@@ -522,6 +519,14 @@ pub fn update(
             root.display()
         )));
     }
+    Ok(open_managed(root)?.lock)
+}
+
+pub fn update(
+    root: &Path,
+    source: &VendorSource,
+    expected: Option<&ContentDigest>,
+) -> Result<UpdateOutcome, VendorError> {
     if let VendorSource::Local(path) = source
         && std::path::absolute(path).ok() == std::path::absolute(root).ok()
     {
@@ -529,7 +534,7 @@ pub fn update(
             "a snapshot cannot be updated from itself".to_owned(),
         ));
     }
-    let old = open_managed(root)?.lock;
+    let old = check_updatable(root)?;
     let (snapshot, provenance) = materialize(source)?;
     let new = snapshot.lock(provenance);
     check_expected(&new, expected)?;

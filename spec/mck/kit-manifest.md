@@ -201,11 +201,11 @@ digests equal the new snapshot, the command is a successful no-op. Anything else
 There is no force option in this delivery.
 
 `kit update --kit <dir> [--source <source>] [--revision <commit>]` replaces only a managed snapshot.
-`--source` defaults to the source kind recorded in the manifest. `--revision` is required when the
-source is `github:finos/morphir` and is usage error 2 with `embedded` or a local path, whose
+`--source` defaults to the source kind recorded in the manifest, so `--revision` alone updates a snapshot
+that came from GitHub. `--revision` is required when the source is `github:finos/morphir` and is usage error 2 with `embedded` or a local path, whose
 revision comes from the CLI or from the source snapshot's own manifest and may be null. The steps:
 
-1. Verify the existing snapshot against its manifest. An edited, missing or extra file is refused,
+1. Verify the existing snapshot against its manifest, before anything is downloaded. An edited, missing or extra file is refused,
    exit 1, naming the files. Unrelated content is never deleted.
 2. Stage and verify the new snapshot as above.
 3. Carry the snapshot root's `.gitattributes`, if any, into staging. Rename the old snapshot to

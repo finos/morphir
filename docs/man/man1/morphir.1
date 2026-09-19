@@ -1844,7 +1844,7 @@ The root of the vendored snapshot to replace
 Where the new kit data comes from; defaults to the snapshot's own source when that needs no further input (`embedded`)
 .TP
 \fB\-\-revision\fR \fI<COMMIT>\fR
-The full 40\-character commit to acquire; required with `github:finos/morphir` and refused with any other source
+The full 40\-character commit to acquire from github:finos/morphir. Without \-\-source it updates a snapshot that came from GitHub; it is refused for any other source
 .TP
 \fB\-\-expect\-digest\fR \fI<DIGEST>\fR
 Fail, changing nothing, unless the new snapshot digest is exactly this

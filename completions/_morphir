@@ -947,7 +947,7 @@ cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true 
             flag --source help="Where the new kit data comes from; defaults to the snapshot's own source when that needs no further input (`embedded`)" {
                 arg <SOURCE>
             }
-            flag --revision help="The full 40-character commit to acquire; required with `github:finos/morphir` and refused with any other source" {
+            flag --revision help="The full 40-character commit to acquire from github:finos/morphir. Without --source it updates a snapshot that came from GitHub; it is refused for any other source" {
                 arg <COMMIT>
             }
             flag --expect-digest help="Fail, changing nothing, unless the new snapshot digest is exactly this" {
