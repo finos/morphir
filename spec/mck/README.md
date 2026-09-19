@@ -28,14 +28,14 @@ On 2026-09-18 ownership of all shared MCK tooling moved to this repository, in R
 records it and supersedes the ownership portion of
 [decision 0001](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
 
-**The Rust tooling does not exist yet.** Everything under "Current driver and contracts" still describes the
+**The Rust tooling is incomplete.** `morphir mck check` and `morphir mck kit status` exist (IR-1); `run`, coverage, the schema and report gates and kit vendoring do not. Everything under "Current driver and contracts" still describes the
 TypeScript driver, which stays the authoritative gate until cutover. Its MCK features are frozen.
 
 | Document | Content | Status |
 | --- | --- | --- |
-| [cli-contract.md](cli-contract.md) | `morphir mck` commands, required `--adapter`, filter syntax, transport limits, reports and provenance | Proposed, in IR-0 review |
-| [kit-manifest.md](kit-manifest.md) | Vendored kit snapshots, `mck-kit.lock.json`, acquisition and trust | Proposed, in IR-0 review |
-| [migration.md](migration.md) | Consumer inventory, parity method, approved departures, cutover conditions | Proposed, in IR-0 review |
+| [cli-contract.md](cli-contract.md) | `morphir mck` commands, required `--adapter`, filter syntax, transport limits, reports and provenance | Approved 2026-09-18 |
+| [kit-manifest.md](kit-manifest.md) | Vendored kit snapshots, `mck-kit.lock.json`, acquisition and trust | Approved 2026-09-18 |
+| [migration.md](migration.md) | Consumer inventory, parity method, approved departures, cutover conditions | Approved 2026-09-18 |
 | [baseline/](baseline/README.md) | Frozen old-driver reports, protocol transcript and hash vectors | Captured 2026-09-18 |
 
 Delivery is IR first ([#851](https://github.com/finos/morphir/issues/851)), then the package suites

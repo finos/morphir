@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
-Status: **proposed for IR-0 design review** ([#851](https://github.com/finos/morphir/issues/851)).
-Nothing here is implemented yet. The TypeScript driver in finos/morphir-typescript remains the
+Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
+Implemented so far: `check` and `kit status` for the embedded kit and raw checkouts (IR-1). The TypeScript driver in finos/morphir-typescript remains the
 authoritative gate until the cutover described in [migration.md](migration.md).
 
 This contract covers the IR suite. Package commands are added by
@@ -30,7 +30,7 @@ not bare strings.
 ## Commands
 
 ```text
-morphir mck check <dir> [--json]
+morphir mck check <dir> [--repo-root <dir>] [--json]
 morphir mck run --adapter <exe> [--adapter-arg <arg>]... [--kit <dir>] [--repo-root <dir>]
                 [--report <file>] [--strict] [--filter <regex>]
                 [--timeout <ms>] [--session-timeout <ms>]
@@ -73,6 +73,20 @@ stdout. `--json` prints `{files, cases, errors}`. Exit 1 when any error exists.
 The case grammar, fence roles, pending cases, duplicate-id detection, ignored prose illustrations
 and `text` fixture confinement are those of the [IR suite README](../ir/mck/README.md). The Rust
 parser must produce the same diagnostics, with the same source locations, for the same input.
+[baseline/kit-cases.json](baseline/kit-cases.json) freezes the TypeScript parser's reading of the
+corpus, and a Rust test compares itself with it case by case.
+
+**Fixtures (hardened).** `check` also resolves every `text` fence against the repository root
+(`--repo-root`, or the root inferred when the path ends in `spec/ir/mck`) and reports, at the
+fence's line, a fixture that is missing, escapes the root, is neither `.json` nor `.yaml`, is not
+valid UTF-8, or starts with a byte-order mark. The TypeScript `check` never opened fixtures, so a
+broken one surfaced only during `run`. A case file that is not valid UTF-8 is a kit error too,
+where the old driver substituted U+FFFD. This is departure 12 in
+[migration.md](migration.md#approved-departures-from-old-runner-behaviour).
+
+A directory holding a managed snapshot is verified against its manifest first
+([kit-manifest.md](kit-manifest.md#managed-and-raw-kits)). Until IR-1V lands that verification, a
+managed snapshot is refused with exit 1; it is never read as a raw kit.
 
 ### `run`
 

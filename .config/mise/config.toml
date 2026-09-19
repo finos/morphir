@@ -150,6 +150,17 @@ description = "Validate schemas against metaschema"
 # because a Windows box may carry only the WSL launcher.
 run = "bun run tools/validate-schemas.ts"
 
+# Not part of `check`: website:build-schemas depends on website:install, whose
+# npm postinstall rebuilds website/static/validation-inline.worker.js, and
+# `check` installs no website dependencies today. CI runs it in the docs job.
+[tasks."check:schemas-generated"]
+description = "Regenerate the JSON schemas from their YAML sources and fail if any committed JSON differed"
+run = "bun run tools/check-schemas-generated.ts"
+
+[tasks."check:config-schema-sync"]
+description = "Check morphir-rust embeds the generated configuration schema byte for byte"
+run = "node website/scripts/check-config-schema-sync.js"
+
 [tasks."mck:check"]
 description = "Parse the Morphir Compatibility Kit case files and validate the report and protocol schemas"
 # The parser lives in the morphir-typescript submodule; the driver that runs
@@ -351,6 +362,7 @@ depends = [
     "fixtures:naming-corpus-check",
     "fixtures:format-version-corpus-check",
     "schema:validate",
+    "check:config-schema-sync",
     "mck:check",
     "mck:schema-check",
     "package:schema-check",
@@ -365,6 +377,10 @@ run = "cargo run --locked --package morphir -- itest examples"
 [tasks."examples:prepare-elm"]
 description = "Stage a downloaded reference Elm extension for the CLI examples"
 run = "bun run tools/prepare-elm-examples.ts"
+
+[tasks."examples:prepare-backends"]
+description = "Verify and stage pinned WASM bundles for the CLI backend examples"
+run = "bun run tools/prepare-backend-examples.ts"
 
 [tasks."test:itest"]
 description = "Test the integration scenario driver and its real CLI acceptance cases"

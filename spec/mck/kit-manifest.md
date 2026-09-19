@@ -1,7 +1,7 @@
 # MCK kit snapshots, manifest and acquisition
 
-Status: **proposed for IR-0 design review** ([#851](https://github.com/finos/morphir/issues/851)).
-Nothing here is implemented yet. Command spelling is in the [CLI contract](cli-contract.md).
+Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
+Implemented so far: the digest algorithm, the embedded kit and managed-kit detection, which refuses a snapshot until verification lands (IR-1). Command spelling is in the [CLI contract](cli-contract.md).
 
 An implementor of a binding or extension uses the installed `morphir` CLI to put a pinned copy of
 the kit in their own repository, commit it, and run it offline. They need neither a Morphir source

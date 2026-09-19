@@ -38,6 +38,7 @@ axum = { version = "0.8", features = ["ws"] }
 morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 morphir-evaluator = { path = "../morphir-evaluator" }
 morphir-opa = { path = "../morphir-opa" }
+morphir-mck = { path = "../morphir-mck" }
 morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
 morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }

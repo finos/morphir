@@ -1,0 +1,11 @@
+[project]
+name = "examples/compatibility"
+version = "1.0.0"
+source_directory = "src"
+exposed_modules = ["Domain"]
+
+[frontend]
+language = "elm"
+
+[codegen]
+targets = ["json-schema", "openapi"]

@@ -31,34 +31,47 @@ export function parsePins(text: string): Record<string, Pin> {
 
 // A process extension is one executable per platform, released as an archive by the repository
 // that owns it. CI pins the archive for the platform it runs on.
-export type ExecutablePin = { repository: string; tag: string; archive: string; sha256: string; executable: string };
+// A pin names either an `archive` (a .tgz that holds the executable) or an `asset` (the executable
+// itself). `sha256` is the digest of that download.
+export type ExecutablePin = {
+	repository: string;
+	tag: string;
+	archive?: string;
+	asset?: string;
+	sha256: string;
+	executable: string;
+};
 
 export function parseExecutablePins(text: string): Record<string, ExecutablePin> {
 	const executables =
 		(Bun.TOML.parse(text) as { executables?: Record<string, Partial<ExecutablePin>> }).executables ?? {};
 	const pins: Record<string, ExecutablePin> = {};
 	for (const [shortId, pin] of Object.entries(executables)) {
-		for (const key of ["repository", "tag", "archive", "sha256", "executable"] as const) {
+		for (const key of ["repository", "tag", "sha256", "executable"] as const) {
 			if (typeof pin[key] !== "string" || pin[key] === "") {
 				throw new Error(`executables.${shortId} has no ${key}`);
 			}
+		}
+		const named = [pin.archive, pin.asset].filter((name) => typeof name === "string" && name !== "");
+		if (named.length !== 1) {
+			throw new Error(`executables.${shortId} must name exactly one of archive or asset`);
 		}
 		pins[shortId] = pin as ExecutablePin;
 	}
 	return pins;
 }
 
-/** The version a release tag such as extension/elm/v0.1.0 names. */
+/** The version a release tag such as extension/elm/v0.1.0 or v0.5.0-M06 names. */
 export function pinnedVersion(tag: string): string {
-	const match = /\/v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$/.exec(tag);
+	const match = /(?:^|\/)v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$/.exec(tag);
 	if (match?.[1] === undefined) {
 		throw new Error(`'${tag}' does not end with a version`);
 	}
 	return match[1];
 }
 
-export function archiveUrl(pin: Pick<ExecutablePin, "repository" | "tag" | "archive">): string {
-	return `https://github.com/${pin.repository}/releases/download/${pin.tag}/${pin.archive}`;
+export function archiveUrl(pin: Pick<ExecutablePin, "repository" | "tag" | "archive" | "asset">): string {
+	return `https://github.com/${pin.repository}/releases/download/${pin.tag}/${pin.archive ?? pin.asset}`;
 }
 
 export function assetUrls(tag: string, artifact: string) {
@@ -95,21 +108,27 @@ async function fetchBundle(shortId: string, pin: Pin, output: string): Promise<v
 }
 
 async function fetchExecutable(shortId: string, pin: ExecutablePin, output: string): Promise<void> {
-	const archive = await download(archiveUrl(pin));
-	verifyGuest(shortId, archive, pin.sha256);
+	const downloaded = await download(archiveUrl(pin));
+	verifyGuest(shortId, downloaded, pin.sha256);
 	const directory = join(output, shortId);
 	rmSync(directory, { recursive: true, force: true });
 	mkdirSync(directory, { recursive: true });
-	const archivePath = join(directory, pin.archive);
-	writeFileSync(archivePath, archive);
-	const unpack = Bun.spawnSync(["tar", "-xzf", archivePath, "-C", directory]);
-	if (unpack.exitCode !== 0) {
-		throw new Error(`${shortId}: cannot unpack ${pin.archive}: ${unpack.stderr.toString()}`);
-	}
-	rmSync(archivePath);
 	const executable = join(directory, pin.executable);
-	if (!existsSync(executable)) {
-		throw new Error(`${shortId}: ${pin.archive} does not hold ${pin.executable}`);
+	if (pin.archive === undefined) {
+		// The release asset is the executable. Its release name carries a platform and a version;
+		// the tests get the stable name the pin gives.
+		writeFileSync(executable, downloaded);
+	} else {
+		const archivePath = join(directory, pin.archive);
+		writeFileSync(archivePath, downloaded);
+		const unpack = Bun.spawnSync(["tar", "-xzf", archivePath, "-C", directory]);
+		if (unpack.exitCode !== 0) {
+			throw new Error(`${shortId}: cannot unpack ${pin.archive}: ${unpack.stderr.toString()}`);
+		}
+		rmSync(archivePath);
+		if (!existsSync(executable)) {
+			throw new Error(`${shortId}: ${pin.archive} does not hold ${pin.executable}`);
+		}
 	}
 	chmodSync(executable, 0o755);
 	// The install test gives the CLI this version; the extension must report the same one.

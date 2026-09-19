@@ -15,6 +15,11 @@ For reference Elm, follow the catalog's explicit release preparation step and
 select `suite:elm-reference`. The preparation helper stages fixtures only;
 repository registration, installation and compilation remain real CLI commands.
 Use `suite:offline` when no downloaded provider is available.
+For installed Avro/OpenAPI backends, fetch the pinned releases and run
+`mise run examples:prepare-backends`, then select `suite:wasm-backends`.
+Keep repository creation, publication and installation in scenario commands.
+Main backend cases compile default v4 output; `backends/v3-compatibility` retains
+explicit v3 generation coverage. Verify both when updating provider pins.
 
 ## Choose the claim
 

@@ -79,11 +79,11 @@ See the [Domain Modeling guide](docs/developers/domain-modeling.md).
 - Prefer TypeScript for new repository tooling. JavaScript scripts use `.mjs`.
 - Do not introduce Python or another tooling language without an explicit, justified exception agreed with maintainers. Existing scripts and language-specific Morphir implementations are not a blanket exception for new repository tooling.
 - Shared MCK tooling is the named exception: it belongs in this repository, in Rust, delivered as `morphir mck` (engine in `crates/morphir-mck`, thin command layer in `crates/morphir`). Keep specifications, schemas, cases, and fixed expected results here too.
-- **Transition state:** the Rust MCK tooling does not exist yet. The TypeScript driver in `finos/morphir-typescript` still runs every `mck:*` and `package:*` gate and stays authoritative until the cutover in [spec/mck/migration.md](spec/mck/migration.md). Do not add shared MCK features there (break/fix only), and do not delete working TypeScript tooling before its Rust replacement is verified and released. Work IR first ([#851](https://github.com/finos/morphir/issues/851)); packaging follows ([#852](https://github.com/finos/morphir/issues/852)).
+- **Transition state:** the Rust MCK tooling is incomplete: only `morphir mck check` and `morphir mck kit status` exist. The TypeScript driver in `finos/morphir-typescript` still runs every `mck:*` and `package:*` gate and stays authoritative until the cutover in [spec/mck/migration.md](spec/mck/migration.md). Do not add shared MCK features there (break/fix only), and do not delete working TypeScript tooling before its Rust replacement is verified and released. Work IR first ([#851](https://github.com/finos/morphir/issues/851)); packaging follows ([#852](https://github.com/finos/morphir/issues/852)).
 - There is one shared runner. Other implementations take part through an adapter, and `morphir mck run` always requires an explicit `--adapter`. Independent implementations under test do not require independent compatibility runners. Do not create a second checker, in any language.
 - Preserve supported IR contracts when adding versioned package operations. Keep implementation behavior separate from the runner's expected results; the engine never links an implementation's IR codec.
 
-See [the MCK ownership decision](kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md), which supersedes [decision 0001](kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md), and the proposed [CLI](spec/mck/cli-contract.md) and [kit manifest](spec/mck/kit-manifest.md) contracts.
+See [the MCK ownership decision](kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md), which supersedes [decision 0001](kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md), and the approved [CLI](spec/mck/cli-contract.md) and [kit manifest](spec/mck/kit-manifest.md) contracts.
 
 ### Test-Driven Development (TDD)
 
@@ -405,7 +405,11 @@ Run `mise run test:examples -- --list` to inspect coverage,
 files are not executable coverage. Native Elm type compilation does not establish
 function lowering or evaluation; MCK remains responsible for compatibility contracts.
 Reference Elm cases require explicit preparation as described in the
-[example catalog](examples/README.md). A passing `coverage:known-limitation`
+[example catalog](examples/README.md). Installed Avro/OpenAPI examples use
+`suite:wasm-backends` after `ci:fetch-published-bundles` and
+`examples:prepare-backends`; scenarios perform publication and installation.
+Main backend cases use default v4 output; `backends/v3-compatibility` retains
+explicit v3 generation coverage. A passing `coverage:known-limitation`
 scenario proves the documented rejection, not successful feature support.
 
 The Docusaurus website is located in `website/`. To run locally:

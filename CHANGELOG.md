@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`morphir mck check` and `morphir mck kit status`**: the first commands of the Rust Morphir Compatibility Kit tooling (finos/morphir#849, #851). `mck check <dir>` validates a kit directory with the same diagnostics, locations, summary line, `--json` shape and exit codes as the TypeScript `mck check`, and additionally reports a `text` fixture that is missing, escapes the repository root, is not valid UTF-8 or starts with a byte-order mark. `mck kit status` identifies the IR kit embedded in the CLI, or a checkout given with `--kit`, by revision and `mck-file-map-sha256/1` corpus hash, with no Node, Bun, Git or network. `mck run` and kit vendoring are not implemented yet; the TypeScript driver remains the authoritative gate. See [spec/mck/cli-contract.md](spec/mck/cli-contract.md)
+
 ## [0.4.0-beta.1] - 2026-09-18
 
 First beta of the Rust Morphir CLI. This release follows `0.4.0-alpha.7`; no `0.4.0-alpha.8` was

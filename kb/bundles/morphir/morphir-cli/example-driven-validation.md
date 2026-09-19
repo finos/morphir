@@ -135,6 +135,18 @@ CLI repository registration, installation and compilation; the helper is not a
 second driver. CI reuses the pinned published executable. `suite:offline` requires
 no prepared provider, and missing prerequisites fail rather than skip.
 
+Installed WASM coverage uses `suite:wasm-backends`. The fetch task acquires pinned
+bundles and `examples:prepare-backends` verifies and copies their bytes; scenarios
+perform real repository init/add/publish/install commands. Avro record fields,
+JSON Schema properties and OpenAPI schema components have fixed expectations,
+with canonical task output compared to installed copies and compile provenance
+checked. Main cases compile default v4; separate compatibility projects retain
+explicit v3 coverage. Avro 0.1.2 and OpenAPI 0.1.1 refresh the guests that previously
+rejected canonical v4 `Public` access wrappers. The upstream released-CLI gate
+also exercises a fixed canonical v4 record alongside its v3 fixture, so the
+release check covers both advertised versions. This coverage does not prove API
+operation inference from functions.
+
 The original two-module `morphir-elm-compat` project revealed two gaps: classic
 configuration does not infer Elm, and the released extension rejects multiple
 source documents. The minimal JSON case passes `--language elm`; the original

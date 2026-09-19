@@ -26,7 +26,9 @@
         "root": {
           "type": "string"
         },
-        "output_dir": {
+        "out_dir": {
+          "description": "Out directory for every task in the workspace, relative to the workspace root, must stay inside it.",
+          "default": ".morphir/out",
           "type": "string"
         },
         "members": {
@@ -88,9 +90,6 @@
         },
         "repository": {
           "type": "string"
-        },
-        "output_directory": {
-          "type": "string"
         }
       },
       "additionalProperties": true
@@ -103,10 +102,23 @@
           "maximum": 10,
           "minimum": 1
         },
+        "layout": {
+          "description": "Storage layout compile writes.",
+          "default": "single-file",
+          "type": "string",
+          "enum": [ "single-file", "document-tree" ]
+        },
+        "format": {
+          "description": "Serialization format compile writes.",
+          "default": "json",
+          "type": "string",
+          "enum": [ "json", "yaml" ]
+        },
         "strict_mode": {
           "type": "boolean"
         },
         "mode": {
+          "description": "Deprecated alias for layout: classic means single-file, vfs means document-tree. Read for one release, then removed.",
           "type": "string",
           "enum": [ "classic", "vfs" ]
         }
