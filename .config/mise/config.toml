@@ -150,6 +150,13 @@ description = "Validate schemas against metaschema"
 # because a Windows box may carry only the WSL launcher.
 run = "bun run tools/validate-schemas.ts"
 
+# Not part of `check`: website:build-schemas depends on website:install, whose
+# npm postinstall rebuilds website/static/validation-inline.worker.js, and
+# `check` installs no website dependencies today. CI runs it in the docs job.
+[tasks."check:schemas-generated"]
+description = "Regenerate the JSON schemas from their YAML sources and fail if any committed JSON differed"
+run = "bun run tools/check-schemas-generated.ts"
+
 [tasks."check:config-schema-sync"]
 description = "Check morphir-rust embeds the generated configuration schema byte for byte"
 run = "node website/scripts/check-config-schema-sync.js"
