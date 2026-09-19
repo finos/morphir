@@ -247,6 +247,15 @@ mod tests {
         load_kit(KitSource::map("test kit", files)).unwrap()
     }
 
+    /// A kit whose files are raw bytes, for content no `&str` can hold.
+    fn kit_of_bytes(files: &[(&str, &[u8])]) -> Kit {
+        let files = files
+            .iter()
+            .map(|(p, b)| ((*p).to_owned(), Cow::Owned(b.to_vec())))
+            .collect();
+        load_kit(KitSource::map("test kit", files)).unwrap()
+    }
+
     const CASE: &str = "```yaml canonical\na: 1\n```\n";
 
     #[test]
@@ -330,6 +339,43 @@ mod tests {
             messages
                 .contains(&"duplicate case id \"a-0001\" across files (first in spec/ir/mck/a.md)"),
             "{messages:?}"
+        );
+    }
+
+    /// Departure 12: the old driver replaced undecodable bytes with U+FFFD and
+    /// carried on, so a corrupt file could be read as a case that passes. Both
+    /// a case file and a fixture are refused instead.
+    #[test]
+    fn undecodable_bytes_are_a_kit_error_in_a_case_file_and_in_a_fixture() {
+        const INVALID: &[u8] = b"## types-0001: t\n```yaml canonical\na: \xff\n```\n";
+        let kit = kit_of_bytes(&[("spec/ir/mck/types.md", INVALID)]);
+        assert_eq!(
+            kit.errors
+                .iter()
+                .map(|e| (e.file.as_str(), e.line, e.message.as_str()))
+                .collect::<Vec<_>>(),
+            vec![("spec/ir/mck/types.md", 0, "case file is not valid UTF-8")],
+            "an undecodable case file is refused, not read lossily"
+        );
+        assert_eq!(kit.cases, vec![], "no case survives an undecodable file");
+
+        let kit = kit_of_bytes(&[
+            (
+                "spec/ir/mck/types.md",
+                b"## types-0001: t\n```text canonical\n\n  website/x.json  \n```\n",
+            ),
+            ("website/x.json", b"{\"a\": \"\xff\"}"),
+        ]);
+        assert_eq!(
+            kit.errors
+                .iter()
+                .map(|e| (e.line, e.message.as_str()))
+                .collect::<Vec<_>>(),
+            vec![(
+                2,
+                "text fence names website/x.json, which is not valid UTF-8"
+            )],
+            "reported at the fence's line, like every other fixture fault"
         );
     }
 
