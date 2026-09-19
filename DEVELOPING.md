@@ -8,6 +8,15 @@ This guide covers the development workflow for contributing to Morphir.
 - Node.js 24+ (for website development)
 - Git
 - Mise (task runner) - Install from https://mise.jdx.dev
+- On Windows (MSVC): the Visual Studio **Spectre-mitigated libs** for your architecture, in addition to the C++ build tools. The `regorus` dependency of `morphir-opa` links against them, and without them `cargo build -p morphir` stops in the `msvc_spectre_libs` build script with `No spectre-mitigated libs were found`. Add them in the Visual Studio Installer under Individual components ("MSVC v143 - VS 2022 C++ x64/x86 Spectre-mitigated libs (Latest)", or the ARM64 entry), or from an elevated prompt:
+
+  ```powershell
+  & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
+    --installPath "<your VS or Build Tools path>" `
+    --add Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre --quiet --norestart
+  ```
+
+  Use `Microsoft.VisualStudio.Component.VC.Runtimes.ARM64.Spectre` on Windows ARM64. Crates that do not depend on `morphir-opa` build without them.
 
 ## Quick Start
 

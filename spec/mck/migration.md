@@ -1,6 +1,6 @@
 # MCK migration to the Rust CLI: consumers, parity and cutover
 
-Status: **proposed for IR-0 design review** ([#851](https://github.com/finos/morphir/issues/851)).
+Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
 Parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
 **Transition state, 2026-09-18.** The ownership decision is made
