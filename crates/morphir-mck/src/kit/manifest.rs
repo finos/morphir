@@ -192,6 +192,12 @@ pub fn check_snapshot_path(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// The key two snapshot paths collide on when a file system folds case or`n/// normalizes Unicode: NFC, then ASCII lowercase. Two distinct paths with the`n/// same key cannot both be checked out portably.
+pub fn portable_key(path: &str) -> String {
+    use unicode_normalization::UnicodeNormalization as _;
+    path.nfc().collect::<String>().to_ascii_lowercase()
+}
+
 /// Why a manifest was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManifestError(pub String);

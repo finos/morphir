@@ -12,6 +12,7 @@ use super::hash::{ContentDigest, content_hash, sha256_hex};
 use super::load::Kit;
 use super::manifest::{
     DriverRange, Lock, LockFile, LockSource, MANIFEST_NAME, MAX_FILES, check_snapshot_path,
+    portable_key,
 };
 use super::syntax::text::utf16_cmp;
 
@@ -35,6 +36,10 @@ pub enum SnapshotError {
     /// A parent-owned input every snapshot carries is absent from the source.
     MissingFixedInput(String),
     UnsafePath(String),
+    /// A symbolic link or special file where the snapshot needs a regular file.
+    NotRegular(String),
+    /// Two paths only a case-sensitive, non-normalizing file system can tell apart.
+    Collision(String, String),
     TooManyFiles(usize),
     Io(io::Error),
 }
@@ -51,6 +56,14 @@ impl fmt::Display for SnapshotError {
                 "the source lacks {path}, which every kit snapshot carries"
             ),
             Self::UnsafePath(why) => f.write_str(why),
+            Self::NotRegular(path) => write!(
+                f,
+                "{path} is a symbolic link or special file; a kit snapshot takes regular files only"
+            ),
+            Self::Collision(a, b) => write!(
+                f,
+                "{a} and {b} collide on a case-insensitive or normalizing file system"
+            ),
             Self::TooManyFiles(n) => write!(
                 f,
                 "the kit closure has {n} files; a snapshot holds at most {MAX_FILES}"
@@ -89,8 +102,20 @@ pub fn collect(kit: &Kit) -> Result<Snapshot, SnapshotError> {
     if files.len() > MAX_FILES {
         return Err(SnapshotError::TooManyFiles(files.len()));
     }
+    // The corpus must not shrink silently: a link or special file inside the
+    // kit directory, which loading skips, is refused here.
+    if let Some(path) = kit.source.irregular_entries()?.into_iter().next() {
+        return Err(SnapshotError::NotRegular(path));
+    }
+    let mut keys: BTreeMap<String, &str> = BTreeMap::new();
     for path in files.keys() {
         check_snapshot_path(path).map_err(SnapshotError::UnsafePath)?;
+        if !kit.source.is_plain_file(path)? {
+            return Err(SnapshotError::NotRegular(path.clone()));
+        }
+        if let Some(other) = keys.insert(portable_key(path), path) {
+            return Err(SnapshotError::Collision(other.to_owned(), path.clone()));
+        }
     }
     Ok(Snapshot { files, corpus_hash })
 }
@@ -316,6 +341,79 @@ mod tests {
         let kit = load_kit(KitSource::map("bare", files)).unwrap();
         assert!(
             matches!(collect(&kit), Err(SnapshotError::MissingFixedInput(path)) if path == FIXED_INPUTS[0])
+        );
+    }
+
+    #[test]
+    fn refuses_paths_a_folding_file_system_cannot_tell_apart() {
+        for (a, b) in [
+            (
+                "spec/ir/mck/documents/X.yaml",
+                "spec/ir/mck/documents/x.yaml",
+            ),
+            (
+                "spec/ir/mck/documents/caf\u{e9}.yaml",
+                "spec/ir/mck/documents/cafe\u{301}.yaml",
+            ),
+        ] {
+            let error = collect(&map_kit(&[(a, "a: 1"), (b, "a: 2")]))
+                .unwrap_err()
+                .to_string();
+            assert!(
+                error.contains("collide on a case-insensitive or normalizing file system"),
+                "{error}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn refuses_a_symbolic_link_in_the_kit_or_as_a_fixture() {
+        use std::os::unix::fs::symlink;
+
+        let repo = tempfile::tempdir().unwrap();
+        let kit_dir = repo.path().join("spec/ir/mck");
+        std::fs::create_dir_all(&kit_dir).unwrap();
+        std::fs::create_dir_all(repo.path().join("fixtures")).unwrap();
+        std::fs::write(kit_dir.join("types.md"), CASE).unwrap();
+        std::fs::write(repo.path().join("fixtures/real.json"), "{}").unwrap();
+        for fixed in FIXED_INPUTS {
+            let path = join(repo.path(), fixed);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, "{}").unwrap();
+        }
+        symlink(
+            repo.path().join("fixtures/real.json"),
+            repo.path().join("fixtures/a.json"),
+        )
+        .unwrap();
+        let source = || KitSource::directory(&kit_dir, Some(repo.path()));
+        let error = collect(&load_kit(source()).unwrap())
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("fixtures/a.json is a symbolic link"),
+            "{error}"
+        );
+
+        std::fs::remove_file(repo.path().join("fixtures/a.json")).unwrap();
+        std::fs::rename(
+            repo.path().join("fixtures/real.json"),
+            repo.path().join("fixtures/a.json"),
+        )
+        .unwrap();
+        std::fs::write(repo.path().join("elsewhere.md"), "## values-0001: v\n").unwrap();
+        symlink(repo.path().join("elsewhere.md"), kit_dir.join("values.md")).unwrap();
+        let kit = load_kit(source()).unwrap();
+        assert_eq!(
+            kit.errors,
+            vec![],
+            "check skips the link, as the first driver did"
+        );
+        let error = collect(&kit).unwrap_err().to_string();
+        assert!(
+            error.contains("spec/ir/mck/values.md is a symbolic link"),
+            "{error}"
         );
     }
 

@@ -143,9 +143,11 @@ pub struct Managed {
 }
 
 /// Opens the managed snapshot at `root`. Every check runs before the kit is
-/// used: the manifest parses, its driver contract admits this CLI, every file
-/// matches it with nothing extra, and the kit's corpus hash is the recorded one.
+/// used: no interrupted run left a staging or backup directory beside it, the
+/// manifest parses, its driver contract admits this CLI, every file matches it
+/// with nothing extra, and the kit's corpus hash is the recorded one.
 pub fn open_managed(root: &Path) -> Result<Managed, VendorError> {
+    check_leftovers(root)?;
     let lock = read_lock(root)?;
     if !lock.supports_this_driver() {
         return Err(VendorError::UnsupportedDriver {
@@ -510,6 +512,16 @@ pub fn update(
     }
 
     let staging = stage(&snapshot, &new, root)?;
+    // The snapshot root's own .gitattributes is the implementor's, not the
+    // kit's: it travels with the snapshot rather than being deleted with the
+    // old copy.
+    let attributes = root.join(".gitattributes");
+    if std::fs::symlink_metadata(&attributes).is_ok_and(|m| m.file_type().is_file())
+        && let Err(error) = std::fs::copy(&attributes, staging.join(".gitattributes"))
+    {
+        std::fs::remove_dir_all(&staging).ok();
+        return Err(error.into());
+    }
     let backup = sibling(root, OLD_MARK, &unique_suffix())?;
     if let Err(error) = std::fs::rename(root, &backup) {
         std::fs::remove_dir_all(&staging).ok();
@@ -857,6 +869,48 @@ mod tests {
                 .unwrap_err()
                 .to_string()
                 .contains("from itself")
+        );
+    }
+
+    #[test]
+    fn update_keeps_the_snapshot_roots_gitattributes() {
+        let repo = repository("one");
+        let out = tempfile::tempdir().unwrap();
+        let dest = out.path().join("kit");
+        vendor(&local(&repo), &dest, None).unwrap();
+        std::fs::write(dest.join(".gitattributes"), "* -text\n").unwrap();
+        std::fs::write(
+            repo.path().join(KIT_PATH).join("types.md"),
+            "## types-0001: two\n```yaml canonical\na: 1\n```\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            update(&dest, &local(&repo), None).unwrap(),
+            UpdateOutcome::Updated(_)
+        ));
+        assert_eq!(
+            std::fs::read_to_string(dest.join(".gitattributes")).unwrap(),
+            "* -text\n"
+        );
+        assert!(open_managed(&dest).is_ok());
+    }
+
+    #[test]
+    fn a_leftover_beside_a_snapshot_is_reported_when_it_is_opened() {
+        let repo = repository("one");
+        let out = tempfile::tempdir().unwrap();
+        let dest = out.path().join("kit");
+        vendor(&local(&repo), &dest, None).unwrap();
+        let backup = out.path().join("kit.mck-old-dead");
+        std::fs::create_dir(&backup).unwrap();
+        let error = open_managed(&dest).unwrap_err().to_string();
+        assert!(
+            error.contains(&format!(
+                "{} is intact; delete {}",
+                dest.display(),
+                backup.display()
+            )),
+            "{error}"
         );
     }
 

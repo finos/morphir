@@ -197,9 +197,9 @@ revision comes from the CLI or from the source snapshot's own manifest and may b
 1. Verify the existing snapshot against its manifest. An edited, missing or extra file is refused,
    exit 1, naming the files. Unrelated content is never deleted.
 2. Stage and verify the new snapshot as above.
-3. Rename the old snapshot to `<dir>.mck-old-<random>`, rename staging to `<dir>`, then remove the
-   old one. If the second rename fails, the first is reversed. A leftover `.mck-old-*` or staging
-   directory from an interrupted run is reported by the next `kit status`, `vendor` or `update`
+3. Carry the snapshot root's `.gitattributes`, if any, into staging. Rename the old snapshot to
+   `<dir>.mck-old-<random>`, rename staging to `<dir>`, then remove the old one. If the second rename fails, the first is reversed. A leftover `.mck-old-*` or staging
+   directory from an interrupted run is reported by the next `check`, `kit status`, `vendor` or `update`
    with the exact recovery action, and is never treated as a usable kit.
 4. Print a summary of added, removed and changed paths and the old and new revisions and digests.
    Nothing is committed automatically.

@@ -572,3 +572,21 @@ fn update_from_a_local_snapshot_needs_its_source_named() {
         stdout(&output)
     );
 }
+
+#[test]
+fn kit_status_reports_a_leftover_from_an_interrupted_run_instead_of_passing() {
+    let work = TempDir::new().unwrap();
+    let dest = work.path().join("kit");
+    assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
+    let staging = work.path().join(".kit.mck-staging-dead");
+    std::fs::create_dir(&staging).unwrap();
+    let output = morphir(&["mck", "kit", "status", "--kit", dest.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1));
+    let diagnostics = stderr(&output);
+    assert!(
+        diagnostics.contains("interrupted")
+            && diagnostics.contains(&format!("delete {}", staging.display())),
+        "{diagnostics}"
+    );
+    assert_eq!(stdout(&output), "");
+}
