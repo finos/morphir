@@ -6,14 +6,14 @@
 # then move the pin here in the same pull request as the CLI change.
 
 [bundles.avro]
-tag = "extension/avro/v0.1.1"
-artifact = "morphir-avro-extension-0.1.1"
-sha256 = "ed6ea1b68b367d59ccb2b56f0a705d44ce7f65071c0ec9c26cbabab39b267965"
+tag = "extension/avro/v0.1.2"
+artifact = "morphir-avro-extension-0.1.2"
+sha256 = "dede68e224460d954bae495ffb6964d21bfa7e85f2446b7bfe4a62c491a51299"
 
 [bundles.openapi]
-tag = "extension/openapi/v0.1.0"
-artifact = "morphir-openapi-extension-0.1.0"
-sha256 = "42d0631cd7c12f976a5b8b882377de5fe14a57717b3129ebab763b0a5b4d4e04"
+tag = "extension/openapi/v0.1.1"
+artifact = "morphir-openapi-extension-0.1.1"
+sha256 = "817dddbd06da52a7f5139c03c012bbdc31a0ea64958e2b09224aa73d8f9733ff"
 
 [bundles.python]
 tag = "extension/python/v0.2.0"
