@@ -366,6 +366,10 @@ run = "cargo run --locked --package morphir -- itest examples"
 description = "Stage a downloaded reference Elm extension for the CLI examples"
 run = "bun run tools/prepare-elm-examples.ts"
 
+[tasks."examples:prepare-backends"]
+description = "Verify and stage pinned WASM bundles for the CLI backend examples"
+run = "bun run tools/prepare-backend-examples.ts"
+
 [tasks."test:itest"]
 description = "Test the integration scenario driver and its real CLI acceptance cases"
 run = [

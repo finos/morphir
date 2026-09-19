@@ -404,7 +404,11 @@ Run `mise run test:examples -- --list` to inspect coverage,
 files are not executable coverage. Native Elm type compilation does not establish
 function lowering or evaluation; MCK remains responsible for compatibility contracts.
 Reference Elm cases require explicit preparation as described in the
-[example catalog](examples/README.md). A passing `coverage:known-limitation`
+[example catalog](examples/README.md). Installed Avro/OpenAPI examples use
+`suite:wasm-backends` after `ci:fetch-published-bundles` and
+`examples:prepare-backends`; scenarios perform publication and installation.
+Positive cases use v3 while separate cases record the published guests' current
+v4 rejection, tracked by `morphir-o6vm.16`. A passing `coverage:known-limitation`
 scenario proves the documented rejection, not successful feature support.
 
 The Docusaurus website is located in `website/`. To run locally:

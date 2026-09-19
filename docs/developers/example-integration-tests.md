@@ -41,6 +41,14 @@ before selecting them or running all examples without a tag. The helper stages
 local fixture repositories; commands in each scenario register and install the
 provider into the isolated Morphir home. Missing prerequisites fail.
 
+Installed Avro/OpenAPI cases use `suite:wasm-backends`. Run
+`mise run ci:fetch-published-bundles` followed by
+`mise run examples:prepare-backends` to stage pinned WASM bundles. Scenarios
+perform repository initialization, registration, publication and installation
+through the CLI. Positive cases use explicit v3 IR; separately tagged negative
+cases document the pinned releases' rejection of current v4 access wrappers.
+See the [backend preparation instructions](https://github.com/finos/morphir/blob/main/examples/README.md#prepare-the-installed-wasm-backend-scenarios).
+
 Use `coverage:known-limitation` with `kind:negative` for a scenario deliberately
 checking a current rejection, and record its follow-up issue in the prose. Such
 a pass is not successful feature coverage; replace it with positive expectations
@@ -211,7 +219,7 @@ language highlighting in every editor. Execute the notebook with `morphir itest`
 | Workflow | `area:compile`, `area:install`, `area:workspace`, `area:generate` |
 | IR output | `ir:v3`, `ir:v4` |
 | Expected behavior | `kind:positive`, `kind:negative` |
-| Prerequisites | `suite:offline`, `suite:elm-reference` |
+| Prerequisites | `suite:offline`, `suite:elm-reference`, `suite:wasm-backends` |
 | Known gaps | `coverage:known-limitation` with `kind:negative` |
 | Workspace inputs | `workspace:directory`, `workspace:notebook` |
 

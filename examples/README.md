@@ -38,6 +38,9 @@ provider evaluates assertions.
 | [YAML project](elm/yaml-project/scenarios.md) | Config discovery and a public native Elm record in v4 IR | Offline |
 | [Multi-project workspace](monorepo-workspace/scenarios.md) | Default selection, selecting each member by path/name, distinct package identities, isolated task outputs and installed IR copies | Offline |
 | [Gleam compile and generate](gleam/compile-generate/scenarios.md) | Function compilation, generated Gleam source and compile-to-generate task provenance | Offline |
+| [Installed Avro backend](backends/avro/scenarios.md) | Local bundle publication/installation, native Elm to v3, Avro record and primitive field mappings, task provenance and installed output | Pinned Avro 0.1.1 WASM bundle |
+| [Installed OpenAPI backend](backends/openapi/scenarios.md) | Local bundle publication/installation, native Elm to v3, JSON Schema and OpenAPI schema components, task provenance and installed outputs | Pinned OpenAPI 0.1.0 WASM bundle |
+| [Published backends with v4](backends/v4-published-rejection/scenarios.md) | The released Avro, JSON Schema and OpenAPI targets' **known rejection** of current canonical v4 access wrappers | Both pinned WASM bundles |
 | [CLI basics](cli/basics/scenarios.md) | Version reporting and public command help in independent Markdown scenarios | Offline |
 | [Classic multi-file Elm](morphir-elm-compat/scenarios.md) | Config discovery and the released provider's **known rejection** of multiple source documents | Reference Elm 0.1.0 |
 
@@ -66,7 +69,8 @@ the extension through real CLI commands in a fresh Morphir home.
 CI uses the Linux executable pinned by `.config/published-extension-bundles.toml`.
 Local preparation bridges the current absence of process-bundle publication in
 `morphir extension repository publish`. No download happens inside `itest`.
-Missing prerequisites fail; there are no implicit skips. After preparation,
+Missing prerequisites fail; there are no implicit skips. After preparing both
+the reference Elm and WASM backend prerequisites below,
 `mise run test:examples` runs all scenarios. Use `suite:offline` to run without
 the downloaded provider. Remove the generated `.itest` directories to clean up.
 
@@ -74,6 +78,36 @@ The multi-file classic case is tagged `kind:negative` and
 `coverage:known-limitation`. Follow-up `morphir-o6vm.15` tracks classic Elm language
 inference and multi-source extension support. Its passing rejection assertion
 must be replaced with positive module/function assertions when support lands.
+
+## Prepare the installed WASM backend scenarios
+
+Download the releases pinned in `.config/published-extension-bundles.toml`, then
+stage the Avro and OpenAPI bundles beside their examples:
+
+```sh
+mise run ci:fetch-published-bundles
+mise run examples:prepare-backends
+mise run test:examples -- --tag suite:wasm-backends
+```
+
+The existing fetch task downloads all pinned bundles. WASM guests are portable;
+the separately downloaded Elm executable is Linux-specific and is not used by
+this suite. To reuse an existing download directory, pass
+`mise run examples:prepare-backends -- /path/to/published-bundles`.
+
+Preparation verifies the WASM bytes against the repository's pinned digests and
+copies the guest, checksum and release descriptor into ignored `.itest`
+directories. Each scenario uses real CLI commands to create/register a local
+repository, publish its bundle and install the provider in an isolated Morphir
+home. No download or installation happens in the preparation helper.
+
+Positive cases explicitly compile v3 IR. The pinned releases predate the
+canonical v4 `Public` wrapper and reject it with `invalid_ir`. Separate
+`kind:negative`, `coverage:known-limitation` cases retain that evidence; Beads
+`morphir-o6vm.16` tracks updated backend releases and pins. Their passing rejection
+checks do not establish v4 support. OpenAPI coverage checks schema components
+from types, not inferred API operations. Remove generated `.itest` directories
+to clean up.
 
 ## Existing material awaiting adoption
 

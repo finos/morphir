@@ -73,6 +73,7 @@ jobs:
               - '.config/published-extension-bundles.toml'
               - 'tools/fetch-published-bundles*'
               - 'tools/prepare-elm-examples*'
+              - 'tools/prepare-backend-examples*'
               # generated CLI docs are diff-checked against the CLI source
               - 'docs/cli/**'
               - 'docs/man/**'
@@ -400,6 +401,8 @@ jobs:
             --test generate_extension --test generate_openapi_extension \
             --test python_extension --test rust_extension \
             -- --ignored --nocapture
+          mise run examples:prepare-backends
+          target/release/morphir itest examples --tag suite:wasm-backends
 
   # Generate and diff-check CLI reference docs — parallel with extension builds
   # and integration tests (only needs a debug morphir build, not extensions).
