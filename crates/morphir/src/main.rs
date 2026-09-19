@@ -1031,8 +1031,8 @@ impl AppSession for MorphirSession {
                 MckAction::Check(args) => run_mck_check(args.clone()),
                 MckAction::Kit { action } => match action {
                     MckKitAction::Status(args) => run_mck_kit_status(args.clone()),
-                    MckKitAction::Vendor(args) => run_mck_kit_vendor(args.clone()),
-                    MckKitAction::Update(args) => run_mck_kit_update(args.clone()),
+                    MckKitAction::Vendor(args) => run_mck_kit_vendor(args.clone()).await,
+                    MckKitAction::Update(args) => run_mck_kit_update(args.clone()).await,
                 },
             },
             Commands::Kb { action } => match action {

@@ -11,13 +11,13 @@ use std::path::{Path, PathBuf};
 use clap::Args;
 use morphir_mck::json::to_tab_json;
 use morphir_mck::kit::hash::ContentDigest;
-use morphir_mck::kit::manifest::{CommitId, Lock, UPSTREAM_REPOSITORY};
+use morphir_mck::kit::manifest::{CommitId, Lock, LockSource, UPSTREAM_REPOSITORY};
 use morphir_mck::kit::status::{
     KitMode, KitStatus, MANIFEST_NAME, embedded_status, local_status, vendored_status,
 };
 use morphir_mck::kit::vendor::{
-    Change, Managed, UpdateOutcome, VendorOutcome, VendorSource, default_update_source, describe,
-    open_managed, read_lock, update, vendor,
+    Change, Managed, UpdateOutcome, VendorOutcome, VendorSource, check_updatable,
+    default_update_source, describe, open_managed, update, vendor,
 };
 use morphir_mck::kit::{Kit, KitSource, load_kit};
 use serde_json::json;
@@ -92,8 +92,9 @@ pub struct MckKitUpdateArgs {
     #[arg(long, value_name = "SOURCE")]
     pub source: Option<String>,
 
-    /// The full 40-character commit to acquire; required with
-    /// `github:finos/morphir` and refused with any other source
+    /// The full 40-character commit to acquire from github:finos/morphir.
+    /// Without --source it updates a snapshot that came from GitHub; it is
+    /// refused for any other source
     #[arg(long, value_name = "COMMIT")]
     pub revision: Option<String>,
 
@@ -266,13 +267,21 @@ pub fn run_mck_kit_status(args: MckKitStatusArgs) -> AppResult<miette::Report> {
     })
 }
 
+mod acquire;
+
+/// A source as given on the command line: ready to read, or a commit to fetch.
+enum Requested {
+    Ready(VendorSource),
+    Github(CommitId),
+}
+
 /// Parses `--source`, `--revision` and `--expect-digest`. Any mismatch is a
-/// usage error, reported before anything is read or written.
+/// usage error, reported before anything is read, fetched or written.
 fn parse_source(
     source: &str,
     revision: Option<&str>,
     expect_digest: Option<&str>,
-) -> Result<(VendorSource, Option<ContentDigest>), String> {
+) -> Result<(Requested, Option<ContentDigest>), String> {
     let expected = expect_digest
         .map(ContentDigest::parse)
         .transpose()
@@ -288,12 +297,10 @@ fn parse_source(
                 "--source github:{UPSTREAM_REPOSITORY} needs --revision <full 40-character commit>"
             ));
         };
-        CommitId::parse(revision).map_err(|why| {
+        let revision = CommitId::parse(revision).map_err(|why| {
             format!("--revision: {why}; branches, tags and short ids are not accepted")
         })?;
-        return Err(format!(
-            "--source github:{UPSTREAM_REPOSITORY} is not available in this build yet (finos/morphir#851, IR-1V); vendor from `embedded` or a local checkout"
-        ));
+        return Ok((Requested::Github(revision), expected));
     }
     if revision.is_some() {
         return Err(format!(
@@ -305,7 +312,25 @@ fn parse_source(
     } else {
         VendorSource::Local(PathBuf::from(source))
     };
-    Ok((source, expected))
+    Ok((Requested::Ready(source), expected))
+}
+
+/// Resolves a requested source, downloading a GitHub archive when asked. The
+/// returned file handle keeps the download alive until the caller is done.
+async fn resolve(
+    requested: Requested,
+) -> Result<(VendorSource, Option<tempfile::NamedTempFile>), String> {
+    match requested {
+        Requested::Ready(source) => Ok((source, None)),
+        Requested::Github(revision) => {
+            let archive = acquire::download(&revision).await?;
+            let source = VendorSource::GithubArchive {
+                archive: archive.path().to_path_buf(),
+                revision,
+            };
+            Ok((source, Some(archive)))
+        }
+    }
 }
 
 fn lock_json(lock: &Lock) -> serde_json::Value {
@@ -329,14 +354,19 @@ fn print_lock(lock: &Lock) {
     println!("{} file(s)", lock.files.len());
 }
 
-pub fn run_mck_kit_vendor(args: MckKitVendorArgs) -> AppResult<miette::Report> {
-    let (source, expected) = match parse_source(
+pub async fn run_mck_kit_vendor(args: MckKitVendorArgs) -> AppResult<miette::Report> {
+    let (requested, expected) = match parse_source(
         &args.source,
         args.revision.as_deref(),
         args.expect_digest.as_deref(),
     ) {
         Ok(parsed) => parsed,
         Err(message) => return finish(Outcome::Usage(message)),
+    };
+    let remote = matches!(requested, Requested::Github(_));
+    let (source, _download) = match resolve(requested).await {
+        Ok(resolved) => resolved,
+        Err(message) => return finish(Outcome::Error(message)),
     };
     let outcome = match vendor(&source, &args.dest, expected.as_ref()) {
         Err(error) => Outcome::Error(error.to_string()),
@@ -359,6 +389,9 @@ pub fn run_mck_kit_vendor(args: MckKitVendorArgs) -> AppResult<miette::Report> {
                 println!("{verb} {} into {}", describe(&source), args.dest.display());
                 print_lock(lock);
             }
+            if remote {
+                eprintln!("{}", acquire::TRUST_NOTE);
+            }
             if created {
                 eprintln!(
                     "note: commit {} with its {MANIFEST_NAME}, and keep its bytes exact, for example with `{}/** -text` in .gitattributes",
@@ -372,35 +405,66 @@ pub fn run_mck_kit_vendor(args: MckKitVendorArgs) -> AppResult<miette::Report> {
     finish(outcome)
 }
 
-pub fn run_mck_kit_update(args: MckKitUpdateArgs) -> AppResult<miette::Report> {
-    let parsed = match &args.source {
-        Some(source) => parse_source(
+pub async fn run_mck_kit_update(args: MckKitUpdateArgs) -> AppResult<miette::Report> {
+    // Everything decidable from the arguments alone is a usage error first.
+    let explicit = match &args.source {
+        Some(source) => match parse_source(
             source,
             args.revision.as_deref(),
             args.expect_digest.as_deref(),
-        ),
-        None if args.revision.is_some() => Err(format!(
-            "--revision needs --source github:{UPSTREAM_REPOSITORY}"
-        )),
-        None => match args
-            .expect_digest
-            .as_deref()
-            .map(ContentDigest::parse)
-            .transpose()
-        {
-            Err(why) => Err(format!("--expect-digest: {why}")),
-            Ok(expected) => {
-                match read_lock(&args.kit).and_then(|lock| default_update_source(&lock)) {
-                    Ok(source) => Ok((source, expected)),
-                    Err(error) => return finish(Outcome::Error(error.to_string())),
-                }
+        ) {
+            Ok(parsed) => Some(parsed),
+            Err(message) => return finish(Outcome::Usage(message)),
+        },
+        None => None,
+    };
+    let expected = match args
+        .expect_digest
+        .as_deref()
+        .map(ContentDigest::parse)
+        .transpose()
+    {
+        Ok(expected) => expected,
+        Err(why) => return finish(Outcome::Usage(format!("--expect-digest: {why}"))),
+    };
+    let revision = match args.revision.as_deref().map(CommitId::parse).transpose() {
+        Ok(revision) => revision,
+        Err(why) => {
+            return finish(Outcome::Usage(format!(
+                "--revision: {why}; branches, tags and short ids are not accepted"
+            )));
+        }
+    };
+
+    // The existing snapshot is verified before anything is fetched, so one
+    // that will be refused costs no download.
+    let lock = match check_updatable(&args.kit) {
+        Ok(lock) => lock,
+        Err(error) => return finish(Outcome::Error(error.to_string())),
+    };
+    let (requested, expected) = match explicit {
+        Some(parsed) => parsed,
+        None => match (&lock.source, revision) {
+            (LockSource::Github { .. }, Some(revision)) => (Requested::Github(revision), expected),
+            (_, Some(_)) => {
+                return finish(Outcome::Usage(format!(
+                    "--revision applies only to a snapshot from github:{UPSTREAM_REPOSITORY}, or with --source github:{UPSTREAM_REPOSITORY}"
+                )));
             }
+            (_, None) => match default_update_source(&lock) {
+                Ok(source) => (Requested::Ready(source), expected),
+                Err(error) => return finish(Outcome::Error(error.to_string())),
+            },
         },
     };
-    let (source, expected) = match parsed {
-        Ok(parsed) => parsed,
-        Err(message) => return finish(Outcome::Usage(message)),
+    let remote = matches!(requested, Requested::Github(_));
+    let (source, _download) = match resolve(requested).await {
+        Ok(resolved) => resolved,
+        Err(message) => return finish(Outcome::Error(message)),
     };
+    if remote {
+        eprintln!("{}", acquire::TRUST_NOTE);
+    }
     let outcome = match update(&args.kit, &source, expected.as_ref()) {
         Err(error) => Outcome::Error(error.to_string()),
         Ok(UpdateOutcome::Unchanged(lock)) => {

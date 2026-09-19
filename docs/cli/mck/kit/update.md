@@ -8,6 +8,6 @@ Replace a vendored snapshot, refusing if its files were edited
 ## Flags
 - **`--kit <DIR>`** — The root of the vendored snapshot to replace
 - **`--source <SOURCE>`** — Where the new kit data comes from; defaults to the snapshot's own source when that needs no further input (`embedded`)
-- **`--revision <COMMIT>`** — The full 40-character commit to acquire; required with `github:finos/morphir` and refused with any other source
+- **`--revision <COMMIT>`** — The full 40-character commit to acquire from github:finos/morphir. Without --source it updates a snapshot that came from GitHub; it is refused for any other source
 - **`--expect-digest <DIGEST>`** — Fail, changing nothing, unless the new snapshot digest is exactly this
 - **`--json`** — Print the outcome as JSON on stdout
