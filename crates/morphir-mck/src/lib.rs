@@ -14,8 +14,11 @@
 //! finos/morphir#851.
 
 pub mod format_version;
+pub mod ir;
 pub mod json;
 pub mod kit;
+pub mod provenance;
+pub mod report;
 pub mod transport;
 
 /// The runner's interpretation of a kit, as an integer a vendored kit's

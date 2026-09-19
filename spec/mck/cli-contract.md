@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from every source, including managed-snapshot verification (IR-1, IR-1V). The adapter transport below (protocol validation, limits, failure classes, process-tree termination) exists in the engine; `run` does not yet (IR-2). The TypeScript driver in finos/morphir-typescript remains the
+Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from every source, including managed-snapshot verification (IR-1, IR-1V). `run` exists, with the adapter transport, version 1 reports and the provenance sidecar (IR-2); its parity with the first driver is proven against the frozen transcript and live against the TypeScript adapter. `coverage`, `schema check` and `report check` do not exist yet (IR-3). The TypeScript driver in finos/morphir-typescript remains the
 authoritative gate until the cutover described in [migration.md](migration.md).
 
 This contract covers the IR suite. Package commands are added by
@@ -213,6 +213,10 @@ A transport failure is never a domain result. None of these can satisfy an expec
 After the first transport failure the session is broken for good (kept). The failing fence becomes a
 `kit-error` record, and every later fence records `adapter unavailable: <first failure>`. A broken
 session is never restarted within a run.
+
+Pending fences are no exception (hardened). The TypeScript driver skipped a pending case before
+consulting the failure, so a dead adapter could pass a selection of pending cases. This is departure
+14 in [migration.md](migration.md#approved-departures-from-old-runner-behaviour).
 
 On timeout or cancellation the adapter and its descendants are terminated and reaped: the process
 group on Unix, a Job Object on Windows. Ctrl-C does the same before the CLI exits.
