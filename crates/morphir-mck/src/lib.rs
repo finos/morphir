@@ -8,8 +8,10 @@
 //! The contracts live in `spec/mck/` (`cli-contract.md`, `kit-manifest.md`,
 //! `migration.md`). This crate currently provides [`kit`]: the case grammar,
 //! kit loading from a directory or the embedded copy, the
-//! `mck-file-map-sha256/1` digest and kit status. Adapter transport, IR
-//! execution and reports follow in later slices of finos/morphir#851.
+//! `mck-file-map-sha256/1` digest, kit status, and managed snapshots with
+//! their `mck-kit.lock.json` manifest (vendor, verify, update). Adapter
+//! transport, IR execution and reports follow in later slices of
+//! finos/morphir#851.
 
 pub mod json;
 pub mod kit;

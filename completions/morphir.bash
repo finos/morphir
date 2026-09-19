@@ -907,24 +907,56 @@ cmd kb display_order=20 subcommand_required=#true arg_required_else_help=#true a
         }
     }
 }
-cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Morphir Compatibility Kit: validate and identify compatibility kits" unknown_flags=error {
+cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Morphir Compatibility Kit: validate, identify and vendor compatibility kits" unknown_flags=error {
     cmd check display_order=0 args_override_self=#false help="Validate a kit directory without running an adapter" unknown_flags=error {
         flag --repo-root help="Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)" {
             arg <DIR>
         }
         flag --json help="Print the files, case ids and errors as JSON on stdout"
-        arg <DIR> help="The kit directory to validate, for example spec/ir/mck"
+        arg <DIR> help="The kit directory to validate, for example spec/ir/mck, or a vendored snapshot's root"
         complete dir type=path
     }
-    cmd kit display_order=1 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect kit provenance and integrity" unknown_flags=error {
+    cmd kit display_order=1 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
         cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {
-            flag --kit help="A kit directory; the kit embedded in this CLI when omitted" {
+            flag --kit help="A kit directory or a vendored snapshot's root; the kit embedded in this CLI when omitted" {
                 arg <DIR>
             }
             flag --repo-root help="Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)" {
                 arg <DIR>
             }
             flag --json help="Print the status as JSON on stdout"
+            complete dir type=path
+        }
+        cmd vendor display_order=1 args_override_self=#false help="Write a verified, pinned copy of the kit into a new directory" unknown_flags=error {
+            flag --source help="Where the kit data comes from: `embedded` (this CLI's kit, offline), a local snapshot or finos/morphir checkout, or `github:finos/morphir`" required=#true {
+                arg <SOURCE>
+            }
+            flag --revision help="The full 40-character commit to acquire; required with `github:finos/morphir` and refused with any other source" {
+                arg <COMMIT>
+            }
+            flag --expect-digest help="Fail, writing nothing, unless the snapshot digest is exactly this" {
+                arg <DIGEST>
+            }
+            flag --dest help="The directory to create; it must not exist, or be empty" required=#true {
+                arg <DIR>
+            }
+            flag --json help="Print the outcome as JSON on stdout"
+            complete dir type=path
+        }
+        cmd update display_order=2 args_override_self=#false help="Replace a vendored snapshot, refusing if its files were edited" unknown_flags=error {
+            flag --kit help="The root of the vendored snapshot to replace" required=#true {
+                arg <DIR>
+            }
+            flag --source help="Where the new kit data comes from; defaults to the snapshot's own source when that needs no further input (`embedded`)" {
+                arg <SOURCE>
+            }
+            flag --revision help="The full 40-character commit to acquire; required with `github:finos/morphir` and refused with any other source" {
+                arg <COMMIT>
+            }
+            flag --expect-digest help="Fail, changing nothing, unless the new snapshot digest is exactly this" {
+                arg <DIGEST>
+            }
+            flag --json help="Print the outcome as JSON on stdout"
             complete dir type=path
         }
     }

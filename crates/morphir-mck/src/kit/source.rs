@@ -49,7 +49,13 @@ fn safe_join(root: &Path, relative: &str) -> Option<PathBuf> {
     joined.starts_with(root).then_some(joined)
 }
 
-fn walk(directory: &Path, prefix: &str, out: &mut Vec<String>) -> io::Result<()> {
+/// Collects the regular files under `directory` into `out` and every other`n/// non-directory entry (a symbolic link, a socket...) into `irregular`. Links`n/// are never followed.
+fn walk(
+    directory: &Path,
+    prefix: &str,
+    out: &mut Vec<String>,
+    irregular: &mut Vec<String>,
+) -> io::Result<()> {
     let mut entries = std::fs::read_dir(directory)?.collect::<io::Result<Vec<_>>>()?;
     entries.sort_by(|a, b| {
         utf16_cmp(
@@ -62,9 +68,11 @@ fn walk(directory: &Path, prefix: &str, out: &mut Vec<String>) -> io::Result<()>
         let key = format!("{prefix}/{}", name.to_string_lossy());
         let kind = entry.file_type()?;
         if kind.is_dir() {
-            walk(&entry.path(), &key, out)?;
+            walk(&entry.path(), &key, out, irregular)?;
         } else if kind.is_file() {
             out.push(key);
+        } else {
+            irregular.push(key);
         }
     }
     Ok(())
@@ -144,7 +152,7 @@ impl KitSource {
         match self {
             Self::Directory { kit_root, .. } => {
                 let mut out = Vec::new();
-                walk(kit_root, KIT_PATH, &mut out)?;
+                walk(kit_root, KIT_PATH, &mut out, &mut Vec::new())?;
                 Ok(out)
             }
             Self::Map { files, .. } => Ok(files
@@ -152,6 +160,47 @@ impl KitSource {
                 .filter(|k| k.starts_with(&format!("{KIT_PATH}/")))
                 .cloned()
                 .collect()),
+        }
+    }
+
+    /// Entries under the kit directory that are neither regular files nor`n    /// directories. `check` skips them, as the first driver did; a snapshot`n    /// refuses them, because it must not silently drop part of the corpus.
+    pub fn irregular_entries(&self) -> io::Result<Vec<String>> {
+        match self {
+            Self::Directory { kit_root, .. } => {
+                let mut irregular = Vec::new();
+                walk(kit_root, KIT_PATH, &mut Vec::new(), &mut irregular)?;
+                Ok(irregular)
+            }
+            Self::Map { .. } => Ok(Vec::new()),
+        }
+    }
+
+    /// Whether a repository-relative path is a regular file reached without`n    /// passing through a symbolic link at any level.
+    pub fn is_plain_file(&self, relative: &str) -> io::Result<bool> {
+        match self {
+            Self::Map { files, .. } => Ok(files.contains_key(relative)),
+            Self::Directory { .. } => {
+                let Some((root, file)) = self.locate(relative) else {
+                    return Ok(false);
+                };
+                let mut path = root.to_path_buf();
+                for component in file
+                    .strip_prefix(root)
+                    .map_err(io::Error::other)?
+                    .components()
+                {
+                    path.push(component);
+                    let metadata = match std::fs::symlink_metadata(&path) {
+                        Ok(metadata) => metadata,
+                        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
+                        Err(error) => return Err(error),
+                    };
+                    if metadata.file_type().is_symlink() {
+                        return Ok(false);
+                    }
+                }
+                Ok(std::fs::symlink_metadata(&file)?.file_type().is_file())
+            }
         }
     }
 

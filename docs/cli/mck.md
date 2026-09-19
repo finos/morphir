@@ -3,7 +3,7 @@
 
 - **Usage:** `morphir mck <SUBCOMMAND>`
 
-Morphir Compatibility Kit: validate and identify compatibility kits
+Morphir Compatibility Kit: validate, identify and vendor compatibility kits
 
 ## Subcommands
 

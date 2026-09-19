@@ -128,6 +128,9 @@ jobs:
               - '.github/workflows/ci.yml'
             mck:
               - 'spec/ir/mck/**'
+              # parent-owned kit data and contracts mck:check validates
+              - 'spec/mck/**'
+              - 'tools/gen-mck-vocabulary*'
               # checks every kit fence against the v4 JSON Schemas
               - 'tools/validate-mck-fences.ts'
               # checks the protocol example against the protocol schema and both
