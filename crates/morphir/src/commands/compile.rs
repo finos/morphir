@@ -1810,7 +1810,7 @@ mod incremental_tests {
         )));
         assert!(provider_supports_incremental(&resolve(
             "gleam",
-            "morphir-gleam-binding"
+            "morphir-gleam-native"
         )));
     }
 
@@ -1838,7 +1838,7 @@ mod incremental_tests {
         let resolved = resolve("gleam", "morphir-gleam-binding");
         let key = cache_key(&resolved, &options());
 
-        assert_eq!(key.extension_id, "morphir-gleam-binding");
+        assert_eq!(key.extension_id, "morphir-gleam-native");
         assert_eq!(key.ir_version, "4.0.0");
         assert!(!key.types_only);
     }
