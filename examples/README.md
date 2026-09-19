@@ -38,6 +38,7 @@ provider evaluates assertions.
 | [YAML project](elm/yaml-project/scenarios.md) | Config discovery and a public native Elm record in v4 IR | Offline |
 | [Multi-project workspace](monorepo-workspace/scenarios.md) | Default selection, selecting each member by path/name, distinct package identities, isolated task outputs and installed IR copies | Offline |
 | [Gleam compile and generate](gleam/compile-generate/scenarios.md) | Function compilation, generated Gleam source and compile-to-generate task provenance | Offline |
+| [Gleam type compatibility](gleam/type-compatibility/scenarios.md) | IR v3/v4 type compilation, imported generic references, labelled records, discriminated unions, opaque types and generated Gleam | Offline |
 | [CLI basics](cli/basics/scenarios.md) | Version reporting and public command help in independent Markdown scenarios | Offline |
 | [Classic multi-file Elm](morphir-elm-compat/scenarios.md) | Config discovery and the released provider's **known rejection** of multiple source documents | Reference Elm 0.1.0 |
 

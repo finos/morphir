@@ -4125,7 +4125,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-gleam-binding"
-version = "0.4.0-beta.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "cap-fs-ext 4.0.3",
@@ -4133,6 +4133,7 @@ dependencies = [
  "chrono",
  "chumsky",
  "cucumber",
+ "extism",
  "extism-pdk",
  "indexmap",
  "logos",
@@ -4145,6 +4146,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2 0.10.9",
  "tempfile",
  "tokio",
  "url",

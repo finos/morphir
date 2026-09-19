@@ -1808,7 +1808,7 @@ mod incremental_tests {
             "elm",
             "morphir-elm-native"
         )));
-        assert!(!provider_supports_incremental(&resolve(
+        assert!(provider_supports_incremental(&resolve(
             "gleam",
             "morphir-gleam-binding"
         )));
