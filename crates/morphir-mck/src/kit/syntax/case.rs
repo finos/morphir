@@ -564,6 +564,20 @@ mod tests {
         assert_eq!(parsed.cases[0].title, "Record {a} shape");
     }
 
+    /// A pending case shows the spellings under discussion as illustrations,
+    /// which are not data, so it may have no data fence at all. The corpus
+    /// relies on this (versions-0002); only an active case must carry data.
+    #[test]
+    fn a_pending_case_may_carry_only_illustrations() {
+        let source = "## types-0001: undecided {status=pending}\nWhy.\n```yaml\nmaybe: this\n```\n";
+        let parsed = parse_kit_file(FILE, source);
+        assert_eq!(parsed.errors, vec![]);
+        assert_eq!(
+            (parsed.cases[0].status, parsed.cases[0].fences.len()),
+            (Status::Pending, 0)
+        );
+    }
+
     #[test]
     fn a_rejection_only_active_case_is_legal() {
         let parsed = parse_kit_file(

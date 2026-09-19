@@ -86,7 +86,28 @@ pub fn load_kit(source: KitSource) -> io::Result<Kit> {
     let mut owner: HashMap<String, String> = HashMap::new();
     for file in &files {
         let display = source.display(file);
-        let bytes = source.read(file).unwrap_or_default();
+        // A listed file that cannot be read is an error, never an empty file:
+        // its cases would silently vanish from the kit.
+        let bytes = match source.read(file) {
+            Ok(Some(bytes)) => bytes,
+            Ok(None) => {
+                errors.push(KitError {
+                    file: display,
+                    line: 0,
+                    message: "case file cannot be read: it is not a regular file inside the kit"
+                        .to_owned(),
+                });
+                continue;
+            }
+            Err(error) => {
+                errors.push(KitError {
+                    file: display,
+                    line: 0,
+                    message: format!("case file cannot be read: {error}"),
+                });
+                continue;
+            }
+        };
         // A case file may open with a byte-order mark, which the tokenizer
         // strips; only undecodable bytes are refused.
         let Ok(text) = std::str::from_utf8(&bytes) else {
@@ -137,7 +158,15 @@ impl Kit {
                 "text fence names {target}, which is neither .json nor .yaml"
             ));
         };
-        let Some(bytes) = self.source.read(target) else {
+        let bytes = match self.source.read(target) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return Err(format!(
+                    "text fence names {target}, which cannot be read: {error}"
+                ));
+            }
+        };
+        let Some(bytes) = bytes else {
             return Err(format!(
                 "text fence names {target}, which is not in the kit source ({})",
                 self.source.label()
@@ -185,7 +214,7 @@ impl Kit {
             .text_fences()
             .map(|(_, fence)| fence.text_target().to_owned());
         for path in self.source.list()?.into_iter().chain(targets) {
-            let Some(bytes) = self.source.read(&path) else {
+            let Some(bytes) = self.source.read(&path)? else {
                 return Err(io::Error::new(
                     io::ErrorKind::NotFound,
                     format!("{path} disappeared while hashing the kit"),
@@ -238,6 +267,41 @@ mod tests {
         );
         let ids: Vec<_> = kit.cases.iter().map(|c| c.id.as_str()).collect();
         assert_eq!(ids, vec!["types-0001", "values-0001"]);
+    }
+
+    /// A listed case file the source cannot hand over must fail the check: an
+    /// empty stand-in would parse cleanly and its cases would silently vanish.
+    #[cfg(unix)]
+    #[test]
+    fn a_listed_case_file_that_cannot_be_read_is_a_kit_error() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let repo = tempfile::tempdir().unwrap();
+        let kit_dir = repo.path().join(KIT_PATH);
+        std::fs::create_dir_all(&kit_dir).unwrap();
+        std::fs::write(
+            kit_dir.join("types.md"),
+            format!("## types-0001: t\n{CASE}"),
+        )
+        .unwrap();
+        let locked = kit_dir.join("values.md");
+        std::fs::write(&locked, format!("## values-0001: v\n{CASE}")).unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+        if std::fs::read(&locked).is_ok() {
+            return; // running as root: permissions do not bind
+        }
+
+        let kit = load_kit(KitSource::directory(&kit_dir, None)).unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o644)).unwrap();
+        assert_eq!(kit.cases.len(), 1);
+        assert_eq!(kit.errors.len(), 1, "{:?}", kit.errors);
+        assert!(
+            kit.errors[0]
+                .message
+                .starts_with("case file cannot be read: "),
+            "{:?}",
+            kit.errors
+        );
     }
 
     #[test]

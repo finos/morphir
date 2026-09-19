@@ -26,13 +26,17 @@ pub enum KitSource {
 }
 
 /// Joins a repository-relative path under `root`, or refuses. A relative path
-/// must stay inside its root: no absolute path, no `..`, and no backslash
-/// (keys are POSIX; `..\secret` has no `/` segment equal to `..` and would walk
-/// out of the root on Windows). As a second line of defence the joined path
-/// must still start with the root, which also refuses a drive-relative
-/// segment such as `C:x`.
+/// must stay inside its root: no absolute path, no `..`, no backslash (keys
+/// are POSIX; `..\secret` has no `/` segment equal to `..` and would walk out
+/// of the root on Windows) and no colon (a drive-relative `C:x` replaces the
+/// root on Windows). These are refused lexically on every platform, so the
+/// same kit validates the same way everywhere. As a second line of defence
+/// the joined path must still start with the root.
 fn safe_join(root: &Path, relative: &str) -> Option<PathBuf> {
-    if relative.starts_with('/') || relative.contains('\\') || Path::new(relative).is_absolute() {
+    if relative.starts_with('/')
+        || relative.contains(['\\', ':'])
+        || Path::new(relative).is_absolute()
+    {
         return None;
     }
     let mut joined = root.to_path_buf();
@@ -116,7 +120,8 @@ impl KitSource {
         }
     }
 
-    fn locate(&self, relative: &str) -> Option<PathBuf> {
+    /// The root a key resolves under and its lexically confined path.
+    fn locate(&self, relative: &str) -> Option<(&Path, PathBuf)> {
         let Self::Directory {
             kit_root,
             repo_root,
@@ -124,13 +129,14 @@ impl KitSource {
         else {
             return None;
         };
-        match relative
+        let (root, inside) = match relative
             .strip_prefix(KIT_PATH)
             .and_then(|rest| rest.strip_prefix('/'))
         {
-            Some(inside) => safe_join(kit_root, inside),
-            None => safe_join(repo_root.as_deref()?, relative),
-        }
+            Some(inside) => (kit_root.as_path(), inside),
+            None => (repo_root.as_deref()?, relative),
+        };
+        Some((root, safe_join(root, inside)?))
     }
 
     /// Repository-relative paths of every file under the kit directory.
@@ -149,28 +155,38 @@ impl KitSource {
         }
     }
 
-    /// The bytes at a repository-relative path, or `None` when the source
-    /// cannot provide it.
-    pub fn read(&self, relative: &str) -> Option<Cow<'_, [u8]>> {
+    /// The bytes at a repository-relative path. `Ok(None)` when the source
+    /// does not hold it, which includes a path that leaves its root through a
+    /// symbolic link; `Err` when it is there and cannot be read.
+    pub fn read(&self, relative: &str) -> io::Result<Option<Cow<'_, [u8]>>> {
         match self {
             Self::Directory { .. } => {
-                let file = self.locate(relative)?;
-                file.is_file()
-                    .then(|| std::fs::read(file).ok())
-                    .flatten()
-                    .map(Cow::Owned)
+                let Some((root, file)) = self.locate(relative) else {
+                    return Ok(None);
+                };
+                if !file.is_file() {
+                    return Ok(None);
+                }
+                // Lexical confinement cannot see a link; the real path must
+                // still sit under the real root.
+                if !file.canonicalize()?.starts_with(root.canonicalize()?) {
+                    return Ok(None);
+                }
+                Ok(Some(Cow::Owned(std::fs::read(file)?)))
             }
-            Self::Map { files, .. } => files
+            Self::Map { files, .. } => Ok(files
                 .get(relative)
-                .map(|bytes| Cow::Borrowed(bytes.as_ref())),
+                .map(|bytes| Cow::Borrowed(bytes.as_ref()))),
         }
     }
 
     /// What to call the path in messages: the real file for a directory
     /// source, the key otherwise.
     pub fn display(&self, relative: &str) -> String {
-        self.locate(relative)
-            .map_or_else(|| relative.to_owned(), |path| path.display().to_string())
+        self.locate(relative).map_or_else(
+            || relative.to_owned(),
+            |(_, path)| path.display().to_string(),
+        )
     }
 }
 
@@ -221,16 +237,22 @@ mod tests {
             vec!["spec/ir/mck/documents/a.yaml", "spec/ir/mck/types.md"]
         );
         assert_eq!(
-            source.read("spec/ir/mck/documents/a.yaml").as_deref(),
+            source
+                .read("spec/ir/mck/documents/a.yaml")
+                .unwrap()
+                .as_deref(),
             Some(b"a: 1\n".as_slice())
         );
         assert_eq!(
-            source.read("outside.json").as_deref(),
+            source.read("outside.json").unwrap().as_deref(),
             Some(b"{}".as_slice())
         );
-        assert_eq!(source.read("../mck-secret.json"), None);
-        assert_eq!(source.read("spec/ir/mck/../../../outside.json"), None);
-        assert_eq!(source.read("spec/ir/mck"), None);
+        assert_eq!(source.read("../mck-secret.json").unwrap(), None);
+        assert_eq!(
+            source.read("spec/ir/mck/../../../outside.json").unwrap(),
+            None
+        );
+        assert_eq!(source.read("spec/ir/mck").unwrap(), None);
     }
 
     #[test]
@@ -239,7 +261,7 @@ mod tests {
         std::fs::write(dir.path().join("outside.json"), "{}").unwrap();
         let source = KitSource::directory(dir.path(), None);
         assert_eq!(source.repo_root(), None);
-        assert_eq!(source.read("outside.json"), None);
+        assert_eq!(source.read("outside.json").unwrap(), None);
     }
 
     #[test]
@@ -257,12 +279,33 @@ mod tests {
         let source = KitSource::map("embedded kit", files);
         assert_eq!(source.list().unwrap(), vec!["spec/ir/mck/types.md"]);
         assert_eq!(
-            source.read("website/static/x.json").as_deref(),
+            source.read("website/static/x.json").unwrap().as_deref(),
             Some(b"{}".as_slice())
         );
         assert_eq!(
             source.display("spec/ir/mck/types.md"),
             "spec/ir/mck/types.md"
+        );
+    }
+    #[cfg(unix)]
+    #[test]
+    fn a_symbolic_link_cannot_carry_a_read_out_of_the_root() {
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("secret.json"), "{}").unwrap();
+        let repo = tempfile::tempdir().unwrap();
+        let kit = repo.path().join("spec").join("ir").join("mck");
+        std::fs::create_dir_all(&kit).unwrap();
+        std::os::unix::fs::symlink(outside.path(), repo.path().join("fixtures")).unwrap();
+        std::fs::create_dir_all(repo.path().join("real")).unwrap();
+        std::fs::write(repo.path().join("real").join("a.json"), "{}").unwrap();
+        std::os::unix::fs::symlink(repo.path().join("real"), repo.path().join("alias")).unwrap();
+
+        let source = KitSource::directory(&kit, None);
+        assert_eq!(source.read("fixtures/secret.json").unwrap(), None);
+        assert_eq!(
+            source.read("alias/a.json").unwrap().as_deref(),
+            Some(b"{}".as_slice()),
+            "a link that stays inside is fine"
         );
     }
 }
