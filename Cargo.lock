@@ -3894,6 +3894,7 @@ dependencies = [
  "morphir-extension-sdk",
  "morphir-gleam-binding",
  "morphir-kb",
+ "morphir-mck",
  "morphir-okf",
  "morphir-opa",
  "morphir-workspace",
@@ -4165,6 +4166,16 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "walkdir",
+]
+
+[[package]]
+name = "morphir-mck"
+version = "0.4.0-beta.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
 ]
 
 [[package]]

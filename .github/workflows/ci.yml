@@ -260,6 +260,10 @@ jobs:
       - name: Run tests
         run: cargo test --locked --package morphir
 
+      # The MCK engine is a library crate of its own; --package morphir does not run its tests.
+      - name: Run MCK engine tests
+        run: cargo test --locked --package morphir-mck
+
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata
 
