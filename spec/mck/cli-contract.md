@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from the `embedded` and local sources, including managed-snapshot verification (IR-1, IR-1V). The TypeScript driver in finos/morphir-typescript remains the
+Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from every source, including managed-snapshot verification (IR-1, IR-1V). The TypeScript driver in finos/morphir-typescript remains the
 authoritative gate until the cutover described in [migration.md](migration.md).
 
 This contract covers the IR suite. Package commands are added by

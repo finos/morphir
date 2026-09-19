@@ -1,5 +1,6 @@
 //! Kit parsing, loading, hashing and provenance.
 
+pub mod archive;
 pub mod closure;
 pub mod embedded;
 pub mod hash;

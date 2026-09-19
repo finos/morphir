@@ -39,6 +39,8 @@ morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 morphir-evaluator = { path = "../morphir-evaluator" }
 morphir-opa = { path = "../morphir-opa" }
 morphir-mck = { path = "../morphir-mck" }
+# `mck kit vendor --source github:finos/morphir` downloads one commit archive over HTTPS.
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
 morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
