@@ -112,3 +112,52 @@ passes if {
     contains(input.artifacts.source.value, "world")
 }
 ```
+
+### Compare the generated source with a golden file
+
+The expected file is authored and checked in. The driver reads it before running
+commands and compares the complete generated file after generation. Explicit LF
+normalization keeps these examples portable across checkout line endings.
+
+```yaml morphir:golden
+id: generated-file
+command: generate
+actual: .morphir/out/generate/gleam.dest/main.gleam
+expected_file: golden/main.gleam
+line_endings: lf
+```
+
+### Match an inclusive line range
+
+Only lines 3 through 5 are selected; surrounding text does not affect this check.
+
+```yaml morphir:golden
+id: generated-function
+command: generate
+actual: .morphir/out/generate/gleam.dest/main.gleam
+select: {kind: lines, start: 3, end: 5}
+line_endings: lf
+```
+
+```gleam
+pub fn hello() {
+  "world"
+}
+```
+
+### Match the function body between markers
+
+Markers are literal strings, each occurring exactly once. The selected content
+excludes the markers and retains indentation and line endings.
+
+```yaml morphir:golden
+id: generated-body
+command: generate
+actual: .morphir/out/generate/gleam.dest/main.gleam
+select: {kind: between, start: "pub fn hello() {\n", end: "}\n"}
+line_endings: lf
+```
+
+```gleam
+  "world"
+```

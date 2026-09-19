@@ -1,4 +1,5 @@
 //! Notebook and Markdown scenarios executed through real Morphir CLI child processes.
+mod golden;
 mod markdown;
 mod model;
 mod runner;

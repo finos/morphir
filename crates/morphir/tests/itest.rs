@@ -453,3 +453,303 @@ fn itest_rejects_configuration_above_the_temporary_workspace() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+fn golden_notebook(source: &str, options: Value) -> Value {
+    let mut notebook = scenario();
+    notebook["cells"] = json!([
+        code(
+            "run",
+            "morphir --version",
+            json!({"itest": {"kind":"command", "name":"Observe files", "timeout_seconds":10}})
+        ),
+        code("golden", source, json!({"itest":options}))
+    ]);
+    notebook
+}
+
+fn golden_options() -> Value {
+    json!({"kind":"golden", "command":"run", "actual":"actual.txt"})
+}
+
+fn assert_golden_output(output: &std::process::Output, success: bool, diagnostic: &str) {
+    let text = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(output.status.success(), success, "{text}");
+    assert!(text.contains(diagnostic), "missing {diagnostic:?}: {text}");
+}
+
+#[test]
+fn itest_golden_notebook_whole_file_lines_and_markers() {
+    for (actual, expected, selection) in [
+        ("héllo\nworld\n", "héllo\nworld\n", json!({"kind":"all"})),
+        (
+            "ignored\nhéllo\nworld",
+            "héllo\nworld",
+            json!({"kind":"lines","start":2,"end":3}),
+        ),
+        (
+            "ignored<start>héllo\nworld<end>ignored",
+            "héllo\nworld",
+            json!({"kind":"between","start":"<start>","end":"<end>"}),
+        ),
+        ("", "", json!({"kind":"all"})),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let mut options = golden_options();
+        options["select"] = selection;
+        write_scenario(root.path(), &golden_notebook(expected, options));
+        fs::write(root.path().join("actual.txt"), actual).unwrap();
+        assert_golden_output(&run(root.path(), &[]), true, "1 passed");
+    }
+}
+
+#[test]
+fn itest_golden_expected_file_and_explicit_line_endings() {
+    let root = tempfile::tempdir().unwrap();
+    fs::write(root.path().join("actual.txt"), "héllo\r\nworld\r\n").unwrap();
+    fs::write(root.path().join("expected.txt"), "héllo\nworld\n").unwrap();
+    let mut options = golden_options();
+    options["expected_file"] = json!("expected.txt");
+    write_scenario(root.path(), &golden_notebook("", options.clone()));
+    assert_golden_output(&run(root.path(), &[]), false, "golden mismatch");
+    options["line_endings"] = json!("lf");
+    write_scenario(root.path(), &golden_notebook("", options));
+    assert_golden_output(&run(root.path(), &[]), true, "1 passed");
+}
+
+#[test]
+fn itest_golden_mismatch_has_diff_and_final_newline_is_significant() {
+    let root = tempfile::tempdir().unwrap();
+    fs::write(root.path().join("actual.txt"), "wrong\n").unwrap();
+    write_scenario(root.path(), &golden_notebook("right\n", golden_options()));
+    let output = run(root.path(), &[]);
+    for diagnostic in ["golden mismatch", "actual.txt", "-right", "+wrong"] {
+        assert_golden_output(&output, false, diagnostic);
+    }
+    fs::write(root.path().join("actual.txt"), "right").unwrap();
+    assert_golden_output(&run(root.path(), &[]), false, "No newline");
+}
+
+#[test]
+fn itest_golden_invalid_or_missing_inputs_fail() {
+    for (options, actual, diagnostic) in [
+        (
+            json!({"select":{"kind":"lines","start":0,"end":1}}),
+            Some("a\n"),
+            "line",
+        ),
+        (
+            json!({"select":{"kind":"lines","start":2,"end":3}}),
+            Some("a\n"),
+            "line",
+        ),
+        (
+            json!({"select":{"kind":"between","start":"[","end":"]"}}),
+            Some("[a][b]"),
+            "marker",
+        ),
+        (
+            json!({"expected_file":"missing.txt"}),
+            Some("a"),
+            "missing.txt",
+        ),
+        (json!({}), None, "actual.txt"),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let mut metadata = golden_options();
+        metadata
+            .as_object_mut()
+            .unwrap()
+            .extend(options.as_object().unwrap().clone());
+        write_scenario(root.path(), &golden_notebook("", metadata));
+        if let Some(actual) = actual {
+            fs::write(root.path().join("actual.txt"), actual).unwrap();
+        }
+        assert_golden_output(&run(root.path(), &[]), false, diagnostic);
+    }
+}
+
+#[test]
+fn itest_golden_markdown_inline_and_file_expectations() {
+    let root = tempfile::tempdir().unwrap();
+    fs::write(
+        root.path().join("actual.txt"),
+        "before\nSTART\nhéllo\nEND\nafter\n",
+    )
+    .unwrap();
+    fs::write(root.path().join("expected.txt"), "héllo\n").unwrap();
+    fs::write(
+        root.path().join("scenarios.md"),
+        r#"---
+version: 1
+title: Golden text
+description: Assert exact selected contents through the CLI evaluator.
+tags: [suite:offline]
+provider: rego
+---
+## Match spans
+```yaml morphir:command
+id: run
+name: Observe files
+timeout_seconds: 10
+```
+```sh
+morphir --version
+```
+```yaml morphir:golden
+id: lines
+command: run
+actual: actual.txt
+select: {kind: lines, start: 3, end: 3}
+```
+Prose may separate the expected content from its metadata.
+```text
+héllo
+```
+```yaml morphir:golden
+id: markers
+command: run
+actual: actual.txt
+expected_file: expected.txt
+select: {kind: between, start: "START\n", end: "END"}
+```
+This disk golden needs no source fence.
+"#,
+    )
+    .unwrap();
+    assert_golden_output(&run(root.path(), &[]), true, "1 passed");
+    fs::write(root.path().join("expected.txt"), "wrong\n").unwrap();
+    assert_golden_output(&run(root.path(), &[]), false, "golden mismatch");
+}
+
+#[test]
+fn itest_golden_cannot_mask_a_failed_command() {
+    let root = tempfile::tempdir().unwrap();
+    fs::write(root.path().join("actual.txt"), "same").unwrap();
+    let mut notebook = golden_notebook("same", golden_options());
+    notebook["cells"][0]["source"] = json!("morphir --not-a-real-option");
+    write_scenario(root.path(), &notebook);
+    assert_golden_output(&run(root.path(), &[]), false, "exit");
+}
+
+#[test]
+fn itest_golden_rejects_invalid_metadata_before_execution() {
+    for (extra, source, diagnostic) in [
+        (json!({"actual":"../outside.txt"}), "", "path"),
+        (json!({"expected_file":"../outside.txt"}), "", "path"),
+        (
+            json!({"expected_file":"expected.txt"}),
+            "inline",
+            "cannot combine",
+        ),
+        (json!({"command":"later"}), "", "forward command"),
+        (
+            json!({"select":{"kind":"all","unexpected":true}}),
+            "",
+            "unknown field",
+        ),
+        (json!({"line_endings":"trim"}), "", "unknown variant"),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let mut options = golden_options();
+        options
+            .as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        write_scenario(root.path(), &golden_notebook(source, options));
+        assert_golden_output(&run(root.path(), &["--list"]), false, diagnostic);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn itest_golden_rejects_symlinked_expected_files_even_in_inline_workspaces() {
+    let root = tempfile::tempdir().unwrap();
+    let outside = tempfile::NamedTempFile::new().unwrap();
+    std::os::unix::fs::symlink(outside.path(), root.path().join("expected.txt")).unwrap();
+    let mut options = golden_options();
+    options["expected_file"] = json!("expected.txt");
+    let mut notebook = golden_notebook("", options);
+    notebook["metadata"]["morphir"]["itest"]["workspace"] = json!({"kind":"inline"});
+    write_scenario(root.path(), &notebook);
+    assert_golden_output(&run(root.path(), &[]), false, "symlink");
+}
+
+#[test]
+fn itest_golden_freezes_expected_files_before_cli_commands() {
+    let root = tempfile::tempdir().unwrap();
+    fs::write(
+        root.path().join("Example.elm"),
+        "module Example exposing (Name)\n\ntype alias Name = String\n",
+    )
+    .unwrap();
+    let expected_dir = root.path().join("expected");
+    fs::create_dir_all(expected_dir.join("compile.dest")).unwrap();
+    fs::write(
+        expected_dir.join("compile.dest/morphir-ir.json"),
+        "authored expectation\n",
+    )
+    .unwrap();
+    let mut options = golden_options();
+    options["actual"] = json!("installed/morphir-ir.json");
+    options["expected_file"] = json!("expected/compile.dest/morphir-ir.json");
+    let mut notebook = golden_notebook("", options);
+    // A trusted CLI command can write outside its copied workspace. Deliberately
+    // overwrite the author's expectation to prove it was frozen before execution.
+    notebook["cells"][0]["source"] = json!(format!(
+        "morphir compile --input Example.elm --extension morphir-elm-native --package-name examples/frozen --out-dir {} --output installed --json",
+        shell_words::quote(expected_dir.to_str().unwrap())
+    ));
+    write_scenario(root.path(), &notebook);
+    let output = run(root.path(), &[]);
+    assert_golden_output(&output, false, "-authored expectation");
+    let installed: Value = serde_json::from_str(
+        &fs::read_to_string(expected_dir.join("compile.dest/morphir-ir.json")).unwrap(),
+    )
+    .unwrap();
+    assert!(installed.get("formatVersion").is_some());
+}
+
+#[test]
+fn itest_golden_rejects_null_expected_file_in_both_formats() {
+    let root = tempfile::tempdir().unwrap();
+    let mut options = golden_options();
+    options["expected_file"] = Value::Null;
+    write_scenario(root.path(), &golden_notebook("", options));
+    assert_golden_output(&run(root.path(), &["--list"]), false, "expected a string");
+    fs::remove_file(root.path().join("scenario.ipynb")).unwrap();
+    fs::write(
+        root.path().join("scenarios.md"),
+        r#"---
+version: 1
+title: Missing expectation
+description: Null cannot silently select an empty inline expectation.
+tags: [suite:offline]
+provider: rego
+---
+## No accidental pass
+```yaml morphir:command
+id: run
+name: Observe files
+timeout_seconds: 10
+```
+```sh
+morphir --version
+```
+```yaml morphir:golden
+id: empty
+command: run
+actual: actual.txt
+expected_file:
+```
+```text
+This text must never be silently ignored as an expectation.
+```
+"#,
+    )
+    .unwrap();
+    assert_golden_output(&run(root.path(), &["--list"]), false, "expected a string");
+}

@@ -385,7 +385,11 @@ projects live under categorized `examples/` directories and carry `scenario.ipyn
 or `scenarios.md`, one document per directory. Markdown uses YAML frontmatter,
 `##` headings for independent scenarios and paired `yaml morphir:command`,
 `yaml morphir:assertion` or `yaml morphir:file` metadata and language source fences.
-Prose may separate paired fences; `###` headings organize steps. Select one
+Prose may separate paired fences; `###` headings organize steps.
+Golden assertions use `yaml morphir:golden` with inline expected text or a
+standalone `expected_file`; notebook cells use `kind: golden`. Whole-file,
+inclusive line-range and unique-marker comparisons share the CLI evaluator
+pipeline. Expectations are frozen before commands; exact text is the default. Select one
 Markdown scenario with `--filter 'category/example#heading-id'`.
 Keep scenario context and tags in frontmatter or notebook metadata, literal CLI commands in
 command cells and named Rego rules in assertion cells. Project source and config
