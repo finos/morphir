@@ -10,7 +10,9 @@ provider: rego
 
 The native Gleam extension supports type declarations in both IR versions.
 Records use labelled ADT constructors. These scenarios inspect the real CLI's
-IR and generated source. Incremental cache behavior is covered by CLI tests.
+IR and compare both generated modules against checked-in golden files. The same
+expectations apply to v3 and v4; LF normalization permits CRLF checkouts.
+Incremental cache behavior is covered by CLI tests.
 Sum types preserve each constructor's discriminant and payload fields.
 Function bodies remain available in v4; v3 reports them as skipped.
 
@@ -57,38 +59,26 @@ passes if {
 id: generate
 name: Generate Gleam types
 timeout_seconds: 60
-captures:
-  - {name: model, path: .morphir/out/generate/gleam.dest/model.gleam, format: text}
-  - {name: api, path: .morphir/out/generate/gleam.dest/api.gleam, format: text}
 ```
 
 ```sh
 morphir generate --target gleam --json
 ```
 
-```yaml morphir:assertion
-id: source
+```yaml morphir:golden
+id: generated-model
 command: generate
-entrypoints: [data.source.passes]
+actual: .morphir/out/generate/gleam.dest/model.gleam
+expected_file: golden/model.gleam
+line_endings: lf
 ```
 
-```rego
-package source
-import rego.v1
-
-passes if {
-  input.exitCode == 0
-  contains(input.artifacts.model.value, "pub type Customer(a)")
-  contains(input.artifacts.model.value, "name: String")
-  contains(input.artifacts.model.value, "details: a")
-  contains(input.artifacts.model.value, "pub type Outcome(a)")
-  contains(input.artifacts.model.value, "Pending")
-  contains(input.artifacts.model.value, "Succeeded(value: a)")
-  contains(input.artifacts.model.value, "Failed(message: String, code: Int)")
-  contains(input.artifacts.model.value, "pub opaque type Secret")
-  contains(input.artifacts.api.value, "import model")
-  contains(input.artifacts.api.value, "model.Customer(model.CustomerId)")
-}
+```yaml morphir:golden
+id: generated-api
+command: generate
+actual: .morphir/out/generate/gleam.dest/api.gleam
+expected_file: golden/api.gleam
+line_endings: lf
 ```
 
 ## Compile and generate v3
@@ -130,33 +120,24 @@ passes if {
 id: generate
 name: Generate Gleam types
 timeout_seconds: 60
-captures:
-  - {name: model, path: .morphir/out/generate/gleam.dest/model.gleam, format: text}
 ```
 
 ```sh
 morphir generate --target gleam --json
 ```
 
-```yaml morphir:assertion
-id: source
+```yaml morphir:golden
+id: generated-model
 command: generate
-entrypoints: [data.source.passes]
+actual: .morphir/out/generate/gleam.dest/model.gleam
+expected_file: golden/model.gleam
+line_endings: lf
 ```
 
-```rego
-package source
-import rego.v1
-
-passes if {
-  input.exitCode == 0
-  contains(input.artifacts.model.value, "pub type Customer(a)")
-  contains(input.artifacts.model.value, "name: String")
-  contains(input.artifacts.model.value, "pub type CustomerId = Int")
-  contains(input.artifacts.model.value, "pub type Outcome(a)")
-  contains(input.artifacts.model.value, "Pending")
-  contains(input.artifacts.model.value, "Succeeded(value: a)")
-  contains(input.artifacts.model.value, "Failed(message: String, code: Int)")
-  contains(input.artifacts.model.value, "pub opaque type Secret")
-}
+```yaml morphir:golden
+id: generated-api
+command: generate
+actual: .morphir/out/generate/gleam.dest/api.gleam
+expected_file: golden/api.gleam
+line_endings: lf
 ```
