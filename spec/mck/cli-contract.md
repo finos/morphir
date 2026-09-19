@@ -36,11 +36,14 @@ morphir mck run --adapter <exe> [--adapter-arg <arg>]... [--kit <dir>] [--repo-r
                 [--timeout <ms>] [--session-timeout <ms>]
 morphir mck coverage [--kit <dir>] [--repo-root <dir>]
 morphir mck schema check [--kit <dir>] [--repo-root <dir>]
-morphir mck report check <report.json> <allowed-failing.json>
+morphir mck report check <report.json> <allowed-failing.json> [--kit <dir>] [--repo-root <dir>]
 morphir mck kit status [--kit <dir>] [--json]
 morphir mck kit vendor --source <source> [--revision <commit>] [--expect-digest <digest>] --dest <dir>
-morphir mck kit update --kit <dir> --revision <commit> [--expect-digest <digest>]
+morphir mck kit update --kit <dir> [--source <source>] [--revision <commit>] [--expect-digest <digest>]
 ```
+
+For `kit vendor` and `kit update`, `--revision` is required with `--source github:finos/morphir` and
+is usage error 2 with any other source.
 
 `kit vendor`, `kit update` and the managed-kit rules are specified in [kit-manifest.md](kit-manifest.md).
 `kit sync` is retired and has no successor: parent builds embed the corpus directly.
@@ -131,12 +134,18 @@ canonical and accepted JSON fence against the published IR v4 schemas, validates
 response id pairing. The byte comparison against the morphir-typescript contract copies is dropped
 at cutover, when those copies stop being authoritative.
 
-### `report check` (kept behaviour, new home)
+### `report check` (kept gate, hardened inventory, new home)
 
-Replaces `tools/check-mck-report.ts`. The set of failing case ids must equal the `cases` array of
-the allowed-failing file in both directions, so a stale entry fails as loudly as a new failure. At
-least one record must pass. Every skip must carry a legitimate driver reason: `pending`, or
-`node|version|layout|profile|path <x> not in capabilities`. Missing and extra records are rejected.
+Replaces `tools/check-mck-report.ts`. Kept: record shapes are validated; the set of failing case ids
+must equal the `cases` array of the allowed-failing file in both directions, so a stale entry fails
+as loudly as a new failure; at least one record must pass; every skip must carry a legitimate driver
+reason: `pending`, or `node|version|layout|profile|path <x> not in capabilities`.
+
+**Record inventory (hardened).** The old tool never compares the report with the kit, so a truncated
+report, or one with duplicated passing records, is accepted. The Rust gate derives the expected
+record identities from the kit (`--kit`, default embedded) and the capabilities in the report
+header, and rejects missing, extra and duplicate records. #849 requires this; it is departure 11 in
+[migration.md](migration.md#approved-departures-from-old-runner-behaviour).
 
 A development baseline that allows known binding defects is not a compatibility certificate, and
 the command's output says so whenever the allowed list is non-empty.

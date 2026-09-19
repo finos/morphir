@@ -158,7 +158,16 @@ and `kit status` never touch the network.
 | Path length | 1 024 bytes |
 
 The full repository archive is streamed and only closure paths are extracted, in two passes over a
-bounded temporary file: first `spec/ir/mck/**`, then the external fixtures those cases name.
+bounded temporary file:
+
+1. `spec/ir/mck/**` plus the fixed parent-owned inputs of closure items 3 and 4:
+   `spec/mck/vocabulary.json` and the two schemas `schema check` reads. The CLI carries this fixed
+   list per suite and driver contract version; a schema that gains an external `$ref` adds the
+   referenced file to the list in the same change.
+2. The external fixtures that the cases parsed from pass 1 name.
+
+A revision that lacks any fixed input, for example one older than `spec/mck/vocabulary.json`, fails
+closure verification and publishes nothing. The same closure applies to the embedded and local sources.
 
 Rejected, failing the whole acquisition: absolute paths, `..` segments, backslashes, NUL, paths that
 collide after Unicode NFC or ASCII case folding, duplicate entries, symbolic and hard links, device
@@ -178,7 +187,10 @@ Publishing is all-or-nothing.
 digests equal the new snapshot, the command is a successful no-op. Anything else is refused, exit 1.
 There is no force option in this delivery.
 
-`kit update --kit <dir> --revision <commit>` replaces only a managed snapshot:
+`kit update --kit <dir> [--source <source>] [--revision <commit>]` replaces only a managed snapshot.
+`--source` defaults to the source kind recorded in the manifest. `--revision` is required when the
+source is `github:finos/morphir` and is usage error 2 with `embedded` or a local path, whose
+revision comes from the CLI or from the source snapshot's own manifest and may be null. The steps:
 
 1. Verify the existing snapshot against its manifest. An edited, missing or extra file is refused,
    exit 1, naming the files. Unrelated content is never deleted.
@@ -190,7 +202,7 @@ There is no force option in this delivery.
 4. Print a summary of added, removed and changed paths and the old and new revisions and digests.
    Nothing is committed automatically.
 
-An update whose source is `embedded` or a local path uses the same command with `--source`.
+An update from `embedded` whose digests equal the existing snapshot is a successful no-op.
 
 ## Managed and raw kits
 

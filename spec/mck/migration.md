@@ -107,9 +107,10 @@ regression test, and any further one needs its own approval before it lands.
 | 8 | `kit sync`, `kit status --remote` | Removed; `kit vendor`, `kit update`, local-only `kit status` | #849 |
 | 9 | Provenance is `kitVersion` only, no dirty flag | Version 1 report unchanged, plus a provenance sidecar | #849 |
 | 10 | `mck` binary | `morphir mck`; the old name gets no shim in this delivery | #849 |
+| 11 | The report gate never compares the report's records with the kit | `report check` rejects missing, extra and duplicate records against the kit's expected inventory | #849 |
 
-Departures 2, 4, 5 and 6 cannot change a report for a well-behaved adapter, so they do not affect
-the parity comparison.
+Departures 2, 4, 5, 6 and 11 cannot change a report for a well-behaved adapter, so they do not
+affect the parity comparison.
 
 ## Cutover conditions
 
