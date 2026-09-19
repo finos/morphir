@@ -233,7 +233,14 @@ impl Session {
         let mut child = command
             .spawn()
             .map_err(|error| TransportError::Spawn(error.to_string()))?;
-        let tree = ProcessTree::attach(&child);
+        let tree = match ProcessTree::attach(&child) {
+            Ok(tree) => tree,
+            Err(why) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(TransportError::Spawn(why));
+            }
+        };
 
         let (sender, frames) = mpsc::channel();
         let stdout = child.stdout.take().expect("stdout is piped");

@@ -5,8 +5,8 @@ Parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
 **Transition state, 2026-09-18.** The ownership decision is made
 ([decision 0003](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md)).
-No Rust MCK tooling exists. Every task, CI job and release path below still runs the TypeScript
-driver, and those gates stay authoritative until the cutover conditions at the end of this page are
+The Rust MCK tooling is partial: the [CLI contract](cli-contract.md)'s status line says what exists.
+Every task, CI job and release path below still runs the TypeScript driver, and those gates stay authoritative until the cutover conditions at the end of this page are
 met. TypeScript MCK features are frozen; break/fix only.
 
 ## Consumer inventory
@@ -109,8 +109,9 @@ regression test, and any further one needs its own approval before it lands.
 | 10 | `mck` binary | `morphir mck`; the old name gets no shim in this delivery | #849 |
 | 11 | The report gate never compares the report's records with the kit | `report check` rejects missing, extra and duplicate records against the kit's expected inventory | #849 |
 | 12 | `check` never opens `text` fixtures and decodes case files lossily | `check` reports unusable fixtures and undecodable case files as kit errors | #849 (IR-1 fixture confinement) |
+| 13 | Capabilities with an open-ended `formatVersions` interval are not checked against `versions` | Every major such an interval holds, from its lower bound up to the highest listed major, must be listed | #876 review |
 
-Departures 2, 4, 5, 6, 11 and 12 cannot change a report for a well-behaved adapter, so they do not
+Departures 2, 4, 5, 6, 11, 12 and 13 cannot change a report for a well-behaved adapter, so they do not
 affect the parity comparison.
 
 ## Cutover conditions

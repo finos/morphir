@@ -346,7 +346,9 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
             Value::from(canonical)
         ));
     }
-    for &major in &versions {
+    // A set, so a long hostile list cannot make these checks quadratic.
+    let claimed: std::collections::BTreeSet<u32> = versions.iter().copied().collect();
+    for &major in &claimed {
         if !table.touches_major(major) {
             return fail(format!(
                 "\"versions\" lists {major} but \"formatVersions\" {} has no release of that major",
@@ -354,19 +356,23 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
             ));
         }
     }
-    // The converse, for intervals bounded above: every major such an interval
-    // reaches must be listed. An interval with no upper bound reaches majors
-    // that do not exist yet, which no list can enumerate.
+    // The converse: every major an interval holds must be listed. A bounded
+    // interval is checked up to its upper bound. One with no upper bound
+    // reaches majors that do not exist yet, which no list can enumerate, so it
+    // is checked from its lower bound up to the highest listed major, which
+    // it must reach without a gap (stricter than the first driver, which
+    // skipped such intervals; spec/mck/migration.md departure 13).
+    let highest = claimed.last().copied().unwrap_or(0);
     for interval in table.intervals() {
-        let Some(upper) = interval.upper else {
-            continue;
-        };
         let floor = interval
             .lower
             .map_or(DOMAIN_FLOOR.major, |l| l.release.major);
+        let top = interval
+            .upper
+            .map_or(highest.max(floor), |u| u.release.major);
         // Stops at the first missing major, so even a wide interval is cheap.
-        for major in floor..=upper.release.major {
-            if interval.holds_major(major) && !versions.contains(&major) {
+        for major in floor..=top {
+            if interval.holds_major(major) && !claimed.contains(&major) {
                 return fail(format!(
                     "\"formatVersions\" {} touches major {major} but \"versions\" does not list it",
                     Value::from(format_versions)
@@ -673,6 +679,39 @@ mod tests {
         refused(
             caps(json!({ "formatVersions": "[3.0.0,4.1.0)", "versions": [3] })),
             "touches major 4",
+        );
+    }
+
+    #[test]
+    fn an_open_upper_bound_must_still_list_the_majors_it_certainly_holds() {
+        refused(
+            caps(json!({ "formatVersions": "[4.0.0,)", "versions": [5] })),
+            "touches major 4",
+        );
+        refused(
+            caps(json!({ "formatVersions": "[4.0.0,)", "versions": [4, 6] })),
+            "touches major 5",
+        );
+        assert!(
+            parse_capabilities(&caps(
+                json!({ "formatVersions": "[4.0.0,)", "versions": [4, 5] })
+            ))
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn a_very_wide_claim_is_checked_in_linear_time() {
+        let versions: Vec<u32> = (3..=200_000).collect();
+        let started = std::time::Instant::now();
+        let parsed = parse_capabilities(&caps(
+            json!({ "formatVersions": "[3.0.0,200001.0.0)", "versions": versions }),
+        ));
+        assert!(parsed.is_ok(), "{parsed:?}");
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(2),
+            "took {:?}",
+            started.elapsed()
         );
     }
 
