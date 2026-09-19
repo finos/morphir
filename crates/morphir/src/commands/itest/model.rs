@@ -1,3 +1,4 @@
+use super::golden::{LineEndings, Selection};
 pub use crate::notebook::relative_path;
 use crate::notebook::{CellKind, Notebook};
 use anyhow::{Context, Result, ensure};
@@ -67,12 +68,52 @@ enum Role {
         command: String,
         entrypoints: Vec<String>,
     },
+    Golden {
+        command: String,
+        actual: String,
+        #[serde(default, deserialize_with = "expected_file")]
+        expected_file: Option<String>,
+        #[serde(default)]
+        select: Selection,
+        #[serde(default)]
+        line_endings: LineEndings,
+    },
 }
+
+// Omission selects inline text; an explicit null is an invalid file reference.
+fn expected_file<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    String::deserialize(deserializer).map(Some)
+}
+
 #[derive(Debug)]
 pub struct Assertion {
     pub id: String,
-    pub source: String,
-    pub entrypoints: Vec<String>,
+    pub kind: AssertionKind,
+}
+
+#[derive(Debug)]
+pub enum AssertionKind {
+    Rego {
+        source: String,
+        entrypoints: Vec<String>,
+    },
+    Golden(Golden),
+}
+
+#[derive(Debug)]
+pub enum ExpectedText {
+    Inline(String),
+    File(String),
+}
+
+#[derive(Debug)]
+pub struct Golden {
+    pub actual: String,
+    pub expected: ExpectedText,
+    pub select: Selection,
+    pub line_endings: LineEndings,
 }
 #[derive(Debug)]
 pub struct Step {
@@ -175,6 +216,46 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
                     assertions: Vec::new(),
                 });
             }
+            Role::Golden {
+                command,
+                actual,
+                expected_file,
+                select,
+                line_endings,
+            } => {
+                relative_path(&actual).context("invalid golden actual path")?;
+                select.validate()?;
+                let expected = match expected_file {
+                    Some(path) => {
+                        relative_path(&path).context("invalid golden expected path")?;
+                        ensure!(
+                            cell.source().is_empty(),
+                            "golden {} cannot combine expected_file and inline source",
+                            cell.id()
+                        );
+                        ExpectedText::File(path)
+                    }
+                    None => ExpectedText::Inline(cell.source().to_owned()),
+                };
+                let step = steps
+                    .iter_mut()
+                    .find(|step| step.id == command)
+                    .with_context(|| {
+                        format!(
+                            "golden {} references missing or forward command {command:?}",
+                            cell.id()
+                        )
+                    })?;
+                step.assertions.push(Assertion {
+                    id: cell.id().to_owned(),
+                    kind: AssertionKind::Golden(Golden {
+                        actual,
+                        expected,
+                        select,
+                        line_endings,
+                    }),
+                });
+            }
             Role::Assertion {
                 command,
                 entrypoints,
@@ -208,8 +289,10 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
                 );
                 step.assertions.push(Assertion {
                     id: cell.id().to_owned(),
-                    source: cell.source().to_owned(),
-                    entrypoints,
+                    kind: AssertionKind::Rego {
+                        source: cell.source().to_owned(),
+                        entrypoints,
+                    },
                 });
             }
         }
