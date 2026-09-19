@@ -45,6 +45,7 @@ runs them. `allowed-failing.json` for the Rust adapter is empty.
 | `reports/morphir-typescript.json` | Version 1 report, TypeScript adapter | Local run on Windows 11 with Bun 1.4.2 |
 | `reports/morphir-rust.json` | Version 1 report, Rust adapter | Artifact `mck-report-morphir-rust` of finos/morphir CI run [35407504580](https://github.com/finos/morphir/actions/runs/35407504580) on `main` at the parent pin, Linux |
 | `transcripts/morphir-typescript.ndjson` | Every protocol message of the TypeScript adapter run, as `{"dir":"request"\|"response","message":...}` lines | A recording proxy between the old driver and the adapter. 706 requests: 1 `capabilities`, 678 `decode`, 14 `readTree`, 12 `writeTree`, 1 `exit`. Largest message 4 635 bytes. It contains no machine-specific path. |
+| `transcripts/morphir-rust.ndjson` | The same, for the Rust adapter run | `mise run mck:parity-rust`, which records the old driver's session through `tools/record-mck-transcript.ts`. 714 requests: 1 `capabilities`, 686 `decode`, 14 `readTree`, 12 `writeTree`, 1 `exit`. Largest message 4 607 bytes. It contains no machine-specific path. |
 | `corpus-inventory.json` | The 15 paths of the legacy corpus set and their hash | The old driver's `collectSnapshot` and `contentHash` |
 | `kit-cases.json` | The old parser's reading of every case file: ids, heading keys, prose, and each fence's info, body and line, with the file's SHA-256 | The old driver's `loadKit`, added with IR-1. `crates/morphir-mck/tests/typescript_parity.rs` compares the Rust parser with it for every file whose digest still matches |
 | `hash-vectors.json` | Literal vectors for `mck-file-map-sha256/1` | The old driver's `contentHash`; the `single` vector was recomputed independently with .NET SHA-256 |
@@ -52,5 +53,8 @@ runs them. `allowed-failing.json` for the Rust adapter is empty.
 The proxied run's report equals `reports/morphir-typescript.json` under the parity exclusions, so
 the transcript and the report describe the same run.
 
-No Rust adapter transcript is included. The adapter could not be linked on the capture machine, and
-CI does not record one. IR-2 records it on Linux with the same proxy before the parity comparison.
+The Rust adapter's transcript was added in IR-2, recorded on Windows 11 against the adapter at the
+parent's current submodule pin. That pin does not change `crates/morphir-mck-adapter`, and replaying
+the transcript reproduces `reports/morphir-rust.json`, which CI captured on Linux, record for record.
+The two platforms and the two revisions therefore agree, which is the cross-platform evidence the
+capture machine could not give on its own.
