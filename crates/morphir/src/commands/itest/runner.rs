@@ -1,6 +1,6 @@
 use super::{
     Scenario,
-    model::{CaptureFormat, Step, relative_path},
+    model::{Assertion, AssertionKind, CaptureFormat, ExpectedText, Step, relative_path},
 };
 use anyhow::{Context, Result, bail, ensure};
 use morphir_evaluator::{
@@ -8,6 +8,7 @@ use morphir_evaluator::{
 };
 use serde_json::Value;
 use std::{
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -156,6 +157,101 @@ pub(super) fn observation(step: &Step, output: &ProcessOutput, project: &Path) -
     Ok(input)
 }
 
+fn read_text(root: &Path, relative: &str) -> Result<String> {
+    let path = confined(root, relative)?;
+    ensure!(
+        path.is_file(),
+        "golden file {relative:?} is missing or is not a regular file"
+    );
+    fs::read_to_string(&path).with_context(|| format!("read UTF-8 golden file {relative:?}"))
+}
+
+fn expected_texts(scenario: &Scenario) -> Result<BTreeMap<&str, String>> {
+    scenario
+        .steps
+        .iter()
+        .flat_map(|step| &step.assertions)
+        .filter_map(|assertion| {
+            let AssertionKind::Golden(golden) = &assertion.kind else {
+                return None;
+            };
+            let expected = match &golden.expected {
+                ExpectedText::Inline(text) => Ok(text.clone()),
+                ExpectedText::File(path) => read_text(&scenario.directory, path),
+            };
+            Some(
+                expected
+                    .map(|text| (assertion.id.as_str(), text))
+                    .with_context(|| {
+                        format!(
+                            "{} golden {}: load expectation before commands",
+                            scenario.id, assertion.id
+                        )
+                    }),
+            )
+        })
+        .collect()
+}
+
+struct PreparedAssertion {
+    source: String,
+    entrypoints: Vec<String>,
+    input: Value,
+    mismatch: Option<String>,
+}
+
+fn prepare_assertion(
+    assertion: &Assertion,
+    input: &Value,
+    project: &Path,
+    expected: &BTreeMap<&str, String>,
+) -> Result<PreparedAssertion> {
+    match &assertion.kind {
+        AssertionKind::Rego {
+            source,
+            entrypoints,
+        } => Ok(PreparedAssertion {
+            source: source.clone(),
+            entrypoints: entrypoints.clone(),
+            input: input.clone(),
+            mismatch: None,
+        }),
+        AssertionKind::Golden(golden) => {
+            let actual = read_text(project, &golden.actual)?;
+            let selected = golden.select.select(&actual).with_context(|| {
+                format!(
+                    "golden file {:?}, selection {:?}",
+                    golden.actual, golden.select
+                )
+            })?;
+            let actual = golden.line_endings.normalize(selected);
+            let expected = golden.line_endings.normalize(
+                expected
+                    .get(assertion.id.as_str())
+                    .context("missing prepared golden expectation")?,
+            );
+            let mismatch = (actual != expected).then(|| {
+                format!(
+                    "golden mismatch: {:?}, selection {:?}, expected {:?}\n{}",
+                    golden.actual,
+                    golden.select,
+                    match &golden.expected {
+                        ExpectedText::File(path) => path.as_str(),
+                        ExpectedText::Inline(_) => "inline text",
+                    },
+                    super::golden::diff(&expected, &actual)
+                )
+            });
+            let mut input = input.clone();
+            input["golden"] = serde_json::json!({"actual":actual,"expected":expected});
+            Ok(PreparedAssertion {
+                source: "package morphir_golden\nimport rego.v1\ndefault matches := false\nmatches if { input.exitCode == 0; input.golden.actual == input.golden.expected }\n".into(),
+                entrypoints: vec!["data.morphir_golden.matches".into()], input, mismatch,
+            })
+        }
+    }
+}
+
 fn run_in_temporary(scenario: &Scenario, binary: &Path, root: &Path) -> Result<()> {
     // Project and enclosing-workspace discovery both walk ancestors. A local
     // .morphir directory only bounds outputs, not configuration discovery.
@@ -168,6 +264,8 @@ fn run_in_temporary(scenario: &Scenario, binary: &Path, root: &Path) -> Result<(
             config.unwrap_or_default().display()
         );
     }
+    // Freeze authored expectations before any CLI command can change files.
+    let expected = expected_texts(scenario)?;
     let project = root.join("project");
     fs::create_dir_all(&project)?;
     fs::create_dir_all(root.join("home"))?;
@@ -196,10 +294,12 @@ fn run_in_temporary(scenario: &Scenario, binary: &Path, root: &Path) -> Result<(
         for assertion in &step.assertions {
             let harness = logs.join(&assertion.id);
             fs::create_dir_all(&harness)?;
+            let prepared = prepare_assertion(assertion, &input, &project, &expected)
+                .with_context(|| format!("{diagnostics}\nassertion cell {}", assertion.id))?;
             let request: EvaluationRequest = serde_json::from_value(serde_json::json!({
                 "version":1,"provider":scenario.metadata.provider,
-                "program":{"kind":"source","language":"rego","modules":[{"path":format!("{}.rego",assertion.id),"source":assertion.source}]},
-                "entrypoints":assertion.entrypoints,"input":input,"timeout_ms":step.timeout_seconds * 1000
+                "program":{"kind":"source","language":"rego","modules":[{"path":format!("{}.rego",assertion.id),"source":prepared.source}]},
+                "entrypoints":prepared.entrypoints,"input":prepared.input,"timeout_ms":step.timeout_seconds * 1000
             }))?;
             let request_path = harness.join("request.json");
             fs::write(&request_path, serde_json::to_vec_pretty(&request)?)?;
@@ -222,9 +322,12 @@ fn run_in_temporary(scenario: &Scenario, binary: &Path, root: &Path) -> Result<(
             check_report(
                 &checked.stdout,
                 scenario.metadata.provider,
-                &assertion.entrypoints,
+                &prepared.entrypoints,
             )
-            .with_context(|| assertion_context)?;
+            .with_context(|| match prepared.mismatch {
+                Some(diff) => format!("{assertion_context}\n{diff}"),
+                None => assertion_context,
+            })?;
         }
     }
     Ok(())

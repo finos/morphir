@@ -32,7 +32,8 @@ Scenario title, purpose and tags belong in notebook metadata. Markdown cells
 explain intent. File cells carry logical paths and language metadata; paths are
 separate from nbformat cell IDs. Command cells declare case names, captures and
 timeouts. Assertion cells contain Rego modules and name the preceding command
-and rule entrypoints. Assertions remain literal Rego source in both formats.
+and rule entrypoints. Rego assertions remain literal source in both formats. Golden assertions offer
+exact text comparisons through the same evaluator pipeline.
 
 For Markdown authoring, use `scenarios.md` with YAML frontmatter for shared
 context and tags. Each top-level `##` heading starts an independent scenario
@@ -154,3 +155,20 @@ project records the exact multi-source rejection with `coverage:known-limitation
 and `kind:negative`. Beads `morphir-o6vm.15` tracks the required provider/config
 work. Replace the rejection assertions with positive IR assertions when it lands;
 never count that negative pass as successful multi-file compilation.
+
+## Golden text coverage
+
+Use golden assertions for whole generated files, inclusive 1-based line ranges,
+or exact text between unique start/end markers. Keep expected files on disk
+relative to the scenario document, or put literal expected text in a golden
+cell/source fence. The driver freezes expectations before CLI execution,
+selects actual text immediately after the referenced command, and evaluates
+text equality plus successful exit through `morphir eval`.
+
+Exact text is the default, including whitespace and final newlines. Optional
+`line_endings: lf` normalizes CRLF after selection. Invalid selections, missing
+files and ambiguous markers fail. A bounded diagnostic diff identifies changes;
+`--keep-temp` retains the evaluator request containing both compared texts.
+No automatic blessing occurs. The Gleam generation example checks complete
+source, its function lines and marker-delimited body alongside existing Rego
+checks for task provenance. These are CLI workflow assertions, not an MCK runner.

@@ -26,10 +26,12 @@ fn markdown_headings_metadata_and_prose_preserve_scenario_boundaries() {
     assert_eq!(scenarios[1].metadata.title, "Report version");
     assert_eq!(scenarios[1].steps.len(), 1);
     assert_eq!(scenarios[1].steps[0].args, ["--version"]);
-    assert_eq!(
-        scenarios[1].steps[0].assertions[0].entrypoints,
-        ["data.version_test.reports_version"]
-    );
+    let super::model::AssertionKind::Rego { entrypoints, .. } =
+        &scenarios[1].steps[0].assertions[0].kind
+    else {
+        panic!("expected Rego assertion");
+    };
+    assert_eq!(entrypoints, &["data.version_test.reports_version"]);
 }
 
 #[test]
