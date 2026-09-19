@@ -1,0 +1,94 @@
+{
+	"lockVersion": 1,
+	"suite": "ir",
+	"contract": {
+		"protocol": 1,
+		"report": 1
+	},
+	"driverContract": ">=1, <2",
+	"source": {
+		"kind": "github",
+		"repository": "finos/morphir",
+		"revision": "a2803f2cbfbb9baffe8a939e9462b18fd5bcdda0"
+	},
+	"algorithm": "mck-file-map-sha256/1",
+	"corpusHash": "sha256-075bb621c9901fcca21830051065b3d5f303dfb827b1624c52c82d796bf4c609",
+	"snapshotDigest": "sha256-075bb621c9901fcca21830051065b3d5f303dfb827b1624c52c82d796bf4c609",
+	"files": [
+		{
+			"path": "spec/ir/mck/README.md",
+			"sha256": "f7cb482aa58512fbabec61ea5e9d5ca76e249f21c93bad1aeaa5e822a2ddf344",
+			"size": 8439
+		},
+		{
+			"path": "spec/ir/mck/definitions.md",
+			"sha256": "c1212092c486b1a5af3853ca8298b0d82275786563a50d6fcfef25630f0af606",
+			"size": 21687
+		},
+		{
+			"path": "spec/ir/mck/distributions.md",
+			"sha256": "325958fed22e87393d1bfda11322e115945b2e36598d21770ed8c2ddcd4e68eb",
+			"size": 11268
+		},
+		{
+			"path": "spec/ir/mck/document-tree.md",
+			"sha256": "c4d3c166eac7001e7a1d5ba0852790ffc5f71a4c8a1ee93eea8d3c0cecb34356",
+			"size": 12094
+		},
+		{
+			"path": "spec/ir/mck/documents/complete-example.yaml",
+			"sha256": "bacf818923d2cd3a07e787e7a7001422ff262128f939abe0e1445d86d948c86e",
+			"size": 2495
+		},
+		{
+			"path": "spec/ir/mck/names.md",
+			"sha256": "bcefa7dfcd9c9b278140569d7f7133e52c9fb9a20adcd9dc1f280e9c047b04b2",
+			"size": 2657
+		},
+		{
+			"path": "spec/ir/mck/patterns-and-literals.md",
+			"sha256": "91d652a7349a98ad6d840c2ec69be816f106da84ab04337e654236f3dfc2a6bc",
+			"size": 8946
+		},
+		{
+			"path": "spec/ir/mck/protocol.example.json",
+			"sha256": "da3225a456a974744bf0f8445c1d7ec0ff33c94f3d760e02bd913f2cc3c49446",
+			"size": 2255
+		},
+		{
+			"path": "spec/ir/mck/protocol.schema.json",
+			"sha256": "4e2fe0ac656b54752d5b92bee677a1dc3d43ffff0f0013987ff66d6196683d59",
+			"size": 9684
+		},
+		{
+			"path": "spec/ir/mck/report.example.json",
+			"sha256": "779de310a8a12a5bc110bb83b393dbeef50b46329d0e5ca4d5d0509289809c95",
+			"size": 1889
+		},
+		{
+			"path": "spec/ir/mck/report.schema.json",
+			"sha256": "38e65fafef5952f3dc049326865b9904fbfa5e9e359d40b6c5b8da1875c00137",
+			"size": 2401
+		},
+		{
+			"path": "spec/ir/mck/types.md",
+			"sha256": "b7ca2605ae95e3f9ffa78de4c1d68820ec5074b45d0dd2111a2052ec1e36bebf",
+			"size": 7014
+		},
+		{
+			"path": "spec/ir/mck/values.md",
+			"sha256": "3872bb416fd1d47103208d92c3e698e3fdd8242023e8cf5347a5a9f5c6624898",
+			"size": 13007
+		},
+		{
+			"path": "spec/ir/mck/versions.md",
+			"sha256": "8b25a2ab521906882beeda1132b7f79dce4ea48919df67a0ee1ae9c1dafdb9cf",
+			"size": 4462
+		},
+		{
+			"path": "website/static/ir/examples/v4/complete-example.json",
+			"sha256": "30fbea9879b377dde11d0a4916b926dba152069e7b24bd43e4cf33cb27fcd979",
+			"size": 4151
+		}
+	]
+}

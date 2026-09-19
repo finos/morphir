@@ -18,9 +18,28 @@ does not require shared manifests, lifecycle rules, or test operations.
 
 The first package slice provides `mise run package:check` for shared-core execution and
 `mise run package:schema-check` for generic schema/example validation. The lock-core omits acquisition and trust;
-it cannot authorize installation. Package execution belongs in the shared TypeScript MCK core, as recorded in the
-[ownership decision](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
-No standalone Python, TypeScript, or JavaScript compatibility runner is required in the parent repository.
+it cannot authorize installation. Package execution runs in the shared MCK runner, not in a separate
+compatibility runner per implementation.
+
+## Ownership and transition
+
+On 2026-09-18 ownership of all shared MCK tooling moved to this repository, in Rust, delivered as `morphir mck`.
+[Decision 0003](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md)
+records it and supersedes the ownership portion of
+[decision 0001](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
+
+**The Rust tooling does not exist yet.** Everything under "Current driver and contracts" still describes the
+TypeScript driver, which stays the authoritative gate until cutover. Its MCK features are frozen.
+
+| Document | Content | Status |
+| --- | --- | --- |
+| [cli-contract.md](cli-contract.md) | `morphir mck` commands, required `--adapter`, filter syntax, transport limits, reports and provenance | Proposed, in IR-0 review |
+| [kit-manifest.md](kit-manifest.md) | Vendored kit snapshots, `mck-kit.lock.json`, acquisition and trust | Proposed, in IR-0 review |
+| [migration.md](migration.md) | Consumer inventory, parity method, approved departures, cutover conditions | Proposed, in IR-0 review |
+| [baseline/](baseline/README.md) | Frozen old-driver reports, protocol transcript and hash vectors | Captured 2026-09-18 |
+
+Delivery is IR first ([#851](https://github.com/finos/morphir/issues/851)), then the package suites
+([#852](https://github.com/finos/morphir/issues/852)); parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
 ## Current driver and contracts
 

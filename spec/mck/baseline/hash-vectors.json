@@ -1,0 +1,119 @@
+{
+	"algorithm": "mck-file-map-sha256/1",
+	"description": "sha256- + hex(SHA-256(concat over paths sorted by UTF-16 code unit of: path UTF-8, NUL, lowercase hex SHA-256 of the file bytes, LF)). 'text' is encoded as UTF-8 to obtain the file bytes.",
+	"generatedBy": "finos/morphir-typescript packages/mck/src/kit/hash.ts at a5e3be0922ce2dad1920956a8c7bfe6616d515d5",
+	"vectors": [
+		{
+			"name": "empty",
+			"note": "No files: the digest of the empty string.",
+			"files": [],
+			"sortedPaths": [],
+			"contentHash": "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		},
+		{
+			"name": "single",
+			"note": "One ASCII path.",
+			"files": [
+				{
+					"path": "spec/ir/mck/a.md",
+					"text": "hello\n"
+				}
+			],
+			"sortedPaths": [
+				"spec/ir/mck/a.md"
+			],
+			"contentHash": "sha256-8f75b37012f09792275e8035ce4f7ff5dd7861fa64c026a760132d05fdf0b28e"
+		},
+		{
+			"name": "ascii-order",
+			"note": "Upper case sorts before lower case; '-' < '.' < '/'. Insertion order is irrelevant.",
+			"files": [
+				{
+					"path": "a/b",
+					"text": "1"
+				},
+				{
+					"path": "a.b",
+					"text": "2"
+				},
+				{
+					"path": "a-b",
+					"text": "3"
+				},
+				{
+					"path": "a",
+					"text": "4"
+				},
+				{
+					"path": "B",
+					"text": "5"
+				}
+			],
+			"sortedPaths": [
+				"B",
+				"a",
+				"a-b",
+				"a.b",
+				"a/b"
+			],
+			"contentHash": "sha256-02052b1dfc2840e1b24299b111ceaaa95c690a963ce3d002711851ae7d93a37f"
+		},
+		{
+			"name": "empty-file",
+			"note": "A zero-length file still contributes a line.",
+			"files": [
+				{
+					"path": "spec/ir/mck/empty.md",
+					"text": ""
+				},
+				{
+					"path": "spec/ir/mck/a.md",
+					"text": "hello\n"
+				}
+			],
+			"sortedPaths": [
+				"spec/ir/mck/a.md",
+				"spec/ir/mck/empty.md"
+			],
+			"contentHash": "sha256-685d1239ec69a29752812581a74b6f40f6535e6dc060dda56a651e66344b812a"
+		},
+		{
+			"name": "non-ascii",
+			"note": "Paths are hashed as UTF-8; U+00E9 sorts after every ASCII path.",
+			"files": [
+				{
+					"path": "spec/ir/mck/z.md",
+					"text": "z"
+				},
+				{
+					"path": "spec/ir/mck/é.md",
+					"text": "e-acute"
+				}
+			],
+			"sortedPaths": [
+				"spec/ir/mck/z.md",
+				"spec/ir/mck/é.md"
+			],
+			"contentHash": "sha256-0d579dba36dffbd121f5312890e4ab50ff18ac8e0e4cfb23b3eecc02c1dc7e73"
+		},
+		{
+			"name": "utf16-order",
+			"note": "U+1F600 (surrogates D83D DE00) sorts BEFORE U+FF5E by UTF-16 code unit, the reverse of code-point and UTF-8 byte order.",
+			"files": [
+				{
+					"path": "～.md",
+					"text": "fullwidth tilde"
+				},
+				{
+					"path": "😀.md",
+					"text": "astral"
+				}
+			],
+			"sortedPaths": [
+				"😀.md",
+				"～.md"
+			],
+			"contentHash": "sha256-1ddcb09fa2132edf2a46959b371c0dff95f189cee31ea3681e7fe6170b2a84e1"
+		}
+	]
+}

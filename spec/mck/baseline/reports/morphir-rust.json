@@ -1,0 +1,7857 @@
+{
+	"contractVersion": 1,
+	"binding": "morphir-rust",
+	"language": "rust",
+	"formatVersions": "[3.0.0,3.1.0),[4.0.0,4.1.0)",
+	"driverVersion": "0.3.0",
+	"kitVersion": "a2803f2cbfbb9baffe8a939e9462b18fd5bcdda0",
+	"startedAt": "2026-09-18T23:56:59.989Z",
+	"records": [
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.1260050000000206
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5869869999999651
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5317540000000349
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5355319999999892
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5135200000000282
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5646659999999883
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5048529999999687
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4797270000000253
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5286090000000172
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5706769999999892
+		},
+		{
+			"caseId": "definitions-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5184990000000198
+		},
+		{
+			"caseId": "definitions-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3944979999999987
+		},
+		{
+			"caseId": "definitions-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.42643700000002127
+		},
+		{
+			"caseId": "definitions-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.47057000000000926
+		},
+		{
+			"caseId": "definitions-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48106899999999087
+		},
+		{
+			"caseId": "definitions-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.044795000000022
+		},
+		{
+			"caseId": "definitions-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8607319999999845
+		},
+		{
+			"caseId": "definitions-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.2904330000000073
+		},
+		{
+			"caseId": "definitions-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.9614869999999769
+		},
+		{
+			"caseId": "definitions-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.8201530000000048
+		},
+		{
+			"caseId": "definitions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.1469620000000305
+		},
+		{
+			"caseId": "definitions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 5.450569999999971
+		},
+		{
+			"caseId": "definitions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.546701999999982
+		},
+		{
+			"caseId": "definitions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6422910000000002
+		},
+		{
+			"caseId": "definitions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.49972499999995534
+		},
+		{
+			"caseId": "definitions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5319640000000163
+		},
+		{
+			"caseId": "definitions-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.731347000000028
+		},
+		{
+			"caseId": "definitions-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5704070000000456
+		},
+		{
+			"caseId": "definitions-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7119109999999864
+		},
+		{
+			"caseId": "definitions-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5606980000000021
+		},
+		{
+			"caseId": "definitions-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6916530000000307
+		},
+		{
+			"caseId": "definitions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5886499999999728
+		},
+		{
+			"caseId": "definitions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.697716000000014
+		},
+		{
+			"caseId": "definitions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7982020000000034
+		},
+		{
+			"caseId": "definitions-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7560829999999896
+		},
+		{
+			"caseId": "definitions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5502690000000143
+		},
+		{
+			"caseId": "definitions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5033510000000092
+		},
+		{
+			"caseId": "definitions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5532650000000103
+		},
+		{
+			"caseId": "definitions-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6449860000000172
+		},
+		{
+			"caseId": "definitions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5702660000000037
+		},
+		{
+			"caseId": "definitions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5356110000000172
+		},
+		{
+			"caseId": "definitions-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6761539999999968
+		},
+		{
+			"caseId": "definitions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5348089999999956
+		},
+		{
+			"caseId": "definitions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5911449999999832
+		},
+		{
+			"caseId": "definitions-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8268860000000018
+		},
+		{
+			"caseId": "definitions-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6793999999999869
+		},
+		{
+			"caseId": "definitions-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "duplicate_member",
+			"observedDiagnostic": {
+				"code": "duplicate_member",
+				"stage": "normalization",
+				"cursor": "/ExternalBody/externals/1/targetPlatform",
+				"message": "duplicate target platform javascript"
+			},
+			"durationMs": 0.7993440000000192
+		},
+		{
+			"caseId": "definitions-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7895359999999982
+		},
+		{
+			"caseId": "definitions-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6887369999999464
+		},
+		{
+			"caseId": "definitions-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "duplicate_member",
+			"observedDiagnostic": {
+				"code": "duplicate_member",
+				"stage": "normalization",
+				"cursor": "/ExternalBody/externals/1/targetPlatform",
+				"message": "duplicate target platform javascript"
+			},
+			"durationMs": 0.5858049999999935
+		},
+		{
+			"caseId": "definitions-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6726980000000253
+		},
+		{
+			"caseId": "definitions-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5732909999999833
+		},
+		{
+			"caseId": "definitions-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6538620000000037
+		},
+		{
+			"caseId": "definitions-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5221159999999827
+		},
+		{
+			"caseId": "definitions-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7212879999999586
+		},
+		{
+			"caseId": "definitions-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6064440000000104
+		},
+		{
+			"caseId": "definitions-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5879489999999805
+		},
+		{
+			"caseId": "definitions-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7025229999999851
+		},
+		{
+			"caseId": "definitions-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5382359999999835
+		},
+		{
+			"caseId": "definitions-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6152600000000348
+		},
+		{
+			"caseId": "definitions-0011",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5707370000000083
+		},
+		{
+			"caseId": "definitions-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4818809999999871
+		},
+		{
+			"caseId": "definitions-0011",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5865370000000212
+		},
+		{
+			"caseId": "definitions-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.47863399999999956
+		},
+		{
+			"caseId": "definitions-0012",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6371709999999666
+		},
+		{
+			"caseId": "definitions-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.48046799999997347
+		},
+		{
+			"caseId": "definitions-0012",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6475010000000339
+		},
+		{
+			"caseId": "definitions-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48705000000001064
+		},
+		{
+			"caseId": "definitions-0013",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.608126000000027
+		},
+		{
+			"caseId": "definitions-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5552890000000161
+		},
+		{
+			"caseId": "definitions-0013",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5798330000000078
+		},
+		{
+			"caseId": "definitions-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5156440000000089
+		},
+		{
+			"caseId": "definitions-0014",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6261099999999828
+		},
+		{
+			"caseId": "definitions-0014",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5295099999999593
+		},
+		{
+			"caseId": "definitions-0014",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6320220000000063
+		},
+		{
+			"caseId": "definitions-0014",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5062160000000517
+		},
+		{
+			"caseId": "definitions-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7762809999999831
+		},
+		{
+			"caseId": "definitions-0015",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5135300000000029
+		},
+		{
+			"caseId": "definitions-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6244879999999853
+		},
+		{
+			"caseId": "definitions-0015",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5562400000000025
+		},
+		{
+			"caseId": "definitions-0016",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.66802899999999
+		},
+		{
+			"caseId": "definitions-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.559915999999987
+		},
+		{
+			"caseId": "definitions-0016",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6442039999999452
+		},
+		{
+			"caseId": "definitions-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5512400000000071
+		},
+		{
+			"caseId": "definitions-0017",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.569992999999954
+		},
+		{
+			"caseId": "definitions-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.48373400000002675
+		},
+		{
+			"caseId": "definitions-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5215550000000349
+		},
+		{
+			"caseId": "definitions-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.49517600000001494
+		},
+		{
+			"caseId": "definitions-0017",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5721399999999903
+		},
+		{
+			"caseId": "definitions-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.46538999999995667
+		},
+		{
+			"caseId": "definitions-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5037019999999757
+		},
+		{
+			"caseId": "definitions-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48807299999998577
+		},
+		{
+			"caseId": "definitions-0018",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8020190000000866
+		},
+		{
+			"caseId": "definitions-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.655935999999997
+		},
+		{
+			"caseId": "definitions-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6357580000000098
+		},
+		{
+			"caseId": "definitions-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6946889999999257
+		},
+		{
+			"caseId": "definitions-0018",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7908290000000306
+		},
+		{
+			"caseId": "definitions-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6343959999999242
+		},
+		{
+			"caseId": "definitions-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7051379999999199
+		},
+		{
+			"caseId": "definitions-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7615130000000363
+		},
+		{
+			"caseId": "definitions-0019",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6912219999999252
+		},
+		{
+			"caseId": "definitions-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5478640000000041
+		},
+		{
+			"caseId": "definitions-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5792429999999058
+		},
+		{
+			"caseId": "definitions-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5903529999999364
+		},
+		{
+			"caseId": "definitions-0019",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6852010000000064
+		},
+		{
+			"caseId": "definitions-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5651960000000145
+		},
+		{
+			"caseId": "definitions-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5472929999999678
+		},
+		{
+			"caseId": "definitions-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5878190000000814
+		},
+		{
+			"caseId": "definitions-0020",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.9256599999999935
+		},
+		{
+			"caseId": "definitions-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6757239999999456
+		},
+		{
+			"caseId": "definitions-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7262379999999666
+		},
+		{
+			"caseId": "definitions-0020",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.8954840000000104
+		},
+		{
+			"caseId": "definitions-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6812330000000202
+		},
+		{
+			"caseId": "definitions-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.677677000000017
+		},
+		{
+			"caseId": "definitions-0021",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6410680000000184
+		},
+		{
+			"caseId": "definitions-0021",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5176169999999729
+		},
+		{
+			"caseId": "definitions-0021",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5844430000000784
+		},
+		{
+			"caseId": "definitions-0021",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5185089999999946
+		},
+		{
+			"caseId": "definitions-0022",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5604580000000396
+		},
+		{
+			"caseId": "definitions-0022",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5055750000000216
+		},
+		{
+			"caseId": "definitions-0022",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5522220000000289
+		},
+		{
+			"caseId": "definitions-0022",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4942239999999174
+		},
+		{
+			"caseId": "definitions-0023",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/TypeAliasDefinition/annotations",
+				"message": "unexpected member annotations"
+			},
+			"durationMs": 0.3953999999999951
+		},
+		{
+			"caseId": "definitions-0023",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/TypeAliasDefinition/annotations",
+				"message": "unexpected member annotations"
+			},
+			"durationMs": 0.42309099999999944
+		},
+		{
+			"caseId": "definitions-0024",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6299569999999903
+		},
+		{
+			"caseId": "definitions-0024",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5466519999999946
+		},
+		{
+			"caseId": "definitions-0024",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6265919999999596
+		},
+		{
+			"caseId": "definitions-0024",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5371549999999843
+		},
+		{
+			"caseId": "definitions-0025",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7258769999999686
+		},
+		{
+			"caseId": "definitions-0025",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5524629999999888
+		},
+		{
+			"caseId": "definitions-0025",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7130839999999807
+		},
+		{
+			"caseId": "definitions-0025",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6167619999999943
+		},
+		{
+			"caseId": "definitions-0026",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "/IncompleteTypeDefinition/incompleteness/Hole/reason",
+				"message": "Draft is not a hole reason"
+			},
+			"durationMs": 0.4396919999999227
+		},
+		{
+			"caseId": "definitions-0026",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_type",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "normalization",
+				"cursor": "/IncompleteTypeDefinition/incompleteness/Hole/reason",
+				"message": "a hole reason must be an object"
+			},
+			"durationMs": 0.41032799999993586
+		},
+		{
+			"caseId": "definitions-0026",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "/IncompleteTypeDefinition/incompleteness/Hole/reason",
+				"message": "Draft is not a hole reason"
+			},
+			"durationMs": 0.4394110000000637
+		},
+		{
+			"caseId": "definitions-0026",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_type",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "normalization",
+				"cursor": "/IncompleteTypeDefinition/incompleteness/Hole/reason",
+				"message": "a hole reason must be an object"
+			},
+			"durationMs": 0.46625200000005407
+		},
+		{
+			"caseId": "definitions-0027",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "/ExpressionBody/inputTypes/x",
+				"message": "an object with more than one member is not a type expression"
+			},
+			"durationMs": 0.5233879999999544
+		},
+		{
+			"caseId": "definitions-0027",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "/ExpressionBody/inputTypes/x",
+				"message": "an object with more than one member is not a type expression"
+			},
+			"durationMs": 0.4460540000000037
+		},
+		{
+			"caseId": "definitions-0028",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_type",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "normalization",
+				"cursor": "/doc",
+				"message": "documentation is a string"
+			},
+			"durationMs": 0.4766109999999344
+		},
+		{
+			"caseId": "definitions-0028",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_type",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "normalization",
+				"cursor": "/doc",
+				"message": "documentation is a string"
+			},
+			"durationMs": 0.4299429999999802
+		},
+		{
+			"caseId": "definitions-0029",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4994729999999663
+		},
+		{
+			"caseId": "definitions-0029",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.43870000000003984
+		},
+		{
+			"caseId": "definitions-0029",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4741960000000063
+		},
+		{
+			"caseId": "definitions-0029",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.46032000000002427
+		},
+		{
+			"caseId": "definitions-0029",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.46170299999994313
+		},
+		{
+			"caseId": "definitions-0029",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.41674799999998413
+		},
+		{
+			"caseId": "definitions-0030",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "missing_member",
+			"observedDiagnostic": {
+				"code": "missing_member",
+				"stage": "normalization",
+				"cursor": "/NativeBody/nativeInfo/hint/PlatformSpecific",
+				"message": "missing member platform"
+			},
+			"durationMs": 0.4681560000000218
+		},
+		{
+			"caseId": "definitions-0030",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "missing_member",
+			"observedDiagnostic": {
+				"code": "missing_member",
+				"stage": "normalization",
+				"cursor": "/NativeBody/nativeInfo/hint/PlatformSpecific",
+				"message": "missing member platform"
+			},
+			"durationMs": 0.43668700000000626
+		},
+		{
+			"caseId": "definitions-0031",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_access",
+			"observedDiagnostic": {
+				"code": "invalid_access",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "priv does not name an access level"
+			},
+			"durationMs": 0.3737189999999373
+		},
+		{
+			"caseId": "definitions-0031",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_access",
+			"observedDiagnostic": {
+				"code": "invalid_access",
+				"stage": "normalization",
+				"cursor": "/access",
+				"message": "access is Public or Private"
+			},
+			"durationMs": 0.41249100000004546
+		},
+		{
+			"caseId": "definitions-0031",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_access",
+			"observedDiagnostic": {
+				"code": "invalid_access",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "priv does not name an access level"
+			},
+			"durationMs": 0.4532169999999951
+		},
+		{
+			"caseId": "definitions-0031",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_access",
+			"observedDiagnostic": {
+				"code": "invalid_access",
+				"stage": "normalization",
+				"cursor": "/access",
+				"message": "access is Public or Private"
+			},
+			"durationMs": 0.45525099999997565
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39213299999994433
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3818740000000389
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.36157600000001366
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_format_version_syntax",
+			"observedDiagnostic": {
+				"code": "invalid_format_version_syntax",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "formatVersion does not match the accepted release grammar"
+			},
+			"durationMs": 0.3484719999999015
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_format_version_minor",
+			"observedDiagnostic": {
+				"code": "unsupported_format_version_minor",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "release 4.1.0 is a minor revision this reader does not support"
+			},
+			"durationMs": 0.3847000000000662
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.38747399999999743
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3344650000000229
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3850599999999531
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_format_version_syntax",
+			"observedDiagnostic": {
+				"code": "invalid_format_version_syntax",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "formatVersion does not match the accepted release grammar"
+			},
+			"durationMs": 0.3443930000000819
+		},
+		{
+			"caseId": "distributions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_format_version_minor",
+			"observedDiagnostic": {
+				"code": "unsupported_format_version_minor",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "release 4.1.0 is a minor revision this reader does not support"
+			},
+			"durationMs": 0.35752899999999954
+		},
+		{
+			"caseId": "distributions-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6004320000000689
+		},
+		{
+			"caseId": "distributions-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5325080000000071
+		},
+		{
+			"caseId": "distributions-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4871900000000551
+		},
+		{
+			"caseId": "distributions-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6236059999999952
+		},
+		{
+			"caseId": "distributions-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5195109999999659
+		},
+		{
+			"caseId": "distributions-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7419370000000072
+		},
+		{
+			"caseId": "distributions-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_distribution_shape",
+			"observedDiagnostic": {
+				"code": "invalid_distribution_shape",
+				"stage": "normalization",
+				"cursor": "/distribution",
+				"message": "a distribution is a wrapper object such as { \"Library\": { … } }"
+			},
+			"durationMs": 0.49639799999999923
+		},
+		{
+			"caseId": "distributions-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_distribution_shape",
+			"observedDiagnostic": {
+				"code": "invalid_distribution_shape",
+				"stage": "normalization",
+				"cursor": "/distribution",
+				"message": "a distribution is a wrapper object such as { \"Library\": { … } }"
+			},
+			"durationMs": 0.40673999999989974
+		},
+		{
+			"caseId": "distributions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.119593000000009
+		},
+		{
+			"caseId": "distributions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.821745000000078
+		},
+		{
+			"caseId": "distributions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.653269000000023
+		},
+		{
+			"caseId": "distributions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.0184130000000096
+		},
+		{
+			"caseId": "distributions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.7927519999999504
+		},
+		{
+			"caseId": "distributions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 4.201504
+		},
+		{
+			"caseId": "distributions-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6708439999999882
+		},
+		{
+			"caseId": "distributions-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5433150000000069
+		},
+		{
+			"caseId": "distributions-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6580099999999902
+		},
+		{
+			"caseId": "distributions-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5197309999999788
+		},
+		{
+			"caseId": "distributions-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8815680000000157
+		},
+		{
+			"caseId": "distributions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7077840000000606
+		},
+		{
+			"caseId": "distributions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/distribution/Specs/def",
+				"message": "unexpected member def"
+			},
+			"durationMs": 0.43024400000001606
+		},
+		{
+			"caseId": "distributions-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.8911860000000615
+		},
+		{
+			"caseId": "distributions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7684169999999995
+		},
+		{
+			"caseId": "distributions-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/distribution/Specs/def",
+				"message": "unexpected member def"
+			},
+			"durationMs": 0.4670330000000149
+		},
+		{
+			"caseId": "distributions-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.2129770000000235
+		},
+		{
+			"caseId": "distributions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8898840000000519
+		},
+		{
+			"caseId": "distributions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/distribution/Application/doc",
+				"message": "unexpected member doc"
+			},
+			"durationMs": 0.46026099999994585
+		},
+		{
+			"caseId": "distributions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_type",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "normalization",
+				"cursor": "/distribution/Application/entryPoints/start/kind",
+				"message": "an entry point's kind is main, command, handler, job or policy"
+			},
+			"durationMs": 0.5385240000000522
+		},
+		{
+			"caseId": "distributions-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.185516000000007
+		},
+		{
+			"caseId": "distributions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.8523930000000064
+		},
+		{
+			"caseId": "distributions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/distribution/Application/doc",
+				"message": "unexpected member doc"
+			},
+			"durationMs": 0.4483579999999847
+		},
+		{
+			"caseId": "distributions-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_type",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "normalization",
+				"cursor": "/distribution/Application/entryPoints/start/kind",
+				"message": "an entry point's kind is main, command, handler, job or policy"
+			},
+			"durationMs": 0.5542490000000271
+		},
+		{
+			"caseId": "distributions-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4029330000000755
+		},
+		{
+			"caseId": "distributions-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3507849999999735
+		},
+		{
+			"caseId": "distributions-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.40158099999996466
+		},
+		{
+			"caseId": "distributions-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.34203899999999976
+		},
+		{
+			"caseId": "distributions-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/$meta",
+				"message": "unexpected member $meta"
+			},
+			"durationMs": 0.4479780000000346
+		},
+		{
+			"caseId": "distributions-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/$meta",
+				"message": "unexpected member $meta"
+			},
+			"durationMs": 0.3918030000000954
+		},
+		{
+			"caseId": "distributions-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.428160000000048
+		},
+		{
+			"caseId": "distributions-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.059439999999995
+		},
+		{
+			"caseId": "distributions-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.4360340000000633
+		},
+		{
+			"caseId": "distributions-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.0296839999999747
+		},
+		{
+			"caseId": "document-tree-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6054420000000391
+		},
+		{
+			"caseId": "document-tree-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.45588199999997414
+		},
+		{
+			"caseId": "document-tree-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5696950000000243
+		},
+		{
+			"caseId": "document-tree-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4699790000000803
+		},
+		{
+			"caseId": "document-tree-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6616970000000038
+		},
+		{
+			"caseId": "document-tree-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.47758299999998144
+		},
+		{
+			"caseId": "document-tree-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5040930000000117
+		},
+		{
+			"caseId": "document-tree-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5686329999999771
+		},
+		{
+			"caseId": "document-tree-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5083399999999756
+		},
+		{
+			"caseId": "document-tree-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4719629999999597
+		},
+		{
+			"caseId": "document-tree-0003",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.2469800000000077
+		},
+		{
+			"caseId": "document-tree-0003",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.2469800000000077
+		},
+		{
+			"caseId": "document-tree-0003",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.2469800000000077
+		},
+		{
+			"caseId": "document-tree-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.9398569999999609
+		},
+		{
+			"caseId": "document-tree-0003",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.07057999999995
+		},
+		{
+			"caseId": "document-tree-0003",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.07057999999995
+		},
+		{
+			"caseId": "document-tree-0003",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.07057999999995
+		},
+		{
+			"caseId": "document-tree-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.911324000000036
+		},
+		{
+			"caseId": "document-tree-0004",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.097941999999989
+		},
+		{
+			"caseId": "document-tree-0004",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.097941999999989
+		},
+		{
+			"caseId": "document-tree-0004",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.097941999999989
+		},
+		{
+			"caseId": "document-tree-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8915769999999839
+		},
+		{
+			"caseId": "document-tree-0004",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.1019589999999653
+		},
+		{
+			"caseId": "document-tree-0004",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.1019589999999653
+		},
+		{
+			"caseId": "document-tree-0004",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.1019589999999653
+		},
+		{
+			"caseId": "document-tree-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.8888719999999921
+		},
+		{
+			"caseId": "document-tree-0005",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8976179999999658
+		},
+		{
+			"caseId": "document-tree-0005",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8976179999999658
+		},
+		{
+			"caseId": "document-tree-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6899199999999155
+		},
+		{
+			"caseId": "document-tree-0005",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.9111139999999978
+		},
+		{
+			"caseId": "document-tree-0005",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.9111139999999978
+		},
+		{
+			"caseId": "document-tree-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7184730000000172
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.5768380000000661
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.5768380000000661
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.5768380000000661
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.9071460000000116
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7147969999999759
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.657818999999904
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.657818999999904
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.657818999999904
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.9443959999999834
+		},
+		{
+			"caseId": "document-tree-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7956580000000031
+		},
+		{
+			"caseId": "document-tree-0007",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.5358710000000428
+		},
+		{
+			"caseId": "document-tree-0007",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.5358710000000428
+		},
+		{
+			"caseId": "document-tree-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6895289999999932
+		},
+		{
+			"caseId": "document-tree-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6236559999999827
+		},
+		{
+			"caseId": "document-tree-0007",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.530381000000034
+		},
+		{
+			"caseId": "document-tree-0007",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.530381000000034
+		},
+		{
+			"caseId": "document-tree-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7084939999999733
+		},
+		{
+			"caseId": "document-tree-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5892520000001014
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.216062999999963
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.216062999999963
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.216062999999963
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 2.216062999999963
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.8894930000000159
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 5,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6993870000000015
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.288748000000055
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.288748000000055
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.288748000000055
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 2.288748000000055
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.9574000000000069
+		},
+		{
+			"caseId": "document-tree-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 5,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7057090000000699
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.3686269999999467
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.3686269999999467
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.3686269999999467
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.3686269999999467
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.3686269999999467
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 5,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.4403930000000855
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 6,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.024554999999964
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 3.5072359999999208
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 3.5072359999999208
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 3.5072359999999208
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 3.5072359999999208
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 3.5072359999999208
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 5,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 1.4298430000000053
+		},
+		{
+			"caseId": "document-tree-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 6,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.9873859999999013
+		},
+		{
+			"caseId": "names-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3715949999999566
+		},
+		{
+			"caseId": "names-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3415690000000495
+		},
+		{
+			"caseId": "names-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.34152800000003936
+		},
+		{
+			"caseId": "names-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.35106599999994614
+		},
+		{
+			"caseId": "names-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.33664999999996326
+		},
+		{
+			"caseId": "names-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3351759999999331
+		},
+		{
+			"caseId": "names-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.34770000000003165
+		},
+		{
+			"caseId": "names-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3615759999999
+		},
+		{
+			"caseId": "names-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3156300000000556
+		},
+		{
+			"caseId": "names-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.39391599999999016
+		},
+		{
+			"caseId": "names-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3726359999999431
+		},
+		{
+			"caseId": "names-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3359980000000178
+		},
+		{
+			"caseId": "names-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_name",
+			"observedDiagnostic": {
+				"code": "invalid_name",
+				"stage": "normalization",
+				"cursor": "/",
+				"message": "invalid character in canonical name: value-in-(usd)"
+			},
+			"durationMs": 0.3976030000000037
+		},
+		{
+			"caseId": "names-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_name",
+			"observedDiagnostic": {
+				"code": "invalid_name",
+				"stage": "normalization",
+				"cursor": "/",
+				"message": "mixed-case segment \"Usd\" in canonical name: value-in-Usd"
+			},
+			"durationMs": 0.366245000000049
+		},
+		{
+			"caseId": "names-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_name",
+			"observedDiagnostic": {
+				"code": "invalid_name",
+				"stage": "normalization",
+				"cursor": "/",
+				"message": "invalid character in canonical name: value-in-(usd)"
+			},
+			"durationMs": 0.37363600000003316
+		},
+		{
+			"caseId": "names-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_name",
+			"observedDiagnostic": {
+				"code": "invalid_name",
+				"stage": "normalization",
+				"cursor": "/",
+				"message": "mixed-case segment \"Usd\" in canonical name: value-in-Usd"
+			},
+			"durationMs": 0.38913800000000265
+		},
+		{
+			"caseId": "names-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.38615199999992456
+		},
+		{
+			"caseId": "names-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3797199999999066
+		},
+		{
+			"caseId": "names-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3505850000000237
+		},
+		{
+			"caseId": "names-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3689190000000053
+		},
+		{
+			"caseId": "names-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3773559999999634
+		},
+		{
+			"caseId": "names-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.346587999999997
+		},
+		{
+			"caseId": "names-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3826249999999618
+		},
+		{
+			"caseId": "names-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3817739999999503
+		},
+		{
+			"caseId": "names-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3763240000000678
+		},
+		{
+			"caseId": "names-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.41154999999992015
+		},
+		{
+			"caseId": "names-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3397349999999051
+		},
+		{
+			"caseId": "names-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3657029999999395
+		},
+		{
+			"caseId": "names-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.41766100000006645
+		},
+		{
+			"caseId": "names-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3284840000000031
+		},
+		{
+			"caseId": "names-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3503850000000739
+		},
+		{
+			"caseId": "names-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.40481699999998
+		},
+		{
+			"caseId": "names-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3311189999999442
+		},
+		{
+			"caseId": "names-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.34003599999994094
+		},
+		{
+			"caseId": "names-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4049770000000308
+		},
+		{
+			"caseId": "names-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3274820000000318
+		},
+		{
+			"caseId": "names-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.35703699999999117
+		},
+		{
+			"caseId": "names-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.37339799999995194
+		},
+		{
+			"caseId": "names-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3285449999999628
+		},
+		{
+			"caseId": "names-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3700609999999642
+		},
+		{
+			"caseId": "names-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3657739999999876
+		},
+		{
+			"caseId": "names-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.32759299999997893
+		},
+		{
+			"caseId": "names-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4181620000000521
+		},
+		{
+			"caseId": "names-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3632390000000214
+		},
+		{
+			"caseId": "names-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.32033899999998994
+		},
+		{
+			"caseId": "names-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.38529000000005453
+		},
+		{
+			"caseId": "patterns-and-literals-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.433179999999993
+		},
+		{
+			"caseId": "patterns-and-literals-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4159479999999576
+		},
+		{
+			"caseId": "patterns-and-literals-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3725759999999809
+		},
+		{
+			"caseId": "patterns-and-literals-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.38529000000005453
+		},
+		{
+			"caseId": "patterns-and-literals-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4527469999999312
+		},
+		{
+			"caseId": "patterns-and-literals-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3934950000000299
+		},
+		{
+			"caseId": "patterns-and-literals-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.42703800000003866
+		},
+		{
+			"caseId": "patterns-and-literals-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3816339999999627
+		},
+		{
+			"caseId": "patterns-and-literals-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4566340000000082
+		},
+		{
+			"caseId": "patterns-and-literals-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.37836700000002566
+		},
+		{
+			"caseId": "patterns-and-literals-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4368059999999332
+		},
+		{
+			"caseId": "patterns-and-literals-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3963609999999562
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5968960000000152
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5087310000000116
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4797270000000253
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.532024999999976
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5363119999999526
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6021160000000236
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.501406999999972
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4768419999999196
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.522515999999996
+		},
+		{
+			"caseId": "patterns-and-literals-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5237990000000536
+		},
+		{
+			"caseId": "patterns-and-literals-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4726339999999709
+		},
+		{
+			"caseId": "patterns-and-literals-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39379700000006324
+		},
+		{
+			"caseId": "patterns-and-literals-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39269400000000587
+		},
+		{
+			"caseId": "patterns-and-literals-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4297629999999799
+		},
+		{
+			"caseId": "patterns-and-literals-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4545899999999392
+		},
+		{
+			"caseId": "patterns-and-literals-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4290019999999686
+		},
+		{
+			"caseId": "patterns-and-literals-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3818739999999252
+		},
+		{
+			"caseId": "patterns-and-literals-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.43679599999995844
+		},
+		{
+			"caseId": "patterns-and-literals-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5268049999999675
+		},
+		{
+			"caseId": "patterns-and-literals-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4461830000000191
+		},
+		{
+			"caseId": "patterns-and-literals-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5277469999999767
+		},
+		{
+			"caseId": "patterns-and-literals-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4328289999999697
+		},
+		{
+			"caseId": "patterns-and-literals-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4991229999999405
+		},
+		{
+			"caseId": "patterns-and-literals-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.40413599999999406
+		},
+		{
+			"caseId": "patterns-and-literals-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.51424099999997
+		},
+		{
+			"caseId": "patterns-and-literals-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.40284300000007534
+		},
+		{
+			"caseId": "patterns-and-literals-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/LiteralPattern/DocumentLiteral",
+				"message": "a document cannot be pattern matched"
+			},
+			"durationMs": 0.4088040000000319
+		},
+		{
+			"caseId": "patterns-and-literals-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/LiteralPattern/DocumentLiteral",
+				"message": "a document cannot be pattern matched"
+			},
+			"durationMs": 0.3846489999999676
+		},
+		{
+			"caseId": "patterns-and-literals-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.46254400000009355
+		},
+		{
+			"caseId": "patterns-and-literals-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39079100000003564
+		},
+		{
+			"caseId": "patterns-and-literals-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3973430000000917
+		},
+		{
+			"caseId": "patterns-and-literals-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4361859999999069
+		},
+		{
+			"caseId": "patterns-and-literals-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.39963699999998425
+		},
+		{
+			"caseId": "patterns-and-literals-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4074509999999236
+		},
+		{
+			"caseId": "patterns-and-literals-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4219590000000153
+		},
+		{
+			"caseId": "patterns-and-literals-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39010000000007494
+		},
+		{
+			"caseId": "patterns-and-literals-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3984850000000506
+		},
+		{
+			"caseId": "patterns-and-literals-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4192040000000361
+		},
+		{
+			"caseId": "patterns-and-literals-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3904300000000376
+		},
+		{
+			"caseId": "patterns-and-literals-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3827449999999999
+		},
+		{
+			"caseId": "patterns-and-literals-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6578799999999774
+		},
+		{
+			"caseId": "patterns-and-literals-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5259229999999206
+		},
+		{
+			"caseId": "patterns-and-literals-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5507489999999962
+		},
+		{
+			"caseId": "patterns-and-literals-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6363589999999704
+		},
+		{
+			"caseId": "patterns-and-literals-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5133099999999331
+		},
+		{
+			"caseId": "patterns-and-literals-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5594459999999799
+		},
+		{
+			"caseId": "patterns-and-literals-0011",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6118940000000066
+		},
+		{
+			"caseId": "patterns-and-literals-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5277869999999893
+		},
+		{
+			"caseId": "patterns-and-literals-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4977000000000089
+		},
+		{
+			"caseId": "patterns-and-literals-0011",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6419300000000021
+		},
+		{
+			"caseId": "patterns-and-literals-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4883620000000519
+		},
+		{
+			"caseId": "patterns-and-literals-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5254020000000992
+		},
+		{
+			"caseId": "patterns-and-literals-0012",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6564969999999448
+		},
+		{
+			"caseId": "patterns-and-literals-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5113460000000032
+		},
+		{
+			"caseId": "patterns-and-literals-0012",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.655935999999997
+		},
+		{
+			"caseId": "patterns-and-literals-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5087009999999736
+		},
+		{
+			"caseId": "patterns-and-literals-0013",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4579959999999801
+		},
+		{
+			"caseId": "patterns-and-literals-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3754920000000084
+		},
+		{
+			"caseId": "patterns-and-literals-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3728370000000041
+		},
+		{
+			"caseId": "patterns-and-literals-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/CharLiteral",
+				"message": "a CharLiteral carries exactly one code point"
+			},
+			"durationMs": 0.38347699999997076
+		},
+		{
+			"caseId": "patterns-and-literals-0013",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4187130000000252
+		},
+		{
+			"caseId": "patterns-and-literals-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.38782500000002074
+		},
+		{
+			"caseId": "patterns-and-literals-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.37305700000001707
+		},
+		{
+			"caseId": "patterns-and-literals-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/CharLiteral",
+				"message": "a CharLiteral carries exactly one code point"
+			},
+			"durationMs": 0.3740189999999757
+		},
+		{
+			"caseId": "patterns-and-literals-0014",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.474666999999954
+		},
+		{
+			"caseId": "patterns-and-literals-0014",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3723760000000311
+		},
+		{
+			"caseId": "patterns-and-literals-0014",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48820200000000114
+		},
+		{
+			"caseId": "patterns-and-literals-0014",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3944170000000895
+		},
+		{
+			"caseId": "patterns-and-literals-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.46289500000000317
+		},
+		{
+			"caseId": "patterns-and-literals-0015",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.41750100000001567
+		},
+		{
+			"caseId": "patterns-and-literals-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "syntax",
+				"cursor": "/IntegerLiteral",
+				"message": "octal and hexadecimal spellings are not part of the profile; write decimal"
+			},
+			"durationMs": 0.5382759999999962
+		},
+		{
+			"caseId": "patterns-and-literals-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "syntax",
+				"cursor": "/IntegerLiteral",
+				"message": "octal and hexadecimal spellings are not part of the profile; write decimal"
+			},
+			"durationMs": 0.38650200000006407
+		},
+		{
+			"caseId": "patterns-and-literals-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.44215700000006564
+		},
+		{
+			"caseId": "patterns-and-literals-0015",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4233609999999999
+		},
+		{
+			"caseId": "patterns-and-literals-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "syntax",
+				"cursor": "/IntegerLiteral",
+				"message": "octal and hexadecimal spellings are not part of the profile; write decimal"
+			},
+			"durationMs": 0.3696909999999889
+		},
+		{
+			"caseId": "patterns-and-literals-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "syntax",
+				"cursor": "/IntegerLiteral",
+				"message": "octal and hexadecimal spellings are not part of the profile; write decimal"
+			},
+			"durationMs": 0.3763740000000553
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4222500000000764
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3707930000000488
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "\"ten\" is not a decimal lexeme: [+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?"
+			},
+			"durationMs": 0.40312299999993684
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "\"\" is not a decimal lexeme: [+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?"
+			},
+			"durationMs": 0.3476300000000947
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "\"1_000\" is not a decimal lexeme: [+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?"
+			},
+			"durationMs": 0.39079000000003816
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 5,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "\"NaN\" is not a decimal lexeme: [+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?"
+			},
+			"durationMs": 0.3577589999999873
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 6,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "a DecimalLiteral carries its lexeme as a string"
+			},
+			"durationMs": 0.3508160000000089
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.44384999999999764
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.35748799999998937
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "\"ten\" is not a decimal lexeme: [+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?"
+			},
+			"durationMs": 0.3481810000000678
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "\"\" is not a decimal lexeme: [+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?"
+			},
+			"durationMs": 0.37646300000005795
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "\"1_000\" is not a decimal lexeme: [+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?"
+			},
+			"durationMs": 0.35829999999998563
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 5,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "\"NaN\" is not a decimal lexeme: [+-]?(digits(.digits?)?|.digits)([eE][+-]?digits)?"
+			},
+			"durationMs": 0.3749410000000353
+		},
+		{
+			"caseId": "patterns-and-literals-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 6,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_literal",
+			"observedDiagnostic": {
+				"code": "invalid_literal",
+				"stage": "normalization",
+				"cursor": "/DecimalLiteral",
+				"message": "a DecimalLiteral carries its lexeme as a string"
+			},
+			"durationMs": 0.38121300000000247
+		},
+		{
+			"caseId": "patterns-and-literals-0017",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.45422899999994115
+		},
+		{
+			"caseId": "patterns-and-literals-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4374879999999166
+		},
+		{
+			"caseId": "patterns-and-literals-0017",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4062700000000632
+		},
+		{
+			"caseId": "patterns-and-literals-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.39519799999993666
+		},
+		{
+			"caseId": "patterns-and-literals-0018",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4066300000000638
+		},
+		{
+			"caseId": "patterns-and-literals-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3639300000000958
+		},
+		{
+			"caseId": "patterns-and-literals-0018",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4216279999999415
+		},
+		{
+			"caseId": "patterns-and-literals-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.35411199999998644
+		},
+		{
+			"caseId": "patterns-and-literals-0019",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4793459999999641
+		},
+		{
+			"caseId": "patterns-and-literals-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.38455900000008114
+		},
+		{
+			"caseId": "patterns-and-literals-0019",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.44300799999996343
+		},
+		{
+			"caseId": "patterns-and-literals-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.37123400000007223
+		},
+		{
+			"caseId": "patterns-and-literals-0020",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.42448300000000927
+		},
+		{
+			"caseId": "patterns-and-literals-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.397803999999951
+		},
+		{
+			"caseId": "patterns-and-literals-0020",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4301439999999275
+		},
+		{
+			"caseId": "patterns-and-literals-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.40321400000004815
+		},
+		{
+			"caseId": "types-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3705329999999094
+		},
+		{
+			"caseId": "types-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.32528800000000047
+		},
+		{
+			"caseId": "types-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4168300000000045
+		},
+		{
+			"caseId": "types-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3567560000000185
+		},
+		{
+			"caseId": "types-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3323319999999512
+		},
+		{
+			"caseId": "types-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.404596999999967
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.40107000000000426
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3756220000000212
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.381813999999963
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39616000000000895
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.46075199999995675
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 5,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39240399999994224
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.45142299999997704
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.34334199999989323
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3688889999999674
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.42072700000005625
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.39829500000007556
+		},
+		{
+			"caseId": "types-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 5,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4459940000000415
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4681750000000875
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4424270000000661
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4361860000000206
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4548500000000786
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.47721200000000863
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48583800000005795
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4628660000000764
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4596490000000131
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4727940000000217
+		},
+		{
+			"caseId": "types-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.45674399999995785
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5315039999999271
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.42729799999995066
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.43978200000003653
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.42540500000006887
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4707300000000032
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48220100000003185
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4562230000000227
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.40323399999999765
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4304750000000013
+		},
+		{
+			"caseId": "types-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4662509999999429
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6034379999999828
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4727730000000747
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4955569999999625
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5216850000000477
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5124380000000883
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5664390000000594
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48849299999994855
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4702389999999923
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.49716000000000804
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4689569999999321
+		},
+		{
+			"caseId": "types-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5621609999999464
+		},
+		{
+			"caseId": "types-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.45664399999998295
+		},
+		{
+			"caseId": "types-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.46177399999999125
+		},
+		{
+			"caseId": "types-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5270850000000564
+		},
+		{
+			"caseId": "types-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4755689999999504
+		},
+		{
+			"caseId": "types-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4604499999999234
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5270849999999427
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.45406900000000405
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4306850000000395
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.497449999999958
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.46340699999996104
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.529260000000022
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4379280000000563
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4584860000001072
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4431879999999637
+		},
+		{
+			"caseId": "types-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.47693199999991975
+		},
+		{
+			"caseId": "types-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.42354100000000017
+		},
+		{
+			"caseId": "types-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3932550000000674
+		},
+		{
+			"caseId": "types-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3805720000000292
+		},
+		{
+			"caseId": "types-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3969919999999547
+		},
+		{
+			"caseId": "types-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3889360000000579
+		},
+		{
+			"caseId": "types-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.37233600000001843
+		},
+		{
+			"caseId": "types-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3909009999999853
+		},
+		{
+			"caseId": "types-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3506760000000213
+		},
+		{
+			"caseId": "types-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.36884999999995216
+		},
+		{
+			"caseId": "types-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4305540000000292
+		},
+		{
+			"caseId": "types-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.35873100000003433
+		},
+		{
+			"caseId": "types-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3219020000000228
+		},
+		{
+			"caseId": "types-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4250449999999546
+		},
+		{
+			"caseId": "types-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.38174400000002606
+		},
+		{
+			"caseId": "types-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5994309999999814
+		},
+		{
+			"caseId": "types-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.453928000000019
+		},
+		{
+			"caseId": "types-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5865159999999605
+		},
+		{
+			"caseId": "types-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.45006100000000515
+		},
+		{
+			"caseId": "types-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "Hole is not a type expression"
+			},
+			"durationMs": 0.4236230000000205
+		},
+		{
+			"caseId": "types-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "Draft is not a type expression"
+			},
+			"durationMs": 0.35018399999989924
+		},
+		{
+			"caseId": "types-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "Hole is not a type expression"
+			},
+			"durationMs": 0.39822400000002744
+		},
+		{
+			"caseId": "types-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "Draft is not a type expression"
+			},
+			"durationMs": 0.3472399999999425
+		},
+		{
+			"caseId": "types-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_type",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "normalization",
+				"cursor": "/Variable/attributes/constraints",
+				"message": "constraints is an object"
+			},
+			"durationMs": 0.3921129999999948
+		},
+		{
+			"caseId": "types-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/Variable/attributes/colour",
+				"message": "unexpected member colour"
+			},
+			"durationMs": 0.4072310000000243
+		},
+		{
+			"caseId": "types-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_type",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "normalization",
+				"cursor": "/Variable/attributes/constraints",
+				"message": "constraints is an object"
+			},
+			"durationMs": 0.3854800000000296
+		},
+		{
+			"caseId": "types-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_member",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "normalization",
+				"cursor": "/Variable/attributes/colour",
+				"message": "unexpected member colour"
+			},
+			"durationMs": 0.38304500000003827
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.47255299999994804
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39356599999996433
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.42827999999997246
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3669360000000097
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.44640500000002703
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 5,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4046369999999797
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 6,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.41659900000001926
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48017799999990984
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.40093899999999394
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.45740599999999176
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3609350000000404
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4419560000000047
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 5,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4221390000000156
+		},
+		{
+			"caseId": "values-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 6,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4426570000000538
+		},
+		{
+			"caseId": "values-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4620840000000044
+		},
+		{
+			"caseId": "values-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4061590000000024
+		},
+		{
+			"caseId": "values-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.41637900000000627
+		},
+		{
+			"caseId": "values-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4499910000000682
+		},
+		{
+			"caseId": "values-0002",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4746069999999918
+		},
+		{
+			"caseId": "values-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4072310000000243
+		},
+		{
+			"caseId": "values-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3450350000000526
+		},
+		{
+			"caseId": "values-0002",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.43490299999996296
+		},
+		{
+			"caseId": "values-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4605210000000852
+		},
+		{
+			"caseId": "values-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.43970100000001366
+		},
+		{
+			"caseId": "values-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3824850000000879
+		},
+		{
+			"caseId": "values-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4409840000000713
+		},
+		{
+			"caseId": "values-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.45857699999999113
+		},
+		{
+			"caseId": "values-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.433439999999905
+		},
+		{
+			"caseId": "values-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3814230000000407
+		},
+		{
+			"caseId": "values-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.42094699999995555
+		},
+		{
+			"caseId": "values-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6479709999999841
+		},
+		{
+			"caseId": "values-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5287690000000111
+		},
+		{
+			"caseId": "values-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5373049999999466
+		},
+		{
+			"caseId": "values-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6351779999999962
+		},
+		{
+			"caseId": "values-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5223560000000589
+		},
+		{
+			"caseId": "values-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5583730000000742
+		},
+		{
+			"caseId": "values-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6785380000000032
+		},
+		{
+			"caseId": "values-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.554377000000045
+		},
+		{
+			"caseId": "values-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5996209999999564
+		},
+		{
+			"caseId": "values-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5670999999999822
+		},
+		{
+			"caseId": "values-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7219189999999571
+		},
+		{
+			"caseId": "values-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5599870000000919
+		},
+		{
+			"caseId": "values-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5593360000000303
+		},
+		{
+			"caseId": "values-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5727110000000266
+		},
+		{
+			"caseId": "values-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.569876000000022
+		},
+		{
+			"caseId": "values-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5057960000000321
+		},
+		{
+			"caseId": "values-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.48379399999998896
+		},
+		{
+			"caseId": "values-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5735320000000002
+		},
+		{
+			"caseId": "values-0006",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5480649999999514
+		},
+		{
+			"caseId": "values-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48766200000000026
+		},
+		{
+			"caseId": "values-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.47750299999995605
+		},
+		{
+			"caseId": "values-0006",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5325760000000628
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5849240000000009
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.514562000000069
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5163549999999759
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.515845000000013
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.46671200000002955
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5892320000000382
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.527435999999966
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5155239999999139
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5360719999999901
+		},
+		{
+			"caseId": "values-0007",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4601000000000113
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6856520000000046
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5339679999999589
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4972699999999577
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4696079999999938
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5849729999999909
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 5,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5185689999999568
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6455060000000685
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.524340000000052
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.40081899999995585
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4265970000000152
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.48029799999994793
+		},
+		{
+			"caseId": "values-0008",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 5,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4719519999999875
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5360520000000406
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4516949999999724
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.47809400000005553
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "Native is not a value expression"
+			},
+			"durationMs": 0.40527800000006664
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "External is not a value expression"
+			},
+			"durationMs": 0.45839699999999084
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4998649999999998
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4847860000000992
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4482870000000503
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "Native is not a value expression"
+			},
+			"durationMs": 0.39926600000001145
+		},
+		{
+			"caseId": "values-0009",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unknown_node",
+			"observedDiagnostic": {
+				"code": "unknown_node",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "External is not a value expression"
+			},
+			"durationMs": 0.38529000000005453
+		},
+		{
+			"caseId": "values-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4284509999999955
+		},
+		{
+			"caseId": "values-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4025329999999485
+		},
+		{
+			"caseId": "values-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.36706600000002254
+		},
+		{
+			"caseId": "values-0010",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.42474400000003243
+		},
+		{
+			"caseId": "values-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3674669999999196
+		},
+		{
+			"caseId": "values-0010",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.38012099999991733
+		},
+		{
+			"caseId": "values-0011",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.45426000000009026
+		},
+		{
+			"caseId": "values-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.40725099999997383
+		},
+		{
+			"caseId": "values-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3529600000000528
+		},
+		{
+			"caseId": "values-0011",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4275589999999738
+		},
+		{
+			"caseId": "values-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3765539999999419
+		},
+		{
+			"caseId": "values-0011",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3518980000000056
+		},
+		{
+			"caseId": "values-0012",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.45155499999998483
+		},
+		{
+			"caseId": "values-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.41614800000002106
+		},
+		{
+			"caseId": "values-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3426009999999451
+		},
+		{
+			"caseId": "values-0012",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4347219999999652
+		},
+		{
+			"caseId": "values-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4265570000000025
+		},
+		{
+			"caseId": "values-0012",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.33347300000002633
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6426309999999376
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5236489999999776
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6348770000000741
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6428210000000263
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.586086000000023
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7503430000000435
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5245409999999993
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5261840000000575
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5515010000000302
+		},
+		{
+			"caseId": "values-0013",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.511716999999976
+		},
+		{
+			"caseId": "values-0014",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.45812599999999293
+		},
+		{
+			"caseId": "values-0014",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.40095900000005713
+		},
+		{
+			"caseId": "values-0014",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4093159999999898
+		},
+		{
+			"caseId": "values-0014",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4699190000000044
+		},
+		{
+			"caseId": "values-0014",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.39267400000005637
+		},
+		{
+			"caseId": "values-0014",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4385300000000143
+		},
+		{
+			"caseId": "values-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.419695000000047
+		},
+		{
+			"caseId": "values-0015",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.3889270000000806
+		},
+		{
+			"caseId": "values-0015",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.39026000000001204
+		},
+		{
+			"caseId": "values-0015",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4086130000000594
+		},
+		{
+			"caseId": "values-0015",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4040860000000066
+		},
+		{
+			"caseId": "values-0015",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.40049900000008165
+		},
+		{
+			"caseId": "values-0016",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6580200000000787
+		},
+		{
+			"caseId": "values-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5033410000000913
+		},
+		{
+			"caseId": "values-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5149730000000545
+		},
+		{
+			"caseId": "values-0016",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6071550000000343
+		},
+		{
+			"caseId": "values-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5150019999999813
+		},
+		{
+			"caseId": "values-0016",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4957170000000133
+		},
+		{
+			"caseId": "values-0017",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7272500000000264
+		},
+		{
+			"caseId": "values-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6302179999998998
+		},
+		{
+			"caseId": "values-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6028459999999995
+		},
+		{
+			"caseId": "values-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6373210000000427
+		},
+		{
+			"caseId": "values-0017",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7813599999999497
+		},
+		{
+			"caseId": "values-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6222329999999374
+		},
+		{
+			"caseId": "values-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5998709999998937
+		},
+		{
+			"caseId": "values-0017",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6628190000000131
+		},
+		{
+			"caseId": "values-0018",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7498020000000452
+		},
+		{
+			"caseId": "values-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5800040000000308
+		},
+		{
+			"caseId": "values-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6264309999999114
+		},
+		{
+			"caseId": "values-0018",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7375990000000456
+		},
+		{
+			"caseId": "values-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5842520000001059
+		},
+		{
+			"caseId": "values-0018",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6175850000000764
+		},
+		{
+			"caseId": "values-0019",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7343419999999696
+		},
+		{
+			"caseId": "values-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5973559999999907
+		},
+		{
+			"caseId": "values-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6526499999999942
+		},
+		{
+			"caseId": "values-0019",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7092250000000604
+		},
+		{
+			"caseId": "values-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5944909999999481
+		},
+		{
+			"caseId": "values-0019",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5749439999999595
+		},
+		{
+			"caseId": "values-0020",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.7817509999999857
+		},
+		{
+			"caseId": "values-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6144090000000233
+		},
+		{
+			"caseId": "values-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6358289999999442
+		},
+		{
+			"caseId": "values-0020",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.7882230000000163
+		},
+		{
+			"caseId": "values-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6238459999999577
+		},
+		{
+			"caseId": "values-0020",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.638052000000016
+		},
+		{
+			"caseId": "values-0021",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5870679999999311
+		},
+		{
+			"caseId": "values-0021",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5280569999999898
+		},
+		{
+			"caseId": "values-0021",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4937929999999824
+		},
+		{
+			"caseId": "values-0021",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6191669999999476
+		},
+		{
+			"caseId": "values-0021",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.49015600000007
+		},
+		{
+			"caseId": "values-0021",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5356320000000778
+		},
+		{
+			"caseId": "values-0022",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.604310000000055
+		},
+		{
+			"caseId": "values-0022",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4651499999999942
+		},
+		{
+			"caseId": "values-0022",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5964549999999917
+		},
+		{
+			"caseId": "values-0022",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.45808599999998023
+		},
+		{
+			"caseId": "versions-0001",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.38353700000004665
+		},
+		{
+			"caseId": "versions-0001",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.38404800000000705
+		},
+		{
+			"caseId": "versions-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.36970099999996364
+		},
+		{
+			"caseId": "versions-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_yaml",
+			"observedDiagnostic": {
+				"code": "invalid_yaml",
+				"stage": "syntax",
+				"cursor": "",
+				"message": "expected exactly one document"
+			},
+			"durationMs": 0.38402800000005755
+		},
+		{
+			"caseId": "versions-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.41285199999992983
+		},
+		{
+			"caseId": "versions-0003",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "invalid_yaml",
+			"observedDiagnostic": {
+				"code": "invalid_yaml",
+				"stage": "syntax",
+				"cursor": "",
+				"message": "expected exactly one document"
+			},
+			"durationMs": 0.3335230000000138
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6114830000000211
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4729529999999613
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_yaml_feature",
+			"observedDiagnostic": {
+				"code": "unsupported_yaml_feature",
+				"stage": "syntax",
+				"cursor": "/distribution/Library/dependencies",
+				"message": "anchors and tags are not part of the profile"
+			},
+			"durationMs": 0.42100700000003144
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_yaml_feature",
+			"observedDiagnostic": {
+				"code": "unsupported_yaml_feature",
+				"stage": "syntax",
+				"cursor": "/distribution/Library/dependencies",
+				"message": "anchors and tags are not part of the profile"
+			},
+			"durationMs": 0.39503899999999703
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_yaml_feature",
+			"observedDiagnostic": {
+				"code": "unsupported_yaml_feature",
+				"stage": "syntax",
+				"cursor": "/distribution/Library/def/<<",
+				"message": "merge keys are not part of the profile"
+			},
+			"durationMs": 0.4364060000000336
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 5,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_yaml_feature",
+			"observedDiagnostic": {
+				"code": "unsupported_yaml_feature",
+				"stage": "syntax",
+				"cursor": "",
+				"message": "%YAML and %TAG directives are not part of the profile"
+			},
+			"durationMs": 0.26676899999995385
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5834910000000946
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.46491900000000896
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_yaml_feature",
+			"observedDiagnostic": {
+				"code": "unsupported_yaml_feature",
+				"stage": "syntax",
+				"cursor": "/distribution/Library/dependencies",
+				"message": "anchors and tags are not part of the profile"
+			},
+			"durationMs": 0.42212900000004083
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_yaml_feature",
+			"observedDiagnostic": {
+				"code": "unsupported_yaml_feature",
+				"stage": "syntax",
+				"cursor": "/distribution/Library/dependencies",
+				"message": "anchors and tags are not part of the profile"
+			},
+			"durationMs": 0.4133520000000317
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_yaml_feature",
+			"observedDiagnostic": {
+				"code": "unsupported_yaml_feature",
+				"stage": "syntax",
+				"cursor": "/distribution/Library/def/<<",
+				"message": "merge keys are not part of the profile"
+			},
+			"durationMs": 0.4014110000000528
+		},
+		{
+			"caseId": "versions-0004",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 5,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_yaml_feature",
+			"observedDiagnostic": {
+				"code": "unsupported_yaml_feature",
+				"stage": "syntax",
+				"cursor": "",
+				"message": "%YAML and %TAG directives are not part of the profile"
+			},
+			"durationMs": 0.29010199999993347
+		},
+		{
+			"caseId": "versions-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.5490760000000137
+		},
+		{
+			"caseId": "versions-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.4854880000000321
+		},
+		{
+			"caseId": "versions-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "duplicate_member",
+			"observedDiagnostic": {
+				"code": "duplicate_member",
+				"stage": "syntax",
+				"cursor": "/formatVersion",
+				"message": "member \"formatVersion\" appears twice"
+			},
+			"durationMs": 0.37087400000007165
+		},
+		{
+			"caseId": "versions-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.6159410000000207
+		},
+		{
+			"caseId": "versions-0005",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.45874800000001414
+		},
+		{
+			"caseId": "versions-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "rejected",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "duplicate_member",
+			"observedDiagnostic": {
+				"code": "duplicate_member",
+				"stage": "syntax",
+				"cursor": "/formatVersion",
+				"message": "member \"formatVersion\" appears twice"
+			},
+			"durationMs": 0.3817340000000513
+		},
+		{
+			"caseId": "versions-0006",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.33451500000001033
+		},
+		{
+			"caseId": "versions-0006",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.3161610000000792
+		},
+		{
+			"caseId": "versions-0007",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.6663160000000516
+		},
+		{
+			"caseId": "versions-0007",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.5132490000000871
+		},
+		{
+			"caseId": "versions-0008",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.47634100000004764
+		},
+		{
+			"caseId": "versions-0008",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0.4254959999999528
+		}
+	]
+}
