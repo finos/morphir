@@ -19,6 +19,9 @@ pub struct EmbeddedProvenance {
     pub dirty: bool,
 }
 
+/// Whether the Rust sources this build came from differed from `revision`.
+pub const DRIVER_DIRTY: bool = generated::DRIVER_DIRTY;
+
 pub const PROVENANCE: EmbeddedProvenance = EmbeddedProvenance {
     revision: generated::REVISION,
     dirty: generated::DIRTY,

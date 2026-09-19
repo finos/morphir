@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 use serde_json::{Map, Value};
 
 use super::protocol::{Request, parse_envelope};
-use super::tree::{self, ProcessTree};
+use super::tree::{self, ProcessTree, Terminator};
 
 /// The bounds of one adapter session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -270,6 +270,11 @@ impl Session {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         String::from_utf8_lossy(&kept).into_owned()
+    }
+
+    /// A handle that kills this adapter's process tree from another thread.
+    pub fn terminator(&self) -> Terminator {
+        self.tree.terminator()
     }
 
     /// The first failure, once the session is broken.

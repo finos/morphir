@@ -6,6 +6,7 @@
 //! opens a console window on Windows.
 
 use std::process::{Child, Command};
+use std::sync::Arc;
 
 #[cfg(unix)]
 mod imp {
@@ -170,13 +171,28 @@ pub fn configure(command: &mut Command) {
 }
 
 /// The tree rooted at a started adapter.
-pub struct ProcessTree(imp::Tree);
+pub struct ProcessTree(Arc<imp::Tree>);
+
+/// Kills an adapter's tree from any thread, for example on Ctrl-C while a
+/// request is outstanding. The adapter itself is part of its tree.
+#[derive(Clone)]
+pub struct Terminator(Arc<imp::Tree>);
+
+impl Terminator {
+    pub fn kill(&self) {
+        self.0.kill();
+    }
+}
 
 impl ProcessTree {
     /// Takes charge of a just-started adapter, or says why it cannot; the
     /// caller must then kill the child it could not contain.
     pub fn attach(child: &Child) -> Result<Self, String> {
-        imp::Tree::attach(child).map(Self)
+        imp::Tree::attach(child).map(|tree| Self(Arc::new(tree)))
+    }
+
+    pub fn terminator(&self) -> Terminator {
+        Terminator(Arc::clone(&self.0))
     }
 
     /// Kills the adapter and everything it started. Safe to call repeatedly.

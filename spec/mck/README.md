@@ -28,7 +28,7 @@ On 2026-09-18 ownership of all shared MCK tooling moved to this repository, in R
 records it and supersedes the ownership portion of
 [decision 0001](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
 
-**The Rust tooling is incomplete.** `morphir mck check`, `kit status`, and `kit vendor` and `kit update` exist (IR-1, IR-1V); `run`, coverage and the schema and report gates do not. Everything under "Current driver and contracts" still describes the
+**The Rust tooling is incomplete.** `morphir mck check`, `kit status`, `kit vendor`, `kit update` and `run` exist (IR-1, IR-1V, IR-2); coverage and the schema and report gates do not. Everything under "Current driver and contracts" still describes the
 TypeScript driver, which stays the authoritative gate until cutover. Its MCK features are frozen.
 
 | Document | Content | Status |
