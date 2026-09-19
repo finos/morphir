@@ -35,3 +35,14 @@ tag = "extension/elm/v0.1.0"
 archive = "morphir-elm-extension-0.1.0-x86_64-unknown-linux-gnu.tgz"
 sha256 = "b5abf2ee7c1fad2c4cffa13c08e384f1878e6be1a999a397151931e33fe6cdd2"
 executable = "morphir-elm-extension"
+
+# finos/morphir-scala releases morphir-scala-elm with its root v* release, as the executable
+# itself and not as an archive, so the pin names an `asset`. The executable reports the release
+# version as its provider version.
+
+[executables.scala-elm]
+repository = "finos/morphir-scala"
+tag = "v0.5.0-M06"
+asset = "morphir-scala-elm-linux-amd64-0.5.0-M06"
+sha256 = "71f54194ce4783fbe12e3ded568d28efcee9f834c8dec63f49db2ca23df344e1"
+executable = "morphir-scala-elm"

@@ -68,7 +68,6 @@ class PathAwareCiTests(unittest.TestCase):
             "- 'crates/**'",
             "- 'Cargo.lock'",
             "- 'ecosystem/morphir-rust'",
-            "- 'ecosystem/morphir-scala'",
             "- 'website/static/ir/examples/**'",
             "- '.github/actions/setup-rust-ci/**'",
         ]:

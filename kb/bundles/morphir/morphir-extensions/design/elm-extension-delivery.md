@@ -102,8 +102,13 @@ The Elm extension now follows the same rule. The pin file has an `[executables.e
 repository, the tag, the `x86_64-unknown-linux-gnu` archive and the archive's `sha256`. The fetcher
 downloads the archive, checks the digest, unpacks the executable, and CI passes its path to the tests
 in `MORPHIR_ELM_EXTENSION_BIN`. The build job is gone, and a bump of the morphir-elm
-submodule no longer starts the Rust jobs. bd issue `morphir-xgd9.10` tracks the same work for the
-Scala extension, which has not started.
+submodule no longer starts the Rust jobs.
+
+The Scala Elm provider `morphir-scala-elm` follows the same rule, with one difference in how it is
+released. finos/morphir-scala ships it with its root `v*` release, as a raw executable per platform
+with a `.sha256` file, and its version is the morphir-scala release version. `v0.5.0-M06`, published
+on 2026-09-19, is the first release that carries it. The pin is `[executables.scala-elm]`, with an
+`asset` in place of an `archive`. finos/morphir CI no longer builds a GraalVM native image.
 
 The rule behind both is an ownership split. The repository that owns an extension checks that its
 extension works with the released CLI. finos/morphir checks that a CLI change does not break the
