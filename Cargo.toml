@@ -33,6 +33,7 @@ miette = { version = "7", features = ["fancy"] }
 cucumber = "0.23"
 vfs = "0.13"
 shell-words = "1"
+pulldown-cmark = { version = "0.13", default-features = false }
 regorus = { version = "=0.12.0", default-features = false, features = ["std"] }
 
 # TUI

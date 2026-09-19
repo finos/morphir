@@ -1,0 +1,11 @@
+[project]
+name = "examples/hello"
+version = "1.0.0"
+source_directory = "src"
+exposed_modules = ["main"]
+
+[frontend]
+language = "gleam"
+
+[codegen]
+targets = ["gleam"]

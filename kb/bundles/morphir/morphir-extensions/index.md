@@ -10,7 +10,7 @@ Compile-time extensions to the Morphir CLI: frontend and process providers, thei
 
 ## Orientation
 
-* [Elm extension delivery](/design/elm-extension-delivery.md) - How the morphir-elm process extension reaches users and CI: released on its own tag from vnext, pinned by finos/morphir, with install through the CLI still open.
+* [Elm extension delivery](/design/elm-extension-delivery.md) - How the morphir-elm process extension reaches users and CI: published executables, pinned releases, local index installation and the remaining process-bundle publication gap.
 
 ## Decisions
 

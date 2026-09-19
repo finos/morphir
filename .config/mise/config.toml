@@ -359,8 +359,12 @@ depends = [
 
 # ===== Testing Tasks =====
 [tasks."test:examples"]
-description = "Run categorized notebook example scenarios through the Morphir CLI"
+description = "Run categorized notebook and Markdown example scenarios through the Morphir CLI"
 run = "cargo run --locked --package morphir -- itest examples"
+
+[tasks."examples:prepare-elm"]
+description = "Stage a downloaded reference Elm extension for the CLI examples"
+run = "bun run tools/prepare-elm-examples.ts"
 
 [tasks."test:itest"]
 description = "Test the integration scenario driver and its real CLI acceptance cases"

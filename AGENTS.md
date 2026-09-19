@@ -380,8 +380,13 @@ Watch mode provides better responsiveness and resource efficiency by reacting to
 ### Executable CLI examples
 
 Use `morphir itest` to verify workflows through real CLI subprocesses. Runnable
-projects live under categorized `examples/` directories and carry `scenario.ipynb`.
-Keep scenario context and tags in notebook metadata, literal CLI commands in
+projects live under categorized `examples/` directories and carry `scenario.ipynb`
+or `scenarios.md`, one document per directory. Markdown uses YAML frontmatter,
+`##` headings for independent scenarios and paired `yaml morphir:command`,
+`yaml morphir:assertion` or `yaml morphir:file` metadata and language source fences.
+Prose may separate paired fences; `###` headings organize steps. Select one
+Markdown scenario with `--filter 'category/example#heading-id'`.
+Keep scenario context and tags in frontmatter or notebook metadata, literal CLI commands in
 command cells and named Rego rules in assertion cells. Project source and config
 files stay on disk by default; the driver copies the scenario directory into a
 temporary workspace. Optional file cells can add inputs or provide an explicitly
@@ -391,12 +396,16 @@ and WASM hosts are fast-follow work described in
 make the smallest fix and retain the passing case as regression coverage.
 
 Run `mise run test:examples -- --list` to inspect coverage,
+`mise run test:examples -- --tag suite:offline` without downloaded providers,
 `mise run test:examples -- --filter elm/single-file` for one example, and
 `mise run test:itest` for driver checks. See the
 [authoring guide](docs/developers/example-integration-tests.md) and local
 [example skill](.agents/skills/morphir-example-tests/SKILL.md). Legacy `test.yaml`
 files are not executable coverage. Native Elm type compilation does not establish
 function lowering or evaluation; MCK remains responsible for compatibility contracts.
+Reference Elm cases require explicit preparation as described in the
+[example catalog](examples/README.md). A passing `coverage:known-limitation`
+scenario proves the documented rejection, not successful feature support.
 
 The Docusaurus website is located in `website/`. To run locally:
 
