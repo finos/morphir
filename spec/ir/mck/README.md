@@ -6,6 +6,11 @@ finos/morphir-typescript. An IR compatibility claim names the kit version and re
 Unsupported capabilities can be reported as skipped, so a successful driver exit alone does not prove complete coverage.
 The planned MCK package suite has its own operations and compatibility requirements.
 
+Ownership of the driver moved to this repository on 2026-09-18: it is being rewritten in Rust as `morphir mck`,
+with a required `--adapter` and CLI-managed kit vendoring. That tooling does not exist yet, so the `mck` commands
+below are still the TypeScript driver's and remain authoritative until cutover. See the
+[MCK overview](https://github.com/finos/morphir/blob/main/spec/mck/README.md#ownership-and-transition).
+
 The kit states meaning by example. The semantic model lives in TypeScript; the YAML profile is the reference
 text form; JSON is the second profile. When a spec page and a kit case disagree, the case wins and the page is
 corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabilization.md`.
@@ -105,7 +110,8 @@ the adapter protocol, `protocol.schema.json`, contract version 1.
 
 ## Running the driver against a binding
 
-A binding pins the driver instead of vendoring the kit. Either pin works with mise:
+Until the Rust CLI ships `morphir mck kit vendor`, a binding pins the driver instead of vendoring the kit.
+Either pin works with mise:
 
 ```toml
 [tools]

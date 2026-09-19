@@ -78,11 +78,12 @@ See the [Domain Modeling guide](docs/developers/domain-modeling.md).
 
 - Prefer TypeScript for new repository tooling. JavaScript scripts use `.mjs`.
 - Do not introduce Python or another tooling language without an explicit, justified exception agreed with maintainers. Existing scripts and language-specific Morphir implementations are not a blanket exception for new repository tooling.
-- Extend the shared MCK core in `finos/morphir-typescript` for compatibility case loading, execution, comparison, capability checks, and reporting. Keep specifications, schemas, cases, and fixed expected results in `finos/morphir`.
-- Other implementations reuse MCK through its library or an adapter. Independent implementations under test do not require independent compatibility runners. Do not create a parallel checker in this repository, even in TypeScript or `.mjs`.
-- Preserve supported IR contracts when adding versioned package operations. Keep reference implementation behavior separate from the driver's expected results.
+- Shared MCK tooling is the named exception: it belongs in this repository, in Rust, delivered as `morphir mck` (engine in `crates/morphir-mck`, thin command layer in `crates/morphir`). Keep specifications, schemas, cases, and fixed expected results here too.
+- **Transition state:** the Rust MCK tooling does not exist yet. The TypeScript driver in `finos/morphir-typescript` still runs every `mck:*` and `package:*` gate and stays authoritative until the cutover in [spec/mck/migration.md](spec/mck/migration.md). Do not add shared MCK features there (break/fix only), and do not delete working TypeScript tooling before its Rust replacement is verified and released. Work IR first ([#851](https://github.com/finos/morphir/issues/851)); packaging follows ([#852](https://github.com/finos/morphir/issues/852)).
+- There is one shared runner. Other implementations take part through an adapter, and `morphir mck run` always requires an explicit `--adapter`. Independent implementations under test do not require independent compatibility runners. Do not create a second checker, in any language.
+- Preserve supported IR contracts when adding versioned package operations. Keep implementation behavior separate from the runner's expected results; the engine never links an implementation's IR codec.
 
-See [the package MCK decision](kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
+See [the MCK ownership decision](kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md), which supersedes [decision 0001](kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md), and the proposed [CLI](spec/mck/cli-contract.md) and [kit manifest](spec/mck/kit-manifest.md) contracts.
 
 ### Test-Driven Development (TDD)
 

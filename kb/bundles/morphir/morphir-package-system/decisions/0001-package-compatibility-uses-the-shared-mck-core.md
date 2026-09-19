@@ -2,7 +2,8 @@
 type: Decision Record
 title: Package compatibility uses the shared TypeScript MCK core
 description: Package compatibility cases use the shared TypeScript MCK tooling and implementation adapters rather than separate compatibility runners.
-state: Accepted
+state: Superseded
+superseded_by: "0003"
 decided: 2026-09-16
 tags: [mck, packages, tooling, typescript, adapters]
 status: stable

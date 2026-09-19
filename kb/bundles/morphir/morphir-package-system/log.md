@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-18
+
+* **Approval**: Accepted [decision 0003](/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md), which supersedes the ownership portion of [decision 0001](/decisions/0001-package-compatibility-uses-the-shared-mck-core.md). Shared MCK tooling moves to finos/morphir in Rust as `morphir mck`, with a required `--adapter` and CLI-managed kit vendoring. No Rust MCK code exists yet; the TypeScript driver stays the authoritative gate until cutover. Tracking: [#849](https://github.com/finos/morphir/issues/849), IR first in [#851](https://github.com/finos/morphir/issues/851).
+
 ## 2026-09-17
 
 * **Approval**: Accepted [decision 0002](/decisions/0002-portable-restore-with-explicit-filesystem-assurance.md). First delivery targets portable restore on Linux, macOS and Windows. Hardened providers follow separately; authentication, durable trust state and refusal of silent downgrade remain mandatory. The [assurance addendum](../../../../spec/package/restore-filesystem-assurance.md) defines the boundary. Platform qualification and mode-aware MCK execution remain unfinished; this is not a compatibility claim.

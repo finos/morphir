@@ -1,0 +1,21 @@
+{
+	"contentHash": "sha256-075bb621c9901fcca21830051065b3d5f303dfb827b1624c52c82d796bf4c609",
+	"fileCount": 15,
+	"paths": [
+		"spec/ir/mck/README.md",
+		"spec/ir/mck/definitions.md",
+		"spec/ir/mck/distributions.md",
+		"spec/ir/mck/document-tree.md",
+		"spec/ir/mck/documents/complete-example.yaml",
+		"spec/ir/mck/names.md",
+		"spec/ir/mck/patterns-and-literals.md",
+		"spec/ir/mck/protocol.example.json",
+		"spec/ir/mck/protocol.schema.json",
+		"spec/ir/mck/report.example.json",
+		"spec/ir/mck/report.schema.json",
+		"spec/ir/mck/types.md",
+		"spec/ir/mck/values.md",
+		"spec/ir/mck/versions.md",
+		"website/static/ir/examples/v4/complete-example.json"
+	]
+}
