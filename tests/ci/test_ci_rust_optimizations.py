@@ -6,9 +6,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 RELEASE_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "release.yml"
 SETUP_RUST_CI_ACTION = REPO_ROOT / ".github" / "actions" / "setup-rust-ci" / "action.yml"
-CACHE_SCALA_NATIVE_IMAGE_ACTION = (
-    REPO_ROOT / ".github" / "actions" / "cache-scala-native-image" / "action.yml"
-)
 
 
 class CiRustOptimizationTests(unittest.TestCase):
@@ -17,12 +14,6 @@ class CiRustOptimizationTests(unittest.TestCase):
         cls.ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
         cls.release_workflow = RELEASE_WORKFLOW_PATH.read_text(encoding="utf-8")
         cls.setup_rust_ci_action = SETUP_RUST_CI_ACTION.read_text(encoding="utf-8")
-        cls.cache_scala_native_image_action = CACHE_SCALA_NATIVE_IMAGE_ACTION.read_text(
-            encoding="utf-8"
-        )
-        cls.scala_build_job = cls.ci_workflow.split(
-            "  build-scala-extension:\n", maxsplit=1
-        )[1].split("  morphir-cli-test:\n", maxsplit=1)[0]
 
     def test_ci_enables_sccache(self) -> None:
         # mise can compile Cargo tools before the shared setup action runs.
@@ -67,13 +58,6 @@ class CiRustOptimizationTests(unittest.TestCase):
         self.assertIn(
             "              - '.config/published-extension-bundles.toml'\n", self.ci_workflow
         )
-
-    def test_scala_build_caches_native_image_output(self) -> None:
-        self.assertIn(
-            "uses: ./.github/actions/cache-scala-native-image", self.scala_build_job
-        )
-        self.assertIn("git rev-parse", self.cache_scala_native_image_action)
-        self.assertIn("/out", self.cache_scala_native_image_action)
 
     def test_release_package_job_uses_shared_rust_setup(self) -> None:
         package_job = self.release_workflow.split("  package-cli:\n", maxsplit=1)[1].split(

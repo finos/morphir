@@ -51,7 +51,7 @@ describe("published extension bundle pins", () => {
 
 	test("an executable pin names its repository, tag, archive, digest and executable", () => {
 		const pins = parseExecutablePins(pinsText);
-		expect(Object.keys(pins)).toEqual(["elm"]);
+		expect(Object.keys(pins).sort()).toEqual(["elm", "scala-elm"]);
 		const elm = pins.elm;
 		if (elm === undefined) {
 			throw new Error("the pin file has no [executables.elm] entry");
@@ -72,6 +72,33 @@ describe("published extension bundle pins", () => {
 		expect(() => parseExecutablePins(`[executables.elm]\nrepository = "finos/morphir-elm"\n${pin}`)).toThrow(
 			/sha256/,
 		);
+	});
+
+	test("a pin of a raw executable names an asset and no archive", () => {
+		// finos/morphir-scala releases morphir-scala-elm as the executable itself, with its v* release.
+		const scala = parseExecutablePins(pinsText)["scala-elm"];
+		if (scala === undefined) {
+			throw new Error("the pin file has no [executables.scala-elm] entry");
+		}
+		expect(scala.repository).toBe("finos/morphir-scala");
+		expect(scala.tag).toMatch(/^v\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/);
+		expect(scala.asset).toBe(`morphir-scala-elm-linux-amd64-${pinnedVersion(scala.tag)}`);
+		expect(scala.archive).toBeUndefined();
+		expect(scala.executable).toBe("morphir-scala-elm");
+		expect(scala.sha256).toMatch(/^[0-9a-f]{64}$/);
+	});
+
+	test("an executable pin names exactly one of archive and asset", () => {
+		const head = '[executables.x]\nrepository = "o/r"\ntag = "v1.0.0"\nexecutable = "x"\n';
+		const digest = `sha256 = "${"0".repeat(64)}"\n`;
+		expect(() => parseExecutablePins(head + digest)).toThrow(/archive or asset/);
+		expect(() => parseExecutablePins(`${head}${digest}archive = "a.tgz"\nasset = "a"\n`)).toThrow(
+			/archive or asset/,
+		);
+	});
+
+	test("a root release tag carries its version too", () => {
+		expect(pinnedVersion("v0.5.0-M06")).toBe("0.5.0-M06");
 	});
 
 	test("the version of a pin is the version in its tag", () => {

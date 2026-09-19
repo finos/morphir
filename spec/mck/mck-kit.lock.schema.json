@@ -2,7 +2,7 @@
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
 	"$id": "https://morphir.finos.org/schemas/mck/mck-kit.lock-v1.schema.json",
 	"title": "MCK kit snapshot manifest",
-	"description": "Provenance and integrity manifest at the root of a vendored MCK kit snapshot. Proposed; see kit-manifest.md.",
+	"description": "Provenance and integrity manifest at the root of a vendored MCK kit snapshot. See kit-manifest.md.",
 	"type": "object",
 	"additionalProperties": false,
 	"required": [
