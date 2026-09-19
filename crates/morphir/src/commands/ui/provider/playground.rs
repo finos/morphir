@@ -1796,7 +1796,7 @@ mod tests {
         .expect("the catalog entry serializes");
         assert_eq!(
             builtin["incremental"],
-            serde_json::json!(false),
+            serde_json::json!(true),
             "a built-in reports its own complete capability metadata: {builtin}"
         );
         assert_eq!(
