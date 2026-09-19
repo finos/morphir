@@ -912,7 +912,7 @@ cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true 
         flag --repo-root help="Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)" {
             arg <DIR>
         }
-        flag --json help="Print {files, cases, errors} as JSON on stdout"
+        flag --json help="Print the files, case ids and errors as JSON on stdout"
         arg <DIR> help="The kit directory to validate, for example spec/ir/mck"
         complete dir type=path
     }

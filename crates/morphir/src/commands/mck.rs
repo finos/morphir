@@ -27,7 +27,7 @@ pub struct MckCheckArgs {
     #[arg(long, value_name = "DIR")]
     pub repo_root: Option<PathBuf>,
 
-    /// Print {files, cases, errors} as JSON on stdout
+    /// Print the files, case ids and errors as JSON on stdout
     #[arg(long)]
     pub json: bool,
 }

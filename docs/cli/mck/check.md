@@ -10,4 +10,4 @@ Validate a kit directory without running an adapter
 
 ## Flags
 - **`--repo-root <DIR>`** — Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)
-- **`--json`** — Print {files, cases, errors} as JSON on stdout
+- **`--json`** — Print the files, case ids and errors as JSON on stdout
