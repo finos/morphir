@@ -11,10 +11,11 @@ use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use super::archive::{ArchiveError, ArchiveLimits, snapshot_from_archive};
 use super::embedded::{PROVENANCE, embedded_source};
 use super::hash::ContentDigest;
 use super::load::{Kit, load_kit};
-use super::manifest::{Lock, LockSource, MANIFEST_NAME};
+use super::manifest::{CommitId, Lock, LockSource, MANIFEST_NAME};
 use super::snapshot::{Problem, Snapshot, SnapshotError, collect, verify};
 use super::source::{KIT_PATH, KitSource};
 use crate::DRIVER_CONTRACT;
@@ -54,6 +55,8 @@ pub enum VendorError {
         path: PathBuf,
         action: String,
     },
+    /// The downloaded archive was refused.
+    Archive(ArchiveError),
     /// `--expect-digest` did not match.
     DigestMismatch {
         expected: ContentDigest,
@@ -87,6 +90,7 @@ impl fmt::Display for VendorError {
                     .map_or("unavailable (the kit has errors)", ContentDigest::as_str)
             ),
             Self::Snapshot(error) => write!(f, "{error}"),
+            Self::Archive(error) => write!(f, "{error}"),
             Self::Occupied { dest, why } => write!(f, "{} {why}", dest.display()),
             Self::Leftover { path, action } => write!(
                 f,
@@ -109,6 +113,12 @@ impl std::error::Error for VendorError {}
 impl From<io::Error> for VendorError {
     fn from(error: io::Error) -> Self {
         Self::Io(error)
+    }
+}
+
+impl From<ArchiveError> for VendorError {
+    fn from(error: ArchiveError) -> Self {
+        Self::Archive(error)
     }
 }
 
@@ -186,6 +196,12 @@ pub enum VendorSource {
     Embedded,
     /// A managed snapshot, or a repository root containing `spec/ir/mck`.
     Local(PathBuf),
+    /// A finos/morphir source archive for one commit, already downloaded by
+    /// the caller within its size bound.
+    GithubArchive {
+        archive: PathBuf,
+        revision: CommitId,
+    },
 }
 
 impl VendorSource {
@@ -193,6 +209,7 @@ impl VendorSource {
         match self {
             Self::Embedded => "embedded",
             Self::Local(_) => "local",
+            Self::GithubArchive { .. } => "github",
         }
     }
 }
@@ -206,7 +223,7 @@ pub fn materialize(source: &VendorSource) -> Result<(Snapshot, LockSource), Vend
             let revision = PROVENANCE
                 .revision
                 .filter(|_| !PROVENANCE.dirty)
-                .map(super::manifest::CommitId::parse);
+                .map(CommitId::parse);
             let revision = revision.transpose().map_err(VendorError::Refused)?;
             Ok((
                 collect(&kit)?,
@@ -231,6 +248,15 @@ pub fn materialize(source: &VendorSource) -> Result<(Snapshot, LockSource), Vend
             }
             let kit = load_kit(KitSource::directory(&kit_dir, Some(path)))?;
             Ok((collect(&kit)?, LockSource::Local { revision: None }))
+        }
+        VendorSource::GithubArchive { archive, revision } => {
+            let snapshot = snapshot_from_archive(archive, revision, &ArchiveLimits::DEFAULT)?;
+            Ok((
+                snapshot,
+                LockSource::Github {
+                    revision: revision.clone(),
+                },
+            ))
         }
     }
 }
@@ -474,7 +500,7 @@ pub fn default_update_source(lock: &Lock) -> Result<VendorSource, VendorError> {
             "this snapshot was copied from a local directory; name it again with --source <path>".to_owned(),
         )),
         LockSource::Github { .. } => Err(VendorError::Refused(
-            "this snapshot came from github:finos/morphir; pass --source github:finos/morphir --revision <commit>".to_owned(),
+            "this snapshot came from github:finos/morphir; pass --revision <full commit> to update it".to_owned(),
         )),
     }
 }
@@ -484,11 +510,8 @@ pub fn default_update_source(lock: &Lock) -> Result<VendorSource, VendorError> {
 /// new one is staged and verified, the old one renamed aside, the new one
 /// renamed in, and the old one deleted; a failed second rename restores the
 /// old one. Nothing is committed to version control.
-pub fn update(
-    root: &Path,
-    source: &VendorSource,
-    expected: Option<&ContentDigest>,
-) -> Result<UpdateOutcome, VendorError> {
+/// The checks an update runs on the existing snapshot before it looks at the`n/// new source: no leftovers beside it, a manifest, and a snapshot that`n/// verifies. Returns its manifest. A caller that must fetch the new source`n/// runs this first, so a snapshot that will be refused costs no download.
+pub fn check_updatable(root: &Path) -> Result<Lock, VendorError> {
     check_leftovers(root)?;
     if !manifest_path(root).is_file() {
         return Err(VendorError::Refused(format!(
@@ -496,6 +519,14 @@ pub fn update(
             root.display()
         )));
     }
+    Ok(open_managed(root)?.lock)
+}
+
+pub fn update(
+    root: &Path,
+    source: &VendorSource,
+    expected: Option<&ContentDigest>,
+) -> Result<UpdateOutcome, VendorError> {
     if let VendorSource::Local(path) = source
         && std::path::absolute(path).ok() == std::path::absolute(root).ok()
     {
@@ -503,7 +534,7 @@ pub fn update(
             "a snapshot cannot be updated from itself".to_owned(),
         ));
     }
-    let old = open_managed(root)?.lock;
+    let old = check_updatable(root)?;
     let (snapshot, provenance) = materialize(source)?;
     let new = snapshot.lock(provenance);
     check_expected(&new, expected)?;
@@ -557,6 +588,7 @@ pub fn describe(source: &VendorSource) -> String {
     match source {
         VendorSource::Embedded => format!("the kit embedded in morphir {CLI_VERSION}"),
         VendorSource::Local(path) => format!("{} ({})", path.display(), source.kind()),
+        VendorSource::GithubArchive { revision, .. } => format!("github:finos/morphir@{revision}"),
     }
 }
 

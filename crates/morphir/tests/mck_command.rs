@@ -590,3 +590,121 @@ fn kit_status_reports_a_leftover_from_an_interrupted_run_instead_of_passing() {
     );
     assert_eq!(stdout(&output), "");
 }
+
+/// A snapshot whose manifest records a GitHub source, made without the
+/// network by rewriting an embedded export's source (the inventory, which is
+/// all verification checks, is untouched).
+fn github_sourced_snapshot(work: &Path) -> PathBuf {
+    let dest = work.join("kit");
+    assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
+    let manifest = dest.join("mck-kit.lock.json");
+    let mut lock: Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest).unwrap()).unwrap();
+    lock["source"] = json!({
+        "kind": "github",
+        "repository": "finos/morphir",
+        "revision": "a2803f2cbfbb9baffe8a939e9462b18fd5bcdda0"
+    });
+    std::fs::write(
+        &manifest,
+        format!("{}\n", serde_json::to_string_pretty(&lock).unwrap()),
+    )
+    .unwrap();
+    dest
+}
+
+#[test]
+fn update_of_a_github_snapshot_takes_its_source_from_the_manifest() {
+    let work = TempDir::new().unwrap();
+    let dest = github_sourced_snapshot(work.path());
+    let output = morphir(&["mck", "kit", "update", "--kit", dest.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output).contains("pass --revision <full commit> to update it"),
+        "{}",
+        stderr(&output)
+    );
+
+    let output = morphir(&[
+        "mck",
+        "kit",
+        "update",
+        "--kit",
+        dest.to_str().unwrap(),
+        "--revision",
+        "main",
+    ]);
+    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
+    assert!(
+        stderr(&output).contains("branches, tags and short ids are not accepted"),
+        "{}",
+        stderr(&output)
+    );
+}
+
+#[test]
+fn update_verifies_the_existing_snapshot_before_fetching_anything() {
+    let work = TempDir::new().unwrap();
+    let dest = github_sourced_snapshot(work.path());
+    let types = dest.join("spec").join("ir").join("mck").join("types.md");
+    let original = std::fs::read(&types).unwrap();
+    std::fs::write(&types, [original.as_slice(), b"\n"].concat()).unwrap();
+    let full = "0000000000000000000000000000000000000000";
+    for args in [
+        vec![
+            "mck",
+            "kit",
+            "update",
+            "--kit",
+            dest.to_str().unwrap(),
+            "--revision",
+            full,
+        ],
+        vec![
+            "mck",
+            "kit",
+            "update",
+            "--kit",
+            dest.to_str().unwrap(),
+            "--source",
+            "github:finos/morphir",
+            "--revision",
+            full,
+        ],
+    ] {
+        let output = morphir(&args);
+        assert_eq!(output.status.code(), Some(1), "{args:?}");
+        let diagnostics = stderr(&output);
+        assert!(
+            diagnostics.contains("altered: spec/ir/mck/types.md"),
+            "{args:?}: {diagnostics}"
+        );
+        assert!(
+            !diagnostics.contains("codeload.github.com")
+                && !diagnostics.contains("fetched over TLS"),
+            "nothing was fetched: {diagnostics}"
+        );
+    }
+}
+
+#[test]
+fn a_revision_is_refused_for_a_snapshot_that_did_not_come_from_github() {
+    let work = TempDir::new().unwrap();
+    let dest = work.path().join("kit");
+    assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
+    let output = morphir(&[
+        "mck",
+        "kit",
+        "update",
+        "--kit",
+        dest.to_str().unwrap(),
+        "--revision",
+        "a2803f2cbfbb9baffe8a939e9462b18fd5bcdda0",
+    ]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(
+        stderr(&output).contains("--revision applies only to a snapshot from github:finos/morphir"),
+        "{}",
+        stderr(&output)
+    );
+}

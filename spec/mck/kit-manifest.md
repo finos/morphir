@@ -1,7 +1,7 @@
 # MCK kit snapshots, manifest and acquisition
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: the digest algorithm, the embedded kit, the manifest, managed-kit verification, and `kit vendor` and `kit update` from the `embedded` and local sources (IR-1, IR-1V). The `github:finos/morphir` source is not implemented yet. Command spelling is in the [CLI contract](cli-contract.md).
+Implemented: the digest algorithm, the embedded kit, the manifest, managed-kit verification, and `kit vendor` and `kit update` from the `embedded`, local and `github:finos/morphir` sources (IR-1, IR-1V). Extraction and its bounds live in the engine (`morphir_mck::kit::archive`); only the download is in the CLI. Command spelling is in the [CLI contract](cli-contract.md).
 
 An implementor of a binding or extension uses the installed `morphir` CLI to put a pinned copy of
 the kit in their own repository, commit it, and run it offline. They need neither a Morphir source
@@ -170,10 +170,21 @@ bounded temporary file:
 A revision that lacks any fixed input, for example one older than `spec/mck/vocabulary.json`, fails
 closure verification and publishes nothing. The same closure applies to the embedded and local sources.
 
-Rejected, failing the whole acquisition: absolute paths, `..` segments, backslashes, NUL, paths that
-collide after Unicode NFC or ASCII case folding, duplicate entries, symbolic and hard links, device
-and other special files, a path reserved on Windows (`CON`, `NUL`, trailing dot or space), and any
-selected entry that is not a regular file. The same checks apply to a local source.
+Rejected, failing the whole acquisition:
+
+| Rule | Applies to |
+| --- | --- |
+| A path that is not UTF-8, is absolute, or has a backslash, NUL, or an empty, `.` or `..` segment | Every entry |
+| More than one top-level directory, or one whose name does not end in the requested commit id | Every entry |
+| A symbolic or hard link, device or other special file where the snapshot takes a file | Selected entries |
+| A duplicate, or two paths that collide after Unicode NFC and ASCII case folding | Selected entries |
+| A name no supported platform can create: a Windows device name (`CON`, `NUL`, `COM1`...), a trailing dot or space, a colon or control character | Selected entries |
+
+The link rules cover selected entries only because finos/morphir itself tracks symbolic links outside
+the kit's closure (under `wit/`); refusing every link would refuse every real revision. No entry
+outside the closure is extracted, so an unselected link is never followed or written. Snapshot
+verification applies the selected-entry rules to local sources too: a listed path must be a regular
+file, never a link.
 
 ## Publication, update and edits
 
@@ -190,11 +201,11 @@ digests equal the new snapshot, the command is a successful no-op. Anything else
 There is no force option in this delivery.
 
 `kit update --kit <dir> [--source <source>] [--revision <commit>]` replaces only a managed snapshot.
-`--source` defaults to the source kind recorded in the manifest. `--revision` is required when the
-source is `github:finos/morphir` and is usage error 2 with `embedded` or a local path, whose
+`--source` defaults to the source kind recorded in the manifest, so `--revision` alone updates a snapshot
+that came from GitHub. `--revision` is required when the source is `github:finos/morphir` and is usage error 2 with `embedded` or a local path, whose
 revision comes from the CLI or from the source snapshot's own manifest and may be null. The steps:
 
-1. Verify the existing snapshot against its manifest. An edited, missing or extra file is refused,
+1. Verify the existing snapshot against its manifest, before anything is downloaded. An edited, missing or extra file is refused,
    exit 1, naming the files. Unrelated content is never deleted.
 2. Stage and verify the new snapshot as above.
 3. Carry the snapshot root's `.gitattributes`, if any, into staging. Rename the old snapshot to
