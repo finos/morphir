@@ -126,6 +126,29 @@ fn main() {
     status.extend(keys.iter().map(String::as_str));
     // A build that cannot prove its inputs are committed must not claim a clean revision.
     let dirty = revision.is_some() && git(&repo, &status).is_none_or(|changes| !changes.is_empty());
+    // The driver's own sources: a build from edited ones must not claim its commit.
+    let driver_dirty = revision.is_some()
+        && git(
+            &repo,
+            &[
+                "status",
+                "--porcelain",
+                "--",
+                "crates",
+                "Cargo.toml",
+                "Cargo.lock",
+                "ecosystem/morphir-rust",
+            ],
+        )
+        .is_none_or(|changes| !changes.is_empty());
+    for watched in [
+        "crates",
+        "Cargo.toml",
+        "Cargo.lock",
+        "ecosystem/morphir-rust/crates",
+    ] {
+        println!("cargo:rerun-if-changed={}", repo.join(watched).display());
+    }
     if let Some(log) = git(&repo, &["rev-parse", "--git-path", "logs/HEAD"]) {
         println!("cargo:rerun-if-changed={}", repo.join(log).display());
     }
@@ -136,6 +159,7 @@ fn main() {
     )
     .unwrap();
     writeln!(generated, "pub const DIRTY: bool = {dirty};").unwrap();
+    writeln!(generated, "pub const DRIVER_DIRTY: bool = {driver_dirty};").unwrap();
     writeln!(generated, "pub static FILES: &[(&str, &[u8])] = &[").unwrap();
     for key in &keys {
         writeln!(

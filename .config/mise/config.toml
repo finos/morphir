@@ -178,6 +178,7 @@ run = [
     "jsonschema validate spec/mck/vocabulary.schema.json spec/mck/vocabulary.json",
     "jsonschema metaschema spec/mck/mck-kit.lock.schema.json",
     "jsonschema validate spec/mck/mck-kit.lock.schema.json spec/mck/mck-kit.lock.example.json",
+    "jsonschema metaschema spec/mck/provenance.schema.json",
 ]
 
 [tasks."mck:vocabulary"]

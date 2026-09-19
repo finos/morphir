@@ -31,7 +31,7 @@ use commands::{
     run_kb_new_bundle, run_kb_query, run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown,
     run_kb_search, run_kb_show, run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push,
     run_kb_sync_status, run_mck_check, run_mck_kit_status, run_mck_kit_update, run_mck_kit_vendor,
-    run_migrate, run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update,
+    run_mck_run, run_migrate, run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update,
     run_transform, run_validate, run_version,
 };
 
@@ -226,7 +226,7 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         #[command(subcommand)]
         action: KbAction,
     },
-    /// Morphir Compatibility Kit: validate, identify and vendor compatibility kits
+    /// Morphir Compatibility Kit: validate, vendor and run compatibility kits
     Mck {
         #[command(subcommand)]
         action: MckAction,
@@ -687,6 +687,8 @@ impl MigrateArgs {
 enum MckAction {
     /// Validate a kit directory without running an adapter
     Check(commands::mck::MckCheckArgs),
+    /// Run the kit against an implementation's adapter and report the results
+    Run(commands::mck::MckRunArgs),
     /// Inspect, vendor and update kit data
     Kit {
         #[command(subcommand)]
@@ -1029,6 +1031,7 @@ impl AppSession for MorphirSession {
             },
             Commands::Mck { action } => match action {
                 MckAction::Check(args) => run_mck_check(args.clone()),
+                MckAction::Run(args) => run_mck_run(args.clone()).await,
                 MckAction::Kit { action } => match action {
                     MckKitAction::Status(args) => run_mck_kit_status(args.clone()),
                     MckKitAction::Vendor(args) => run_mck_kit_vendor(args.clone()).await,

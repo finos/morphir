@@ -3,9 +3,10 @@
 
 - **Usage:** `morphir mck <SUBCOMMAND>`
 
-Morphir Compatibility Kit: validate, identify and vendor compatibility kits
+Morphir Compatibility Kit: validate, vendor and run compatibility kits
 
 ## Subcommands
 
 - [`morphir mck check [--repo-root <DIR>] [--json] <DIR>`](mck/check.md)
 - [`morphir mck kit <SUBCOMMAND>`](mck/kit.md)
+- [`morphir mck run <FLAGS>`](mck/run.md)

@@ -6,3 +6,4 @@ pub mod session;
 mod tree;
 
 pub use session::{Limits, Session, TransportError};
+pub use tree::Terminator;

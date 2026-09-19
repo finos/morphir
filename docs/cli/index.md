@@ -97,6 +97,7 @@
 - [`morphir kb decision show [FLAGS] [ID]`](kb/decision/show.md)
 - [`morphir mck <SUBCOMMAND>`](mck.md)
 - [`morphir mck check [--repo-root <DIR>] [--json] <DIR>`](mck/check.md)
+- [`morphir mck run <FLAGS>`](mck/run.md)
 - [`morphir mck kit <SUBCOMMAND>`](mck/kit.md)
 - [`morphir mck kit status [FLAGS]`](mck/kit/status.md)
 - [`morphir mck kit vendor <FLAGS>`](mck/kit/vendor.md)
