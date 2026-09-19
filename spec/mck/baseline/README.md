@@ -54,7 +54,11 @@ The proxied run's report equals `reports/morphir-typescript.json` under the pari
 the transcript and the report describe the same run.
 
 The Rust adapter's transcript was added in IR-2, recorded on Windows 11 against the adapter at the
-parent's current submodule pin. That pin does not change `crates/morphir-mck-adapter`, and replaying
-the transcript reproduces `reports/morphir-rust.json`, which CI captured on Linux, record for record.
-The two platforms and the two revisions therefore agree, which is the cross-platform evidence the
-capture machine could not give on its own.
+parent's current submodule pin. That pin does not change `crates/morphir-mck-adapter`. Two things
+make it platform-independent evidence rather than one machine's:
+
+- `mise run mck:parity-rust` recorded the same session on Linux in CI run
+  [35470698507](https://github.com/finos/morphir/actions/runs/35470698507), and that recording is
+  byte-identical to this file, all 401 760 of them.
+- Replaying it reproduces `reports/morphir-rust.json`, captured on Linux at the earlier pin, record
+  for record. Both platforms and both revisions agree.
