@@ -150,6 +150,10 @@ description = "Validate schemas against metaschema"
 # because a Windows box may carry only the WSL launcher.
 run = "bun run tools/validate-schemas.ts"
 
+[tasks."check:config-schema-sync"]
+description = "Check morphir-rust embeds the generated configuration schema byte for byte"
+run = "node website/scripts/check-config-schema-sync.js"
+
 [tasks."mck:check"]
 description = "Parse the Morphir Compatibility Kit case files and validate the report and protocol schemas"
 # The parser lives in the morphir-typescript submodule; the driver that runs
@@ -351,6 +355,7 @@ depends = [
     "fixtures:naming-corpus-check",
     "fixtures:format-version-corpus-check",
     "schema:validate",
+    "check:config-schema-sync",
     "mck:check",
     "mck:schema-check",
     "package:schema-check",

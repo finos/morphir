@@ -458,6 +458,9 @@ jobs:
       - name: Validate schemas against the metaschema
         run: mise run schema:validate
 
+      - name: Check morphir-rust embeds the generated configuration schema
+        run: mise run check:config-schema-sync
+
       - name: Validate published examples
         run: mise run examples:validate
 

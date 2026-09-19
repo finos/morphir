@@ -358,7 +358,10 @@ properties:
     additionalProperties: true
     properties:
       root: { type: string }
-      output_dir: { type: string }
+      out_dir:
+        type: string
+        default: ".morphir/out"
+        description: "Out directory for every task in the workspace, relative to the workspace root, must stay inside it."
       members:
         type: array
         items: { type: string }
@@ -388,7 +391,6 @@ properties:
         items: { type: string }
       license: { type: string }
       repository: { type: string }
-      output_directory: { type: string }
 
   ir:
     type: object
@@ -398,10 +400,21 @@ properties:
         type: integer
         minimum: 1
         maximum: 10
+      layout:
+        type: string
+        enum: ["single-file", "document-tree"]
+        default: "single-file"
+        description: "Storage layout compile writes."
+      format:
+        type: string
+        enum: ["json", "yaml"]
+        default: "json"
+        description: "Serialization format compile writes."
       strict_mode: { type: boolean }
       mode:
         type: string
         enum: ["classic", "vfs"]
+        description: "Deprecated alias for layout: classic means single-file, vfs means document-tree. Read for one release, then removed."
 
   codegen:
     type: object
