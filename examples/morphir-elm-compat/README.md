@@ -1,54 +1,28 @@
-# Morphir-Elm Compatibility Example
+# Classic multi-file Elm project
 
-This example project demonstrates a complete morphir-elm compatible project structure
-that can be used for integration testing the Go toolchain's morphir-elm integration.
+This on-disk project retains its classic `morphir.json`, `elm.json` and two
+modules, `ElmCompat.Main` and `ElmCompat.Api`. Main defines product/order types
+and business functions; Api defines request/response types and operations.
 
-## Project Structure
+The consolidated CLI discovers its name, source directory and exposed modules.
+The released reference Elm extension 0.1.0 accepts exactly one source document,
+so it cannot compile this whole project yet. The executable
+[scenario](scenarios.md) checks that specific rejection and the absence of an
+installed IR file. This is known-limitation coverage, not successful compilation.
+Beads `morphir-o6vm.15` tracks multi-source support and classic language inference.
 
-```
-morphir-elm-compat/
-├── elm.json              # Elm package configuration
-├── morphir.json          # Morphir project configuration
-├── src/
-│   └── ElmCompat/
-│       ├── Main.elm      # Core types and business logic
-│       └── Api.elm       # API request/response types
-├── test.yaml             # Integration test expectations
-└── .gitignore            # Excludes generated files
-```
+Prepare the release using the [catalog instructions](../README.md#prepare-the-reference-elm-scenarios), then run:
 
-## Building
-
-To compile the Elm code to Morphir IR:
-
-```bash
-npx morphir-elm make
+```sh
+mise run test:examples -- --filter morphir-elm-compat
 ```
 
-This produces `morphir-ir.json` containing the compiled intermediate representation.
+The scenario registers and installs the prepared extension, inspects configuration,
+and exercises the currently failing command:
 
-## Module Overview
+```sh
+morphir compile --language elm --extension morphir-elm --ir-version 3 --output installed --json
+```
 
-### ElmCompat.Main
-
-Core business domain types:
-- `Product`, `ProductId`, `Quantity` - Product-related types
-- `CustomerOrder`, `OrderStatus` - Order management types
-- `calculateTotal`, `applyDiscount`, `isValidOrder` - Business logic functions
-
-### ElmCompat.Api
-
-API layer types:
-- `Request`, `Response` - API message types
-- `ApiError` - Error handling type
-- `createOrder`, `getOrderStatus`, `processRequest` - API operations
-
-## Integration Testing
-
-This project is used to verify the Go toolchain's morphir-elm integration:
-
-1. The toolchain invokes `npx morphir-elm make` via the NPX backend
-2. The resulting `morphir-ir.json` is validated for correct structure
-3. The IR can be used as input for code generation tests
-
-See `test.yaml` for the expected IR structure and test assertions.
+For a passing classic JSON project, see [the one-module example](../elm/classic-json/scenarios.md).
+`test.yaml` is historical material and is not executed by `morphir itest`.

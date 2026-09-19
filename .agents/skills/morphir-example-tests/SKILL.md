@@ -11,6 +11,10 @@ and [the example catalog](../../../examples/README.md). Use
 as the smallest working example. Keep the contract in the guide; do not create
 a second driver or copy MCK comparison logic.
 For Markdown authoring, use [CLI basics](../../../examples/cli/basics/scenarios.md).
+For reference Elm, follow the catalog's explicit release preparation step and
+select `suite:elm-reference`. The preparation helper stages fixtures only;
+repository registration, installation and compilation remain real CLI commands.
+Use `suite:offline` when no downloaded provider is available.
 
 ## Choose the claim
 
@@ -72,6 +76,9 @@ source fixtures under `crates/morphir/tests/fixtures/itest/`.
 6. Update the catalog, developer/KB guidance and Beads with the exact coverage
    established. Native IR evaluation, WASM hosting and installed evaluator
    protocol negotiation are follow-up work, not milestone 0 capabilities.
+   Tag deliberate current-limit checks `kind:negative` and
+   `coverage:known-limitation`, link their follow-up issue, and describe the
+   rejection they prove. Do not count them as successful feature coverage.
 
 Repeated tags use AND selection. Missing prerequisites fail; there are no
 implicit downloads or skips. Old `scenario.md`/`test.yaml` files are not

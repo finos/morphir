@@ -1,0 +1,7 @@
+project:
+  name: examples/yaml
+  version: 1.0.0
+  source_directory: src
+  exposed_modules: [Example]
+frontend:
+  language: elm

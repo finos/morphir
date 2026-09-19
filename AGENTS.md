@@ -396,12 +396,16 @@ and WASM hosts are fast-follow work described in
 make the smallest fix and retain the passing case as regression coverage.
 
 Run `mise run test:examples -- --list` to inspect coverage,
+`mise run test:examples -- --tag suite:offline` without downloaded providers,
 `mise run test:examples -- --filter elm/single-file` for one example, and
 `mise run test:itest` for driver checks. See the
 [authoring guide](docs/developers/example-integration-tests.md) and local
 [example skill](.agents/skills/morphir-example-tests/SKILL.md). Legacy `test.yaml`
 files are not executable coverage. Native Elm type compilation does not establish
 function lowering or evaluation; MCK remains responsible for compatibility contracts.
+Reference Elm cases require explicit preparation as described in the
+[example catalog](examples/README.md). A passing `coverage:known-limitation`
+scenario proves the documented rejection, not successful feature support.
 
 The Docusaurus website is located in `website/`. To run locally:
 

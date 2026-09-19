@@ -247,7 +247,7 @@ fn itest_distinguishes_search_root_from_a_directory_named_root() {
 }
 
 #[test]
-fn itest_runs_the_checked_in_elm_example_and_failure_fixture() {
+fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let temp = tempfile::tempdir().unwrap();
     for suite in [
@@ -269,10 +269,16 @@ fn itest_runs_the_checked_in_elm_example_and_failure_fixture() {
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
-        let expected = if suite == root.join("examples") { 3 } else { 1 };
+        let expected = if suite == root.join("examples") {
+            11
+        } else {
+            1
+        };
         assert!(
             String::from_utf8_lossy(&output.stdout)
-                .contains(&format!("{expected} passed; 0 failed"))
+                .contains(&format!("{expected} passed; 0 failed")),
+            "expected {expected} passing scenarios, got {}",
+            String::from_utf8_lossy(&output.stdout)
         );
         assert!(!temp.path().join("wrong-out").exists());
     }

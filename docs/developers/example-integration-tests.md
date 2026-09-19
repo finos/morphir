@@ -21,7 +21,7 @@ before building:
 ```sh
 mise trust .config/mise/config.toml
 mise run submodules:init
-mise run test:examples
+mise run test:examples -- --tag suite:offline
 mise run test:examples -- --list
 mise run test:examples -- --filter elm --tag suite:offline
 mise run test:itest
@@ -33,6 +33,18 @@ With a built CLI:
 morphir itest examples --list --tag language:elm
 morphir itest examples --filter elm/single-file --keep-temp
 ```
+
+Reference Elm cases use `suite:elm-reference` and require an explicitly prepared
+extension 0.1.0 executable. Follow the
+[catalog preparation instructions](https://github.com/finos/morphir/blob/main/examples/README.md#prepare-the-reference-elm-scenarios)
+before selecting them or running all examples without a tag. The helper stages
+local fixture repositories; commands in each scenario register and install the
+provider into the isolated Morphir home. Missing prerequisites fail.
+
+Use `coverage:known-limitation` with `kind:negative` for a scenario deliberately
+checking a current rejection, and record its follow-up issue in the prose. Such
+a pass is not successful feature coverage; replace it with positive expectations
+when support lands.
 
 The root defaults to `examples`. A notebook's scenario ID is its containing directory
 relative to the search root, or `.` for a notebook directly in that root.
@@ -199,7 +211,8 @@ language highlighting in every editor. Execute the notebook with `morphir itest`
 | Workflow | `area:compile`, `area:install`, `area:workspace`, `area:generate` |
 | IR output | `ir:v3`, `ir:v4` |
 | Expected behavior | `kind:positive`, `kind:negative` |
-| Prerequisites | `suite:offline` |
+| Prerequisites | `suite:offline`, `suite:elm-reference` |
+| Known gaps | `coverage:known-limitation` with `kind:negative` |
 | Workspace inputs | `workspace:directory`, `workspace:notebook` |
 
 Tags are unique, nonempty strings of lowercase ASCII letters, digits, colon,
@@ -403,8 +416,10 @@ logs of the invoking CLI too.
 
 The [single-file Elm notebook](https://github.com/finos/morphir/blob/main/examples/elm/single-file/scenario.ipynb)
 verifies native type compilation and installation. It does not establish Elm
-function lowering or native Morphir IR evaluation. Classic JSON projects,
-TOML/YAML projects, workspaces and other frontends/backends remain increments.
+function lowering or native Morphir IR evaluation. The
+[example catalog](https://github.com/finos/morphir/blob/main/examples/README.md) also covers reference Elm functions,
+classic JSON, TOML/YAML projects, member selection and Gleam generation, with
+explicit prerequisites and limits for each claim.
 
 Old `scenario.md` and `test.yaml` files are not executable coverage.
 `examples:validate` checks published schema examples. MCK remains responsible
