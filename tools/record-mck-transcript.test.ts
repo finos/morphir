@@ -95,6 +95,18 @@ test("an adapter's exit code is the proxy's", () => {
 	expect(run([file], "").result.exitCode).toBe(7);
 });
 
+test("a transcript's parent directory is created, as the driver does for a report", () => {
+	const transcript = path.join(mkdtempSync(path.join(tmpdir(), "mck-record-")), "out", "t.ndjson");
+	const result = Bun.spawnSync(["bun", proxy, transcript, "bun", fakeAdapter()], {
+		stdin: Buffer.from(`{"id":1}\n`),
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	expect(result.stderr.toString()).not.toContain("ENOENT");
+	expect(result.exitCode).toBe(0);
+	expect(readFileSync(transcript, "utf8")).toContain(`{"dir":"request","message":{"id":1}}`);
+});
+
 test("naming no adapter is a usage error", () => {
 	const result = Bun.spawnSync(["bun", proxy, "only-a-transcript.ndjson"], { stderr: "pipe" });
 	expect(result.exitCode).toBe(2);

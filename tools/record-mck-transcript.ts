@@ -11,7 +11,8 @@
 //
 // It is development and CI tooling: the shipped CLI never depends on it.
 import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
+import { createWriteStream, mkdirSync } from "node:fs";
+import path from "node:path";
 import { createInterface } from "node:readline";
 
 const [transcript, command, ...args] = process.argv.slice(2);
@@ -20,6 +21,10 @@ if (transcript === undefined || command === undefined) {
 	process.exit(2);
 }
 
+// The driver creates a report's parent directories, so a transcript's too:
+// otherwise the first standalone run in a fresh checkout dies of ENOENT before
+// the adapter has said anything.
+mkdirSync(path.dirname(path.resolve(transcript)), { recursive: true });
 const out = createWriteStream(transcript, { encoding: "utf8" });
 const child = spawn(command, args, { stdio: ["pipe", "pipe", "inherit"], windowsHide: true });
 
