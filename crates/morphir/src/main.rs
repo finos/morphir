@@ -100,6 +100,12 @@ enum Commands {
         /// Ignore the incremental compile cache for this run
         #[arg(long)]
         no_cache: bool,
+        /// How Elm doc comments become IR doc text. Overrides [frontend.elm] doc_comments and MORPHIR_FRONTEND__ELM__DOC_COMMENTS.
+        #[arg(long, value_name = "MODE", value_parser = ["morphir-elm", "trimmed"])]
+        elm_doc_comments: Option<String>,
+        /// The order Elm modules, types and constructors are written in. Overrides [frontend.elm] ordering and MORPHIR_FRONTEND__ELM__ORDERING.
+        #[arg(long, value_name = "MODE", value_parser = ["source", "morphir-elm"])]
+        elm_ordering: Option<String>,
     },
     /// Generate code from Morphir IR
     Generate {
@@ -837,6 +843,8 @@ impl AppSession for MorphirSession {
                 json,
                 json_lines,
                 no_cache,
+                elm_doc_comments,
+                elm_ordering,
             } => {
                 run_compile(CompileOptions {
                     language: language.clone(),
@@ -850,6 +858,10 @@ impl AppSession for MorphirSession {
                     json: *json,
                     json_lines: *json_lines,
                     no_cache: *no_cache,
+                    elm_modes: commands::compile::ElmModeFlags {
+                        doc_comments: elm_doc_comments.clone(),
+                        ordering: elm_ordering.clone(),
+                    },
                     out: self.out.clone(),
                 })
                 .await

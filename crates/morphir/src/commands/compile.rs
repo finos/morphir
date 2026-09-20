@@ -1,6 +1,8 @@
 //! Compile command for compiling source code to Morphir IR
 
 mod cache;
+mod elm_modes;
+pub use elm_modes::Flags as ElmModeFlags;
 mod elm_prelude;
 /// Shared with the UI playground, which selects a provider from the same
 /// configuration key but has no `--extension` flag to override it with.
@@ -66,6 +68,9 @@ pub struct CompileOptions {
     pub json_lines: bool,
     /// Ignore the workspace's incremental compile cache for this run.
     pub no_cache: bool,
+    /// Elm compatibility modes from the command line, which override
+    /// `[frontend.elm]` and the environment. See [`elm_modes`].
+    pub elm_modes: elm_modes::Flags,
     /// Out root overrides.
     pub out: OutOverrides,
 }
@@ -104,6 +109,10 @@ struct SingleFileCompileContext {
     /// prelude a loaded configuration asks for. Empty when nothing configured
     /// one, so the provider applies its own defaults.
     extra: HashMap<String, serde_json::Value>,
+    /// Configuration warnings raised while settling those options, to be
+    /// reported the way every other compile warning is: on stderr, and in the
+    /// diagnostics of a non-human output format.
+    warnings: Vec<String>,
 }
 
 fn has_elm_extension(input: &Path) -> bool {
@@ -340,6 +349,7 @@ fn prepare_single_file_context(
         },
         output_path,
         extra: HashMap::new(),
+        warnings: Vec::new(),
     })
 }
 
@@ -378,13 +388,28 @@ fn prepare_configured_single_file_context(
     // Only a run that loaded a configuration has a prelude to read: this route
     // loads one for `--config` or `--project` and otherwise compiles the file
     // on its own, where the provider's default prelude applies.
-    if context.language_id == "elm"
-        && let Some(config) = config
-        && let Some(prelude) = elm_prelude::from_config(config.config.frontend.as_ref())?
-    {
-        context
-            .extra
-            .insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+    if context.language_id == "elm" {
+        let frontend = config.and_then(|config| config.config.frontend.as_ref());
+        if let Some(prelude) = elm_prelude::from_config(frontend)? {
+            context
+                .extra
+                .insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+        }
+        // A mode can come from the command line or the environment, so unlike
+        // the prelude it applies whether or not a configuration was loaded.
+        // With no configuration there is no loader to merge the environment
+        // layer in, so that layer is read on its own here; `prelude` and
+        // `extension` stay file-only on this route, which is the only surface
+        // either of them documents.
+        let from_environment;
+        let frontend = match frontend {
+            Some(section) => Some(section),
+            None => {
+                from_environment = elm_modes::environment_frontend();
+                from_environment.as_ref()
+            }
+        };
+        context.warnings = elm_modes::apply(&mut context.extra, &options.elm_modes, frontend)?;
     }
     Ok(context)
 }
@@ -709,7 +734,7 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
         extension: requested_extension,
         warning: extension_warning,
     } = resolved_extension;
-    if let Some(warning) = &extension_warning {
+    for warning in config_warnings(extension_warning.as_deref(), &context.warnings) {
         eprintln!("warning: {warning}");
     }
     let extension_id = resolve_extension_id(&context.language_id, requested_extension.as_deref())?;
@@ -742,7 +767,11 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     };
     let mut diagnostics = convert_extension_diagnostics(&compile_result.diagnostics);
     let format = OutputFormat::from_flags(options.json, options.json_lines);
-    prepend_extension_warning(&mut diagnostics, extension_warning.as_deref(), format);
+    prepend_config_warnings(
+        &mut diagnostics,
+        &config_warnings(extension_warning.as_deref(), &context.warnings),
+        format,
+    );
 
     if !compile_result.success {
         if !compile_result
@@ -1163,31 +1192,44 @@ fn write_distribution(
 /// JSON. The human format has no such gap — [`write_compile_output`] already
 /// writes every diagnostic to stderr — so nothing is added there, or this
 /// warning would print twice.
-fn prepend_extension_warning(
+fn prepend_config_warnings(
     diagnostics: &mut Vec<crate::output::Diagnostic>,
-    warning: Option<&str>,
+    warnings: &[String],
     format: crate::output::OutputFormat,
 ) {
     use crate::output::{Diagnostic, OutputFormat};
 
-    let Some(warning) = warning else { return };
-    if matches!(format, OutputFormat::Human) {
+    // A human run has already read these on stderr, where warnings belong;
+    // repeating them in the rendered output would say everything twice.
+    if warnings.is_empty() || matches!(format, OutputFormat::Human) {
         return;
     }
-    diagnostics.insert(
-        0,
-        Diagnostic {
-            level: "warning".to_string(),
-            message: warning.to_string(),
-            code: None,
-            related: Vec::new(),
-            file: None,
-            line: None,
-            column: None,
-            uri: None,
-            range: None,
-        },
-    );
+    for (index, warning) in warnings.iter().enumerate() {
+        diagnostics.insert(
+            index,
+            Diagnostic {
+                level: "warning".to_string(),
+                message: warning.clone(),
+                code: None,
+                related: Vec::new(),
+                file: None,
+                line: None,
+                column: None,
+                uri: None,
+                range: None,
+            },
+        );
+    }
+}
+
+/// Every configuration warning a run raised, in the order a reader meets
+/// them: the provider it chose, then the modes it compiled under.
+fn config_warnings(extension: Option<&str>, modes: &[String]) -> Vec<String> {
+    extension
+        .map(str::to_owned)
+        .into_iter()
+        .chain(modes.iter().cloned())
+        .collect()
 }
 
 fn write_compile_output(
@@ -1236,6 +1278,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         json,
         json_lines,
         no_cache,
+        elm_modes: elm_mode_flags,
         out: out_overrides,
     } = options;
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
@@ -1401,12 +1444,19 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             serde_json::json!(emit_parse_stage_fatal),
         ),
     ]);
-    // The prelude is an Elm notion, so it only reaches a provider that was
-    // asked to compile Elm; another language's provider never sees the option.
-    if language.eq_ignore_ascii_case("elm")
-        && let Some(prelude) = elm_prelude::from_config(context.config.frontend.as_ref())?
-    {
-        extra.insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+    // The prelude and the compatibility modes are Elm notions, so they only
+    // reach a provider that was asked to compile Elm; another language's
+    // provider never sees the options.
+    let mut mode_warnings = Vec::new();
+    if language.eq_ignore_ascii_case("elm") {
+        let frontend = context.config.frontend.as_ref();
+        if let Some(prelude) = elm_prelude::from_config(frontend)? {
+            extra.insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+        }
+        mode_warnings = elm_modes::apply(&mut extra, &elm_mode_flags, frontend)?;
+        for warning in &mode_warnings {
+            eprintln!("warning: {warning}");
+        }
     }
     let extension_options = ExtensionCompileOptions {
         types_only: false,
@@ -1465,7 +1515,11 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     }
     let mut diagnostics = convert_extension_diagnostics(&result.diagnostics);
     let format = OutputFormat::from_flags(json, json_lines);
-    prepend_extension_warning(&mut diagnostics, extension_warning.as_deref(), format);
+    prepend_config_warnings(
+        &mut diagnostics,
+        &config_warnings(extension_warning.as_deref(), &mode_warnings),
+        format,
+    );
     let has_error = result
         .diagnostics
         .iter()
@@ -1912,6 +1966,84 @@ fn normalize_ir_version_text(version: &str) -> Option<NormalizedFormatVersion> {
 
 #[cfg(test)]
 mod tests {
+    /// A `--json` client reads the result envelope, not stderr, so a warning
+    /// that only went to stderr is invisible to it. The extension warning has
+    /// always been in `diagnostics`; the mode warnings must be too, and in the
+    /// order a reader meets them.
+    #[test]
+    fn config_warnings_reach_the_diagnostics_of_a_machine_format_in_order() {
+        use crate::output::OutputFormat;
+
+        let warnings = super::config_warnings(
+            Some("extension is broken"),
+            &[
+                "doc_comments is broken".to_owned(),
+                "ordering is broken".to_owned(),
+            ],
+        );
+        let mut diagnostics = vec![crate::output::Diagnostic {
+            level: "error".to_string(),
+            message: "from the compile".to_string(),
+            code: None,
+            related: Vec::new(),
+            file: None,
+            line: None,
+            column: None,
+            uri: None,
+            range: None,
+        }];
+
+        super::prepend_config_warnings(&mut diagnostics, &warnings, OutputFormat::Json);
+
+        let messages: Vec<&str> = diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.message.as_str())
+            .collect();
+        assert_eq!(
+            messages,
+            vec![
+                "extension is broken",
+                "doc_comments is broken",
+                "ordering is broken",
+                "from the compile",
+            ]
+        );
+        assert!(
+            diagnostics[..3]
+                .iter()
+                .all(|diagnostic| diagnostic.level == "warning")
+        );
+    }
+
+    /// A human run already read them on stderr, so repeating them in the
+    /// rendered output would say everything twice.
+    #[test]
+    fn config_warnings_stay_out_of_a_human_format() {
+        use crate::output::OutputFormat;
+
+        let mut diagnostics = Vec::new();
+
+        super::prepend_config_warnings(
+            &mut diagnostics,
+            &["ordering is broken".to_owned()],
+            OutputFormat::Human,
+        );
+
+        assert!(diagnostics.is_empty());
+    }
+
+    /// No warning, no change: a clean run's diagnostics are the compile's own.
+    #[test]
+    fn no_config_warning_leaves_the_diagnostics_alone() {
+        use crate::output::OutputFormat;
+
+        assert_eq!(super::config_warnings(None, &[]), Vec::<String>::new());
+
+        let mut diagnostics = Vec::new();
+        super::prepend_config_warnings(&mut diagnostics, &[], OutputFormat::Json);
+        assert!(diagnostics.is_empty());
+    }
+
     #[test]
     fn compile_version_uses_cli_then_project_then_v4_default() {
         use morphir_common::ir_transport::IrVersion;
@@ -2022,6 +2154,7 @@ mod tests {
             json: false,
             json_lines: false,
             no_cache: false,
+            elm_modes: Default::default(),
             out: OutOverrides {
                 flag: Some(out_dir),
                 env: None,
@@ -3163,6 +3296,7 @@ enabled = true
             },
             output_path,
             extra: HashMap::new(),
+            warnings: Vec::new(),
         }
     }
 

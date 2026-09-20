@@ -30,6 +30,8 @@ pub async fn run_gleam_compile(
         json_lines,
         // Reuse the workspace compile cache, as with the generic compile command.
         no_cache: false,
+        // The Elm compatibility modes never reach a Gleam provider.
+        elm_modes: Default::default(),
         out,
     })
     .await
