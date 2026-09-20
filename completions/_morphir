@@ -79,6 +79,16 @@ cmd compile display_order=5 args_override_self=#false help="Compile source code 
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     flag --no-cache help="Ignore the incremental compile cache for this run"
+    flag --elm-doc-comments help="How Elm doc comments become IR doc text. Overrides [frontend.elm] doc_comments and MORPHIR_FRONTEND__ELM__DOC_COMMENTS" {
+        arg <MODE> {
+            choices morphir-elm trimmed
+        }
+    }
+    flag --elm-ordering help="The order Elm modules, types and constructors are written in. Overrides [frontend.elm] ordering and MORPHIR_FRONTEND__ELM__ORDERING" {
+        arg <MODE> {
+            choices source morphir-elm
+        }
+    }
 }
 cmd generate display_order=6 args_override_self=#false help="Generate code from Morphir IR" unknown_flags=error {
     flag "-t --target" help="Target language or format" {

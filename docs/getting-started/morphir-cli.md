@@ -232,6 +232,61 @@ invalidates the incremental compile cache, so the next run compiles every
 module again. A value that is neither a name nor a table fails the run and
 names `frontend.elm.prelude`.
 
+### Matching morphir-elm, or not
+
+`morphir-elm-native` writes a document that is meant to be interchangeable with
+the one `morphir-elm` writes, but in two places the compatible answer is not the
+better one. Each of those is a mode you choose, rather than a decision buried in
+the frontend.
+
+`doc_comments` decides what a `{-| ... -}` comment becomes in the IR. The
+default, `morphir-elm`, reproduces morphir-elm byte for byte: the delimiters
+come off and every other character — leading spaces, interior and trailing
+newlines — stays. `trimmed` removes the surrounding whitespace instead. The
+compatible mode is the default because a doc's text is data a consumer may
+already be matching on.
+
+`ordering` decides the order modules, types and constructors appear in. The
+default, `source`, is the order the Elm declares them: a reader comparing a
+document with the source finds them in the same place, and a diff between two
+versions shows the edit rather than a reshuffle. `morphir-elm` sorts them the
+way morphir-elm's `Dict`s do, on the words a name splits into. Here the better
+answer is the default, because the order is not data anyone matches on. Record
+fields and constructor arguments are unaffected either way: they are positional
+in morphir-elm too.
+
+```toml
+[frontend.elm]
+doc_comments = "morphir-elm"
+ordering = "source"
+```
+
+Three surfaces set each key, in this order of precedence:
+
+```sh
+# 1. the flag, for one run
+morphir compile --elm-ordering morphir-elm --elm-doc-comments trimmed
+
+# 2. the environment, for a shell or a CI job
+MORPHIR_FRONTEND__ELM__ORDERING=morphir-elm morphir compile
+
+# 3. morphir.toml, morphir.yaml or a user override, for a project
+```
+
+The environment variable is an ordinary configuration layer that the loader
+merges over the files, which is why the key is spelled `doc_comments` rather
+than `docComments`: the environment mapping lower-cases each segment and keeps
+single underscores, so snake_case is the one spelling all three surfaces share.
+
+Both keys travel to the provider as compile options (`elmDocComments` and
+`elmOrdering`), so they apply to the native provider and are ignored by the
+JavaScript `morphir-elm` extension. Each mode is part of the compile context,
+so changing one invalidates the incremental compile cache and the next run
+compiles every module again. A value that is not one of the modes fails the run
+and names the key, unless the matching flag was given — then the flag's mode is
+used and the broken value is ignored, with a warning on stderr, exactly as
+`extension` behaves.
+
 ## Native Gleam provider (`morphir-gleam`)
 
 Gleam compilation and generation use the built-in Rust extension by default.

@@ -98,6 +98,9 @@ windows-sys = { workspace = true, features = ["Wdk_Storage_FileSystem", "Win32_S
 
 [dev-dependencies]
 cucumber = { workspace = true }
+# Lets the Elm mode tests map MORPHIR_FRONTEND__ELM__* the way the loader does,
+# from an explicit variable list rather than the process environment.
+morphir-config = { path = "../../ecosystem/morphir-rust/crates/morphir-config" }
 # `test-util` lets the playground provider's timeout test advance a virtual
 # clock instead of waiting two real minutes.
 tokio = { version = "1", features = ["test-util"] }

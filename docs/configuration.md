@@ -163,9 +163,10 @@ explicit `layout` wins if both are set.
 
 ### [frontend.elm]
 
-Settings the Elm frontend reads. Today the table holds one key, `prelude`,
-which names the set of implicit imports and SDK module aliases every Elm module
-is compiled against:
+Settings the Elm frontend reads. `prelude` names the set of implicit imports
+and SDK module aliases every Elm module is compiled against; `doc_comments` and
+`ordering` choose between writing what morphir-elm writes and what the native
+frontend would choose for itself:
 
 ```toml
 [frontend]
@@ -174,7 +175,25 @@ language = "elm"
 [frontend.elm]
 # "elm-core" (the default) or "none"
 prelude = "elm-core"
+
+# "morphir-elm" (the default) keeps morphir-elm's doc text byte for byte;
+# "trimmed" strips the surrounding whitespace
+doc_comments = "morphir-elm"
+
+# "source" (the default) is declaration order; "morphir-elm" sorts the way
+# morphir-elm's Dicts do
+ordering = "source"
 ```
+
+`doc_comments` and `ordering` are also set by `--elm-doc-comments` and
+`--elm-ordering`, and by `MORPHIR_FRONTEND__ELM__DOC_COMMENTS` and
+`MORPHIR_FRONTEND__ELM__ORDERING`; the flag wins over the environment, which
+wins over the file. See [Matching morphir-elm, or
+not](getting-started/morphir-cli.md#matching-morphir-elm-or-not).
+
+`extension` names the provider that compiles the language, overridden by
+`--extension`. See [Selecting an Elm
+frontend](getting-started/morphir-cli.md#native-elm-provider-morphir-elm-native).
 
 A project that supplies its own prelude writes it as a table instead, using the
 same fields a prelude file uses:

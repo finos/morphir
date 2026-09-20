@@ -1,6 +1,8 @@
 //! Compile command for compiling source code to Morphir IR
 
 mod cache;
+mod elm_modes;
+pub use elm_modes::Flags as ElmModeFlags;
 mod elm_prelude;
 /// Shared with the UI playground, which selects a provider from the same
 /// configuration key but has no `--extension` flag to override it with.
@@ -66,6 +68,9 @@ pub struct CompileOptions {
     pub json_lines: bool,
     /// Ignore the workspace's incremental compile cache for this run.
     pub no_cache: bool,
+    /// Elm compatibility modes from the command line, which override
+    /// `[frontend.elm]` and the environment. See [`elm_modes`].
+    pub elm_modes: elm_modes::Flags,
     /// Out root overrides.
     pub out: OutOverrides,
 }
@@ -378,13 +383,18 @@ fn prepare_configured_single_file_context(
     // Only a run that loaded a configuration has a prelude to read: this route
     // loads one for `--config` or `--project` and otherwise compiles the file
     // on its own, where the provider's default prelude applies.
-    if context.language_id == "elm"
-        && let Some(config) = config
-        && let Some(prelude) = elm_prelude::from_config(config.config.frontend.as_ref())?
-    {
-        context
-            .extra
-            .insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+    if context.language_id == "elm" {
+        let frontend = config.and_then(|config| config.config.frontend.as_ref());
+        if let Some(prelude) = elm_prelude::from_config(frontend)? {
+            context
+                .extra
+                .insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+        }
+        // Unlike the prelude, a mode can come from the command line, so this
+        // runs whether or not a configuration was loaded.
+        for warning in elm_modes::apply(&mut context.extra, &options.elm_modes, frontend)? {
+            eprintln!("warning: {warning}");
+        }
     }
     Ok(context)
 }
@@ -1236,6 +1246,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         json,
         json_lines,
         no_cache,
+        elm_modes: elm_mode_flags,
         out: out_overrides,
     } = options;
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
@@ -1401,12 +1412,17 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             serde_json::json!(emit_parse_stage_fatal),
         ),
     ]);
-    // The prelude is an Elm notion, so it only reaches a provider that was
-    // asked to compile Elm; another language's provider never sees the option.
-    if language.eq_ignore_ascii_case("elm")
-        && let Some(prelude) = elm_prelude::from_config(context.config.frontend.as_ref())?
-    {
-        extra.insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+    // The prelude and the compatibility modes are Elm notions, so they only
+    // reach a provider that was asked to compile Elm; another language's
+    // provider never sees the options.
+    if language.eq_ignore_ascii_case("elm") {
+        let frontend = context.config.frontend.as_ref();
+        if let Some(prelude) = elm_prelude::from_config(frontend)? {
+            extra.insert(elm_prelude::OPTION_KEY.to_owned(), prelude);
+        }
+        for warning in elm_modes::apply(&mut extra, &elm_mode_flags, frontend)? {
+            eprintln!("warning: {warning}");
+        }
     }
     let extension_options = ExtensionCompileOptions {
         types_only: false,
@@ -2022,6 +2038,7 @@ mod tests {
             json: false,
             json_lines: false,
             no_cache: false,
+            elm_modes: Default::default(),
             out: OutOverrides {
                 flag: Some(out_dir),
                 env: None,
