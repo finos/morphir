@@ -4514,7 +4514,6 @@ dependencies = [
  "indexmap",
  "miette",
  "morphir-common",
- "morphir-config",
  "morphir-core",
  "morphir-daemon",
  "morphir-devkit",

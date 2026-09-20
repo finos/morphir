@@ -282,10 +282,20 @@ Both keys travel to the provider as compile options (`elmDocComments` and
 `elmOrdering`), so they apply to the native provider and are ignored by the
 JavaScript `morphir-elm` extension. Each mode is part of the compile context,
 so changing one invalidates the incremental compile cache and the next run
-compiles every module again. A value that is not one of the modes fails the run
-and names the key, unless the matching flag was given — then the flag's mode is
-used and the broken value is ignored, with a warning on stderr, exactly as
-`extension` behaves.
+compiles every module again.
+
+Unlike `prelude` and `extension`, the modes apply to a standalone single-file
+compile as well — one given neither `--config` nor `--project`. There is no
+configuration file on such a run, so the flag and the environment variable are
+the only surfaces, and both work. The file keys keep their documented
+behaviour: a standalone compile still uses the default provider and the default
+prelude.
+
+A value that is not one of the modes fails the run and names the key, unless
+the matching flag was given — then the flag's mode is used and the broken value
+is ignored, exactly as `extension` behaves. That warning goes to stderr, and to
+the `diagnostics` of `--json` and `--json-lines` output, so a client reading the
+result envelope sees it too.
 
 ## Native Gleam provider (`morphir-gleam`)
 

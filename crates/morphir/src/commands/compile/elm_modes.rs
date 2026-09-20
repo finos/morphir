@@ -241,6 +241,37 @@ impl Flags {
     }
 }
 
+/// The frontend section an environment-only configuration describes, or `None`
+/// when the environment says nothing about the frontend.
+///
+/// A standalone single-file compile — one given neither `--config` nor
+/// `--project` — loads no configuration file, so the layered loader never runs
+/// and `MORPHIR_FRONTEND__ELM__*` would go unseen on exactly the runs that are
+/// most likely to use it. The modes advertise an environment surface on every
+/// compile, so that one layer is read directly here.
+///
+/// Only this layer: no file is consulted, so a standalone compile still cannot
+/// be reconfigured by a `morphir.toml` it never selected. `prelude` and
+/// `extension` are unaffected — a file is the only surface either of them
+/// documents — which is why the caller decides where this section applies
+/// rather than it being merged in for everything.
+pub fn environment_frontend() -> Option<FrontendSection> {
+    frontend_from_environment(&morphir_common::config::env::process_env_config_value(
+        morphir_common::config::env::DEFAULT_ENV_PREFIX,
+    ))
+}
+
+/// [`environment_frontend`]'s work, over an already-mapped environment, so it
+/// can be tested without touching the process environment.
+fn frontend_from_environment(environment: &serde_json::Value) -> Option<FrontendSection> {
+    // An environment that describes no frontend, or describes one this model
+    // cannot read, is treated as absent rather than fatal: nothing here is
+    // what the run was asked to do, and a compile that never mentions a mode
+    // must not fail over a variable it does not use. A value that *is* read
+    // and is not a mode still fails, in `configured`, naming the key.
+    serde_json::from_value(environment.get("frontend")?.clone()).ok()
+}
+
 /// Adds every Elm mode option a run asks for to `extra`, returning the
 /// warnings a caller should print on stderr.
 ///
@@ -291,7 +322,7 @@ mod tests {
     /// would be unreachable from the environment.
     #[test]
     fn an_environment_variable_reaches_the_key_a_file_would_have_set() {
-        let value = morphir_config::env::env_config_value(
+        let value = morphir_common::config::env::env_config_value(
             "MORPHIR",
             [
                 ("MORPHIR_FRONTEND__ELM__DOC_COMMENTS", "trimmed"),
@@ -474,6 +505,56 @@ mod tests {
             .resolve(Some("source"), Some(&section))
             .expect_err("an ambiguous table is an error whatever the flag says");
         assert!(matches!(failure, CliError::Config { .. }), "{failure:?}");
+    }
+
+    /// A standalone single-file compile loads no configuration file, so the
+    /// environment is the only layer there is. Without this the flag would
+    /// work on such a run and the variable would be silently ignored.
+    #[test]
+    fn the_environment_alone_describes_a_frontend_section() {
+        let environment = morphir_common::config::env::env_config_value(
+            "MORPHIR",
+            [
+                ("MORPHIR_FRONTEND__ELM__ORDERING", "morphir-elm"),
+                ("PATH", "/usr/bin"),
+            ],
+        );
+
+        let section = frontend_from_environment(&environment)
+            .expect("the environment describes a frontend section");
+
+        assert_eq!(
+            ORDERING.configured(Some(&section)).unwrap(),
+            Some("morphir-elm".to_owned())
+        );
+    }
+
+    /// An environment that says nothing about the frontend describes no
+    /// section, so a caller falls back to sending no option at all rather than
+    /// to an empty table that means the same thing but costs a parse.
+    #[test]
+    fn an_environment_without_a_frontend_describes_no_section() {
+        for environment in [
+            morphir_common::config::env::env_config_value("MORPHIR", [("PATH", "/usr/bin")]),
+            morphir_common::config::env::env_config_value(
+                "MORPHIR",
+                [("MORPHIR_IR__STRICT_MODE", "true")],
+            ),
+        ] {
+            assert!(frontend_from_environment(&environment).is_none());
+        }
+    }
+
+    /// A `[frontend]` the environment describes badly must not take down a
+    /// compile that never asked for a mode: the section is simply not there.
+    #[test]
+    fn an_unreadable_frontend_section_is_absent_rather_than_fatal() {
+        let environment = morphir_common::config::env::env_config_value(
+            "MORPHIR",
+            [("MORPHIR_FRONTEND", "not-a-table")],
+        );
+
+        assert!(frontend_from_environment(&environment).is_none());
     }
 
     #[test]
