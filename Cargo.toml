@@ -35,7 +35,7 @@ vfs = "0.13"
 shell-words = "1"
 pulldown-cmark = { version = "0.13", default-features = false }
 regorus = { version = "=0.12.0", default-features = false, features = ["std"] }
-sha2 = "0.10"
+sha2 = "0.11"
 # `morphir mck run --filter` uses Rust regex syntax (spec/mck/cli-contract.md)
 regex = "1"
 # Kit archives from github:finos/morphir (morphir-mck)
