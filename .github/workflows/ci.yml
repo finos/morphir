@@ -130,6 +130,14 @@ jobs:
               - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
+              # The native runner, report reader and renderer now drive this job.
+              - 'crates/morphir-mck/**'
+              - 'crates/morphir/src/commands/mck*'
+              - 'crates/morphir/src/commands/mck/**'
+              - 'crates/morphir/src/main.rs'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.github/actions/setup-rust-ci/**'
               - 'spec/ir/mck/**'
               # parent-owned kit data and contracts mck:check validates
               - 'spec/mck/**'
@@ -390,6 +398,9 @@ jobs:
       - name: Initialize (CI mode)
         run: mise run init -- --ci
 
+      - name: Set up Rust CI
+        uses: ./.github/actions/setup-rust-ci
+
       - name: Validate schemas against the metaschema
         run: mise run schema:validate
 
@@ -428,7 +439,13 @@ jobs:
         run: mise run mck:schema-check
 
       - name: Run the kit against the TypeScript binding
-        run: mise run mck:run
+        run: |
+          rm -f .dev/out/mck/morphir-typescript-adapter.json .dev/out/mck/morphir-typescript-adapter.html
+          mise run mck:run
+
+      - name: Render the TypeScript binding's MCK report
+        if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-typescript-adapter.json') != '' }}
+        run: cargo run --locked -p morphir -- mck report render .dev/out/mck/morphir-typescript-adapter.json --format html --output .dev/out/mck/morphir-typescript-adapter.html
 
       - name: Validate draft package schemas and examples
         run: mise run package:schema-check
@@ -440,7 +457,9 @@ jobs:
         if: always()
         with:
           name: mck-reports
-          path: .dev/out/mck
+          path: |
+            .dev/out/mck/morphir-typescript-adapter.json
+            .dev/out/mck/morphir-typescript-adapter.html
 
   # Kit run against the Rust binding and the migrate validation. Both build
   # from the shared cargo cache and neither needs the extensions, so they run
@@ -466,14 +485,22 @@ jobs:
         uses: ./.github/actions/setup-rust-ci
 
       - name: Run the kit against the Rust binding
-        run: mise run mck:run-rust
+        run: |
+          rm -f .dev/out/mck/morphir-rust.json .dev/out/mck/morphir-rust.html
+          mise run mck:run-rust
+
+      - name: Render the Rust binding's MCK report
+        if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-rust.json') != '' }}
+        run: cargo run --locked -p morphir -- mck report render .dev/out/mck/morphir-rust.json --format html --output .dev/out/mck/morphir-rust.html
 
       - name: Upload the Rust binding's MCK report
         uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mck-report-morphir-rust
-          path: .dev/out/mck/morphir-rust.json
+          path: |
+            .dev/out/mck/morphir-rust.json
+            .dev/out/mck/morphir-rust.html
 
       - name: Compare the first driver and the Rust runner on the same adapter
         if: ${{ !cancelled() }}

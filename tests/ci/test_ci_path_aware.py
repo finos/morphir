@@ -90,6 +90,36 @@ class PathAwareCiTests(unittest.TestCase):
         self.assertNotIn("mise run package:check", job_body(self.ci, "docs"))
         self.assertIn("mise run package:check", job_body(self.ci, "package-mck"))
 
+    def test_native_mck_changes_run_the_typescript_binding_gate(self) -> None:
+        mck_filter = filter_body(self.ci, "mck")
+        for entry in [
+            "- 'crates/morphir-mck/**'",
+            "- 'crates/morphir/src/commands/mck*'",
+            "- 'crates/morphir/src/commands/mck/**'",
+            "- 'crates/morphir/src/main.rs'",
+            "- 'Cargo.toml'",
+            "- 'Cargo.lock'",
+            "- '.github/actions/setup-rust-ci/**'",
+        ]:
+            self.assertIn(entry, mck_filter)
+
+    def test_failed_mck_runs_still_render_and_upload_fresh_reports(self) -> None:
+        for name, binding, task in [
+            ("docs", "morphir-typescript-adapter", "mck:run"),
+            ("rust-conformance", "morphir-rust", "mck:run-rust"),
+        ]:
+            job = job_body(self.ci, name)
+            report = f".dev/out/mck/{binding}"
+            clean = f"rm -f {report}.json {report}.html"
+            render = f"mck report render {report}.json --format html --output {report}.html"
+            self.assertIn(clean, job)
+            self.assertLess(job.index(clean), job.index(f"mise run {task}\n"))
+            self.assertIn(render, job)
+            self.assertIn(f"if: ${{{{ !cancelled() && hashFiles('{report}.json') != '' }}}}", job)
+            self.assertIn(f"            {report}.json\n", job)
+            self.assertIn(f"            {report}.html\n", job)
+            self.assertNotIn("continue-on-error:", job)
+
     def test_shared_actions_trigger_the_workflow_tests(self) -> None:
         self.assertIn("- '.github/actions/**'", filter_body(self.ci, "release"))
         self.assertIn("- 'tests/ci/**'", filter_body(self.ci, "release"))

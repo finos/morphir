@@ -695,6 +695,11 @@ enum MckAction {
     Check(commands::mck::MckCheckArgs),
     /// Run the kit against an implementation's adapter and report the results
     Run(commands::mck::MckRunArgs),
+    /// Check compatibility evidence or render a saved report as offline HTML
+    Report {
+        #[command(subcommand)]
+        action: MckReportAction,
+    },
     /// Inspect, vendor and update kit data
     Kit {
         #[command(subcommand)]
@@ -710,6 +715,14 @@ enum MckKitAction {
     Vendor(commands::mck::MckKitVendorArgs),
     /// Replace a vendored snapshot, refusing if its files were edited
     Update(commands::mck::MckKitUpdateArgs),
+}
+
+#[derive(Clone, Subcommand)]
+enum MckReportAction {
+    /// Verify report inventory and the binding's allowed-failing baseline
+    Check(commands::mck::report::CheckArgs),
+    /// Render a consolidated JSON report as a standalone offline HTML file
+    Render(commands::mck::report::RenderArgs),
 }
 
 /// The `morphir kb` subcommand tree — a drop-in port of the morphir-scala
@@ -1044,6 +1057,12 @@ impl AppSession for MorphirSession {
             Commands::Mck { action } => match action {
                 MckAction::Check(args) => run_mck_check(args.clone()),
                 MckAction::Run(args) => run_mck_run(args.clone()).await,
+                MckAction::Report { action } => match action {
+                    MckReportAction::Check(args) => commands::mck::report::run_check(args.clone()),
+                    MckReportAction::Render(args) => {
+                        commands::mck::report::run_render(args.clone())
+                    }
+                },
                 MckAction::Kit { action } => match action {
                     MckKitAction::Status(args) => run_mck_kit_status(args.clone()),
                     MckKitAction::Vendor(args) => run_mck_kit_vendor(args.clone()).await,

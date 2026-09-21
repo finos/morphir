@@ -24,13 +24,13 @@ use morphir_mck::kit::vendor::{
     default_update_source, describe, open_managed, update, vendor,
 };
 use morphir_mck::kit::{Kit, KitSource, load_kit};
-use morphir_mck::provenance::{
-    AdapterProvenance, Driver, KitProvenance, KitSourceKind, PROVENANCE_VERSION, Provenance,
-};
+use morphir_mck::provenance::{KitProvenance, KitSourceKind};
 use morphir_mck::report::iso_timestamp;
 use morphir_mck::transport::{Limits, Session};
 use serde_json::json;
 use starbase::AppResult;
+
+pub mod report;
 
 #[derive(Args, Clone, Debug)]
 pub struct MckCheckArgs {
@@ -729,47 +729,49 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
         clock: &clock,
     };
 
-    let (run, shutdown) = match Session::spawn(&args.adapter, &args.adapter_args, limits) {
-        Err(error) => (
-            run_kit(&kit, &mut Unstarted(error.to_string()), &options),
-            Ok(()),
-        ),
-        Ok(mut session) => {
-            // Ctrl-C takes the adapter's whole tree down with the CLI.
-            let terminator = session.terminator();
-            let interrupt = tokio::spawn(async move {
-                if tokio::signal::ctrl_c().await.is_ok() {
-                    terminator.kill();
-                    eprintln!("error: interrupted; the adapter was terminated");
-                    std::process::exit(130);
-                }
-            });
-            let run = tokio::task::block_in_place(|| run_kit(&kit, &mut session, &options));
-            let shutdown = tokio::task::block_in_place(|| session.close());
-            interrupt.abort();
-            (run, shutdown)
-        }
-    };
+    let (run, shutdown, spawn_error) =
+        match Session::spawn(&args.adapter, &args.adapter_args, limits) {
+            Err(error) => (
+                run_kit(&kit, &mut Unstarted(error.to_string()), &options),
+                Ok(()),
+                Some(error.to_string()),
+            ),
+            Ok(mut session) => {
+                // Ctrl-C takes the adapter's whole tree down with the CLI.
+                let terminator = session.terminator();
+                let interrupt = tokio::spawn(async move {
+                    if tokio::signal::ctrl_c().await.is_ok() {
+                        terminator.kill();
+                        eprintln!("error: interrupted; the adapter was terminated");
+                        std::process::exit(130);
+                    }
+                });
+                let run = tokio::task::block_in_place(|| run_kit(&kit, &mut session, &options));
+                let shutdown = tokio::task::block_in_place(|| session.close());
+                interrupt.abort();
+                (run, shutdown, None)
+            }
+        };
 
     if let Some(header) = &run.header {
         eprintln!("{header}");
     }
     if let Some(file) = &args.report {
-        let provenance = Provenance {
-            provenance_version: PROVENANCE_VERSION,
-            driver: Driver::current(),
-            kit: kit_provenance,
-            adapter: AdapterProvenance {
-                command,
-                binding: run.capabilities.as_ref().map(|c| c.binding.clone()),
-                format_versions: run.capabilities.as_ref().map(|c| c.format_versions.clone()),
-            },
+        let draft = match report::assemble(
+            &run,
+            kit_provenance,
+            command,
+            args.filter.as_deref(),
+            args.strict,
+            spawn_error.as_deref(),
+            shutdown.as_ref().err().map(ToString::to_string).as_deref(),
+        ) {
+            Ok(draft) => draft,
+            Err(error) => {
+                return finish(Outcome::Error(format!("cannot construct report: {error}")));
+            }
         };
-        if let Err(error) = run
-            .report
-            .write(file)
-            .and_then(|()| provenance.write_beside(file).map(drop))
-        {
+        if let Err(error) = report::write_atomic(file, draft.to_json().as_bytes()) {
             return finish(Outcome::Error(format!(
                 "cannot write the report {}: {error}",
                 file.display()

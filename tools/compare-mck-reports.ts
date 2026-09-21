@@ -18,8 +18,50 @@ type Report = Record<string, unknown> & { records?: unknown[] };
 
 const show = (value: unknown) => JSON.stringify(value) ?? "undefined";
 
+const DRAFT = "2.0.0-draft.1";
+const DRAFT_MEMBERS = ["contractVersion", "suite", "startedAt", "driver", "kit", "adapter", "selection", "execution", "records"];
+
+/** Migration-only projection. Both inputs must also pass their versioned schema gate. */
+function legacyEvidence(report: Report): Report {
+	const object = (value: unknown): Record<string, unknown> => {
+		if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error("malformed draft report object");
+		return value as Record<string, unknown>;
+	};
+	if (Object.keys(report).some((key) => !DRAFT_MEMBERS.includes(key)) ||
+		DRAFT_MEMBERS.some((key) => !(key in report)) || report.suite !== "ir") {
+		throw new Error("unrecognized or missing draft report member");
+	}
+	const negotiation = object(object(report.adapter).negotiation);
+	const caps = negotiation.status === "succeeded" ? object(negotiation.capabilities) : undefined;
+	if (caps === undefined && negotiation.status !== "failed") throw new Error("unknown negotiation state");
+	const identity = (key: string): string => {
+		if (caps === undefined) return "unknown";
+		if (typeof caps[key] !== "string") throw new Error(`missing capabilities.${key}`);
+		return caps[key];
+	};
+	return {
+		contractVersion: 1,
+		binding: identity("binding"), language: identity("language"), formatVersions: identity("formatVersions"),
+		kitVersion: object(report.kit).version,
+		records: report.records,
+	};
+}
+
 /** Every way `fresh` differs from `old`, in report order, or an empty list. */
 export function compareReports(old: Report, fresh: Report): string[] {
+	for (const report of [old, fresh]) {
+		if (report.contractVersion !== 1 && report.contractVersion !== DRAFT) {
+			return [`unsupported report contractVersion ${show(report.contractVersion)}`];
+		}
+	}
+	try {
+		if (old.contractVersion !== fresh.contractVersion) {
+			if (old.contractVersion === DRAFT) old = legacyEvidence(old);
+			if (fresh.contractVersion === DRAFT) fresh = legacyEvidence(fresh);
+		}
+	} catch (error) {
+		return [String(error)];
+	}
 	const differences: string[] = [];
 	const members = [...new Set([...Object.keys(old), ...Object.keys(fresh)])]
 		.filter((member) => member !== "records" && !PERMITTED.includes(member as typeof PERMITTED[number]));

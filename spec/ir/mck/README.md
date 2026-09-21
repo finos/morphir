@@ -1,14 +1,15 @@
 # Morphir Compatibility Kit (MCK): IR suite
 
 This directory is the IR suite of the [Morphir Compatibility Kit](https://github.com/finos/morphir/blob/main/spec/mck/README.md): the executable contract for the Morphir IR serialization profiles.
-Every binding (TypeScript, Gleam, Python, and later Scala and Rust) is driven through it by the mck driver in
-finos/morphir-typescript. An IR compatibility claim names the kit version and required capabilities; every required case must pass.
+The native `morphir mck` runner drives each binding through an explicit external adapter. Parent CI
+runs the TypeScript and Rust adapters. An IR compatibility claim names the kit version and required capabilities; every required case must pass.
 Unsupported capabilities can be reported as skipped, so a successful driver exit alone does not prove complete coverage.
 The planned MCK package suite has its own operations and compatibility requirements.
 
-Ownership of the driver moved to this repository on 2026-09-18: it is being rewritten in Rust as `morphir mck`,
-with a required `--adapter` and CLI-managed kit vendoring. That tooling does not exist yet, so the `mck` commands
-below are still the TypeScript driver's and remain authoritative until cutover. See the
+Ownership of the driver moved to this repository on 2026-09-18. The Rust CLI now implements kit
+checking, vendoring, runs, draft report checking and optional HTML rendering. Native coverage and
+schema gates remain unimplemented; the existing TypeScript gates still cover those responsibilities.
+Parity and package suites also retain the frozen first driver. See the
 [MCK overview](https://github.com/finos/morphir/blob/main/spec/mck/README.md#ownership-and-transition).
 
 The kit states meaning by example. The semantic model lives in TypeScript; the YAML profile is the reference
@@ -28,7 +29,9 @@ corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabiliza
 | `document-tree.md` | manifest, module, and node files; layout equivalence |
 | `versions.md` | cross-version reading and writing |
 | `documents/` | large fixtures referenced by path |
-| `report.schema.json` | the JSON Schema of an MCK report |
+| `report-draft.schema.json`, `report-draft.example.json` | production consolidated report `2.0.0-draft.1` and example |
+| `report.schema.json`, `report.example.json` | historical version 1 evidence for parity only |
+| `allowed-failing.json` | empty parent baseline for the TypeScript adapter gate |
 | [`protocol.schema.json`](protocol.schema.json) | the JSON Schema of the adapter protocol, contract version 1 |
 
 ## A case
@@ -90,9 +93,8 @@ Reference: ["morphir/SDK:list#list", a]
 
 ## What the driver does with a case
 
-The parent runs the kit against the TypeScript binding in-process with `mck run --kit spec/ir/mck`. A binding
-under test runs it through its adapter instead, with `mck run --kit spec/ir/mck --adapter <exe>`. Either way the
-driver speaks the same steps against the same cases:
+Run `morphir mck run --kit spec/ir/mck --adapter <exe>` against a binding. There is no implicit binding
+or in-process fallback. The runner performs these steps against the cases:
 
 1. Decodes `canonical` and every `accepted` fence; every result re-encoded canonically must be byte-equal to the
    others and to the `canonical` fence of the same profile (one trailing newline allowed).
@@ -110,21 +112,38 @@ the adapter protocol, `protocol.schema.json`, contract version 1.
 
 ## Running the driver against a binding
 
-Until the Rust CLI ships `morphir mck kit vendor`, a binding pins the driver instead of vendoring the kit.
-Either pin works with mise:
+From the parent checkout, run the native CLI and check the resulting JSON:
 
-```toml
-[tools]
-"npm:@finos/morphir-mck" = "<version>"
+```sh
+morphir mck run --kit spec/ir/mck --adapter ./my-adapter --report report.json
+morphir mck report check report.json allowed-failing.json --kit spec/ir/mck
+morphir mck report render report.json --format html --output report.html
 ```
 
-or, for the single-file release binaries, mise's `github:finos/morphir-typescript` backend pointed at the
-release tag. The binding's CI then runs `mck run --kit <path-to-a-checkout-of-this-kit> --adapter <exe>` and
-publishes the JSON report.
+`mise run mck:run` and `mise run mck:run-rust` build and use the native runner for the two parent CI
+adapters. The first task retains the TypeScript coverage check. A binding adopting a released CLI
+can use `morphir mck kit vendor` to pin a kit snapshot; release and binding CI cutover is tracked in
+[the migration plan](../../mck/migration.md), not completed by this reporting change.
+
+The consolidated JSON contains provenance, complete negotiated capabilities, explicit selection,
+session outcome and ordered records. It is authoritative. HTML is an optional standalone view
+that opens offline without a server or CDN. Rendering a report successfully does not establish
+passing tests or a valid compatibility claim.
+
+`report check` strictly validates the draft schema without remote references, then independently
+loads the kit and verifies the snapshot digest and exact record inventory. Missing digest or a
+failed adapter session cannot pass. By default it requires a full-kit report; checking a filtered
+report requires the same independently supplied `--filter` pattern. Failure allowances are checked
+in both directions, so regressions and stale allowances fail. A development baseline is not a
+compatibility certificate, and capability skips still limit the claim with an empty baseline.
+
+The report version is the string `2.0.0-draft.1`; the adapter protocol remains integer version 1.
+Stable `2.0.0` needs an explicit stabilization decision, without an indefinite old-draft support
+promise. The legacy report and provenance-sidecar schemas remain only for historical evidence.
 
 ## Errors the parser reports
 
-Running `mck check spec/ir/mck` fails on: a malformed or duplicate ID; an ID whose topic does not
+Running `morphir mck check spec/ir/mck` fails on: a malformed or duplicate ID; an ID whose topic does not
 match the file; an unknown heading key or value; a data fence before the first case; more than one `canonical` per
 language in a case; an active case that has `accepted` or `file` fences but no `canonical`; a case with no data
 fences at all; a `pending` case carrying anything but `rejected` fences; an unknown language, role, or key; a

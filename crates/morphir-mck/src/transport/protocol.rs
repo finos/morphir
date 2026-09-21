@@ -12,7 +12,7 @@
 
 use std::fmt;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::format_version::{DOMAIN_FLOOR, SupportTable};
@@ -37,7 +37,7 @@ fn fail<T>(message: impl Into<String>) -> Result<T, ProtocolError> {
 
 macro_rules! closed_enum {
     ($name:ident, $what:literal, { $($variant:ident => $text:literal),+ $(,)? }) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
         pub enum $name {
             $(#[serde(rename = $text)] $variant),+
         }

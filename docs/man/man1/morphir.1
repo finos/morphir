@@ -270,6 +270,15 @@ Validate a kit directory without running an adapter
 \fBmck run\fR
 Run the kit against an implementation's adapter and report the results
 .TP
+\fBmck report\fR
+Check compatibility evidence or render a saved report as offline HTML
+.TP
+\fBmck report check\fR
+Verify report inventory and the binding's allowed\-failing baseline
+.TP
+\fBmck report render\fR
+Render a consolidated JSON report as a standalone offline HTML file
+.TP
 \fBmck kit\fR
 Inspect, vendor and update kit data
 .TP
@@ -1840,6 +1849,50 @@ How long the whole adapter session may last, in milliseconds
 .RS
 \fIDefault: \fR1800000
 .RE
+.SH "MORPHIR MCK REPORT CHECK"
+Verify report inventory and the binding's allowed\-failing baseline
+.PP
+\fBUsage:\fR morphir mck report check [OPTIONS] <REPORT> <ALLOWED_FAILING>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<KIT>\fR
+Independent kit, defaulting to the embedded kit
+.TP
+\fB\-\-repo\-root\fR \fI<REPO_ROOT>\fR
+.TP
+\fB\-\-filter\fR \fI<FILTER>\fR
+Require this exact case filter; omission requires a full\-kit report
+\fBArguments:\fR
+.PP
+.TP
+\fB<REPORT>\fR
+Consolidated JSON report to check
+.TP
+\fB<ALLOWED_FAILING>\fR
+Binding\-owned JSON file listing allowed failing case IDs
+.SH "MORPHIR MCK REPORT RENDER"
+Render a consolidated JSON report as a standalone offline HTML file
+.PP
+\fBUsage:\fR morphir mck report render [OPTIONS] <REPORT>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-format\fR \fI<FORMAT>\fR
+Output representation; HTML opens offline without a server
+.RS
+\fIDefault: \fRhtml
+.RE
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Destination for the standalone report; cannot overwrite the JSON input
+\fBArguments:\fR
+.PP
+.TP
+\fB<REPORT>\fR
+Consolidated JSON report to display
 .SH "MORPHIR MCK KIT STATUS"
 Identify a kit: source, revision, corpus hash and whether it is modified
 .PP

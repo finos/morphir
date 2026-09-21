@@ -943,7 +943,39 @@ cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true 
         complete dir type=path
         complete file type=path
     }
-    cmd kit display_order=2 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
+    cmd report display_order=2 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
+        cmd check display_order=0 args_override_self=#false help="Verify report inventory and the binding\'s allowed-failing baseline" unknown_flags=error {
+            flag --kit help="Independent kit, defaulting to the embedded kit" {
+                arg <KIT>
+            }
+            flag --repo-root {
+                arg <REPO_ROOT>
+            }
+            flag --filter help="Require this exact case filter; omission requires a full-kit report" {
+                arg <FILTER>
+            }
+            arg <REPORT> help="Consolidated JSON report to check"
+            arg <ALLOWED_FAILING> help="Binding-owned JSON file listing allowed failing case IDs"
+            complete report type=path
+            complete allowed_failing type=path
+            complete kit type=path
+            complete repo_root type=path
+        }
+        cmd render display_order=1 args_override_self=#false help="Render a consolidated JSON report as a standalone offline HTML file" unknown_flags=error {
+            flag --format help="Output representation; HTML opens offline without a server" default=html {
+                arg <FORMAT> {
+                    choices html
+                }
+            }
+            flag "-o --output" help="Destination for the standalone report; cannot overwrite the JSON input" required=#true {
+                arg <OUTPUT>
+            }
+            arg <REPORT> help="Consolidated JSON report to display"
+            complete report type=path
+            complete output type=path
+        }
+    }
+    cmd kit display_order=3 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
         cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {
             flag --kit help="A kit directory or a vendored snapshot\'s root; the kit embedded in this CLI when omitted" {
                 arg <DIR>

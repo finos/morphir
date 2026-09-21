@@ -163,13 +163,14 @@ run = "node website/scripts/check-config-schema-sync.js"
 
 [tasks."mck:check"]
 description = "Parse the Morphir Compatibility Kit case files and validate the report and protocol schemas"
-# The parser lives in the morphir-typescript submodule; the driver that runs
-# bindings against the kit arrives with plan 2.
+# Keep the frozen TypeScript parser/schema gates until their native replacements land.
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "bun run ecosystem/morphir-typescript/packages/mck/src/cli.ts check spec/ir/mck",
     "jsonschema metaschema spec/ir/mck/report.schema.json",
     "jsonschema validate spec/ir/mck/report.schema.json spec/ir/mck/report.example.json",
+    "jsonschema metaschema spec/ir/mck/report-draft.schema.json",
+    "jsonschema validate spec/ir/mck/report-draft.schema.json spec/ir/mck/report-draft.example.json",
     "jsonschema metaschema spec/ir/mck/protocol.schema.json",
     "bun run tools/validate-mck-protocol.ts",
     # Parent-owned kit data the Rust `morphir mck` tooling reads (spec/mck/kit-manifest.md).
@@ -193,28 +194,22 @@ description = "Validate every accepted MCK JSON fence against the v4 schema"
 run = "bun run tools/validate-mck-fences.ts"
 
 [tasks."mck:run"]
-description = "Run the Morphir Compatibility Kit against the TypeScript binding, in-process and through its adapter, and check coverage"
+description = "Run the native MCK against the TypeScript adapter, check its report, and retain the TypeScript coverage gate"
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts run --kit spec/ir/mck --report .dev/out/mck/morphir-typescript.json",
-    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts run --kit spec/ir/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --report .dev/out/mck/morphir-typescript-adapter.json",
+    "cargo run --locked -p morphir -- mck run --kit spec/ir/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --report .dev/out/mck/morphir-typescript-adapter.json",
+    "cargo run --locked -p morphir -- mck report check .dev/out/mck/morphir-typescript-adapter.json spec/ir/mck/allowed-failing.json --kit spec/ir/mck",
     "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts coverage --kit spec/ir/mck",
 ]
 
 [tasks."mck:run-rust"]
 description = "Run the Morphir Compatibility Kit against the pinned Rust binding's adapter and adjudicate the report"
-# The adapter binary's name carries an .exe suffix on Windows, so the driver is
-# invoked through a wrapper that resolves it; the wrapper passes the rest
-# straight through to `mck run`.
+# Native spawning resolves the .exe suffix on Windows, as in mck:parity-rust.
 run = [
-    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
-    "bun run tools/run-mck-rust.ts --kit spec/ir/mck --report .dev/out/mck/morphir-rust.json",
-    # mck:check only proves the schema against the checked-in report.example.json;
-    # this confirms the real report the driver just wrote conforms to it too,
-    # before the checker below adjudicates its contents.
-    "jsonschema validate spec/ir/mck/report.schema.json .dev/out/mck/morphir-rust.json",
-    "bun run tools/check-mck-report.ts .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json",
+    "cargo run --locked -p morphir -- mck run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --kit spec/ir/mck --report .dev/out/mck/morphir-rust.json",
+    # The native reader validates the draft schema before adjudicating inventory and baseline.
+    "cargo run --locked -p morphir -- mck report check .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json --kit spec/ir/mck",
 ]
 
 [tasks."mck:parity-rust"]
@@ -228,12 +223,13 @@ run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "bun run tools/run-mck-rust.ts --record .dev/out/mck/morphir-rust.ndjson --kit spec/ir/mck --report .dev/out/mck/morphir-rust-first-driver.json",
+    "jsonschema validate spec/ir/mck/report.schema.json .dev/out/mck/morphir-rust-first-driver.json",
     # No .exe here, unlike the wrapper above: that one stats the adapter before
     # spawning it, so it has to spell the name the platform writes. A spawn
     # needs no suffix, because Windows appends .exe to a program path that has
     # no extension. Verified on Windows, where the extensionless file does not exist.
     "cargo run --locked -p morphir -- mck run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --kit spec/ir/mck --report .dev/out/mck/morphir-rust-rust-runner.json",
-    "jsonschema validate spec/ir/mck/report.schema.json .dev/out/mck/morphir-rust-rust-runner.json",
+    "jsonschema validate spec/ir/mck/report-draft.schema.json .dev/out/mck/morphir-rust-rust-runner.json",
     "bun run tools/compare-mck-reports.ts .dev/out/mck/morphir-rust-first-driver.json .dev/out/mck/morphir-rust-rust-runner.json",
 ]
 

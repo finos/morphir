@@ -22,7 +22,7 @@ fn transcript() -> PathBuf {
     repo().join("spec/mck/baseline/transcripts/morphir-typescript.ndjson")
 }
 
-fn replay_adapter(path: &Path) {
+fn replay_adapter(path: &Path, exit_code: i32) {
     const REQUEST: &str = "{\"dir\":\"request\",\"message\":";
     const RESPONSE: &str = "{\"dir\":\"response\",\"message\":";
     let text = std::fs::read_to_string(path).unwrap();
@@ -54,9 +54,10 @@ fn replay_adapter(path: &Path) {
                 writeln!(out, "{response}").unwrap();
                 out.flush().unwrap();
             }
-            None => std::process::exit(0),
+            None => std::process::exit(exit_code),
         }
     }
+    std::process::exit(exit_code);
 }
 
 fn morphir(args: &[&str]) -> Output {
@@ -138,16 +139,39 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
     );
 
     let produced = read_json(&report);
+    assert_eq!(produced["contractVersion"], "2.0.0-draft.1");
+    assert_eq!(produced["selection"]["kind"], "all");
+    assert_eq!(produced["execution"]["session"]["status"], "finished");
+    assert!(
+        !report
+            .with_file_name("report.json.provenance.json")
+            .exists()
+    );
     let mut expected = read_json(&repo().join("spec/mck/baseline/reports/morphir-typescript.json"));
     // A --kit checkout reports its own revision, as the first driver did.
-    expected["kitVersion"] = produced["kitVersion"].clone();
-    assert_eq!(without_volatile(produced), without_volatile(expected));
-
-    let provenance = read_json(&work.path().join("out").join("report.json.provenance.json"));
-    assert_eq!(provenance["provenanceVersion"], 1);
-    assert_eq!(provenance["kit"]["source"], "local");
-    assert_eq!(provenance["adapter"]["binding"], "morphir-typescript");
-    assert_eq!(provenance["adapter"]["command"][1], ADAPTER_FLAG);
+    expected["kitVersion"] = produced["kit"]["version"].clone();
+    let caps = &produced["adapter"]["negotiation"]["capabilities"];
+    let projected = serde_json::json!({
+        "contractVersion":1, "binding":caps["binding"], "language":caps["language"],
+        "formatVersions":caps["formatVersions"], "kitVersion":produced["kit"]["version"],
+        "records":produced["records"]
+    });
+    assert_eq!(without_volatile(projected), without_volatile(expected));
+    assert_eq!(produced["kit"]["source"], "local");
+    assert_eq!(caps["binding"], "morphir-typescript");
+    assert_eq!(produced["adapter"]["command"][1], ADAPTER_FLAG);
+    let allowed = work.path().join("allowed.json");
+    std::fs::write(&allowed, "{\"cases\":[]}").unwrap();
+    let checked = morphir(&[
+        "mck",
+        "report",
+        "check",
+        report.to_str().unwrap(),
+        allowed.to_str().unwrap(),
+        "--kit",
+        repo().join("spec/ir/mck").to_str().unwrap(),
+    ]);
+    assert!(checked.status.success(), "{}", stderr(&checked));
 }
 
 fn a_run_without_an_adapter_is_a_usage_error_that_writes_nothing() {
@@ -215,8 +239,12 @@ fn a_missing_adapter_program_fails_every_fence_and_still_reports() {
     ]);
     assert_eq!(output.status.code(), Some(1));
     let produced = read_json(&report);
-    assert_eq!(produced["binding"], "unknown");
-    assert_eq!(produced["formatVersions"], "unknown");
+    assert_eq!(produced["adapter"]["negotiation"]["status"], "failed");
+    assert_eq!(
+        produced["execution"]["session"]["errors"][0]["phase"],
+        "spawn"
+    );
+    assert_eq!(produced["selection"]["pattern"], "^types-0001$");
     let records = produced["records"].as_array().unwrap();
     assert!(!records.is_empty());
     assert!(records.iter().all(|r| {
@@ -258,16 +286,60 @@ fn an_empty_selection_is_never_a_success() {
     );
 }
 
+fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("report.json");
+    let exe = std::env::current_exe().unwrap();
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--adapter",
+        exe.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "shutdown-failure",
+        "--adapter-arg",
+        transcript().to_str().unwrap(),
+        "--kit",
+        repo().join("spec/ir/mck").to_str().unwrap(),
+        "--report",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
+    let produced = read_json(&report);
+    assert_eq!(produced["execution"]["session"]["status"], "failed");
+    assert_eq!(
+        produced["execution"]["session"]["errors"][0]["phase"],
+        "shutdown"
+    );
+    assert!(
+        produced["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["result"] == "pass")
+    );
+}
+
 // ---------------------------------------------------------------- runner
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some(ADAPTER_FLAG) {
-        assert_eq!(args.get(2).map(String::as_str), Some("replay"));
-        replay_adapter(Path::new(&args[3]));
+        let exit_code = match args.get(2).map(String::as_str) {
+            Some("replay") => 0,
+            Some("shutdown-failure") => 7,
+            other => panic!("unexpected adapter mode: {other:?}"),
+        };
+        replay_adapter(Path::new(&args[3]), exit_code);
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "a_shutdown_failure_is_in_the_report_even_when_records_pass",
+            a_shutdown_failure_is_in_the_report_even_when_records_pass,
+        ),
         (
             "a_full_run_against_recorded_answers_reproduces_the_typescript_report",
             a_full_run_against_recorded_answers_reproduces_the_typescript_report,
