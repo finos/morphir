@@ -1,0 +1,414 @@
+{
+	"suite": "package",
+	"contractVersion": "0.1.0-draft.2",
+	"driverVersion": "0.4.0-beta.2",
+	"kit": {
+		"formatVersion": "0.1.0-draft.2",
+		"contentHash": "sha256-8dfed22a389bd08e945b35213586b0709f2cf11f5426199bcec746007443b08b"
+	},
+	"startedAt": "2026-09-21T17:54:09.596Z",
+	"testee": {
+		"suite": "package",
+		"contractVersion": "0.1.0-draft.2",
+		"implementation": "morphir-typescript",
+		"implementationVersion": "0.3.0",
+		"operations": [
+			"resolve-library"
+		],
+		"profiles": [
+			"flat-library"
+		]
+	},
+	"records": [
+		{
+			"caseId": "resolution.initial.highest",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.replay.older",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.initial.large-components",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.initial.overlap",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.permutation.success",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.backtracking.older-parent",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.ordering.new-earlier-package",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.ordering.earlier-package-beats-version",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.target-freshness",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.exact-preserves",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.shared-pinned-consumer",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.unrelated-pin",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.add-and-remove",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.equal-change-count-sets",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.multiple-target-priority",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.permutation.targets",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.unicode-pointer-order",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.unpaired-surrogate-key",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.unpaired-surrogate-duplicate-value",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.leading-bom",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.exact.unavailable",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.exact.scope-conflict",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.new-edge-keeps-pin",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.empty-catalog",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.absent-catalog",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.replay.missing-lock",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.update.missing-lock",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.replay.missing-release",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.replay.digest-mismatch",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.capability.coexistence",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.permutation.diagnostic",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.profile.cycle",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.profile.prerelease",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.profile.build",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.malformed-json",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.duplicate-key",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.unknown-field",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.duplicate-catalog",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.duplicate-release",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.catalog-path-mismatch",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.duplicate-target",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.root-target",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.duplicate-requirement",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.input.empty-interval",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.null-catalogs",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.unknown-mode",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.wrong-format",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.root-type",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.outer-before-lock",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.outer-accumulates",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.lock-type",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.topology-before-metadata",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.metadata-before-digest",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.lock-metadata-accumulates",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.duplicate-subtree-suppressed",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.shape-before-duplicate",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.escaped-duplicate-key",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.syntax-before-duplicate",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.duplicate-keys-accumulate",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.initial-lock-unknown",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.root-catalog.coexistence",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.root-catalog.missing-transitive",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.root-catalog.exact-ancestor-cycle",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.root-catalog.omitted",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.root-catalog.unreferenced",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.witness-ranking.multiplicity",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.witness-ranking.occurrence-tie",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.release-siblings",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.requirement-siblings",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.locked-node-siblings",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.locked-binding-siblings",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.unknown-target-kind",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.missing-target-kind",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.wrong-type-target-kind",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.duplicate-lock-path-suppression",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.unknown-target-kind-common-field",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.missing-target-kind-common-field",
+			"operation": "resolve-library",
+			"result": "pass"
+		},
+		{
+			"caseId": "resolution.validation.wrong-type-target-kind-common-field",
+			"operation": "resolve-library",
+			"result": "pass"
+		}
+	]
+}

@@ -9,8 +9,8 @@ claim follows merely from a local pass.
 ## Native package runner
 
 The Rust engine now executes the existing integrity and resolution contracts through
-`morphir mck package run`. Build from this repository; the published `v0.4.0-beta.2`
-CLI predates package execution. Both `--kit` and `--adapter` are required. For example:
+`morphir mck package run`, introduced in `v0.4.0-beta.3`. The beta.2 CLI predates
+package execution. Both `--kit` and `--adapter` are required. A source checkout can run:
 
 ```sh
 cargo run --locked --package morphir -- mck package run \

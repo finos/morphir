@@ -180,7 +180,7 @@ those consumers must migrate explicitly before upgrading across this removal.
 
 ## Package migration in progress
 
-The source build now provides `morphir mck package run` for the existing integrity
+Version `v0.4.0-beta.3` introduces `morphir mck package run` for the existing integrity
 and resolution suites. This command is not in `v0.4.0-beta.2`. Package consumers
 should retain their current checks until a release containing package execution
 is qualified and their integration is migrated under

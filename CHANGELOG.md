@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.3] - 2026-09-21
+
+### Added
+- `morphir mck package run --kit <path> --adapter <exe>` executes the existing package integrity and deterministic resolution contracts. It preserves all 80 draft.1 and 78 draft.2 cases, corpus hashes and draft reports. Both independent adapters pass with zero required skips. Package managed-kit acquisition and HTML rendering are not part of this command.
+- Packaged and published CLI acceptance now includes both package suites through fixed adapter recordings, complete ordered report comparisons and explicit copied package inputs. The existing six-target published-release workflow runs these checks with operating-system network denial. Live adapter parity remains a separate interoperability gate.
+- The global `--no-banner` flag, `MORPHIR_NO_BANNER` environment variable and `[cli] banner = false` configuration suppress the help/version banner. Precedence is flag, environment, then configuration.
+
+### Changed
+- IR consumers now use the native CLI, and the replaced TypeScript IR runner APIs and future runner binaries have been retired. Adapters, codec tests and historical assets remain available. Package runner retirement follows qualified release adoption under [#852](https://github.com/finos/morphir/issues/852); the existing TypeScript package gates remain available during that migration.
+- Project compilation resolves configuration once during session startup and passes it to the compiler, preserving explicit project/config selection and single-file compilation rules.
+
+### Fixed
+- MCK adapter deadlines cover blocked stdin writes and shutdown as well as response reads, preventing a non-reading adapter from hanging the runner.
+- Published-release qualification accepts the CLI version banner and retains Linux evidence after network-isolated execution. Windows release checkouts enable long paths before fetching fixtures.
+
 ## [0.4.0-beta.2] - 2026-09-20
 
 ### Added
@@ -433,7 +448,8 @@ alpha, 0.4.0-alpha.5, only moved the release pipeline to the Rust binary.
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.2...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.3...HEAD
+[0.4.0-beta.3]: https://github.com/finos/morphir/compare/v0.4.0-beta.2...v0.4.0-beta.3
 [0.4.0-beta.2]: https://github.com/finos/morphir/compare/v0.4.0-beta.1...v0.4.0-beta.2
 [0.4.0-beta.1]: https://github.com/finos/morphir/compare/v0.4.0-alpha.7...v0.4.0-beta.1
 [0.4.0-alpha.4]: https://github.com/finos/morphir/compare/v0.4.0-alpha.3...v0.4.0-alpha.4
