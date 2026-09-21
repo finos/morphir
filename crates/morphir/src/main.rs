@@ -10,6 +10,7 @@ pub mod home;
 mod log_lock;
 mod logging;
 pub mod output;
+mod session;
 
 pub use morphir::notebook;
 use morphir::observability;
@@ -845,17 +846,130 @@ enum KbDecisionAction {
     Show(commands::kb::KbDecisionShowArgs),
 }
 
+// `Ready` and its `SessionReady` alias live in `session.rs`, which both this
+// binary crate root and the library crate root declare, because
+// `commands::compile` needs to name the type under both.
+use session::Ready;
+pub(crate) use session::SessionReady;
+
+/// The state a phase produced. Phase *progress* is starbase's, in `AppPhase`
+/// and `AppRunOutcome.last_phase`; this carries only the data.
+#[derive(Clone)]
+enum SessionState {
+    /// Before `startup`: the session holds only its command and out overrides.
+    Bootstrapped,
+    /// After `startup`. `MorphirSession::ready` reads this variant.
+    Ready(std::sync::Arc<Ready>),
+}
+
 /// Application session for Morphir CLI
 #[derive(Clone)]
 struct MorphirSession {
     command: Commands,
     operation_id: observability::OperationId,
     out: commands::OutOverrides,
+    state: SessionState,
+}
+
+impl MorphirSession {
+    /// What `startup` produced.
+    ///
+    /// An error rather than a panic so a wiring mistake reports like any other
+    /// CLI failure. It names the phase, because the only way to see it is to
+    /// call a command outside the lifecycle.
+    fn ready(&self) -> Result<&Ready, miette::Report> {
+        match &self.state {
+            SessionState::Ready(ready) => Ok(ready),
+            SessionState::Bootstrapped => Err(miette::miette!(
+                "configuration was requested before the startup phase produced it"
+            )),
+        }
+    }
 }
 
 #[async_trait::async_trait]
 impl AppSession for MorphirSession {
     type Error = miette::Report;
+
+    async fn startup(&mut self) -> AppResult<miette::Report> {
+        // Only a whole-project compile has its configuration resolved here. The
+        // single-file path applies a different rule (configuration optional,
+        // discovery only under `--project`), and unifying them would change
+        // behaviour, so it still resolves its own. Every other command must
+        // reach `Ready` without touching the filesystem at all, so
+        // `current_dir()` is called only inside this branch, not up front.
+        let compile = match &self.command {
+            Commands::Compile {
+                config,
+                project,
+                input,
+                language,
+                ..
+            } if !commands::compile::is_single_file_request(
+                input.as_deref(),
+                language.as_deref(),
+            ) =>
+            {
+                Some((config.clone(), project.clone()))
+            }
+            // `morphir gleam compile` and the compile half of `morphir gleam
+            // roundtrip` reach `run_provider_compile` too (Gleam is never the
+            // single-file language), through `run_gleam_compile`, so they
+            // need the same resolved configuration.
+            Commands::Gleam {
+                action:
+                    GleamAction::Compile {
+                        config, project, ..
+                    }
+                    | GleamAction::Roundtrip {
+                        config, project, ..
+                    },
+                ..
+            } => Some((config.clone(), project.clone())),
+            _ => None,
+        };
+
+        let ready = match compile {
+            None => Ready {
+                start_dir: None,
+                config: None,
+            },
+            Some((config_flag, project_flag)) => {
+                let start_dir = std::env::current_dir()
+                    .map_err(|error| crate::error::CliError::FileSystem { error })?;
+                let config_file = match config_flag.as_deref() {
+                    Some(path) => {
+                        commands::compile::absolute_from(&start_dir, std::path::Path::new(path))
+                    }
+                    None => morphir_devkit::discover_config(&start_dir)
+                        .map_err(|error| crate::error::CliError::Config { error })?
+                        .ok_or_else(|| crate::error::CliError::Config {
+                            error: anyhow::anyhow!(
+                                "No morphir.toml, morphir.yaml, or morphir.json found"
+                            ),
+                        })?,
+                };
+                let context = morphir_devkit::load_config_context_with(
+                    &config_file,
+                    &morphir_devkit::ConfigLoadOptions {
+                        project: project_flag
+                            .map(morphir_devkit::config::ProjectSelection::Explicit)
+                            .unwrap_or_default(),
+                        ..Default::default()
+                    },
+                )
+                .map_err(|error| crate::error::CliError::Config { error })?;
+                Ready {
+                    start_dir: Some(start_dir),
+                    config: Some(context),
+                }
+            }
+        };
+
+        self.state = SessionState::Ready(std::sync::Arc::new(ready));
+
+        Ok(None)
+    }
 
     async fn execute(&mut self) -> AppResult<miette::Report> {
         match &self.command {
@@ -877,24 +991,28 @@ impl AppSession for MorphirSession {
                 elm_doc_comments,
                 elm_ordering,
             } => {
-                run_compile(CompileOptions {
-                    language: language.clone(),
-                    extension: extension.clone(),
-                    input: input.clone(),
-                    output: output.clone(),
-                    package_name: package_name.clone(),
-                    config_path: config.clone(),
-                    project: project.clone(),
-                    ir_version: *ir_version,
-                    json: *json,
-                    json_lines: *json_lines,
-                    no_cache: *no_cache,
-                    elm_modes: commands::compile::ElmModeFlags {
-                        doc_comments: elm_doc_comments.clone(),
-                        ordering: elm_ordering.clone(),
+                let ready = self.ready()?;
+                run_compile(
+                    CompileOptions {
+                        language: language.clone(),
+                        extension: extension.clone(),
+                        input: input.clone(),
+                        output: output.clone(),
+                        package_name: package_name.clone(),
+                        config_path: config.clone(),
+                        project: project.clone(),
+                        ir_version: *ir_version,
+                        json: *json,
+                        json_lines: *json_lines,
+                        no_cache: *no_cache,
+                        elm_modes: commands::compile::ElmModeFlags {
+                            doc_comments: elm_doc_comments.clone(),
+                            ordering: elm_ordering.clone(),
+                        },
+                        out: self.out.clone(),
                     },
-                    out: self.out.clone(),
-                })
+                    ready,
+                )
                 .await
             }
             Commands::Generate {
@@ -1143,6 +1261,7 @@ impl AppSession for MorphirSession {
                     config,
                     project,
                 } => {
+                    let ready = self.ready()?;
                     run_gleam_compile(
                         self.out.clone(),
                         input.clone(),
@@ -1152,6 +1271,7 @@ impl AppSession for MorphirSession {
                         project.clone(),
                         *json,
                         *json_lines,
+                        ready,
                     )
                     .await
                 }
@@ -1179,6 +1299,7 @@ impl AppSession for MorphirSession {
                     config,
                     project,
                 } => {
+                    let ready = self.ready()?;
                     run_gleam_roundtrip(
                         self.out.clone(),
                         input.clone(),
@@ -1188,6 +1309,7 @@ impl AppSession for MorphirSession {
                         project.clone(),
                         *json,
                         *json_lines,
+                        ready,
                     )
                     .await
                 }
@@ -1202,6 +1324,26 @@ impl AppSession for MorphirSession {
                 Ok(None)
             }
         }
+    }
+
+    async fn shutdown(&mut self) -> AppResult<miette::Report> {
+        // starbase runs this after a failed phase too, so it may be reached with
+        // `SessionState::Bootstrapped`. It therefore reports what it has rather
+        // than assuming a completed run.
+        //
+        // The exit code is not available here: `execute` runs on a clone, so its
+        // result reaches `AppRunOutcome` rather than this session. `run()` still
+        // reports that, and this phase reports only what belongs to the session.
+        tracing::debug!(
+            target: "morphir::correlation",
+            schema_version = 1,
+            component = "cli",
+            event_name = "cli.session.shutdown",
+            operation_id = %self.operation_id,
+            configured = matches!(self.state, SessionState::Ready(_)),
+            "CLI session shutting down"
+        );
+        Ok(None)
     }
 }
 
@@ -1390,6 +1532,7 @@ async fn run() -> starbase::MainResult {
             command,
             operation_id: operation_id.clone(),
             out: commands::OutOverrides::from_process(out_dir),
+            state: SessionState::Bootstrapped,
         };
 
         // Initialize and run starbase App.
@@ -1436,5 +1579,28 @@ mod operation_diagnostic_tests {
                 .as_deref(),
             Some("[REDACTED]")
         );
+    }
+
+    /// Asking for the loaded configuration before startup has produced it is a
+    /// programming error, and it names the phase rather than returning an empty
+    /// configuration that reads as "nothing was configured". Conflating those two
+    /// is what made GH #887 silent.
+    #[test]
+    fn asking_for_ready_before_startup_names_the_phase() {
+        use super::{MorphirSession, SessionState};
+
+        let session = MorphirSession {
+            command: super::Commands::Usage,
+            operation_id: morphir::observability::OperationId::new(),
+            out: super::commands::OutOverrides::default(),
+            state: SessionState::Bootstrapped,
+        };
+
+        let failure = session
+            .ready()
+            .expect_err("no configuration before startup");
+
+        let message = failure.to_string();
+        assert!(message.contains("startup"), "{message}");
     }
 }

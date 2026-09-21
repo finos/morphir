@@ -16,24 +16,28 @@ pub async fn run_gleam_compile(
     project: Option<String>,
     json: bool,
     json_lines: bool,
+    ready: &crate::SessionReady,
 ) -> AppResult<miette::Report> {
-    run_compile(CompileOptions {
-        language: Some("gleam".to_string()), // Set language to gleam
-        extension: None,
-        input,
-        output,
-        package_name,
-        config_path,
-        project,
-        ir_version: None,
-        json,
-        json_lines,
-        // Reuse the workspace compile cache, as with the generic compile command.
-        no_cache: false,
-        // The Elm compatibility modes never reach a Gleam provider.
-        elm_modes: Default::default(),
-        out,
-    })
+    run_compile(
+        CompileOptions {
+            language: Some("gleam".to_string()), // Set language to gleam
+            extension: None,
+            input,
+            output,
+            package_name,
+            config_path,
+            project,
+            ir_version: None,
+            json,
+            json_lines,
+            // Reuse the workspace compile cache, as with the generic compile command.
+            no_cache: false,
+            // The Elm compatibility modes never reach a Gleam provider.
+            elm_modes: Default::default(),
+            out,
+        },
+        ready,
+    )
     .await
 }
 
@@ -72,6 +76,7 @@ pub async fn run_gleam_roundtrip(
     project: Option<String>,
     json: bool,
     json_lines: bool,
+    ready: &crate::SessionReady,
 ) -> AppResult<miette::Report> {
     run_gleam_compile(
         out.clone(),
@@ -82,6 +87,7 @@ pub async fn run_gleam_roundtrip(
         project.clone(),
         json,
         json_lines,
+        ready,
     )
     .await?;
 
