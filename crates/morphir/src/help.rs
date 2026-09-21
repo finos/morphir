@@ -3,6 +3,75 @@
 use owo_colors::{OwoColorize, XtermColors};
 use termimad::MadSkin;
 
+/// Resolve a presentation preference without making help depend on a valid
+/// project. Explicit controls also avoid unnecessary configuration I/O.
+pub fn banner_enabled<C: clap::CommandFactory>(args: &[String]) -> bool {
+    if no_banner_flag::<C>(args) {
+        return false;
+    }
+    if let Some(disabled) = std::env::var("MORPHIR_NO_BANNER")
+        .ok()
+        .and_then(|value| parse_boolean(&value))
+    {
+        return !disabled;
+    }
+    configured_banner().unwrap_or(true)
+}
+
+fn parse_boolean(value: &str) -> Option<bool> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
+    }
+}
+
+fn configured_banner() -> Option<bool> {
+    let directory = std::env::current_dir().ok()?;
+    let project = morphir_devkit::discover_config(&directory).ok()?;
+    let effective = morphir_devkit::load_effective_config(
+        project.as_deref(),
+        &morphir_devkit::ConfigLoadOptions::default(),
+    )
+    .ok()?;
+    effective.value.get("cli")?.get("banner")?.as_bool()
+}
+
+/// Clap normally returns before exposing matches for help/version. Use the
+/// same argument grammar, but make those actions non-exiting, so a global
+/// flag after them is still visible. This preserves option values and `--`.
+fn no_banner_flag<C: clap::CommandFactory>(args: &[String]) -> bool {
+    let mut command = C::command().disable_help_subcommand(true).subcommand(
+        clap::Command::new("help")
+            .arg(clap::Arg::new("commands").num_args(0..))
+            .arg(
+                clap::Arg::new("all")
+                    .long("all")
+                    .aliases(["full", "experimental"])
+                    .action(clap::ArgAction::SetTrue),
+            ),
+    );
+    command.build();
+    non_exiting_help(command)
+        .try_get_matches_from(args)
+        .ok()
+        .is_some_and(|matches| matches.get_flag("no_banner"))
+}
+
+fn non_exiting_help(command: clap::Command) -> clap::Command {
+    command
+        .ignore_errors(true)
+        .disable_help_subcommand(true)
+        .mut_args(|argument| match argument.get_action() {
+            clap::ArgAction::Help
+            | clap::ArgAction::HelpShort
+            | clap::ArgAction::HelpLong
+            | clap::ArgAction::Version => argument.action(clap::ArgAction::SetTrue),
+            _ => argument,
+        })
+        .mut_subcommands(non_exiting_help)
+}
+
 /// Print the Morphir ASCII art banner with branded colors.
 pub fn print_banner() {
     // Morphir brand colors: blue (#00A3E0) and orange (#F26522)

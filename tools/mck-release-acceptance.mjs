@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createConnection } from "node:net";
+import { verifyReleaseVersion } from "./mck-release-version.mjs";
 
 const tag = process.env.RELEASE_TAG;
 const target = process.env.RELEASE_TARGET;
@@ -64,8 +65,8 @@ if (process.platform === "win32") {
 }
 if (JSON.stringify(await readdir(install)) !== JSON.stringify([executable])) throw new Error("unexpected extracted release files");
 const cli = path.join(install, executable);
-const reportedVersion = run(cli, ["--version"], { env: { ...process.env, MORPHIR_LOG_FILE: "false" } });
-if (reportedVersion !== `morphir ${version}`) throw new Error(`release version mismatch: ${reportedVersion}`);
+const reportedVersion = verifyReleaseVersion(run(cli, ["--version"], { env: { ...process.env, MORPHIR_LOG_FILE: "false" } }), version);
+await writeFile(path.join(evidence, "release.json"), `${JSON.stringify({ tag, commit, target, archive, sha256: actual, reportedVersion }, null, 2)}\n`);
 
 // Compile while network and Cargo are available; execute this exact artifact later.
 const build = run("cargo", ["test", "--locked", "--package", "morphir", "--target", target, "--test", "mck_run", "--no-run", "--message-format=json-render-diagnostics"]);
