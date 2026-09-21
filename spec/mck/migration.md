@@ -22,7 +22,11 @@ release configuration, task scripts, manifests and source, at the parent pins
 and current remote heads. TypeScript `14f80183` and Rust `3db427f6` were the
 only binding repositories with active legacy runner consumers. [TypeScript #32](https://github.com/finos/morphir-typescript/pull/32) and
 [Rust #192](https://github.com/finos/morphir-rust/pull/192) remove those consumers
-while retaining the required native gates. The parent pins their reviewed retirement revisions.
+while retaining the required native gates. The parent pins their merged retirement revisions: TypeScript
+`4ae09cbd574c98aefacfd4696132001b770bb1bf` and Rust
+`291536fd13d126dc6e374bddc1f0ec01da1298d9`. Both binding PRs passed CI and
+independent review. Damian approved the final cutover on 2026-09-21, with
+parent landing conditional on passing checks and reviews.
 
 | Repository | Audited parent pin | Audited remote main | Result |
 | --- | --- | --- | --- |
