@@ -157,3 +157,88 @@ fn a_package_name_override_replaces_the_path_but_not_the_exposure() {
     assert_eq!(modules[0][0], serde_json::json!([["acme"], ["widget"]]));
     assert_eq!(modules[0][1]["access"], "Public");
 }
+
+/// `--input` inside a project keeps the project's package name while exposing
+/// only the submitted module. This is the "isolated compile borrowing the
+/// project's identity" case: the project's other sources are NOT compiled and
+/// NOT available for import resolution.
+#[test]
+fn a_selection_inside_a_project_keeps_project_identity_and_narrows_exposure() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['A', 'B']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
+    )
+    .unwrap();
+    fs::write(dir.join("src/A.elm"), "module A exposing (Alpha)\n\n\ntype alias Alpha =\n    Int\n").unwrap();
+    fs::write(dir.join("src/B.elm"), "module B exposing (Beta)\n\n\ntype alias Beta =\n    Int\n").unwrap();
+
+    // `--config` is required: a standalone `--input` compile does not load an
+    // adjacent morphir.toml. It is also what makes this the manifest-origin
+    // case at all, since the spec's manifest origin means "selected or loaded".
+    let (ok, _out, err) = morphir(dir, &["compile", "--input", "src/A.elm", "--config", "morphir.toml"]);
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: the package path comes from the project's manifest name
+    // (`acme/widgets`, split on `/`), NOT from the selected module's own
+    // dotted name — this is the "borrows the project's identity" behaviour.
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["acme"], ["widgets"]])
+    );
+
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    let module_names: Vec<_> = modules.iter().map(|m| m[0].clone()).collect();
+    // Observed: exactly the selected module `A` (word-list `[["a"]]`) is
+    // exposed. The negative assertion matters more than the positive one:
+    // `B`, though listed in the manifest's `exposed_modules` and present on
+    // disk in the same source directory, is NOT compiled or exposed, because
+    // only the module named by `--input` was ever submitted.
+    assert_eq!(
+        module_names,
+        vec![serde_json::json!([["a"]])],
+        "expected exactly module A, got {module_names:?}"
+    );
+    assert!(
+        !module_names.contains(&serde_json::json!([["b"]])),
+        "unselected sibling module B must not appear in exposure, got {module_names:?}"
+    );
+}
+
+/// A selected file's `import` of an unselected sibling module from the same
+/// project must NOT resolve: the project's other sources are never submitted
+/// to the provider for a single-file `--input` compile, even though the
+/// manifest lists them and they sit right next to the selected file on disk.
+#[test]
+fn a_selection_cannot_import_an_unselected_sibling_module() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['A', 'B']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("src/A.elm"),
+        "module A exposing (Alpha)\n\nimport B exposing (Beta)\n\n\ntype alias Alpha =\n    Beta\n",
+    )
+    .unwrap();
+    fs::write(dir.join("src/B.elm"), "module B exposing (Beta)\n\n\ntype alias Beta =\n    Int\n").unwrap();
+
+    let (ok, _out, err) = morphir(dir, &["compile", "--input", "src/A.elm", "--config", "morphir.toml"]);
+    // Observed: compilation fails. The provider treats the unsubmitted `B` as
+    // absent and reports `Beta` unresolved from it, rather than resolving the
+    // sibling file that sits right next to `A.elm` on disk. This confirms the
+    // design's decision that a single-file `--input` compile submits only the
+    // selected module; the project's other sources are never available for
+    // import resolution even though the manifest lists them.
+    assert!(!ok, "expected the compile to fail, but it succeeded: {err}");
+    assert!(
+        err.contains('B') && err.contains("not found"),
+        "expected an unresolved-import error mentioning `B`, got: {err}"
+    );
+}
