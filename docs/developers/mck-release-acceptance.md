@@ -19,9 +19,13 @@ The acquisition home, temporary files, and downloaded archive are removed before
 runtime acceptance.
 
 Before isolation, every matrix target also runs the native `runner_parity` and
-`transport` integration suites. These source tests exercise transcript replay and
-hostile adapter behavior on each platform; their log is retained separately from
-the published executable's runtime evidence.
+`transport` integration suites. Tags with package support, starting at beta.3, also
+run `package_corpus`, `package_protocol` and `package_runner`. Preparation selects
+these targets from the checked-out tag's Cargo metadata and rejects a partial
+package test inventory. Older tags retain their original IR-only qualification.
+These source tests exercise corpus validation, transcript replay and hostile
+adapter behavior on each platform; their log is retained separately from the
+published executable's runtime evidence.
 
 The runtime copies the installed CLI, replay adapter, transcript and acquired kit
 into another temporary directory. It uses an empty tool path and a fresh home. The
@@ -48,8 +52,22 @@ snapshot digest and every ordered record with a run against the checked-out sour
 kit, excluding only the already documented volatile duration fields. It also checks
 that modifying a schema after acquisition fails manifest verification.
 
+Starting at beta.3, the same runtime also runs all 80 package integrity and 78
+resolution cases. It copies `spec/package` from the checked-out tag into its
+temporary directory and supplies that explicit path to `morphir mck package run`.
+This is a copied package corpus, separate from the managed IR kit; it does not
+qualify package `kit vendor` or acquisition support. Missing or malformed package
+inputs fail acceptance. Fixed recordings of the independent TypeScript adapter
+provide the responses. Both runs must preserve their fixed corpus hashes, pass
+every case and reproduce the complete ordered frozen reports, excluding only
+`driverVersion` and `startedAt`. The [baseline provenance](https://github.com/finos/morphir/blob/main/spec/mck/baseline/package/README.md)
+records the source revisions and capture procedure.
+
 Each matrix job uploads acquisition metadata, the network-denial result, kit status,
-source and acquired-kit reports, HTML, and runtime logs. Checksums establish archive
+source and acquired-kit reports, HTML, and runtime logs. Package-capable tags also
+upload `package-integrity.json`, `package-resolution.json` and `package-runtime.json`.
+The latter records contract versions, hashes, passing counts and the network probe.
+Checksums establish archive
 integrity relative to the published checksum; they do not authenticate an independent
 publisher. The replay proves runner behavior against fixed answers, not an independent
 binding's implementation. Separate binding adoption gates remain necessary.
@@ -59,3 +77,8 @@ kit. `MORPHIR_MCK_PREACQUIRED_KIT` selects a previously acquired snapshot direct
 `MORPHIR_MCK_INSTALLED_CLI` selects the executable to test. The workflow compiles the
 harness before isolation and runs its executable directly. Do not infer published or
 cross-platform acceptance from a local source build passing the smoke test.
+
+For package acceptance regressions, `MORPHIR_MCK_PACKAGE_CORPUS` overrides the
+`spec/package` directory to copy and `MORPHIR_MCK_PACKAGE_BASELINE` overrides the
+recordings/reports directory. These are test-harness inputs, not CLI configuration.
+Release workflows use the checked-out tag's defaults.

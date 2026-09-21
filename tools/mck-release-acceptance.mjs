@@ -7,6 +7,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createConnection } from "node:net";
 import { verifyReleaseVersion } from "./mck-release-version.mjs";
+import { sourceQualificationTargets } from "./mck-release-qualification.mjs";
 
 const tag = process.env.RELEASE_TAG;
 const target = process.env.RELEASE_TARGET;
@@ -74,12 +75,14 @@ const artifacts = build.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(
   .filter((entry) => entry.reason === "compiler-artifact" && entry.target.name === "mck_run" && entry.executable);
 if (artifacts.length !== 1) throw new Error("expected one native mck_run test executable");
 
-// Source-level runner parity and hostile transport coverage complement the
-// published executable smoke. These native tests run on every matrix platform.
-const qualification = spawnSync("cargo", ["test", "--locked", "--package", "morphir-mck", "--target", target, "--test", "runner_parity", "--test", "transport"], {
+// The tagged source defines available suites. Keep old IR-only releases
+// qualifiable, and require the complete package test set once it exists.
+const metadata = JSON.parse(run("cargo", ["metadata", "--locked", "--no-deps", "--format-version", "1"]));
+const qualificationTargets = sourceQualificationTargets(metadata);
+const qualification = spawnSync("cargo", ["test", "--locked", "--package", "morphir-mck", "--target", target, ...qualificationTargets.flatMap(name => ["--test", name])], {
   cwd: root, encoding: "utf8", timeout: 600_000, maxBuffer: 16 * 1024 * 1024,
 });
-await writeFile(path.join(evidence, "source-transport.log"), `${qualification.stdout ?? ""}\n${qualification.stderr ?? ""}`);
+await writeFile(path.join(evidence, "source-transport.log"), `Source qualification tests: ${qualificationTargets.join(", ")}\n${qualification.stdout ?? ""}\n${qualification.stderr ?? ""}`);
 if (qualification.error || qualification.status !== 0) throw new Error(`source transport qualification failed: ${qualification.error ?? qualification.status}\n${qualification.stdout}\n${qualification.stderr}`);
 
 // Prove the exact direct TCP probe works before applying network denial.

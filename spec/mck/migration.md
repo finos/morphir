@@ -364,8 +364,13 @@ Rust `291536fd`. Both implementations pass both suites without required skips.
 Integrity identifies `sha256-72b6593c99af919076e59208b833771394d659838e28ee4c23554ee7f5590e23`;
 resolution identifies `sha256-8dfed22a389bd08e945b35213586b0709f2cf11f5426199bcec746007443b08b`.
 
-Package cutover remains open. The published beta.2 runner and six-target release
-qualification cover IR only. Before retirement, publish and qualify a CLI with
+Package cutover remains open. The published beta.2 runner and its six-target release
+qualification cover IR only. Beta.3 adds package execution and extends the existing
+installed-CLI acceptance harness to both package contracts. It uses fixed adapter
+recordings and an explicit copy of `spec/package`, separate from managed IR kit
+acquisition. See [release acceptance](../../docs/developers/mck-release-acceptance.md)
+for the six-target workflow and evidence. Adding the gate does not itself establish
+a published-release qualification result. Before retirement, publish and qualify a CLI with
 package execution, migrate TypeScript's installed npm artifact checks and other
 consumers, review API migration guidance, then retire the replaced runner paths.
 Keep package adapters, independent implementation tests and historical artifacts.

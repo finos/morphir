@@ -12,6 +12,17 @@ CARGO_LOCK_PATH = REPO_ROOT / "Cargo.lock"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_package_acceptance_baselines_trigger_cli_tests(self) -> None:
+        rust_filter = self.ci_workflow.split("            rust:\n", 1)[1].split(
+            "            rust-conformance:\n", 1
+        )[0]
+        self.assertIn("- 'spec/mck/baseline/package/**'", rust_filter)
+        cli_job = self.ci_workflow.split("    name: morphir CLI (test + integration)", 1)[1].split(
+            "\n  check-cli-docs:", 1
+        )[0]
+        self.assertIn("needs.changes.outputs.rust == 'true'", cli_job)
+        self.assertIn("cargo test --locked --package morphir", cli_job)
+
     def test_linux_offline_evidence_is_readable_by_the_artifact_uploader(self) -> None:
         workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
         self.assertIn("name: Restore Linux evidence ownership", workflow)
@@ -66,7 +77,11 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("published CLI archive checksum mismatch", prepare)
         self.assertIn('"--no-run", "--message-format=json-render-diagnostics"', prepare)
         self.assertIn('entry.target.name === "mck_run" && entry.executable', prepare)
-        self.assertIn('"--test", "runner_parity", "--test", "transport"', prepare)
+        self.assertIn('sourceQualificationTargets(metadata)', prepare)
+        self.assertIn('"metadata", "--locked", "--no-deps", "--format-version", "1"', prepare)
+        self.assertIn('...qualificationTargets.flatMap(name => ["--test", name])', prepare)
+        self.assertIn("tools/mck-release-qualification.test.mjs", self.ci_workflow)
+        self.assertIn("- 'tools/mck-release-qualification*.mjs'", self.ci_workflow)
         self.assertIn('source-transport.log', prepare)
         self.assertIn('"--source", "github:finos/morphir", "--revision", commit', prepare)
         self.assertIn('run("git", ["rev-parse", `${tag}^{commit}`]) !== commit', prepare)
@@ -89,7 +104,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_workspace_uses_release_prerelease_version(self) -> None:
         workspace = tomllib.loads(WORKSPACE_TOML_PATH.read_text(encoding="utf-8"))
-        self.assertEqual("0.4.0-beta.2", workspace["workspace"]["package"]["version"])
+        self.assertEqual("0.4.0-beta.3", workspace["workspace"]["package"]["version"])
 
         lockfile = tomllib.loads(CARGO_LOCK_PATH.read_text(encoding="utf-8"))
         workspace_packages = {
@@ -98,7 +113,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
             if package["name"] in {"morphir", "morphir-mck"}
         }
         self.assertEqual(
-            {"morphir": "0.4.0-beta.2", "morphir-mck": "0.4.0-beta.2"},
+            {"morphir": "0.4.0-beta.3", "morphir-mck": "0.4.0-beta.3"},
             workspace_packages,
         )
 

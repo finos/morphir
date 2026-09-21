@@ -82,7 +82,10 @@ jobs:
       # Preparation exports MCK_TEST_EXE, MORPHIR_MCK_INSTALLED_CLI,
       # MORPHIR_MCK_PREACQUIRED_KIT and MORPHIR_MCK_REQUIRE_NETWORK_DENIAL.
       # Each runtime executes only the precompiled native test and its copied
-      # CLI/replay adapter. An explicit TCP probe must fail under isolation.
+      # CLI/replay adapter. New tags exercise both IR and package suites; older
+      # tags retain their original harness and suite coverage. Package inputs
+      # are explicit copied snapshots, separate from the managed IR kit.
+      # An explicit TCP probe must fail under isolation.
       - name: Accept without networking on Linux
         if: runner.os == 'Linux'
         timeout-minutes: 6

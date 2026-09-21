@@ -1,0 +1,424 @@
+{
+	"suite": "package",
+	"contractVersion": "0.1.0-draft.1",
+	"driverVersion": "0.4.0-beta.2",
+	"kit": {
+		"formatVersion": "0.1.0-draft.1",
+		"contentHash": "sha256-72b6593c99af919076e59208b833771394d659838e28ee4c23554ee7f5590e23"
+	},
+	"startedAt": "2026-09-21T17:54:08.822Z",
+	"testee": {
+		"suite": "package",
+		"contractVersion": "0.1.0-draft.1",
+		"implementation": "morphir-typescript",
+		"implementationVersion": "0.3.0",
+		"operations": [
+			"normalize",
+			"hash-bytes",
+			"validate",
+			"verify-library-set"
+		]
+	},
+	"records": [
+		{
+			"caseId": "empty-object",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "metadata",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "metadata-reordered",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "array-order",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "array-reversed",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "escaped-printable",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "numeric-looking-keys",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "empty-array",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "string",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "special-keys",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "duplicate-root",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "duplicate-nested",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "duplicate-escaped",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "number",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "nested-number",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "boolean",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "nested-boolean",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "null",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "nested-null",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "control-value",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "control-key",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "del-value",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "del-key",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "nonascii-value",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "nonascii-key",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "unicode-escape",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "surrogate",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "raw-control",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "trailing-content",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "invalid-json",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "fixture-eligibility-manifest",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "fixture-loan-rules-manifest",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "leading-bom",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "depth-64-arrays",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "depth-65-arrays",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "depth-64-objects",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "depth-65-objects",
+			"operation": "normalize",
+			"result": "pass"
+		},
+		{
+			"caseId": "empty-bytes",
+			"operation": "hash-bytes",
+			"result": "pass"
+		},
+		{
+			"caseId": "ascii-bytes",
+			"operation": "hash-bytes",
+			"result": "pass"
+		},
+		{
+			"caseId": "ascii-lf",
+			"operation": "hash-bytes",
+			"result": "pass"
+		},
+		{
+			"caseId": "ascii-crlf",
+			"operation": "hash-bytes",
+			"result": "pass"
+		},
+		{
+			"caseId": "binary-bytes",
+			"operation": "hash-bytes",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.manifest",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.consumer",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.lock-core",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.unknown-field",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.wrong-domain",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.unknown-version",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.package-authority",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.uppercase-authority",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.major-in-path",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.release-leading-zero",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.prerelease-outside-profile",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.release-in-ir-name",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.ir-dot-authority",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.payload-traversal",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.absolute-path",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.payload-version-type",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.empty-content",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.unknown-export",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.unsafe-content",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.wrong-hash",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.null-dependencies",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.required-ir",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.ir-initialism",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.requirement-identity",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.range-required-upper",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.lock-node-id",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.lock-unknown-field",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.schema.lock-hash",
+			"operation": "validate",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.two-libraries",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.unknown-root",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.unknown-target",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.wrong-content-digest",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.wrong-manifest-digest",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.changed-payload-byte",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.wrong-ir-name",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.wrong-release",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.missing-binding",
+			"operation": "verify-library-set",
+			"result": "pass"
+		},
+		{
+			"caseId": "package.library.duplicate-key",
+			"operation": "verify-library-set",
+			"result": "pass"
+		}
+	]
+}

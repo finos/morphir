@@ -61,6 +61,8 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/**'
+              # mck_run in the CLI crate replays and compares these frozen inputs.
+              - 'spec/mck/baseline/package/**'
               # crates/morphir path-depends on crates inside this submodule,
               # so a ref bump changes compiled source
               - 'ecosystem/morphir-rust'
@@ -182,6 +184,7 @@ jobs:
               - '.github/workflows/mck-release-acceptance.yml'
               - 'tools/mck-release-acceptance.mjs'
               - 'tools/mck-release-version*.mjs'
+              - 'tools/mck-release-qualification*.mjs'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/morphir/Cargo.toml'
@@ -579,8 +582,8 @@ jobs:
       - name: Validate release acceptance preparation syntax
         run: node --check tools/mck-release-acceptance.mjs
 
-      - name: Test published CLI version verification
-        run: node --test tools/mck-release-version.test.mjs
+      - name: Test published CLI version and qualification selection
+        run: node --test tools/mck-release-version.test.mjs tools/mck-release-qualification.test.mjs
 
   check:
     name: All Checks

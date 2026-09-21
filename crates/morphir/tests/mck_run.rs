@@ -12,6 +12,9 @@ use std::process::Output;
 
 use serde_json::Value;
 
+#[path = "support/package_acceptance.rs"]
+mod package_acceptance;
+
 const ADAPTER_FLAG: &str = "--mck-test-adapter";
 
 fn repo() -> PathBuf {
@@ -329,10 +332,19 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
             .contains("<!doctype html>")
     );
 
+    package_acceptance::qualify(work.path(), &adapter, &run, denied_probe.as_deref());
+
     if let Some(directory) = std::env::var_os("MORPHIR_MCK_ACCEPTANCE_EVIDENCE") {
         let directory = Path::new(&directory);
         std::fs::create_dir_all(directory).unwrap();
-        for name in ["source.json", "report.json", "report.html"] {
+        for name in [
+            "source.json",
+            "report.json",
+            "report.html",
+            "package-integrity.json",
+            "package-resolution.json",
+            "package-runtime.json",
+        ] {
             std::fs::copy(work.path().join(name), directory.join(name)).unwrap();
         }
         std::fs::write(directory.join("kit-status.json"), status.stdout).unwrap();
@@ -601,6 +613,26 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "installed_cli_qualification_requires_package_evidence",
+            package_acceptance::installed_cli_qualification_requires_package_evidence,
+        ),
+        (
+            "missing_package_corpus_fails_qualification",
+            package_acceptance::missing_package_corpus_fails_qualification,
+        ),
+        (
+            "malformed_package_corpus_fails_qualification",
+            package_acceptance::malformed_package_corpus_fails_qualification,
+        ),
+        (
+            "altered_package_replay_fails_qualification",
+            package_acceptance::altered_package_replay_fails_qualification,
+        ),
+        (
+            "altered_expected_package_report_fails_qualification",
+            package_acceptance::altered_expected_package_report_fails_qualification,
+        ),
         (
             "copied_snapshots_preserve_unexpected_inputs_for_verification",
             copied_snapshots_preserve_unexpected_inputs_for_verification,

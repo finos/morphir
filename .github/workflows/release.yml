@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to release (for example, v0.4.0-beta.2)'
+        description: 'Existing tag to release (for example, v0.4.0-beta.3)'
         required: true
         type: string
 
@@ -149,8 +149,9 @@ jobs:
           $cli = (Resolve-Path "release-smoke/morphir.exe").Path
           "MORPHIR_MCK_INSTALLED_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      # The native test harness doubles as a transcript adapter. Only the copied
-      # CLI/adapter and vendored inputs enter the isolated child environment.
+      # The native harness doubles as a transcript adapter for IR and package
+      # suites. The copied CLI runs with an empty tool path against a managed IR
+      # kit and explicit package snapshots, using fixed recorded answers.
       - name: Verify packaged MCK CLI
         run: cargo test --locked --release --package morphir --target ${{ matrix.target }} --test mck_run installed_cli_runs_vendored_kit_without_tool_runtimes
 
