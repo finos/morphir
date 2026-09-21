@@ -1286,6 +1286,26 @@ impl AppSession for MorphirSession {
             }
         }
     }
+
+    async fn shutdown(&mut self) -> AppResult<miette::Report> {
+        // starbase runs this after a failed phase too, so it may be reached with
+        // `SessionState::Bootstrapped`. It therefore reports what it has rather
+        // than assuming a completed run.
+        //
+        // The exit code is not available here: `execute` runs on a clone, so its
+        // result reaches `AppRunOutcome` rather than this session. `run()` still
+        // reports that, and this phase reports only what belongs to the session.
+        tracing::debug!(
+            target: "morphir::correlation",
+            schema_version = 1,
+            component = "cli",
+            event_name = "cli.session.shutdown",
+            operation_id = %self.operation_id,
+            configured = matches!(self.state, SessionState::Ready(_)),
+            "CLI session shutting down"
+        );
+        Ok(None)
+    }
 }
 
 fn report_operation_outcome(
