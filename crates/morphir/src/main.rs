@@ -822,6 +822,13 @@ enum KbDecisionAction {
 /// command deciding for itself. The `Option` goes away when `EffectiveConfig`
 /// replaces `ConfigContext`, which is a later increment.
 ///
+/// `start_dir` is also an `Option`, and for the same reason `config` is:
+/// `startup` only calls `std::env::current_dir()` when it is actually
+/// resolving configuration (a whole-project compile). Every other command
+/// must reach `Ready` without touching the filesystem, so it gets `None`
+/// here rather than a syscall it doesn't need, or a placeholder that would
+/// misrepresent "no working directory was read" as a real path.
+///
 /// `startup` is the only producer today; no phase reads `start_dir` or
 /// `config` back out yet, so both fields are dead code until the next
 /// lifecycle task wires a consumer through `MorphirSession::ready`. Allowed
@@ -830,7 +837,7 @@ enum KbDecisionAction {
 #[derive(Debug)]
 #[allow(dead_code)]
 struct Ready {
-    start_dir: std::path::PathBuf,
+    start_dir: Option<std::path::PathBuf>,
     config: Option<morphir_devkit::ConfigContext>,
 }
 
@@ -880,13 +887,12 @@ impl AppSession for MorphirSession {
     type Error = miette::Report;
 
     async fn startup(&mut self) -> AppResult<miette::Report> {
-        let start_dir = std::env::current_dir()
-            .map_err(|error| crate::error::CliError::FileSystem { error })?;
-
         // Only a whole-project compile has its configuration resolved here. The
         // single-file path applies a different rule (configuration optional,
         // discovery only under `--project`), and unifying them would change
-        // behaviour, so it still resolves its own.
+        // behaviour, so it still resolves its own. Every other command must
+        // reach `Ready` without touching the filesystem at all, so
+        // `current_dir()` is called only inside this branch, not up front.
         let compile = match &self.command {
             Commands::Compile {
                 config,
@@ -904,9 +910,14 @@ impl AppSession for MorphirSession {
             _ => None,
         };
 
-        let config = match compile {
-            None => None,
+        let ready = match compile {
+            None => Ready {
+                start_dir: None,
+                config: None,
+            },
             Some((config_flag, project_flag)) => {
+                let start_dir = std::env::current_dir()
+                    .map_err(|error| crate::error::CliError::FileSystem { error })?;
                 let config_file = match config_flag.as_deref() {
                     Some(path) => {
                         commands::compile::absolute_from(&start_dir, std::path::Path::new(path))
@@ -929,11 +940,14 @@ impl AppSession for MorphirSession {
                     },
                 )
                 .map_err(|error| crate::error::CliError::Config { error })?;
-                Some(context)
+                Ready {
+                    start_dir: Some(start_dir),
+                    config: Some(context),
+                }
             }
         };
 
-        self.state = SessionState::Ready(std::sync::Arc::new(Ready { start_dir, config }));
+        self.state = SessionState::Ready(std::sync::Arc::new(ready));
 
         Ok(None)
     }
