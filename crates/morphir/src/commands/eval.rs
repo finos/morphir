@@ -2,7 +2,9 @@
 
 use clap::Args;
 use miette::{Context, IntoDiagnostic, Result};
-use morphir_evaluator::{EvaluationOutcome, EvaluationRequest, Evaluator, ProviderId};
+#[cfg(feature = "rego")]
+use morphir_evaluator::Evaluator;
+use morphir_evaluator::{EvaluationOutcome, EvaluationReport, EvaluationRequest, ProviderId};
 use std::{fs, path::PathBuf};
 
 #[derive(Args, Clone, Debug)]
@@ -22,12 +24,7 @@ pub fn run_eval(args: EvalArgs) -> Result<()> {
     let request: EvaluationRequest = serde_json::from_slice(&source)
         .into_diagnostic()
         .wrap_err("invalid evaluation request")?;
-    // Native registration only. Installed extension providers require protocol
-    // capability negotiation before they can implement this contract.
-    let evaluator: &dyn Evaluator = match request.provider() {
-        ProviderId::Rego => &morphir_opa::RegoEvaluator,
-    };
-    let report = evaluator.evaluate(&request);
+    let report = evaluate(&request)?;
     if args.json {
         println!("{}", serde_json::to_string(&report).into_diagnostic()?);
     } else {
@@ -45,4 +42,25 @@ pub fn run_eval(args: EvalArgs) -> Result<()> {
         miette::bail!("evaluation failed; see the evaluation report");
     }
     Ok(())
+}
+
+// Native registration only. Installed extension providers require protocol
+// capability negotiation before they can implement this contract.
+#[cfg(feature = "rego")]
+fn evaluate(request: &EvaluationRequest) -> Result<EvaluationReport> {
+    let evaluator: &dyn Evaluator = match request.provider() {
+        ProviderId::Rego => &morphir_opa::RegoEvaluator,
+    };
+    Ok(evaluator.evaluate(request))
+}
+
+#[cfg(not(feature = "rego"))]
+fn evaluate(request: &EvaluationRequest) -> Result<EvaluationReport> {
+    match request.provider() {
+        ProviderId::Rego => miette::bail!(
+            "the Rego evaluator is unavailable: this binary was built without the `rego` \
+             feature (enabled by default). Rebuild without `--no-default-features`, or with \
+             `--features rego`, to evaluate Rego programs."
+        ),
+    }
 }
