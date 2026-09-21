@@ -6,6 +6,7 @@
 - **Usage:** `morphir [FLAGS] [SUBCOMMAND]`
 
 ## Global Flags
+- **`--no-banner`** — Suppress the banner. Overrides MORPHIR_NO_BANNER and [cli] banner
 - **`--out-dir <PATH>`** — Relocate the out root, which defaults to .morphir/out under the workspace root. MORPHIR_OUT_DIR does the same
 
 ## Flags

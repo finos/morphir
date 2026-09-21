@@ -43,6 +43,10 @@ use commands::{
 #[command(version)]
 #[command(disable_version_flag = true)]
 struct Cli {
+    /// Suppress the banner. Overrides MORPHIR_NO_BANNER and [cli] banner.
+    #[arg(long, global = true)]
+    no_banner: bool,
+
     /// Print help including experimental commands
     #[arg(long)]
     help_all: bool,
@@ -1423,7 +1427,7 @@ async fn run() -> starbase::MainResult {
         // Check for help/version flags first to print our custom banner
         let args: Vec<String> = std::env::args().collect();
 
-        if help::should_show_banner(&args) {
+        if help::should_show_banner(&args) && help::banner_enabled::<Cli>(&args) {
             help::print_banner();
         }
 

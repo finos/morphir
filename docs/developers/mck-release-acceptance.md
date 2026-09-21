@@ -7,7 +7,10 @@ existing CLI release on all six supported native targets. Run it after the relea
 assets are published, with a tag containing the acceptance harness. It does not
 publish a release or change consumer version pins.
 
-The workflow checks out that tag and verifies the native archive against its
+The workflow checks out that tag as its source and loads preparation tooling from
+the workflow's own commit in a separate directory. This lets qualification fixes
+test an existing release without moving its tag or rebuilding its binaries.
+The preparation verifies the native archive against its
 published SHA-256 file. It compiles the existing `mck_run` integration harness,
 which also provides a native adapter replaying fixed protocol answers. The installed
 CLI acquires a kit from the tag's exact full source commit. A fresh consumer Git
