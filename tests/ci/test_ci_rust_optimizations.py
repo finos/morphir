@@ -29,7 +29,7 @@ class CiRustOptimizationTests(unittest.TestCase):
     def test_rust_jobs_use_shared_setup_action(self) -> None:
         self.assertEqual(
             self.ci_workflow.count("uses: ./.github/actions/setup-rust-ci"),
-            5,
+            6,
         )
 
     def test_setup_rust_ci_action_shares_cargo_cache(self) -> None:

@@ -4,6 +4,8 @@
 use serde::Serialize;
 use serde_json::ser::{PrettyFormatter, Serializer};
 
+pub(crate) mod strict;
+
 pub fn to_tab_json(value: &impl Serialize) -> String {
     let mut out = Vec::new();
     let mut serializer = Serializer::with_formatter(&mut out, PrettyFormatter::with_indent(b"\t"));

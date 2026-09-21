@@ -30,6 +30,7 @@ use morphir_mck::transport::{Limits, Session};
 use serde_json::json;
 use starbase::AppResult;
 
+pub mod package;
 pub mod report;
 
 #[derive(Args, Clone, Debug)]

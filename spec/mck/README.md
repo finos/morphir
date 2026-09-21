@@ -8,7 +8,7 @@ Each suite defines observable behavior through stable cases, expected results, a
 | Suite | Contract | Location and status |
 | --- | --- | --- |
 | IR | IR serialization, normalization, diagnostics, and document-tree behavior | [IR suite](../ir/mck/README.md), implemented |
-| Package | Package identities, exports, manifests, locks, digests, resolution, trust, and materialization | [Draft suite](../package/mck/README.md) executes Library schema, normalization/digest, and closed-set integrity cases through the shared TypeScript core; wider Stage 0 work remains in [issue #800](https://github.com/finos/morphir/issues/800) |
+| Package | Package identities, exports, manifests, locks, digests, resolution, trust, and materialization | [Draft suite](../package/mck/README.md) executes 80 integrity and 78 resolution cases through `morphir mck package run`; the TypeScript runner remains the migration baseline. Wider Stage 0 work remains in [issue #800](https://github.com/finos/morphir/issues/800) |
 
 Use **MCK IR suite** and **MCK package suite** when identifying a domain. "Conformance corpus" describes a collection
 of cases; MCK is the shared name. Generated naming and format-version fixture filenames remain stable.

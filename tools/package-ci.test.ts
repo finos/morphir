@@ -70,7 +70,11 @@ test("package CI requires one publisher check after assurance without suppressin
 	expect(publisherIndex).toBeGreaterThan(assuranceIndex);
 });
 
-for (const schema of ["package-restore-assurance-protocol.schema.json", "package-restore-assurance-report.schema.json"]) {
+for (const schema of [
+	"package-restore-assurance-protocol.schema.json", "package-restore-assurance-report.schema.json",
+	"package-protocol.schema.json", "package-report.schema.json",
+	"package-resolution-protocol.schema.json", "package-resolution-report.schema.json",
+]) {
 	test(`shared MCK ${schema} mirrors the canonical parent schema`, () => {
 		const canonical = new URL(`../spec/package/schemas/${schema}`, import.meta.url);
 		expect(existsSync(canonical)).toBe(true);
@@ -112,4 +116,19 @@ test("aggregate gate requires successful package CI when selected", () => {
 	expect(check).toContain('needs.changes.outputs.package-mck');
 	expect(check).toContain('needs.package-mck.result');
 	expect(workflow.jobs["package-mck"]?.steps.some((step) => step.run?.includes("bun test tools/rust-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts"))).toBe(true);
+});
+
+test("native package changes select parity and retain legacy baselines until cutover", () => {
+	const filters = workflow.jobs.changes?.steps.find((step) => step.with?.filters)?.with?.filters ?? "";
+	const paths = (Bun.YAML.parse(filters) as Record<string, string[]>)["package-mck"] ?? [];
+	for (const input of ["crates/morphir-mck/**", "crates/morphir/**", "Cargo.toml", "Cargo.lock", "spec/mck/baseline/package-cases.json", "tools/package-mck-parity*", "tools/run-package-native-parity.ts"]) {
+		expect(paths).toContain(input);
+	}
+	expect(tasks.tasks["package:native-parity"]?.run).toContain("bun run tools/run-package-native-parity.ts");
+	const steps = workflow.jobs["package-mck"]?.steps ?? [];
+	const nativeIndex = steps.findIndex((step) => step.run === "mise run package:native-parity");
+	expect(nativeIndex).toBeGreaterThan(steps.findIndex((step) => step.run === "mise run package:resolution-check:rust"));
+	expect(steps[nativeIndex]?.["continue-on-error"]).toBeUndefined();
+	expect(steps.some((step) => step.run?.includes("bun test tools/package-mck-parity.test.ts"))).toBe(true);
+	expect(steps.some((step) => step.uses === "./.github/actions/setup-rust-ci")).toBe(true);
 });

@@ -16,7 +16,7 @@
 use std::ffi::OsString;
 use std::fmt;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -30,7 +30,7 @@ use super::tree::{self, ProcessTree, Terminator};
 /// The bounds of one adapter session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Limits {
-    /// How long one request may wait for its answer.
+    /// Total time to write one request and read its answer.
     pub request_timeout: Duration,
     /// How long the whole session may last.
     pub session_timeout: Duration,
@@ -40,7 +40,7 @@ pub struct Limits {
     pub stderr_capture: usize,
     /// How long to wait for an exit status after stdout closes.
     pub exit_grace: Duration,
-    /// How long to wait after the `exit` request before terminating.
+    /// Total time to write `exit` and wait for the process before terminating.
     pub shutdown_grace: Duration,
 }
 
@@ -131,6 +131,83 @@ enum Frame {
     Eof,
 }
 
+#[derive(Clone, Copy)]
+enum EnvelopePolicy {
+    LegacyIr,
+    RejectDuplicateMembers,
+}
+
+/// One absolute deadline covers writing a request and reading its response.
+struct Deadline {
+    at: Instant,
+    error: TransportError,
+}
+
+impl Deadline {
+    fn remaining(&self) -> Result<Duration, TransportError> {
+        self.at
+            .checked_duration_since(Instant::now())
+            .filter(|duration| !duration.is_zero())
+            .ok_or_else(|| self.error.clone())
+    }
+
+    fn receive<T>(&self, receiver: &Receiver<T>) -> Result<Option<T>, TransportError> {
+        let result = receiver.recv_timeout(self.remaining()?);
+        // recv_timeout(0) can return a queued item. An expired deadline must
+        // win even when a write completion or response is already buffered.
+        self.remaining()?;
+        match result {
+            Ok(value) => Ok(Some(value)),
+            Err(RecvTimeoutError::Disconnected) => Ok(None),
+            Err(RecvTimeoutError::Timeout) => Err(self.error.clone()),
+        }
+    }
+}
+
+struct WriteTask {
+    line: String,
+    completed: Sender<Result<(), String>>,
+}
+
+/// A single worker owns stdin, so pipe backpressure never blocks the session
+/// thread. At most one request is in flight; timeout breaks the session and
+/// process-tree cleanup closes the pipe and releases a stalled worker.
+struct InputWriter {
+    requests: Sender<WriteTask>,
+}
+
+impl InputWriter {
+    fn spawn(mut stdin: impl Write + Send + 'static) -> Self {
+        let (requests, pending) = mpsc::channel::<WriteTask>();
+        thread::spawn(move || {
+            while let Ok(task) = pending.recv() {
+                let result = stdin
+                    .write_all(task.line.as_bytes())
+                    .and_then(|()| stdin.flush())
+                    .map_err(|error| error.to_string());
+                let failed = result.is_err();
+                let _ = task.completed.send(result);
+                if failed {
+                    break;
+                }
+            }
+        });
+        Self { requests }
+    }
+
+    fn write(&self, line: String, deadline: &Deadline) -> Result<(), TransportError> {
+        deadline.remaining()?;
+        let (completed, result) = mpsc::channel();
+        self.requests
+            .send(WriteTask { line, completed })
+            .map_err(|_| TransportError::StdinClosed("writer stopped".into()))?;
+        deadline
+            .receive(&result)?
+            .ok_or_else(|| TransportError::StdinClosed("writer stopped".into()))?
+            .map_err(TransportError::StdinClosed)
+    }
+}
+
 /// Reads newline-terminated frames, each at most `max` bytes. A final chunk
 /// with no newline is a frame too. Stops at the first frame it cannot pass on.
 fn read_frames(stdout: impl Read, frames: Sender<Frame>, max: usize) {
@@ -200,7 +277,7 @@ fn drain_stderr(mut stderr: impl Read, kept: Arc<Mutex<Vec<u8>>>, capture: usize
 pub struct Session {
     child: Child,
     tree: ProcessTree,
-    stdin: Option<ChildStdin>,
+    stdin: Option<InputWriter>,
     frames: Receiver<Frame>,
     stderr: Arc<Mutex<Vec<u8>>>,
     next_id: u64,
@@ -251,7 +328,9 @@ impl Session {
         thread::spawn(move || drain_stderr(pipe, kept, limits.stderr_capture));
 
         Ok(Self {
-            stdin: child.stdin.take(),
+            stdin: Some(InputWriter::spawn(
+                child.stdin.take().expect("stdin is piped"),
+            )),
             child,
             tree,
             frames,
@@ -284,27 +363,77 @@ impl Session {
 
     /// Sends `request` and returns the body of its answer, without the id.
     pub fn exchange(&mut self, request: &Request) -> Result<Map<String, Value>, TransportError> {
+        self.exchange_line(|id| Ok(request.line(id)), EnvelopePolicy::LegacyIr)
+    }
+
+    /// Carries another typed suite's requests over the same bounded session.
+    /// Package envelopes reject duplicate JSON members at every nesting level.
+    pub(crate) fn exchange_serializable<T: serde::Serialize>(
+        &mut self,
+        request: &T,
+    ) -> Result<Map<String, Value>, TransportError> {
+        self.exchange_line(
+            |id| {
+                let body = serde_json::to_string(request)
+                    .map_err(|error| TransportError::Malformed(error.to_string()))?;
+                if !body.starts_with('{') {
+                    return Err(TransportError::Malformed(
+                        "request must be an object".into(),
+                    ));
+                }
+                Ok(format!("{{\"id\":{id},{}", &body[1..]))
+            },
+            EnvelopePolicy::RejectDuplicateMembers,
+        )
+    }
+
+    fn exchange_line(
+        &mut self,
+        line: impl FnOnce(u64) -> Result<String, TransportError>,
+        policy: EnvelopePolicy,
+    ) -> Result<Map<String, Value>, TransportError> {
         if let Some(broken) = &self.broken {
             return Err(broken.clone());
         }
         let id = self.next_id;
         self.next_id += 1;
-        let result = self.send(request, id).and_then(|()| self.receive(id));
+        let deadline = self.request_deadline(id);
+        let result = line(id)
+            .and_then(|line| self.send_line(&line, &deadline))
+            .and_then(|()| self.receive(id, policy, &deadline));
         if let Err(error) = &result {
             self.broken = Some(error.clone());
         }
         result
     }
 
-    fn send(&mut self, request: &Request, id: u64) -> Result<(), TransportError> {
-        let Some(stdin) = self.stdin.as_mut() else {
+    fn request_deadline(&self, id: u64) -> Deadline {
+        let session_end = self.started + self.limits.session_timeout;
+        let request_end = Instant::now() + self.limits.request_timeout;
+        if session_end <= request_end {
+            Deadline {
+                at: session_end,
+                error: TransportError::SessionTimeout {
+                    millis: self.limits.session_timeout.as_millis(),
+                },
+            }
+        } else {
+            Deadline {
+                at: request_end,
+                error: TransportError::Timeout {
+                    id,
+                    millis: self.limits.request_timeout.as_millis(),
+                },
+            }
+        }
+    }
+
+    fn send_line(&self, line: &str, deadline: &Deadline) -> Result<(), TransportError> {
+        let Some(stdin) = self.stdin.as_ref() else {
             return Err(TransportError::StdinClosed("already closed".to_owned()));
         };
-        let line = format!("{}\n", request.line(id));
-        stdin
-            .write_all(line.as_bytes())
-            .and_then(|()| stdin.flush())
-            .map_err(|error| TransportError::StdinClosed(error.to_string()))
+        let line = format!("{line}\n");
+        stdin.write(line, deadline)
     }
 
     /// The failure for a stdout that ended: the exit status, if it arrives
@@ -326,20 +455,17 @@ impl Session {
         }
     }
 
-    fn receive(&mut self, id: u64) -> Result<Map<String, Value>, TransportError> {
-        let now = Instant::now();
-        let session_end = self.started + self.limits.session_timeout;
-        let request_end = now + self.limits.request_timeout;
-        let (deadline, session) = if session_end <= request_end {
-            (session_end, true)
-        } else {
-            (request_end, false)
-        };
-        match self
-            .frames
-            .recv_timeout(deadline.saturating_duration_since(now))
-        {
-            Ok(Frame::Line(line)) => {
+    fn receive(
+        &mut self,
+        id: u64,
+        policy: EnvelopePolicy,
+        deadline: &Deadline,
+    ) -> Result<Map<String, Value>, TransportError> {
+        match deadline.receive(&self.frames)? {
+            Some(Frame::Line(line)) => {
+                if matches!(policy, EnvelopePolicy::RejectDuplicateMembers) {
+                    crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;
+                }
                 let (got, body) =
                     parse_envelope(&line).map_err(|error| TransportError::Malformed(error.0))?;
                 if got == id {
@@ -348,23 +474,16 @@ impl Session {
                     Err(TransportError::WrongId { expected: id, got })
                 }
             }
-            Ok(Frame::NotUtf8) => Err(TransportError::Malformed(
+            Some(Frame::NotUtf8) => Err(TransportError::Malformed(
                 "adapter sent a frame that is not UTF-8".to_owned(),
             )),
-            Ok(Frame::TooLong) => Err(TransportError::FrameTooLong {
+            Some(Frame::TooLong) => Err(TransportError::FrameTooLong {
                 limit: self.limits.max_frame,
             }),
-            Ok(Frame::Failed(why)) => Err(TransportError::Malformed(format!(
+            Some(Frame::Failed(why)) => Err(TransportError::Malformed(format!(
                 "cannot read adapter stdout: {why}"
             ))),
-            Ok(Frame::Eof) | Err(RecvTimeoutError::Disconnected) => Err(self.closed()),
-            Err(RecvTimeoutError::Timeout) if session => Err(TransportError::SessionTimeout {
-                millis: self.limits.session_timeout.as_millis(),
-            }),
-            Err(RecvTimeoutError::Timeout) => Err(TransportError::Timeout {
-                id,
-                millis: self.limits.request_timeout.as_millis(),
-            }),
+            Some(Frame::Eof) | None => Err(self.closed()),
         }
     }
 
@@ -375,23 +494,36 @@ impl Session {
     /// adapter's process tree is gone when this returns.
     pub fn close(mut self) -> Result<(), TransportError> {
         let healthy = self.broken.is_none();
+        let deadline = Deadline {
+            at: Instant::now()
+                + if healthy {
+                    self.limits.shutdown_grace
+                } else {
+                    Duration::ZERO
+                },
+            error: TransportError::Shutdown(format!(
+                "it did not exit within {} ms of the exit request and was terminated",
+                self.limits.shutdown_grace.as_millis()
+            )),
+        };
+        let mut write_failure = None;
         if healthy && matches!(self.child.try_wait(), Ok(None)) {
             let id = self.next_id;
             self.next_id += 1;
-            let _ = self.send(&Request::Exit, id);
+            if let Err(error @ TransportError::Shutdown(_)) =
+                self.send_line(&Request::Exit.line(id), &deadline)
+            {
+                write_failure = Some(error);
+            }
         }
         self.stdin = None;
 
-        let deadline = Instant::now()
-            + if healthy {
-                self.limits.shutdown_grace
-            } else {
-                Duration::ZERO
-            };
         let status = loop {
             match self.child.try_wait() {
                 Ok(Some(status)) => break Some(status),
-                Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(10)),
+                Ok(None) if Instant::now() < deadline.at => {
+                    thread::sleep(Duration::from_millis(10))
+                }
                 _ => break None,
             }
         };
@@ -402,16 +534,13 @@ impl Session {
             return Ok(());
         }
         match status {
-            None => Err(TransportError::Shutdown(format!(
-                "it did not exit within {} ms of the exit request and was terminated",
-                self.limits.shutdown_grace.as_millis()
-            ))),
+            None => Err(deadline.error),
             Some(status) if !status.success() => Err(TransportError::Shutdown(format!(
                 "it exited with {}{}",
                 status_text(status),
                 with_stderr(&self.stderr())
             ))),
-            Some(_) => Ok(()),
+            Some(_) => write_failure.map_or(Ok(()), Err),
         }
     }
 }
@@ -430,6 +559,50 @@ mod tests {
     use std::sync::mpsc;
 
     use super::*;
+
+    #[test]
+    fn an_expired_deadline_rejects_already_buffered_completion() {
+        let (sender, receiver) = mpsc::channel();
+        sender.send(()).unwrap();
+        let deadline = Deadline {
+            at: Instant::now() - Duration::from_millis(1),
+            error: TransportError::SessionTimeout { millis: 1 },
+        };
+        assert_eq!(deadline.receive(&receiver), Err(deadline.error.clone()));
+        assert_eq!(
+            receiver.try_recv(),
+            Ok(()),
+            "expired exchanges do not consume queued data"
+        );
+    }
+
+    #[test]
+    fn a_blocked_exit_write_obeys_its_shutdown_deadline() {
+        struct BlockedWriter(Receiver<()>);
+        impl Write for BlockedWriter {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                let _ = self.0.recv();
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let (release, blocked) = mpsc::channel();
+        let writer = InputWriter::spawn(BlockedWriter(blocked));
+        let deadline = Deadline {
+            at: Instant::now() + Duration::from_millis(50),
+            error: TransportError::Shutdown("exit write timed out".into()),
+        };
+        let started = Instant::now();
+        let result = writer.write(format!("{}\n", Request::Exit.line(2)), &deadline);
+        let elapsed = started.elapsed();
+        // Release the worker even if the assertion below fails.
+        let _ = release.send(());
+        drop(writer);
+        assert_eq!(result, Err(deadline.error));
+        assert!(elapsed < Duration::from_secs(1));
+    }
 
     fn frames_of(bytes: &[u8], max: usize) -> Vec<String> {
         let (sender, receiver) = mpsc::channel();

@@ -229,9 +229,11 @@ class PathAwareCiTests(unittest.TestCase):
             uses,
         )
 
-    def test_package_mck_cache_is_saved_from_main_only(self) -> None:
+    def test_package_mck_reads_the_shared_native_cache(self) -> None:
         job = job_body(self.ci, "package-mck")
-        self.assertIn("save-if: ${{ github.ref == 'refs/heads/main' }}", job)
+        self.assertIn("uses: ./.github/actions/setup-rust-ci", job)
+        self.assertNotIn("uses: Swatinem/rust-cache", job)
+        self.assertNotIn('save-cache: "true"', job)
 
     def test_elm_extension_comes_from_its_published_release(self) -> None:
         # finos/morphir-elm owns the build. CI downloads the pinned release archive, so it has

@@ -343,3 +343,36 @@ system's network, acquire a pinned upstream revision, or certify a published
 release. The cache-removal/network-disabled acceptance test in
 [kit-manifest.md](kit-manifest.md#acceptance), binding CI adoption, independent
 TypeScript adapter distribution and cutover review remain required separately.
+
+## PKG-1 native execution and parity
+
+The initial #852 change adds source-build `morphir mck package run` to the same
+Rust engine. It preserves draft.1 integrity and draft.2 resolution semantics,
+protocols, reports and fixed expectations. The TypeScript and Rust package
+implementations remain independent external adapters. The runner links neither
+package implementation.
+
+The parent retains its six TypeScript-runner reports during migration. After the
+four existing package check tasks, `mise run package:native-parity` runs both
+native contracts against both adapters and retains four additional reports.
+The comparison permits only `startedAt` and `driverVersion` to differ. Required
+inventory, record ordering, outcomes, capabilities, contract versions and corpus
+hashes must match, with all 80 integrity or 78 resolution cases passing.
+
+The baseline on 2026-09-21, parent `26ef146d`, uses TypeScript `4ae09cbd` and
+Rust `291536fd`. Both implementations pass both suites without required skips.
+Integrity identifies `sha256-72b6593c99af919076e59208b833771394d659838e28ee4c23554ee7f5590e23`;
+resolution identifies `sha256-8dfed22a389bd08e945b35213586b0709f2cf11f5426199bcec746007443b08b`.
+
+Package cutover remains open. The published beta.2 runner and six-target release
+qualification cover IR only. Before retirement, publish and qualify a CLI with
+package execution, migrate TypeScript's installed npm artifact checks and other
+consumers, review API migration guidance, then retire the replaced runner paths.
+Keep package adapters, independent implementation tests and historical artifacts.
+The TypeScript `package:assurance-check` and `package:publisher-check` support
+belongs to PKG-2 and remains unchanged.
+
+The static draft.3 inventory remains 54 required definitions, six bound assets
+and 121 pending bindings. Those counts do not establish executable admission,
+authenticated restore or platform support. PKG-2 scope/security review and PKG-3
+security/provider review remain separate gates in #852.

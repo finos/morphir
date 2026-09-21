@@ -6,6 +6,37 @@ profile described here. Stable case IDs identify expected behavior within this d
 Record the repository commit when comparing runs; no kit-release or package compatibility
 claim follows merely from a local pass.
 
+## Native package runner
+
+The Rust engine now executes the existing integrity and resolution contracts through
+`morphir mck package run`. Build from this repository; the published `v0.4.0-beta.2`
+CLI predates package execution. Both `--kit` and `--adapter` are required. For example:
+
+```sh
+cargo run --locked --package morphir -- mck package run \
+  --kit spec/package/mck --contract 0.1.0-draft.2 \
+  --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts \
+  --adapter-arg --suite --adapter-arg package \
+  --adapter-arg --contract --adapter-arg 0.1.0-draft.2 \
+  --report .dev/out/mck/package-resolution-native-typescript.json
+```
+
+The contract defaults to `0.1.0-draft.1`. The adapter must select the same contract.
+Package protocols and reports remain at their existing draft versions; they do not
+use IR report fields. Every case is required, so a skip, failure or kit error means
+exit 1. Invalid arguments mean exit 2. Kit errors are reported before an adapter starts.
+The runner owns loading and comparison; package behavior stays in the independent adapters.
+
+Existing TypeScript-runner tasks below remain migration baselines. Run all four
+`package:check`, `package:check:rust`, `package:resolution-check` and
+`package:resolution-check:rust` tasks, then `mise run package:native-parity`.
+The parity gate runs both native contracts against both adapters and compares complete
+reports, excluding only runner version and start time. Four native reports are retained
+alongside the six baseline reports. Release qualification, downstream adoption and
+review precede retirement of the TypeScript package runner in #852.
+
+## Retained migration baseline
+
 Run `mise run package:check` for the shared-core suite, in-process and over an executable adapter.
 Run `mise run package:check:rust` for the same suite against the independent Rust implementation.
 Run `mise run package:schema-check` separately for generic schema and example structure validation.
@@ -41,9 +72,10 @@ It does not check public-specification compatibility, resolve versions, establis
 
 ## Shared core integration
 
-The [accepted ownership decision](../../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md)
-places case loading, execution, comparison, capabilities, provenance, reporting, and adapter
-infrastructure in finos/morphir-typescript. This directory supplies cases, not another runner.
+The [current ownership decision](../../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md)
+places shared MCK tooling in the parent Rust CLI. The TypeScript implementation described
+below is the frozen package migration baseline. It supplies evidence for the native
+replacement until release and consumer adoption are verified.
 Reference package functionality is a test target, separate from expected results.
 
 The core exposes `PackageTestee`, `runPackageKit`, and `processPackageTestee`. Its `mck package run`
