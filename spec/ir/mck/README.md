@@ -8,7 +8,7 @@ The planned MCK package suite has its own operations and compatibility requireme
 
 Ownership of the driver moved to this repository on 2026-09-18. The Rust CLI now implements kit
 checking, vendoring, runs, vocabulary coverage, offline schema gates, draft report checking and optional
-HTML rendering. Migration parity and package suites retain the frozen first driver. See the
+HTML rendering. Historical parity evidence remains frozen. Package suites retain their TypeScript runner until #852. See the
 [MCK overview](https://github.com/finos/morphir/blob/main/spec/mck/README.md#ownership-and-transition).
 
 The kit states meaning by example. The semantic model lives in TypeScript; the YAML profile is the reference

@@ -17,9 +17,6 @@ CONFORMANCE_ONLY_INPUTS = [
     "- 'spec/ir/mck/**'",
     "- 'spec/mck/**'",
     "- 'ecosystem/morphir-typescript'",
-    "- 'tools/check-mck-report.ts'",
-    "- 'tools/run-mck-rust.ts'",
-    "- 'tools/rust-mck-command*'",
     "- 'website/scripts/validate-migrated-ir.js'",
     "- 'website/static/schemas/morphir-ir-v4.json'",
     "- 'website/static/schemas/morphir-ir-v4-document-tree-files.json'",
@@ -118,7 +115,7 @@ class PathAwareCiTests(unittest.TestCase):
                 "- 'website/static/schemas/morphir-ir-v4-document-tree-files.yaml'",
             ]:
                 self.assertIn(entry, paths)
-        self.assertIn("- 'tools/check-mck-contract-copies*'", filter_body(self.ci, "mck"))
+        self.assertIn("- 'tools/gen-mck-vocabulary*'", filter_body(self.ci, "mck"))
         docs = job_body(self.ci, "docs")
         self.assertIn("cargo test --locked --package morphir-mck", docs)
         self.assertIn("needs.changes.outputs.mck == 'true' && needs.changes.outputs.rust != 'true'", docs)
@@ -140,13 +137,16 @@ class PathAwareCiTests(unittest.TestCase):
             for legacy in ("src/cli.ts", "validate-mck-", "jsonschema "):
                 self.assertNotIn(legacy, commands)
 
-    def test_source_parity_retains_only_generation_and_protocol_copy_checks(self) -> None:
-        self.assertIn("mck:source-parity", self.tasks["mck:check"].get("depends", []))
-        commands = self.tasks.get("mck:source-parity", {}).get("run", [])
-        self.assertIn("bun run tools/gen-mck-vocabulary.ts --check", commands)
-        self.assertIn("bun run tools/check-mck-contract-copies.ts", commands)
-        self.assertNotIn("validate-mck-", str(commands))
-        self.assertIn("tools/run-mck-rust.ts", str(self.tasks["mck:parity-rust"]["run"]))
+    def test_cutover_retires_legacy_ir_gates_and_keeps_vocabulary_authoring(self) -> None:
+        self.assertNotIn("mck:source-parity", self.tasks)
+        self.assertNotIn("mck:parity-rust", self.tasks)
+        self.assertIn("mck:vocabulary-check", self.tasks["mck:check"]["depends"])
+        self.assertIn("bun run tools/gen-mck-vocabulary.ts --check", self.tasks["mck:vocabulary-check"]["run"])
+        for retired in ("check-mck-contract-copies", "validate-mck-fences", "validate-mck-protocol", "check-mck-report", "compare-mck-reports", "mck:parity-rust"):
+            self.assertNotIn(retired, self.ci)
+            self.assertNotIn(retired, str(self.tasks))
+        self.assertIn("mise run package:check", job_body(self.ci, "package-mck"))
+        self.assertIn("mise run mck:run-rust", job_body(self.ci, "rust-conformance"))
 
     def test_failed_mck_runs_still_render_and_upload_fresh_reports(self) -> None:
         for name, binding, task in [

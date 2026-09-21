@@ -1,12 +1,12 @@
-// Runs the Morphir Compatibility Kit driver against the Rust binding's adapter.
+// Runs the Morphir Compatibility Kit package runner against the Rust binding's adapter.
 //
-//   bun run tools/run-mck-rust.ts [--suite ir|package] --kit <kit> --report <report.json>
+//   bun run tools/run-mck-rust.ts --suite package --kit <kit> --report <report.json>
 //
 // This exists only to resolve the adapter binary. `cargo build -p
 // morphir-mck-adapter` writes `target/debug/mck-adapter-rust` on Linux and macOS
 // and `target/debug/mck-adapter-rust.exe` on Windows, and a mise task line
-// cannot spell both. Everything else is handed straight to the driver's `run`
-// subcommand (or `package run`), so the task file still reads as the command it runs; `--adapter`
+// cannot spell both. Everything else is handed straight to the driver's `package run`
+// subcommand, so the task file still reads as the command it runs; `--adapter`
 // is the one flag the wrapper owns and refuses to take from a caller.
 import { existsSync } from "node:fs";
 import path from "node:path";
