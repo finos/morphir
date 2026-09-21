@@ -15,7 +15,7 @@ Each behaviour below is marked **kept** (same as the TypeScript driver at the
 
 | Component | Responsibility |
 | --- | --- |
-| `crates/morphir-mck` library | `kit` (parse, load, hash, manifest, acquisition), `transport` (adapter sessions), `ir` (execution, comparison, capabilities), `report` (draft schema reader, records, summary, baseline gate, HTML rendering). Coverage remains planned. |
+| `crates/morphir-mck` library | `kit` (parse, load, hash, manifest, acquisition), `transport` (adapter sessions), `ir` (execution, comparison, capabilities, vocabulary coverage), `schema` (offline authoring validation), `report` (draft schema reader, records, summary, baseline gate, HTML rendering). |
 | `crates/morphir/src/commands/mck` | Argument validation, help, terminal output, exit status. No compatibility logic. |
 | Adapter | Owned by each implementation. Decodes, encodes and handles document trees. |
 

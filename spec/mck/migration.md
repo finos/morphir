@@ -64,6 +64,47 @@ MCK CI step and no MCK release step at the baseline. `ecosystem/AGENTS.md` and t
 filter name Gleam as a future target only. Nothing to migrate. Their first integration uses
 `morphir mck` and a vendored kit directly.
 
+### IR-4 consumer audit and adoption order
+
+The 2026-09-20 audit checked both current binding heads against these pinned sources:
+[TypeScript `a5e3be09`](https://github.com/finos/morphir-typescript/tree/a5e3be0922ce2dad1920956a8c7bfe6616d515d5)
+and [Rust `1d2640e5`](https://github.com/finos/morphir-rust/tree/1d2640e50661509af3e31dba03376a11a0073adf).
+The consumers above remain active. The parent CLI's published `v0.4.0-beta.1`
+predates the IR-3 authoring gates; adoption requires a subsequent release carrying them.
+
+TypeScript already defines separate adapter executables for five platform targets
+in `scripts/release/binaries.ts`; Windows ARM uses its Windows x64 adapter under
+emulation. Independent distribution does not inherently require another npm package.
+The remaining dependency is in its source/build graph: `adapter.ts` loads the
+package adapter, whose `package/reference.ts` imports `driver/version.ts`, which
+imports `kit/embedded.ts`. Move binding version metadata out of the driver and
+add an adapter-only build path while preserving package adapter behavior and
+existing driver production. Its binary tests must execute the adapter through the
+native runner; the current smoke test executes only the driver. Published adapter
+download availability and execution still need verification.
+
+Adoption proceeds in this order:
+
+1. Land the packaged CLI gate and publish a native release containing IR-3. Record
+   the exact release version, checksums, kit revision and three-platform offline
+   acceptance evidence. Adapter build separation can proceed alongside this work.
+2. Migrate TypeScript's `.config/mise/tasks/check/conformance.ts` and `check/kit.ts`
+   to that pinned CLI, an explicit adapter and a vendored native kit manifest.
+   The historical `packages/mck/kit.lock.json` has a different format and must not
+   be renamed to `mck-kit.lock.json`. Preserve package checks, frozen parity and
+   installed npm artifact tests; `scripts/release/package-mck.ts` still serves
+   both IR and package consumers.
+3. Migrate Rust's driver pin, acquisition task, report adjudication and CI routing
+   together. Fetch the parent target archive and checksum, retain atomic download
+   and stale-report handling, and use native `report check` against the same
+   vendored kit as `run`. Replace the Unix-only acquisition path and validate on
+   Windows too. Its legacy report test cannot certify draft session, provenance
+   or inventory evidence.
+4. Publish CLI/library migration guidance and review adoption evidence in #851.
+   Only then retire the TypeScript IR runner, embedded-kit and related release
+   paths. Keep all package tooling until #852 and preserve the IR package's Node
+   20 artifact gate independently of the MCK package's Node 24 requirement.
+
 ## Parity method
 
 The old and new runners are compared against **the same external adapters** at the same pins, at
@@ -173,3 +214,37 @@ TypeScript-owned IR runner, CLI, kit embedding and release paths are retired onl
 6. The cutover review in #851 is complete.
 
 Package paths stay frozen in TypeScript, untouched, until #852.
+
+### IR-4 packaged CLI smoke gate
+
+Before uploading an archive, the release workflow extracts it and runs
+`installed_cli_runs_vendored_kit_without_tool_runtimes` on each of the six native
+Linux, macOS and Windows targets. The test copies that executable, a native
+transcript replay adapter and its recorded inputs into a fresh temporary
+directory. CLI subprocesses have an empty `PATH`, fresh home/cache/temp
+directories and no inherited Morphir configuration.
+
+The gate verifies installed help/version commands, embedded-kit vendoring,
+status, check, coverage, schema validation, an explicitly selected adapter run,
+report checking and standalone HTML rendering. It compares the vendored run's
+snapshot digest and all records against the same executable using the source
+kit, and verifies that a modified vendored schema is rejected. The replay adapter
+tests runner installation; it is not a new binding implementation or evidence of
+independent adapter distribution.
+
+To repeat this gate against an extracted archive, set
+`MORPHIR_MCK_INSTALLED_CLI` to the absolute executable path and run:
+
+```sh
+cargo test --locked --release --package morphir --test mck_run \
+  installed_cli_runs_vendored_kit_without_tool_runtimes
+```
+
+Without that environment variable, ordinary Cargo tests exercise the locally
+built CLI. A supplied missing or invalid executable fails the test; it never
+falls back to the local build. The test harness itself still needs the source
+checkout and Rust build tools. This smoke gate does not disconnect the operating
+system's network, acquire a pinned upstream revision, or certify a published
+release. The cache-removal/network-disabled acceptance test in
+[kit-manifest.md](kit-manifest.md#acceptance), binding CI adoption, independent
+TypeScript adapter distribution and cutover review remain required separately.

@@ -72,7 +72,7 @@ pub async fn download(revision: &CommitId) -> Result<tempfile::NamedTempFile, St
         .map_err(|error| format!("cannot set up HTTPS: {error}"))?;
 
     let url = archive_url(revision);
-    let mut response = client
+    let response = client
         .get(&url)
         .send()
         .await
@@ -91,13 +91,33 @@ pub async fn download(revision: &CommitId) -> Result<tempfile::NamedTempFile, St
         )?;
     }
 
+    write_download(response, &url).await
+}
+
+async fn write_download(
+    mut response: reqwest::Response,
+    url: &str,
+) -> Result<tempfile::NamedTempFile, String> {
     let mut file = tempfile::NamedTempFile::new()
         .map_err(|error| format!("cannot create a temporary file: {error}"))?;
     let mut total = 0;
     while let Some(chunk) = response
         .chunk()
         .await
-        .map_err(|error| format!("the download from {url} failed: {error}"))?
+        .map_err(|error| {
+            if error.is_timeout() {
+                format!("the download from {url} timed out after receiving {total} bytes; retry on a connection that can complete within the download deadline")
+            } else {
+                let causes = std::iter::successors(
+                    Some(&error as &(dyn std::error::Error + 'static)),
+                    |cause| cause.source(),
+                )
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(": ");
+                format!("the download from {url} failed after receiving {total} bytes: {causes}")
+            }
+        })?
     {
         total = add_within(total, chunk.len(), MAX_DOWNLOAD_BYTES)?;
         file.write_all(&chunk)
@@ -114,6 +134,78 @@ mod tests {
 
     fn url(text: &str) -> Url {
         Url::parse(text).unwrap()
+    }
+
+    fn read_request_headers(connection: &mut std::net::TcpStream) {
+        use std::io::BufRead;
+        for line in std::io::BufReader::new(connection).lines() {
+            if line.unwrap().is_empty() {
+                return;
+            }
+        }
+        panic!("request ended before its headers were complete");
+    }
+
+    #[tokio::test]
+    async fn a_truncated_download_preserves_the_non_timeout_cause() {
+        use std::io::Write;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut connection, _) = listener.accept().unwrap();
+            read_request_headers(&mut connection);
+            connection
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nabc")
+                .unwrap();
+        });
+        let endpoint = format!("http://{address}/archive");
+        let response = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .get(&endpoint)
+            .send()
+            .await
+            .unwrap();
+        let error = write_download(response, &endpoint).await.unwrap_err();
+        server.join().unwrap();
+        assert!(error.contains("3 bytes"), "{error}");
+        assert!(!error.contains("timed out"), "{error}");
+        assert!(
+            error.contains("error decoding response body: "),
+            "missing underlying cause: {error}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_stalled_download_identifies_the_timeout_and_received_bytes() {
+        use std::io::Write;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let (finish, wait) = std::sync::mpsc::channel::<()>();
+        let server = std::thread::spawn(move || {
+            let (mut connection, _) = listener.accept().unwrap();
+            read_request_headers(&mut connection);
+            connection
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nabc")
+                .unwrap();
+            let _ = wait.recv_timeout(Duration::from_secs(10));
+        });
+        let endpoint = format!("http://{address}/archive");
+        let response = reqwest::Client::builder()
+            .no_proxy()
+            .read_timeout(Duration::from_millis(200))
+            .build()
+            .unwrap()
+            .get(&endpoint)
+            .send()
+            .await
+            .unwrap();
+        let error = write_download(response, &endpoint).await.unwrap_err();
+        let _ = finish.send(());
+        server.join().unwrap();
+        assert!(error.contains("timed out"), "{error}");
+        assert!(error.contains("3 bytes"), "{error}");
     }
 
     #[test]

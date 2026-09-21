@@ -39,6 +39,7 @@ awaiting cutover; its shared MCK features remain break/fix only.
 | [cli-contract.md](cli-contract.md) | `morphir mck` commands, required `--adapter`, filter syntax, transport limits, reports and provenance | Approved 2026-09-18 |
 | [kit-manifest.md](kit-manifest.md) | Vendored kit snapshots, `mck-kit.lock.json`, acquisition and trust | Approved 2026-09-18 |
 | [migration.md](migration.md) | Consumer inventory, parity method, approved departures, cutover conditions | Approved 2026-09-18 |
+| [CLI and library migration guide](../../docs/developers/mck-native-migration.md) | Consumer commands, release and kit pins, CI failure handling and draft report migration | IR-4 adoption guidance |
 | [baseline/](baseline/README.md) | Frozen old-driver reports, protocol transcript and hash vectors | Captured 2026-09-18 |
 
 Delivery is IR first ([#851](https://github.com/finos/morphir/issues/851)), then the package suites
