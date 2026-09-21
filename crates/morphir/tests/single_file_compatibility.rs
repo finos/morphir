@@ -416,6 +416,58 @@ fn provider_selection_by_flag_alone_with_no_configuration() {
     );
 }
 
+/// A failed compile must not leave the previous successful record intact, or
+/// `generate` would consume stale IR. `prepare_dest` writes a tombstone before
+/// the source is even read, which is why the failure ordering in the refactor
+/// is not free to change.
+#[test]
+fn a_failed_compile_tombstones_the_previous_success() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(dir.join("Widget.elm"), "module Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n").unwrap();
+
+    let (ok, _out, err) = morphir(dir, &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"]);
+    assert!(ok, "first compile succeeds: {err}");
+
+    // Now make it fail, without changing anything else about the invocation.
+    // The body is invalid (a bare `!!!` where a type was expected), so this
+    // trips a real parse/compile error rather than the missing-module-
+    // declaration error pinned by `a_file_without_a_module_declaration_fails_to_compile`.
+    // Observed stderr: "syntax error near `!!! not`".
+    fs::write(dir.join("Widget.elm"), "module Widget exposing (Size)\n\n\ntype alias Size =\n    !!! not elm\n").unwrap();
+    let (ok, _out, err) = morphir(dir, &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"]);
+    assert!(!ok, "second compile fails");
+    assert!(
+        err.contains("syntax error"),
+        "expected a syntax-error failure, not the missing-declaration one pinned elsewhere: {err}"
+    );
+
+    let mut record: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.join(".morphir/out/compile.json")).unwrap()).unwrap();
+    // `completedAt` is a wall-clock timestamp and not part of the property
+    // under test, so it is excluded before the exact comparison below.
+    record.as_object_mut().unwrap().remove("completedAt");
+
+    // Observed: after the failed compile, the record is a tombstone with an
+    // empty `value` and no `ir` descriptor at all — nothing here points at
+    // consumable IR, so `generate` cannot pick up the previous success. This
+    // is the exact record `prepare_dest` writes before the source is even
+    // read; the second compile never gets far enough to overwrite it with
+    // anything else.
+    assert_eq!(
+        record,
+        serde_json::json!({
+            "schema": 1,
+            "task": "compile",
+            "module": "",
+            "inputs": [],
+            "value": [],
+            "tombstone": true
+        }),
+        "expected a tombstoned record pointing at no consumable IR, got {record}"
+    );
+}
+
 /// `[frontend.elm] extension = 'morphir-elm-native'` in a loaded
 /// configuration selects the provider when no `--extension` flag is given:
 /// the second precedence level. `--config` is mandatory here; without it the
