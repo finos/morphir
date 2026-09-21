@@ -3,7 +3,7 @@
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
 Parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
-**Transition state, 2026-09-20.** The ownership decision is made
+**Transition state, 2026-09-21.** The ownership decision is made
 ([decision 0003](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md)).
 Parent IR authoring and execution gates now use Rust: kit validation, vocabulary coverage,
 offline schema/example checks, adapter runs and independent report adjudication. Reports contain
@@ -12,6 +12,12 @@ and [schema inventory](schema-gates.md) describe the implemented gates. Parity, 
 and the binding release paths below retain the first driver. IR-3 implementation does not complete
 the IR-4 release/adoption cutover or stabilize the report draft. TypeScript MCK features are frozen;
 break/fix only.
+
+The native `v0.4.0-beta.2` release is published and qualified on all six supported
+targets. TypeScript and Rust have adopted it in their required binding CI gates.
+The legacy IR runner remains for migration evidence and installed-artifact checks
+until the cutover review in #851; package tooling remains until #852. The release
+and adoption evidence below does not stabilize the report draft.
 
 ## Consumer inventory
 
@@ -104,6 +110,52 @@ Adoption proceeds in this order:
    Only then retire the TypeScript IR runner, embedded-kit and related release
    paths. Keep all package tooling until #852 and preserve the IR package's Node
    20 artifact gate independently of the MCK package's Node 24 requirement.
+
+### Published release and binding adoption evidence
+
+The [beta.2 release](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.2)
+uses source `48977b55ec1c1ccf834837fe1912e01615071d46`. Its tag and binaries were
+unchanged by the subsequent qualification-tooling repairs. The
+[release run](https://github.com/finos/morphir/actions/runs/35557203384) passed all
+six packaged CLI smoke jobs. The final
+[published qualification run](https://github.com/finos/morphir/actions/runs/35565692422)
+passed Linux, macOS and Windows on both x64 and ARM64.
+
+Every target's retained artifact records its verified published archive checksum,
+the exact acquired source commit, a committed kit snapshot, removed acquisition
+state, and an operating-system network-denial result. The native runtime uses an
+empty tool PATH and fresh home, verifies the kit and report, renders offline HTML,
+and matches all 730 ordered records against the source kit. Source transcript and
+hostile-adapter tests also pass on each target. The snapshot digest is
+`sha256-07b32a353c34015ad96c84d02c85af00615aacdb5da4831a448708d051d7acfb`;
+the corpus hash is
+`sha256-0bacb95902e3870a2dadffe7f316d55ed849fe90a3b2fac11060b5b6a76909fa`.
+This replay qualification proves the runner; the binding gates below exercise
+the actual implementations separately.
+
+| Consumer | Adopted revision | Evidence |
+| --- | --- | --- |
+| TypeScript | [`14f80183`](https://github.com/finos/morphir-typescript/pull/31) | Required native gates, six checksummed CLI pins, managed kit, JSON/HTML artifacts; 722 passing records and 8 declared-capability skips. Existing legacy parity, package checks, Node 20 IR and Node 24 MCK artifact gates remain. |
+| Rust | [`3db427f6`](https://github.com/finos/morphir-rust/pull/191) | Required native gates on Linux/macOS/Windows, the same release and kit, JSON/HTML artifacts; all 730 records pass. The explicit Linux legacy gate and package/extension checks remain. |
+
+Both live adapters also passed the complete migration comparison below against the
+published CLI and the same managed kit. Both versioned report schemas were checked
+with format assertions. The legacy runner received the manifest's source revision
+as its kit version before execution; the comparison includes that header and every
+ordered record, excluding only `startedAt`, `durationMs` and `driverVersion`.
+An earlier TypeScript record-only comparison omitted the kit-version header and
+was superseded by this complete comparison.
+
+The remaining cutover review covers retirement of the TypeScript IR runner,
+embedding and future runner-binary releases, plus the temporary parent parity
+gates. Shared package code, adapter implementations and both npm artifacts must
+remain. In particular, preserve the binding regressions currently in
+`driver/yaml-roundtrip.test.ts` before deleting that directory: canonical JSON/YAML
+pairs, YAML idempotence, the complete example and rejected-input handling. Keep
+package-only CLI/library exports, package hashing and transport helpers, the
+installed Node 24 adapter smoke, and the independent Node 20 IR artifact gate.
+Historical packages and release assets remain available. No legacy retirement is
+performed by this adoption update.
 
 ## Parity method
 
