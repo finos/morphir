@@ -3,25 +3,66 @@
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
 Parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
-**Transition state, 2026-09-21.** The ownership decision is made
-([decision 0003](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md)).
-Parent IR authoring and execution gates now use Rust: kit validation, vocabulary coverage,
-offline schema/example checks, adapter runs and independent report adjudication. Reports contain
-consolidated `2.0.0-draft.1` JSON with optional offline HTML. The [CLI contract](cli-contract.md)
-and [schema inventory](schema-gates.md) describe the implemented gates. Parity, package suites
-and the binding release paths below retain the first driver. IR-3 implementation does not complete
-the IR-4 release/adoption cutover or stabilize the report draft. TypeScript MCK features are frozen;
-break/fix only.
+**IR cutover, 2026-09-21.** Parent and audited binding IR gates use the Rust
+`morphir mck` commands. Native `v0.4.0-beta.2` is published and qualified on
+all six supported targets. Reports remain consolidated `2.0.0-draft.1` JSON
+with optional offline HTML; this cutover does not stabilize the draft.
 
-The native `v0.4.0-beta.2` release is published and qualified on all six supported
-targets. TypeScript and Rust have adopted it in their required binding CI gates.
-The legacy IR runner remains for migration evidence and installed-artifact checks
-until the cutover review in #851; package tooling remains until #852. The release
-and adoption evidence below does not stabilize the report draft.
+The cutover removes the TypeScript IR runner, embedded IR kit and future
+standalone runner binaries, along with temporary parent and binding parity jobs.
+The TypeScript adapter, codec regressions, package-only CLI/library APIs and both
+npm artifacts remain. Historical published assets, frozen reports, protocol
+transcripts and schemas remain available. Package runner migration stays in
+[#852](https://github.com/finos/morphir/issues/852).
 
-## Consumer inventory
+### Final consumer audit
 
-Audited at the [baseline](baseline/README.md) pins. "Slice" is where the consumer moves to Rust.
+The 2026-09-21 audit searched tracked content, including hidden workflows,
+release configuration, task scripts, manifests and source, at the parent pins
+and current remote heads. TypeScript `14f80183` and Rust `3db427f6` were the
+only binding repositories with active legacy runner consumers. [TypeScript #32](https://github.com/finos/morphir-typescript/pull/32) and
+[Rust #192](https://github.com/finos/morphir-rust/pull/192) remove those consumers
+while retaining the required native gates. The parent pins their reviewed retirement revisions.
+
+| Repository | Audited parent pin | Audited remote main | Result |
+| --- | --- | --- | --- |
+| morphir-python | `dc0b31756a839bd3dfacb2b19e5d32283779df7c` | `63534a6ea0760348f86705c22e1eb45ab4ef2d23` | No MCK integration |
+| morphir-gleam | `aa2b7e2377b13ef1af48d9a3a30bec797015933c` | `9c6f0d1440b50909375475cd8781ce0f57d4960e` | No MCK integration |
+| morphir-scala | `fb9ca0f4056e817dcf241f7f67ad96716fa8f7e7` | `2b3a935c09760cd0ab9ff09f3e48c0f2f8dceda2` | No MCK integration |
+| morphir-moonbit | `6d473c7e1bc9b717cb4c25583cf3eb03b060510d` | `8958a343f29afcbee98fcb4377232bd0bfe4a3f1` | No MCK integration |
+| morphir-elm | `b065e493d7a4256ed47878b129abf2333e977313` | `bc99af69a8b24d391311fae3822a87eafef3c334` | No MCK integration; also checked vnext `e27e12a3` |
+| morphir-ui | `8e4bbf2f7a25d658ee162ab2b689bd1ed02cb138` | `86bcce97f58d29f4f844f5af3265fa4bd23b9321` | Five decoder comments name cases; no executable integration |
+| morphir-examples | `7a4a90a03d15a4594aa9675c114f76f82aecf525` | `34b8cf58391ba7ec46f839e7d2376443db064e61` | No MCK integration |
+
+No additional repository consumer needs a migration owner. The parent contains
+no MCK integration references requiring expansion to Go, .NET, JVM or Bosque;
+those sibling repositories are outside this audit. External npm consumers are
+not enumerable from repository search. The
+[CLI/library guide](../../docs/developers/mck-native-migration.md#consumer-cutover)
+explains the removal and preserves access to historical versions.
+
+### Retained checks and data
+
+- Native authoring, full adapter runs, report inventory checks and JSON/HTML
+  artifacts remain required in parent and binding CI.
+- Vocabulary generation remains an authoring check against the TypeScript IR
+  model, named `mck:vocabulary-check`. It is separate from the retired runner.
+- TypeScript retains 98 canonical JSON/YAML pairs, 121 YAML idempotence cases,
+  the complete example and nine rejected YAML cases as independent codec tests.
+  The 77 layout tests retain their canonical distributions and document-tree
+  fixtures; eight subprocess tests now exercise the shared transport directly.
+  Fixture provenance records the original kit source at `2bab57ea23fe85c6f9cc434b32e61f29ca14190c`.
+- The installed Node 24 MCK adapter is exercised by the released native CLI.
+  The independent Node 20 IR artifact gate and package artifact checks remain.
+- Parent package tasks and their adapter-path and recording helpers remain.
+  No package runner semantics change before #852.
+- Frozen legacy reports, report schemas and transcripts stay because native
+  regression and release-qualification tests consume them. Temporary live
+  old/new comparison executables and source-copy checks are removed.
+
+## Historical consumer inventory
+
+The following tables preserve the migration inventory and intermediate adoption state. They are historical; the final audit and retained checks above describe the cutover. "Slice" identifies the delivery phase.
 
 ### finos/morphir
 
@@ -70,7 +111,7 @@ MCK CI step and no MCK release step at the baseline. `ecosystem/AGENTS.md` and t
 filter name Gleam as a future target only. Nothing to migrate. Their first integration uses
 `morphir mck` and a vendored kit directly.
 
-### IR-4 consumer audit and adoption order
+### Historical IR-4 audit and adoption order
 
 The 2026-09-20 audit checked both current binding heads against these pinned sources:
 [TypeScript `a5e3be09`](https://github.com/finos/morphir-typescript/tree/a5e3be0922ce2dad1920956a8c7bfe6616d515d5)
@@ -146,7 +187,7 @@ ordered record, excluding only `startedAt`, `durationMs` and `driverVersion`.
 An earlier TypeScript record-only comparison omitted the kit-version header and
 was superseded by this complete comparison.
 
-The remaining cutover review covers retirement of the TypeScript IR runner,
+The retirement boundary covers the TypeScript IR runner,
 embedding and future runner-binary releases, plus the temporary parent parity
 gates. Shared package code, adapter implementations and both npm artifacts must
 remain. In particular, preserve the binding regressions currently in
@@ -154,8 +195,7 @@ remain. In particular, preserve the binding regressions currently in
 pairs, YAML idempotence, the complete example and rejected-input handling. Keep
 package-only CLI/library exports, package hashing and transport helpers, the
 installed Node 24 adapter smoke, and the independent Node 20 IR artifact gate.
-Historical packages and release assets remain available. No legacy retirement is
-performed by this adoption update.
+Historical packages and release assets remain available. These obligations apply to the coordinated retirement changes.
 
 ## Parity method
 
@@ -202,16 +242,15 @@ Two further sources keep a shared bug or a binding gap from hiding a runner defe
   send byte-equivalent requests in the same order and produce the same report, without Bun or Node.
   The two adapters answer differently: the TypeScript binding skips the version 3 cases it does not
   support, and the Rust binding runs them, so the replays cover a skipping run and a complete one.
-- **Live comparison on one adapter.** `mise run mck:parity-rust` builds the pinned Rust adapter and
-  has both runners question that same build in one CI job, then compares the reports under the
+- **Historical live comparison on one adapter.** The retired `mck:parity-rust` task built the pinned Rust adapter and
+  had both runners question that same build in one CI job, then compares the reports under the
   exclusions above. A recording keeps its answers fixed; this keeps the binding fixed instead, so a
   difference can only be the runner's. Its transcript is uploaded, and a future baseline is frozen
   from it.
 - **Hostile adapters.** One fixture per failure class in the
   [CLI contract](cli-contract.md#failure-classes). Each must fail the run.
 
-Temporary old/new comparison code lives in development and CI only. The shipped CLI never depends
-on it, and it is deleted at cutover. There are not two permanent MCK implementations.
+Temporary old/new comparison code ran in development and CI only. It is removed at cutover; frozen evidence remains. The shipped CLI never depended on it.
 
 ## Approved departures from old-runner behaviour
 

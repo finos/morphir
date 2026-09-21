@@ -162,8 +162,7 @@ vocabulary and lock examples. The [gate inventory](schema-gates.md) records thei
 expected outcomes. The catalog reads only selected-kit bytes; it never resolves a reference through
 the network or an arbitrary filesystem path. A missing input or malformed schema fails the command.
 
-The repository retains vocabulary and TypeScript contract-copy drift checks in `mck:source-parity`
-until IR-4 cutover. They are migration checks, separate from the installed CLI's offline gates.
+The repository retains vocabulary authoring checks in `mck:vocabulary-check`, separate from the installed CLI's offline gates. The parent owns protocol schemas; temporary TypeScript contract-copy drift checks are retired.
 
 ### `report check` (kept gate, hardened inventory, new home)
 

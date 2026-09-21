@@ -1,11 +1,10 @@
 // Generates spec/mck/vocabulary.json, the parent-owned coverage vocabulary the
 // Rust `morphir mck` tooling reads (spec/mck/kit-manifest.md, closure item 3).
 //
-// During the migration the TypeScript IR binding still owns the table: this
-// renders its VOCABULARY, NODE_ALIASES and the driver's NODE_KINDS into
-// language-neutral JSON. `--check` fails when the committed file differs, so
-// the two cannot drift. Once the TypeScript driver retires, the JSON becomes
-// the source and this generator is deleted (finos/morphir#851, IR-3).
+// The TypeScript IR model owns the authoring table. This renders VOCABULARY,
+// NODE_ALIASES and the adapter's NODE_KINDS into language-neutral JSON.
+// Native coverage reads the committed data; --check detects authoring drift.
+// This generator contains no compatibility execution or comparison logic.
 //
 //   bun run tools/gen-mck-vocabulary.ts          # rewrite the file
 //   bun run tools/gen-mck-vocabulary.ts --check  # fail on drift

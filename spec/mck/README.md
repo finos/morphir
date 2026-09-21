@@ -30,9 +30,7 @@ records it and supersedes the ownership portion of
 
 **Parent IR gates use the Rust CLI.** Kit checking and vendoring, adapter runs, coverage,
 offline schema validation, independent report checking and optional HTML rendering are implemented.
-The report contract remains `2.0.0-draft.1`. Release, adapter distribution and binding CI adoption
-remain IR-4 work. The frozen TypeScript driver stays available for parity, packages and consumers
-awaiting cutover; its shared MCK features remain break/fix only.
+The report contract remains `2.0.0-draft.1`. Native beta.2 is qualified on six targets, and TypeScript and Rust binding CI use it. The TypeScript IR runner and temporary parity tooling are retired. Its adapter and package tooling remain; package features stay break/fix only until #852.
 
 | Document | Content | Status |
 | --- | --- | --- |
@@ -45,23 +43,18 @@ awaiting cutover; its shared MCK features remain break/fix only.
 Delivery is IR first ([#851](https://github.com/finos/morphir/issues/851)), then the package suites
 ([#852](https://github.com/finos/morphir/issues/852)); parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
-## Retained TypeScript driver and package contracts
+## Retained TypeScript package runner
 
-The first driver lives in [finos/morphir-typescript](https://github.com/finos/morphir-typescript/tree/main/packages/mck),
-under `@finos/morphir-mck`. Its current protocol and report contract version 1 describe the IR suite.
-The [IR suite README](../ir/mck/README.md) specifies its case grammar and invocation.
+[`@finos/morphir-mck`](https://github.com/finos/morphir-typescript/tree/main/packages/mck)
+retains package commands, package library exports and the TypeScript adapter.
+Its `mck` bin is package-only; use `morphir mck` for IR. Future standalone
+executables contain the adapter only. Existing published versions and assets
+remain available, but their IR runner APIs are not carried forward.
 
-The driver supports an in-process binding and executable adapters using a JSON-lines protocol. Its packaged form
-includes an embedded kit; `--kit` selects a checkout instead. The embedded `kit.lock.json` records repository, path,
-commit, and content hash. Driver releases and kit revisions must be identified separately when comparing results.
-
-Package support uses its own experimental `0.1.0-draft.1` adapter and report contracts. IR protocol version 1
-rejects unknown operations and fields, and its reports require IR-specific fields such as `irVersion` and `profile`.
-The draft package contract defines suite identity, four operations, required capabilities, and package report records.
-The shared core runs other implementations through adapters. Independent implementations
-under test can share a runner; independently rewritten runners are not an interoperability requirement.
-Reuse case loading, adapter transport, provenance, and reporting components where their semantics fit. Existing IR
-commands, case IDs, and version 1 contracts remain supported through that evolution.
+Package support keeps its experimental `0.1.0-draft.1` and `0.1.0-draft.2`
+contracts until [#852](https://github.com/finos/morphir/issues/852).
+The IR adapter protocol remains version 1 and the native report is independently
+versioned. An IR pass does not establish package compatibility.
 
 ## Compatibility claims
 

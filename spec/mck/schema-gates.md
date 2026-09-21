@@ -47,7 +47,4 @@ invalid schemas, missing inputs, external references and fixed positive/negative
 The closed catalog registers only selected-kit resources. New external references
 require an explicit catalog and snapshot-closure update.
 
-Two repository checks stay separate in `mise run mck:source-parity`: vocabulary
-regeneration against the pinned TypeScript source, and byte comparison of the protocol
-schema/example copies. These guard migration drift until IR-4; the installed CLI has
-no TypeScript checkout dependency. Live runner parity and package gates also remain.
+Vocabulary regeneration stays separate in `mise run mck:vocabulary-check`, using the pinned TypeScript IR model. The parent owns the protocol schema and example; the temporary byte-copy and live runner-parity checks are retired. The installed CLI has no TypeScript checkout dependency. Package gates remain until #852.

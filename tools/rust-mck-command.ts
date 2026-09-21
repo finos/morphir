@@ -1,17 +1,16 @@
 import path from "node:path";
 
-/** Resolve the Rust adapter and select an existing shared MCK CLI command. */
+/** Resolve the Rust adapter for the retained TypeScript package runner. */
 export function rustMckInvocation(root: string, platform: string, args: readonly string[]): {
 	adapter: string;
 	command: string[];
 } {
-	const suite = args[0] === "--suite" ? args[1] : "ir";
-	if (suite !== "ir" && suite !== "package") {
-		throw new Error("expected --suite ir or --suite package");
+	if (args[0] !== "--suite" || args[1] !== "package") {
+		throw new Error("use --suite package; IR runs moved to morphir mck run --adapter <executable>");
 	}
-	const forwarded = args[0] === "--suite" ? args.slice(2) : args;
+	const forwarded = args.slice(2);
 	if (forwarded.some((arg) => arg === "--suite" || arg.startsWith("--suite="))) {
-		throw new Error("select the suite once, before driver arguments: --suite ir|package");
+		throw new Error("select the suite once, before driver arguments: --suite package");
 	}
 	if (forwarded.some((arg) => arg === "--adapter" || arg.startsWith("--adapter="))) {
 		throw new Error("this wrapper supplies --adapter; run the driver directly to select another adapter");
@@ -40,16 +39,13 @@ export function rustMckInvocation(root: string, platform: string, args: readonly
 	if (contractPosition !== undefined && (contract === undefined || contract.length === 0 || contract.startsWith("--"))) {
 		throw new Error("--contract requires a version");
 	}
-	if (contract !== undefined && suite !== "package") {
-		throw new Error("--contract requires --suite package");
-	}
 	const adapter = path.join(root, "ecosystem/morphir-rust/target/debug",
 		platform === "win32" ? "mck-adapter-rust.exe" : "mck-adapter-rust");
 	const driver = path.join(root, "ecosystem/morphir-typescript/packages/mck/src/cli.ts");
 	// The adapter's own arguments follow it, whether the driver spawns it
 	// directly or spawns the recording proxy that spawns it.
 	const adapterArgs = [
-		...(suite === "package" ? ["--suite", "package"] : []),
+		"--suite", "package",
 		...(contract === undefined ? [] : ["--contract", contract]),
 	];
 	const spawned = transcript === undefined
@@ -61,7 +57,7 @@ export function rustMckInvocation(root: string, platform: string, args: readonly
 	const [program, ...passed] = transcript === undefined ? spawned : ["bun", ...spawned];
 	return {
 		adapter,
-		command: ["bun", driver, ...(suite === "package" ? ["package", "run"] : ["run"]),
+		command: ["bun", driver, "package", "run",
 			"--adapter", program as string,
 			...passed.flatMap((arg) => ["--adapter-arg", arg]),
 			...driverArgs],

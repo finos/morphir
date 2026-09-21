@@ -111,5 +111,5 @@ test("aggregate gate requires successful package CI when selected", () => {
 	const check = workflow.jobs.check?.steps.map((step) => step.run ?? "").join("\n") ?? "";
 	expect(check).toContain('needs.changes.outputs.package-mck');
 	expect(check).toContain('needs.package-mck.result');
-	expect(workflow.jobs["package-mck"]?.steps.some((step) => step.run?.includes("bun test tools/rust-mck-command.test.ts tools/package-ci.test.ts"))).toBe(true);
+	expect(workflow.jobs["package-mck"]?.steps.some((step) => step.run?.includes("bun test tools/rust-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts"))).toBe(true);
 });

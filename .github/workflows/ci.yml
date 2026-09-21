@@ -97,17 +97,10 @@ jobs:
               - 'spec/mck/**'
               - 'website/static/schemas/morphir-ir-v4-document-tree-files.json'
               - 'website/static/schemas/morphir-ir-v4-document-tree-files.yaml'
-              # the first driver used for migration parity lives here
+              # the TypeScript implementation owns its independent adapter
               - 'ecosystem/morphir-typescript'
-              # adjudicates the Rust binding's MCK report against its allowed-failing list
-              - 'tools/check-mck-report.ts'
               # resolves and runs the Rust binding's MCK adapter
-              - 'tools/run-mck-rust.ts'
               - 'tools/run-mck-gate*'
-              - 'tools/rust-mck-command*'
-              # record and compare the two runners' answers on that adapter
-              - 'tools/record-mck-transcript.ts'
-              - 'tools/compare-mck-reports.ts'
               # validates the output of `mise run migrate:validate` against the v4 schema
               - 'website/scripts/validate-migrated-ir.js'
               # the v4 schema `mise run migrate:validate` validates migrated IR against
@@ -151,15 +144,7 @@ jobs:
               - 'website/static/schemas/morphir-ir-v4.yaml'
               - 'website/static/schemas/morphir-ir-v4-document-tree-files.yaml'
               - 'tools/gen-mck-vocabulary*'
-              - 'tools/check-mck-contract-copies*'
-              # Retained TypeScript migration evidence, not production validators.
-              - 'tools/validate-mck-fences.ts'
-              - 'tools/validate-mck-protocol.ts'
-              # adjudicates a driver report against a binding's allowed-failing list
-              - 'tools/check-mck-report.ts'
-              - 'tools/run-mck-rust.ts'
               - 'tools/run-mck-gate*'
-              - 'tools/rust-mck-command*'
               - 'ecosystem/morphir-typescript'
               # the Rust binding is driven through its adapter by mck:run-rust,
               # so a pointer bump has to re-run the kit validations too
@@ -171,6 +156,7 @@ jobs:
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             package-mck:
+              - 'tools/record-mck-transcript*'
               - 'spec/package/**'
               - 'ecosystem/morphir-rust'
               - 'ecosystem/morphir-typescript'
@@ -515,20 +501,6 @@ jobs:
             .dev/out/mck/morphir-rust.json
             .dev/out/mck/morphir-rust.html
 
-      - name: Compare the first driver and the Rust runner on the same adapter
-        if: ${{ !cancelled() }}
-        run: mise run mck:parity-rust
-
-      - name: Upload the Rust adapter's parity evidence
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: mck-parity-morphir-rust
-          path: |
-            .dev/out/mck/morphir-rust-first-driver.json
-            .dev/out/mck/morphir-rust-rust-runner.json
-            .dev/out/mck/morphir-rust.ndjson
-
       - name: Validate migrated IR against the v4 schema
         if: ${{ !cancelled() }}
         run: mise run migrate:validate
@@ -558,7 +530,7 @@ jobs:
         id: integration
         run: |
           bun run --cwd tools typecheck
-          bun test tools/rust-mck-command.test.ts tools/package-ci.test.ts
+          bun test tools/rust-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts
       - name: Run TypeScript package implementation
         run: mise run package:check
       - name: Check synthetic restore assurance preflight vectors

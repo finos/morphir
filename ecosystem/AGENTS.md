@@ -11,8 +11,8 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 - **morphir-python** – Python implementation of Morphir tooling.
 - **morphir-scala** – Scala implementation of Morphir tooling. Mill build, cross-compiled to JVM, JS, and Scala Native.
 - **morphir-ui** – Morphir's UI monorepo: the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application (moonrepo + mise + bun toolchain).
-- **morphir-typescript** – TypeScript binding for the Morphir IR: the reference semantic model, the version and profile codecs, and its MCK adapter. It also still hosts the mck driver that runs the Morphir Compatibility Kit at `spec/ir/mck/` against every binding; that driver is frozen and is being replaced by `morphir mck` in this repository (see [spec/mck/migration.md](../spec/mck/migration.md)), so new shared MCK work does not go there. Bun workspace; runtime-neutral (Node, Bun, Deno, browser).
-- **morphir-gleam** – Gleam models and tooling for the BEAM ecosystem. `packages/morphir_models` is the Gleam mirror of the IR model, checked by the mck driver.
+- **morphir-typescript** – TypeScript binding for the Morphir IR: the reference semantic model, the version and profile codecs, and its MCK adapter. Its package-only MCK runner remains until [#852](https://github.com/finos/morphir/issues/852); shared IR tooling lives in the parent Rust CLI, `morphir mck`. See [spec/mck/migration.md](../spec/mck/migration.md). Bun workspace; runtime-neutral (Node, Bun, Deno, browser).
+- **morphir-gleam** – Gleam models and tooling for the BEAM ecosystem. `packages/morphir_models` is the Gleam mirror of the IR model. It has no MCK adapter or CI integration yet; a future integration should use `morphir mck`.
 
 Do not edit submodule content in-place for long-term changes. Prefer contributing in the submodule's own repo and then updating the submodule ref in finos/morphir when intentional.
 

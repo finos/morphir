@@ -149,8 +149,31 @@ workspace integrations. This guide does not promise a separately published Rust
 crate or a stable library API. The released CLI and its explicitly versioned
 report are the cross-language integration boundary.
 
-Published TypeScript package versions and release assets remain available.
-During adoption, retain the frozen driver where migration parity or package
-checks still require it. Retirement of IR runner and release paths follows
-binding CI adoption and the cutover review in issue #851. Preserve the IR npm
-package's Node 20 artifact checks separately from the MCK package's Node 24 checks.
+## Consumer cutover
+
+TypeScript's `check:kit` and `check:conformance`, and Rust's `check:kit`,
+use the pinned native release. Remove custom invocations of their temporary
+`check:kit-legacy` and `check:conformance-legacy` tasks. Rust no longer downloads
+the standalone TypeScript driver or reads its legacy report during CI.
+
+In the parent, use `mck:run` or `mck:run-rust` instead of the retired
+`mck:parity-rust` task. `mck:check` retains vocabulary authoring checks and
+native schema validation. `mck:vocabulary-check` replaces the temporary
+`mck:source-parity` task; protocol schemas are owned by the parent.
+
+For npm consumers, `@finos/morphir-mck` retains both bins:
+`mck-adapter-typescript` is the implementation adapter and `mck` accepts
+package commands only. IR subcommands fail with migration guidance; there is
+no forwarding shim or implicit download. Migrate IR library imports using the
+table above. Package APIs and their existing wire contracts remain until #852.
+
+Future compiled releases contain the five TypeScript adapter executables and
+the two npm tarballs, without standalone IR runner binaries or an embedded IR
+kit. The installed MCK artifact gate runs the native CLI against its Node 24
+adapter. The independent IR npm artifact gate retains Node 20 support.
+
+Published historical package versions and release assets remain available.
+The [migration record](https://github.com/finos/morphir/blob/main/spec/mck/migration.md)
+records the final repository consumer audit and qualification evidence. An audit
+of repository integrations cannot identify every external npm library consumer;
+those consumers must migrate explicitly before upgrading across this removal.
