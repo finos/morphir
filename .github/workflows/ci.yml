@@ -61,6 +61,8 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/**'
+              # mck_run in the CLI crate replays and compares these frozen inputs.
+              - 'spec/mck/baseline/package/**'
               # crates/morphir path-depends on crates inside this submodule,
               # so a ref bump changes compiled source
               - 'ecosystem/morphir-rust'

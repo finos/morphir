@@ -12,6 +12,17 @@ CARGO_LOCK_PATH = REPO_ROOT / "Cargo.lock"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_package_acceptance_baselines_trigger_cli_tests(self) -> None:
+        rust_filter = self.ci_workflow.split("            rust:\n", 1)[1].split(
+            "            rust-conformance:\n", 1
+        )[0]
+        self.assertIn("- 'spec/mck/baseline/package/**'", rust_filter)
+        cli_job = self.ci_workflow.split("    name: morphir CLI (test + integration)", 1)[1].split(
+            "\n  check-cli-docs:", 1
+        )[0]
+        self.assertIn("needs.changes.outputs.rust == 'true'", cli_job)
+        self.assertIn("cargo test --locked --package morphir", cli_job)
+
     def test_linux_offline_evidence_is_readable_by_the_artifact_uploader(self) -> None:
         workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
         self.assertIn("name: Restore Linux evidence ownership", workflow)
