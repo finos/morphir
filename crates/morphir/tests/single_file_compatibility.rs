@@ -17,9 +17,12 @@
 //!   process extension, not a built-in one, so it is not available in this
 //!   test environment; only `--extension morphir-elm-native` and a
 //!   configured `morphir-elm-native` are exercised.
-//! - The tests that do load configuration select it with `--config`, so the
-//!   `--project` selection path is not covered by this file. It is exercised
-//!   by `crates/morphir/tests/project_compile.rs`.
+//! - Most of the tests that load configuration select it with `--config`.
+//!   The single-file `--project` selection path — `discover_config`, the
+//!   `"--project requires a Morphir configuration"` refusal, and
+//!   `ProjectSelection::Explicit` (`crates/morphir/src/commands/compile.rs:677-687`)
+//!   — is covered below, by `a_project_flag_discovers_configuration_and_keeps_project_identity`
+//!   and `a_project_flag_with_no_discoverable_configuration_is_refused`.
 
 use std::{fs, process::Command};
 
@@ -499,5 +502,77 @@ fn provider_selection_by_configuration_with_no_flag() {
     assert_eq!(
         ir["distribution"][1],
         serde_json::json!([["local"], ["acme", "widget"]])
+    );
+}
+
+/// `--input <file> --project <name>` in a directory tree with a discoverable
+/// `morphir.toml` takes the `discover_config` branch (`compile.rs:680-687`):
+/// no `--config` is given, so `discover_config` walks up from the current
+/// directory, finds the manifest, and loads it with
+/// `ProjectSelection::Explicit("acme/widgets")`. The result matches the
+/// `--config`-selected case pinned by
+/// `a_selection_inside_a_project_keeps_project_identity_and_narrows_exposure`
+/// exactly: the project's manifest name becomes the package path, and only
+/// the selected module is exposed.
+#[test]
+fn a_project_flag_discovers_configuration_and_keeps_project_identity() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['A']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
+    )
+    .unwrap();
+    fs::write(dir.join("src/A.elm"), "module A exposing (Alpha)\n\n\ntype alias Alpha =\n    Int\n").unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "src/A.elm", "--project", "acme/widgets"],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: the discovered manifest's name (`acme/widgets`), not the
+    // selected module's own name, becomes the package path.
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["acme"], ["widgets"]])
+    );
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    let module_names: Vec<_> = modules.iter().map(|m| m[0].clone()).collect();
+    assert_eq!(
+        module_names,
+        vec![serde_json::json!([["a"]])],
+        "expected exactly module A, got {module_names:?}"
+    );
+}
+
+/// `--input <file> --project <name>` with nothing discoverable hits the
+/// explicit refusal at `compile.rs:682-687`: `discover_config` walks all the
+/// way up from the current directory, finds no `morphir.toml`,
+/// `morphir.yaml`, or `morphir.json`, and the run fails before a
+/// configuration is ever loaded.
+#[test]
+fn a_project_flag_with_no_discoverable_configuration_is_refused() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "Widget.elm", "--project", "acme/widgets"],
+    );
+    assert!(!ok, "expected the compile to be refused, but it succeeded");
+    // This exact sentence is the CLI's own validation message for this one
+    // rejection path (`compile.rs:684`); nothing else in the process
+    // produces it.
+    assert!(
+        err.contains("--project requires a Morphir configuration"),
+        "unexpected stderr: {err}"
     );
 }
