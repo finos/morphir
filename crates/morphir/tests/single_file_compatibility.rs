@@ -237,8 +237,13 @@ fn a_selection_cannot_import_an_unselected_sibling_module() {
     // selected module; the project's other sources are never available for
     // import resolution even though the manifest lists them.
     assert!(!ok, "expected the compile to fail, but it succeeded: {err}");
+    // Pin the *cause* of the failure, not just that something named `Beta`
+    // went unfound: "in module `B`" can only come from the resolver naming
+    // module B as the place the lookup failed, so a future change that fails
+    // for an unrelated reason (e.g. `` `Beta` not found: <other reason> ``)
+    // would not satisfy this.
     assert!(
-        err.contains('B') && err.contains("not found"),
-        "expected an unresolved-import error mentioning `B`, got: {err}"
+        err.contains("in module `B`"),
+        "expected an unresolved-import error citing module `B` as the cause, got: {err}"
     );
 }
