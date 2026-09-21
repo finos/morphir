@@ -202,7 +202,7 @@ directions are load-bearing.
 
 **A host must not assume more than an extension advertises.** This is stated above for methods, and
 it applies to every field: a host must not send a `baseline` to a frontend advertising
-`incremental: false`, nor request an IR version absent from `ir_versions`.
+`incremental: false`, nor request an IR version absent from `irVersions`.
 
 **A host must not refuse less than an extension advertises.** A host that hardcodes a limit it
 once observed will keep enforcing it after the extension grows past it, and nothing will detect the
@@ -220,18 +220,19 @@ sequenceDiagram
     participant H as Host
     participant E as Extension
     H->>E: morphir.initialize (protocol versions, permissions)
-    E-->>H: capabilities { ir_versions: ["3","4"], incremental: true }
-    Note over H: negotiate against what was advertised,<br/>never against what was remembered
+    E-->>H: capabilities { irVersions: ["3","4"], incremental: true }
+    Note over H: the advertised set is the only authority
     H->>E: morphir.frontend.compile (irVersion: "4")
     E-->>H: CompileResult
-    H->>E: morphir.frontend.compile (irVersion: "5")
-    E-->>H: error: unsupported IR version
-    Note over H: a refusal names the extension<br/>and the capability that imposed it
+    H->>H: irVersion "5" is absent from irVersions:<br/>refuse before dispatch, naming the<br/>extension and the capability
 ```
 
-**Figure 1:** Capability negotiation. Notice that the host has no opinion of its own about IR
-versions: every decision is read back from what the extension advertised during initialization, so
-an extension gaining a version needs no host change to become usable.
+**Figure 1:** Capability negotiation. Notice the last exchange never reaches the extension. A
+version the extension did not advertise is refused by the host before dispatch, so an extension
+never has to defend itself against a request the host should not have sent. Notice also that the
+host holds no opinion of its own about IR versions: every decision is read back from what was
+advertised at initialization, so an extension gaining a version needs no host change to become
+usable.
 
 ### Frontend capabilities
 
