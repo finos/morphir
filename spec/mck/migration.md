@@ -371,6 +371,9 @@ unchanged and qualified for IR only.
 
 ### Authoritative consumers
 
+The final cutover is coordinated in parent [#909](https://github.com/finos/morphir/pull/909)
+and TypeScript [#33](https://github.com/finos/morphir-typescript/pull/33).
+
 The parent tasks `package:check`, `package:check:rust`,
 `package:resolution-check` and `package:resolution-check:rust` now invoke
 native MCK. `tools/run-package-mck.ts` only selects the adapter, contract and
