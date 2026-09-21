@@ -267,8 +267,26 @@ Morphir Compatibility Kit: validate, vendor and run compatibility kits
 \fBmck check\fR
 Validate a kit directory without running an adapter
 .TP
+\fBmck coverage\fR
+Check that every IR vocabulary variant and member has a kit case
+.TP
+\fBmck schema\fR
+Validate kit schemas, examples and IR fences offline
+.TP
+\fBmck schema check\fR
+Check schemas, examples, protocol pairing and accepted JSON fences
+.TP
 \fBmck run\fR
 Run the kit against an implementation's adapter and report the results
+.TP
+\fBmck report\fR
+Check compatibility evidence or render a saved report as offline HTML
+.TP
+\fBmck report check\fR
+Verify report inventory and the binding's allowed\-failing baseline
+.TP
+\fBmck report render\fR
+Render a consolidated JSON report as a standalone offline HTML file
 .TP
 \fBmck kit\fR
 Inspect, vendor and update kit data
@@ -1800,6 +1818,34 @@ Print the files, case ids and errors as JSON on stdout
 .TP
 \fB<DIR>\fR
 The kit directory to validate, for example spec/ir/mck, or a vendored snapshot's root
+.SH "MORPHIR MCK COVERAGE"
+Check that every IR vocabulary variant and member has a kit case
+
+Pending cases count through title and prose mentions. This JSON\-key heuristic inspects inline JSON only; member coverage requires a case for the member's own node, so nesting it in another entry\-point document does not cover it. Zero gaps do not establish semantic conformance.
+.PP
+\fBUsage:\fR morphir mck coverage [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+A kit directory or vendored snapshot; the embedded kit when omitted
+.TP
+\fB\-\-repo\-root\fR \fI<DIR>\fR
+Repository root holding spec/mck/vocabulary.json, inferred for spec/ir/mck
+.SH "MORPHIR MCK SCHEMA CHECK"
+Check schemas, examples, protocol pairing and accepted JSON fences
+.PP
+\fBUsage:\fR morphir mck schema check [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+The kit directory or verified snapshot root; the embedded kit when omitted
+.TP
+\fB\-\-repo\-root\fR \fI<DIR>\fR
+Repository root for a raw authoring kit
 .SH "MORPHIR MCK RUN"
 Run the kit against an implementation's adapter and report the results
 .PP
@@ -1840,6 +1886,50 @@ How long the whole adapter session may last, in milliseconds
 .RS
 \fIDefault: \fR1800000
 .RE
+.SH "MORPHIR MCK REPORT CHECK"
+Verify report inventory and the binding's allowed\-failing baseline
+.PP
+\fBUsage:\fR morphir mck report check [OPTIONS] <REPORT> <ALLOWED_FAILING>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<KIT>\fR
+Independent kit, defaulting to the embedded kit
+.TP
+\fB\-\-repo\-root\fR \fI<REPO_ROOT>\fR
+.TP
+\fB\-\-filter\fR \fI<FILTER>\fR
+Require this exact case filter; omission requires a full\-kit report
+\fBArguments:\fR
+.PP
+.TP
+\fB<REPORT>\fR
+Consolidated JSON report to check
+.TP
+\fB<ALLOWED_FAILING>\fR
+Binding\-owned JSON file listing allowed failing case IDs
+.SH "MORPHIR MCK REPORT RENDER"
+Render a consolidated JSON report as a standalone offline HTML file
+.PP
+\fBUsage:\fR morphir mck report render [OPTIONS] <REPORT>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-format\fR \fI<FORMAT>\fR
+Output representation; HTML opens offline without a server
+.RS
+\fIDefault: \fRhtml
+.RE
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Destination for the standalone report; cannot overwrite the JSON input
+\fBArguments:\fR
+.PP
+.TP
+\fB<REPORT>\fR
+Consolidated JSON report to display
 .SH "MORPHIR MCK KIT STATUS"
 Identify a kit: source, revision, corpus hash and whether it is modified
 .PP

@@ -28,8 +28,11 @@ On 2026-09-18 ownership of all shared MCK tooling moved to this repository, in R
 records it and supersedes the ownership portion of
 [decision 0001](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
 
-**The Rust tooling is incomplete.** `morphir mck check`, `kit status`, `kit vendor`, `kit update` and `run` exist (IR-1, IR-1V, IR-2); coverage and the schema and report gates do not. Everything under "Current driver and contracts" still describes the
-TypeScript driver, which stays the authoritative gate until cutover. Its MCK features are frozen.
+**Parent IR gates use the Rust CLI.** Kit checking and vendoring, adapter runs, coverage,
+offline schema validation, independent report checking and optional HTML rendering are implemented.
+The report contract remains `2.0.0-draft.1`. Release, adapter distribution and binding CI adoption
+remain IR-4 work. The frozen TypeScript driver stays available for parity, packages and consumers
+awaiting cutover; its shared MCK features remain break/fix only.
 
 | Document | Content | Status |
 | --- | --- | --- |
@@ -41,9 +44,9 @@ TypeScript driver, which stays the authoritative gate until cutover. Its MCK fea
 Delivery is IR first ([#851](https://github.com/finos/morphir/issues/851)), then the package suites
 ([#852](https://github.com/finos/morphir/issues/852)); parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
-## Current driver and contracts
+## Retained TypeScript driver and package contracts
 
-The driver lives in [finos/morphir-typescript](https://github.com/finos/morphir-typescript/tree/main/packages/mck),
+The first driver lives in [finos/morphir-typescript](https://github.com/finos/morphir-typescript/tree/main/packages/mck),
 under `@finos/morphir-mck`. Its current protocol and report contract version 1 describe the IR suite.
 The [IR suite README](../ir/mck/README.md) specifies its case grammar and invocation.
 

@@ -60,6 +60,14 @@ pub struct Run {
     /// caller to print where it likes; `None` when capabilities failed.
     pub header: Option<String>,
     pub capabilities: Option<Capabilities>,
+    /// Session failures remain visible even when the selection has no fences.
+    pub failure: Option<RunFailure>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunFailure {
+    Capabilities(String),
+    Exchange(String),
 }
 
 /// A fence ready to send: its profile and body, or why it has none.
@@ -224,6 +232,111 @@ fn unsupported(
         return Some(format!("profile {profile} not in capabilities"));
     }
     (!caps.paths.contains(&path)).then(|| format!("path {path} not in capabilities"))
+}
+
+/// Expected identity and legitimate skip reason, derived without an adapter or results.
+pub(crate) struct InventoryEntry {
+    pub case_id: String,
+    pub ir_version: i64,
+    pub profile: RecordProfile,
+    pub role: Role,
+    pub fence_index: usize,
+    pub path: Option<PathMode>,
+    pub skip: Option<String>,
+    pub kit_error: Option<String>,
+}
+
+impl InventoryEntry {
+    pub fn matches(&self, record: &Record) -> bool {
+        self.case_id == record.case_id
+            && self.ir_version == record.ir_version
+            && self.profile == record.profile
+            && self.role == record.role
+            && self.fence_index == record.fence_index
+            && self.path == record.path
+    }
+}
+
+pub(crate) fn inventory(
+    kit: &Kit,
+    caps: &Capabilities,
+    filter: Option<&Regex>,
+) -> Vec<InventoryEntry> {
+    let mut entries: Vec<_> = kit
+        .errors
+        .iter()
+        .map(|error| InventoryEntry {
+            case_id: owner_of(&kit.cases, error)
+                .map_or_else(|| KIT_ERROR_CASE.to_owned(), |c| c.id.as_str().to_owned()),
+            ir_version: CURRENT_VERSION,
+            profile: RecordProfile::Json,
+            role: Role::Canonical,
+            fence_index: 0,
+            path: None,
+            skip: None,
+            kit_error: Some(format!("{}:{}: {}", error.file, error.line, error.message)),
+        })
+        .collect();
+    for case in &kit.cases {
+        if filter.is_some_and(|f| !f.is_match(case.id.as_str())) {
+            continue;
+        }
+        let version = case.version.unwrap_or(CURRENT_VERSION);
+        let targets: Vec<_> = case.fences.iter().map(|f| target_of(kit, f)).collect();
+        let sets = file_sets(&targets);
+        for &path in &caps.paths {
+            let mut per_path: Vec<_> = targets
+                .iter()
+                .map(|target| {
+                    let skip = if case.status == Status::Pending {
+                        Some("pending".to_owned())
+                    } else if target.body.is_err() {
+                        None
+                    } else if target.role == Role::File {
+                        let members = sets
+                            .iter()
+                            .find(|(_, members)| {
+                                members.iter().any(|t| t.fence.index == target.fence.index)
+                            })
+                            .map(|(_, m)| m);
+                        members.and_then(|members| {
+                            if members.iter().any(|t| t.body.is_err()) {
+                                return None;
+                            }
+                            unsupported(
+                                caps,
+                                version,
+                                RecordProfile::Tree,
+                                path,
+                                case.node.as_deref(),
+                            )
+                            .or_else(|| {
+                                let language = members[0].language;
+                                (members.iter().all(|t| t.language == language)
+                                    && !caps.profiles.contains(&language))
+                                .then(|| format!("profile {language} not in capabilities"))
+                            })
+                        })
+                    } else {
+                        unsupported(caps, version, target.profile, path, case.node.as_deref())
+                    };
+                    InventoryEntry {
+                        case_id: case.id.as_str().to_owned(),
+                        ir_version: version,
+                        profile: target.profile,
+                        role: target.role,
+                        fence_index: target.fence.index,
+                        path: Some(path),
+                        skip,
+                        kit_error: None,
+                    }
+                })
+                .collect();
+            per_path.sort_by_key(|entry| entry.fence_index);
+            entries.extend(per_path);
+        }
+    }
+    entries
 }
 
 fn decode(testee: &mut dyn Testee, request: &Request) -> Result<DecodeResponse, String> {
@@ -826,6 +939,13 @@ pub fn run_kit(kit: &Kit, testee: &mut dyn Testee, options: &RunOptions) -> Run 
     Run {
         report,
         header,
+        failure: dead.map(|message| {
+            if caps.is_some() {
+                RunFailure::Exchange(message)
+            } else {
+                RunFailure::Capabilities(message)
+            }
+        }),
         capabilities: caps,
     }
 }
@@ -923,6 +1043,31 @@ mod tests {
     const UNIT: &str = "## types-0001: unit {node=Type}\n```yaml canonical\nUnit: {}\n```\n";
 
     #[test]
+    fn inventory_preserves_repeated_synthetic_error_identities_and_order() {
+        let kit = kit_of(&[(
+            "spec/ir/mck/types.md",
+            "```yaml canonical\na: 1\n```\n```json canonical\n{}\n```\n",
+        )]);
+        assert_eq!(kit.errors.len(), 2);
+        let caps = parse_capabilities(&caps(&["current"])).unwrap();
+        let entries = inventory(&kit, &caps, Some(&Regex::new("^types-9999$").unwrap()));
+        assert_eq!(entries.len(), 2, "kit errors survive filtering");
+        for entry in &entries {
+            assert_eq!(entry.case_id, "kit-0000");
+            assert_eq!(entry.fence_index, 0);
+            assert_eq!(entry.path, None);
+        }
+        assert_eq!(
+            entries[0].kit_error.as_deref(),
+            Some("spec/ir/mck/types.md:1: data fence before the first case")
+        );
+        assert_eq!(
+            entries[1].kit_error.as_deref(),
+            Some("spec/ir/mck/types.md:4: data fence before the first case")
+        );
+    }
+
+    #[test]
     fn kit_errors_are_reported_under_their_case_or_the_reserved_id() {
         let kit = kit_of(&[(
             "spec/ir/mck/types.md",
@@ -975,6 +1120,7 @@ mod tests {
             }),
         );
         assert_eq!(run.header, None);
+        assert!(matches!(run.failure, Some(RunFailure::Capabilities(_))));
         assert_eq!(run.report.binding, "unknown");
         assert_eq!(run.report.format_versions, "unknown");
         assert_eq!(

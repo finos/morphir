@@ -1,4 +1,5 @@
 import re
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -10,17 +11,18 @@ RELEASE_WORKFLOW_PATH = WORKFLOWS / "release.yml"
 AGENDA_WORKFLOW_PATH = WORKFLOWS / "create-meeting-agenda.yml"
 SETUP_RUST_CI_ACTION = REPO_ROOT / ".github" / "actions" / "setup-rust-ci" / "action.yml"
 
-# Inputs that only the kit run against the Rust binding and the migrate
-# validation read. None of them is compiled into, or read by the tests of, the
-# morphir crate, so none of them may start the full Rust pipeline.
+# These inputs run focused MCK tests and binding conformance without starting
+# the full Rust pipeline, which also needs downloaded extension bundles.
 CONFORMANCE_ONLY_INPUTS = [
     "- 'spec/ir/mck/**'",
+    "- 'spec/mck/**'",
     "- 'ecosystem/morphir-typescript'",
     "- 'tools/check-mck-report.ts'",
     "- 'tools/run-mck-rust.ts'",
     "- 'tools/rust-mck-command*'",
     "- 'website/scripts/validate-migrated-ir.js'",
     "- 'website/static/schemas/morphir-ir-v4.json'",
+    "- 'website/static/schemas/morphir-ir-v4-document-tree-files.json'",
     "- 'website/package.json'",
     "- 'website/package-lock.json'",
 ]
@@ -52,6 +54,7 @@ class PathAwareCiTests(unittest.TestCase):
         cls.release = RELEASE_WORKFLOW_PATH.read_text(encoding="utf-8")
         cls.agenda = AGENDA_WORKFLOW_PATH.read_text(encoding="utf-8")
         cls.setup_rust = SETUP_RUST_CI_ACTION.read_text(encoding="utf-8")
+        cls.tasks = tomllib.loads((REPO_ROOT / ".config/mise/config.toml").read_text())["tasks"]
 
     # ----- path filters -----
 
@@ -89,6 +92,78 @@ class PathAwareCiTests(unittest.TestCase):
     def test_docs_job_does_not_repeat_the_package_suite(self) -> None:
         self.assertNotIn("mise run package:check", job_body(self.ci, "docs"))
         self.assertIn("mise run package:check", job_body(self.ci, "package-mck"))
+
+    def test_native_mck_changes_run_the_typescript_binding_gate(self) -> None:
+        mck_filter = filter_body(self.ci, "mck")
+        for entry in [
+            "- 'crates/morphir-mck/**'",
+            "- 'crates/morphir/src/commands/mck*'",
+            "- 'crates/morphir/src/commands/mck/**'",
+            "- 'crates/morphir/src/main.rs'",
+            "- 'Cargo.toml'",
+            "- 'Cargo.lock'",
+            "- '.github/actions/setup-rust-ci/**'",
+        ]:
+            self.assertIn(entry, mck_filter)
+
+    def test_kit_closure_changes_run_both_bindings_and_native_authoring_gates(self) -> None:
+        for name in ("mck", "rust-conformance"):
+            paths = filter_body(self.ci, name)
+            for entry in [
+                "- 'spec/mck/**'",
+                "- 'spec/ir/mck/**'",
+                "- 'website/static/schemas/morphir-ir-v4.json'",
+                "- 'website/static/schemas/morphir-ir-v4-document-tree-files.json'",
+                "- 'website/static/schemas/morphir-ir-v4.yaml'",
+                "- 'website/static/schemas/morphir-ir-v4-document-tree-files.yaml'",
+            ]:
+                self.assertIn(entry, paths)
+        self.assertIn("- 'tools/check-mck-contract-copies*'", filter_body(self.ci, "mck"))
+        docs = job_body(self.ci, "docs")
+        self.assertIn("cargo test --locked --package morphir-mck", docs)
+        self.assertIn("needs.changes.outputs.mck == 'true' && needs.changes.outputs.rust != 'true'", docs)
+        self.assertEqual(docs.count("mise run mck:check"), 1)
+        self.assertNotIn("mise run mck:schema-check", docs)
+
+    def test_production_mck_tasks_use_native_authoring_and_coverage_gates(self) -> None:
+        check = self.tasks["mck:check"]["run"]
+        self.assertIn("cargo run --locked -p morphir -- mck check spec/ir/mck", check)
+        schema = "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck"
+        self.assertIn(schema, check)
+        self.assertEqual(self.tasks["mck:schema-check"]["run"], schema)
+        self.assertNotIn("mck:schema-check", self.tasks["check"]["depends"])
+        for name in ("mck:run", "mck:run-rust"):
+            commands = self.tasks[name]["run"]
+            self.assertIn("cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck", commands)
+        for name in ("mck:check", "mck:schema-check", "mck:run", "mck:run-rust"):
+            commands = str(self.tasks[name]["run"])
+            for legacy in ("src/cli.ts", "validate-mck-", "jsonschema "):
+                self.assertNotIn(legacy, commands)
+
+    def test_source_parity_retains_only_generation_and_protocol_copy_checks(self) -> None:
+        self.assertIn("mck:source-parity", self.tasks["mck:check"].get("depends", []))
+        commands = self.tasks.get("mck:source-parity", {}).get("run", [])
+        self.assertIn("bun run tools/gen-mck-vocabulary.ts --check", commands)
+        self.assertIn("bun run tools/check-mck-contract-copies.ts", commands)
+        self.assertNotIn("validate-mck-", str(commands))
+        self.assertIn("tools/run-mck-rust.ts", str(self.tasks["mck:parity-rust"]["run"]))
+
+    def test_failed_mck_runs_still_render_and_upload_fresh_reports(self) -> None:
+        for name, binding, task in [
+            ("docs", "morphir-typescript-adapter", "mck:run"),
+            ("rust-conformance", "morphir-rust", "mck:run-rust"),
+        ]:
+            job = job_body(self.ci, name)
+            report = f".dev/out/mck/{binding}"
+            clean = f"rm -f {report}.json {report}.html"
+            render = f"mck report render {report}.json --format html --output {report}.html"
+            self.assertIn(clean, job)
+            self.assertLess(job.index(clean), job.index(f"mise run {task}\n"))
+            self.assertIn(render, job)
+            self.assertIn(f"if: ${{{{ !cancelled() && hashFiles('{report}.json') != '' }}}}", job)
+            self.assertIn(f"            {report}.json\n", job)
+            self.assertIn(f"            {report}.html\n", job)
+            self.assertNotIn("continue-on-error:", job)
 
     def test_shared_actions_trigger_the_workflow_tests(self) -> None:
         self.assertIn("- '.github/actions/**'", filter_body(self.ci, "release"))

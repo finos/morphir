@@ -693,13 +693,36 @@ impl MigrateArgs {
 enum MckAction {
     /// Validate a kit directory without running an adapter
     Check(commands::mck::MckCheckArgs),
+    /// Check that every IR vocabulary variant and member has a kit case
+    ///
+    /// Pending cases count through title and prose mentions. This JSON-key
+    /// heuristic inspects inline JSON only; member coverage requires a case
+    /// for the member's own node, so nesting it in another entry-point document
+    /// does not cover it. Zero gaps do not establish semantic conformance.
+    Coverage(commands::mck::MckCoverageArgs),
+    /// Validate kit schemas, examples and IR fences offline
+    Schema {
+        #[command(subcommand)]
+        action: MckSchemaAction,
+    },
     /// Run the kit against an implementation's adapter and report the results
     Run(commands::mck::MckRunArgs),
+    /// Check compatibility evidence or render a saved report as offline HTML
+    Report {
+        #[command(subcommand)]
+        action: MckReportAction,
+    },
     /// Inspect, vendor and update kit data
     Kit {
         #[command(subcommand)]
         action: MckKitAction,
     },
+}
+
+#[derive(Clone, Subcommand)]
+enum MckSchemaAction {
+    /// Check schemas, examples, protocol pairing and accepted JSON fences
+    Check(commands::mck::MckSchemaCheckArgs),
 }
 
 #[derive(Clone, Subcommand)]
@@ -710,6 +733,14 @@ enum MckKitAction {
     Vendor(commands::mck::MckKitVendorArgs),
     /// Replace a vendored snapshot, refusing if its files were edited
     Update(commands::mck::MckKitUpdateArgs),
+}
+
+#[derive(Clone, Subcommand)]
+enum MckReportAction {
+    /// Verify report inventory and the binding's allowed-failing baseline
+    Check(commands::mck::report::CheckArgs),
+    /// Render a consolidated JSON report as a standalone offline HTML file
+    Render(commands::mck::report::RenderArgs),
 }
 
 /// The `morphir kb` subcommand tree — a drop-in port of the morphir-scala
@@ -1043,7 +1074,19 @@ impl AppSession for MorphirSession {
             },
             Commands::Mck { action } => match action {
                 MckAction::Check(args) => run_mck_check(args.clone()),
+                MckAction::Coverage(args) => commands::mck::run_mck_coverage(args.clone()),
+                MckAction::Schema { action } => match action {
+                    MckSchemaAction::Check(args) => {
+                        commands::mck::run_mck_schema_check(args.clone())
+                    }
+                },
                 MckAction::Run(args) => run_mck_run(args.clone()).await,
+                MckAction::Report { action } => match action {
+                    MckReportAction::Check(args) => commands::mck::report::run_check(args.clone()),
+                    MckReportAction::Render(args) => {
+                        commands::mck::report::run_render(args.clone())
+                    }
+                },
                 MckAction::Kit { action } => match action {
                     MckKitAction::Status(args) => run_mck_kit_status(args.clone()),
                     MckKitAction::Vendor(args) => run_mck_kit_vendor(args.clone()).await,

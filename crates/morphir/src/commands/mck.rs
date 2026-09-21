@@ -24,13 +24,93 @@ use morphir_mck::kit::vendor::{
     default_update_source, describe, open_managed, update, vendor,
 };
 use morphir_mck::kit::{Kit, KitSource, load_kit};
-use morphir_mck::provenance::{
-    AdapterProvenance, Driver, KitProvenance, KitSourceKind, PROVENANCE_VERSION, Provenance,
-};
+use morphir_mck::provenance::{KitProvenance, KitSourceKind};
 use morphir_mck::report::iso_timestamp;
 use morphir_mck::transport::{Limits, Session};
 use serde_json::json;
 use starbase::AppResult;
+
+pub mod report;
+
+#[derive(Args, Clone, Debug)]
+pub struct MckSchemaCheckArgs {
+    /// The kit directory or verified snapshot root; the embedded kit when omitted
+    #[arg(long, value_name = "DIR")]
+    pub kit: Option<PathBuf>,
+    /// Repository root for a raw authoring kit
+    #[arg(long, value_name = "DIR")]
+    pub repo_root: Option<PathBuf>,
+}
+
+pub fn run_mck_schema_check(args: MckSchemaCheckArgs) -> AppResult<miette::Report> {
+    let result = (|| {
+        let kit = match &args.kit {
+            None => load_kit(embedded_source()).map_err(|e| e.to_string())?,
+            Some(dir) => load_directory(dir, args.repo_root.as_deref())?
+                .kit()
+                .clone(),
+        };
+        morphir_mck::schema::check(&kit).map_err(|e| e.to_string())
+    })();
+    finish(match result {
+        Ok(report) => {
+            print!("{report}");
+            if report.is_success() {
+                Outcome::Passed
+            } else {
+                Outcome::Failed
+            }
+        }
+        Err(error) => Outcome::Error(error),
+    })
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct MckCoverageArgs {
+    /// A kit directory or vendored snapshot; the embedded kit when omitted
+    #[arg(long, value_name = "DIR")]
+    pub kit: Option<PathBuf>,
+
+    /// Repository root holding spec/mck/vocabulary.json, inferred for spec/ir/mck
+    #[arg(long, value_name = "DIR")]
+    pub repo_root: Option<PathBuf>,
+}
+
+pub fn run_mck_coverage(args: MckCoverageArgs) -> AppResult<miette::Report> {
+    use morphir_mck::ir::coverage::{Vocabulary, coverage_gaps};
+
+    let loaded = match &args.kit {
+        Some(dir) => load_directory(dir, args.repo_root.as_deref()),
+        None => load_kit(embedded_source())
+            .map(Loaded::Raw)
+            .map_err(|error| format!("cannot read the embedded kit: {error}")),
+    };
+    let loaded = match loaded {
+        Ok(loaded) => loaded,
+        Err(message) => return finish(Outcome::Error(message)),
+    };
+    let kit = loaded.kit();
+    if !kit.errors.is_empty() {
+        for error in &kit.errors {
+            eprintln!("{}:{}: {}", error.file, error.line, error.message);
+        }
+        return finish(Outcome::Failed);
+    }
+    let vocabulary = match Vocabulary::load(&kit.source) {
+        Ok(vocabulary) => vocabulary,
+        Err(error) => return finish(Outcome::Error(error.to_string())),
+    };
+    let gaps = coverage_gaps(&kit.cases, &vocabulary);
+    if gaps.is_empty() {
+        println!("coverage: every vocabulary entry has a case");
+        finish(Outcome::Passed)
+    } else {
+        for gap in gaps {
+            println!("{gap}");
+        }
+        finish(Outcome::Failed)
+    }
+}
 
 #[derive(Args, Clone, Debug)]
 pub struct MckCheckArgs {
@@ -729,47 +809,49 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
         clock: &clock,
     };
 
-    let (run, shutdown) = match Session::spawn(&args.adapter, &args.adapter_args, limits) {
-        Err(error) => (
-            run_kit(&kit, &mut Unstarted(error.to_string()), &options),
-            Ok(()),
-        ),
-        Ok(mut session) => {
-            // Ctrl-C takes the adapter's whole tree down with the CLI.
-            let terminator = session.terminator();
-            let interrupt = tokio::spawn(async move {
-                if tokio::signal::ctrl_c().await.is_ok() {
-                    terminator.kill();
-                    eprintln!("error: interrupted; the adapter was terminated");
-                    std::process::exit(130);
-                }
-            });
-            let run = tokio::task::block_in_place(|| run_kit(&kit, &mut session, &options));
-            let shutdown = tokio::task::block_in_place(|| session.close());
-            interrupt.abort();
-            (run, shutdown)
-        }
-    };
+    let (run, shutdown, spawn_error) =
+        match Session::spawn(&args.adapter, &args.adapter_args, limits) {
+            Err(error) => (
+                run_kit(&kit, &mut Unstarted(error.to_string()), &options),
+                Ok(()),
+                Some(error.to_string()),
+            ),
+            Ok(mut session) => {
+                // Ctrl-C takes the adapter's whole tree down with the CLI.
+                let terminator = session.terminator();
+                let interrupt = tokio::spawn(async move {
+                    if tokio::signal::ctrl_c().await.is_ok() {
+                        terminator.kill();
+                        eprintln!("error: interrupted; the adapter was terminated");
+                        std::process::exit(130);
+                    }
+                });
+                let run = tokio::task::block_in_place(|| run_kit(&kit, &mut session, &options));
+                let shutdown = tokio::task::block_in_place(|| session.close());
+                interrupt.abort();
+                (run, shutdown, None)
+            }
+        };
 
     if let Some(header) = &run.header {
         eprintln!("{header}");
     }
     if let Some(file) = &args.report {
-        let provenance = Provenance {
-            provenance_version: PROVENANCE_VERSION,
-            driver: Driver::current(),
-            kit: kit_provenance,
-            adapter: AdapterProvenance {
-                command,
-                binding: run.capabilities.as_ref().map(|c| c.binding.clone()),
-                format_versions: run.capabilities.as_ref().map(|c| c.format_versions.clone()),
-            },
+        let draft = match report::assemble(
+            &run,
+            kit_provenance,
+            command,
+            args.filter.as_deref(),
+            args.strict,
+            spawn_error.as_deref(),
+            shutdown.as_ref().err().map(ToString::to_string).as_deref(),
+        ) {
+            Ok(draft) => draft,
+            Err(error) => {
+                return finish(Outcome::Error(format!("cannot construct report: {error}")));
+            }
         };
-        if let Err(error) = run
-            .report
-            .write(file)
-            .and_then(|()| provenance.write_beside(file).map(drop))
-        {
+        if let Err(error) = report::write_atomic(file, draft.to_json().as_bytes()) {
             return finish(Outcome::Error(format!(
                 "cannot write the report {}: {error}",
                 file.display()

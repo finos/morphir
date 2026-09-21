@@ -14,4 +14,9 @@ pub const FIXED_INPUTS: &[&str] = &[
     // The schemas `morphir mck schema check` validates fences against.
     "website/static/schemas/morphir-ir-v4.json",
     "website/static/schemas/morphir-ir-v4-document-tree-files.json",
+    // Metaschema and example gates run from installed/vendored kits too.
+    "spec/mck/vocabulary.schema.json",
+    "spec/mck/mck-kit.lock.schema.json",
+    "spec/mck/mck-kit.lock.example.json",
+    "spec/mck/provenance.schema.json",
 ];

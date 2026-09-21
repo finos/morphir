@@ -1,0 +1,450 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://morphir.finos.org/spec/ir/mck/report-draft.schema.json",
+	"title": "Morphir Compatibility Kit consolidated report draft",
+	"description": "Consolidated IR report. This draft is independent of the stable version-1 report and adapter protocol.",
+	"type": "object",
+	"required": [
+		"contractVersion",
+		"suite",
+		"startedAt",
+		"driver",
+		"kit",
+		"adapter",
+		"selection",
+		"execution",
+		"records"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"contractVersion": {
+			"const": "2.0.0-draft.1"
+		},
+		"suite": {
+			"const": "ir"
+		},
+		"startedAt": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"driver": {
+			"type": "object",
+			"required": [
+				"name",
+				"version",
+				"commit",
+				"dirty"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"name": {
+					"const": "morphir"
+				},
+				"version": {
+					"type": "string",
+					"minLength": 1
+				},
+				"commit": {
+					"type": [
+						"string",
+						"null"
+					]
+				},
+				"dirty": {
+					"type": "boolean"
+				}
+			}
+		},
+		"kit": {
+			"type": "object",
+			"required": [
+				"version",
+				"source",
+				"revision",
+				"snapshotDigest",
+				"corpusHash",
+				"modified"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"version": {
+					"type": "string"
+				},
+				"source": {
+					"enum": [
+						"embedded",
+						"vendored",
+						"local"
+					]
+				},
+				"revision": {
+					"type": [
+						"string",
+						"null"
+					]
+				},
+				"snapshotDigest": {
+					"type": [
+						"string",
+						"null"
+					]
+				},
+				"corpusHash": {
+					"type": [
+						"string",
+						"null"
+					]
+				},
+				"modified": {
+					"type": "boolean"
+				}
+			}
+		},
+		"adapter": {
+			"type": "object",
+			"required": [
+				"command",
+				"negotiation"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"command": {
+					"type": "array",
+					"items": [
+						{
+							"type": "string",
+							"minLength": 1
+						}
+					],
+					"minItems": 1,
+					"additionalItems": {
+						"type": "string"
+					}
+				},
+				"negotiation": {
+					"oneOf": [
+						{
+							"type": "object",
+							"required": [
+								"status",
+								"capabilities"
+							],
+							"additionalProperties": false,
+							"properties": {
+								"status": {
+									"const": "succeeded"
+								},
+								"capabilities": {
+									"$ref": "#/definitions/Capabilities"
+								}
+							}
+						},
+						{
+							"type": "object",
+							"required": [
+								"status",
+								"message"
+							],
+							"additionalProperties": false,
+							"properties": {
+								"status": {
+									"const": "failed"
+								},
+								"message": {
+									"type": "string",
+									"minLength": 1
+								}
+							}
+						}
+					]
+				}
+			}
+		},
+		"selection": {
+			"oneOf": [
+				{
+					"type": "object",
+					"required": [
+						"kind"
+					],
+					"additionalProperties": false,
+					"properties": {
+						"kind": {
+							"const": "all"
+						}
+					}
+				},
+				{
+					"type": "object",
+					"required": [
+						"kind",
+						"syntax",
+						"pattern"
+					],
+					"additionalProperties": false,
+					"properties": {
+						"kind": {
+							"const": "filter"
+						},
+						"syntax": {
+							"const": "rust-regex"
+						},
+						"pattern": {
+							"type": "string"
+						}
+					}
+				}
+			]
+		},
+		"execution": {
+			"type": "object",
+			"required": [
+				"strict",
+				"session"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"strict": {
+					"type": "boolean"
+				},
+				"session": {
+					"oneOf": [
+						{
+							"type": "object",
+							"required": [
+								"status"
+							],
+							"additionalProperties": false,
+							"properties": {
+								"status": {
+									"const": "finished"
+								}
+							}
+						},
+						{
+							"type": "object",
+							"required": [
+								"status",
+								"errors"
+							],
+							"additionalProperties": false,
+							"properties": {
+								"status": {
+									"const": "failed"
+								},
+								"errors": {
+									"type": "array",
+									"items": {
+										"$ref": "#/definitions/SessionError"
+									},
+									"minItems": 1
+								}
+							}
+						}
+					]
+				}
+			}
+		},
+		"records": {
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/Record"
+			}
+		}
+	},
+	"definitions": {
+		"Result": {
+			"enum": [
+				"pass",
+				"fail",
+				"kit-error",
+				"skipped"
+			]
+		},
+		"Diagnostic": {
+			"type": "object",
+			"required": [
+				"code"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"code": {
+					"type": "string"
+				},
+				"stage": {
+					"enum": [
+						"syntax",
+						"normalization",
+						"semantic"
+					]
+				},
+				"cursor": {
+					"type": "string"
+				},
+				"message": {
+					"type": "string"
+				}
+			}
+		},
+		"Record": {
+			"type": "object",
+			"required": [
+				"caseId",
+				"irVersion",
+				"profile",
+				"role",
+				"fenceIndex",
+				"result",
+				"durationMs"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"caseId": {
+					"type": "string",
+					"pattern": "^[a-z][a-z0-9-]*-[0-9]{4}$"
+				},
+				"irVersion": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"profile": {
+					"enum": [
+						"json",
+						"yaml",
+						"tree"
+					]
+				},
+				"role": {
+					"enum": [
+						"canonical",
+						"accepted",
+						"rejected",
+						"file"
+					]
+				},
+				"fenceIndex": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"path": {
+					"enum": [
+						"current",
+						"pinned"
+					]
+				},
+				"result": {
+					"$ref": "#/definitions/Result"
+				},
+				"expectedDiagnostic": {
+					"type": "string"
+				},
+				"observedDiagnostic": {
+					"$ref": "#/definitions/Diagnostic"
+				},
+				"message": {
+					"type": "string"
+				},
+				"durationMs": {
+					"type": "number",
+					"minimum": 0
+				}
+			}
+		},
+		"Capabilities": {
+			"type": "object",
+			"required": [
+				"contractVersion",
+				"binding",
+				"language",
+				"formatVersions",
+				"versions",
+				"profiles",
+				"layouts",
+				"paths",
+				"nodes"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"contractVersion": {
+					"const": 1
+				},
+				"binding": {
+					"type": "string",
+					"minLength": 1
+				},
+				"language": {
+					"type": "string",
+					"minLength": 1
+				},
+				"formatVersions": {
+					"type": "string",
+					"minLength": 1
+				},
+				"versions": {
+					"type": "array",
+					"items": {
+						"type": "integer",
+						"minimum": 1
+					}
+				},
+				"profiles": {
+					"type": "array",
+					"items": {
+						"enum": [
+							"json",
+							"yaml"
+						]
+					}
+				},
+				"layouts": {
+					"type": "array",
+					"items": {
+						"enum": [
+							"single",
+							"tree"
+						]
+					}
+				},
+				"paths": {
+					"type": "array",
+					"items": {
+						"enum": [
+							"current",
+							"pinned"
+						]
+					}
+				},
+				"nodes": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					},
+					"minItems": 1
+				}
+			}
+		},
+		"SessionError": {
+			"type": "object",
+			"required": [
+				"phase",
+				"message"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"phase": {
+					"enum": [
+						"spawn",
+						"capabilities",
+						"exchange",
+						"shutdown"
+					]
+				},
+				"message": {
+					"type": "string",
+					"minLength": 1
+				}
+			}
+		}
+	}
+}

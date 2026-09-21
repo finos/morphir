@@ -1,8 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: `check`, `kit status`, and `kit vendor` and `kit update` from every source, including managed-snapshot verification (IR-1, IR-1V). `run` exists, with the adapter transport, version 1 reports and the provenance sidecar (IR-2); its parity with the first driver is proven by replaying the frozen TypeScript and Rust transcripts, and live against both adapters. `coverage`, `schema check` and `report check` do not exist yet (IR-3). The TypeScript driver in finos/morphir-typescript remains the
-authoritative gate until the cutover described in [migration.md](migration.md).
+Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check` and `report render`. Parent IR gates use the Rust CLI. Production runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. The TypeScript driver remains for migration parity, package suites and consumers awaiting the IR-4 release/adoption cutover described in [migration.md](migration.md).
 
 This contract covers the IR suite. Package commands are added by
 [#852](https://github.com/finos/morphir/issues/852) and must not reuse IR fields with other meanings.
@@ -16,7 +15,7 @@ Each behaviour below is marked **kept** (same as the TypeScript driver at the
 
 | Component | Responsibility |
 | --- | --- |
-| `crates/morphir-mck` library | `kit` (parse, load, hash, manifest, acquisition), `transport` (adapter sessions), `ir` (execution, comparison, capabilities, coverage), `report` (version 1 records, summary, baseline gate) |
+| `crates/morphir-mck` library | `kit` (parse, load, hash, manifest, acquisition), `transport` (adapter sessions), `ir` (execution, comparison, capabilities), `report` (draft schema reader, records, summary, baseline gate, HTML rendering). Coverage remains planned. |
 | `crates/morphir/src/commands/mck` | Argument validation, help, terminal output, exit status. No compatibility logic. |
 | Adapter | Owned by each implementation. Decodes, encodes and handles document trees. |
 
@@ -39,10 +38,14 @@ morphir mck run --adapter <exe> [--adapter-arg <arg>]... [--kit <dir>] [--repo-r
 morphir mck coverage [--kit <dir>] [--repo-root <dir>]
 morphir mck schema check [--kit <dir>] [--repo-root <dir>]
 morphir mck report check <report.json> <allowed-failing.json> [--kit <dir>] [--repo-root <dir>]
+                        [--filter <regex>]
+morphir mck report render <report.json> --format html --output <report.html>
 morphir mck kit status [--kit <dir>] [--json]
 morphir mck kit vendor --source <source> [--revision <commit>] [--expect-digest <digest>] --dest <dir>
 morphir mck kit update --kit <dir> [--source <source>] [--revision <commit>] [--expect-digest <digest>]
 ```
+
+All listed commands are implemented. Release and consumer adoption remain a separate milestone.
 
 For `kit vendor` and `kit update`, `--revision` is required with `--source github:finos/morphir` and
 is usage error 2 with any other source. `kit update --revision <commit>` without `--source` updates a
@@ -150,24 +153,59 @@ coverage, and members nested under an entry-point document are not seen.
 Replaces `tools/validate-mck-fences.ts` and `tools/validate-mck-protocol.ts`. It validates every
 canonical and accepted JSON fence against the published IR v4 schemas, validates
 `protocol.example.json` message by message against `protocol.schema.json`, and enforces request and
-response id pairing. The byte comparison against the morphir-typescript contract copies is dropped
-at cutover, when those copies stop being authoritative.
+response id pairing, including multiple alternative responses for one example request. Every message
+must also validate at the root schema. Legacy warning spellings must fail schema validation except
+the three retained documentation-wrapper cases. Unknown validation targets fail explicitly.
+
+The same command validates all original schemas against their metaschemas and validates the report,
+vocabulary and lock examples. The [gate inventory](schema-gates.md) records their entry points and
+expected outcomes. The catalog reads only selected-kit bytes; it never resolves a reference through
+the network or an arbitrary filesystem path. A missing input or malformed schema fails the command.
+
+The repository retains vocabulary and TypeScript contract-copy drift checks in `mck:source-parity`
+until IR-4 cutover. They are migration checks, separate from the installed CLI's offline gates.
 
 ### `report check` (kept gate, hardened inventory, new home)
 
-Replaces `tools/check-mck-report.ts`. Kept: record shapes are validated; the set of failing case ids
+Replaces `tools/check-mck-report.ts` in the parent IR run gates. The shared native reader first
+validates the consolidated draft schema, with unknown fields rejected and no remote reference
+resolution. Kept: record shapes are validated; the set of failing case ids
 must equal the `cases` array of the allowed-failing file in both directions, so a stale entry fails
 as loudly as a new failure; at least one record must pass; every skip must carry a legitimate driver
 reason: `pending`, or `node|version|layout|profile|path <x> not in capabilities`.
 
 **Record inventory (hardened).** The old tool never compares the report with the kit, so a truncated
 report, or one with duplicated passing records, is accepted. The Rust gate derives the expected
-record identities from the kit (`--kit`, default embedded) and the capabilities in the report
-header, and rejects missing, extra and duplicate records. #849 requires this; it is departure 11 in
+record identities from the independently loaded kit (`--kit`, default embedded) and the negotiated
+capabilities in the report, and rejects missing, extra, duplicate and reordered records. It checks
+the report's snapshot digest against that kit. A missing digest, failed negotiation or failed
+adapter session cannot pass, even if the baseline allows every failing case. #849 requires the
+inventory check; it is departure 11 in
 [migration.md](migration.md#approved-departures-from-old-runner-behaviour).
 
+Authoring errors in the kit prevent the existing snapshot algorithm from establishing complete
+identity. Such runs remain useful diagnostic reports, but cannot pass this gate through an
+allowed-failing entry. Their synthetic error records retain their order and multiplicity, including
+multiple errors with the same case and fence identity. This restriction does not prohibit baseline
+allowances for adapter-returned kit errors from a kit with complete identity and a finished session.
+
+By default the checker requires `selection.kind = all`. A filtered report requires an independently
+supplied `--filter` with exactly the same pattern. The checker derives that selection itself; it does
+not adopt the report's claim of scope. For a filtered check it compares only baseline entries in
+scope and reports that unselected entries were not checked. Unknown baseline case IDs are rejected
+even when outside the filter. Kit-error records remain in scope regardless of the filter.
+
 A development baseline that allows known binding defects is not a compatibility certificate, and
-the command's output says so whenever the allowed list is non-empty.
+the command's output says so whenever it accepts allowed failures in scope. An empty baseline also
+does not establish complete compatibility: capability skips and filtered scope still limit the claim.
+
+### `report render` (new)
+
+Reads the same strictly validated draft JSON and writes a standalone HTML file atomically. HTML is
+optional and opens offline, without a server, CDN, or external assets. JSON remains authoritative.
+Rendering does not run an adapter, adjudicate the baseline or certify inventory. A valid report of
+a failed session or failing cases can render successfully; exit 0 means the HTML was written, not
+that the tests passed. The output cannot overwrite the JSON input, including through a filesystem alias.
 
 ## Adapter transport
 
@@ -223,37 +261,34 @@ group on Unix, a Job Object on Windows. Ctrl-C does the same before the CLI exit
 
 ## Reports
 
-IR report version 1 is closed and unchanged. Header, record identity (`caseId`, `irVersion`,
-`profile`, `role`, `fenceIndex`, `path`), result kinds (`pass`, `fail`, `kit-error`, `skipped`),
-skip reasons and failure messages are kept exactly.
+Production reports use the consolidated draft in
+[`report-draft.schema.json`](../ir/mck/report-draft.schema.json), with the exact string
+`contractVersion: "2.0.0-draft.1"`. The adapter wire protocol remains integer version 1.
+The reader rejects unknown report versions rather than guessing their shape. Stable `2.0.0`
+requires an explicit stabilization decision. This draft does not promise indefinite support for
+earlier drafts.
+
+Record identity (`caseId`, `irVersion`, `profile`, `role`, `fenceIndex`, `path`), result kinds
+(`pass`, `fail`, `kit-error`, `skipped`), skip reasons and failure messages are kept exactly.
 
 Record order is part of the contract (kept): kit-error records first in kit error order; then cases
 with files sorted by name and cases in file order; within a case, each path in the adapter's
 `capabilities.paths` order, records sorted by `fenceIndex`. Parse errors attach to the nearest
 preceding case heading in the same file, or to the reserved id `kit-0000`.
 
-`driverVersion` carries the `morphir` CLI version. `kitVersion` keeps its meaning: the revision of
-the kit that ran.
+The report contains driver and kit provenance, the adapter command and complete negotiated
+capabilities or a negotiation failure, explicit all/filter selection, strict mode, session
+completion or phase-tagged session errors, and the ordered records. `driver.version` carries the
+CLI version; `kit.version` retains the old `kitVersion` meaning. See the
+[draft example](../ir/mck/report-draft.example.json) for the full shape.
 
-### Provenance sidecar (new)
+### Consolidated provenance
 
-Version 1 cannot carry richer provenance and gains no undocumented fields. When `--report <file>` is
-given, the runner also writes `<file>.provenance.json`:
-
-```json
-{
-	"provenanceVersion": 1,
-	"driver": { "name": "morphir", "version": "0.5.0", "commit": "<40 hex or null>", "dirty": false },
-	"kit": {
-		"source": "embedded | vendored | local",
-		"revision": "<40 hex or null>",
-		"snapshotDigest": "sha256-...",
-		"corpusHash": "sha256-...",
-		"modified": false
-	},
-	"adapter": { "command": ["./my-adapter"], "binding": "...", "formatVersions": "..." }
-}
-```
+`--report <file>` writes one JSON file. Production runs no longer write a provenance sidecar.
+The unchanged [`report.schema.json`](../ir/mck/report.schema.json) and
+[`provenance.schema.json`](provenance.schema.json) describe historical version 1 evidence only.
+The engine retains its internal legacy report for frozen transcript replay until parity cutover;
+it is not a second production output mode.
 
 A build from a dirty tree or a source archive reports `dirty: true` or `commit: null`. It never
 claims a clean commit it cannot prove. The digests identify the bytes that actually ran. A `local`
@@ -269,4 +304,6 @@ kit is a raw authoring checkout and is never reported as matching an upstream sn
   that ignores termination. Each must end in a failed run and must never produce a `pass`.
 - CLI tests: missing `--adapter` is exit 2 with no report and no spawn; empty selection is exit 1;
   diagnostics stay off stdout; paths and piping work on Windows as well as Unix shells.
-- JSON Schema validation of every emitted report and sidecar.
+- JSON Schema validation of every emitted draft report; legacy baseline reports retain their own schema gate.
+- Report reader, inventory, selection, baseline and session-failure tests, plus offline HTML escaping
+  and CLI tests. New draft-only fields have separate tests; legacy parity cannot validate them.

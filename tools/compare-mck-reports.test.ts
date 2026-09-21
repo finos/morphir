@@ -67,3 +67,32 @@ test("records are compared in order, so a reordered report is not parity", () =>
 	const b = report([record({ caseId: "types-0002" }), record()]);
 	expect(compareReports(a, b)).toHaveLength(2);
 });
+
+const draft = (legacy: ReturnType<typeof report>) => ({
+	contractVersion: "2.0.0-draft.1",
+	suite: "ir",
+	startedAt: legacy.startedAt,
+	driver: { name: "morphir", version: "0.4.0", commit: null, dirty: false },
+	kit: { version: legacy.kitVersion, source: "local", revision: null, snapshotDigest: null, corpusHash: null, modified: true },
+	adapter: { command: ["adapter"], negotiation: { status: "succeeded", capabilities: {
+		contractVersion: 1, binding: legacy.binding, language: legacy.language,
+		formatVersions: legacy.formatVersions, versions: [4], profiles: ["json"], layouts: ["single"], paths: ["current"], nodes: ["Type"],
+	} } },
+	selection: { kind: "all" },
+	execution: { strict: false, session: { status: "finished" } },
+	records: legacy.records,
+});
+
+test("the approved draft projection preserves legacy result evidence", () => {
+	const old = report([record()]);
+	expect(compareReports(old, draft(old))).toEqual([]);
+	expect(compareReports(old, draft(report([record({ result: "fail" })])))).toContain(
+		'record 0 (types-0001 fence 0) result: "pass" vs "fail"',
+	);
+});
+
+test("unknown report versions and unrecognized draft fields cannot disappear in projection", () => {
+	const old = report([record()]);
+	expect(compareReports(old, { ...draft(old), contractVersion: "2.0.0-draft.99" }).length).toBeGreaterThan(0);
+	expect(compareReports(old, { ...draft(old), surprise: true }).length).toBeGreaterThan(0);
+});

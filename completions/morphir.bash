@@ -926,7 +926,32 @@ cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true 
         arg <DIR> help="The kit directory to validate, for example spec/ir/mck, or a vendored snapshot's root"
         complete dir type=path
     }
-    cmd run display_order=1 args_override_self=#false help="Run the kit against an implementation's adapter and report the results" unknown_flags=value {
+    cmd coverage display_order=1 args_override_self=#false help="Check that every IR vocabulary variant and member has a kit case" unknown_flags=error {
+        long_help #"""
+Check that every IR vocabulary variant and member has a kit case
+
+Pending cases count through title and prose mentions. This JSON-key heuristic inspects inline JSON only; member coverage requires a case for the member's own node, so nesting it in another entry-point document does not cover it. Zero gaps do not establish semantic conformance.
+"""#
+        flag --kit help="A kit directory or vendored snapshot; the embedded kit when omitted" {
+            arg <DIR>
+        }
+        flag --repo-root help="Repository root holding spec/mck/vocabulary.json, inferred for spec/ir/mck" {
+            arg <DIR>
+        }
+        complete dir type=path
+    }
+    cmd schema display_order=2 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Validate kit schemas, examples and IR fences offline" unknown_flags=error {
+        cmd check display_order=0 args_override_self=#false help="Check schemas, examples, protocol pairing and accepted JSON fences" unknown_flags=error {
+            flag --kit help="The kit directory or verified snapshot root; the embedded kit when omitted" {
+                arg <DIR>
+            }
+            flag --repo-root help="Repository root for a raw authoring kit" {
+                arg <DIR>
+            }
+            complete dir type=path
+        }
+    }
+    cmd run display_order=3 args_override_self=#false help="Run the kit against an implementation's adapter and report the results" unknown_flags=value {
         flag --adapter help="The implementation's adapter executable. Required: there is no built-in binding and no discovery" required=#true {
             arg <EXE>
         }
@@ -956,7 +981,39 @@ cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true 
         complete dir type=path
         complete file type=path
     }
-    cmd kit display_order=2 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
+    cmd report display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
+        cmd check display_order=0 args_override_self=#false help="Verify report inventory and the binding's allowed-failing baseline" unknown_flags=error {
+            flag --kit help="Independent kit, defaulting to the embedded kit" {
+                arg <KIT>
+            }
+            flag --repo-root {
+                arg <REPO_ROOT>
+            }
+            flag --filter help="Require this exact case filter; omission requires a full-kit report" {
+                arg <FILTER>
+            }
+            arg <REPORT> help="Consolidated JSON report to check"
+            arg <ALLOWED_FAILING> help="Binding-owned JSON file listing allowed failing case IDs"
+            complete report type=path
+            complete allowed_failing type=path
+            complete kit type=path
+            complete repo_root type=path
+        }
+        cmd render display_order=1 args_override_self=#false help="Render a consolidated JSON report as a standalone offline HTML file" unknown_flags=error {
+            flag --format help="Output representation; HTML opens offline without a server" default=html {
+                arg <FORMAT> {
+                    choices html
+                }
+            }
+            flag "-o --output" help="Destination for the standalone report; cannot overwrite the JSON input" required=#true {
+                arg <OUTPUT>
+            }
+            arg <REPORT> help="Consolidated JSON report to display"
+            complete report type=path
+            complete output type=path
+        }
+    }
+    cmd kit display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
         cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {
             flag --kit help="A kit directory or a vendored snapshot's root; the kit embedded in this CLI when omitted" {
                 arg <DIR>
