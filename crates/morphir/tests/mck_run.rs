@@ -99,6 +99,155 @@ fn without_volatile(mut report: Value) -> Value {
 
 // ---------------------------------------------------------------- tests
 
+// The release workflow points this at the executable extracted from its archive.
+// The harness may use Cargo and source fixtures; the installed CLI and its native
+// replay adapter run with only explicitly copied inputs and an empty tool path.
+fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
+    let work = tempfile::tempdir().unwrap();
+    let home = work.path().join("home");
+    std::fs::create_dir(&home).unwrap();
+    let cli = work
+        .path()
+        .join(format!("morphir{}", std::env::consts::EXE_SUFFIX));
+    let adapter = work
+        .path()
+        .join(format!("adapter{}", std::env::consts::EXE_SUFFIX));
+    let installed = std::env::var_os("MORPHIR_MCK_INSTALLED_CLI")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_morphir")));
+    std::fs::copy(&installed, &cli).expect("copy the selected installed CLI");
+    std::fs::copy(std::env::current_exe().unwrap(), &adapter).unwrap();
+    let replay = work.path().join("transcript.ndjson");
+    std::fs::copy(transcript(), &replay).unwrap();
+    let run = |args: &[&str]| {
+        let mut command = std::process::Command::new(&cli);
+        command.current_dir(work.path()).env_clear();
+        // Windows needs its OS directory to load system libraries. No developer
+        // tool, proxy or inherited Morphir/cache configuration is preserved.
+        if let Some(system_root) = std::env::var_os("SystemRoot") {
+            command.env("SystemRoot", system_root);
+        }
+        for key in [
+            "HOME",
+            "USERPROFILE",
+            "LOCALAPPDATA",
+            "APPDATA",
+            "XDG_CACHE_HOME",
+        ] {
+            command.env(key, &home);
+        }
+        for key in ["TMPDIR", "TMP", "TEMP"] {
+            command.env(key, &home);
+        }
+        command
+            .env("PATH", "")
+            .env("MORPHIR_LOG_FILE", "false")
+            .args(args)
+            .output()
+            .expect("run copied installed CLI")
+    };
+    let success = |args: &[&str]| {
+        let output = run(args);
+        assert!(
+            output.status.success(),
+            "{args:?}: {}\n{}",
+            stdout(&output),
+            stderr(&output)
+        );
+        output
+    };
+    success(&["--version"]);
+    for args in [
+        vec!["mck", "--help"],
+        vec!["mck", "schema", "check", "--help"],
+        vec!["mck", "report", "check", "--help"],
+        vec!["mck", "report", "render", "--help"],
+    ] {
+        success(&args);
+    }
+    success(&[
+        "mck", "kit", "vendor", "--source", "embedded", "--dest", "kit",
+    ]);
+    success(&["mck", "kit", "status", "--kit", "kit", "--json"]);
+    success(&["mck", "check", "kit"]);
+    success(&["mck", "coverage", "--kit", "kit"]);
+    success(&["mck", "schema", "check", "--kit", "kit"]);
+
+    let source = repo().join("spec/ir/mck");
+    for (kit, report) in [
+        (source.to_str().unwrap(), "source.json"),
+        ("kit", "report.json"),
+    ] {
+        success(&[
+            "mck",
+            "run",
+            "--adapter",
+            adapter.to_str().unwrap(),
+            "--adapter-arg",
+            ADAPTER_FLAG,
+            "--adapter-arg",
+            "replay",
+            "--adapter-arg",
+            replay.to_str().unwrap(),
+            "--kit",
+            kit,
+            "--report",
+            report,
+        ]);
+    }
+    let actual = read_json(&work.path().join("report.json"));
+    let expected = read_json(&work.path().join("source.json"));
+    assert_eq!(
+        actual["kit"]["snapshotDigest"],
+        expected["kit"]["snapshotDigest"]
+    );
+    assert_eq!(actual["execution"]["session"]["status"], "finished");
+    assert_eq!(
+        without_volatile(actual.clone())["records"],
+        without_volatile(expected)["records"]
+    );
+    assert_eq!(actual["records"].as_array().unwrap().len(), 730);
+    std::fs::write(work.path().join("allowed.json"), "{\"cases\":[]}").unwrap();
+    success(&[
+        "mck",
+        "report",
+        "check",
+        "report.json",
+        "allowed.json",
+        "--kit",
+        "kit",
+    ]);
+    success(&[
+        "mck",
+        "report",
+        "render",
+        "report.json",
+        "--format",
+        "html",
+        "--output",
+        "report.html",
+    ]);
+    assert!(
+        std::fs::read_to_string(work.path().join("report.html"))
+            .unwrap()
+            .contains("<!doctype html>")
+    );
+
+    // A kit shipped without its fixed schema closure must not appear healthy.
+    std::fs::write(
+        work.path().join("kit/spec/mck/vocabulary.schema.json"),
+        "{}",
+    )
+    .unwrap();
+    let corrupted = run(&["mck", "schema", "check", "--kit", "kit"]);
+    assert_eq!(corrupted.status.code(), Some(1));
+    assert!(
+        stderr(&corrupted).contains("altered"),
+        "{}",
+        stderr(&corrupted)
+    );
+}
+
 fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("out").join("report.json");
@@ -336,6 +485,10 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "installed_cli_runs_vendored_kit_without_tool_runtimes",
+            installed_cli_runs_vendored_kit_without_tool_runtimes,
+        ),
         (
             "a_shutdown_failure_is_in_the_report_even_when_records_pass",
             a_shutdown_failure_is_in_the_report_even_when_records_pass,

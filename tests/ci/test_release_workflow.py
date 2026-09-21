@@ -85,6 +85,19 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("overwrite: true", self.workflow)
         self.assertIn("retention-days: 7", self.workflow)
 
+    def test_extracted_cli_passes_mck_smoke_before_artifact_upload(self) -> None:
+        package_job = self.workflow.split("  package-cli:\n", maxsplit=1)[1]
+        package_job = package_job.split("  publish-release:\n", maxsplit=1)[0]
+        self.assertIn("tar -xzf", package_job)
+        self.assertIn("Expand-Archive", package_job)
+        self.assertIn("MORPHIR_MCK_INSTALLED_CLI", package_job)
+        self.assertIn("installed_cli_runs_vendored_kit_without_tool_runtimes", package_job)
+        self.assertIn("--release --package morphir --target ${{ matrix.target }}", package_job)
+        self.assertLess(
+            package_job.index("name: Verify packaged MCK CLI"),
+            package_job.index("name: Upload CLI artifact"),
+        )
+
     def test_release_pipeline_packages_only_the_cli(self) -> None:
         self.assertNotIn("package-live:", self.workflow)
         self.assertNotIn("dioxus-cli", self.workflow)

@@ -173,3 +173,37 @@ TypeScript-owned IR runner, CLI, kit embedding and release paths are retired onl
 6. The cutover review in #851 is complete.
 
 Package paths stay frozen in TypeScript, untouched, until #852.
+
+### IR-4 packaged CLI smoke gate
+
+Before uploading an archive, the release workflow extracts it and runs
+`installed_cli_runs_vendored_kit_without_tool_runtimes` on each of the six native
+Linux, macOS and Windows targets. The test copies that executable, a native
+transcript replay adapter and its recorded inputs into a fresh temporary
+directory. CLI subprocesses have an empty `PATH`, fresh home/cache/temp
+directories and no inherited Morphir configuration.
+
+The gate verifies installed help/version commands, embedded-kit vendoring,
+status, check, coverage, schema validation, an explicitly selected adapter run,
+report checking and standalone HTML rendering. It compares the vendored run's
+snapshot digest and all records against the same executable using the source
+kit, and verifies that a modified vendored schema is rejected. The replay adapter
+tests runner installation; it is not a new binding implementation or evidence of
+independent adapter distribution.
+
+To repeat this gate against an extracted archive, set
+`MORPHIR_MCK_INSTALLED_CLI` to the absolute executable path and run:
+
+```sh
+cargo test --locked --release --package morphir --test mck_run \
+  installed_cli_runs_vendored_kit_without_tool_runtimes
+```
+
+Without that environment variable, ordinary Cargo tests exercise the locally
+built CLI. A supplied missing or invalid executable fails the test; it never
+falls back to the local build. The test harness itself still needs the source
+checkout and Rust build tools. This smoke gate does not disconnect the operating
+system's network, acquire a pinned upstream revision, or certify a published
+release. The cache-removal/network-disabled acceptance test in
+[kit-manifest.md](kit-manifest.md#acceptance), binding CI adoption, independent
+TypeScript adapter distribution and cutover review remain required separately.
