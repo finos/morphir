@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Parent IR validation, coverage, execution, and reporting gates now use the native CLI. TypeScript tooling remains available for migration parity, package suites, and consumers awaiting IR-4 adoption. Vocabulary generation and protocol-copy parity remain checked against the pinned TypeScript source. See [the migration sequence](spec/mck/migration.md).
 
+### Fixed
+- Interrupted kit downloads report how many bytes arrived and preserve the underlying error. Timeouts have an explicit diagnostic; acquisition limits and cleanup behavior are unchanged.
+
 ## [0.4.0-beta.1] - 2026-09-18
 
 First beta of the Rust Morphir CLI. This release follows `0.4.0-alpha.7`; no `0.4.0-alpha.8` was

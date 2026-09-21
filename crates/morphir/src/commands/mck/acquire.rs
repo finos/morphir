@@ -136,15 +136,24 @@ mod tests {
         Url::parse(text).unwrap()
     }
 
+    fn read_request_headers(connection: &mut std::net::TcpStream) {
+        use std::io::BufRead;
+        for line in std::io::BufReader::new(connection).lines() {
+            if line.unwrap().is_empty() {
+                return;
+            }
+        }
+        panic!("request ended before its headers were complete");
+    }
+
     #[tokio::test]
     async fn a_truncated_download_preserves_the_non_timeout_cause() {
-        use std::io::{Read, Write};
+        use std::io::Write;
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
         let server = std::thread::spawn(move || {
             let (mut connection, _) = listener.accept().unwrap();
-            let mut request = [0; 4096];
-            connection.read(&mut request).unwrap();
+            read_request_headers(&mut connection);
             connection
                 .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nabc")
                 .unwrap();
@@ -170,14 +179,13 @@ mod tests {
 
     #[tokio::test]
     async fn a_stalled_download_identifies_the_timeout_and_received_bytes() {
-        use std::io::{Read, Write};
+        use std::io::Write;
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
         let (finish, wait) = std::sync::mpsc::channel::<()>();
         let server = std::thread::spawn(move || {
             let (mut connection, _) = listener.accept().unwrap();
-            let mut request = [0; 4096];
-            connection.read(&mut request).unwrap();
+            read_request_headers(&mut connection);
             connection
                 .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nabc")
                 .unwrap();
