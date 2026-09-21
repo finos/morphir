@@ -100,6 +100,10 @@ Every concept document starts with a YAML frontmatter block.
   skip an inline sidebar), as another kb link, or as an external link (least preferred).
 - Prefer a captioned Mermaid diagram (or an SVG asset) over prose narration when the subject is a flow,
   lifecycle, structure, or state machine.
+- Prefer a captioned Mermaid **sequence diagram** when the subject is an interaction between two or more
+  parties over time: a protocol exchange, a negotiation, a handshake, a call that fans out and rejoins. Prose
+  describing who sends what to whom, and in what order, is the signal. This carries the same weight as the
+  flow-diagram guidance above, and the same caption and numbering rules apply.
 - Size documents to capability stories (`altitude.md`): each capability in flight has one narrative home, a
   Design Note that tells its accurate story and links its research, constraints, open questions, and intents.
   A fine-grained concept must be reachable from a narrative home; an intent must read as a feature definition
