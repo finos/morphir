@@ -45,6 +45,16 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      # Keep qualification tooling repairable without modifying a published tag.
+      # Cargo and Git commands below still run in the tagged source checkout.
+      - name: Check out qualification tooling
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: .dev/acceptance-tools
+          sparse-checkout: tools
+          persist-credentials: false
+
       - name: Configure Windows Git paths
         if: runner.os == 'Windows'
         shell: pwsh
@@ -67,7 +77,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_TARGET: ${{ matrix.target }}
-        run: node tools/mck-release-acceptance.mjs
+        run: node .dev/acceptance-tools/tools/mck-release-acceptance.mjs
 
       # Preparation exports MCK_TEST_EXE, MORPHIR_MCK_INSTALLED_CLI,
       # MORPHIR_MCK_PREACQUIRED_KIT and MORPHIR_MCK_REQUIRE_NETWORK_DENIAL.
@@ -134,5 +144,6 @@ jobs:
         with:
           name: mck-release-acceptance-${{ matrix.target }}
           path: .dev/out/mck-release-acceptance/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

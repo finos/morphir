@@ -12,6 +12,15 @@ CARGO_LOCK_PATH = REPO_ROOT / "Cargo.lock"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_acceptance_automation_can_qualify_an_unchanged_source_tag(self) -> None:
+        workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
+        self.assertIn("ref: ${{ github.sha }}", workflow)
+        self.assertIn("path: .dev/acceptance-tools", workflow)
+        self.assertIn("node .dev/acceptance-tools/tools/mck-release-acceptance.mjs", workflow)
+        self.assertIn("ref: ${{ inputs.tag }}", workflow)
+        self.assertIn("include-hidden-files: true", workflow)
+        self.assertIn("node --test tools/mck-release-version.test.mjs", self.ci_workflow)
+
     def test_published_acceptance_is_manual_and_checks_all_native_targets(self) -> None:
         path = REPO_ROOT / ".github/workflows/mck-release-acceptance.yml"
         self.assertTrue(path.exists(), "published-release acceptance workflow is missing")
@@ -26,7 +35,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         ):
             self.assertIn(f"target: {target}", workflow)
         self.assertIn("timeout-minutes: 45", workflow)
-        self.assertIn("node tools/mck-release-acceptance.mjs", workflow)
+        self.assertIn("node .dev/acceptance-tools/tools/mck-release-acceptance.mjs", workflow)
         self.assertIn("unshare --net", workflow)
         self.assertIn("(deny network*)", workflow)
         self.assertIn("New-NetFirewallRule", workflow)
