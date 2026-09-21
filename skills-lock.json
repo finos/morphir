@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "pr-monitor": {
+      "source": "DamianReeves/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pr-monitor/SKILL.md",
+      "computedHash": "d07192ff823cb0b92447971378f0bae62c8520ca7c719279b053e880bf0bb973"
+    }
+  }
+}
