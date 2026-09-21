@@ -904,6 +904,11 @@ cmd mck display_order=21 subcommand_required=#true arg_required_else_help=#true 
         complete dir type=path
     }
     cmd coverage display_order=1 args_override_self=#false help="Check that every IR vocabulary variant and member has a kit case" unknown_flags=error {
+        long_help #"""
+Check that every IR vocabulary variant and member has a kit case
+
+Pending cases count through title and prose mentions. This JSON-key heuristic inspects inline JSON only; member coverage requires a case for the member's own node, so nesting it in another entry-point document does not cover it. Zero gaps do not establish semantic conformance.
+"""#
         flag --kit help="A kit directory or vendored snapshot; the embedded kit when omitted" {
             arg <DIR>
         }

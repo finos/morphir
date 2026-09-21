@@ -1820,6 +1820,8 @@ Print the files, case ids and errors as JSON on stdout
 The kit directory to validate, for example spec/ir/mck, or a vendored snapshot's root
 .SH "MORPHIR MCK COVERAGE"
 Check that every IR vocabulary variant and member has a kit case
+
+Pending cases count through title and prose mentions. This JSON\-key heuristic inspects inline JSON only; member coverage requires a case for the member's own node, so nesting it in another entry\-point document does not cover it. Zero gaps do not establish semantic conformance.
 .PP
 \fBUsage:\fR morphir mck coverage [OPTIONS]
 .PP

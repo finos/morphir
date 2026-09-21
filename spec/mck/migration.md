@@ -25,8 +25,8 @@ Audited at the [baseline](baseline/README.md) pins. "Slice" is where the consume
 | mise `mck:schema-check` | Native `morphir mck schema check` | Adopted in IR-3 |
 | mise `mck:source-parity` | Vocabulary regeneration check and protocol byte-copy comparison against the pinned TypeScript source | Retained until IR-4 |
 | mise `mck:run` | Rust runner with explicit TypeScript adapter; native `report check` against the empty parent baseline; native `coverage` | Adopted in IR-3. The approved in-process run is dropped. |
-| mise `mck:run-rust` | Builds `mck-adapter-rust`, Rust runner, native `report check` against the binding's `allowed-failing.json` | Reporting adopted in IR-3 |
-| mise `check` aggregate | Depends on `mck:check` and `mck:schema-check` | IR-3 |
+| mise `mck:run-rust` | Builds `mck-adapter-rust`, Rust runner, native `report check` against the binding's `allowed-failing.json`, native coverage | Adopted in IR-3 |
+| mise `check` aggregate | Depends on `mck:check`, which includes schema checks | Adopted in IR-3; standalone `mck:schema-check` remains available |
 | `tools/run-mck-rust.ts`, `tools/rust-mck-command.ts` and test | Resolve the adapter path and spawn the TypeScript driver for parity and package suites | Retained until those consumers migrate; no shared helper deletion in the reporting slice |
 | `tools/validate-mck-fences.ts`, `tools/validate-mck-protocol.ts` | Frozen fence/protocol validators for migration evidence | Production replaced by `morphir mck schema check`; retain until IR-4 |
 | `tools/check-mck-report.ts` and test | Historical version 1 baseline gate | Parent IR tasks replaced by `morphir mck report check`; retained as legacy tooling |

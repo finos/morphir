@@ -694,6 +694,11 @@ enum MckAction {
     /// Validate a kit directory without running an adapter
     Check(commands::mck::MckCheckArgs),
     /// Check that every IR vocabulary variant and member has a kit case
+    ///
+    /// Pending cases count through title and prose mentions. This JSON-key
+    /// heuristic inspects inline JSON only; member coverage requires a case
+    /// for the member's own node, so nesting it in another entry-point document
+    /// does not cover it. Zero gaps do not establish semantic conformance.
     Coverage(commands::mck::MckCoverageArgs),
     /// Validate kit schemas, examples and IR fences offline
     Schema {

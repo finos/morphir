@@ -5,6 +5,8 @@
 
 Check that every IR vocabulary variant and member has a kit case
 
+Pending cases count through title and prose mentions. This JSON-key heuristic inspects inline JSON only; member coverage requires a case for the member's own node, so nesting it in another entry-point document does not cover it. Zero gaps do not establish semantic conformance.
+
 ## Flags
 - **`--kit <DIR>`** — A kit directory or vendored snapshot; the embedded kit when omitted
 - **`--repo-root <DIR>`** — Repository root holding spec/mck/vocabulary.json, inferred for spec/ir/mck
