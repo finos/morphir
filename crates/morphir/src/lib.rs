@@ -3,6 +3,7 @@
 //! This library exposes CLI functionality for programmatic use and testing.
 
 pub mod commands;
+pub mod diagnostics;
 pub mod error;
 pub mod extensions;
 pub mod home;

@@ -1195,6 +1195,10 @@ async fn main() -> starbase::MainResult {
     use clap::CommandFactory;
     use tracing::Instrument as _;
 
+    // Bootstrap, in order: error reporting before anything can fail, then
+    // logging before anything can report. Both run ahead of argv parsing
+    // because a failure in that parse still has to render and be logged.
+    morphir::diagnostics::install();
     let operation_id = observability::OperationId::new();
     // Keep the guard alive until process exit so non-blocking file logs flush.
     let logging_guard = logging::init_from_env(&operation_id);
