@@ -620,3 +620,83 @@ fn a_project_flag_with_no_discoverable_configuration_is_refused() {
         "unexpected stderr: {err}"
     );
 }
+
+/// `elm_module_name` (`compile.rs:185`) recognizes a `port module` header the
+/// same as a plain one, stripping the leading `port` keyword before matching
+/// `module`. This pins that the CLI-level package-identity derivation for a
+/// port module lands the same place a plain declared module does: the
+/// derived package name comes from `App.Ports`, lowercased and dotted-to-
+/// dashed, under `local/`, with only that one module exposed. `elm_module_name`
+/// is deleted by the refactor along with its own unit test
+/// (`extracts_plain_port_and_effect_module_declarations_after_nested_comments`,
+/// `compile.rs:2499`), so this is the only place this shape stays pinned once
+/// that test is gone.
+#[test]
+fn a_port_module_is_named_like_a_plain_declared_module() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Ports.elm"),
+        "port module App.Ports exposing (Size, sendMessage)\n\nport sendMessage : String -> Cmd msg\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "Ports.elm", "--extension", "morphir-elm-native"],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: `App.Ports` is split, lowercased and nested under `local`,
+    // exactly as a plain `module App.Ports exposing (...)` header would be.
+    // The `port` keyword and the skipped `port sendMessage : ...` value
+    // declaration do not change the derived identity.
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["app", "ports"]])
+    );
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    assert_eq!(modules.len(), 1, "expected exactly one exposed module");
+    assert_eq!(modules[0][0], serde_json::json!([["app"], ["ports"]]));
+    assert_eq!(modules[0][1]["access"], "Public");
+}
+
+/// `elm_module_name` (`compile.rs:185`) skips leading trivia — including a
+/// nested block comment — via `skip_elm_trivia` before it starts matching a
+/// declaration keyword. This pins that a nested block comment placed before
+/// the `module` line does not change the derived package identity from the
+/// plain declared-module case. As with the port-module test above, this
+/// covers a shape that only lived in `elm_module_name`'s own unit test
+/// (`compile.rs:2499`) before, which the refactor deletes along with the
+/// function.
+#[test]
+fn a_nested_block_comment_before_the_module_declaration_does_not_change_identity() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "{- outer {- nested -} comment -}\nmodule Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: identical to `a_synthesized_package_is_named_for_its_declared_module`,
+    // which uses the same module name without the leading nested comment —
+    // the comment is skipped entirely and has no effect on the derived
+    // identity.
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["acme", "widget"]])
+    );
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    assert_eq!(modules.len(), 1, "expected exactly one exposed module");
+    assert_eq!(modules[0][0], serde_json::json!([["acme"], ["widget"]]));
+    assert_eq!(modules[0][1]["access"], "Public");
+}
