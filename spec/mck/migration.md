@@ -5,11 +5,12 @@ Parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
 **Transition state, 2026-09-20.** The ownership decision is made
 ([decision 0003](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md)).
-The Rust MCK tooling is partial: the [CLI contract](cli-contract.md)'s status line says what exists.
-Parent IR runs and report gates now use Rust, including consolidated `2.0.0-draft.1` JSON and optional
-offline HTML. IR-3 remains incomplete: coverage and schema gates still use the frozen TypeScript
-tooling. Parity, package suites and the binding release paths below also retain the first driver.
-This reporting adoption is not the CLI release cutover. TypeScript MCK features are frozen;
+Parent IR authoring and execution gates now use Rust: kit validation, vocabulary coverage,
+offline schema/example checks, adapter runs and independent report adjudication. Reports contain
+consolidated `2.0.0-draft.1` JSON with optional offline HTML. The [CLI contract](cli-contract.md)
+and [schema inventory](schema-gates.md) describe the implemented gates. Parity, package suites
+and the binding release paths below retain the first driver. IR-3 implementation does not complete
+the IR-4 release/adoption cutover or stabilize the report draft. TypeScript MCK features are frozen;
 break/fix only.
 
 ## Consumer inventory
@@ -20,15 +21,16 @@ Audited at the [baseline](baseline/README.md) pins. "Slice" is where the consume
 
 | Consumer | What it runs today | Slice |
 | --- | --- | --- |
-| mise `mck:check` | `bun .../mck/src/cli.ts check spec/ir/mck`, JSON Schema checks, `tools/validate-mck-protocol.ts` | IR-3 |
-| mise `mck:schema-check` | `tools/validate-mck-fences.ts` | IR-3 |
-| mise `mck:run` | Rust runner with explicit TypeScript adapter; native `report check` against the empty parent baseline; TypeScript `coverage` | Reporting adopted. The approved in-process run is dropped; native coverage remains IR-3 work. |
+| mise `mck:check` | Native kit and schema checks, with retained source parity | Adopted in IR-3 |
+| mise `mck:schema-check` | Native `morphir mck schema check` | Adopted in IR-3 |
+| mise `mck:source-parity` | Vocabulary regeneration check and protocol byte-copy comparison against the pinned TypeScript source | Retained until IR-4 |
+| mise `mck:run` | Rust runner with explicit TypeScript adapter; native `report check` against the empty parent baseline; native `coverage` | Adopted in IR-3. The approved in-process run is dropped. |
 | mise `mck:run-rust` | Builds `mck-adapter-rust`, Rust runner, native `report check` against the binding's `allowed-failing.json` | Reporting adopted in IR-3 |
 | mise `check` aggregate | Depends on `mck:check` and `mck:schema-check` | IR-3 |
 | `tools/run-mck-rust.ts`, `tools/rust-mck-command.ts` and test | Resolve the adapter path and spawn the TypeScript driver for parity and package suites | Retained until those consumers migrate; no shared helper deletion in the reporting slice |
-| `tools/validate-mck-fences.ts`, `tools/validate-mck-protocol.ts` | Fence and protocol example validation | Replaced by `morphir mck schema check` in IR-3 |
+| `tools/validate-mck-fences.ts`, `tools/validate-mck-protocol.ts` | Frozen fence/protocol validators for migration evidence | Production replaced by `morphir mck schema check`; retain until IR-4 |
 | `tools/check-mck-report.ts` and test | Historical version 1 baseline gate | Parent IR tasks replaced by `morphir mck report check`; retained as legacy tooling |
-| CI `docs` job | `mck:check`, `mck:schema-check`, native `mck:run`; renders HTML separately and uploads JSON plus HTML | Reporting adopted; coverage/schema cutover pending |
+| CI `docs` job | Native authoring gates and `mck:run`; renders HTML separately and uploads JSON plus HTML | Parent IR gates adopted in IR-3 |
 | CI `rust-conformance` job | Native `mck:run-rust`, separate HTML rendering and JSON/HTML upload; live parity | Reporting adopted |
 | CI `changes` filters `mck`, `rust-conformance` | Path-aware routing from [#843](https://github.com/finos/morphir/pull/843) | `mck` includes the native engine/CLI inputs; `rust-conformance` also runs for the existing `rust` filter. Prior inputs remain routed. |
 | `tests/ci/test_ci_path_aware.py`, `test_release_workflow.py` | Pin that routing | Updated with the workflow in IR-3 |

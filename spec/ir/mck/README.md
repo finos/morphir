@@ -7,9 +7,8 @@ Unsupported capabilities can be reported as skipped, so a successful driver exit
 The planned MCK package suite has its own operations and compatibility requirements.
 
 Ownership of the driver moved to this repository on 2026-09-18. The Rust CLI now implements kit
-checking, vendoring, runs, draft report checking and optional HTML rendering. Native coverage and
-schema gates remain unimplemented; the existing TypeScript gates still cover those responsibilities.
-Parity and package suites also retain the frozen first driver. See the
+checking, vendoring, runs, vocabulary coverage, offline schema gates, draft report checking and optional
+HTML rendering. Migration parity and package suites retain the frozen first driver. See the
 [MCK overview](https://github.com/finos/morphir/blob/main/spec/mck/README.md#ownership-and-transition).
 
 The kit states meaning by example. The semantic model lives in TypeScript; the YAML profile is the reference
@@ -121,9 +120,10 @@ morphir mck report render report.json --format html --output report.html
 ```
 
 `mise run mck:run` and `mise run mck:run-rust` build and use the native runner for the two parent CI
-adapters. The first task retains the TypeScript coverage check. A binding adopting a released CLI
+adapters, with native coverage and report checking. Use `morphir mck schema check --kit spec/ir/mck`
+for the offline schema/example gate. A binding adopting a released CLI
 can use `morphir mck kit vendor` to pin a kit snapshot; release and binding CI cutover is tracked in
-[the migration plan](../../mck/migration.md), not completed by this reporting change.
+[the migration plan](../../mck/migration.md), separately from parent authoring-gate adoption.
 
 The consolidated JSON contains provenance, complete negotiated capabilities, explicit selection,
 session outcome and ordered records. It is authoritative. HTML is an optional standalone view

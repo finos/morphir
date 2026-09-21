@@ -162,24 +162,20 @@ description = "Check morphir-rust embeds the generated configuration schema byte
 run = "node website/scripts/check-config-schema-sync.js"
 
 [tasks."mck:check"]
-description = "Parse the Morphir Compatibility Kit case files and validate the report and protocol schemas"
-# Keep the frozen TypeScript parser/schema gates until their native replacements land.
+description = "Check MCK cases, schemas, protocol examples and IR fences with the native engine"
+depends = ["mck:source-parity"]
+run = [
+    "cargo run --locked -p morphir -- mck check spec/ir/mck",
+    "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck",
+]
+
+[tasks."mck:source-parity"]
+description = "Check vocabulary generation and protocol copies against the pinned TypeScript migration source"
+# Keep source ownership checks until IR-4 release/adoption. Shared validation is native.
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "bun run ecosystem/morphir-typescript/packages/mck/src/cli.ts check spec/ir/mck",
-    "jsonschema metaschema spec/ir/mck/report.schema.json",
-    "jsonschema validate spec/ir/mck/report.schema.json spec/ir/mck/report.example.json",
-    "jsonschema metaschema spec/ir/mck/report-draft.schema.json",
-    "jsonschema validate spec/ir/mck/report-draft.schema.json spec/ir/mck/report-draft.example.json",
-    "jsonschema metaschema spec/ir/mck/protocol.schema.json",
-    "bun run tools/validate-mck-protocol.ts",
-    # Parent-owned kit data the Rust `morphir mck` tooling reads (spec/mck/kit-manifest.md).
     "bun run tools/gen-mck-vocabulary.ts --check",
-    "jsonschema metaschema spec/mck/vocabulary.schema.json",
-    "jsonschema validate spec/mck/vocabulary.schema.json spec/mck/vocabulary.json",
-    "jsonschema metaschema spec/mck/mck-kit.lock.schema.json",
-    "jsonschema validate spec/mck/mck-kit.lock.schema.json spec/mck/mck-kit.lock.example.json",
-    "jsonschema metaschema spec/mck/provenance.schema.json",
+    "bun run tools/check-mck-contract-copies.ts",
 ]
 
 [tasks."mck:vocabulary"]
@@ -190,26 +186,27 @@ run = [
 ]
 
 [tasks."mck:schema-check"]
-description = "Validate every accepted MCK JSON fence against the v4 schema"
-run = "bun run tools/validate-mck-fences.ts"
+description = "Validate MCK schemas, JSON and protocol examples, and accepted or rejected IR fences"
+run = "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck"
 
 [tasks."mck:run"]
-description = "Run the native MCK against the TypeScript adapter, check its report, and retain the TypeScript coverage gate"
+description = "Run the native MCK against the TypeScript adapter and check its report and kit coverage"
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "cargo run --locked -p morphir -- mck run --kit spec/ir/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --report .dev/out/mck/morphir-typescript-adapter.json",
     "cargo run --locked -p morphir -- mck report check .dev/out/mck/morphir-typescript-adapter.json spec/ir/mck/allowed-failing.json --kit spec/ir/mck",
-    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts coverage --kit spec/ir/mck",
+    "cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck",
 ]
 
 [tasks."mck:run-rust"]
-description = "Run the Morphir Compatibility Kit against the pinned Rust binding's adapter and adjudicate the report"
+description = "Run the native MCK against the pinned Rust adapter and check its report and kit coverage"
 # Native spawning resolves the .exe suffix on Windows, as in mck:parity-rust.
 run = [
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "cargo run --locked -p morphir -- mck run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --kit spec/ir/mck --report .dev/out/mck/morphir-rust.json",
     # The native reader validates the draft schema before adjudicating inventory and baseline.
     "cargo run --locked -p morphir -- mck report check .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json --kit spec/ir/mck",
+    "cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck",
 ]
 
 [tasks."mck:parity-rust"]
@@ -394,7 +391,6 @@ depends = [
     "schema:validate",
     "check:config-schema-sync",
     "mck:check",
-    "mck:schema-check",
     "package:schema-check",
     "tools:test",
 ]

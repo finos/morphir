@@ -267,6 +267,15 @@ Morphir Compatibility Kit: validate, vendor and run compatibility kits
 \fBmck check\fR
 Validate a kit directory without running an adapter
 .TP
+\fBmck coverage\fR
+Check that every IR vocabulary variant and member has a kit case
+.TP
+\fBmck schema\fR
+Validate kit schemas, examples and IR fences offline
+.TP
+\fBmck schema check\fR
+Check schemas, examples, protocol pairing and accepted JSON fences
+.TP
 \fBmck run\fR
 Run the kit against an implementation's adapter and report the results
 .TP
@@ -1809,6 +1818,32 @@ Print the files, case ids and errors as JSON on stdout
 .TP
 \fB<DIR>\fR
 The kit directory to validate, for example spec/ir/mck, or a vendored snapshot's root
+.SH "MORPHIR MCK COVERAGE"
+Check that every IR vocabulary variant and member has a kit case
+.PP
+\fBUsage:\fR morphir mck coverage [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+A kit directory or vendored snapshot; the embedded kit when omitted
+.TP
+\fB\-\-repo\-root\fR \fI<DIR>\fR
+Repository root holding spec/mck/vocabulary.json, inferred for spec/ir/mck
+.SH "MORPHIR MCK SCHEMA CHECK"
+Check schemas, examples, protocol pairing and accepted JSON fences
+.PP
+\fBUsage:\fR morphir mck schema check [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+The kit directory or verified snapshot root; the embedded kit when omitted
+.TP
+\fB\-\-repo\-root\fR \fI<DIR>\fR
+Repository root for a raw authoring kit
 .SH "MORPHIR MCK RUN"
 Run the kit against an implementation's adapter and report the results
 .PP

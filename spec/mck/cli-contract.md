@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented so far: `check`, `kit status`, `kit vendor` and `kit update`, including managed-snapshot verification (IR-1, IR-1V); `run` with adapter transport (IR-2); and the reporting part of IR-3. Production runs now write consolidated `2.0.0-draft.1` reports. `report check` validates their schema, kit inventory and failure baseline; `report render` writes optional standalone HTML. `coverage` and `schema check` remain unimplemented, so IR-3 is incomplete. Their existing TypeScript gates stay authoritative. The TypeScript driver also remains for parity and package suites until the cutover described in [migration.md](migration.md).
+Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check` and `report render`. Parent IR gates use the Rust CLI. Production runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. The TypeScript driver remains for migration parity, package suites and consumers awaiting the IR-4 release/adoption cutover described in [migration.md](migration.md).
 
 This contract covers the IR suite. Package commands are added by
 [#852](https://github.com/finos/morphir/issues/852) and must not reuse IR fields with other meanings.
@@ -45,7 +45,7 @@ morphir mck kit vendor --source <source> [--revision <commit>] [--expect-digest 
 morphir mck kit update --kit <dir> [--source <source>] [--revision <commit>] [--expect-digest <digest>]
 ```
 
-`coverage` and `schema check` above specify planned commands. All other listed commands exist.
+All listed commands are implemented. Release and consumer adoption remain a separate milestone.
 
 For `kit vendor` and `kit update`, `--revision` is required with `--source github:finos/morphir` and
 is usage error 2 with any other source. `kit update --revision <commit>` without `--source` updates a
@@ -137,7 +137,7 @@ documented for users instead of emulated: `\d`, `\w` and `\s` are Unicode-aware 
 cannot change a match against ASCII case ids, and named groups are written `(?P<name>...)` or
 `(?<name>...)`. This is a CLI migration note. It does not change the IR protocol.
 
-### `coverage` (planned; kept, new data source)
+### `coverage` (kept, new data source)
 
 Reports vocabulary entries with no case, one `formatGap` line per gap on stdout, exit 1 if any.
 The vocabulary and node-alias catalog come from parent-owned data, `spec/mck/vocabulary.json`, with
@@ -148,13 +148,22 @@ never derives the required vocabulary from a binding under test.
 The heuristic is kept as is, with its known limits stated in `--help`: a pending case counts as
 coverage, and members nested under an entry-point document are not seen.
 
-### `schema check` (planned; kept behaviour, new home)
+### `schema check` (kept behaviour, new home)
 
 Replaces `tools/validate-mck-fences.ts` and `tools/validate-mck-protocol.ts`. It validates every
 canonical and accepted JSON fence against the published IR v4 schemas, validates
 `protocol.example.json` message by message against `protocol.schema.json`, and enforces request and
-response id pairing. The byte comparison against the morphir-typescript contract copies is dropped
-at cutover, when those copies stop being authoritative.
+response id pairing, including multiple alternative responses for one example request. Every message
+must also validate at the root schema. Legacy warning spellings must fail schema validation except
+the three retained documentation-wrapper cases. Unknown validation targets fail explicitly.
+
+The same command validates all original schemas against their metaschemas and validates the report,
+vocabulary and lock examples. The [gate inventory](schema-gates.md) records their entry points and
+expected outcomes. The catalog reads only selected-kit bytes; it never resolves a reference through
+the network or an arbitrary filesystem path. A missing input or malformed schema fails the command.
+
+The repository retains vocabulary and TypeScript contract-copy drift checks in `mck:source-parity`
+until IR-4 cutover. They are migration checks, separate from the installed CLI's offline gates.
 
 ### `report check` (kept gate, hardened inventory, new home)
 

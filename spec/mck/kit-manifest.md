@@ -39,7 +39,15 @@ For the IR suite the snapshot holds exactly:
 1. every file under `spec/ir/mck/`;
 2. every file a `text` fence in any case resolves to;
 3. the coverage vocabulary, `spec/mck/vocabulary.json`;
-4. the schemas `schema check` reads.
+4. the schemas and examples `schema check` reads: the two IR schemas under
+   `website/static/schemas/`, plus `spec/mck/vocabulary.schema.json`,
+   `spec/mck/mck-kit.lock.schema.json`, `spec/mck/mck-kit.lock.example.json` and
+   `spec/mck/provenance.schema.json`. Report and protocol schemas/examples are already
+   included by item 1.
+
+IR-3 extends the fixed closure to support installed offline schema checks. Re-vendor a source
+revision carrying these inputs. An older managed snapshot missing them fails closed; the driver
+does not silently add files to its manifest. The digest algorithm and lock format are unchanged.
 
 Files outside this transitive set are not included. Items 1 and 2 are the **legacy corpus set**,
 the input of the TypeScript driver's `kit.lock.json` hash. At the baseline that is 15 files, listed
@@ -162,7 +170,7 @@ The full repository archive is streamed and only closure paths are extracted, in
 bounded temporary file:
 
 1. `spec/ir/mck/**` plus the fixed parent-owned inputs of closure items 3 and 4:
-   `spec/mck/vocabulary.json` and the two schemas `schema check` reads. The CLI carries this fixed
+   `spec/mck/vocabulary.json` and the schemas/examples `schema check` reads. The CLI carries this fixed
    list per suite and driver contract version; a schema that gains an external `$ref` adds the
    referenced file to the list in the same change.
 2. The external fixtures that the cases parsed from pass 1 name.
@@ -224,7 +232,7 @@ Detection has no fallback and no ambiguity:
 | Condition | Mode | Behaviour |
 | --- | --- | --- |
 | The directory given is a snapshot root, or `mck-kit.lock.json` exists at the repository root in use (`--repo-root`, or the inferred root) | Managed | `check`, `kit status`, `coverage`, `schema check` and `run` first check `driverContract`, verify every listed file's size and SHA-256, reject any other file under the snapshot root except a `.gitattributes`, and confirm the kit's corpus hash is the recorded one. Any mismatch fails, naming each file, before a case is read or an adapter starts. |
-| No manifest there | Raw authoring | The checkout is used as is. `kit status` and the provenance sidecar report it as `local`, with a digest of the bytes that ran and `modified: true` unless it equals the embedded kit. |
+| No manifest there | Raw authoring | The checkout is used as is. `kit status` and the consolidated report identify it as `local`, with a digest of the bytes that ran and `modified: true` unless it equals the embedded kit. |
 | No `--kit` | Embedded | The compiled-in kit. Its bytes are part of the binary, so there is no separate manifest to check; `kit vendor --source embedded` writes one. |
 
 A manifest that is present but unreadable, or has an unknown `lockVersion`, is an error. It never

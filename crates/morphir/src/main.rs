@@ -693,6 +693,13 @@ impl MigrateArgs {
 enum MckAction {
     /// Validate a kit directory without running an adapter
     Check(commands::mck::MckCheckArgs),
+    /// Check that every IR vocabulary variant and member has a kit case
+    Coverage(commands::mck::MckCoverageArgs),
+    /// Validate kit schemas, examples and IR fences offline
+    Schema {
+        #[command(subcommand)]
+        action: MckSchemaAction,
+    },
     /// Run the kit against an implementation's adapter and report the results
     Run(commands::mck::MckRunArgs),
     /// Check compatibility evidence or render a saved report as offline HTML
@@ -705,6 +712,12 @@ enum MckAction {
         #[command(subcommand)]
         action: MckKitAction,
     },
+}
+
+#[derive(Clone, Subcommand)]
+enum MckSchemaAction {
+    /// Check schemas, examples, protocol pairing and accepted JSON fences
+    Check(commands::mck::MckSchemaCheckArgs),
 }
 
 #[derive(Clone, Subcommand)]
@@ -1056,6 +1069,12 @@ impl AppSession for MorphirSession {
             },
             Commands::Mck { action } => match action {
                 MckAction::Check(args) => run_mck_check(args.clone()),
+                MckAction::Coverage(args) => commands::mck::run_mck_coverage(args.clone()),
+                MckAction::Schema { action } => match action {
+                    MckSchemaAction::Check(args) => {
+                        commands::mck::run_mck_schema_check(args.clone())
+                    }
+                },
                 MckAction::Run(args) => run_mck_run(args.clone()).await,
                 MckAction::Report { action } => match action {
                     MckReportAction::Check(args) => commands::mck::report::run_check(args.clone()),
