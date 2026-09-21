@@ -76,12 +76,15 @@ pub struct CompileOptions {
 }
 
 /// Run the compile command
-pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
+pub async fn run_compile(
+    options: CompileOptions,
+    ready: &crate::SessionReady,
+) -> AppResult<miette::Report> {
     if should_use_single_file_process(&options) {
-        return run_single_file_compile(options).await;
+        return run_single_file_compile(options, ready).await;
     }
 
-    run_provider_compile(options).await
+    run_provider_compile(options, ready).await
 }
 
 fn should_use_single_file_process(options: &CompileOptions) -> bool {
@@ -651,7 +654,14 @@ fn ir_storage_settings_apply_to_single_file_compile(ir: &IrSection) -> bool {
     ir.layout == "single-file" && ir.format == "json"
 }
 
-async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::Report> {
+async fn run_single_file_compile(
+    options: CompileOptions,
+    // This path applies a different discovery rule (configuration optional,
+    // discovery only under `--project`) than `startup` resolves, so it keeps
+    // resolving its own configuration and does not read `ready`. It still
+    // takes `ready` so both compile routes share one signature.
+    _ready: &crate::SessionReady,
+) -> AppResult<miette::Report> {
     use crate::output::{CompileOutput, OutputFormat};
 
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
@@ -1270,7 +1280,10 @@ fn write_compile_output(
     }
 }
 
-async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Report> {
+async fn run_provider_compile(
+    options: CompileOptions,
+    ready: &crate::SessionReady,
+) -> AppResult<miette::Report> {
     use crate::output::{CompileOutput, OutputFormat};
 
     let CompileOptions {
@@ -1279,8 +1292,8 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         input,
         output,
         package_name,
-        config_path,
-        project,
+        config_path: _,
+        project: _,
         ir_version,
         json,
         json_lines,
@@ -1288,27 +1301,18 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         elm_modes: elm_mode_flags,
         out: out_overrides,
     } = options;
-    let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
-    let config_file = if let Some(config) = config_path {
-        PathBuf::from(config)
-    } else {
-        discover_config(&start_dir)
-            .map_err(|error| CliError::Config { error })?
-            .ok_or_else(|| CliError::Config {
-                error: anyhow::anyhow!("No morphir.toml, morphir.yaml, or morphir.json found"),
-            })?
+    // `startup` resolves both together for a whole-project compile and
+    // leaves both `None` otherwise; this always sees the pair, but stays
+    // defensive rather than unwrapping a session-lifecycle wiring mistake.
+    let (start_dir, context) = match (ready.start_dir(), ready.config()) {
+        (Some(start_dir), Some(context)) => (start_dir.to_path_buf(), context.clone()),
+        _ => {
+            return Err(CliError::Config {
+                error: anyhow::anyhow!("compile requires a Morphir configuration"),
+            }
+            .into());
+        }
     };
-    let selection = project
-        .map(morphir_devkit::config::ProjectSelection::Explicit)
-        .unwrap_or_default();
-    let context = morphir_devkit::load_config_context_with(
-        &config_file,
-        &morphir_devkit::ConfigLoadOptions {
-            project: selection,
-            ..Default::default()
-        },
-    )
-    .map_err(|error| CliError::Config { error })?;
     let project_root = context.project_root.as_deref().ok_or_else(|| CliError::Config {
         error: anyhow::anyhow!("Workspace has no selected project; use --project with a declared member path or exact project name"),
     })?;
@@ -1973,6 +1977,20 @@ fn normalize_ir_version_text(version: &str) -> Option<NormalizedFormatVersion> {
 
 #[cfg(test)]
 mod tests {
+    /// A `Ready` built without a configuration reports none, which is what
+    /// every command other than a whole-project compile gets in this
+    /// increment. The provider path turns that into its own existing error
+    /// rather than silently compiling against defaults.
+    #[test]
+    fn a_ready_without_configuration_reports_none() {
+        let root = tempfile::tempdir().expect("temp dir");
+
+        let ready = crate::SessionReady::for_test(root.path().to_path_buf());
+
+        assert!(ready.config().is_none());
+        assert_eq!(ready.start_dir(), Some(root.path()));
+    }
+
     /// A `--json` client reads the result envelope, not stderr, so a warning
     /// that only went to stderr is invisible to it. The extension warning has
     /// always been in `diagnostics`; the mode warnings must be too, and in the
@@ -2168,7 +2186,8 @@ mod tests {
             },
         };
 
-        run_single_file_compile(options)
+        let ready = crate::SessionReady::for_test(temp.path().to_path_buf());
+        run_single_file_compile(options, &ready)
             .await
             .expect_err("a missing input must fail the compile");
 
@@ -2197,17 +2216,21 @@ mod tests {
         previous.value = vec!["morphir-ir.json".into()];
         previous.write(&paths.result).unwrap();
 
-        let error = run_compile(CompileOptions {
-            input: Some(
-                temp.path()
-                    .join("Models.elm")
-                    .to_string_lossy()
-                    .into_owned(),
-            ),
-            ir_version: Some(IrVersion::V4),
-            out: overrides,
-            ..Default::default()
-        })
+        let ready = crate::SessionReady::for_test(temp.path().to_path_buf());
+        let error = run_compile(
+            CompileOptions {
+                input: Some(
+                    temp.path()
+                        .join("Models.elm")
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
+                ir_version: Some(IrVersion::V4),
+                out: overrides,
+                ..Default::default()
+            },
+            &ready,
+        )
         .await
         .expect_err("single-file Elm must reject v4");
         assert!(error.to_string().contains("supports only IR v3"), "{error}");

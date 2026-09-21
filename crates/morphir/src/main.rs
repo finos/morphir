@@ -10,6 +10,7 @@ pub mod home;
 mod log_lock;
 mod logging;
 pub mod output;
+mod session;
 
 pub use morphir::notebook;
 use morphir::observability;
@@ -814,32 +815,11 @@ enum KbDecisionAction {
     Show(commands::kb::KbDecisionShowArgs),
 }
 
-/// What `startup` produced, available to every later phase.
-///
-/// Only `startup` constructs one. `config` keeps the `Option` the current
-/// loader has, because a run legitimately has no configuration file; the
-/// change here is that exactly one place decides that, rather than each
-/// command deciding for itself. The `Option` goes away when `EffectiveConfig`
-/// replaces `ConfigContext`, which is a later increment.
-///
-/// `start_dir` is also an `Option`, and for the same reason `config` is:
-/// `startup` only calls `std::env::current_dir()` when it is actually
-/// resolving configuration (a whole-project compile). Every other command
-/// must reach `Ready` without touching the filesystem, so it gets `None`
-/// here rather than a syscall it doesn't need, or a placeholder that would
-/// misrepresent "no working directory was read" as a real path.
-///
-/// `startup` is the only producer today; no phase reads `start_dir` or
-/// `config` back out yet, so both fields are dead code until the next
-/// lifecycle task wires a consumer through `MorphirSession::ready`. Allowed
-/// rather than deleted, because removing them would just mean re-adding the
-/// same fields next task.
-#[derive(Debug)]
-#[allow(dead_code)]
-struct Ready {
-    start_dir: Option<std::path::PathBuf>,
-    config: Option<morphir_devkit::ConfigContext>,
-}
+// `Ready` and its `SessionReady` alias live in `session.rs`, which both this
+// binary crate root and the library crate root declare, because
+// `commands::compile` needs to name the type under both.
+use session::Ready;
+pub(crate) use session::SessionReady;
 
 /// The state a phase produced. Phase *progress* is starbase's, in `AppPhase`
 /// and `AppRunOutcome.last_phase`; this carries only the data.
@@ -847,9 +827,7 @@ struct Ready {
 enum SessionState {
     /// Before `startup`: the session holds only its command and out overrides.
     Bootstrapped,
-    /// After `startup`. Only `MorphirSession::ready` reads this variant today
-    /// (see its own `#[allow(dead_code)]`); no phase calls `ready` yet.
-    #[allow(dead_code)]
+    /// After `startup`. `MorphirSession::ready` reads this variant.
     Ready(std::sync::Arc<Ready>),
 }
 
@@ -868,10 +846,6 @@ impl MorphirSession {
     /// An error rather than a panic so a wiring mistake reports like any other
     /// CLI failure. It names the phase, because the only way to see it is to
     /// call a command outside the lifecycle.
-    ///
-    /// No phase calls this yet; only its own test does. The next lifecycle
-    /// task is what wires a command to call it from `execute`.
-    #[allow(dead_code)]
     fn ready(&self) -> Result<&Ready, miette::Report> {
         match &self.state {
             SessionState::Ready(ready) => Ok(ready),
@@ -907,6 +881,20 @@ impl AppSession for MorphirSession {
             {
                 Some((config.clone(), project.clone()))
             }
+            // `morphir gleam compile` and the compile half of `morphir gleam
+            // roundtrip` reach `run_provider_compile` too (Gleam is never the
+            // single-file language), through `run_gleam_compile`, so they
+            // need the same resolved configuration.
+            Commands::Gleam {
+                action:
+                    GleamAction::Compile {
+                        config, project, ..
+                    }
+                    | GleamAction::Roundtrip {
+                        config, project, ..
+                    },
+                ..
+            } => Some((config.clone(), project.clone())),
             _ => None,
         };
 
@@ -972,24 +960,28 @@ impl AppSession for MorphirSession {
                 elm_doc_comments,
                 elm_ordering,
             } => {
-                run_compile(CompileOptions {
-                    language: language.clone(),
-                    extension: extension.clone(),
-                    input: input.clone(),
-                    output: output.clone(),
-                    package_name: package_name.clone(),
-                    config_path: config.clone(),
-                    project: project.clone(),
-                    ir_version: *ir_version,
-                    json: *json,
-                    json_lines: *json_lines,
-                    no_cache: *no_cache,
-                    elm_modes: commands::compile::ElmModeFlags {
-                        doc_comments: elm_doc_comments.clone(),
-                        ordering: elm_ordering.clone(),
+                let ready = self.ready()?;
+                run_compile(
+                    CompileOptions {
+                        language: language.clone(),
+                        extension: extension.clone(),
+                        input: input.clone(),
+                        output: output.clone(),
+                        package_name: package_name.clone(),
+                        config_path: config.clone(),
+                        project: project.clone(),
+                        ir_version: *ir_version,
+                        json: *json,
+                        json_lines: *json_lines,
+                        no_cache: *no_cache,
+                        elm_modes: commands::compile::ElmModeFlags {
+                            doc_comments: elm_doc_comments.clone(),
+                            ordering: elm_ordering.clone(),
+                        },
+                        out: self.out.clone(),
                     },
-                    out: self.out.clone(),
-                })
+                    ready,
+                )
                 .await
             }
             Commands::Generate {
@@ -1226,6 +1218,7 @@ impl AppSession for MorphirSession {
                     config,
                     project,
                 } => {
+                    let ready = self.ready()?;
                     run_gleam_compile(
                         self.out.clone(),
                         input.clone(),
@@ -1235,6 +1228,7 @@ impl AppSession for MorphirSession {
                         project.clone(),
                         *json,
                         *json_lines,
+                        ready,
                     )
                     .await
                 }
@@ -1262,6 +1256,7 @@ impl AppSession for MorphirSession {
                     config,
                     project,
                 } => {
+                    let ready = self.ready()?;
                     run_gleam_roundtrip(
                         self.out.clone(),
                         input.clone(),
@@ -1271,6 +1266,7 @@ impl AppSession for MorphirSession {
                         project.clone(),
                         *json,
                         *json_lines,
+                        ready,
                     )
                     .await
                 }
