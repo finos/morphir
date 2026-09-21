@@ -105,3 +105,27 @@ cargo build --locked --release --package morphir
 
 The executable is written to `target/release/morphir` on Linux and macOS, or
 `target\release\morphir.exe` on Windows.
+
+### Windows: MSVC Spectre-mitigated libs
+
+`cargo build`, `cargo test`, and `cargo clippy` fail on Windows with this error if your
+Visual Studio install is missing an optional component:
+
+```
+error: failed to run custom build command for `msvc_spectre_libs v0.1.3`
+
+  cargo:warning=No spectre-mitigated libs were found. Please modify the VS Installation to add these.
+
+  thread 'main' panicked at msvc_spectre_libs-0.1.3/build.rs:38:13:
+  No spectre-mitigated libs were found. Please modify the VS Installation to add these.
+```
+
+The CLI's embedded Rego evaluator (`morphir-opa`, via `regorus`) depends on the
+`msvc_spectre_libs` crate, which requires the **Spectre-mitigated MSVC libraries**.
+Either install the **"MSVC v143 - VS 2022 C++ x64/x86 Spectre-mitigated libs
+(Latest)"** component from the Visual Studio Installer, or skip it entirely with
+`cargo build --no-default-features --package morphir`, which drops `regorus` from
+the dependency graph (and disables `morphir eval`'s Rego provider along with
+itest's Rego-backed assertions). See [DEVELOPING.md](DEVELOPING.md#prerequisites)
+for the elevated-install one-liner and [issue #886](https://github.com/finos/morphir/issues/886)
+for the full analysis.

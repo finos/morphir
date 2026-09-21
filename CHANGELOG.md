@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - MCK adapter deadlines cover blocked stdin writes and shutdown as well as response reads, preventing a non-reading adapter from hanging the runner.
 - Published-release qualification accepts the CLI version banner and retains Linux evidence after network-isolated execution. Windows release checkouts enable long paths before fetching fixtures.
+- `morphir-opa` (and its `regorus` dependency) is now behind a `rego` Cargo feature on `morphir`, enabled by default. A Windows contributor whose Visual Studio install lacks the "MSVC v143 - VS 2022 C++ x64/x86 Spectre-mitigated libs (Latest)" component can build, test, and lint with `cargo build --no-default-features -p morphir` instead of hitting a `msvc_spectre_libs` build-script panic; the only loss is `morphir eval`'s Rego provider and itest's Rego-backed assertions. Documented in [INSTALLING.md](INSTALLING.md) and [DEVELOPING.md](DEVELOPING.md) (#886)
 
 ## [0.4.0-beta.2] - 2026-09-20
 

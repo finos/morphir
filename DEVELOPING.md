@@ -18,6 +18,8 @@ This guide covers the development workflow for contributing to Morphir.
 
   Use `Microsoft.VisualStudio.Component.VC.Runtimes.ARM64.Spectre` on Windows ARM64. Crates that do not depend on `morphir-opa` build without them.
 
+  If you cannot install the component (locked-down machine, or you are not touching Rego evaluation), build `morphir` with the `rego` feature turned off instead: `cargo build -p morphir --no-default-features`. That drops `morphir-opa`/`regorus` from the dependency graph entirely, so `msvc_spectre_libs` is never compiled. The `rego` feature is on by default, so a normal `cargo build`/`test`/`clippy` (and CI) is unaffected; opting out only disables `morphir eval`'s Rego provider and itest's Rego-backed assertions. See [issue #886](https://github.com/finos/morphir/issues/886).
+
 ## Quick Start
 
 ### 1. Clone the Repository
