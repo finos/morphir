@@ -57,6 +57,38 @@ See [INSTALLING.md](https://github.com/finos/morphir/blob/main/INSTALLING.md) in
 morphir version
 ```
 
+### Suppress the banner
+
+Help, `--version`, and running `morphir` without a command show a banner by
+default. Use the global `--no-banner` flag to hide it, including with nested
+command help:
+
+```shell
+morphir --no-banner --version
+morphir mck --no-banner --help
+```
+
+Set `MORPHIR_NO_BANNER=true` to suppress it across invocations, or configure
+the preference in `morphir.toml`:
+
+```toml
+[cli]
+banner = false
+```
+
+The flag takes precedence over `MORPHIR_NO_BANNER`, which takes precedence
+over configuration. The environment variable accepts `true` or `false`,
+ignoring case and surrounding whitespace. `false` enables the banner even
+when configuration disables it; an invalid value is ignored.
+
+Configuration uses the normal machine, user, project, and local user override
+layers, including YAML files. The standard environment spelling
+`MORPHIR_CLI__BANNER=false` also works through that configuration layer.
+If configuration cannot be discovered or loaded, or `cli.banner` is not a
+boolean, the banner defaults to enabled. Help and version remain available
+when a project's configuration is broken; `--no-banner` and
+`MORPHIR_NO_BANNER` still work.
+
 ## Windows: enable long paths
 
 A Morphir IR v4 document tree stores each type and value as its own file, nested under the package and module
