@@ -62,3 +62,20 @@ make it platform-independent evidence rather than one machine's:
   byte-identical to this file, all 401 760 of them.
 - Replaying it reproduces `reports/morphir-rust.json`, captured on Linux at the earlier pin, record
   for record. Both platforms and both revisions agree.
+
+## Package baseline, 2026-09-21
+
+`package-cases.json` is separate frozen evidence for PKG-1. It was captured from
+TypeScript `4ae09cbd574c98aefacfd4696132001b770bb1bf` against the package corpus
+in parent `26ef146dba42bf355eb922aa24396697328b4efa`. `loadPackageKit` and
+`loadResolutionKit` provide the ordered case inventories; each contract's
+`projectResult` provides the expected comparison value. No adapter is used to
+compute these expectations.
+
+Each case records its ID and separate SHA-256 digests of its request and projected
+expectation. The digest input is compact UTF-8 JSON with object members in UTF-16
+key order, unchanged array order and unchanged strings. This includes the complete
+raw operation input string, so changing fixture mutation or serialization behavior
+changes the request digest even when the corpus files themselves are unchanged.
+The Rust regression compares all 158 cases and the original corpus hashes.
+Do not regenerate this file to make a port pass.

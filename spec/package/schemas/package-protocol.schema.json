@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/mck/package-protocol/0.1.0-draft.1",
+  "title": "MCK package JSON-lines protocol, experimental 0.1.0-draft.1",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "id", "op" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "op": {
+          "enum": [ "capabilities", "exit" ]
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "op": {
+          "const": "normalize"
+        },
+        "input": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "hex" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "op": {
+          "const": "hash-bytes"
+        },
+        "hex": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{2})*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "artifact", "input", "schemas" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "op": {
+          "const": "validate"
+        },
+        "artifact": {
+          "enum": [ "manifest", "lock" ]
+        },
+        "input": {
+          "type": "string"
+        },
+        "schemas": {
+          "type": "object",
+          "required": [ "manifest", "lock" ],
+          "properties": {
+            "manifest": {
+              "type": "object"
+            },
+            "lock": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "lock", "libraries", "schemas" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "op": {
+          "const": "verify-library-set"
+        },
+        "lock": {
+          "type": "string"
+        },
+        "libraries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [ "manifest", "files" ],
+            "properties": {
+              "manifest": {
+                "type": "string"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [ "path", "hex" ],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "hex": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{2})*$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "schemas": {
+          "type": "object",
+          "required": [ "manifest", "lock" ],
+          "properties": {
+            "manifest": {
+              "type": "object"
+            },
+            "lock": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "suite",
+        "contractVersion",
+        "implementation",
+        "implementationVersion",
+        "operations"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "suite": {
+          "const": "package"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "implementation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "implementationVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "normalize",
+              "hash-bytes",
+              "validate",
+              "verify-library-set"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "ok",
+        "canonical",
+        "manifestDigest",
+        "packageContentDigest"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "canonical": {
+          "type": "string"
+        },
+        "manifestDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "packageContentDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "ok", "digest" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "ok", "valid" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "valid": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "ok", "error" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "const": "invalid-document"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

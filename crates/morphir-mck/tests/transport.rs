@@ -127,6 +127,31 @@ mod adapter {
                 run("good", None);
             }
             "hang" => hang(),
+            "stdin-stall" => {
+                if let Some(file) = arg {
+                    #[allow(clippy::zombie_processes)]
+                    std::process::Command::new(std::env::current_exe().unwrap())
+                        .args([ADAPTER_FLAG, "heartbeat", file])
+                        .spawn()
+                        .unwrap();
+                }
+                if let Some((id, _)) = requests().next() {
+                    capabilities(id);
+                }
+                hang();
+            }
+            "slow-io" => {
+                let mut requests = requests();
+                if let Some((id, _)) = requests.next() {
+                    capabilities(id);
+                }
+                std::thread::sleep(Duration::from_millis(200));
+                if let Some((id, _)) = requests.next() {
+                    std::thread::sleep(Duration::from_millis(200));
+                    capabilities(id);
+                }
+                hang();
+            }
             "slow" => {
                 for (id, line) in requests() {
                     if is_exit(&line) {
@@ -377,6 +402,104 @@ fn a_chatty_stderr_never_blocks_the_session() {
     s.close().unwrap();
 }
 
+fn large_request() -> Request {
+    Request::Decode {
+        version: 4,
+        profile: morphir_mck::transport::protocol::Profile::Json,
+        path: morphir_mck::transport::protocol::PathMode::Current,
+        strip: false,
+        node: "Type".into(),
+        input: "x".repeat(2 * 1024 * 1024),
+    }
+}
+
+// The watchdog makes the old blocking-write failure terminate and clean up
+// instead of hanging the test process indefinitely.
+fn guarded_exchange(
+    s: &mut Session,
+    request: &Request,
+) -> (
+    Result<serde_json::Map<String, Value>, TransportError>,
+    Duration,
+) {
+    let terminator = s.terminator();
+    let (finished, wait) = std::sync::mpsc::channel();
+    let watchdog = std::thread::spawn(move || {
+        if wait.recv_timeout(Duration::from_secs(2)).is_err() {
+            terminator.kill();
+        }
+    });
+    let started = Instant::now();
+    let response = s.exchange(request);
+    let elapsed = started.elapsed();
+    let _ = finished.send(());
+    watchdog.join().unwrap();
+    (response, elapsed)
+}
+
+fn stalled_stdin_obeys_request_and_session_deadlines_and_cleans_up_children() {
+    for session_bound in [false, true] {
+        let directory = tempfile::tempdir().unwrap();
+        let heartbeat = directory.path().join("heartbeat");
+        let limits = if session_bound {
+            Limits {
+                request_timeout: Duration::from_secs(10),
+                session_timeout: Duration::from_millis(250),
+                ..quick()
+            }
+        } else {
+            Limits {
+                request_timeout: Duration::from_millis(100),
+                ..quick()
+            }
+        };
+        let mut s = session("stdin-stall", Some(&heartbeat), limits);
+        s.exchange(&Request::Capabilities).unwrap();
+        let (response, elapsed) = guarded_exchange(&mut s, &large_request());
+        let close_started = Instant::now();
+        s.close().unwrap();
+        assert!(
+            close_started.elapsed() < Duration::from_secs(1),
+            "broken cleanup exceeded bound"
+        );
+        assert!(
+            elapsed < Duration::from_secs(1),
+            "blocked stdin ignored deadline: {elapsed:?}"
+        );
+        let error = response.unwrap_err();
+        if session_bound {
+            assert_eq!(error, TransportError::SessionTimeout { millis: 250 });
+        } else {
+            assert_eq!(error, TransportError::Timeout { id: 2, millis: 100 });
+        }
+        std::thread::sleep(Duration::from_millis(150));
+        let stopped = size(&heartbeat);
+        assert!(stopped > 0, "grandchild never started");
+        std::thread::sleep(Duration::from_millis(150));
+        assert_eq!(
+            size(&heartbeat),
+            stopped,
+            "stdin timeout left a child running"
+        );
+    }
+}
+
+fn writes_and_reads_share_one_request_deadline() {
+    let limits = Limits {
+        request_timeout: Duration::from_millis(300),
+        ..quick()
+    };
+    let mut s = session("slow-io", None, limits);
+    s.exchange(&Request::Capabilities).unwrap();
+    let (response, elapsed) = guarded_exchange(&mut s, &large_request());
+    let _ = s.close();
+    assert!(elapsed < Duration::from_secs(1));
+    assert_eq!(
+        response.unwrap_err(),
+        TransportError::Timeout { id: 2, millis: 300 }
+    );
+}
+
 fn an_adapter_that_ignores_exit_or_fails_it_is_a_shutdown_failure() {
     let mut s = session("ignore-exit", None, quick());
     s.exchange(&Request::Capabilities).unwrap();
@@ -517,6 +640,14 @@ fn main() {
         (
             "a_chatty_stderr_never_blocks_the_session",
             a_chatty_stderr_never_blocks_the_session,
+        ),
+        (
+            "stalled_stdin_obeys_request_and_session_deadlines_and_cleans_up_children",
+            stalled_stdin_obeys_request_and_session_deadlines_and_cleans_up_children,
+        ),
+        (
+            "writes_and_reads_share_one_request_deadline",
+            writes_and_reads_share_one_request_deadline,
         ),
         (
             "an_adapter_that_ignores_exit_or_fails_it_is_a_shutdown_failure",

@@ -156,6 +156,14 @@ jobs:
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             package-mck:
+              - 'spec/mck/baseline/package-cases.json'
+              - 'crates/morphir-mck/**'
+              - 'crates/morphir/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.github/actions/setup-rust-ci/**'
+              - 'tools/package-mck-parity*'
+              - 'tools/run-package-native-parity.ts'
               - 'tools/record-mck-transcript*'
               - 'spec/package/**'
               - 'ecosystem/morphir-rust'
@@ -517,12 +525,8 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           cache_save: ${{ github.ref == 'refs/heads/main' }}
-      - name: Cache Rust adapter build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ecosystem/morphir-rust -> target
-          shared-key: package-mck
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Set up native Rust runner build
+        uses: ./.github/actions/setup-rust-ci
       - name: Install integration test types
         run: bun install --frozen-lockfile
         working-directory: tools
@@ -531,6 +535,7 @@ jobs:
         run: |
           bun run --cwd tools typecheck
           bun test tools/rust-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts
+          bun test tools/package-mck-parity.test.ts
       - name: Run TypeScript package implementation
         run: mise run package:check
       - name: Check synthetic restore assurance preflight vectors
@@ -548,6 +553,9 @@ jobs:
       - name: Run independent Rust package resolution implementation
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
         run: mise run package:resolution-check:rust
+      - name: Compare the native runner with both package implementations
+        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+        run: mise run package:native-parity
       - name: Upload package compatibility reports
         uses: actions/upload-artifact@v7
         if: always()

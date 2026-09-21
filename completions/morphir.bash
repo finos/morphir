@@ -982,7 +982,34 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
         complete dir type=path
         complete file type=path
     }
-    cmd report display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
+    cmd package display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run the versioned package compatibility suites" unknown_flags=error {
+        cmd run display_order=0 args_override_self=#false help="Run an integrity or resolution corpus against an explicit adapter" unknown_flags=value {
+            flag --kit help="Package corpus directory, for example spec/package/mck" required=#true {
+                arg <DIR>
+            }
+            flag --contract help="Package contract: 0.1.0-draft.1 integrity or 0.1.0-draft.2 resolution" default="0.1.0-draft.1" {
+                arg <VERSION>
+            }
+            flag --adapter help="Adapter executable, launched directly without a shell" required=#true {
+                arg <PROGRAM>
+            }
+            flag --adapter-arg help="An argument for the adapter; repeat for more" var=#true allow_hyphen_values=#true {
+                arg <ARG>… var=#true
+            }
+            flag --report help="Write the package contract's JSON report to this file" {
+                arg <FILE>
+            }
+            flag --timeout help="Maximum duration of one adapter request and response, in milliseconds" default="30000" {
+                arg <MS>
+            }
+            flag --session-timeout help="Maximum duration of the adapter session, in milliseconds" default="1800000" {
+                arg <MS>
+            }
+            complete dir type=path
+            complete file type=path
+        }
+    }
+    cmd report display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
         cmd check display_order=0 args_override_self=#false help="Verify report inventory and the binding's allowed-failing baseline" unknown_flags=error {
             flag --kit help="Independent kit, defaulting to the embedded kit" {
                 arg <KIT>
@@ -1014,7 +1041,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete output type=path
         }
     }
-    cmd kit display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
+    cmd kit display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
         cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {
             flag --kit help="A kit directory or a vendored snapshot's root; the kit embedded in this CLI when omitted" {
                 arg <DIR>

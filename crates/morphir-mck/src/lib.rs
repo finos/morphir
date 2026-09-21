@@ -15,6 +15,7 @@ pub mod format_version;
 pub mod ir;
 pub mod json;
 pub mod kit;
+pub mod package;
 pub mod provenance;
 pub mod report;
 pub mod schema;

@@ -282,6 +282,12 @@ Check schemas, examples, protocol pairing and accepted JSON fences
 \fBmck run\fR
 Run the kit against an implementation's adapter and report the results
 .TP
+\fBmck package\fR
+Run the versioned package compatibility suites
+.TP
+\fBmck package run\fR
+Run an integrity or resolution corpus against an explicit adapter
+.TP
 \fBmck report\fR
 Check compatibility evidence or render a saved report as offline HTML
 .TP
@@ -1886,6 +1892,43 @@ How long one request may wait for its answer, in milliseconds
 .TP
 \fB\-\-session\-timeout\fR \fI<MS>\fR
 How long the whole adapter session may last, in milliseconds
+.RS
+\fIDefault: \fR1800000
+.RE
+.SH "MORPHIR MCK PACKAGE RUN"
+Run an integrity or resolution corpus against an explicit adapter
+.PP
+\fBUsage:\fR morphir mck package run [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+Package corpus directory, for example spec/package/mck
+.TP
+\fB\-\-contract\fR \fI<VERSION>\fR
+Package contract: 0.1.0\-draft.1 integrity or 0.1.0\-draft.2 resolution
+.RS
+\fIDefault: \fR0.1.0\-draft.1
+.RE
+.TP
+\fB\-\-adapter\fR \fI<PROGRAM>\fR
+Adapter executable, launched directly without a shell
+.TP
+\fB\-\-adapter\-arg\fR \fI<ARG>\fR
+An argument for the adapter; repeat for more
+.TP
+\fB\-\-report\fR \fI<FILE>\fR
+Write the package contract's JSON report to this file
+.TP
+\fB\-\-timeout\fR \fI<MS>\fR
+Maximum duration of one adapter request and response, in milliseconds
+.RS
+\fIDefault: \fR30000
+.RE
+.TP
+\fB\-\-session\-timeout\fR \fI<MS>\fR
+Maximum duration of the adapter session, in milliseconds
 .RS
 \fIDefault: \fR1800000
 .RE

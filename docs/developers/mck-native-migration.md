@@ -177,3 +177,29 @@ The [migration record](https://github.com/finos/morphir/blob/main/spec/mck/migra
 records the final repository consumer audit and qualification evidence. An audit
 of repository integrations cannot identify every external npm library consumer;
 those consumers must migrate explicitly before upgrading across this removal.
+
+## Package migration in progress
+
+The source build now provides `morphir mck package run` for the existing integrity
+and resolution suites. This command is not in `v0.4.0-beta.2`. Package consumers
+should retain their current checks until a release containing package execution
+is qualified and their integration is migrated under
+[#852](https://github.com/finos/morphir/issues/852).
+
+Use the same explicit adapter with the native runner. For example, after building
+`mck-adapter-rust`, a source checkout can run:
+
+```sh
+cargo run --locked --package morphir -- mck package run \
+  --kit spec/package/mck --contract 0.1.0-draft.2 \
+  --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust \
+  --adapter-arg --suite --adapter-arg package \
+  --adapter-arg --contract --adapter-arg 0.1.0-draft.2 \
+  --report .dev/out/mck/package-resolution-native-rust.json
+```
+
+On Windows, use `mck-adapter-rust.exe`. Contract `0.1.0-draft.1` selects integrity;
+`0.1.0-draft.2` selects resolution in both runner and adapter. All package cases
+are required, and a skip is a failing run. Reports preserve the package contracts'
+existing draft schemas, including capabilities and content hashes. The offline
+HTML renderer currently accepts the consolidated IR report only.

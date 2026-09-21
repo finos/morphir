@@ -1,10 +1,10 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check` and `report render`. Parent IR gates use the Rust CLI. Production runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. The TypeScript driver remains for migration parity, package suites and consumers awaiting the IR-4 release/adoption cutover described in [migration.md](migration.md).
+Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check`, `report render` and `package run`. Parent IR gates use the Rust CLI. IR runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. The TypeScript package driver remains as the package migration baseline until release, adoption and retirement review in #852.
 
-This contract covers the IR suite. Package commands are added by
-[#852](https://github.com/finos/morphir/issues/852) and must not reuse IR fields with other meanings.
+The IR commands retain their approved contract. The package addition under
+[#852](https://github.com/finos/morphir/issues/852) uses its existing separate versioned protocols and reports.
 Ownership is recorded in
 [decision 0003](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md).
 
@@ -40,6 +40,9 @@ morphir mck schema check [--kit <dir>] [--repo-root <dir>]
 morphir mck report check <report.json> <allowed-failing.json> [--kit <dir>] [--repo-root <dir>]
                         [--filter <regex>]
 morphir mck report render <report.json> --format html --output <report.html>
+morphir mck package run --kit <dir> --adapter <exe> [--adapter-arg <arg>]...
+                        [--contract <version>] [--report <file>]
+                        [--timeout <ms>] [--session-timeout <ms>]
 morphir mck kit status [--kit <dir>] [--json]
 morphir mck kit vendor --source <source> [--revision <commit>] [--expect-digest <digest>] --dest <dir>
 morphir mck kit update --kit <dir> [--source <source>] [--revision <commit>] [--expect-digest <digest>]
@@ -228,6 +231,10 @@ The largest frame in the baseline transcript is 4 635 bytes, and a full IR run e
 memory. A full run takes seconds; the session timeout exists so a CI job cannot hang on an adapter
 that answers slowly forever.
 
+Each request has one deadline covering both writing the request to stdin and waiting for its
+response. An adapter that stops reading a large request still times out. The shutdown grace
+period covers writing the `exit` request and waiting for the process to stop.
+
 stderr is read continuously on its own task so a chatty adapter can never block on a full pipe. The
 spawned process never opens a console window on Windows.
 
@@ -306,3 +313,44 @@ kit is a raw authoring checkout and is never reported as matching an upstream sn
 - JSON Schema validation of every emitted draft report; legacy baseline reports retain their own schema gate.
 - Report reader, inventory, selection, baseline and session-failure tests, plus offline HTML escaping
   and CLI tests. New draft-only fields have separate tests; legacy parity cannot validate them.
+
+## `package run` (PKG-1)
+
+`morphir mck package run` extends the same engine with the existing package
+contracts. It requires an explicit `--kit` directory and `--adapter` executable;
+`--adapter-arg` repeats for the adapter's arguments. The default contract is
+`0.1.0-draft.1`, the 80-case integrity suite. `0.1.0-draft.2` selects the 78-case
+resolution suite. Other versions are usage errors. Select the same version in
+the adapter's own arguments. Missing required arguments or invalid timeouts
+return exit 2 before loading data or starting the adapter.
+
+The runner preserves the package contracts' existing request, capability and
+report shapes. Canonical schemas live in `spec/package/schemas/package-protocol.schema.json`,
+`package-report.schema.json`, `package-resolution-protocol.schema.json` and
+`package-resolution-report.schema.json`. These are separate from the IR protocol
+and consolidated IR report. The Rust runner identifies its own version in
+`driverVersion`; this does not change `contractVersion` or `kit.formatVersion`.
+
+Loading validates corpus structure, unique IDs, fixed expectations, local schemas
+and fixture paths before starting an adapter. The existing file-map digest
+identifies exactly the consumed bytes under the same logical names. Raw operation
+inputs are retained. No expectation is derived from a package implementation.
+The engine does not link either adapter's package library.
+
+The same bounded NDJSON session provides request IDs, frame limits, request and
+session timeouts, stderr capture and process-tree shutdown. Package capability
+and response envelopes are closed; malformed responses are kit errors, never
+successful domain rejections. Every case is required. Unsupported operations or
+profiles are reported as skips, and any skip, failure or kit error returns exit 1.
+Adapter shutdown failures add a `package-adapter-close` kit-error record.
+
+`--report` writes the selected contract's JSON report, including capabilities,
+content hash and records, and creates missing parent directories. Without it,
+only the terminal summary and diagnostics are emitted. This command does not
+embed or acquire package data. The existing `kit`, `report check` and `report render`
+commands retain their IR scope.
+
+The TypeScript package runner remains the baseline during PKG-1. Native parity
+compares complete reports against the same two external adapters, excluding only
+`driverVersion` and `startedAt`. Published package-runner qualification, downstream
+adoption and review are required before retiring its APIs and release paths.

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/mck/package-resolution-report/0.1.0-draft.2",
+  "title": "MCK package resolution report, experimental 0.1.0-draft.2",
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "driverVersion",
+    "kit",
+    "startedAt",
+    "records"
+  ],
+  "properties": {
+    "suite": {
+      "const": "package"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.2"
+    },
+    "driverVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kit": {
+      "type": "object",
+      "required": [ "formatVersion", "contentHash" ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.2"
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^sha256-[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "testee": {
+      "$ref": "#/$defs/Capabilities"
+    },
+    "startedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/Record"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "Capabilities": {
+      "type": "object",
+      "required": [
+        "suite",
+        "contractVersion",
+        "implementation",
+        "implementationVersion",
+        "operations",
+        "profiles"
+      ],
+      "properties": {
+        "suite": {
+          "const": "package"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.2"
+        },
+        "implementation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "implementationVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "const": "resolve-library"
+          }
+        },
+        "profiles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "const": "flat-library"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Record": {
+      "type": "object",
+      "required": [ "caseId", "result" ],
+      "properties": {
+        "caseId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "const": "resolve-library"
+        },
+        "result": {
+          "enum": [ "pass", "fail", "kit-error", "skipped" ]
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

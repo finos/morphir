@@ -116,6 +116,11 @@ path = "tests/mck_run.rs"
 harness = false
 
 [[test]]
+name = "mck_package"
+path = "tests/mck_package.rs"
+harness = false
+
+[[test]]
 name = "cli_integration"
 path = "tests/cli_integration.rs"
 

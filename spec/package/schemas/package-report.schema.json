@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/mck/package-report/0.1.0-draft.1",
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "driverVersion",
+    "kit",
+    "startedAt",
+    "records"
+  ],
+  "properties": {
+    "suite": {
+      "const": "package"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "driverVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kit": {
+      "type": "object",
+      "required": [ "formatVersion", "contentHash" ],
+      "properties": {
+        "formatVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^sha256-[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "testee": {
+      "type": "object",
+      "required": [
+        "suite",
+        "contractVersion",
+        "implementation",
+        "implementationVersion",
+        "operations"
+      ],
+      "properties": {
+        "suite": {
+          "const": "package"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "implementation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "implementationVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "normalize",
+              "hash-bytes",
+              "validate",
+              "verify-library-set"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "startedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "caseId", "result" ],
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operation": {
+            "enum": [
+              "normalize",
+              "hash-bytes",
+              "validate",
+              "verify-library-set"
+            ]
+          },
+          "result": {
+            "enum": [ "pass", "fail", "kit-error", "skipped" ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
