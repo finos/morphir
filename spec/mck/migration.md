@@ -64,6 +64,47 @@ MCK CI step and no MCK release step at the baseline. `ecosystem/AGENTS.md` and t
 filter name Gleam as a future target only. Nothing to migrate. Their first integration uses
 `morphir mck` and a vendored kit directly.
 
+### IR-4 consumer audit and adoption order
+
+The 2026-09-20 audit checked both current binding heads against these pinned sources:
+[TypeScript `a5e3be09`](https://github.com/finos/morphir-typescript/tree/a5e3be0922ce2dad1920956a8c7bfe6616d515d5)
+and [Rust `1d2640e5`](https://github.com/finos/morphir-rust/tree/1d2640e50661509af3e31dba03376a11a0073adf).
+The consumers above remain active. The parent CLI's published `v0.4.0-beta.1`
+predates the IR-3 authoring gates; adoption requires a subsequent release carrying them.
+
+TypeScript already defines separate adapter executables for five platform targets
+in `scripts/release/binaries.ts`; Windows ARM uses its Windows x64 adapter under
+emulation. Independent distribution does not inherently require another npm package.
+The remaining dependency is in its source/build graph: `adapter.ts` loads the
+package adapter, whose `package/reference.ts` imports `driver/version.ts`, which
+imports `kit/embedded.ts`. Move binding version metadata out of the driver and
+add an adapter-only build path while preserving package adapter behavior and
+existing driver production. Its binary tests must execute the adapter through the
+native runner; the current smoke test executes only the driver. Published adapter
+download availability and execution still need verification.
+
+Adoption proceeds in this order:
+
+1. Land the packaged CLI gate and publish a native release containing IR-3. Record
+   the exact release version, checksums, kit revision and three-platform offline
+   acceptance evidence. Adapter build separation can proceed alongside this work.
+2. Migrate TypeScript's `.config/mise/tasks/check/conformance.ts` and `check/kit.ts`
+   to that pinned CLI, an explicit adapter and a vendored native kit manifest.
+   The historical `packages/mck/kit.lock.json` has a different format and must not
+   be renamed to `mck-kit.lock.json`. Preserve package checks, frozen parity and
+   installed npm artifact tests; `scripts/release/package-mck.ts` still serves
+   both IR and package consumers.
+3. Migrate Rust's driver pin, acquisition task, report adjudication and CI routing
+   together. Fetch the parent target archive and checksum, retain atomic download
+   and stale-report handling, and use native `report check` against the same
+   vendored kit as `run`. Replace the Unix-only acquisition path and validate on
+   Windows too. Its legacy report test cannot certify draft session, provenance
+   or inventory evidence.
+4. Publish CLI/library migration guidance and review adoption evidence in #851.
+   Only then retire the TypeScript IR runner, embedded-kit and related release
+   paths. Keep all package tooling until #852 and preserve the IR package's Node
+   20 artifact gate independently of the MCK package's Node 24 requirement.
+
 ## Parity method
 
 The old and new runners are compared against **the same external adapters** at the same pins, at
