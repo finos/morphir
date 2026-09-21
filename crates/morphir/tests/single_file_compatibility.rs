@@ -339,3 +339,33 @@ fn ir_version_default_for_whole_project_compile() {
         "expected the whole-project Gleam route to default to IR v4"
     );
 }
+
+/// Today a lone non-Elm source is refused. This pins the current refusal so
+/// that the synthesized-project work, which makes it succeed, shows up as a
+/// deliberate change to this test rather than as a silent behaviour change.
+///
+/// Which refusal this is: `is_single_file_request` (see
+/// `crates/morphir/src/commands/compile.rs`) routes on the `elm` language or
+/// a literal `.elm` suffix. `widget.gleam` matches neither, with no
+/// `--language` override given, so the request never takes the single-file
+/// route at all — it falls through to the whole-project provider path, which
+/// then fails during configuration discovery because no `morphir.toml`,
+/// `morphir.yaml`, or `morphir.json` exists in the temp dir. This is a
+/// missing-configuration refusal, not a language-support refusal: `.gleam`
+/// itself is never rejected here.
+#[test]
+fn a_lone_gleam_source_is_refused_today() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(dir.join("widget.gleam"), "pub type Size {\n  Size\n}\n").unwrap();
+
+    let (ok, _out, err) = morphir(dir, &["compile", "--input", "widget.gleam"]);
+    assert!(!ok, "expected the compile to be refused, but it succeeded");
+    // "No morphir.toml, morphir.yaml, or morphir.json found" is the CLI's own
+    // configuration-discovery error message; it can only come from failing to
+    // find a manifest, not from any language-specific rejection.
+    assert!(
+        err.contains("No morphir.toml, morphir.yaml, or morphir.json found"),
+        "unexpected stderr: {err}"
+    );
+}
