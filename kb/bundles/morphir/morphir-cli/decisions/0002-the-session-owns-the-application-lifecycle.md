@@ -113,9 +113,14 @@ once.
 
 Outcome reporting moves from `main` into `shutdown`, which collapses nine call sites to one.
 
-Starbase capabilities that were available and unused come into use: `setup_miette` for cause-chain
-rendering and a panic hook, and `AppExitCode` so code inside a command can set an exit code without
-threading it through every return.
+One starbase capability that was available and unused comes into use: miette configuration, for a
+panic hook and a theme matching the rest of the CLI output. Measured rather than assumed, it does
+not change cause-chain rendering, because miette's `fancy` default already prints the chain.
+
+`AppExitCode` is deliberately not adopted. Each phase already returns `Result<Option<u8>, E>` and
+starbase acts on it, and commands use that today. A field nothing reads would be speculative, so
+it waits for a caller that needs to set an exit code from inside a command without threading it
+through every return.
 
 ## Revisit when
 
