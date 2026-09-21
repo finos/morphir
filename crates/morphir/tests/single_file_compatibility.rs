@@ -1,0 +1,834 @@
+//! Characterization tests for single-file compilation's package-name and
+//! exposure derivation, as performed by the CLI today. A later refactor moves
+//! this derivation out of the CLI and into the language provider; these tests
+//! pin today's observed behaviour by driving the real `morphir` binary so
+//! that move can be verified against them.
+//!
+//! ## Deliberate coverage gaps
+//!
+//! Provider selection for a single-file compile has three precedence levels
+//! (see `resolve_extension_id` in `crates/morphir/src/commands/compile.rs`):
+//! `--extension`, then `[frontend.elm] extension` from a loaded
+//! configuration, then the language's own default provider. Two gaps are
+//! left here on purpose rather than silently:
+//!
+//! - The default-provider level (`morphir-elm`, with no `--extension` and no
+//!   configuration naming one) is not tested here. It is an installed
+//!   process extension, not a built-in one, so it is not available in this
+//!   test environment; only `--extension morphir-elm-native` and a
+//!   configured `morphir-elm-native` are exercised.
+//! - Most of the tests that load configuration select it with `--config`.
+//!   The single-file `--project` selection path — `discover_config`, the
+//!   `"--project requires a Morphir configuration"` refusal, and
+//!   `ProjectSelection::Explicit` (`crates/morphir/src/commands/compile.rs:677-687`)
+//!   — is covered below, by `a_project_flag_discovers_configuration_and_keeps_project_identity`
+//!   and `a_project_flag_with_no_discoverable_configuration_is_refused`.
+
+use std::{fs, process::Command};
+
+/// Runs the `morphir` binary in `dir` with `args`, returning
+/// `(success, stdout, stderr)`.
+fn morphir(dir: &std::path::Path, args: &[&str]) -> (bool, String, String) {
+    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args(args)
+        .current_dir(dir)
+        .env("MORPHIR_HOME", dir.join("home"))
+        .output()
+        .unwrap();
+    (
+        output.status.success(),
+        String::from_utf8_lossy(&output.stdout).into_owned(),
+        String::from_utf8_lossy(&output.stderr).into_owned(),
+    )
+}
+
+/// Reads and parses the classic v3 IR written by a compile:
+/// `.morphir/out/compile.dest/morphir-ir.json`.
+fn distribution(dir: &std::path::Path) -> serde_json::Value {
+    let bytes = fs::read(dir.join(".morphir/out/compile.dest/morphir-ir.json")).unwrap();
+    serde_json::from_slice(&bytes).unwrap()
+}
+
+/// A lone file's package name is derived from its declared module name,
+/// lowercased with dots replaced by dashes, under `local/`. Its exposure is
+/// exactly that one module. Pinned because the refactor moves this derivation
+/// into the language provider.
+#[test]
+fn a_synthesized_package_is_named_for_its_declared_module() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: the module name `Acme.Widget` is split on `.`, each part
+    // lowercased into its own single-word path segment, and the whole thing
+    // nested under a `local` package segment:
+    //   packagePath = [["local"], ["acme", "widget"]]
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["acme", "widget"]])
+    );
+
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    assert_eq!(modules.len(), 1, "expected exactly one exposed module");
+    // The module's own name mirrors the same per-part word-list shape:
+    // [["acme"], ["widget"]].
+    assert_eq!(modules[0][0], serde_json::json!([["acme"], ["widget"]]));
+    assert_eq!(modules[0][1]["access"], "Public");
+}
+
+/// A file with no parseable `module` declaration does NOT fall back to the
+/// file stem: compilation fails outright with a "missing module declaration"
+/// error. Pinned as observed, even though it contradicts the "falls back to
+/// the file stem" assumption in the task brief.
+#[test]
+fn a_file_without_a_module_declaration_fails_to_compile() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(dir.join("Gadget.elm"), "x = 1\n").unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Gadget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(!ok, "expected compilation to fail, but it succeeded");
+    assert!(
+        err.contains("missing module declaration"),
+        "unexpected stderr: {err}"
+    );
+}
+
+/// A file whose stem is not a legal module name (`not-a-module.elm`) fails
+/// the same way as the missing-declaration case above, for the same reason:
+/// the built-in `morphir-elm-native` provider parses the raw source with
+/// tree-sitter and requires a real `module ... exposing (...)` declaration
+/// regardless of the CLI's own file-stem-based fallback naming. The CLI does
+/// have a `fallback_elm_module_name` that would land on `"Main"` for an
+/// illegal stem (see `crates/morphir/src/commands/compile.rs`), but that
+/// fallback name is only used to build the `--package-name`/exposed-module
+/// request sent to the provider; it never gets a chance to matter here
+/// because the provider rejects the source before that name is ever used.
+/// Pinned as observed, even though the brief's premise ("falls back to
+/// `Main`, and compiles") does not hold end-to-end through this provider.
+#[test]
+fn a_file_with_an_illegal_stem_and_no_module_declaration_fails_to_compile() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(dir.join("not-a-module.elm"), "x = 1\n").unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "not-a-module.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(!ok, "expected compilation to fail, but it succeeded");
+    assert!(
+        err.contains("missing module declaration"),
+        "unexpected stderr: {err}"
+    );
+}
+
+/// `--package-name acme/widgets` overrides the synthesized package path
+/// entirely: each `/`-separated part becomes its own single-word path
+/// segment (`[["acme"], ["widgets"]]`), independent of the module's own dots.
+/// Module exposure is unchanged: still exactly the one declared module,
+/// `Acme.Widget`, still `Public`.
+#[test]
+fn a_package_name_override_replaces_the_path_but_not_the_exposure() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+            "--package-name",
+            "acme/widgets",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["acme"], ["widgets"]])
+    );
+
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    assert_eq!(modules.len(), 1, "expected exactly one exposed module");
+    assert_eq!(modules[0][0], serde_json::json!([["acme"], ["widget"]]));
+    assert_eq!(modules[0][1]["access"], "Public");
+}
+
+/// `--input` inside a project keeps the project's package name while exposing
+/// only the submitted module. This is the "isolated compile borrowing the
+/// project's identity" case: the project's other sources are NOT compiled and
+/// NOT available for import resolution.
+#[test]
+fn a_selection_inside_a_project_keeps_project_identity_and_narrows_exposure() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['A', 'B']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("src/A.elm"),
+        "module A exposing (Alpha)\n\n\ntype alias Alpha =\n    Int\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("src/B.elm"),
+        "module B exposing (Beta)\n\n\ntype alias Beta =\n    Int\n",
+    )
+    .unwrap();
+
+    // `--config` is required: a standalone `--input` compile does not load an
+    // adjacent morphir.toml. It is also what makes this the manifest-origin
+    // case at all, since the spec's manifest origin means "selected or loaded".
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "src/A.elm",
+            "--config",
+            "morphir.toml",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: the package path comes from the project's manifest name
+    // (`acme/widgets`, split on `/`), NOT from the selected module's own
+    // dotted name — this is the "borrows the project's identity" behaviour.
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["acme"], ["widgets"]])
+    );
+
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    let module_names: Vec<_> = modules.iter().map(|m| m[0].clone()).collect();
+    // Observed: exactly the selected module `A` (word-list `[["a"]]`) is
+    // exposed. The negative assertion matters more than the positive one:
+    // `B`, though listed in the manifest's `exposed_modules` and present on
+    // disk in the same source directory, is NOT compiled or exposed, because
+    // only the module named by `--input` was ever submitted.
+    assert_eq!(
+        module_names,
+        vec![serde_json::json!([["a"]])],
+        "expected exactly module A, got {module_names:?}"
+    );
+    assert!(
+        !module_names.contains(&serde_json::json!([["b"]])),
+        "unselected sibling module B must not appear in exposure, got {module_names:?}"
+    );
+}
+
+/// A selected file's `import` of an unselected sibling module from the same
+/// project must NOT resolve: the project's other sources are never submitted
+/// to the provider for a single-file `--input` compile, even though the
+/// manifest lists them and they sit right next to the selected file on disk.
+#[test]
+fn a_selection_cannot_import_an_unselected_sibling_module() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['A', 'B']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("src/A.elm"),
+        "module A exposing (Alpha)\n\nimport B exposing (Beta)\n\n\ntype alias Alpha =\n    Beta\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("src/B.elm"),
+        "module B exposing (Beta)\n\n\ntype alias Beta =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "src/A.elm",
+            "--config",
+            "morphir.toml",
+        ],
+    );
+    // Observed: compilation fails. The provider treats the unsubmitted `B` as
+    // absent and reports `Beta` unresolved from it, rather than resolving the
+    // sibling file that sits right next to `A.elm` on disk. This confirms the
+    // design's decision that a single-file `--input` compile submits only the
+    // selected module; the project's other sources are never available for
+    // import resolution even though the manifest lists them.
+    assert!(!ok, "expected the compile to fail, but it succeeded: {err}");
+    // Pin the *cause* of the failure, not just that something named `Beta`
+    // went unfound: "in module `B`" can only come from the resolver naming
+    // module B as the place the lookup failed, so a future change that fails
+    // for an unrelated reason (e.g. `` `Beta` not found: <other reason> ``)
+    // would not satisfy this.
+    assert!(
+        err.contains("in module `B`"),
+        "expected an unresolved-import error citing module `B` as the cause, got: {err}"
+    );
+}
+
+/// A standalone single-file Elm compile with no `--ir-version` flag always
+/// emits classic IR v3, regardless of the project route's v4 default (see
+/// `ir_version_default_for_whole_project_compile` below). Observed via
+/// `cargo test ... -- --nocapture`: `formatVersion = Number(3)`.
+#[test]
+fn ir_version_default_for_standalone_single_file_compile() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["formatVersion"],
+        serde_json::json!(3),
+        "expected the standalone single-file route to default to classic IR v3"
+    );
+}
+
+/// A standalone single-file Elm compile with `--ir-version 4` is rejected
+/// outright: this route only ever produces classic IR v3, so it never even
+/// reaches the frontend before failing. Observed stderr: `Validation error:
+/// Single-file Elm compilation supports only IR v3`.
+///
+/// This also pins the *ordering* of that rejection relative to `prepare_dest`
+/// (`compile.rs:720`), which is the at-risk part: `--ir-version 4` is
+/// rejected at `compile.rs:722`, strictly after `prepare_dest` has already
+/// taken the task lock and written a tombstone over any previous record
+/// (`compile.rs:720`). The obvious refactor — validate the request before
+/// touching the destination — would move the `--ir-version 4` check ahead of
+/// `prepare_dest` and leave a prior successful record intact, and nothing
+/// else in this file would catch that: the other failure-ordering test,
+/// `a_failed_compile_tombstones_the_previous_success`, induces a syntax
+/// error, which fails inside the provider — already after `prepare_dest`
+/// under any plausible refactor — so it cannot detect this particular
+/// reordering. Establishing a prior successful compile here and asserting
+/// the record is tombstoned after the `--ir-version 4` rejection closes that
+/// hole.
+#[test]
+fn ir_version_4_on_standalone_single_file_compile() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    // Establish a prior successful compile first, so a record with real IR
+    // exists on disk before the rejection below.
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(
+        ok,
+        "prior compile establishing a record must succeed: {err}"
+    );
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+            "--ir-version",
+            "4",
+        ],
+    );
+    assert!(
+        !ok,
+        "expected --ir-version 4 to be rejected on the standalone single-file route"
+    );
+    // This exact sentence is the CLI's own validation message for this one
+    // rejection path; nothing else in the process produces it, so it cannot
+    // be satisfied by an unrelated failure the way a short substring could.
+    assert!(
+        err.contains("Single-file Elm compilation supports only IR v3"),
+        "unexpected stderr: {err}"
+    );
+
+    let mut record: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.join(".morphir/out/compile.json")).unwrap()).unwrap();
+    record.as_object_mut().unwrap().remove("completedAt");
+    // Observed: the same tombstone shape `a_failed_compile_tombstones_the_previous_success`
+    // pins for its syntax-error case. Here the cause is different — the
+    // `--ir-version 4` rejection happens before the source is even read — but
+    // `prepare_dest` writes this exact record regardless of which later check
+    // fails, which is precisely the property under test.
+    assert_eq!(
+        record,
+        serde_json::json!({
+            "schema": 1,
+            "task": "compile",
+            "module": "",
+            "inputs": [],
+            "value": [],
+            "tombstone": true
+        }),
+        "expected the prior successful record to be tombstoned by the --ir-version 4 rejection, got {record}"
+    );
+}
+
+/// A whole-project compile (built-in Gleam provider) with no `--ir-version`
+/// defaults to IR v4 — the opposite of the standalone single-file route
+/// above, which always emits v3. This is the divergence a later refactor
+/// merging the two compile routes must confront rather than silently erase.
+/// Observed via `cargo test ... -- --nocapture`: `formatVersion = Number(4)`.
+#[test]
+fn ir_version_default_for_whole_project_compile() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['api']\n\n[frontend]\nlanguage = 'gleam'\n",
+    )
+    .unwrap();
+    fs::write(dir.join("src/api.gleam"), "pub type Answer { Answer }\n").unwrap();
+
+    let (ok, _out, err) = morphir(dir, &["compile"]);
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["formatVersion"],
+        serde_json::json!(4),
+        "expected the whole-project Gleam route to default to IR v4"
+    );
+}
+
+/// Today a lone non-Elm source is refused. This pins the current refusal so
+/// that the synthesized-project work, which makes it succeed, shows up as a
+/// deliberate change to this test rather than as a silent behaviour change.
+///
+/// Which refusal this is: `is_single_file_request` (see
+/// `crates/morphir/src/commands/compile.rs`) routes on the `elm` language or
+/// a literal `.elm` suffix. `widget.gleam` matches neither, with no
+/// `--language` override given, so the request never takes the single-file
+/// route at all — it falls through to the whole-project provider path, which
+/// then fails during configuration discovery because no `morphir.toml`,
+/// `morphir.yaml`, or `morphir.json` exists in the temp dir. This is a
+/// missing-configuration refusal, not a language-support refusal: `.gleam`
+/// itself is never rejected here.
+#[test]
+fn a_lone_gleam_source_is_refused_today() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(dir.join("widget.gleam"), "pub type Size {\n  Size\n}\n").unwrap();
+
+    let (ok, _out, err) = morphir(dir, &["compile", "--input", "widget.gleam"]);
+    assert!(!ok, "expected the compile to be refused, but it succeeded");
+    // "No morphir.toml, morphir.yaml, or morphir.json found" is the CLI's own
+    // configuration-discovery error message; it can only come from failing to
+    // find a manifest, not from any language-specific rejection.
+    assert!(
+        err.contains("No morphir.toml, morphir.yaml, or morphir.json found"),
+        "unexpected stderr: {err}"
+    );
+}
+
+/// `--extension morphir-elm-native` alone, with no configuration present at
+/// all, selects the built-in provider directly: the highest precedence
+/// level.
+#[test]
+fn provider_selection_by_flag_alone_with_no_configuration() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    // The provider actually ran and produced IR; nothing here pins which
+    // provider string was recorded, since the run doesn't surface one
+    // anywhere observable (stdout is just "Compilation successful").
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["acme", "widget"]])
+    );
+}
+
+/// A failed compile must not leave the previous successful record intact, or
+/// `generate` would consume stale IR. `prepare_dest` writes a tombstone before
+/// the source is even read, which is why the failure ordering in the refactor
+/// is not free to change.
+#[test]
+fn a_failed_compile_tombstones_the_previous_success() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(ok, "first compile succeeds: {err}");
+
+    // Now make it fail, without changing anything else about the invocation.
+    // The body is invalid (a bare `!!!` where a type was expected), so this
+    // trips a real parse/compile error rather than the missing-module-
+    // declaration error pinned by `a_file_without_a_module_declaration_fails_to_compile`.
+    // Observed stderr: "syntax error near `!!! not`".
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Widget exposing (Size)\n\n\ntype alias Size =\n    !!! not elm\n",
+    )
+    .unwrap();
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(!ok, "second compile fails");
+    assert!(
+        err.contains("syntax error"),
+        "expected a syntax-error failure, not the missing-declaration one pinned elsewhere: {err}"
+    );
+
+    let mut record: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.join(".morphir/out/compile.json")).unwrap()).unwrap();
+    // `completedAt` is a wall-clock timestamp and not part of the property
+    // under test, so it is excluded before the exact comparison below.
+    record.as_object_mut().unwrap().remove("completedAt");
+
+    // Observed: after the failed compile, the record is a tombstone with an
+    // empty `value` and no `ir` descriptor at all — nothing here points at
+    // consumable IR, so `generate` cannot pick up the previous success. This
+    // is the exact record `prepare_dest` writes before the source is even
+    // read; the second compile never gets far enough to overwrite it with
+    // anything else.
+    assert_eq!(
+        record,
+        serde_json::json!({
+            "schema": 1,
+            "task": "compile",
+            "module": "",
+            "inputs": [],
+            "value": [],
+            "tombstone": true
+        }),
+        "expected a tombstoned record pointing at no consumable IR, got {record}"
+    );
+}
+
+/// `[frontend.elm] extension = 'morphir-elm-native'` in a loaded
+/// configuration selects the provider when no `--extension` flag is given:
+/// the second precedence level. `--config` is mandatory here; without it the
+/// file is never read (see `compile.rs:675`) and the run would fall through
+/// to the default provider instead, an installed process extension that does
+/// not exist in this test environment, failing for an unrelated reason.
+#[test]
+fn provider_selection_by_configuration_with_no_flag() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[frontend.elm]\nextension = 'morphir-elm-native'\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--config",
+            "morphir.toml",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["acme", "widget"]])
+    );
+}
+
+/// `--input <file> --project <name>` in a directory tree with a discoverable
+/// `morphir.toml` takes the `discover_config` branch (`compile.rs:680-687`):
+/// no `--config` is given, so `discover_config` walks up from the current
+/// directory, finds the manifest, and loads it with
+/// `ProjectSelection::Explicit("acme/widgets")`. The result matches the
+/// `--config`-selected case pinned by
+/// `a_selection_inside_a_project_keeps_project_identity_and_narrows_exposure`
+/// exactly: the project's manifest name becomes the package path, and only
+/// the selected module is exposed.
+#[test]
+fn a_project_flag_discovers_configuration_and_keeps_project_identity() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['A']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("src/A.elm"),
+        "module A exposing (Alpha)\n\n\ntype alias Alpha =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "src/A.elm",
+            "--project",
+            "acme/widgets",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: the discovered manifest's name (`acme/widgets`), not the
+    // selected module's own name, becomes the package path.
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["acme"], ["widgets"]])
+    );
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    let module_names: Vec<_> = modules.iter().map(|m| m[0].clone()).collect();
+    assert_eq!(
+        module_names,
+        vec![serde_json::json!([["a"]])],
+        "expected exactly module A, got {module_names:?}"
+    );
+}
+
+/// `--input <file> --project <name>` with nothing discoverable hits the
+/// explicit refusal at `compile.rs:682-687`: `discover_config` walks all the
+/// way up from the current directory, finds no `morphir.toml`,
+/// `morphir.yaml`, or `morphir.json`, and the run fails before a
+/// configuration is ever loaded.
+#[test]
+fn a_project_flag_with_no_discoverable_configuration_is_refused() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--project",
+            "acme/widgets",
+        ],
+    );
+    assert!(!ok, "expected the compile to be refused, but it succeeded");
+    // This exact sentence is the CLI's own validation message for this one
+    // rejection path (`compile.rs:684`); nothing else in the process
+    // produces it.
+    assert!(
+        err.contains("--project requires a Morphir configuration"),
+        "unexpected stderr: {err}"
+    );
+}
+
+/// `elm_module_name` (`compile.rs:185`) recognizes a `port module` header the
+/// same as a plain one, stripping the leading `port` keyword before matching
+/// `module`. This pins that the CLI-level package-identity derivation for a
+/// port module lands the same place a plain declared module does: the
+/// derived package name comes from `App.Ports`, lowercased and dotted-to-
+/// dashed, under `local/`, with only that one module exposed. `elm_module_name`
+/// is deleted by the refactor along with its own unit test
+/// (`extracts_plain_port_and_effect_module_declarations_after_nested_comments`,
+/// `compile.rs:2499`), so this is the only place this shape stays pinned once
+/// that test is gone.
+#[test]
+fn a_port_module_is_named_like_a_plain_declared_module() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Ports.elm"),
+        "port module App.Ports exposing (Size, sendMessage)\n\nport sendMessage : String -> Cmd msg\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Ports.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: `App.Ports` is split, lowercased and nested under `local`,
+    // exactly as a plain `module App.Ports exposing (...)` header would be.
+    // The `port` keyword and the skipped `port sendMessage : ...` value
+    // declaration do not change the derived identity.
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["app", "ports"]])
+    );
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    assert_eq!(modules.len(), 1, "expected exactly one exposed module");
+    assert_eq!(modules[0][0], serde_json::json!([["app"], ["ports"]]));
+    assert_eq!(modules[0][1]["access"], "Public");
+}
+
+/// `elm_module_name` (`compile.rs:185`) skips leading trivia — including a
+/// nested block comment — via `skip_elm_trivia` before it starts matching a
+/// declaration keyword. This pins that a nested block comment placed before
+/// the `module` line does not change the derived package identity from the
+/// plain declared-module case. As with the port-module test above, this
+/// covers a shape that only lived in `elm_module_name`'s own unit test
+/// (`compile.rs:2499`) before, which the refactor deletes along with the
+/// function.
+#[test]
+fn a_nested_block_comment_before_the_module_declaration_does_not_change_identity() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "{- outer {- nested -} comment -}\nmodule Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    // Observed: identical to `a_synthesized_package_is_named_for_its_declared_module`,
+    // which uses the same module name without the leading nested comment —
+    // the comment is skipped entirely and has no effect on the derived
+    // identity.
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["acme", "widget"]])
+    );
+    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
+    assert_eq!(modules.len(), 1, "expected exactly one exposed module");
+    assert_eq!(modules[0][0], serde_json::json!([["acme"], ["widget"]]));
+    assert_eq!(modules[0][1]["access"], "Public");
+}

@@ -195,6 +195,45 @@ The workspace may be absent for configuration-free compilation. Version 0.1 send
 
 Initialization fails with a protocol-version error if the peers have no version in common. The host must not infer support for a method that the extension did not advertise.
 
+### Capabilities are consulted, not remembered
+
+A capability is the *only* authority on what an extension can do. The rule cuts both ways, and both
+directions are load-bearing.
+
+**A host must not assume more than an extension advertises.** This is stated above for methods, and
+it applies to every field: a host must not send a `baseline` to a frontend advertising
+`incremental: false`, nor request an IR version absent from `irVersions`.
+
+**A host must not refuse less than an extension advertises.** A host that hardcodes a limit it
+once observed will keep enforcing it after the extension grows past it, and nothing will detect the
+drift, because nothing consulted the capability. The host negotiates against the advertised set
+every time, for every run.
+
+**An error reporting a restriction must name what imposed it.** "This does not support IR v4" tells
+a reader nothing they can act on. Naming the extension and the capability tells them the limit
+belongs to their *provider*, and that selecting a different one may lift it. A host that reports a
+capability limit as though it were a property of the operation makes a provider's choice look like
+a law.
+
+```mermaid
+sequenceDiagram
+    participant H as Host
+    participant E as Extension
+    H->>E: morphir.initialize (protocol versions, permissions)
+    E-->>H: capabilities { irVersions: ["3","4"], incremental: true }
+    Note over H: the advertised set is the only authority
+    H->>E: morphir.frontend.compile (irVersion: "4")
+    E-->>H: CompileResult
+    H->>H: irVersion "5" is absent from irVersions:<br/>refuse before dispatch, naming the<br/>extension and the capability
+```
+
+**Figure 1:** Capability negotiation. Notice the last exchange never reaches the extension. A
+version the extension did not advertise is refused by the host before dispatch, so an extension
+never has to defend itself against a request the host should not have sent. Notice also that the
+host holds no opinion of its own about IR versions: every decision is read back from what was
+advertised at initialization, so an extension gaining a version needs no host change to become
+usable.
+
 ### Frontend capabilities
 
 `compile` says whether the frontend accepts `morphir.frontend.compile` at all.

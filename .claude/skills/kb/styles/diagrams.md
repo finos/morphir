@@ -20,6 +20,12 @@ still gets the structure from the text.
 
 - A diagram clarifies a claim the prose makes; it does not replace the claim. State the point in a sentence,
   then show it.
+- **Reach for a sequence diagram when the subject is an interaction over time**, not a structure: a protocol
+  exchange, a capability negotiation, a handshake, a request that fans out and rejoins, a lifecycle where
+  who-calls-whom matters as much as what happens. The tell is prose that keeps naming a sender, a receiver
+  and an ordering in the same breath. A flowchart of such a subject hides the thing that matters, which is
+  which party holds the turn. `sequenceDiagram` is the default form; label each message with the method or
+  payload, not just an arrow, and show the failure exchange too when a reader could plausibly hit it.
 - Caption every figure with a numbered caption paragraph directly after it: `**Figure N:** what to notice`. A
   reader should know why the figure is there without decoding it, and prose then cites it by number in text:
   "see Figure 2". Do not add HTML anchors or `#figure-N` links; no anchor form renders reliably across the
