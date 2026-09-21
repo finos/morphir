@@ -245,40 +245,32 @@ run = [
 ]
 
 [tasks."package:check"]
-description = "Run draft MCK package cases through the shared TypeScript core and executable adapter"
+description = "Run package integrity through native MCK against the TypeScript adapter"
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --kit spec/package/mck --report .dev/out/mck/package-typescript.json",
-    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --kit spec/package/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --adapter-arg --suite --adapter-arg package --report .dev/out/mck/package-typescript-adapter.json",
+    "bun run tools/run-package-mck.ts typescript 0.1.0-draft.1",
 ]
 
 [tasks."package:check:rust"]
-description = "Run draft MCK package cases against the independent Rust implementation through the shared driver"
+description = "Run package integrity through native MCK against the independent Rust adapter"
 run = [
-    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
-    "bun run tools/run-mck-rust.ts --suite package --kit spec/package/mck --report .dev/out/mck/package-rust.json",
+    "bun run tools/run-package-mck.ts rust 0.1.0-draft.1",
 ]
 
 [tasks."package:resolution-check"]
-description = "Run draft package resolution cases through the shared TypeScript core and executable adapter"
+description = "Run package resolution through native MCK against the TypeScript adapter"
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --contract 0.1.0-draft.2 --kit spec/package/mck --report .dev/out/mck/package-resolution-typescript.json",
-    "bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --contract 0.1.0-draft.2 --kit spec/package/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --adapter-arg --suite --adapter-arg package --adapter-arg --contract --adapter-arg 0.1.0-draft.2 --report .dev/out/mck/package-resolution-typescript-adapter.json",
+    "bun run tools/run-package-mck.ts typescript 0.1.0-draft.2",
 ]
 
 [tasks."package:resolution-check:rust"]
-description = "Run draft package resolution cases against the independent Rust implementation through the shared driver"
+description = "Run package resolution through native MCK against the independent Rust adapter"
 run = [
-    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
-    "bun run tools/run-mck-rust.ts --suite package --contract 0.1.0-draft.2 --kit spec/package/mck --report .dev/out/mck/package-resolution-rust.json",
+    "bun run tools/run-package-mck.ts rust 0.1.0-draft.2",
 ]
-
-[tasks."package:native-parity"]
-description = "Compare native package reports with existing TypeScript-runner reports after running all four package check tasks"
-run = ["bun run tools/run-package-native-parity.ts"]
 
 [tasks."hooks:install"]
 description = "Activate the checked-in git hooks in .husky"

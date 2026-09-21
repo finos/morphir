@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Package integrity and resolution CI now use the native Morphir CLI against independent TypeScript and Rust adapters. TypeScript adopts qualified beta.3 for its installed-adapter checks; the replaced package runner, runner APIs and temporary parity tooling are retired. Independent package implementations, draft.3 helpers and frozen acceptance evidence remain.
+
 ## [0.4.0-beta.3] - 2026-09-21
 
 ### Added

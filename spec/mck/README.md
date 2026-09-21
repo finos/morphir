@@ -8,7 +8,7 @@ Each suite defines observable behavior through stable cases, expected results, a
 | Suite | Contract | Location and status |
 | --- | --- | --- |
 | IR | IR serialization, normalization, diagnostics, and document-tree behavior | [IR suite](../ir/mck/README.md), implemented |
-| Package | Package identities, exports, manifests, locks, digests, resolution, trust, and materialization | [Draft suite](../package/mck/README.md) executes 80 integrity and 78 resolution cases through `morphir mck package run`; the TypeScript runner remains the migration baseline. Wider Stage 0 work remains in [issue #800](https://github.com/finos/morphir/issues/800) |
+| Package | Package identities, exports, manifests, locks, digests, resolution, trust, and materialization | [Draft suite](../package/mck/README.md) executes 80 integrity and 78 resolution cases through `morphir mck package run`; both independent adapters run under the native runner. Wider Stage 0 work remains in [issue #800](https://github.com/finos/morphir/issues/800) |
 
 Use **MCK IR suite** and **MCK package suite** when identifying a domain. "Conformance corpus" describes a collection
 of cases; MCK is the shared name. Generated naming and format-version fixture filenames remain stable.
@@ -16,7 +16,7 @@ of cases; MCK is the shared name. Generated naming and format-version fixture fi
 Model packages, executable extensions, and installable tools retain their own artifact domains. Sharing MCK infrastructure
 does not require shared manifests, lifecycle rules, or test operations.
 
-The first package slice provides `mise run package:check` for shared-core execution and
+The package slice provides `mise run package:check` for native execution against TypeScript and
 `mise run package:schema-check` for generic schema/example validation. The lock-core omits acquisition and trust;
 it cannot authorize installation. Package execution runs in the shared MCK runner, not in a separate
 compatibility runner per implementation.
@@ -30,7 +30,7 @@ records it and supersedes the ownership portion of
 
 **Parent IR gates use the Rust CLI.** Kit checking and vendoring, adapter runs, coverage,
 offline schema validation, independent report checking and optional HTML rendering are implemented.
-The report contract remains `2.0.0-draft.1`. Native beta.2 is qualified on six targets, and TypeScript and Rust binding CI use it. The TypeScript IR runner and temporary parity tooling are retired. Its adapter and package tooling remain; package features stay break/fix only until #852.
+The report contract remains `2.0.0-draft.1`. Native beta.3 is qualified on six targets for IR and both existing package contracts. Parent package gates and the TypeScript installed-adapter gate use the native runner. TypeScript runner paths and temporary live parity tooling are retired; independent adapters, implementation helpers and draft.3 support remain. Rust's IR-only consumer retains its qualified beta.2 pin.
 
 | Document | Content | Status |
 | --- | --- | --- |
@@ -43,16 +43,16 @@ The report contract remains `2.0.0-draft.1`. Native beta.2 is qualified on six t
 Delivery is IR first ([#851](https://github.com/finos/morphir/issues/851)), then the package suites
 ([#852](https://github.com/finos/morphir/issues/852)); parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
-## Retained TypeScript package runner
+## Retained TypeScript adapters and implementation support
 
 [`@finos/morphir-mck`](https://github.com/finos/morphir-typescript/tree/main/packages/mck)
-retains package commands, package library exports and the TypeScript adapter.
-Its `mck` bin is package-only; use `morphir mck` for IR. Future standalone
-executables contain the adapter only. Existing published versions and assets
-remain available, but their IR runner APIs are not carried forward.
+retains the TypeScript IR/package adapter and independent implementation helpers.
+The `mck` runner bin and package runner APIs are removed from future artifacts;
+use `morphir mck` with an explicit adapter. Standalone executables contain the
+adapter only. Existing published versions and assets remain available.
 
 Package support keeps its experimental `0.1.0-draft.1` and `0.1.0-draft.2`
-contracts until [#852](https://github.com/finos/morphir/issues/852).
+contracts. Draft.3 groundwork and restore remain tracked separately in [#852](https://github.com/finos/morphir/issues/852).
 The IR adapter protocol remains version 1 and the native report is independently
 versioned. An IR pass does not establish package compatibility.
 

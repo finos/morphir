@@ -12,25 +12,22 @@ type Job = {
 };
 const workflow = Bun.YAML.parse(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")) as { jobs: Record<string, Job> };
 
-test("Rust package task builds a locked adapter and delegates verdicts to shared MCK", () => {
-	const runs = tasks.tasks["package:check:rust"]?.run ?? [];
-	expect(runs.some((run) => run.includes("cargo build --locked") && run.includes("--target-dir ecosystem/morphir-rust/target"))).toBe(true);
-	expect(runs).toContain("bun run tools/run-mck-rust.ts --suite package --kit spec/package/mck --report .dev/out/mck/package-rust.json");
-	expect(runs.some((run) => run.includes("check-mck-report"))).toBe(false);
-});
-
-test("resolution tasks select draft.2 for both transports and implementations", () => {
-	expect(tasks.tasks["package:resolution-check"]?.run).toEqual([
-		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-		"bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --contract 0.1.0-draft.2 --kit spec/package/mck --report .dev/out/mck/package-resolution-typescript.json",
-		"bun ecosystem/morphir-typescript/packages/mck/src/cli.ts package run --contract 0.1.0-draft.2 --kit spec/package/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --adapter-arg --suite --adapter-arg package --adapter-arg --contract --adapter-arg 0.1.0-draft.2 --report .dev/out/mck/package-resolution-typescript-adapter.json",
-	]);
-	expect(tasks.tasks["package:resolution-check:rust"]?.run).toEqual([
-		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-		"cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
-		"bun run tools/run-mck-rust.ts --suite package --contract 0.1.0-draft.2 --kit spec/package/mck --report .dev/out/mck/package-resolution-rust.json",
-	]);
-});
+for (const [task, binding, contract] of [
+	["package:check", "typescript", "0.1.0-draft.1"],
+	["package:check:rust", "rust", "0.1.0-draft.1"],
+	["package:resolution-check", "typescript", "0.1.0-draft.2"],
+	["package:resolution-check:rust", "rust", "0.1.0-draft.2"],
+]) {
+	test(`${task} delegates to the native runner with an explicit adapter`, () => {
+		const runs = tasks.tasks[task!]!.run;
+		expect(runs.at(-1)).toBe(`bun run tools/run-package-mck.ts ${binding} ${contract}`);
+		expect(runs.some(run => run.includes("src/cli.ts") || run.includes("run-mck-rust"))).toBe(false);
+		if (binding === "rust") {
+			expect(runs.some(run => run.includes("cargo build --locked") && run.includes("--target-dir ecosystem/morphir-rust/target"))).toBe(true);
+			expect(runs.some(run => run.includes("bun install"))).toBe(false);
+		}
+	});
+}
 
 test("package schema validation covers every indexed resolution fixture", () => {
 	const index = JSON.parse(readFileSync(new URL("../spec/package/mck/resolution-cases.json", import.meta.url), "utf8")) as {
@@ -91,7 +88,7 @@ for (const schema of [
 test("package CI covers each input and always uploads its report", () => {
 	const filters = workflow.jobs.changes?.steps.find((step) => step.with?.filters)?.with?.filters ?? "";
 	const paths = (Bun.YAML.parse(filters) as Record<string, string[]>)["package-mck"] ?? [];
-	for (const input of ["spec/package/**", "ecosystem/morphir-rust", "ecosystem/morphir-typescript", "tools/run-mck-rust.ts", "tools/rust-mck-command*", "tools/package-ci.test.ts", ".config/mise/config.toml", ".github/workflows/ci.yml"]) {
+	for (const input of ["spec/package/**", "ecosystem/morphir-rust", "ecosystem/morphir-typescript", "tools/run-package-mck.ts", "tools/package-mck-command*", "tools/package-ci.test.ts", ".config/mise/config.toml", ".github/workflows/ci.yml"]) {
 		expect(paths).toContain(input);
 	}
 	const job = workflow.jobs["package-mck"];
@@ -115,20 +112,15 @@ test("aggregate gate requires successful package CI when selected", () => {
 	const check = workflow.jobs.check?.steps.map((step) => step.run ?? "").join("\n") ?? "";
 	expect(check).toContain('needs.changes.outputs.package-mck');
 	expect(check).toContain('needs.package-mck.result');
-	expect(workflow.jobs["package-mck"]?.steps.some((step) => step.run?.includes("bun test tools/rust-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts"))).toBe(true);
+	expect(workflow.jobs["package-mck"]?.steps.some((step) => step.run?.includes("bun test tools/package-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts"))).toBe(true);
 });
 
-test("native package changes select parity and retain legacy baselines until cutover", () => {
-	const filters = workflow.jobs.changes?.steps.find((step) => step.with?.filters)?.with?.filters ?? "";
+test("native package changes select authoritative gates after legacy cutover", () => {
+	const filters = workflow.jobs.changes?.steps.find(step => step.with?.filters)?.with?.filters ?? "";
 	const paths = (Bun.YAML.parse(filters) as Record<string, string[]>)["package-mck"] ?? [];
-	for (const input of ["crates/morphir-mck/**", "crates/morphir/**", "Cargo.toml", "Cargo.lock", "spec/mck/baseline/package-cases.json", "tools/package-mck-parity*", "tools/run-package-native-parity.ts"]) {
-		expect(paths).toContain(input);
-	}
-	expect(tasks.tasks["package:native-parity"]?.run).toContain("bun run tools/run-package-native-parity.ts");
+	for (const input of ["crates/morphir-mck/**", "crates/morphir/**", "Cargo.toml", "Cargo.lock", "spec/mck/baseline/package-cases.json", "tools/package-mck-command*", "tools/run-package-mck.ts"]) expect(paths).toContain(input);
+	expect(tasks.tasks["package:native-parity"]).toBeUndefined();
 	const steps = workflow.jobs["package-mck"]?.steps ?? [];
-	const nativeIndex = steps.findIndex((step) => step.run === "mise run package:native-parity");
-	expect(nativeIndex).toBeGreaterThan(steps.findIndex((step) => step.run === "mise run package:resolution-check:rust"));
-	expect(steps[nativeIndex]?.["continue-on-error"]).toBeUndefined();
-	expect(steps.some((step) => step.run?.includes("bun test tools/package-mck-parity.test.ts"))).toBe(true);
-	expect(steps.some((step) => step.uses === "./.github/actions/setup-rust-ci")).toBe(true);
+	expect(steps.some(step => step.run?.includes("package:native-parity"))).toBe(false);
+	expect(steps.some(step => step.uses === "./.github/actions/setup-rust-ci")).toBe(true);
 });

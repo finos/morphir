@@ -10,10 +10,10 @@ with optional offline HTML; this cutover does not stabilize the draft.
 
 The cutover removes the TypeScript IR runner, embedded IR kit and future
 standalone runner binaries, along with temporary parent and binding parity jobs.
-The TypeScript adapter, codec regressions, package-only CLI/library APIs and both
-npm artifacts remain. Historical published assets, frozen reports, protocol
-transcripts and schemas remain available. Package runner migration stays in
-[#852](https://github.com/finos/morphir/issues/852).
+At the IR cutover, TypeScript retained its adapter, codec regressions, package-only
+CLI/library APIs and both npm artifacts. The PKG-1 cutover below supersedes the
+retained package runner paths. Historical published assets, frozen reports,
+protocol transcripts and schemas remain available.
 
 ### Final consumer audit
 
@@ -58,8 +58,8 @@ explains the removal and preserves access to historical versions.
   Fixture provenance records the original kit source at `2bab57ea23fe85c6f9cc434b32e61f29ca14190c`.
 - The installed Node 24 MCK adapter is exercised by the released native CLI.
   The independent Node 20 IR artifact gate and package artifact checks remain.
-- Parent package tasks and their adapter-path and recording helpers remain.
-  No package runner semantics change before #852.
+- Parent package tasks use the native runner after PKG-1. Adapter recording
+  remains a development tool; obsolete TypeScript driver wrappers are retired.
 - Frozen legacy reports, report schemas and transcripts stay because native
   regression and release-qualification tests consume them. Temporary live
   old/new comparison executables and source-copy checks are removed.
@@ -344,38 +344,68 @@ release. The cache-removal/network-disabled acceptance test in
 [kit-manifest.md](kit-manifest.md#acceptance), binding CI adoption, independent
 TypeScript adapter distribution and cutover review remain required separately.
 
-## PKG-1 native execution and parity
+## PKG-1 native execution, qualification and cutover
 
-The initial #852 change adds source-build `morphir mck package run` to the same
-Rust engine. It preserves draft.1 integrity and draft.2 resolution semantics,
-protocols, reports and fixed expectations. The TypeScript and Rust package
-implementations remain independent external adapters. The runner links neither
-package implementation.
+The shared Rust engine owns package integrity draft.1 and deterministic resolution
+draft.2 through `morphir mck package run`. Both `--kit` and `--adapter` are
+explicit. The TypeScript and Rust package implementations remain independent
+external adapters; the runner links neither implementation.
 
-The parent retains its six TypeScript-runner reports during migration. After the
-four existing package check tasks, `mise run package:native-parity` runs both
-native contracts against both adapters and retains four additional reports.
-The comparison permits only `startedAt` and `driverVersion` to differ. Required
-inventory, record ordering, outcomes, capabilities, contract versions and corpus
-hashes must match, with all 80 integrity or 78 resolution cases passing.
+Native execution landed in [#906](https://github.com/finos/morphir/pull/906).
+The baseline on 2026-09-21, parent `26ef146d`, used TypeScript `4ae09cbd` and
+Rust `291536fd`. Both passed all 80 integrity and 78 resolution cases, with no
+required skips and exact ordered report equality except `driverVersion` and
+`startedAt`. Integrity identifies
+`sha256-72b6593c99af919076e59208b833771394d659838e28ee4c23554ee7f5590e23`;
+resolution identifies
+`sha256-8dfed22a389bd08e945b35213586b0709f2cf11f5426199bcec746007443b08b`.
 
-The baseline on 2026-09-21, parent `26ef146d`, uses TypeScript `4ae09cbd` and
-Rust `291536fd`. Both implementations pass both suites without required skips.
-Integrity identifies `sha256-72b6593c99af919076e59208b833771394d659838e28ee4c23554ee7f5590e23`;
-resolution identifies `sha256-8dfed22a389bd08e945b35213586b0709f2cf11f5426199bcec746007443b08b`.
+[#907](https://github.com/finos/morphir/pull/907) added packaged acceptance and
+published [beta.3](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.3)
+at `5662abad29fb9cd91787e930c906e209ea7231d5`.
+[Published qualification run 35656031505](https://github.com/finos/morphir/actions/runs/35656031505)
+passed all six native targets with OS network denial, both package suites and
+730 matching IR records. Package inputs are explicit copied snapshots; this
+is not package managed-kit acquisition or restore qualification. Beta.2 remains
+unchanged and qualified for IR only.
 
-Package cutover remains open. The published beta.2 runner and its six-target release
-qualification cover IR only. Beta.3 adds package execution and extends the existing
-installed-CLI acceptance harness to both package contracts. It uses fixed adapter
-recordings and an explicit copy of `spec/package`, separate from managed IR kit
-acquisition. See [release acceptance](../../docs/developers/mck-release-acceptance.md)
-for the six-target workflow and evidence. Adding the gate does not itself establish
-a published-release qualification result. Before retirement, publish and qualify a CLI with
-package execution, migrate TypeScript's installed npm artifact checks and other
-consumers, review API migration guidance, then retire the replaced runner paths.
-Keep package adapters, independent implementation tests and historical artifacts.
+### Authoritative consumers
+
+The final cutover is coordinated in parent [#909](https://github.com/finos/morphir/pull/909)
+and TypeScript [#33](https://github.com/finos/morphir-typescript/pull/33).
+
+The parent tasks `package:check`, `package:check:rust`,
+`package:resolution-check` and `package:resolution-check:rust` now invoke
+native MCK. `tools/run-package-mck.ts` only selects the adapter, contract and
+report location and propagates the process result. The TypeScript tasks install
+adapter dependencies; Rust tasks build the independent locked adapter. CI keeps
+all four gates required and uploads these reports even when a gate fails:
+
+- `package-typescript-adapter.json` and `package-rust.json`
+- `package-resolution-typescript-adapter.json` and `package-resolution-rust.json`
+
+The TypeScript binding pins checksum-verified beta.3 and exercises its installed
+Node 24 adapter through the native runner for IR and both package contracts.
+Its Node 20 IR package support is unchanged. Rust's binding-side orchestration is
+IR-only; no package-runner consumer was found there, and its qualified beta.2 IR
+pin does not block this cutover.
+
+### Retired and retained paths
+
+The parent removes `run-mck-rust.ts`, `rust-mck-command.ts` and their tests,
+plus the temporary `package:native-parity` task and comparison scripts. Frozen
+reports and protocol recordings stay in `spec/mck/baseline/package` because
+native regression and release acceptance consume them.
+
+TypeScript removes its package runner CLI and runner-library APIs from future
+artifacts. `mck-adapter-typescript`, independent package/reference/resolution
+operations, protocol tests and both npm artifacts remain. The
+[consumer migration guide](../../docs/developers/mck-native-migration.md#package-consumer-cutover)
+identifies replacements; historical npm versions and release assets remain.
+
 The TypeScript `package:assurance-check` and `package:publisher-check` support
-belongs to PKG-2 and remains unchanged.
+belongs to PKG-2 and remains unchanged. Its presence does not prove authenticated
+restore. Production acquisition/trust services remain outside the MCK runner.
 
 The static draft.3 inventory remains 54 required definitions, six bound assets
 and 121 pending bindings. Those counts do not establish executable admission,

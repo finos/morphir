@@ -163,16 +163,18 @@ It is not a dependency resolver or a public-specification compatibility checker.
 
 `mise run package:schema-check` validates the draft schemas and the worked manifests,
 lock-core, and IR document structures. `mise run package:check` runs the schema/digest case
-matrices and Library integrity cases through the shared TypeScript core in both transports.
-`mise run package:check:rust` runs the same cases through that core against the independent
-Rust implementation. Its adapter delegates package operations to the `morphir-package` library.
+matrices and Library integrity cases through the native `morphir mck package run` command
+against the independent TypeScript adapter. `mise run package:check:rust` runs the same cases
+against the independent Rust adapter, which delegates package operations to the
+`morphir-package` library.
 
 The fixed digest expectations were cross-checked during the initial local prototype.
 That prototype's standalone runners were retired after the
 [shared MCK core decision](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md).
-Current execution uses finos/morphir-typescript's package runner and separate reference operations.
-Other implementations participate through the same in-process interface or executable adapter contract.
-Two transports of the TypeScript implementation count as one implementation.
+Current execution follows the [native MCK ownership decision](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md).
+The runner owns case loading and verdicts; each implementation participates through an explicit
+executable adapter. TypeScript reference operations remain independent of the runner.
+Historical comparisons remain frozen in the [migration record](../mck/migration.md).
 
 [Deterministic resolution](resolution-contract.md) and its fixed MCK cases have since landed
 under draft.2, with independent TypeScript and Rust implementations. See the

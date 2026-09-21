@@ -142,7 +142,8 @@ library. Update integration boundaries explicitly:
 | `emptyReport`, `summarize`, or `writeReport` to construct runner reports | Let the runner produce its report. Use `report check` for adjudication and `report render` for HTML. |
 | `loadKit`, embedded-kit imports or `kitVersion` for acquisition and identity | Vendor a managed snapshot and record its manifest alongside the pinned CLI version. |
 | IR comparison helpers imported into custom validation | Review the caller's contract and migrate it explicitly. These helpers have no promised drop-in replacement. |
-| Package runner, resolution or registry APIs | Keep the existing package integration until the separate package migration in [#852](https://github.com/finos/morphir/issues/852). |
+| `runPackageKit`, `runResolutionKit`, package corpus loaders or process-runner helpers | Invoke `morphir mck package run` with an explicit kit, matching contract and adapter; read the existing draft package report. |
+| Independent package resolution, reference operations or draft.3 registry helpers | These implementation/support APIs remain; their presence does not establish authenticated restore. |
 
 The parent repository's `crates/morphir-mck` contains the Rust engine for
 workspace integrations. This guide does not promise a separately published Rust
@@ -161,11 +162,11 @@ In the parent, use `mck:run` or `mck:run-rust` instead of the retired
 native schema validation. `mck:vocabulary-check` replaces the temporary
 `mck:source-parity` task; protocol schemas are owned by the parent.
 
-For npm consumers, `@finos/morphir-mck` retains both bins:
-`mck-adapter-typescript` is the implementation adapter and `mck` accepts
-package commands only. IR subcommands fail with migration guidance; there is
-no forwarding shim or implicit download. Migrate IR library imports using the
-table above. Package APIs and their existing wire contracts remain until #852.
+For npm consumers, `@finos/morphir-mck` retains the `mck-adapter-typescript`
+implementation adapter and library helpers. The `mck` runner bin is removed from
+future artifacts; there is no forwarding shim or implicit download. Migrate
+runner imports using the table above. Independent package operations and the
+existing wire contracts remain.
 
 Future compiled releases contain the five TypeScript adapter executables and
 the two npm tarballs, without standalone IR runner binaries or an embedded IR
@@ -178,13 +179,14 @@ records the final repository consumer audit and qualification evidence. An audit
 of repository integrations cannot identify every external npm library consumer;
 those consumers must migrate explicitly before upgrading across this removal.
 
-## Package migration in progress
+## Package consumer cutover
 
 Version `v0.4.0-beta.3` introduces `morphir mck package run` for the existing integrity
-and resolution suites. This command is not in `v0.4.0-beta.2`. Package consumers
-should retain their current checks until a release containing package execution
-is qualified and their integration is migrated under
-[#852](https://github.com/finos/morphir/issues/852).
+and resolution suites and has passed [six-target published qualification](https://github.com/finos/morphir/actions/runs/35656031505).
+This command is not in `v0.4.0-beta.2`. Pin beta.3 and its archive checksum when
+migrating a package consumer. The TypeScript installed npm artifact gate uses
+that release against the actual Node 24 adapter; the parent runs the full
+80 integrity and 78 resolution cases against both independent implementations.
 
 Use the same explicit adapter with the native runner. For example, after building
 `mck-adapter-rust`, a source checkout can run:
@@ -195,7 +197,7 @@ cargo run --locked --package morphir -- mck package run \
   --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust \
   --adapter-arg --suite --adapter-arg package \
   --adapter-arg --contract --adapter-arg 0.1.0-draft.2 \
-  --report .dev/out/mck/package-resolution-native-rust.json
+  --report .dev/out/mck/package-resolution-rust.json
 ```
 
 On Windows, use `mck-adapter-rust.exe`. Contract `0.1.0-draft.1` selects integrity;

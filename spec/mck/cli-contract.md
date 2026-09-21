@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check`, `report render` and `package run`. Parent IR gates use the Rust CLI. IR runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. The TypeScript package driver remains as the package migration baseline until release, adoption and retirement review in #852.
+Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check`, `report render` and `package run`. Parent IR gates use the Rust CLI. IR runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. Parent package integrity and resolution gates also use the native CLI after beta.3 qualification and adoption under #852. Frozen migration evidence remains; the replaced TypeScript runner is retired.
 
 The IR commands retain their approved contract. The package addition under
 [#852](https://github.com/finos/morphir/issues/852) uses its existing separate versioned protocols and reports.
@@ -350,7 +350,8 @@ only the terminal summary and diagnostics are emitted. This command does not
 embed or acquire package data. The existing `kit`, `report check` and `report render`
 commands retain their IR scope.
 
-The TypeScript package runner remains the baseline during PKG-1. Native parity
-compares complete reports against the same two external adapters, excluding only
-`driverVersion` and `startedAt`. Published package-runner qualification, downstream
-adoption and review are required before retiring its APIs and release paths.
+PKG-1 verified native parity against the same two external adapters, comparing complete
+reports except `driverVersion` and `startedAt`. Beta.3 published-artifact qualification
+passed on all six targets. After consumer adoption and review, the TypeScript runner,
+its APIs and its release paths are retired. Frozen reports and recordings remain
+acceptance evidence; live native gates continue to exercise both independent adapters.
