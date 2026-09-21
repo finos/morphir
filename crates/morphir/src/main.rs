@@ -1190,15 +1190,35 @@ fn operation_diagnostic(raw: Option<String>, exit_code: u8) -> Option<String> {
         .map(|diagnostic| commands::diagnostics::sanitize_text(&diagnostic))
 }
 
-#[tokio::main]
-async fn main() -> starbase::MainResult {
+/// The process entry point, synchronous on purpose.
+///
+/// `#[tokio::main]` would build the runtime and `expect` it *before* running
+/// the async body, so a runtime that fails to build, under thread or file
+/// descriptor exhaustion, would panic through the standard handler with none of
+/// our reporting installed. Installing diagnostics first means that panic
+/// renders like every other CLI error, and a build failure is reported as a
+/// diagnostic rather than panicking at all.
+///
+/// The builder below reproduces what `#[tokio::main]` generates for a bare
+/// attribute: a multi-threaded runtime with all drivers enabled.
+fn main() -> starbase::MainResult {
+    use miette::IntoDiagnostic as _;
+
+    morphir::diagnostics::install();
+
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .into_diagnostic()?
+        .block_on(run())
+}
+
+async fn run() -> starbase::MainResult {
     use clap::CommandFactory;
     use tracing::Instrument as _;
 
-    // Bootstrap, in order: error reporting before anything can fail, then
-    // logging before anything can report. Both run ahead of argv parsing
-    // because a failure in that parse still has to render and be logged.
-    morphir::diagnostics::install();
+    // Logging comes up before anything can report. It runs ahead of argv
+    // parsing because a failure in that parse still has to be logged.
     let operation_id = observability::OperationId::new();
     // Keep the guard alive until process exit so non-blocking file logs flush.
     let logging_guard = logging::init_from_env(&operation_id);
