@@ -22,4 +22,5 @@ pub use output::OutputFormat;
 // session's `Ready` type as `crate::SessionReady` either way. Only the
 // binary's `MorphirSession` ever builds a real one; this re-export exists so
 // the library crate root has the same name to resolve.
+pub use session::Ready;
 pub(crate) use session::SessionReady;
