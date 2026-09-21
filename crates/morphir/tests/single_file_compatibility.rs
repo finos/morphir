@@ -33,6 +33,17 @@ fn morphir(dir: &std::path::Path, args: &[&str]) -> (bool, String, String) {
         .args(args)
         .current_dir(dir)
         .env("MORPHIR_HOME", dir.join("home"))
+        // The developer's own environment must not reach these runs.
+        // `MORPHIR_OUT_DIR` is a supported override, so a shell that sets it
+        // would send every task record and IR to that root while the
+        // assertions below still read `<temp>/.morphir/out` — the tests would
+        // fail while the CLI behaved correctly, and parallel cases would share
+        // one external output directory. `MORPHIR_LOG_DIR` and the log file
+        // are cleared for the same reason. This mirrors `morphir_command` in
+        // `cli_integration.rs`.
+        .env_remove("MORPHIR_OUT_DIR")
+        .env_remove("MORPHIR_LOG_DIR")
+        .env("MORPHIR_LOG_FILE", "false")
         .output()
         .unwrap();
     (
