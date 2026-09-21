@@ -300,6 +300,21 @@ fn ir_version_default_for_standalone_single_file_compile() {
 /// outright: this route only ever produces classic IR v3, so it never even
 /// reaches the frontend before failing. Observed stderr: `Validation error:
 /// Single-file Elm compilation supports only IR v3`.
+///
+/// This also pins the *ordering* of that rejection relative to `prepare_dest`
+/// (`compile.rs:720`), which is the at-risk part: `--ir-version 4` is
+/// rejected at `compile.rs:722`, strictly after `prepare_dest` has already
+/// taken the task lock and written a tombstone over any previous record
+/// (`compile.rs:720`). The obvious refactor — validate the request before
+/// touching the destination — would move the `--ir-version 4` check ahead of
+/// `prepare_dest` and leave a prior successful record intact, and nothing
+/// else in this file would catch that: the other failure-ordering test,
+/// `a_failed_compile_tombstones_the_previous_success`, induces a syntax
+/// error, which fails inside the provider — already after `prepare_dest`
+/// under any plausible refactor — so it cannot detect this particular
+/// reordering. Establishing a prior successful compile here and asserting
+/// the record is tombstoned after the `--ir-version 4` rejection closes that
+/// hole.
 #[test]
 fn ir_version_4_on_standalone_single_file_compile() {
     let temp = tempfile::tempdir().unwrap();
@@ -309,6 +324,14 @@ fn ir_version_4_on_standalone_single_file_compile() {
         "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
     )
     .unwrap();
+
+    // Establish a prior successful compile first, so a record with real IR
+    // exists on disk before the rejection below.
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+    );
+    assert!(ok, "prior compile establishing a record must succeed: {err}");
 
     let (ok, _out, err) = morphir(
         dir,
@@ -329,6 +352,27 @@ fn ir_version_4_on_standalone_single_file_compile() {
     assert!(
         err.contains("Single-file Elm compilation supports only IR v3"),
         "unexpected stderr: {err}"
+    );
+
+    let mut record: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.join(".morphir/out/compile.json")).unwrap()).unwrap();
+    record.as_object_mut().unwrap().remove("completedAt");
+    // Observed: the same tombstone shape `a_failed_compile_tombstones_the_previous_success`
+    // pins for its syntax-error case. Here the cause is different — the
+    // `--ir-version 4` rejection happens before the source is even read — but
+    // `prepare_dest` writes this exact record regardless of which later check
+    // fails, which is precisely the property under test.
+    assert_eq!(
+        record,
+        serde_json::json!({
+            "schema": 1,
+            "task": "compile",
+            "module": "",
+            "inputs": [],
+            "value": [],
+            "tombstone": true
+        }),
+        "expected the prior successful record to be tombstoned by the --ir-version 4 rejection, got {record}"
     );
 }
 
