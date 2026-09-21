@@ -3,6 +3,23 @@
 //! this derivation out of the CLI and into the language provider; these tests
 //! pin today's observed behaviour by driving the real `morphir` binary so
 //! that move can be verified against them.
+//!
+//! ## Deliberate coverage gaps
+//!
+//! Provider selection for a single-file compile has three precedence levels
+//! (see `resolve_extension_id` in `crates/morphir/src/commands/compile.rs`):
+//! `--extension`, then `[frontend.elm] extension` from a loaded
+//! configuration, then the language's own default provider. Two gaps are
+//! left here on purpose rather than silently:
+//!
+//! - The default-provider level (`morphir-elm`, with no `--extension` and no
+//!   configuration naming one) is not tested here. It is an installed
+//!   process extension, not a built-in one, so it is not available in this
+//!   test environment; only `--extension morphir-elm-native` and a
+//!   configured `morphir-elm-native` are exercised.
+//! - The tests that do load configuration select it with `--config`, so the
+//!   `--project` selection path is not covered by this file. It is exercised
+//!   by `crates/morphir/tests/project_compile.rs`.
 
 use std::{fs, process::Command};
 
@@ -367,5 +384,68 @@ fn a_lone_gleam_source_is_refused_today() {
     assert!(
         err.contains("No morphir.toml, morphir.yaml, or morphir.json found"),
         "unexpected stderr: {err}"
+    );
+}
+
+/// `--extension morphir-elm-native` alone, with no configuration present at
+/// all, selects the built-in provider directly: the highest precedence
+/// level.
+#[test]
+fn provider_selection_by_flag_alone_with_no_configuration() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+    );
+    assert!(ok, "{err}");
+
+    // The provider actually ran and produced IR; nothing here pins which
+    // provider string was recorded, since the run doesn't surface one
+    // anywhere observable (stdout is just "Compilation successful").
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["acme", "widget"]])
+    );
+}
+
+/// `[frontend.elm] extension = 'morphir-elm-native'` in a loaded
+/// configuration selects the provider when no `--extension` flag is given:
+/// the second precedence level. `--config` is mandatory here; without it the
+/// file is never read (see `compile.rs:675`) and the run would fall through
+/// to the default provider instead, an installed process extension that does
+/// not exist in this test environment, failing for an unrelated reason.
+#[test]
+fn provider_selection_by_configuration_with_no_flag() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[frontend.elm]\nextension = 'morphir-elm-native'\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "Widget.elm", "--config", "morphir.toml"],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["distribution"][1],
+        serde_json::json!([["local"], ["acme", "widget"]])
     );
 }
