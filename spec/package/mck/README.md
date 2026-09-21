@@ -18,7 +18,7 @@ cargo run --locked --package morphir -- mck package run \
   --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts \
   --adapter-arg --suite --adapter-arg package \
   --adapter-arg --contract --adapter-arg 0.1.0-draft.2 \
-  --report .dev/out/mck/package-resolution-native-typescript.json
+  --report .dev/out/mck/package-resolution-typescript-adapter.json
 ```
 
 The contract defaults to `0.1.0-draft.1`. The adapter must select the same contract.
@@ -27,17 +27,16 @@ use IR report fields. Every case is required, so a skip, failure or kit error me
 exit 1. Invalid arguments mean exit 2. Kit errors are reported before an adapter starts.
 The runner owns loading and comparison; package behavior stays in the independent adapters.
 
-Existing TypeScript-runner tasks below remain migration baselines. Run all four
-`package:check`, `package:check:rust`, `package:resolution-check` and
-`package:resolution-check:rust` tasks, then `mise run package:native-parity`.
-The parity gate runs both native contracts against both adapters and compares complete
-reports, excluding only runner version and start time. Four native reports are retained
-alongside the six baseline reports. Release qualification, downstream adoption and
-review precede retirement of the TypeScript package runner in #852.
+All four parent gates now use the native runner: `package:check`,
+`package:check:rust`, `package:resolution-check` and `package:resolution-check:rust`.
+They retain one report per contract and independent implementation. The temporary
+`package:native-parity` task and TypeScript runner invocations are retired.
+Frozen legacy reports and recordings remain in `spec/mck/baseline/package` for
+regression checks; published beta.3 passed all six qualification targets.
 
-## Retained migration baseline
+## Required implementation gates
 
-Run `mise run package:check` for the shared-core suite, in-process and over an executable adapter.
+Run `mise run package:check` for the native runner with the TypeScript executable adapter.
 Run `mise run package:check:rust` for the same suite against the independent Rust implementation.
 Run `mise run package:schema-check` separately for generic schema and example structure validation.
 
@@ -46,7 +45,7 @@ Its indexed fixtures cover all 13 families listed in the [resolution contract](.
 Cases use globally unique stable IDs, raw-string operation input, and fixed structured expected
 results. Every digest in these fixtures is synthetic metadata, not a verified payload hash.
 The schema task checks the index and case/result structure. Executable resolution
-uses the shared TypeScript MCK core and the independent Rust implementation through an adapter.
+uses the shared Rust MCK runner with the independent TypeScript and Rust adapters.
 The new `package:resolution-check` and `package:resolution-check:rust` tasks select draft.2
 explicitly. Parent PR #820 landed CI against merged upstream implementation commits.
 The existing draft.1 package suite remains available unchanged.
@@ -73,33 +72,29 @@ It does not check public-specification compatibility, resolve versions, establis
 ## Shared core integration
 
 The [current ownership decision](../../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md)
-places shared MCK tooling in the parent Rust CLI. The TypeScript implementation described
-below is the frozen package migration baseline. It supplies evidence for the native
-replacement until release and consumer adoption are verified.
-Reference package functionality is a test target, separate from expected results.
+places shared MCK tooling in the parent Rust CLI. Native package execution was released
+and qualified in beta.3 before consumer adoption and retirement of the TypeScript runner.
+Reference package functionality remains an independent test target, separate from expected results.
 
-The core exposes `PackageTestee`, `runPackageKit`, and `processPackageTestee`. Its `mck package run`
-command requires `--kit`; no package corpus is embedded yet. `mck-adapter-typescript --suite package`
-selects the experimental `0.1.0-draft.1` package protocol. The package protocol and report schemas
-ship with `@finos/morphir-mck`. IR protocol/report version 1 and default IR commands stay unchanged.
+Run `morphir mck package run --kit spec/package/mck --adapter <executable>`, supplying
+repeated `--adapter-arg` options for the adapter's arguments. The kit is explicit;
+package data is not embedded or acquired by this command. Omitting `--contract` selects
+`0.1.0-draft.1`. Select resolution with `--contract 0.1.0-draft.2`.
 
-Draft.2 adds `ResolutionTestee`, `runResolutionKit`, and `processResolutionTestee` through
-the same execution, comparison, and reporting infrastructure. Select it with
-`mck package run --contract 0.1.0-draft.2 --kit spec/package/mck` and
-`mck-adapter-typescript --suite package --contract 0.1.0-draft.2`, or the corresponding
-Rust adapter flags. Its `package-resolution-protocol.schema.json` and
-`package-resolution-report.schema.json` ship with the MCK package. Omitting `--contract`
-from a package invocation retains draft.1.
+Both `mck-adapter-typescript` and `mck-adapter-rust` accept `--suite package` and
+`--contract` with the matching value. The package protocol and report schemas remain
+versioned separately from IR and ship with `@finos/morphir-mck`. Native IR commands and
+their consolidated draft report contract are unchanged.
 
-The Rust adapter exposes the same package contract through `mck-adapter-rust --suite package`.
-Package behavior lives in the separate `morphir-package` library, not the adapter or the extension
-distribution library. The parent wrapper selects the suite, optional package contract, and platform-specific
-binary name. It forwards the same explicit contract to driver and adapter. The shared driver still
+Rust package behavior lives in the separate `morphir-package` library. The parent
+wrapper selects an adapter and contract, including the platform-specific executable name,
+and forwards the explicit contract to both native runner and adapter. The native engine
 loads cases, compares fixed expectations and reports results.
 
-CI writes `package-typescript.json`, `package-typescript-adapter.json`, and `package-rust.json`
-under `.dev/out/mck/`. The two TypeScript transports count as one implementation; Rust supplies
-the second implementation. Passing this restricted corpus does not complete all Stage 0 work.
+CI writes `package-typescript-adapter.json`, `package-rust.json`,
+`package-resolution-typescript-adapter.json` and `package-resolution-rust.json`
+under `.dev/out/mck/`. TypeScript and Rust supply two independent implementations.
+Passing this restricted corpus does not complete all Stage 0 work.
 
 Package reports record suite, contract and driver versions, testee identity and capabilities,
 and a content hash of all consumed corpus, schema and fixture bytes. Record both repository

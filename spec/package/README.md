@@ -19,29 +19,30 @@ integrity contract and content digest separator remain unchanged.
 
 Run `mise run package:schema-check` from the repository root after the required checkout setup.
 It validates schema syntax and example structure using the existing JSON Schema tool.
-Run `mise run package:check` to execute the package corpus through the TypeScript MCK core,
-both in-process and through its executable adapter. Reports appear in `.dev/out/mck/`.
+Run `mise run package:check` to execute the package corpus through the native Morphir CLI
+against the independent TypeScript executable adapter. Reports appear in `.dev/out/mck/`.
 Run `mise run package:check:rust` to build the pinned Rust adapter and execute the same
-corpus through the same TypeScript driver against the independent Rust implementation.
+corpus through the same native runner against the independent Rust implementation.
 The dedicated package CI job runs both integrity implementations and uploads their reports.
 The suite checks normalization, digests, schemas, and the worked Library set's integrity.
 It does not establish full package-system compatibility or complete Stage 0.
 
-The resolution integration adds `mise run package:resolution-check` for both TypeScript
-transports and `mise run package:resolution-check:rust` for Rust through the same driver.
+The resolution integration adds `mise run package:resolution-check` for the TypeScript
+adapter and `mise run package:resolution-check:rust` for Rust through the same native runner.
 These tasks explicitly select draft.2 and
 write separate `package-resolution-*.json` reports. See the [MCK suite](mck/README.md)
 for the exact pins, corpus hashes, and passing integration CI evidence.
 
-The [shared MCK core decision](../../kb/bundles/morphir/morphir-package-system/decisions/0001-package-compatibility-uses-the-shared-mck-core.md)
-places package case execution in finos/morphir-typescript. The implementation lives in
-`ecosystem/morphir-typescript/packages/mck/src/package/`; this repository only invokes it.
+The [MCK ownership decision](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md)
+places shared package execution in `crates/morphir-mck`, exposed by `morphir mck package run`.
+The independent TypeScript package implementation and draft.3 helpers remain in
+`ecosystem/morphir-typescript/packages/mck/src/package/`.
 Rust production behavior lives in `ecosystem/morphir-rust/crates/morphir-package/`.
 Its `mck-adapter-rust --suite package` adapter delegates to that library; default invocation
 continues to serve the IR protocol. Rust does not supply another compatibility runner.
 Implementation changes must land upstream before the parent merges the corresponding submodule pin.
 A dependent draft may pin a published feature commit for CI, then replace it with the merged commit.
-No standalone package compatibility runner ships here.
+The native Morphir CLI supplies the shared package compatibility runner.
 
 The planned user-facing lockfile is `morphir.lock`. The current `lock-core.json` fixture
 and `lock-core.schema.json` describe only a partial graph, not an installable lockfile.

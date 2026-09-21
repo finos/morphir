@@ -164,14 +164,12 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - '.github/actions/setup-rust-ci/**'
-              - 'tools/package-mck-parity*'
-              - 'tools/run-package-native-parity.ts'
               - 'tools/record-mck-transcript*'
               - 'spec/package/**'
               - 'ecosystem/morphir-rust'
               - 'ecosystem/morphir-typescript'
-              - 'tools/run-mck-rust.ts'
-              - 'tools/rust-mck-command*'
+              - 'tools/run-package-mck.ts'
+              - 'tools/package-mck-command*'
               - 'tools/package-ci.test.ts'
               - 'tools/package.json'
               - 'tools/bun.lock'
@@ -537,8 +535,7 @@ jobs:
         id: integration
         run: |
           bun run --cwd tools typecheck
-          bun test tools/rust-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts
-          bun test tools/package-mck-parity.test.ts
+          bun test tools/package-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts
       - name: Run TypeScript package implementation
         run: mise run package:check
       - name: Check synthetic restore assurance preflight vectors
@@ -556,9 +553,6 @@ jobs:
       - name: Run independent Rust package resolution implementation
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
         run: mise run package:resolution-check:rust
-      - name: Compare the native runner with both package implementations
-        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
-        run: mise run package:native-parity
       - name: Upload package compatibility reports
         uses: actions/upload-artifact@v7
         if: always()
