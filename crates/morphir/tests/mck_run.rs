@@ -99,10 +99,101 @@ fn without_volatile(mut report: Value) -> Value {
 
 // ---------------------------------------------------------------- tests
 
+fn a_missing_preacquired_kit_does_not_fall_back_to_embedded() {
+    let work = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .env("MORPHIR_MCK_PREACQUIRED_KIT", work.path().join("missing"))
+        .env_remove("MORPHIR_MCK_REQUIRE_NETWORK_DENIAL")
+        .arg("installed_cli_runs_vendored_kit_without_tool_runtimes")
+        .output()
+        .unwrap();
+    assert!(!output.status.success(), "explicit missing kit must fail");
+    assert!(
+        stderr(&output).contains("copy the pre-acquired kit"),
+        "{}",
+        stderr(&output)
+    );
+}
+
+// Preserve every input. The managed-kit verifier must see and reject unexpected
+// files; symlinks must not reintroduce access to an acquisition cache or checkout.
+fn copy_snapshot(source: &Path, destination: &Path) -> std::io::Result<()> {
+    if !std::fs::symlink_metadata(source)?.is_dir() {
+        return Err(std::io::Error::other("snapshot must be a directory"));
+    }
+    std::fs::create_dir(destination)?;
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let target = destination.join(entry.file_name());
+        let kind = entry.file_type()?;
+        if kind.is_dir() {
+            copy_snapshot(&entry.path(), &target)?;
+        } else if kind.is_file() {
+            std::fs::copy(entry.path(), target)?;
+        } else {
+            return Err(std::io::Error::other(
+                "snapshot contains a non-regular input",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn copied_snapshots_preserve_unexpected_inputs_for_verification() {
+    let work = tempfile::tempdir().unwrap();
+    let source = work.path().join("source");
+    std::fs::create_dir_all(source.join("nested")).unwrap();
+    std::fs::write(source.join("nested/input"), b"\0\xff\r\n").unwrap();
+    std::fs::write(source.join("unexpected"), b"do not filter me").unwrap();
+    let target = work.path().join("copy");
+    copy_snapshot(&source, &target).unwrap();
+    assert_eq!(
+        std::fs::read(target.join("nested/input")).unwrap(),
+        b"\0\xff\r\n"
+    );
+    assert_eq!(
+        std::fs::read(target.join("unexpected")).unwrap(),
+        b"do not filter me"
+    );
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(source.join("nested/input"), source.join("link")).unwrap();
+        assert!(copy_snapshot(&source, &work.path().join("linked")).is_err());
+    }
+}
+
+fn required_network_denial_fails_when_tcp_is_available() {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .env(
+            "MORPHIR_MCK_REQUIRE_NETWORK_DENIAL",
+            listener.local_addr().unwrap().to_string(),
+        )
+        .arg("installed_cli_runs_vendored_kit_without_tool_runtimes")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output).contains("network isolation unavailable"),
+        "{}",
+        stderr(&output)
+    );
+}
+
 // The release workflow points this at the executable extracted from its archive.
 // The harness may use Cargo and source fixtures; the installed CLI and its native
 // replay adapter run with only explicitly copied inputs and an empty tool path.
 fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
+    let denied_probe = std::env::var("MORPHIR_MCK_REQUIRE_NETWORK_DENIAL")
+        .ok()
+        .map(|address| {
+            let address: std::net::SocketAddr =
+                address.parse().expect("explicit TCP probe address");
+            let error =
+                std::net::TcpStream::connect_timeout(&address, std::time::Duration::from_secs(3))
+                    .expect_err("network isolation unavailable: direct outbound TCP succeeded");
+            format!("{address}: {error}")
+        });
     let work = tempfile::tempdir().unwrap();
     let home = work.path().join("home");
     std::fs::create_dir(&home).unwrap();
@@ -165,10 +256,15 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     ] {
         success(&args);
     }
-    success(&[
-        "mck", "kit", "vendor", "--source", "embedded", "--dest", "kit",
-    ]);
-    success(&["mck", "kit", "status", "--kit", "kit", "--json"]);
+    if let Some(source) = std::env::var_os("MORPHIR_MCK_PREACQUIRED_KIT") {
+        copy_snapshot(Path::new(&source), &work.path().join("kit"))
+            .expect("copy the pre-acquired kit");
+    } else {
+        success(&[
+            "mck", "kit", "vendor", "--source", "embedded", "--dest", "kit",
+        ]);
+    }
+    let status = success(&["mck", "kit", "status", "--kit", "kit", "--json"]);
     success(&["mck", "check", "kit"]);
     success(&["mck", "coverage", "--kit", "kit"]);
     success(&["mck", "schema", "check", "--kit", "kit"]);
@@ -232,6 +328,26 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
             .unwrap()
             .contains("<!doctype html>")
     );
+
+    if let Some(directory) = std::env::var_os("MORPHIR_MCK_ACCEPTANCE_EVIDENCE") {
+        let directory = Path::new(&directory);
+        std::fs::create_dir_all(directory).unwrap();
+        for name in ["source.json", "report.json", "report.html"] {
+            std::fs::copy(work.path().join(name), directory.join(name)).unwrap();
+        }
+        std::fs::write(directory.join("kit-status.json"), status.stdout).unwrap();
+        std::fs::write(
+            directory.join("runtime.json"),
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "networkDenial": denied_probe,
+                "snapshotDigest": actual["kit"]["snapshotDigest"],
+                "matchingRecords": actual["records"].as_array().unwrap().len(),
+                "reportCheck": "passed",
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
 
     // A kit shipped without its fixed schema closure must not appear healthy.
     std::fs::write(
@@ -485,6 +601,18 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "copied_snapshots_preserve_unexpected_inputs_for_verification",
+            copied_snapshots_preserve_unexpected_inputs_for_verification,
+        ),
+        (
+            "required_network_denial_fails_when_tcp_is_available",
+            required_network_denial_fails_when_tcp_is_available,
+        ),
+        (
+            "a_missing_preacquired_kit_does_not_fall_back_to_embedded",
+            a_missing_preacquired_kit_does_not_fall_back_to_embedded,
+        ),
         (
             "installed_cli_runs_vendored_kit_without_tool_runtimes",
             installed_cli_runs_vendored_kit_without_tool_runtimes,
