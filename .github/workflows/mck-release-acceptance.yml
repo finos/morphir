@@ -138,6 +138,16 @@ jobs:
             if (Get-NetFirewallRule -Name $rule -ErrorAction SilentlyContinue) { throw 'Firewall rule was not removed' }
           }
 
+      # Linux network isolation runs as root. The CLI creates private report
+      # files, so return ownership before the unprivileged artifact uploader.
+      - name: Restore Linux evidence ownership
+        if: always() && runner.os == 'Linux'
+        shell: bash
+        run: |
+          if [ -d .dev/out/mck-release-acceptance ]; then
+            sudo chown -R "$(id -u):$(id -g)" .dev/out/mck-release-acceptance
+          fi
+
       - name: Retain acceptance evidence
         if: always()
         uses: actions/upload-artifact@v7

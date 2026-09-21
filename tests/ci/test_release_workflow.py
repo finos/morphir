@@ -12,6 +12,14 @@ CARGO_LOCK_PATH = REPO_ROOT / "Cargo.lock"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_linux_offline_evidence_is_readable_by_the_artifact_uploader(self) -> None:
+        workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
+        self.assertIn("name: Restore Linux evidence ownership", workflow)
+        step = workflow.split("name: Restore Linux evidence ownership", 1)[1].split("\n      - name:", 1)[0]
+        self.assertIn("if: always() && runner.os == 'Linux'", step)
+        self.assertIn('sudo chown -R "$(id -u):$(id -g)" .dev/out/mck-release-acceptance', step)
+        self.assertLess(workflow.index("name: Restore Linux evidence ownership"), workflow.index("name: Retain acceptance evidence"))
+
     def test_acceptance_automation_can_qualify_an_unchanged_source_tag(self) -> None:
         workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
         self.assertIn("ref: ${{ github.sha }}", workflow)
