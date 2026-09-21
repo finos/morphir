@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.2] - 2026-09-20
+
 ### Added
-- **`morphir mck run`**: runs the IR compatibility kit against an implementation's adapter, the Rust replacement for the TypeScript `mck run` (finos/morphir#851, IR-2). `--adapter` is required: there is no built-in binding. It reads the embedded kit, a checkout or a verified vendored snapshot, writes the same version 1 report as the first driver (`--report`) plus a `<report>.provenance.json` sidecar naming the driver build, the kit bytes that ran and the adapter command, and prints the same summary. `--filter` (alias `--only`) takes a Rust regular expression; `--strict` fails on skips; a run that selects no case exits 1. The adapter session enforces a 30 s request timeout (`--timeout`), a 30 min session timeout (`--session-timeout`), a 16 MiB frame limit and strict UTF-8, and terminates the adapter's whole process tree on timeout, failure or Ctrl-C (a process group on Unix, a Job Object on Windows). Against the same adapter answers the report equals the TypeScript driver's field for field. The TypeScript driver remains the authoritative gate until cutover
-- **`morphir mck kit vendor` and `morphir mck kit update`**: an extension or binding implementor can put a pinned, verified copy of the IR compatibility kit in their own repository and run it offline (finos/morphir#851, IR-1V). `kit vendor --source embedded --dest vendor/morphir-mck` exports the kit built into the CLI with no network; `--source <path>` copies a finos/morphir checkout or another snapshot. The snapshot keeps repository-relative paths and carries a `mck-kit.lock.json` manifest recording its source, revision, per-file SHA-256 inventory and digests. `check` and `kit status` verify a vendored snapshot before reading a case and fail, naming each missing, altered or extra file, if it was edited. `kit update` refuses an edited snapshot, stages and verifies the replacement, swaps it in by rename and prints what changed; an interrupted run is reported with its recovery step. `--expect-digest` fails closed. `--source github:finos/morphir --revision <full commit>` fetches that commit's archive over HTTPS from `codeload.github.com` (redirects only to HTTPS GitHub hosts; at most 64 MiB) and takes only the kit's closure from it, refusing unsafe paths, a top-level directory that does not name the commit, links or special files in the closure, colliding or unportable names, and archives beyond 100 000 entries or 256 MiB of selected data. A snapshot fetched from GitHub has the same digests as the embedded or checkout export of the same kit. Branches, tags and short commit ids are refused. The parent-owned coverage vocabulary, `spec/mck/vocabulary.json`, is now generated from the TypeScript binding and checked for drift in `mise run mck:check`
-- **`morphir mck check` and `morphir mck kit status`**: the first commands of the Rust Morphir Compatibility Kit tooling (finos/morphir#849, #851). `mck check <dir>` validates a kit directory with the same diagnostics, locations, summary line, `--json` shape and exit codes as the TypeScript `mck check`, and additionally reports a `text` fixture that is missing, escapes the repository root, is not valid UTF-8 or starts with a byte-order mark. `mck kit status` identifies the IR kit embedded in the CLI, or a checkout given with `--kit`, by revision and `mck-file-map-sha256/1` corpus hash, with no Node, Bun, Git or network. `mck run` is not implemented yet; the TypeScript driver remains the authoritative gate. See [spec/mck/cli-contract.md](spec/mck/cli-contract.md)
+- Native IR compatibility tooling through `morphir mck`, backed by the reusable `morphir-mck` library. `check`, `coverage`, and `schema check` validate cases, vocabulary coverage, schemas, JSON and protocol examples, and accepted or rejected IR fences offline without Node, Bun, Git, or external schema validators.
+- `morphir mck run --adapter <exe>` drives an explicit implementation adapter against the embedded kit, a checkout, or a verified vendored snapshot. It supports case filters, strict skip handling, bounded adapter sessions, and process-tree cleanup on failure, timeout, or cancellation.
+- Consolidated `2.0.0-draft.1` JSON reports include driver, kit, and adapter provenance with the case results. `morphir mck report check` validates a report against the selected kit and an allowed-failing baseline; `report render --format html` produces a self-contained offline HTML view. The report contract remains a draft.
+- `morphir mck kit status`, `kit vendor`, and `kit update` identify and manage pinned kit snapshots. Embedded and local sources work offline; GitHub acquisition requires a full commit revision. The `mck-kit.lock.json` manifest records source identity, per-file SHA-256 hashes and kit digests. Managed snapshots reject missing, altered, or extra files; updates stage and verify replacement contents before installation.
+- Release archives for all six supported targets must pass the native MCK smoke gate before publication. The gate extracts the packaged CLI, uses a fresh directory and empty tool-runtime path, and exercises vendoring, authoring checks, an explicit native replay adapter, report adjudication, and HTML rendering.
+
+### Changed
+- Parent IR validation, coverage, execution, and reporting gates now use the native CLI. TypeScript tooling remains available for migration parity, package suites, and consumers awaiting IR-4 adoption. Vocabulary generation and protocol-copy parity remain checked against the pinned TypeScript source. See [the migration sequence](spec/mck/migration.md).
+
+### Fixed
+- Interrupted kit downloads report how many bytes arrived and preserve the underlying error. Timeouts have an explicit diagnostic; acquisition limits and cleanup behavior are unchanged.
 
 ## [0.4.0-beta.1] - 2026-09-18
 
@@ -423,7 +433,8 @@ alpha, 0.4.0-alpha.5, only moved the release pipeline to the Rust binary.
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.1...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.2...HEAD
+[0.4.0-beta.2]: https://github.com/finos/morphir/compare/v0.4.0-beta.1...v0.4.0-beta.2
 [0.4.0-beta.1]: https://github.com/finos/morphir/compare/v0.4.0-alpha.7...v0.4.0-beta.1
 [0.4.0-alpha.4]: https://github.com/finos/morphir/compare/v0.4.0-alpha.3...v0.4.0-alpha.4
 [0.4.0-alpha.3]: https://github.com/finos/morphir/compare/v0.4.0-alpha.2...v0.4.0-alpha.3

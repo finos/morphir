@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to release (for example, v0.4.0-beta.1)'
+        description: 'Existing tag to release (for example, v0.4.0-beta.2)'
         required: true
         type: string
 
@@ -84,6 +84,15 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      # Dependency snapshots exceed Windows' default path limit. Configure Git
+      # and select its client before setup-rust-ci invokes Cargo metadata.
+      - name: Configure Windows Git paths
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          git config --global core.longpaths true
+          "CARGO_NET_GIT_FETCH_WITH_CLI=true" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -123,6 +132,27 @@ jobs:
             -DestinationPath "release-assets/$archive"
           $hash = (Get-FileHash "release-assets/$archive" -Algorithm SHA256).Hash.ToLower()
           "$hash  $archive" | Set-Content "release-assets/$archive.sha256"
+
+      - name: Extract packaged CLI
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir release-smoke
+          tar -xzf "release-assets/morphir-${{ needs.release-info.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}" -C release-smoke
+          echo "MORPHIR_MCK_INSTALLED_CLI=${GITHUB_WORKSPACE}/release-smoke/morphir" >> "$GITHUB_ENV"
+
+      - name: Extract packaged CLI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Expand-Archive -Path "release-assets/morphir-${{ needs.release-info.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}" -DestinationPath release-smoke
+          $cli = (Resolve-Path "release-smoke/morphir.exe").Path
+          "MORPHIR_MCK_INSTALLED_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      # The native test harness doubles as a transcript adapter. Only the copied
+      # CLI/adapter and vendored inputs enter the isolated child environment.
+      - name: Verify packaged MCK CLI
+        run: cargo test --locked --release --package morphir --target ${{ matrix.target }} --test mck_run installed_cli_runs_vendored_kit_without_tool_runtimes
 
       - name: Upload CLI artifact
         uses: actions/upload-artifact@v7

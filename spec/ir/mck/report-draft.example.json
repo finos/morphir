@@ -1,0 +1,29 @@
+{
+  "contractVersion": "2.0.0-draft.1",
+  "suite": "ir",
+  "startedAt": "2026-09-20T10:30:00.000Z",
+  "driver": { "name": "morphir", "version": "0.4.0-beta.1", "commit": null, "dirty": false },
+  "kit": { "version": "2026-09-20", "source": "embedded", "revision": null, "snapshotDigest": null, "corpusHash": null, "modified": false },
+  "adapter": {
+    "command": ["morphir-adapter", "--stdio"],
+    "negotiation": {
+      "status": "succeeded",
+      "capabilities": {
+        "contractVersion": 1,
+        "binding": "morphir-example",
+        "language": "rust",
+        "formatVersions": "[4.0.0,4.1.0)",
+        "versions": [4],
+        "profiles": ["json", "yaml"],
+        "layouts": ["single", "tree"],
+        "paths": ["current", "pinned"],
+        "nodes": ["Type", "Distribution"]
+      }
+    }
+  },
+  "selection": { "kind": "all" },
+  "execution": { "strict": false, "session": { "status": "finished" } },
+  "records": [
+    { "caseId": "types-0001", "irVersion": 4, "profile": "json", "role": "canonical", "fenceIndex": 0, "path": "current", "result": "pass", "durationMs": 0.5 }
+  ]
+}

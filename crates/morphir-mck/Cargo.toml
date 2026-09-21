@@ -12,6 +12,7 @@ build = "build.rs"
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+jsonschema.workspace = true
 sha2.workspace = true
 regex.workspace = true
 flate2.workspace = true

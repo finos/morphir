@@ -1,21 +1,23 @@
-//! IR report, contract version 1 (`spec/ir/mck/report.schema.json`). The
-//! version is closed: no member is added here that the schema does not have.
-//! Richer provenance travels in a separate sidecar (`provenance`).
+//! Shared record types, summaries and report operations. [`draft`] is the
+//! production report contract. The legacy envelope remains for frozen runner
+//! replay evidence during migration; it has no filesystem writer.
 //!
 //! Members serialize in the order the first driver wrote them, so a report
 //! diffs cleanly against one it produced.
 
-use std::io;
-use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
+
+pub mod check;
+pub mod draft;
+pub mod html;
 
 use crate::transport::protocol::{Diagnostic, PathMode, Stage};
 
 pub const CONTRACT_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Outcome {
     Pass,
@@ -36,7 +38,7 @@ impl Outcome {
 }
 
 /// A record's profile: a serialization, or the document-tree layout.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RecordProfile {
     Json,
@@ -44,7 +46,7 @@ pub enum RecordProfile {
     Tree,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
     Canonical,
@@ -54,7 +56,8 @@ pub enum Role {
 }
 
 /// A diagnostic as a report carries it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ReportDiagnostic {
     pub code: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -78,7 +81,7 @@ impl From<&Diagnostic> for ReportDiagnostic {
 
 /// A millisecond count, written as an integer when it is one, as the first
 /// driver's `JSON.stringify` did.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize)]
 pub struct Millis(pub f64);
 
 impl Serialize for Millis {
@@ -92,8 +95,8 @@ impl Serialize for Millis {
 }
 
 /// One fence's verdict on one path.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Record {
     pub case_id: String,
     pub ir_version: i64,
@@ -162,14 +165,6 @@ impl Report {
     /// Tab-indented JSON with a trailing newline.
     pub fn to_json(&self) -> String {
         format!("{}\n", crate::json::to_tab_json(self))
-    }
-
-    /// Writes the report, creating missing parent directories.
-    pub fn write(&self, file: &Path) -> io::Result<()> {
-        if let Some(parent) = file.parent().filter(|p| !p.as_os_str().is_empty()) {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(file, self.to_json())
     }
 }
 

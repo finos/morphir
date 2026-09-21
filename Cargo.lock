@@ -114,7 +114,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
 dependencies = [
  "cfg-if",
+ "getrandom 0.3.4",
  "once_cell",
+ "serde",
  "version_check",
  "zerocopy",
 ]
@@ -195,7 +197,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -206,7 +208,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -724,7 +726,16 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0700ddab506f33b20a03b13996eccd309a48e5ff77d0d95926aa0210fb4e95f1"
 dependencies = [
- "bit-vec",
+ "bit-vec 0.6.3",
+]
+
+[[package]]
+name = "bit-set"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08807e080ed7f9d5433fa9b275196cfc35414f66a0c79d864dc51a0d825231a3"
+dependencies = [
+ "bit-vec 0.8.0",
 ]
 
 [[package]]
@@ -732,6 +743,12 @@ name = "bit-vec"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
+
+[[package]]
+name = "bit-vec"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bitflags"
@@ -807,6 +824,12 @@ dependencies = [
  "futures-lite",
  "piper",
 ]
+
+[[package]]
+name = "borrow-or-share"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc0b364ead1874514c8c2855ab558056ebfeb775653e7ae45ff72f28f8f3166c"
 
 [[package]]
 name = "bstr"
@@ -896,7 +919,7 @@ dependencies = [
  "cap-primitives 4.0.3",
  "cap-std 4.0.3",
  "io-lifetimes 3.0.1",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -931,7 +954,7 @@ dependencies = [
  "maybe-owned",
  "rustix 1.1.5",
  "rustix-linux-procfs",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
  "winx",
 ]
 
@@ -1192,7 +1215,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.1.14",
+ "unicode-width 0.2.0",
 ]
 
 [[package]]
@@ -2036,7 +2059,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users 0.5.2",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2136,6 +2159,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
 
 [[package]]
+name = "email_address"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e079f19b08ca6239f47f8ba8509c11cf3ea30095831f7fed61441475edd8c449"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "embedded-io"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2217,7 +2249,7 @@ source = "git+https://github.com/gleam-lang/gleam.git?rev=4a83802ca33a8a96227a1b
 dependencies = [
  "ecow",
  "erlang-term-format",
- "itertools 0.14.0",
+ "itertools 0.15.0",
  "num-bigint 0.4.8",
  "num-traits",
  "regex",
@@ -2239,7 +2271,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2382,8 +2414,19 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b95f7c0680e4142284cf8b22c14a476e87d61b004a3a0861872b32ef7ead40a2"
 dependencies = [
- "bit-set",
+ "bit-set 0.5.3",
  "regex",
+]
+
+[[package]]
+name = "fancy-regex"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e24cb5a94bcae1e5408b0effca5cd7172ea3c5755049c5f3af4cd283a165298"
+dependencies = [
+ "bit-set 0.8.0",
+ "regex-automata",
+ "regex-syntax",
 ]
 
 [[package]]
@@ -2525,6 +2568,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluent-uri"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1918b65d96df47d3591bed19c5cca17e3fa5d0707318e4b5ef2eae01764df7e5"
+dependencies = [
+ "borrow-or-share",
+ "ref-cast",
+ "serde",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2549,6 +2603,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fraction"
+version = "0.15.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e076045bb43dac435333ed5f04caf35c7463631d0dae2deb2638d94dd0a5b872"
+dependencies = [
+ "lazy_static",
+ "num",
 ]
 
 [[package]]
@@ -2841,7 +2905,7 @@ dependencies = [
  "id-arena",
  "im",
  "indexmap",
- "itertools 0.14.0",
+ "itertools 0.15.0",
  "lsp-server",
  "num-bigint 0.4.8",
  "num-traits",
@@ -3564,7 +3628,7 @@ dependencies = [
 
 [[package]]
 name = "integration-tests"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "anyhow",
  "cucumber",
@@ -4023,6 +4087,30 @@ dependencies = [
  "jsonrpsee-types",
  "tower",
  "url",
+]
+
+[[package]]
+name = "jsonschema"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26a960f0c34d5423581d858ce94815cc11f0171b09939409097969ed269ede1b"
+dependencies = [
+ "ahash",
+ "base64 0.22.1",
+ "bytecount",
+ "email_address",
+ "fancy-regex 0.14.0",
+ "fraction",
+ "idna",
+ "itoa",
+ "num-cmp",
+ "once_cell",
+ "percent-encoding",
+ "referencing",
+ "regex-syntax",
+ "serde",
+ "serde_json",
+ "uuid-simd",
 ]
 
 [[package]]
@@ -4494,7 +4582,7 @@ dependencies = [
 
 [[package]]
 name = "morphir"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4568,7 +4656,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-common"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "anyhow",
  "cap-fs-ext 4.0.3",
@@ -4606,7 +4694,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-config"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "secrecy",
  "serde",
@@ -4618,7 +4706,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-core"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "anyhow",
  "bigdecimal",
@@ -4637,7 +4725,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-daemon"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4669,7 +4757,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-devkit"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "anyhow",
  "cap-std 4.0.3",
@@ -4688,7 +4776,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-distribution"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "flate2",
  "fs2",
@@ -4734,7 +4822,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-evaluator"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -4743,7 +4831,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-extension-sdk"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "extism-pdk",
  "morphir-workspace",
@@ -4786,7 +4874,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-kb"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "chrono",
  "morphir-okf",
@@ -4803,9 +4891,10 @@ dependencies = [
 
 [[package]]
 name = "morphir-mck"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "flate2",
+ "jsonschema",
  "regex",
  "rustix 1.1.5",
  "serde",
@@ -4819,7 +4908,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-okf"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "pulldown-cmark",
  "regex",
@@ -4831,7 +4920,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-opa"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "morphir-evaluator",
  "regorus",
@@ -4852,7 +4941,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-workspace"
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 dependencies = [
  "globset",
  "morphir-config",
@@ -4988,7 +5077,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5025,6 +5114,12 @@ dependencies = [
  "num-integer",
  "num-traits",
 ]
+
+[[package]]
+name = "num-cmp"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63335b2e2c34fae2fb0aa2cecfd9f0832a1e24b3b32ecec612c3426d46dc8aaa"
 
 [[package]]
 name = "num-complex"
@@ -5992,7 +6087,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6296,6 +6391,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.3",
+]
+
+[[package]]
+name = "referencing"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb8e15af8558cb157432dd3d88c1d1e982d0a5755cf80ce593b6499260aebc49"
+dependencies = [
+ "ahash",
+ "fluent-uri",
+ "once_cell",
+ "percent-encoding",
+ "serde_json",
 ]
 
 [[package]]
@@ -6608,7 +6716,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6698,7 +6806,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs 1.0.9",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7261,7 +7369,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7341,7 +7449,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7607,7 +7715,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.5",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7654,7 +7762,7 @@ dependencies = [
  "parking_lot",
  "rustix 1.1.5",
  "signal-hook",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7664,7 +7772,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "230a1b821ccbd75b185820a1f1ff7b14d21da1e442e22c0863ea5f08771a8874"
 dependencies = [
  "rustix 1.1.5",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7697,7 +7805,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "bitflags 2.13.1",
- "fancy-regex",
+ "fancy-regex 0.11.0",
  "filedescriptor",
  "finl_unicode",
  "fixedbitset 0.4.2",
@@ -8387,7 +8495,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8611,6 +8719,17 @@ dependencies = [
  "serde_core",
  "sha1_smol",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "uuid-simd"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23b082222b4f6619906941c17eb2297fff4c2fb96cb60164170522942a200bd8"
+dependencies = [
+ "outref",
+ "uuid",
+ "vsimd",
 ]
 
 [[package]]
@@ -9418,7 +9537,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

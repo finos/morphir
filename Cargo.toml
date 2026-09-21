@@ -5,7 +5,7 @@ default-members = ["crates/morphir"]
 resolver = "3"
 
 [workspace.package]
-version = "0.4.0-beta.1"
+version = "0.4.0-beta.2"
 edition = "2024"
 rust-version = "1.98"
 authors = [
@@ -65,6 +65,8 @@ windows-sys = { version = "0.61", features = [
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+# Offline draft MCK report validation; no HTTP or filesystem reference retrieval.
+jsonschema = { version = "=0.26.2", default-features = false }
 serde-saphyr = { version = "1", default-features = false, features = ["deserialize", "serialize"] }
 # The IR YAML profile reader in `morphir-core` walks this parser's event stream. `morphir-core`
 # takes it from the workspace, and a path dependency on it inherits from this root, so the pin

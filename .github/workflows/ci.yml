@@ -86,21 +86,24 @@ jobs:
               # crates/morphir tests read the published examples as fixtures, and
               # `mise run migrate:validate` migrates and validates them
               - 'website/static/ir/examples/**'
-            # Inputs of the kit run against the Rust binding and of the migrate
-            # validation. The morphir crate neither compiles nor tests against
-            # them, so they start the conformance job and not the Rust pipeline.
+            # Kit and schema changes run binding conformance here and focused
+            # native MCK tests in docs, without the full Rust extension pipeline.
             # That job also runs for every `rust` change, so the inputs both
             # share (the Rust submodule, the examples, the toolchain pins, this
             # workflow) are listed under `rust` only.
             rust-conformance:
               # mck:run-rust runs the kit against the Rust binding, so its fences are an input
               - 'spec/ir/mck/**'
-              # the kit driver lives here
+              - 'spec/mck/**'
+              - 'website/static/schemas/morphir-ir-v4-document-tree-files.json'
+              - 'website/static/schemas/morphir-ir-v4-document-tree-files.yaml'
+              # the first driver used for migration parity lives here
               - 'ecosystem/morphir-typescript'
               # adjudicates the Rust binding's MCK report against its allowed-failing list
               - 'tools/check-mck-report.ts'
               # resolves and runs the Rust binding's MCK adapter
               - 'tools/run-mck-rust.ts'
+              - 'tools/run-mck-gate*'
               - 'tools/rust-mck-command*'
               # record and compare the two runners' answers on that adapter
               - 'tools/record-mck-transcript.ts'
@@ -109,6 +112,7 @@ jobs:
               - 'website/scripts/validate-migrated-ir.js'
               # the v4 schema `mise run migrate:validate` validates migrated IR against
               - 'website/static/schemas/morphir-ir-v4.json'
+              - 'website/static/schemas/morphir-ir-v4.yaml'
               # migrate:validate depends on website:install, and validate-migrated-ir.js imports ajv/ajv-formats from it
               - 'website/package.json'
               - 'website/package-lock.json'
@@ -127,21 +131,34 @@ jobs:
               - 'tools/check-schemas-generated.ts'
               # the Bun tooling tests the docs job runs through `mise run tools:test`
               - 'tools/*.test.ts'
+              - 'tools/run-mck-gate.ts'
               - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
+              # The native runner, report reader and renderer now drive this job.
+              - 'crates/morphir-mck/**'
+              - 'crates/morphir/src/commands/mck*'
+              - 'crates/morphir/src/commands/mck/**'
+              - 'crates/morphir/src/main.rs'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.github/actions/setup-rust-ci/**'
               - 'spec/ir/mck/**'
               # parent-owned kit data and contracts mck:check validates
               - 'spec/mck/**'
+              - 'website/static/schemas/morphir-ir-v4.json'
+              - 'website/static/schemas/morphir-ir-v4-document-tree-files.json'
+              - 'website/static/schemas/morphir-ir-v4.yaml'
+              - 'website/static/schemas/morphir-ir-v4-document-tree-files.yaml'
               - 'tools/gen-mck-vocabulary*'
-              # checks every kit fence against the v4 JSON Schemas
+              - 'tools/check-mck-contract-copies*'
+              # Retained TypeScript migration evidence, not production validators.
               - 'tools/validate-mck-fences.ts'
-              # checks the protocol example against the protocol schema and both
-              # contract copies against the submodule originals
               - 'tools/validate-mck-protocol.ts'
               # adjudicates a driver report against a binding's allowed-failing list
               - 'tools/check-mck-report.ts'
               - 'tools/run-mck-rust.ts'
+              - 'tools/run-mck-gate*'
               - 'tools/rust-mck-command*'
               - 'ecosystem/morphir-typescript'
               # the Rust binding is driven through its adapter by mck:run-rust,
@@ -168,6 +185,8 @@ jobs:
               - '.github/workflows/ci.yml'
             release:
               - '.github/workflows/release.yml'
+              - '.github/workflows/mck-release-acceptance.yml'
+              - 'tools/mck-release-acceptance.mjs'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/morphir/Cargo.toml'
@@ -390,6 +409,9 @@ jobs:
       - name: Initialize (CI mode)
         run: mise run init -- --ci
 
+      - name: Set up Rust CI
+        uses: ./.github/actions/setup-rust-ci
+
       - name: Validate schemas against the metaschema
         run: mise run schema:validate
 
@@ -424,11 +446,18 @@ jobs:
       - name: Check the Morphir Compatibility Kit
         run: mise run mck:check
 
-      - name: Check kit fences against the v4 schemas
-        run: mise run mck:schema-check
+      - name: Test the native MCK engine for kit and schema changes
+        if: ${{ needs.changes.outputs.mck == 'true' && needs.changes.outputs.rust != 'true' }}
+        run: cargo test --locked --package morphir-mck
 
       - name: Run the kit against the TypeScript binding
-        run: mise run mck:run
+        run: |
+          rm -f .dev/out/mck/morphir-typescript-adapter.json .dev/out/mck/morphir-typescript-adapter.html
+          mise run mck:run
+
+      - name: Render the TypeScript binding's MCK report
+        if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-typescript-adapter.json') != '' }}
+        run: cargo run --locked -p morphir -- mck report render .dev/out/mck/morphir-typescript-adapter.json --format html --output .dev/out/mck/morphir-typescript-adapter.html
 
       - name: Validate draft package schemas and examples
         run: mise run package:schema-check
@@ -440,7 +469,9 @@ jobs:
         if: always()
         with:
           name: mck-reports
-          path: .dev/out/mck
+          path: |
+            .dev/out/mck/morphir-typescript-adapter.json
+            .dev/out/mck/morphir-typescript-adapter.html
 
   # Kit run against the Rust binding and the migrate validation. Both build
   # from the shared cargo cache and neither needs the extensions, so they run
@@ -466,14 +497,22 @@ jobs:
         uses: ./.github/actions/setup-rust-ci
 
       - name: Run the kit against the Rust binding
-        run: mise run mck:run-rust
+        run: |
+          rm -f .dev/out/mck/morphir-rust.json .dev/out/mck/morphir-rust.html
+          mise run mck:run-rust
+
+      - name: Render the Rust binding's MCK report
+        if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-rust.json') != '' }}
+        run: cargo run --locked -p morphir -- mck report render .dev/out/mck/morphir-rust.json --format html --output .dev/out/mck/morphir-rust.html
 
       - name: Upload the Rust binding's MCK report
         uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mck-report-morphir-rust
-          path: .dev/out/mck/morphir-rust.json
+          path: |
+            .dev/out/mck/morphir-rust.json
+            .dev/out/mck/morphir-rust.html
 
       - name: Compare the first driver and the Rust runner on the same adapter
         if: ${{ !cancelled() }}
@@ -555,6 +594,9 @@ jobs:
 
       - name: Validate release workflow
         run: python3 -B -m unittest discover -s tests/ci
+
+      - name: Validate release acceptance preparation syntax
+        run: node --check tools/mck-release-acceptance.mjs
 
   check:
     name: All Checks

@@ -8,5 +8,8 @@ Morphir Compatibility Kit: validate, vendor and run compatibility kits
 ## Subcommands
 
 - [`morphir mck check [--repo-root <DIR>] [--json] <DIR>`](mck/check.md)
+- [`morphir mck coverage [--kit <DIR>] [--repo-root <DIR>]`](mck/coverage.md)
 - [`morphir mck kit <SUBCOMMAND>`](mck/kit.md)
+- [`morphir mck report <SUBCOMMAND>`](mck/report.md)
 - [`morphir mck run <FLAGS>`](mck/run.md)
+- [`morphir mck schema <SUBCOMMAND>`](mck/schema.md)
