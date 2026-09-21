@@ -3411,4 +3411,38 @@ enabled = true
             },
         }
     }
+
+    /// Discovery walks up from the start directory. Pinned before the lookup
+    /// moves into the session's startup phase, so the move can be checked
+    /// rather than trusted.
+    #[test]
+    fn configuration_is_discovered_by_walking_up_from_the_start_directory() {
+        let root = tempfile::tempdir().expect("temp dir");
+        std::fs::write(
+            root.path().join("morphir.toml"),
+            "[frontend]\nlanguage = \"elm\"\n",
+        )
+        .expect("write config");
+        let nested = root.path().join("a").join("b");
+        std::fs::create_dir_all(&nested).expect("create nested");
+
+        let found = morphir_devkit::discover_config(&nested).expect("discovery succeeds");
+
+        assert_eq!(
+            found.as_deref().and_then(std::path::Path::file_name),
+            Some(std::ffi::OsStr::new("morphir.toml"))
+        );
+    }
+
+    /// A directory with no configuration above it discovers nothing, and that
+    /// is not an error. This is the case GH #887 turned into a silent defect,
+    /// so it is pinned explicitly.
+    #[test]
+    fn a_tree_without_configuration_discovers_nothing_without_failing() {
+        let root = tempfile::tempdir().expect("temp dir");
+
+        let found = morphir_devkit::discover_config(root.path()).expect("discovery succeeds");
+
+        assert_eq!(found, None);
+    }
 }
