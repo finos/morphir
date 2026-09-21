@@ -247,3 +247,95 @@ fn a_selection_cannot_import_an_unselected_sibling_module() {
         "expected an unresolved-import error citing module `B` as the cause, got: {err}"
     );
 }
+
+/// A standalone single-file Elm compile with no `--ir-version` flag always
+/// emits classic IR v3, regardless of the project route's v4 default (see
+/// `ir_version_default_for_whole_project_compile` below). Observed via
+/// `cargo test ... -- --nocapture`: `formatVersion = Number(3)`.
+#[test]
+fn ir_version_default_for_standalone_single_file_compile() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+    );
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["formatVersion"],
+        serde_json::json!(3),
+        "expected the standalone single-file route to default to classic IR v3"
+    );
+}
+
+/// A standalone single-file Elm compile with `--ir-version 4` is rejected
+/// outright: this route only ever produces classic IR v3, so it never even
+/// reaches the frontend before failing. Observed stderr: `Validation error:
+/// Single-file Elm compilation supports only IR v3`.
+#[test]
+fn ir_version_4_on_standalone_single_file_compile() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Acme.Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+            "--ir-version",
+            "4",
+        ],
+    );
+    assert!(!ok, "expected --ir-version 4 to be rejected on the standalone single-file route");
+    // This exact sentence is the CLI's own validation message for this one
+    // rejection path; nothing else in the process produces it, so it cannot
+    // be satisfied by an unrelated failure the way a short substring could.
+    assert!(
+        err.contains("Single-file Elm compilation supports only IR v3"),
+        "unexpected stderr: {err}"
+    );
+}
+
+/// A whole-project compile (built-in Gleam provider) with no `--ir-version`
+/// defaults to IR v4 — the opposite of the standalone single-file route
+/// above, which always emits v3. This is the divergence a later refactor
+/// merging the two compile routes must confront rather than silently erase.
+/// Observed via `cargo test ... -- --nocapture`: `formatVersion = Number(4)`.
+#[test]
+fn ir_version_default_for_whole_project_compile() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['api']\n\n[frontend]\nlanguage = 'gleam'\n",
+    )
+    .unwrap();
+    fs::write(dir.join("src/api.gleam"), "pub type Answer { Answer }\n").unwrap();
+
+    let (ok, _out, err) = morphir(dir, &["compile"]);
+    assert!(ok, "{err}");
+
+    let ir = distribution(dir);
+    assert_eq!(
+        ir["formatVersion"],
+        serde_json::json!(4),
+        "expected the whole-project Gleam route to default to IR v4"
+    );
+}
