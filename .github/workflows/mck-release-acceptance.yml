@@ -45,6 +45,13 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      - name: Configure Windows Git paths
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          git config --global core.longpaths true
+          "CARGO_NET_GIT_FETCH_WITH_CLI=true" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
