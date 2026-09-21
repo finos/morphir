@@ -20,6 +20,15 @@ path = "src/lib.rs"
 name = "morphir"
 path = "src/main.rs"
 
+[features]
+# On by default so a normal build/test/clippy is unchanged; a contributor
+# whose Visual Studio install lacks the "MSVC Spectre-mitigated libs"
+# optional component builds with `--no-default-features` to skip `regorus`
+# entirely and get everything except Rego evaluation (`morphir eval` and
+# itest's Rego-backed assertions). See issue #886.
+default = ["rego"]
+rego = ["dep:morphir-opa"]
+
 [dependencies]
 starbase = { workspace = true }
 clap = { workspace = true, features = ["color"] }
@@ -37,7 +46,11 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal
 axum = { version = "0.8", features = ["ws"] }
 morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 morphir-evaluator = { path = "../morphir-evaluator" }
-morphir-opa = { path = "../morphir-opa" }
+# Pulls in `regorus`, which unconditionally enables `msvc_spectre_libs`'s
+# `error` feature; that turns a missing "MSVC Spectre-mitigated libs" VS
+# component into a build panic on Windows (see the `rego` feature below and
+# https://github.com/finos/morphir/issues/886).
+morphir-opa = { path = "../morphir-opa", optional = true }
 morphir-mck = { path = "../morphir-mck" }
 # `mck kit vendor --source github:finos/morphir` downloads one commit archive over HTTPS.
 reqwest.workspace = true
