@@ -193,8 +193,7 @@ run = "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck"
 description = "Run the native MCK against the TypeScript adapter and check its report and kit coverage"
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "cargo run --locked -p morphir -- mck run --kit spec/ir/mck --adapter bun --adapter-arg ecosystem/morphir-typescript/packages/mck/src/adapter.ts --report .dev/out/mck/morphir-typescript-adapter.json",
-    "cargo run --locked -p morphir -- mck report check .dev/out/mck/morphir-typescript-adapter.json spec/ir/mck/allowed-failing.json --kit spec/ir/mck",
+    "bun run tools/run-mck-gate.ts .dev/out/mck/morphir-typescript-adapter.json spec/ir/mck/allowed-failing.json spec/ir/mck bun ecosystem/morphir-typescript/packages/mck/src/adapter.ts",
     "cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck",
 ]
 
@@ -203,9 +202,7 @@ description = "Run the native MCK against the pinned Rust adapter and check its 
 # Native spawning resolves the .exe suffix on Windows, as in mck:parity-rust.
 run = [
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
-    "cargo run --locked -p morphir -- mck run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --kit spec/ir/mck --report .dev/out/mck/morphir-rust.json",
-    # The native reader validates the draft schema before adjudicating inventory and baseline.
-    "cargo run --locked -p morphir -- mck report check .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json --kit spec/ir/mck",
+    "bun run tools/run-mck-gate.ts .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json spec/ir/mck ecosystem/morphir-rust/target/debug/mck-adapter-rust",
     "cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck",
 ]
 
