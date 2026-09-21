@@ -1,7 +1,7 @@
 ---
 type: Design Note
 title: Configuration and lifecycle
-description: How the Morphir CLI resolves a setting and where each phase of a run produces the state the next one needs.
+description: The proposed model for how the Morphir CLI resolves a setting and where each phase of a run produces the state the next one needs.
 tags: [cli, configuration, lifecycle, starbase, precedence, provenance]
 status: draft
 ---
@@ -12,6 +12,15 @@ The Morphir CLI reads settings from files, from the environment and from the com
 as a sequence of phases, and each phase produces state the next one uses. This note is the
 narrative home for both, because they are one design. Treating them separately is what allowed a
 setting to be read before anything had been loaded.
+
+## Status
+
+Proposed. Nothing on this page has shipped. It records the model two decisions agreed on 2026-09-20,
+and this note is where progress against it is tracked as parts land.
+
+What is true today: seven configuration layers exist and work, the command line is not one of them,
+each flag resolves its own precedence, and `MorphirSession` implements only `execute`. The sections
+below describe the target, and say so where it matters.
 
 ## The problem this solves
 
@@ -56,14 +65,16 @@ Configuration is one ordered stack. A later layer overrides an earlier one.
 | 350 | WorkspaceMember | the selected member |
 | 400 | UserOverride | personal override beside the project file |
 | 600 | Environment | `MORPHIR_*` |
-| 700 | CommandLine | flags |
+| 700 | CommandLine (proposed) | flags |
 
-The command line is the layer this design adds. See
+Layers 0 through 600 exist today. The command line is the layer this design adds, and it is the
+only row in that table not yet implemented. See
 [The command line is a configuration layer](/decisions/0001-the-command-line-is-a-configuration-layer.md)
 for why, and for why Morphir keeps its own loader rather than adopting an external library.
 
-Two properties follow. Precedence is a number rather than a rule each setting repeats. And because
-the stack records which layer supplied each value, an error can name the surface that set it:
+Two properties follow. Precedence becomes a number rather than a rule each setting repeats. And
+because the stack records which layer supplied each value, an error will be able to name the
+surface that set it, which today it cannot:
 
 ```
 frontend.elm.ordering is "alphabetical", which is not a mode this frontend knows;
@@ -71,8 +82,8 @@ it must be "source" or "morphir-elm"
   --> set by MORPHIR_FRONTEND__ELM__ORDERING
 ```
 
-A flag names its key where the flag is declared, because no rule derives `frontend.elm.ordering`
-from `--elm-ordering`:
+A flag will name its key where the flag is declared, because no rule derives
+`frontend.elm.ordering` from `--elm-ordering`:
 
 ```rust
 #[arg(long)]
@@ -83,6 +94,24 @@ elm_ordering: Option<String>,
 ## Where the stack lives
 
 A run moves through phases. Each phase produces something, and the session carries it forward.
+Every failure path reaches shutdown, whatever phase failed.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Bootstrap
+    Bootstrap --> Startup : hands over host config, logging
+    Startup --> Analyze : hands over Ready
+    Analyze --> Execute : hands over validated settings
+    Execute --> Shutdown : hands over the exit code
+    Startup --> Shutdown : fails
+    Analyze --> Shutdown : fails
+    Execute --> Shutdown : fails
+    Shutdown --> [*] : flushes logs, reports the outcome
+```
+
+**Figure 1:** The proposed lifecycle. Notice that three arrows enter shutdown from failures, so
+shutdown can begin holding only what bootstrap produced. That is why shutdown reads the state it
+finds rather than expecting a completed run.
 
 | Phase | Produces |
 | --- | --- |
@@ -101,11 +130,11 @@ Commands read settings from the state startup produced. No command loads configu
 [The session owns the application lifecycle](/decisions/0002-the-session-owns-the-application-lifecycle.md)
 records how that state is modelled and why command code cannot run without it.
 
-## What this changes for a reader
+## What this will change for a reader
 
-Every setting honours the same three surfaces, so the documentation for one no longer has to
-restate the rules for all. A malformed value fails at startup with a message naming both the key
-and the surface, rather than partway through a compile with a message naming only the file.
+Every setting will honour the same three surfaces, so the documentation for one need not restate
+the rules for all. A malformed value will fail at startup with a message naming both the key and
+the surface, rather than partway through a compile with a message naming only the file.
 
 ## Open questions
 

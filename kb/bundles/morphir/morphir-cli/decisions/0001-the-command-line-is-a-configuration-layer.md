@@ -5,16 +5,24 @@ state: Accepted
 decided: 2026-09-20
 tags: [cli, configuration, layering, precedence, provenance, starbase]
 status: stable
-description: Command-line flags become an ordinary layer in the existing configuration stack, above the environment, rather than precedence logic written again at each call site.
+description: Morphir chose to make command-line flags an ordinary layer in the configuration stack, above the environment, rather than precedence logic written again at each call site. Implementation is pending.
 ---
 
 # The command line is a configuration layer
 
-Morphir resolves configuration through an ordered stack of layers. The command line joins that
-stack as one more layer, at precedence 700, above the environment at 600. Flags stop being
-special.
+Morphir chose to make command-line flags an ordinary layer in the configuration stack, at
+precedence 700, above the environment at 600. Flags stop being special. Morphir also chose to keep
+its existing loader rather than adopt an external configuration library.
 
-The existing loader stays. Morphir does not adopt an external configuration library.
+## Implementation status
+
+Not implemented. This record captures the decision taken on 2026-09-20 and the reasoning behind
+it, which is what a decision record is for. No code implements it yet.
+
+At the time of writing `ConfigSourceKind` has no `CommandLine` variant, no `#[config_key]` binding
+exists, and flags are still resolved by hand in `elm_modes::apply` and
+`frontend_extension::resolve`. [Configuration and lifecycle](/configuration-and-lifecycle.md) is
+the narrative home and tracks what has landed.
 
 ## Summary
 
@@ -70,8 +78,8 @@ place to update, so a new flag could still be added without one. A flag with no 
 a configuration setting, which keeps the annotation meaningful.
 
 **Provenance improves the errors.** A stack that knows which layer supplied a value can say so. A
-malformed mode used to report only `morphir.toml`, even when the value came from the environment.
-One message now names the key and the surface that set it.
+malformed mode reports only `morphir.toml` today, even when the value came from the environment.
+Under this decision one message will name the key and the surface that set it.
 
 ## Why not schematic
 

@@ -5,14 +5,26 @@ state: Accepted
 decided: 2026-09-20
 tags: [cli, lifecycle, starbase, session, typestate, configuration]
 status: stable
-description: The CLI session implements every starbase phase and holds phase-produced data in a discriminated union, so command code cannot run without the state its phase produced.
+description: Morphir chose to have the CLI session implement every starbase phase and hold phase-produced data in a discriminated union, so command code cannot run without the state its phase produced. Implementation is pending.
 ---
 
 # The session owns the application lifecycle
 
-`MorphirSession` implements all of starbase's phases, not only `execute`. Each phase produces the
-state the next one needs, and the session holds that state in a discriminated union. Command code
-receives the produced state directly, so it cannot run without it.
+Morphir chose to have `MorphirSession` implement all of starbase's phases rather than only
+`execute`. Each phase produces the state the next one needs, and the session holds that state in a
+discriminated union. Command code receives the produced state directly, so it cannot run without
+it.
+
+## Implementation status
+
+Not implemented. This record captures the decision taken on 2026-09-20 and the reasoning behind
+it.
+
+At the time of writing `MorphirSession` holds `command`, `operation_id` and `out`, and its
+`AppSession` implementation overrides only `execute` (`crates/morphir/src/main.rs`). Commands still
+load configuration themselves, and the log guard still lives in `main`.
+[Configuration and lifecycle](/configuration-and-lifecycle.md) is the narrative home and tracks
+what has landed.
 
 ## Summary
 
@@ -41,7 +53,8 @@ by then. Saying that in the type removes the question. Before this decision a co
 would give up `AppRunOutcome`, the recorded `last_phase`, exit-code handling and the guarantee that
 shutdown runs after a failed phase. That trade is worse than the check it removes.
 
-**A discriminated union fits, and typestate still pays below the boundary.**
+**A discriminated union fits, and typestate still pays below the boundary.** The shape decided on
+is:
 
 ```rust
 struct MorphirSession {
