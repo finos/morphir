@@ -65,7 +65,13 @@ fn a_synthesized_package_is_named_for_its_declared_module() {
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
     );
     assert!(ok, "{err}");
 
@@ -99,7 +105,13 @@ fn a_file_without_a_module_declaration_fails_to_compile() {
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Gadget.elm", "--extension", "morphir-elm-native"],
+        &[
+            "compile",
+            "--input",
+            "Gadget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
     );
     assert!(!ok, "expected compilation to fail, but it succeeded");
     assert!(
@@ -128,7 +140,13 @@ fn a_file_with_an_illegal_stem_and_no_module_declaration_fails_to_compile() {
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "not-a-module.elm", "--extension", "morphir-elm-native"],
+        &[
+            "compile",
+            "--input",
+            "not-a-module.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
     );
     assert!(!ok, "expected compilation to fail, but it succeeded");
     assert!(
@@ -192,13 +210,30 @@ fn a_selection_inside_a_project_keeps_project_identity_and_narrows_exposure() {
         "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['A', 'B']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
     )
     .unwrap();
-    fs::write(dir.join("src/A.elm"), "module A exposing (Alpha)\n\n\ntype alias Alpha =\n    Int\n").unwrap();
-    fs::write(dir.join("src/B.elm"), "module B exposing (Beta)\n\n\ntype alias Beta =\n    Int\n").unwrap();
+    fs::write(
+        dir.join("src/A.elm"),
+        "module A exposing (Alpha)\n\n\ntype alias Alpha =\n    Int\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("src/B.elm"),
+        "module B exposing (Beta)\n\n\ntype alias Beta =\n    Int\n",
+    )
+    .unwrap();
 
     // `--config` is required: a standalone `--input` compile does not load an
     // adjacent morphir.toml. It is also what makes this the manifest-origin
     // case at all, since the spec's manifest origin means "selected or loaded".
-    let (ok, _out, err) = morphir(dir, &["compile", "--input", "src/A.elm", "--config", "morphir.toml"]);
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "src/A.elm",
+            "--config",
+            "morphir.toml",
+        ],
+    );
     assert!(ok, "{err}");
 
     let ir = distribution(dir);
@@ -247,9 +282,22 @@ fn a_selection_cannot_import_an_unselected_sibling_module() {
         "module A exposing (Alpha)\n\nimport B exposing (Beta)\n\n\ntype alias Alpha =\n    Beta\n",
     )
     .unwrap();
-    fs::write(dir.join("src/B.elm"), "module B exposing (Beta)\n\n\ntype alias Beta =\n    Int\n").unwrap();
+    fs::write(
+        dir.join("src/B.elm"),
+        "module B exposing (Beta)\n\n\ntype alias Beta =\n    Int\n",
+    )
+    .unwrap();
 
-    let (ok, _out, err) = morphir(dir, &["compile", "--input", "src/A.elm", "--config", "morphir.toml"]);
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "src/A.elm",
+            "--config",
+            "morphir.toml",
+        ],
+    );
     // Observed: compilation fails. The provider treats the unsubmitted `B` as
     // absent and reports `Beta` unresolved from it, rather than resolving the
     // sibling file that sits right next to `A.elm` on disk. This confirms the
@@ -284,7 +332,13 @@ fn ir_version_default_for_standalone_single_file_compile() {
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
     );
     assert!(ok, "{err}");
 
@@ -329,9 +383,18 @@ fn ir_version_4_on_standalone_single_file_compile() {
     // exists on disk before the rejection below.
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
     );
-    assert!(ok, "prior compile establishing a record must succeed: {err}");
+    assert!(
+        ok,
+        "prior compile establishing a record must succeed: {err}"
+    );
 
     let (ok, _out, err) = morphir(
         dir,
@@ -345,7 +408,10 @@ fn ir_version_4_on_standalone_single_file_compile() {
             "4",
         ],
     );
-    assert!(!ok, "expected --ir-version 4 to be rejected on the standalone single-file route");
+    assert!(
+        !ok,
+        "expected --ir-version 4 to be rejected on the standalone single-file route"
+    );
     // This exact sentence is the CLI's own validation message for this one
     // rejection path; nothing else in the process produces it, so it cannot
     // be satisfied by an unrelated failure the way a short substring could.
@@ -449,7 +515,13 @@ fn provider_selection_by_flag_alone_with_no_configuration() {
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
     );
     assert!(ok, "{err}");
 
@@ -471,9 +543,22 @@ fn provider_selection_by_flag_alone_with_no_configuration() {
 fn a_failed_compile_tombstones_the_previous_success() {
     let temp = tempfile::tempdir().unwrap();
     let dir = temp.path();
-    fs::write(dir.join("Widget.elm"), "module Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n").unwrap();
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Widget exposing (Size)\n\n\ntype alias Size =\n    Int\n",
+    )
+    .unwrap();
 
-    let (ok, _out, err) = morphir(dir, &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"]);
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
     assert!(ok, "first compile succeeds: {err}");
 
     // Now make it fail, without changing anything else about the invocation.
@@ -481,8 +566,21 @@ fn a_failed_compile_tombstones_the_previous_success() {
     // trips a real parse/compile error rather than the missing-module-
     // declaration error pinned by `a_file_without_a_module_declaration_fails_to_compile`.
     // Observed stderr: "syntax error near `!!! not`".
-    fs::write(dir.join("Widget.elm"), "module Widget exposing (Size)\n\n\ntype alias Size =\n    !!! not elm\n").unwrap();
-    let (ok, _out, err) = morphir(dir, &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"]);
+    fs::write(
+        dir.join("Widget.elm"),
+        "module Widget exposing (Size)\n\n\ntype alias Size =\n    !!! not elm\n",
+    )
+    .unwrap();
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
+    );
     assert!(!ok, "second compile fails");
     assert!(
         err.contains("syntax error"),
@@ -538,7 +636,13 @@ fn provider_selection_by_configuration_with_no_flag() {
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Widget.elm", "--config", "morphir.toml"],
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--config",
+            "morphir.toml",
+        ],
     );
     assert!(ok, "{err}");
 
@@ -568,11 +672,21 @@ fn a_project_flag_discovers_configuration_and_keeps_project_identity() {
         "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['A']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
     )
     .unwrap();
-    fs::write(dir.join("src/A.elm"), "module A exposing (Alpha)\n\n\ntype alias Alpha =\n    Int\n").unwrap();
+    fs::write(
+        dir.join("src/A.elm"),
+        "module A exposing (Alpha)\n\n\ntype alias Alpha =\n    Int\n",
+    )
+    .unwrap();
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "src/A.elm", "--project", "acme/widgets"],
+        &[
+            "compile",
+            "--input",
+            "src/A.elm",
+            "--project",
+            "acme/widgets",
+        ],
     );
     assert!(ok, "{err}");
 
@@ -609,7 +723,13 @@ fn a_project_flag_with_no_discoverable_configuration_is_refused() {
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Widget.elm", "--project", "acme/widgets"],
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--project",
+            "acme/widgets",
+        ],
     );
     assert!(!ok, "expected the compile to be refused, but it succeeded");
     // This exact sentence is the CLI's own validation message for this one
@@ -643,7 +763,13 @@ fn a_port_module_is_named_like_a_plain_declared_module() {
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Ports.elm", "--extension", "morphir-elm-native"],
+        &[
+            "compile",
+            "--input",
+            "Ports.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
     );
     assert!(ok, "{err}");
 
@@ -682,7 +808,13 @@ fn a_nested_block_comment_before_the_module_declaration_does_not_change_identity
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "Widget.elm", "--extension", "morphir-elm-native"],
+        &[
+            "compile",
+            "--input",
+            "Widget.elm",
+            "--extension",
+            "morphir-elm-native",
+        ],
     );
     assert!(ok, "{err}");
 
