@@ -85,12 +85,19 @@ pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
 }
 
 fn should_use_single_file_process(options: &CompileOptions) -> bool {
-    let Some(input) = options.input.as_deref() else {
+    is_single_file_request(options.input.as_deref(), options.language.as_deref())
+}
+
+/// Whether a compile request should be routed to the single-file Elm process
+/// instead of the configured-provider path. Carries the same condition as
+/// [`should_use_single_file_process`], which calls this, so the two cannot
+/// drift; the session's `startup` phase also needs this decision before a
+/// full [`CompileOptions`] exists.
+pub(crate) fn is_single_file_request(input: Option<&str>, language: Option<&str>) -> bool {
+    let Some(input) = input else {
         return false;
     };
-    if let Some(language) = options
-        .language
-        .as_deref()
+    if let Some(language) = language
         .map(str::trim)
         .filter(|language| !language.is_empty())
     {
@@ -976,7 +983,7 @@ fn validate_distribution_identity(
     Ok(())
 }
 
-fn absolute_from(base: &Path, path: &Path) -> PathBuf {
+pub(crate) fn absolute_from(base: &Path, path: &Path) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()
     } else {

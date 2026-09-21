@@ -814,17 +814,129 @@ enum KbDecisionAction {
     Show(commands::kb::KbDecisionShowArgs),
 }
 
+/// What `startup` produced, available to every later phase.
+///
+/// Only `startup` constructs one. `config` keeps the `Option` the current
+/// loader has, because a run legitimately has no configuration file; the
+/// change here is that exactly one place decides that, rather than each
+/// command deciding for itself. The `Option` goes away when `EffectiveConfig`
+/// replaces `ConfigContext`, which is a later increment.
+///
+/// `startup` is the only producer today; no phase reads `start_dir` or
+/// `config` back out yet, so both fields are dead code until the next
+/// lifecycle task wires a consumer through `MorphirSession::ready`. Allowed
+/// rather than deleted, because removing them would just mean re-adding the
+/// same fields next task.
+#[derive(Debug)]
+#[allow(dead_code)]
+struct Ready {
+    start_dir: std::path::PathBuf,
+    config: Option<morphir_devkit::ConfigContext>,
+}
+
+/// The state a phase produced. Phase *progress* is starbase's, in `AppPhase`
+/// and `AppRunOutcome.last_phase`; this carries only the data.
+#[derive(Clone)]
+enum SessionState {
+    /// Before `startup`: the session holds only its command and out overrides.
+    Bootstrapped,
+    /// After `startup`. Only `MorphirSession::ready` reads this variant today
+    /// (see its own `#[allow(dead_code)]`); no phase calls `ready` yet.
+    #[allow(dead_code)]
+    Ready(std::sync::Arc<Ready>),
+}
+
 /// Application session for Morphir CLI
 #[derive(Clone)]
 struct MorphirSession {
     command: Commands,
     operation_id: observability::OperationId,
     out: commands::OutOverrides,
+    state: SessionState,
+}
+
+impl MorphirSession {
+    /// What `startup` produced.
+    ///
+    /// An error rather than a panic so a wiring mistake reports like any other
+    /// CLI failure. It names the phase, because the only way to see it is to
+    /// call a command outside the lifecycle.
+    ///
+    /// No phase calls this yet; only its own test does. The next lifecycle
+    /// task is what wires a command to call it from `execute`.
+    #[allow(dead_code)]
+    fn ready(&self) -> Result<&Ready, miette::Report> {
+        match &self.state {
+            SessionState::Ready(ready) => Ok(ready),
+            SessionState::Bootstrapped => Err(miette::miette!(
+                "configuration was requested before the startup phase produced it"
+            )),
+        }
+    }
 }
 
 #[async_trait::async_trait]
 impl AppSession for MorphirSession {
     type Error = miette::Report;
+
+    async fn startup(&mut self) -> AppResult<miette::Report> {
+        let start_dir = std::env::current_dir()
+            .map_err(|error| crate::error::CliError::FileSystem { error })?;
+
+        // Only a whole-project compile has its configuration resolved here. The
+        // single-file path applies a different rule (configuration optional,
+        // discovery only under `--project`), and unifying them would change
+        // behaviour, so it still resolves its own.
+        let compile = match &self.command {
+            Commands::Compile {
+                config,
+                project,
+                input,
+                language,
+                ..
+            } if !commands::compile::is_single_file_request(
+                input.as_deref(),
+                language.as_deref(),
+            ) =>
+            {
+                Some((config.clone(), project.clone()))
+            }
+            _ => None,
+        };
+
+        let config = match compile {
+            None => None,
+            Some((config_flag, project_flag)) => {
+                let config_file = match config_flag.as_deref() {
+                    Some(path) => {
+                        commands::compile::absolute_from(&start_dir, std::path::Path::new(path))
+                    }
+                    None => morphir_devkit::discover_config(&start_dir)
+                        .map_err(|error| crate::error::CliError::Config { error })?
+                        .ok_or_else(|| crate::error::CliError::Config {
+                            error: anyhow::anyhow!(
+                                "No morphir.toml, morphir.yaml, or morphir.json found"
+                            ),
+                        })?,
+                };
+                let context = morphir_devkit::load_config_context_with(
+                    &config_file,
+                    &morphir_devkit::ConfigLoadOptions {
+                        project: project_flag
+                            .map(morphir_devkit::config::ProjectSelection::Explicit)
+                            .unwrap_or_default(),
+                        ..Default::default()
+                    },
+                )
+                .map_err(|error| crate::error::CliError::Config { error })?;
+                Some(context)
+            }
+        };
+
+        self.state = SessionState::Ready(std::sync::Arc::new(Ready { start_dir, config }));
+
+        Ok(None)
+    }
 
     async fn execute(&mut self) -> AppResult<miette::Report> {
         match &self.command {
@@ -1347,6 +1459,7 @@ async fn run() -> starbase::MainResult {
             command,
             operation_id: operation_id.clone(),
             out: commands::OutOverrides::from_process(out_dir),
+            state: SessionState::Bootstrapped,
         };
 
         // Initialize and run starbase App.
@@ -1393,5 +1506,28 @@ mod operation_diagnostic_tests {
                 .as_deref(),
             Some("[REDACTED]")
         );
+    }
+
+    /// Asking for the loaded configuration before startup has produced it is a
+    /// programming error, and it names the phase rather than returning an empty
+    /// configuration that reads as "nothing was configured". Conflating those two
+    /// is what made GH #887 silent.
+    #[test]
+    fn asking_for_ready_before_startup_names_the_phase() {
+        use super::{MorphirSession, SessionState};
+
+        let session = MorphirSession {
+            command: super::Commands::Usage,
+            operation_id: morphir::observability::OperationId::new(),
+            out: super::commands::OutOverrides::default(),
+            state: SessionState::Bootstrapped,
+        };
+
+        let failure = session
+            .ready()
+            .expect_err("no configuration before startup");
+
+        let message = failure.to_string();
+        assert!(message.contains("startup"), "{message}");
     }
 }
