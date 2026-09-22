@@ -278,6 +278,9 @@ fn validate_schedule(
                     {
                         return Err("publication checkpoint on nonpublication operation".into());
                     }
+                    if step == "writer-lock" && subject["kind"] != "repository" {
+                        return Err("writer-lock checkpoint requires repository subject".into());
+                    }
                     if barriers
                         .insert(
                             canonical(checkpoint),

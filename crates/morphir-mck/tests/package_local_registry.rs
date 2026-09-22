@@ -401,6 +401,64 @@ fn logical_aliases_are_distinct_from_physical_registry_roots() {
             .contains("alias")
     );
 }
+
+#[test]
+fn writer_lock_checkpoints_require_repository_subjects() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let schema: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(root.join(SCHEMA)).unwrap()).unwrap();
+    let checkpoint_schema = json!({
+        "$defs": {
+            "Id": schema["$defs"]["Id"],
+            "Step": schema["$defs"]["Step"],
+            "Subject": schema["$defs"]["Subject"],
+            "Checkpoint": schema["$defs"]["Checkpoint"]
+        },
+        "$ref": "#/$defs/Checkpoint"
+    });
+    let validator = jsonschema::validator_for(&checkpoint_schema).unwrap();
+    for boundary in ["before", "after"] {
+        for subject in [
+            json!({"kind":"repository","registry":"finance"}),
+            json!({"kind":"lock"}),
+            json!({"kind":"policy"}),
+            json!({"kind":"request"}),
+            json!({"kind":"object","registry":"finance","path":"metadata/timestamp.json"}),
+        ] {
+            let checkpoint = json!({"operation":"refresh","boundary":boundary,"step":"writer-lock","subject":subject});
+            assert!(validator.is_valid(&checkpoint), "{checkpoint}");
+            let mut source = scenario_files();
+            mutate(&mut source, CASE, |doc| {
+                let scenario = &mut doc["cases"][0];
+                let operation = &mut scenario["operations"][0];
+                operation["name"] = json!("publish-library");
+                operation["input"] = json!({"registry":"finance","bundle":{"asset":"future"},"record":{"kind":"hex","value":"00"},"envelope":{"kind":"hex","value":"00"},"predecessor":{"kind":"hex","value":"00"},"proposal":{"asset":"future"}});
+                scenario["actions"] = json!([
+                    {"kind":"start","operation":"refresh","barriers":[checkpoint]},
+                    {"kind":"await","checkpoint":checkpoint},
+                    {"kind":"release","checkpoint":checkpoint},
+                    {"kind":"join","operation":"refresh"}
+                ]);
+            });
+            let summary = inspect_local_registry(&source);
+            if subject["kind"] == "repository" {
+                assert!(summary.errors.is_empty(), "{:?}", summary.errors);
+                assert!(admit_local_registry(&source).is_ok());
+            } else {
+                assert!(
+                    summary
+                        .errors
+                        .join(" ")
+                        .contains("writer-lock checkpoint requires repository subject"),
+                    "{checkpoint}: {:?}",
+                    summary.errors
+                );
+                assert!(admit_local_registry(&source).is_err());
+            }
+        }
+    }
+}
+
 #[test]
 fn fatal_diagnostics_require_exactly_one_witness() {
     for code in ["resource-limit", "io-failure", "unsafe-path"] {
