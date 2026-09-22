@@ -178,9 +178,12 @@ Three methods join `ConnectedMethod` in
 | `morphir.playground.generate` | `{ir, irVersion, target, options}` | `{success, artifacts, diagnostics}` |
 
 The compile parameters keep browser-facing `documents` and omit `dependencies`.
-The provider wraps those documents in a rootless `SourceSet` and adds an empty
-dependency list. Generate adds `irVersion` so the provider can resolve a
-backend without sniffing the IR.
+That payload is already the shape of the SDK's legacy compile envelope, so the
+provider hands it to the decoder with an empty dependency list and lets it
+normalize into `SourceSet`, rather than translating between shapes itself —
+which also means a malformed or conflicting source root is rejected by the same
+contract that governs every other host. Generate adds `irVersion` so the
+provider can resolve a backend without sniffing the IR.
 
 `CONNECTED_PROTOCOL_VERSION` goes to 2. The web assets are built from
 finos/morphir-ui and checked in under `ui/assets/`, so the host and the app

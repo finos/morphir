@@ -79,9 +79,18 @@ source root, shared by CLI and UI callers, with these rules:
 The Rust SDK owns validation through `CompileRequest::source_paths()` and the
 validated `SourceRoot` and `SourcePath` types. Keeping the root in the same
 `SourceSet` as its documents prevents document replacement or combination from
-silently changing module identities. Python derives `domain/models.py` as
-`domain.models`; a nested `__init__.py` represents its package module according
-to the Python frontend's documented rules.
+silently changing module identities.
+
+On the wire the root still has a second spelling. A provider released before
+`SourceSet` existed receives the root as `options.sourceRootUri` alongside a
+top-level `documents` array, and the host selects that envelope for process and
+WASM providers while native providers receive `sources`. A frontend built on the
+SDK never sees the difference — the decoder normalizes both into `SourceSet` —
+so this concerns hosts and released artifacts, not frontend authors.
+
+Python derives `domain/models.py` as `domain.models`; a nested `__init__.py`
+represents its package module according to the Python frontend's documented
+rules.
 
 One root per compilation gives stable module identity across local paths,
 editor documents, and generated source round trips. Computing a common ancestor

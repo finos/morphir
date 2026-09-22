@@ -302,6 +302,26 @@ Passing content rather than paths has four consequences:
 
 `morphir.frontend.compile` compiles one or more source documents into a Morphir IR distribution.
 
+The request carries its documents in one of two envelopes, and a provider may be
+sent either. They are alternatives: a request carrying both is refused, because
+each names its own source root and a request stating two has no honest answer
+for which one module identities resolve against.
+
+- **Current** — `sources: { root?, documents }`. The root travels with the
+  documents whose identities depend on it.
+- **Legacy** — a top-level `documents` array with the root in
+  `options.sourceRootUri`. This is what released providers were built against.
+
+The host chooses per provider rather than per request: a native provider
+receives the current envelope, while a process or WASM provider receives the
+legacy one, so a provider released before `sources` existed keeps working
+unchanged. See `compile_wire_request` in the CLI. A provider built on the SDK
+decodes either envelope and sees only the normalized `sources`, so an extension
+does not implement this distinction itself — it is a wire concern.
+
+The legacy envelope is retained until an explicit protocol transition replaces
+it, at which point the host stops sending it and the decoder stops accepting it.
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -371,9 +391,11 @@ prelude, and dependency interfaces — differs from `baseline.contextDigest`, or
 a baseline that carries none, ignores the whole baseline rather than reuse
 entries computed against something else.
 
-`sources.root` supplies the absolute source root for stable relative document
-identities. The root travels with the documents whose identities depend on it,
-so replacing or combining source sets cannot silently rename modules. Relative
+`sources.root` — spelled `options.sourceRootUri` in the legacy envelope —
+supplies the absolute source root for stable relative document identities. The
+root travels with the documents whose identities depend on it, so replacing or
+combining source sets cannot silently rename modules; that is why it moved
+inside the set rather than staying beside it in the options bag. Relative
 document paths retain their nesting. Multiple documents containing absolute
 URIs require this field; one absolute document without it retains basename
 identity for existing single-document callers.
