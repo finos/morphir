@@ -61,7 +61,9 @@ the `semver` crate, already a workspace dependency. In TypeScript it is `@std/se
 Both libraries follow Cargo's caret rules and the same prerelease rule, so a reader in either
 language accepts the same versions. `@std/semver` is pure ESM with no runtime APIs, so it runs in
 Node, Deno, Bun, browsers and other WinterTC runtimes; install it through JSR, which also serves npm
-projects.
+projects. Its `parse` is more lenient than the Rust crate's: it accepts spellings such as a leading
+`v`. A version on the wire must read the same in both languages, so a TypeScript reader accepts a
+version only in the canonical spelling that `format` writes back, `format(parse(v)) === v`.
 
 The two libraries differ in how a range string separates comparators: Rust uses commas, and
 `@std/semver` uses npm syntax, a space for "and" and `||` for "or". A range that crosses languages
