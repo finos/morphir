@@ -93,7 +93,7 @@ comparators over the host version, all of which must hold. Because the extension
 instead of ignoring it. A host outside the range refuses with a message that names the range.
 
 Decision 9 keeps released guests working. A guest without `describe` answers `-32601`, or refuses because
-the request came before `initialize`. The host then runs `initialize`, `morphir.extension.capabilities`,
+the request came before `initialize`. The host then runs `initialize`, the `initialized` notification, `morphir.extension.capabilities`,
 `shutdown` and `exit`, and reads the same information from that session.
 
 Decision 10 keeps installed extensions working. A record written before statements existed has only flat

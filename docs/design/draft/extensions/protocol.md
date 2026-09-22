@@ -304,9 +304,12 @@ differently. A host outside the range refuses and names the range.
 | Side effects | none: no workspace access, no network, no writes, no dependence on environment values the host did not pass |
 
 `describe` is optional for an extension. A host that receives `-32601`, or a
-refusal because the request came before `morphir.initialize`, reads the same
-information through a session instead: `morphir.initialize`,
-`morphir.extension.capabilities`, `morphir.shutdown` and `morphir.exit`.
+refusal because the request came before `morphir.initialize`, reads what it can
+through a session instead, following the lifecycle: `morphir.initialize`, the
+`morphir.initialized` notification, `morphir.extension.capabilities`,
+`morphir.shutdown` and `morphir.exit`. A session reports less than a statement,
+so the statement the host builds from it lists only the negotiated protocol
+version and has no `requires` or `critical` members.
 
 ### Where the statement is read
 
@@ -315,7 +318,7 @@ information through a session instead: `morphir.initialize`,
 | package | release tooling, once per platform | `describe` | none |
 | publish | `extension repository publish`, for an artifact that runs on the publishing host | `describe` | none |
 | install | `extension install`, for the selected artifact, unless `--no-probe` | `describe` | none |
-| session | host | `initialize`, which returns the same statement, negotiated | none until an operation is called |
+| session | host | `initialize`, whose result must agree with the statement | none until an operation is called |
 | operate | host | operation methods | only through host functions or within its sandbox |
 | shutdown | host | `shutdown`, then `exit` | releases its resources |
 
@@ -327,6 +330,29 @@ launch rules and with the user's rights, and a `wasm` artifact runs in the WASM
 engine without direct file or network access. The
 [distribution design](./distribution-and-acquisition.md#capability-statements-in-distribution)
 describes how the statement travels between these phases.
+
+### When a session agrees with a statement
+
+An initialization result is not a capability statement. It carries one
+negotiated `protocolVersion` and the capabilities available in that session,
+while a statement lists every protocol version the extension speaks and adds
+`requires` and `critical`. A host therefore does not test the two for
+equality. An initialization result **agrees with** a statement when all of the
+following hold:
+
+1. the extension's `id`, `name` and `version` are equal;
+2. the negotiated `protocolVersion` is one of the statement's `protocolVersions`;
+3. every capability kind the session reports is among the statement's `types`;
+4. every capability member the session reports has the value the statement
+   gives it.
+
+A session may offer less than its statement, because negotiation can narrow
+what one session provides. It may never offer a kind or a member the statement
+does not have, or a different value for one it does. A result that does not
+agree is refused, and the refusal names the first rule that failed.
+
+Comparing two statements, as publication and installation do, is a comparison
+of equal documents.
 
 ## Capability methods
 

@@ -291,7 +291,7 @@ sequenceDiagram
     Inst->>Inst: equal to the record, else refuse
     User->>Host: compile or generate
     Host->>Guest: initialize
-    Host->>Host: equal to the installed statement, else refuse
+    Host->>Host: agrees with the installed statement, else refuse
 ```
 
 **Figure 1:** A statement comes from the extension at packaging time and is
@@ -304,6 +304,12 @@ statement unchanged. The installed record keeps only the statement of the
 installed artifact. The host's provider registry reads that statement, so a
 member such as `frontend.multiDocument` or the `workspace` kind is known before
 a session starts.
+
+A session is compared with the installed statement by the
+[agreement rule](./protocol.md#when-a-session-agrees-with-a-statement), not by
+equality: the session carries one negotiated protocol version and may offer less
+than the statement. Publication and installation compare two statements, which
+must be equal.
 
 `extension install --no-probe` skips the install-time `describe`. It exists for
 users who do not accept that a `process` artifact runs at installation rather

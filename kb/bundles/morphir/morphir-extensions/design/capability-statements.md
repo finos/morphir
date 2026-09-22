@@ -165,9 +165,16 @@ only the refinement.
 
 After `describe`, the caller may send `morphir.exit` without a session. `describe` is optional for
 guests. A guest that does not implement it answers `-32601` (method not found), or refuses the request
-because it came before `initialize`. In both cases the host falls back to `initialize`,
-`morphir.extension.capabilities`, `shutdown` and `exit`, and reads the same information from that
+because it came before `initialize`. In both cases the host falls back to `initialize`, the
+`initialized` notification, `morphir.extension.capabilities`, `shutdown` and `exit`, and reads what it can from that
 session.
+
+A session is not compared with a statement for equality. The initialization result carries one
+negotiated protocol version and the capabilities of that session, and a session may offer less than
+its statement. It **agrees with** the statement when the identity is equal, the negotiated protocol is
+one of the statement's `protocolVersions`, every capability kind it reports is among the statement's
+`types`, and every member it reports has the statement's value. A statement rebuilt from a fallback
+session lists only the negotiated protocol and has no `requires` or `critical`.
 
 ## Lifecycle phases
 
@@ -179,7 +186,7 @@ Publish, install, update and uninstall stay host operations. The guest takes par
 | package | release tooling, once per platform | `describe` | none |
 | publish | `repository publish`, for each artifact that runs on the publishing host | `describe` | none |
 | install | `extension install`, for the artifact it selected | `describe`, skipped with `--no-probe` | none |
-| session | host | `initialize` returns the same statement, negotiated | none until the host calls an operation |
+| session | host | `initialize`, whose result must agree with the statement | none until the host calls an operation |
 | operate | host | compile, generate, discover, validate, transform | only through host functions or inside the sandbox |
 | shutdown | host | `shutdown`, then `exit` | release resources |
 
