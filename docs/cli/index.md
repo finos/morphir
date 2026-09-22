@@ -15,6 +15,10 @@
 
 ## Subcommands
 
+- [`morphir package <SUBCOMMAND>`](package.md)
+- [`morphir package trust <SUBCOMMAND>`](package/trust.md)
+- [`morphir package trust init <FLAGS>`](package/trust/init.md)
+- [`morphir package restore <FLAGS>`](package/restore.md)
 - [`morphir eval <--request <FILE>> [--json]`](eval.md)
 - [`morphir itest [FLAGS] [ROOT]`](itest.md)
 - [`morphir compile [FLAGS]`](compile.md)

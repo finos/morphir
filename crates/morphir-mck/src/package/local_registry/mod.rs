@@ -2,6 +2,7 @@
 //! An inspection is not an execution result. Only a fully bound corpus can produce
 //! an admitted kit; its private fields retain the validated, owned inputs.
 mod corpus;
+mod portable;
 mod result;
 mod scenario;
 mod semantics;
@@ -10,6 +11,7 @@ mod validation;
 use crate::kit::hash::{ContentDigest, content_hash};
 use corpus::Corpus;
 pub use corpus::{CorpusSource, FileMapSource, RepositorySource};
+pub use portable::{PortableProfileSummary, inspect_portable_profile};
 use semantics::Validated;
 use serde::Serialize;
 use serde_json::Value;

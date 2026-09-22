@@ -15,6 +15,7 @@ pub mod kb;
 pub mod mck;
 pub mod migrate;
 pub mod out_context;
+pub mod package;
 pub mod playground;
 pub mod schema;
 pub mod tool;

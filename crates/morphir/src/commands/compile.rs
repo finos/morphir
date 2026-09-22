@@ -28,7 +28,7 @@ use morphir_devkit::{
 use morphir_distribution::{ExtensionId, VerifiedExtensionArtifact, activate_installed};
 use morphir_extension_sdk::{
     CompileOptions as ExtensionCompileOptions, CompilePackage, CompileRequest, CompileResult,
-    DiagnosticSeverity, ExtensionType, SourceDocument,
+    DiagnosticSeverity, ExtensionType, SourceDocument, SourceSet,
     protocol::{InitializeParams, MEP_VERSION, PeerInfo},
 };
 use starbase::AppResult;
@@ -1043,7 +1043,10 @@ fn builtin_single_file_frontend(
 fn single_file_request(context: &SingleFileCompileContext) -> CompileRequest {
     CompileRequest {
         language_id: context.language_id.clone(),
-        documents: vec![context.document.clone()],
+        sources: SourceSet {
+            root: None,
+            documents: vec![context.document.clone()],
+        },
         package: context.package.clone(),
         dependencies: Vec::new(),
         options: ExtensionCompileOptions {
@@ -1080,7 +1083,13 @@ async fn invoke_frontend(
 
     let request = single_file_request(context);
     match ready
-        .invoke::<CompileResult>(methods::COMPILE, request)
+        .invoke::<CompileResult>(
+            methods::COMPILE,
+            crate::extensions::compile_wire_request(
+                &request,
+                morphir_daemon::InvocationMode::ProcessMep,
+            ),
+        )
         .await
     {
         InvokeOutcome::Success(session, result) => {
@@ -1448,7 +1457,6 @@ async fn run_provider_compile(
         advertised_ir_version(&resolved.capability().ir_versions, requested_version);
     let mut extra = HashMap::from([
         ("outputDir".into(), serde_json::json!(paths.dest)),
-        ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
         ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
         (
             "emitParseStageFatal".into(),
@@ -1495,7 +1503,10 @@ async fn run_provider_compile(
         .and_then(|(cache, key)| cache.read_baseline(key));
     let request = CompileRequest {
         language_id: language,
-        documents,
+        sources: SourceSet {
+            root: Some(source_root_uri),
+            documents,
+        },
         // The project's declared exposure, when it has one: absent means the
         // compile exposes every module it found, where an empty list would now
         // mean the opposite — a package that exposes nothing.

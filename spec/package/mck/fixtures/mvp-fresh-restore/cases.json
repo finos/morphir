@@ -1,0 +1,33 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "profile": "local-library-mvp:0.1.0-draft.1",
+  "scope": "fresh-exact-lock-restore",
+  "fixture": "signed",
+  "fixedClock": "2027-01-01T00:00:00Z",
+  "cases": [
+    { "id": "mvp.restore.fresh-two-libraries", "setup": "fresh", "expected": "restored" },
+    { "id": "mvp.restore.bad-timestamp-signature", "setup": "tampered-signature", "expected": "refused", "diagnostic": "Signature threshold" },
+    { "id": "mvp.restore.bad-library-content", "setup": "tampered-content", "expected": "refused", "diagnostic": "content digest mismatch" },
+    { "id": "mvp.restore.unauthorized-publisher", "setup": "unauthorized-publisher", "expected": "refused", "diagnostic": "SignatureInvalid during Authorization" },
+    { "id": "mvp.restore.unsafe-acquisition-path", "setup": "unsafe-source", "expected": "refused", "diagnostic": "UnsafePath" },
+    { "id": "mvp.restore.uninitialized-state", "setup": "uninitialized-state", "expected": "refused", "diagnostic": "trust state is uninitialized or missing" },
+    { "id": "mvp.restore.occupied-output", "setup": "occupied-output", "expected": "refused", "diagnostic": "destination already exists" },
+    { "id": "mvp.restore.historical-policy-unsupported", "setup": "historical-policy", "expected": "refused", "diagnostic": "MVP requires fresh-metadata policy" },
+    { "id": "mvp.restore.expired-timestamp", "setup": "expired-timestamp", "expected": "refused", "diagnostic": "metadata is expired" },
+    { "id": "mvp.restore.missing-established-state", "setup": "missing-established-state", "expected": "refused", "diagnostic": "trust state database is missing" },
+    { "id": "mvp.restore.corrupt-state", "setup": "corrupt-state", "expected": "refused", "diagnostic": "file is not a database" },
+    { "id": "mvp.restore.uncertain-state", "setup": "uncertain-state", "expected": "refused", "diagnostic": "unresolved prior operation" },
+    { "id": "mvp.restore.evidence-digest-mismatch", "setup": "mismatched-evidence-digest", "expected": "refused", "diagnostic": "historical evidence unsupported by MVP" },
+    { "id": "mvp.restore.evidence-path-mismatch", "setup": "mismatched-evidence-path", "expected": "refused", "diagnostic": "historical evidence unsupported by MVP" },
+    { "id": "mvp.restore.undeclared-bundle-entry", "setup": "extra-bundle-entry", "expected": "refused", "diagnostic": "bundle inventory differs from manifest" }
+  ],
+  "invariants": {
+    "lockBytes": "unchanged",
+    "registryBytes": "unchanged-after-setup",
+    "failureOutput": "absent-or-existing-sentinel-unchanged",
+    "successLibraries": [
+      { "packagePath": "example.com/finance/loan-rules", "version": "1.0.0", "irPackageName": "example/loan-rules" },
+      { "packagePath": "example.com/finance/eligibility", "version": "1.2.0", "irPackageName": "example/eligibility" }
+    ]
+  }
+}

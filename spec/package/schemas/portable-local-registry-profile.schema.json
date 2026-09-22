@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/package/local-library-portable/0.1.0-draft.1/portable-local-registry-profile.schema.json",
+  "title": "Portable Local Library required inventory, definition planning only",
+  "type": "object",
+  "required": [
+    "profile",
+    "artifactContract",
+    "assuranceContract",
+    "status",
+    "sourceIndex",
+    "requiredGroups",
+    "environments",
+    "cases"
+  ],
+  "properties": {
+    "profile": {
+      "type": "object",
+      "required": [ "name", "version" ],
+      "properties": {
+        "name": {
+          "const": "local-library-portable"
+        },
+        "version": {
+          "const": "0.1.0-draft.1"
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifactContract": {
+      "const": "0.1.0-draft.3"
+    },
+    "assuranceContract": {
+      "const": "restore-filesystem-assurance/0.1.0-draft.1"
+    },
+    "status": {
+      "const": "definition-planning"
+    },
+    "sourceIndex": {
+      "const": "spec/package/mck/local-registry-cases.json"
+    },
+    "requiredGroups": {
+      "type": "object",
+      "required": [
+        "common",
+        "posix",
+        "windows",
+        "case-sensitive",
+        "case-insensitive"
+      ],
+      "properties": {
+        "common": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^portable-local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        },
+        "posix": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^portable-local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^portable-local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        },
+        "case-sensitive": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^portable-local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        },
+        "case-insensitive": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^portable-local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "environments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "os",
+          "architecture",
+          "filesystem",
+          "caseSensitivity",
+          "requiredGroups"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "os": {
+            "enum": [ "linux", "macos", "windows" ]
+          },
+          "architecture": {
+            "enum": [ "x86-64", "aarch64" ]
+          },
+          "filesystem": {
+            "enum": [ "ext4", "apfs", "ntfs" ]
+          },
+          "caseSensitivity": {
+            "enum": [ "sensitive", "insensitive" ]
+          },
+          "requiredGroups": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "common",
+                "posix",
+                "windows",
+                "case-sensitive",
+                "case-insensitive"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "provenance": {
+                  "properties": {
+                    "kind": {
+                      "const": "source-case"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "required": [ "derivation" ]
+            },
+            "else": {
+              "not": {
+                "required": [ "derivation" ]
+              }
+            }
+          }
+        ],
+        "required": [ "id", "group", "requirement", "provenance", "definition" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^portable-local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "group": {
+            "enum": [
+              "common",
+              "posix",
+              "windows",
+              "case-sensitive",
+              "case-insensitive"
+            ]
+          },
+          "requirement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "provenance": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [ "kind", "caseId" ],
+                "properties": {
+                  "kind": {
+                    "const": "source-case"
+                  },
+                  "caseId": {
+                    "type": "string",
+                    "pattern": "^local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [ "kind", "document" ],
+                "properties": {
+                  "kind": {
+                    "const": "contract"
+                  },
+                  "document": {
+                    "enum": [
+                      "local-library-contract.md",
+                      "package-trust-profile.md",
+                      "restore-filesystem-assurance.md",
+                      "mck/README.md"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "derivation": {
+            "type": "object",
+            "required": [
+              "removeSetup",
+              "removeObservations",
+              "operations",
+              "consumptionObservations"
+            ],
+            "properties": {
+              "removeSetup": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "removeObservations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "operations": {
+                "const": "unchanged"
+              },
+              "consumptionObservations": {
+                "enum": [ "complete", "not-applicable" ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "definition": {
+            "type": "object",
+            "required": [ "kind", "reason" ],
+            "properties": {
+              "kind": {
+                "const": "pending"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
