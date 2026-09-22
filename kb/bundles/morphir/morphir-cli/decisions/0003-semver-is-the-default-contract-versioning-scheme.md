@@ -32,7 +32,8 @@ and package release versions
 1. **The version is a SemVer 2.0 string**, for example `1.0.0-draft.1` or `1.0.0`.
 2. **A released version is compatible within its major.** A reader that knows `1.2.0` accepts
    any `1.x.y`. A reader ignores members it does not understand, unless a `critical` list names
-   them. A breaking change takes a new major.
+   them. A breaking change takes a new major. **On the `0.y.z` line the minor acts as the major**,
+   as in Cargo: `0.1.x` releases are compatible with each other, and `0.2.0` is a breaking change.
 3. **A prerelease version matches only exactly.** A reader accepts a draft such as
    `1.0.0-draft.3` only when it names that exact version. Drafts are refined in place and promise
    no compatibility with each other.
@@ -40,6 +41,10 @@ and package release versions
    the release never takes a draft for it.
 5. **A reader supports a range**: the current released major, the previous released major, and
    the exact drafts it lists.
+6. **A new contract starts at `0.1.0-draft.1`.** It moves to the `1.0.0-draft` line when its shape
+   is settled enough to aim at a stable release, and to `1.0.0` when it freezes. A **revision of a
+   format that already shipped in a released host** continues from that released major instead:
+   its next shape is the next major's first draft, so it never sorts below what hosts already read.
 
 ## Why
 
@@ -69,10 +74,12 @@ from every future contract, so it does not need to be decided again each time.
 
 ## Consequences
 
-- The capability statement starts at `statementVersion` `1.0.0-draft.1`.
-- The extension release descriptor moves to `schemaVersion` `2.0.0-draft.1`. Readers keep accepting
-  the existing integer and `major.minor` values as version 1.
-- The workspace discovery protocol moves from the integer `1` to `1.0.0-draft.1`. This replaces the
+- The capability statement is a new contract and starts at `statementVersion` `0.1.0-draft.1`.
+- The extension release descriptor and the index and installed records already shipped, as the
+  integer `1` and `"1.0"`. Their next shape is `2.0.0-draft.1`, and readers keep accepting the
+  shipped values as version 1.
+- The workspace discovery protocol never shipped outside pre-release pins, so it is treated as new: it
+  moves from the integer `1` to `0.1.0-draft.1`. This replaces the
   earlier ruling in #915 that the protocol "stays at version 1 while pre-release": the intent is
   the same, and the draft tag now states it.
 - `AGENTS.md` states the default, so contributors and agents apply it without being asked.

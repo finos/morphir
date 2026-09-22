@@ -113,7 +113,7 @@ A statement has the same content in every phase (source `spec`):
 
 ```json
 {
-  "statementVersion": "1.0.0-draft.1",
+  "statementVersion": "0.1.0-draft.1",
   "protocolVersions": ["0.1"],
   "extension": {
     "id": "morphir-elm",
@@ -129,7 +129,7 @@ A statement has the same content in every phase (source `spec`):
       "incremental": false,
       "multiDocument": false
     },
-    "workspace": { "protocolVersions": ["1.0.0-draft.1"], "discover": true }
+    "workspace": { "protocolVersions": ["0.1.0-draft.1"], "discover": true }
   },
   "requires": { "host": ">=0.4.0-alpha.7" },
   "critical": ["requires.host"]

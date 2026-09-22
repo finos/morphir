@@ -6,7 +6,7 @@
 * **Creation**: Added [The guest authors its capability statement](/decisions/0003-the-guest-authors-its-capability-statement.md).
 * **Creation**: Added [Readers ignore unknown members unless critical](/decisions/0004-readers-ignore-unknown-members-unless-critical.md).
 * **Update**: [Elm extension delivery](/design/elm-extension-delivery.md) now points its process-bundle publication gap to the capability statements design and decision 0003.
-* **Update**: The capability statement, the release descriptor and the workspace discovery protocol use SemVer versions (`1.0.0-draft.1`, `2.0.0-draft.1`), per the morphir-cli decision that makes SemVer the default contract versioning scheme; decision 0004's range rule is restated in those terms.
+* **Update**: The capability statement, the release descriptor and the workspace discovery protocol use SemVer versions (`0.1.0-draft.1`, `2.0.0-draft.1`), per the morphir-cli decision that makes SemVer the default contract versioning scheme; decision 0004's range rule is restated in those terms.
 
 ## 2026-09-19
 

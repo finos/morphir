@@ -78,7 +78,9 @@ Every versioned contract Morphir defines (protocols, document and schema formats
 
 - A released version is compatible within its major. Readers ignore unknown members unless a `critical` list names them. A breaking change takes a new major.
 - A prerelease such as `1.0.0-draft.3` matches only exactly. Drafts are refined in place and promise no compatibility with each other.
+- On the `0.y.z` line the minor acts as the major (as in Cargo): `0.1.x` releases are compatible, `0.2.0` breaks.
 - A reader supports the current released major, the previous released major, and the exact drafts it lists.
+- A new contract starts at `0.1.0-draft.1` and moves to the `1.0.0-draft` line once its shape is settled. A revision of a format that already shipped in a released host starts at its next major's first draft (for example `2.0.0-draft.1`).
 - Recorded exceptions: MEP keeps `0.1` until its next protocol change, and Morphir IR `formatVersion` follows its own IR decisions.
 
 See the decision [SemVer is the default contract versioning scheme](kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md).

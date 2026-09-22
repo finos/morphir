@@ -261,7 +261,7 @@ The working specification is
 
 ```json
 {
-  "statementVersion": "1.0.0-draft.1",
+  "statementVersion": "0.1.0-draft.1",
   "protocolVersions": ["0.1"],
   "extension": {
     "id": "morphir-elm",
@@ -276,7 +276,7 @@ The working specification is
       "compile": true,
       "incremental": false
     },
-    "workspace": { "protocolVersions": ["1.0.0-draft.1"], "discover": true }
+    "workspace": { "protocolVersions": ["0.1.0-draft.1"], "discover": true }
   },
   "requires": { "host": ">=0.4.0-alpha.7" },
   "critical": ["requires.host"]
@@ -796,10 +796,11 @@ A new versioned contract uses SemVer 2.0 version strings by default (see the
 knowledge-base decision
 [SemVer is the default contract versioning scheme](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md)). A
 released version is compatible within its major. A prerelease such as
-`1.0.0-draft.1` matches only exactly: drafts are refined in place and promise no
-compatibility with each other. The capability statement starts at
-`statementVersion` `1.0.0-draft.1`, and the workspace discovery protocol moves
-from the integer `1` to `1.0.0-draft.1`.
+`0.1.0-draft.1` matches only exactly: drafts are refined in place and promise no
+compatibility with each other. A new contract starts at `0.1.0-draft.1` and moves
+to the `1.0.0-draft` line once its shape is settled. The capability statement starts at
+`statementVersion` `0.1.0-draft.1`, and the workspace discovery protocol moves
+from the integer `1` to `0.1.0-draft.1`.
 
 MEP itself is a recorded exception. It keeps `major.minor` protocol versions,
 currently `0.1`, until the next change to the protocol, which adopts SemVer.
