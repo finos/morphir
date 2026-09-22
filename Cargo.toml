@@ -1,7 +1,17 @@
 
 [workspace]
 members = ["crates/*"]
-exclude = ["third_party/rust-tuf"]
+# A path dependency joins this workspace unless it is excluded, which is how a
+# crate vendored inside the submodule ends up a member of the parent's
+# workspace and subject to its lints. `ecosystem/morphir-rust` already excludes
+# `morphir-package-tough` from its own workspace for that reason; the exclusion
+# has to be repeated here because a workspace does not inherit another's.
+# Without it, `cargo clippy -p morphir -- -D warnings` fails on upstream lints
+# in vendored TUF code this repository does not own.
+exclude = [
+    "third_party/rust-tuf",
+    "ecosystem/morphir-rust/third_party/morphir-package-tough",
+]
 default-members = ["crates/morphir"]
 resolver = "3"
 
