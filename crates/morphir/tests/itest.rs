@@ -102,6 +102,10 @@ compiles if {
 "#;
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_markdown_drives_cli_with_disk_and_inline_files() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("elm/markdown");
@@ -141,6 +145,10 @@ fn itest_markdown_drives_cli_with_disk_and_inline_files() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_markdown_headings_are_independent_selectable_scenarios() {
     let temp = tempfile::tempdir().unwrap();
     // IDs and file paths may be reused in a different scenario.
@@ -193,6 +201,10 @@ fn itest_rejects_two_scenario_documents_in_one_directory() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_lists_filters_and_drives_real_cli_commands() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("cli/errors");
@@ -214,6 +226,10 @@ fn itest_lists_filters_and_drives_real_cli_commands() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_distinguishes_search_root_from_a_directory_named_root() {
     let temp = tempfile::tempdir().unwrap();
     write_scenario(temp.path(), &scenario());
@@ -247,6 +263,10 @@ fn itest_distinguishes_search_root_from_a_directory_named_root() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let temp = tempfile::tempdir().unwrap();
@@ -306,6 +326,10 @@ fn itest_fails_on_wrong_undefined_or_invalid_assertions_and_reports_case() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("suite");
@@ -342,6 +366,10 @@ fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_copies_disk_workspaces_and_combines_optional_notebook_files() {
     for workspace in [None, Some("project")] {
         let temp = tempfile::tempdir().unwrap();
@@ -482,6 +510,10 @@ fn assert_golden_output(output: &std::process::Output, success: bool, diagnostic
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_golden_notebook_whole_file_lines_and_markers() {
     for (actual, expected, selection) in [
         ("héllo\nworld\n", "héllo\nworld\n", json!({"kind":"all"})),
@@ -507,6 +539,10 @@ fn itest_golden_notebook_whole_file_lines_and_markers() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_golden_expected_file_and_explicit_line_endings() {
     let root = tempfile::tempdir().unwrap();
     fs::write(root.path().join("actual.txt"), "héllo\r\nworld\r\n").unwrap();
@@ -521,6 +557,10 @@ fn itest_golden_expected_file_and_explicit_line_endings() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_golden_mismatch_has_diff_and_final_newline_is_significant() {
     let root = tempfile::tempdir().unwrap();
     fs::write(root.path().join("actual.txt"), "wrong\n").unwrap();
@@ -573,6 +613,10 @@ fn itest_golden_invalid_or_missing_inputs_fail() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_golden_markdown_inline_and_file_expectations() {
     let root = tempfile::tempdir().unwrap();
     fs::write(
@@ -679,6 +723,10 @@ fn itest_golden_rejects_symlinked_expected_files_even_in_inline_workspaces() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_golden_freezes_expected_files_before_cli_commands() {
     let root = tempfile::tempdir().unwrap();
     fs::write(
