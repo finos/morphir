@@ -1,4 +1,4 @@
-# Fresh resolution and exact-lock restore MVP fixture
+# Metadata refresh, resolution and exact-lock restore MVP fixture
 
 This fixture supplies the first executable CLI slice of the
 `local-library-mvp:0.1.0-draft.1` prerelease profile. The separate
@@ -12,6 +12,15 @@ initial resolution from an exact published root. Its expected full lock is
 fixture with deterministic local reference IDs. It is never captured from runtime
 output. The original 15 restore cases and signed inputs are unchanged. The resolve
 fixture has one candidate per package; it does not establish backtracking coverage.
+
+The [refresh descriptor](refresh-cases.json) adds 14 fixed metadata-only cases.
+Its [expected receipt](expected/refresh.json) identifies the exact signed timestamp
+and snapshot envelopes, independently hashed before execution. Seven success cases
+include damaged or missing package bundles, records and publisher envelopes;
+refresh does not acquire them or authorize their use. Subsequent restore still
+refuses those damaged packages. Seven refusal cases cover metadata authentication,
+unsupported policy and uninitialized, missing, corrupt or unresolved trust state.
+The original restore/resolve descriptors and signed inputs remain unchanged.
 
 The [signed directory](signed/) contains an exact two-Library lock, an explicit
 bootstrap root, publisher policy, and local registry. Both Libraries, registry
@@ -40,6 +49,8 @@ cargo test --locked -p morphir-mck --test package_mvp_fixture
 cargo test --locked -p morphir --test package_mvp
 cargo test --locked -p morphir-mck --test package_resolve_fixture
 cargo test --locked -p morphir --test package_resolve
+cargo test --locked -p morphir-mck --test package_refresh_fixture
+cargo test --locked -p morphir --test package_refresh
 cargo run --locked -p morphir-mck --example package_mvp_fixture -- \
   --source . --check spec/package/mck/fixtures/mvp-fresh-restore/signed
 ```
@@ -73,7 +84,7 @@ All signing seeds are public test data and must never authorize real packages.
 
 The old integrity 80, resolution 78, and original draft.3 54 cases with 6 bound
 and 121 pending assets retain their identities and status. This descriptor does
-not relabel or count any of them as delivered. Explicit refresh/scoped update,
+not relabel or count any of them as delivered. Scoped update,
 complete failed-write/concurrency coverage, consolidated compatibility reports,
 and six-target published-binary qualification remain MVP work. Automatic recovery,
 historical grants, and full production qualification remain deferred to #912.

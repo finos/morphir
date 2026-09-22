@@ -36,6 +36,9 @@ Restore an exact locked Library graph using fresh signed metadata
 \fBpackage resolve\fR
 Resolve an exact published root and write a new fully verified package lock
 .TP
+\fBpackage refresh\fR
+Authenticate current registry metadata without resolving or restoring packages
+.TP
 \fBeval\fR
 Evaluate a program through a registered native provider
 .TP
@@ -419,6 +422,28 @@ Explicitly accept caller\-controlled local roots; hardened mode is unsupported
 .TP
 \fB\-\-json\fR
 Output the resolution result as JSON
+.SH "MORPHIR PACKAGE REFRESH"
+Authenticate current registry metadata without resolving or restoring packages
+.PP
+\fBUsage:\fR morphir package refresh [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-policy\fR \fI<FILE>\fR
+Explicit trusted\-host policy file
+.TP
+\fB\-\-registry\fR \fI<DIR>\fR
+Caller\-controlled local registry whose current metadata will be authenticated
+.TP
+\fB\-\-state\fR \fI<DIR>\fR
+Existing explicitly initialized trust\-state directory
+.TP
+\fB\-\-assurance\fR \fI<ASSURANCE>\fR
+Explicitly accept caller\-controlled local roots; hardened mode is unsupported
+.TP
+\fB\-\-json\fR
+Output exact accepted metadata digests as JSON
 .SH "MORPHIR EVAL"
 Evaluate a program through a registered native provider
 .PP

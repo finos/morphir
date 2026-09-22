@@ -20,6 +20,7 @@
 - [`morphir package trust init <FLAGS>`](package/trust/init.md)
 - [`morphir package restore <FLAGS>`](package/restore.md)
 - [`morphir package resolve <FLAGS>`](package/resolve.md)
+- [`morphir package refresh <FLAGS>`](package/refresh.md)
 - [`morphir eval <--request <FILE>> [--json]`](eval.md)
 - [`morphir itest [FLAGS] [ROOT]`](itest.md)
 - [`morphir compile [FLAGS]`](compile.md)

@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use clap::{Args, Subcommand, ValueEnum};
 use miette::{IntoDiagnostic, WrapErr, miette};
 use morphir_package::local_registry::mvp::{
-    self, InitializeRequest, ResolveRequest, RestoreRequest,
+    self, InitializeRequest, RefreshRequest, ResolveRequest, RestoreRequest,
 };
 use morphir_package::resolution::{PackagePath, ReleaseId, StableVersion};
 use starbase::AppResult;
@@ -23,6 +23,8 @@ pub enum PackageAction {
     Restore(RestoreArgs),
     /// Resolve an exact published root and write a new fully verified package lock
     Resolve(ResolveArgs),
+    /// Authenticate current registry metadata without resolving or restoring packages
+    Refresh(RefreshArgs),
 }
 
 /// Trust state is initialized only by an explicit command.
@@ -104,6 +106,25 @@ pub struct ResolveArgs {
     json: bool,
 }
 
+#[derive(Clone, Debug, Args)]
+pub struct RefreshArgs {
+    /// Explicit trusted-host policy file
+    #[arg(long, value_name = "FILE")]
+    policy: PathBuf,
+    /// Caller-controlled local registry whose current metadata will be authenticated
+    #[arg(long, value_name = "DIR")]
+    registry: PathBuf,
+    /// Existing explicitly initialized trust-state directory
+    #[arg(long, value_name = "DIR")]
+    state: PathBuf,
+    /// Explicitly accept caller-controlled local roots; hardened mode is unsupported
+    #[arg(long, value_enum)]
+    assurance: Assurance,
+    /// Output exact accepted metadata digests as JSON
+    #[arg(long)]
+    json: bool,
+}
+
 fn parse_root_release(input: &str) -> Result<ReleaseId, String> {
     let (package, version) = input
         .split_once('@')
@@ -162,6 +183,23 @@ pub async fn run(action: &PackageAction) -> AppResult<miette::Report> {
             .map_err(|error| miette!("{error}"))?;
             emit(args.json, &result, || {
                 format!("Wrote verified Library lock to {}", args.output.display())
+            })?;
+        }
+        PackageAction::Refresh(args) => {
+            let Assurance::Portable = args.assurance;
+            let policy = read_bounded(&args.policy, 1024 * 1024)?;
+            let result = mvp::refresh(RefreshRequest {
+                policy: &policy,
+                registry: &args.registry,
+                state: &args.state,
+            })
+            .await
+            .map_err(|error| miette!("{error}"))?;
+            emit(args.json, &result, || {
+                format!(
+                    "Refreshed authenticated registry metadata from {}",
+                    args.registry.display()
+                )
             })?;
         }
     }
