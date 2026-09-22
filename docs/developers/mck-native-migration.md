@@ -143,7 +143,9 @@ library. Update integration boundaries explicitly:
 | `loadKit`, embedded-kit imports or `kitVersion` for acquisition and identity | Vendor a managed snapshot and record its manifest alongside the pinned CLI version. |
 | IR comparison helpers imported into custom validation | Review the caller's contract and migrate it explicitly. These helpers have no promised drop-in replacement. |
 | `runPackageKit`, `runResolutionKit`, package corpus loaders or process-runner helpers | Invoke `morphir mck package run` with an explicit kit, matching contract and adapter; read the existing draft package report. |
-| Independent package resolution, reference operations or draft.3 registry helpers | These implementation/support APIs remain; their presence does not establish authenticated restore. |
+| Independent package resolution or reference operations | These TypeScript implementation APIs remain. |
+| Draft.3 definition/admission helpers | Use the parent Rust MCK inspection API or explicit source command above. Admission still rejects pending bindings. |
+| Draft.3 decoder, policy, publisher or assurance helpers | Use the Rust `morphir-package::local_registry` APIs. These bounded helpers do not establish authenticated restore. |
 
 The parent repository's `crates/morphir-mck` contains the Rust engine for
 workspace integrations. This guide does not promise a separately published Rust
@@ -205,3 +207,18 @@ On Windows, use `mck-adapter-rust.exe`. Contract `0.1.0-draft.1` selects integri
 are required, and a skip is a failing run. Reports preserve the package contracts'
 existing draft schemas, including capabilities and content hashes. The offline
 HTML renderer currently accepts the consolidated IR report only.
+
+### Inspecting candidate restore definitions
+
+The source CLI can inspect the draft.3 corpus and its pending assets:
+
+```sh
+cargo run --locked -p morphir -- mck package inspect \
+  --source . --contract 0.1.0-draft.3
+```
+
+The JSON definition summary reports 54 candidate definitions, 6 bound assets
+and 121 pending bindings in the preserved corpus. A successful inspection means
+the definitions are valid; complete executable admission still fails while
+required assets are pending. Inspection produces no compatibility pass count
+or executable kit hash. The published beta.3 CLI predates this command.

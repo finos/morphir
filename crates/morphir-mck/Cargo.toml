@@ -11,13 +11,14 @@ build = "build.rs"
 
 [dependencies]
 serde.workspace = true
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
 jsonschema.workspace = true
 sha2.workspace = true
 regex.workspace = true
 flate2.workspace = true
 tar.workspace = true
 unicode-normalization.workspace = true
+url.workspace = true
 
 # Adapter sessions terminate the adapter's whole process tree: a process group
 # on Unix, a Job Object on Windows.
@@ -29,6 +30,13 @@ windows-sys = { workspace = true, features = ["Win32_Security", "Win32_System_Di
 
 [dev-dependencies]
 tempfile.workspace = true
+base64.workspace = true
+ed25519-dalek.workspace = true
+chrono = "0.4"
+futures-executor = "0.3"
+futures-util = { version = "0.3", features = ["io"] }
+tuf = { version = "=0.3.0-beta14", default-features = false }
+ring = "0.17"
 
 # Adapter sessions against real processes; the test binary plays each adapter.
 [[test]]

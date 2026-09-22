@@ -159,8 +159,8 @@ remain pending. Definition validation is not evidence for either filesystem mode
 `restore-assurance-preflight-vectors.json` supplies fixed expectations for the separate
 internal `restore-filesystem-assurance` profile, version `0.1.0-draft.1`. Its six synthetic
 cases check explicit selection, exact-mode qualification, refusal of unavailable modes
-and preflight receipts. The shared TypeScript MCK checks these fixtures through its
-`local-registry-assurance-parent-integration.ts` support entry point. They are not additions
+and preflight receipts. The parent `package:assurance-check` task checks these fixtures through the Rust
+`morphir-package` assurance APIs and validates requests and receipts against the parent schemas. They are not additions
 to the 54-case corpus and do not define a complete portable suite. The synthetic evidence
 references qualify no provider or platform. See [internal host preflight](../restore-filesystem-assurance.md#internal-host-preflight)
 for the request and receipt boundary; no public portable adapter or runtime restore is
@@ -174,15 +174,18 @@ The separate [signed example](fixtures/local-registry/assets/signed/README.md) s
 complete bytes and verification instructions. User signed-fixture review was approved
 on 2026-09-17; full draft.3 runtime execution remains unimplemented.
 
-The existing driver does not execute draft.3. Its schema, trust and filesystem cases require
-shared TypeScript MCK support and independent Rust operations before interoperability can be claimed.
+The shared Rust runner does not execute draft.3. `morphir mck package inspect --source .
+--contract 0.1.0-draft.3` validates definitions and reports 54 candidates, six bound assets
+and 121 pending bindings. Complete assets and authenticated runtime operations remain necessary
+before interoperability can be claimed.
 Do not include these unsigned shapes in draft.1 or draft.2 case counts or corpus provenance.
 
 ### Publisher-signature integration
 
 Run `mise run package:publisher-check` from the parent repository root. It invokes the
-shared TypeScript MCK's `local-registry-publisher-parent-integration.ts --source .`
-support entrypoint against the two fixed signed statements. The check verifies all
+parent Rust integration tests against the `morphir-package` APIs and the two fixed
+signed statements. It also retains the four raw decoder probes and six exact lock mutations
+with complete fixed diagnostic expectations. The check verifies all
 authorized signing keys, including both keys when the policy threshold is one,
 preserves exact envelope and payload bytes, and checks that evidence binds the requested
 release even when the signed payload names another release. Existing signed assets and
@@ -190,9 +193,9 @@ their historical reproduction instructions remain unchanged.
 
 This is a publisher-signature evidence check. It does not establish TUF or repository
 authentication, graph readiness, durable authorization grants, filesystem guarantees,
-restore compatibility or a full 54-case draft.3 corpus pass. Execution stays in the
-shared MCK; this parent task adds no verifier, fixtures or schemas. The shared MCK
-requires Node.js 24 or later. The separate Morphir IR package retains Node.js 20 support.
+restore compatibility or a full 54-case draft.3 corpus pass. The implementation library
+remains separate from the MCK engine and its fixed expected results. The TypeScript
+adapter retains Node.js 24 support; the separate Morphir IR package retains Node.js 20 support.
 
 ### Definition status and admission
 
@@ -357,7 +360,7 @@ asset paths are relative to this MCK directory and confined to the declared fixt
 directories; reject traversal, symlink escapes, duplicate logical paths and framing
 characters. Use repository-relative slash-separated logical names in the hash map.
 
-Reuse the shared core's `packages/mck/src/kit/hash.ts` exactly: JavaScript string-sort
+Reuse the shared Rust MCK core's existing kit hash framing exactly: JavaScript string-sort
 logical paths, SHA-256 each file's exact bytes, then SHA-256 the concatenated UTF-8 records
 and prefix the lowercase final hex with `sha256-`. The current shared implementation's
 record is `path + NUL + lowercaseHex(SHA256(bytes)) + LF`, where NUL is byte `00` and
@@ -365,7 +368,7 @@ LF is byte `0a`. Reject backslashes, NUL, CR and LF in logical paths. Do not sub
 framing algorithm and claim an existing kit hash. A hash while assets remain pending
 identifies candidate definitions only, never an executable compatibility corpus.
 
-The future driver extends the shared package `run.ts` capability, execution, comparison
+The future driver extends the shared Rust package runner's capability, execution, comparison
 and reporting lifecycle. Every case here is required. Missing required testee or
 controller support, skipped cases, failures and kit errors prevent a compatibility claim
 and cause nonzero overall status. An expected `unsupported-source` rejection of an invalid
@@ -376,6 +379,6 @@ Run the existing `mise run package:schema-check`, then separately run `jsonschem
 metaschema` and local-reference `compile` on the candidate case schema and `jsonschema
 validate` on this index and every indexed family. The existing task does not list these
 new schemas. These checks validate definitions, not signatures, runtime scenarios or
-compatibility. Wire approval permits signed-asset tooling in the shared TypeScript MCK.
+compatibility. Wire approval permits signed-asset tooling in the shared Rust MCK.
 Signed-fixture review was approved on 2026-09-17. Shared execution support and independent
 adapters may now proceed, with their own tests and reviews.

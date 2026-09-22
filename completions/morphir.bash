@@ -982,8 +982,19 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
         complete dir type=path
         complete file type=path
     }
-    cmd package display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run the versioned package compatibility suites" unknown_flags=error {
-        cmd run display_order=0 args_override_self=#false help="Run an integrity or resolution corpus against an explicit adapter" unknown_flags=value {
+    cmd package display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect package definitions or run versioned compatibility suites" unknown_flags=error {
+        cmd inspect display_order=0 args_override_self=#false help="Inspect draft.3 candidate definitions and pending assets without running restore" unknown_flags=error {
+            flag --source help="Repository root containing spec/package and its referenced schemas and assets" required=#true {
+                arg <DIR>
+            }
+            flag --contract help="Candidate-definition contract to inspect" required=#true {
+                arg <VERSION> {
+                    choices "0.1.0-draft.3"
+                }
+            }
+            complete dir type=path
+        }
+        cmd run display_order=1 args_override_self=#false help="Run an integrity or resolution corpus against an explicit adapter" unknown_flags=value {
             flag --kit help="Package corpus directory, for example spec/package/mck" required=#true {
                 arg <DIR>
             }

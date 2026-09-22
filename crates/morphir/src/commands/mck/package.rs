@@ -3,7 +3,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-use clap::Args;
+use clap::{Args, ValueEnum};
 use morphir_mck::json::to_tab_json;
 use morphir_mck::package::{Contract, Report, load_kit, run_kit};
 use morphir_mck::report::iso_timestamp;
@@ -11,6 +11,39 @@ use morphir_mck::transport::{Limits, Session};
 use starbase::AppResult;
 
 use super::{Outcome, finish};
+
+/// A definition contract that can be inspected without an executor.
+#[derive(ValueEnum, Clone, Debug)]
+pub enum InspectionContract {
+    #[value(name = "0.1.0-draft.3")]
+    LocalRegistryDraft3,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct InspectArgs {
+    /// Repository root containing spec/package and its referenced schemas and assets
+    #[arg(long, value_name = "DIR")]
+    pub source: PathBuf,
+    /// Candidate-definition contract to inspect
+    #[arg(long, value_name = "VERSION", value_enum)]
+    pub contract: InspectionContract,
+}
+
+pub fn inspect(args: InspectArgs) -> AppResult<miette::Report> {
+    use morphir_mck::package::local_registry::{
+        DefinitionSummary, RepositorySource, inspect_local_registry,
+    };
+    let summary = match RepositorySource::new(&args.source) {
+        Ok(source) => inspect_local_registry(&source),
+        Err(error) => DefinitionSummary::error(error),
+    };
+    println!("{}", to_tab_json(&summary));
+    finish(if summary.errors.is_empty() {
+        Outcome::Passed
+    } else {
+        Outcome::Failed
+    })
+}
 
 #[derive(Args, Clone, Debug)]
 pub struct RunArgs {

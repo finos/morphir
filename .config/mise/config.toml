@@ -230,18 +230,30 @@ run = [
     "jsonschema validate website/static/schemas/morphir-ir-v4.json spec/package/mck/fixtures/two-libraries/eligibility/ir.json spec/package/mck/fixtures/two-libraries/loan-rules/ir.json",
 ]
 
-[tasks."package:assurance-check"]
-description = "Check fixed synthetic restore assurance preflight vectors through shared MCK support (not restore compatibility)"
+[tasks."package:definitions-check"]
+description = "Inspect draft.3 candidate definitions and pending assets without executing restore"
 run = [
-    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-assurance-parent-integration.ts --source .",
+    "cargo run --locked -p morphir -- mck package inspect --source . --contract 0.1.0-draft.3",
+]
+
+[tasks."package:fixture-check"]
+description = "Reproduce frozen signed fixture bytes and verify them independently offline"
+run = [
+    "cargo test --locked -p morphir-mck --test package_fixture",
+    "cargo run --locked -p morphir-mck --example package_fixture -- --source . --check spec/package/mck/fixtures/local-registry/assets/signed",
+]
+
+[tasks."package:assurance-check"]
+description = "Check fixed synthetic restore assurance preflight vectors through native runtime support (not restore compatibility)"
+run = [
+    "cargo test --locked -p morphir --test package_runtime assurance_",
 ]
 
 [tasks."package:publisher-check"]
-description = "Check publisher-signature evidence for fixed statements through shared MCK support (not restore compatibility)"
+description = "Check publisher-signature evidence and fixed decoder probes through native runtime support (not restore compatibility)"
 run = [
-    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-publisher-parent-integration.ts --source .",
+    "cargo test --locked -p morphir --test package_runtime publisher_",
+    "cargo test --locked -p morphir --test package_runtime decode_",
 ]
 
 [tasks."package:check"]

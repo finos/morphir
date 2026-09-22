@@ -3,6 +3,7 @@
 mod contract;
 mod corpus;
 mod json;
+pub mod local_registry;
 mod projection;
 mod report;
 mod run;

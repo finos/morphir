@@ -103,6 +103,7 @@
 - [`morphir mck schema check [--kit <DIR>] [--repo-root <DIR>]`](mck/schema/check.md)
 - [`morphir mck run <FLAGS>`](mck/run.md)
 - [`morphir mck package <SUBCOMMAND>`](mck/package.md)
+- [`morphir mck package inspect <--source <DIR>> <--contract <VERSION>>`](mck/package/inspect.md)
 - [`morphir mck package run <FLAGS>`](mck/package/run.md)
 - [`morphir mck report <SUBCOMMAND>`](mck/report.md)
 - [`morphir mck report check [FLAGS] <REPORT> <ALLOWED_FAILING>`](mck/report/check.md)

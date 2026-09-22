@@ -12,6 +12,34 @@ type Job = {
 };
 const workflow = Bun.YAML.parse(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")) as { jobs: Record<string, Job> };
 
+test("draft.3 inspection and fixture gates use native test support", () => {
+	expect(tasks.tasks["package:definitions-check"]?.run).toEqual([
+		"cargo run --locked -p morphir -- mck package inspect --source . --contract 0.1.0-draft.3",
+	]);
+	expect(tasks.tasks["package:fixture-check"]?.run).toEqual([
+		"cargo test --locked -p morphir-mck --test package_fixture",
+		"cargo run --locked -p morphir-mck --example package_fixture -- --source . --check spec/package/mck/fixtures/local-registry/assets/signed",
+	]);
+});
+
+test("package CI requires draft.3 definition and signed fixture checks", () => {
+	const job = workflow.jobs["package-mck"];
+	for (const task of ["package:definitions-check", "package:fixture-check"]) {
+		const steps = job?.steps.filter(step => step.run === `mise run ${task}`) ?? [];
+		expect(steps).toHaveLength(1);
+		expect(steps[0]?.if).toBe("${{ !cancelled() && steps.integration.outcome == 'success' }}");
+		expect(steps[0]?.["continue-on-error"]).toBeUndefined();
+	}
+});
+
+test("vendored fixture verifier changes select every Rust and MCK test gate", () => {
+	const filters = workflow.jobs.changes?.steps.find(step => step.with?.filters)?.with?.filters ?? "";
+	const paths = Bun.YAML.parse(filters) as Record<string, string[]>;
+	for (const gate of ["rust", "mck", "package-mck"]) {
+		expect(paths[gate]).toContain("third_party/rust-tuf/**");
+	}
+});
+
 for (const [task, binding, contract] of [
 	["package:check", "typescript", "0.1.0-draft.1"],
 	["package:check:rust", "rust", "0.1.0-draft.1"],
@@ -40,17 +68,16 @@ test("package schema validation covers every indexed resolution fixture", () => 
 	}
 });
 
-test("assurance task executes parent vectors through shared MCK support", () => {
+test("assurance task executes parent vectors through native runtime support", () => {
 	expect(tasks.tasks["package:assurance-check"]?.run).toEqual([
-		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-		"bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-assurance-parent-integration.ts --source .",
+		"cargo test --locked -p morphir --test package_runtime assurance_",
 	]);
 });
 
-test("publisher task checks fixed parent statements through shared MCK support", () => {
+test("publisher task checks fixed parent statements through native runtime support", () => {
 	expect(tasks.tasks["package:publisher-check"]?.run).toEqual([
-		"bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-		"bun ecosystem/morphir-typescript/packages/mck/test/support/local-registry-publisher-parent-integration.ts --source .",
+		"cargo test --locked -p morphir --test package_runtime publisher_",
+		"cargo test --locked -p morphir --test package_runtime decode_",
 	]);
 });
 
@@ -72,11 +99,15 @@ for (const schema of [
 	"package-protocol.schema.json", "package-report.schema.json",
 	"package-resolution-protocol.schema.json", "package-resolution-report.schema.json",
 ]) {
-	test(`shared MCK ${schema} mirrors the canonical parent schema`, () => {
+	test(`package ${schema} retains its canonical owner after support cutover`, () => {
 		const canonical = new URL(`../spec/package/schemas/${schema}`, import.meta.url);
 		expect(existsSync(canonical)).toBe(true);
 		const mirror = new URL(`../ecosystem/morphir-typescript/packages/mck/${schema}`, import.meta.url);
-		expect(JSON.parse(readFileSync(mirror, "utf8"))).toEqual(JSON.parse(readFileSync(canonical, "utf8")));
+		if (schema.startsWith("package-restore-assurance-")) {
+			expect(existsSync(mirror)).toBe(false);
+		} else {
+			expect(JSON.parse(readFileSync(mirror, "utf8"))).toEqual(JSON.parse(readFileSync(canonical, "utf8")));
+		}
 	});
 
 	test(`package schema check validates canonical ${schema}`, () => {

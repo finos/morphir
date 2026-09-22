@@ -190,7 +190,7 @@ pub(super) fn qualify_snapshot(
         id: source_key(root),
         root: root.clone(),
         name: snapshot.name,
-        config_anchor: Some(snapshot.config_anchor.as_str().into()),
+        config_anchor: snapshot.config_anchor.map(|anchor| anchor.as_str().into()),
         state: match snapshot.state {
             portable::WorkspaceState::Open => WorkspaceState::Open,
             portable::WorkspaceState::Error => WorkspaceState::Error,

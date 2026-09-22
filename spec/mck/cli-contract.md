@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check`, `report render` and `package run`. Parent IR gates use the Rust CLI. IR runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. Parent package integrity and resolution gates also use the native CLI after beta.3 qualification and adoption under #852. Frozen migration evidence remains; the replaced TypeScript runner is retired.
+Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check`, `report render`, `package run` and `package inspect`. Parent IR gates use the Rust CLI. IR runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. Parent package integrity and resolution gates also use the native CLI after beta.3 qualification and adoption under #852. Frozen migration evidence remains; the replaced TypeScript runner is retired.
 
 The IR commands retain their approved contract. The package addition under
 [#852](https://github.com/finos/morphir/issues/852) uses its existing separate versioned protocols and reports.
@@ -43,6 +43,7 @@ morphir mck report render <report.json> --format html --output <report.html>
 morphir mck package run --kit <dir> --adapter <exe> [--adapter-arg <arg>]...
                         [--contract <version>] [--report <file>]
                         [--timeout <ms>] [--session-timeout <ms>]
+morphir mck package inspect --source <repository-root> --contract 0.1.0-draft.3
 morphir mck kit status [--kit <dir>] [--json]
 morphir mck kit vendor --source <source> [--revision <commit>] [--expect-digest <digest>] --dest <dir>
 morphir mck kit update --kit <dir> [--source <source>] [--revision <commit>] [--expect-digest <digest>]
@@ -313,6 +314,25 @@ kit is a raw authoring checkout and is never reported as matching an upstream sn
 - JSON Schema validation of every emitted draft report; legacy baseline reports retain their own schema gate.
 - Report reader, inventory, selection, baseline and session-failure tests, plus offline HTML escaping
   and CLI tests. New draft-only fields have separate tests; legacy parity cannot validate them.
+
+## `package inspect` (PKG-2)
+
+Inspects the draft.3 candidate definitions in an explicit repository root,
+including schemas, fixed expectations and asset bindings. The contract is
+required and currently accepts only `0.1.0-draft.3`. This is definition
+inspection; it does not invoke an adapter or execute restore.
+
+stdout contains a JSON definition summary with `kind: "definition-summary"`,
+`caseCount`, `boundAssetCount`, `pendingAssetCount` and `errors`. Valid pending
+definitions are not errors. The preserved starting inventory is 54 definitions,
+6 bound assets and 121 pending bindings. Schema, semantic, path or asset errors
+produce exit 1 with diagnostics in the summary. Unsupported contracts and
+missing required arguments produce usage exit 2.
+
+The summary contains no compatibility records, pass count or executable kit
+hash. Full engine admission rejects pending assets. Exact-case admission is
+test-only and cannot turn the candidate corpus into a compatibility report.
+`package run` continues to accept only its implemented draft.1/draft.2 contracts.
 
 ## `package run` (PKG-1)
 
