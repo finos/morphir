@@ -82,6 +82,7 @@ Every versioned contract Morphir defines (protocols, document and schema formats
 - A reader supports the current released major, the previous released major, and the exact drafts it lists.
 - A new contract starts at `0.1.0-draft.1` and moves to the `1.0.0-draft` line once its shape is settled. A revision of a format that already shipped in a released host starts at its next major's first draft (for example `2.0.0-draft.1`).
 - Recorded exceptions: MEP keeps `0.1` until its next protocol change, and Morphir IR `formatVersion` follows its own IR decisions.
+- **Use a SemVer library, never a hand-written version type.** In Rust, use the `semver` crate (already a workspace dependency): `semver::Version` for versions and `semver::VersionReq` for ranges. A supported set is a list of requirements, caret (`^0.1.0`) for released lines and exact (`=0.1.0-draft.1`) for drafts, because a caret with a prerelease also admits later drafts of the same release. Other languages use their established SemVer library.
 
 See the decision [SemVer is the default contract versioning scheme](kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md).
 

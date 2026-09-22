@@ -403,9 +403,8 @@ independently built artifact through the production host boundary.
 5. How does a host distinguish a daemon it owns from an endpoint it only connects to?
 6. Which yank and revocation behavior must work before the first public repository?
 7. What canonical form do two capability statements take before they are compared?
-8. Which range syntax does `requires.host` use, and how are prerelease host versions matched?
-9. Should publisher provenance or a signature cover each artifact's capability statement?
-10. Can an install-time probe of a `process` artifact run under an operating-system sandbox where one is available?
+8. Should publisher provenance or a signature cover each artifact's capability statement?
+9. Can an install-time probe of a `process` artifact run under an operating-system sandbox where one is available?
 
 ## Non-goals
 

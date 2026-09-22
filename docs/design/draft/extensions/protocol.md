@@ -287,8 +287,9 @@ A reader checks `types`, the capability kinds, strictly: an unknown kind is an
 error. A reader carries `capabilities` unchanged, uses the members it
 understands and ignores the others. `critical` lists member paths that change
 meaning; a reader that does not understand a listed path refuses and names it.
-`requires.host` is a range over the host version; a host outside the range
-refuses and names the range.
+`requires.host` is a SemVer requirement over the host version, in the syntax of
+the Rust `semver` crate's `VersionReq`; a host outside the range refuses and names
+the range.
 
 ### `morphir.extension.describe`
 

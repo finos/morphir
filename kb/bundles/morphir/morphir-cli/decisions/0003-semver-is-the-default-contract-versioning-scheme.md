@@ -46,6 +46,24 @@ and package release versions
    format that already shipped in a released host** continues from that released major instead:
    its next shape is the next major's first draft, so it never sorts below what hosts already read.
 
+## Implementation
+
+Code uses an established SemVer library and never a hand-written version type. In Rust that is
+the `semver` crate, already a workspace dependency:
+
+| Rule | `semver` crate |
+| --- | --- |
+| A version | `semver::Version` |
+| Compatible within the major, and within the minor on `0.y.z` | a caret `VersionReq`, such as `^0.1.0`, which follows Cargo's rules |
+| A draft matches only exactly | an exact `VersionReq`, such as `=0.1.0-draft.1` |
+| A minimum host | a `VersionReq` checked against the host's own `Version` |
+
+A reader's supported set is a list of requirements: carets for released lines and exact
+requirements for drafts. A caret alone is not enough for drafts. The crate lets a prerelease
+satisfy a comparator that has the same `major.minor.patch` and a prerelease, so `^0.1.0-draft.1`
+also matches `0.1.0-draft.2`, which breaks the exact-match rule. Other languages use their
+established SemVer library the same way.
+
 ## Why
 
 Several contracts in flight are pre-release and change often: the capability statement, the

@@ -361,15 +361,15 @@ Each row is argued in the decision record named in its last column.
 
 ## Unresolved
 
-These questions are open in #921:
+These questions are open in #921. The `requires.host` syntax is settled: it is a SemVer requirement in
+the Rust `semver` crate's `VersionReq` syntax, as the default contract versioning decision states.
 
 1. What canonical form do two statements take before a reader compares them (key order, number
    spelling)?
-2. Which semver range syntax does `requires.host` use, and how does it match prerelease versions?
-3. Does publish also probe WASM artifacts, which it can always run, and should that be required?
-4. Should the artifact's provenance or signature cover the statement once publisher authenticity exists?
+2. Does publish also probe WASM artifacts, which it can always run, and should that be required?
+3. Should the artifact's provenance or signature cover the statement once publisher authenticity exists?
    This is open question 4 of the distribution design (source `distribution`).
-5. Can a process probe get an operating-system sandbox where one is available, for example a restricted
+4. Can a process probe get an operating-system sandbox where one is available, for example a restricted
    profile on macOS or a namespace on Linux?
 
 What would change the position: if the bootstrap host release cannot keep reading version-1 records, the
