@@ -1,0 +1,20 @@
+--- a/src/pouf/pouf1/shims.rs
++++ b/src/pouf/pouf1/shims.rs
+@@ -20,7 +20,7 @@
+ // We also need to handle the literal "1.0" here, despite that fact that it is not a valid version
+ // according to the SemVer spec, because it is already baked into some of the old roots.
+ fn valid_spec_version(other: &str) -> bool {
+-    matches!(other, "1.0" | "1.0.0")
++    matches!(other, "1.0" | "1.0.0" | "1.0.36")
+ }
+ 
+ fn parse_datetime(ts: &str) -> Result<DateTime<Utc>> {
+@@ -638,7 +638,7 @@
+ 
+     #[test]
+     fn spec_version_validation() {
+-        let valid_spec_versions = ["1.0.0", "1.0"];
++        let valid_spec_versions = ["1.0.0", "1.0", "1.0.36"];
+ 
+         for version in valid_spec_versions {
+             assert!(valid_spec_version(version), "{:?} should be valid", version);

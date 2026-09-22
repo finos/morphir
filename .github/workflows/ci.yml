@@ -56,6 +56,7 @@ jobs:
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             rust:
+              - 'third_party/rust-tuf/**'
               # itest runs the same categorized projects readers use
               - 'examples/**'
               - 'Cargo.toml'
@@ -130,6 +131,7 @@ jobs:
               - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
+              - 'third_party/rust-tuf/**'
               # The native runner, report reader and renderer now drive this job.
               - 'crates/morphir-mck/**'
               - 'crates/morphir/src/commands/mck*'
@@ -158,6 +160,7 @@ jobs:
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             package-mck:
+              - 'third_party/rust-tuf/**'
               - 'spec/mck/baseline/package-cases.json'
               - 'crates/morphir-mck/**'
               - 'crates/morphir/**'
@@ -538,6 +541,12 @@ jobs:
           bun test tools/package-mck-command.test.ts tools/record-mck-transcript.test.ts tools/package-ci.test.ts
       - name: Run TypeScript package implementation
         run: mise run package:check
+      - name: Inspect candidate restore definitions and pending bindings
+        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+        run: mise run package:definitions-check
+      - name: Reproduce and independently verify signed fixtures offline
+        if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
+        run: mise run package:fixture-check
       - name: Check synthetic restore assurance preflight vectors
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
         run: mise run package:assurance-check

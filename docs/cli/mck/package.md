@@ -3,8 +3,9 @@
 
 - **Usage:** `morphir mck package <SUBCOMMAND>`
 
-Run the versioned package compatibility suites
+Inspect package definitions or run versioned compatibility suites
 
 ## Subcommands
 
+- [`morphir mck package inspect <--source <DIR>> <--contract <VERSION>>`](../mck/package/inspect.md)
 - [`morphir mck package run <FLAGS>`](../mck/package/run.md)

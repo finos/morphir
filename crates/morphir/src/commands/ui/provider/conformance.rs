@@ -168,7 +168,10 @@ fn expected_ui_snapshot(
         id: source_key(source),
         root: source.clone(),
         name: snapshot.name.clone(),
-        config_anchor: Some(snapshot.config_anchor.as_str().into()),
+        config_anchor: snapshot
+            .config_anchor
+            .as_ref()
+            .map(|anchor| anchor.as_str().into()),
         state: match snapshot.state {
             portable::WorkspaceState::Open => WorkspaceState::Open,
             portable::WorkspaceState::Error => WorkspaceState::Error,

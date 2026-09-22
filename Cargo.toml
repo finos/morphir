@@ -1,8 +1,14 @@
 
 [workspace]
 members = ["crates/*"]
+exclude = ["third_party/rust-tuf"]
 default-members = ["crates/morphir"]
 resolver = "3"
+
+# Test-only fixture verification needs the already-adopted TUF 1.0.36 wire profile.
+# Provenance and the single-version compatibility patch: third_party/rust-tuf/MORPHIR-VENDOR.md.
+[patch.crates-io]
+tuf = { path = "third_party/rust-tuf" }
 
 [workspace.package]
 version = "0.4.0-beta.3"

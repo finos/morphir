@@ -49,9 +49,29 @@ Fixture configuration supplies these out of band; the lock supplies neither auth
 
 ## Reproduce and verify
 
+Run from the current parent checkout:
+
+```sh
+mise run package:fixture-check
+cargo run --locked -p morphir-mck --example package_fixture -- \
+  --source . --output .dev/out/signed-fixture
+```
+
+The native test support reproduces all 19 files and independently verifies four targets
+at the fixed clock. Generation uses Ed25519 Dalek; independent DSSE verification uses
+Ring, and TUF verification uses the upstream Rust TUF client. The test-only
+[vendor record](../../../../../../../third_party/rust-tuf/MORPHIR-VENDOR.md) documents
+the pinned crate and its literal TUF 1.0.36 acceptance patch. The verifier checks every
+advertised supported hash, SHA-256 and SHA-512, as required by the trust profile.
+Unknown algorithms are ignored, unlike the historical Node helper. No advertised
+supported hash is ignored. These dependencies are absent from production CLI builds.
+
+### Historical reproduction
+
 Use the merged [TypeScript PR #21](https://github.com/finos/morphir-typescript/pull/21), commit
-`6f180b84357cdca8fa55544e6579c0c8ba95b10e`, available through the parent submodule pin.
-No checker is duplicated here.
+`6f180b84357cdca8fa55544e6579c0c8ba95b10e`, in a separate historical checkout.
+The commands below record the original fixture provenance; current verification uses
+the native commands above.
 
 The pinned toolchain is Bun 1.4.2 and Node 20.20.2. MCK's test-only dependencies are
 `@noble/curves` 2.4.0, `@tufjs/canonical-json` 2.0.0, and `tuf-js` 5.0.1. The adopted

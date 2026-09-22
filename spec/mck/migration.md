@@ -403,11 +403,42 @@ operations, protocol tests and both npm artifacts remain. The
 [consumer migration guide](../../docs/developers/mck-native-migration.md#package-consumer-cutover)
 identifies replacements; historical npm versions and release assets remain.
 
-The TypeScript `package:assurance-check` and `package:publisher-check` support
-belongs to PKG-2 and remains unchanged. Its presence does not prove authenticated
-restore. Production acquisition/trust services remain outside the MCK runner.
+The TypeScript assurance and publisher support was retained at the PKG-1 cutover
+for the separately reviewed PKG-2 port. Production acquisition/trust services
+remain outside the MCK runner.
 
 The static draft.3 inventory remains 54 required definitions, six bound assets
 and 121 pending bindings. Those counts do not establish executable admission,
-authenticated restore or platform support. PKG-2 scope/security review and PKG-3
-security/provider review remain separate gates in #852.
+authenticated restore or platform support. PKG-3 security/provider review remains
+a separate gate in #852.
+
+## PKG-2 groundwork port
+
+The PKG-2 scope and security boundary were approved on 2026-09-21 in
+[#852](https://github.com/finos/morphir/issues/852#issuecomment-5768877311).
+The parent Rust MCK owns definition inspection and all-or-nothing admission.
+`morphir mck package inspect --source . --contract 0.1.0-draft.3` reports the
+54 candidate definitions, six bound assets and 121 pending bindings without a
+compatibility report, pass claim or executable corpus hash.
+
+`morphir-package::local_registry` owns bounded decoding, graph validation, policy
+selection, publisher-signature evidence and assurance preflight. The parent
+`package:assurance-check` and `package:publisher-check` tasks exercise these
+APIs against fixed parent expectations. The latter also preserves the four raw
+decoder probes and six exact lock mutations. The MCK engine never links these
+implementation helpers as its expected-result source.
+
+`package:fixture-check` reproduces all 19 frozen files and independently verifies
+four targets at the fixed clock. The TUF client and its narrowly patched
+1.0.36 version acceptance are test-only; vendor provenance and removal criteria
+live in `third_party/rust-tuf/MORPHIR-VENDOR.md`. Every advertised supported
+hash is verified. SHA-256 is mandatory and SHA-512 is supported; unknown
+algorithms follow the trust profile rather than Node-specific behavior.
+
+The replaced TypeScript draft.3 support is retired after these replacements pass
+review and CI. Independent IR, package integrity and resolution implementations,
+adapters, package tooling and historical assets remain. No published-binary
+consumer of these source helpers was found, so beta.3 stays unchanged. The new
+inspection command requires this source checkout until a future CLI release.
+Full TUF production clients, durable trust state, authenticated reconciliation,
+filesystem providers and platform qualification remain PKG-3.

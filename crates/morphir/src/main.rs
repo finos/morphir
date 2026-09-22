@@ -712,7 +712,7 @@ enum MckAction {
     },
     /// Run the kit against an implementation's adapter and report the results
     Run(commands::mck::MckRunArgs),
-    /// Run the versioned package compatibility suites
+    /// Inspect package definitions or run versioned compatibility suites
     Package {
         #[command(subcommand)]
         action: MckPackageAction,
@@ -737,6 +737,8 @@ enum MckSchemaAction {
 
 #[derive(Clone, Subcommand)]
 enum MckPackageAction {
+    /// Inspect draft.3 candidate definitions and pending assets without running restore
+    Inspect(commands::mck::package::InspectArgs),
     /// Run an integrity or resolution corpus against an explicit adapter
     Run(commands::mck::package::RunArgs),
 }
@@ -1215,6 +1217,9 @@ impl AppSession for MorphirSession {
                 },
                 MckAction::Run(args) => run_mck_run(args.clone()).await,
                 MckAction::Package { action } => match action {
+                    MckPackageAction::Inspect(args) => {
+                        commands::mck::package::inspect(args.clone())
+                    }
                     MckPackageAction::Run(args) => commands::mck::package::run(args.clone()).await,
                 },
                 MckAction::Report { action } => match action {
