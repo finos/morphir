@@ -736,3 +736,172 @@ fn graph_success_must_match_requested_root_verified_releases_and_observations() 
         rejects(&next);
     }
 }
+
+#[test]
+fn mvp_admission_requires_exact_bound_inventory_before_adapter_spawn() {
+    use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+    let index = "spec/package/mck/mvp-cases.json";
+    let input = "spec/package/mck/fixtures/mvp-fresh-restore/signed/trust-policy.json";
+    let expected = "spec/package/mck/fixtures/mvp-fresh-restore/expected/mck-fresh-restore.json";
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let index_bytes = std::fs::read(repo.join(index)).unwrap();
+    let manifest: serde_json::Value = serde_json::from_slice(&index_bytes).unwrap();
+    let mut valid = std::collections::BTreeMap::from([(index.to_owned(), index_bytes)]);
+    for asset in manifest["assets"].as_array().unwrap() {
+        let path = asset["path"].as_str().unwrap();
+        valid.insert(path.to_owned(), std::fs::read(repo.join(path)).unwrap());
+    }
+    let admitted = admit_mvp_inventory(&valid).expect("complete fixture inventory admits");
+    assert_eq!(admitted.cases().len(), 2);
+    let request = serde_json::to_value(admitted.cases()[0].request()).unwrap();
+    assert_eq!(request["op"], "restore-local-library");
+    assert_eq!(request["profile"], "local-library-mvp:0.1.0-draft.1");
+    assert_eq!(request["files"].as_array().unwrap().len(), 15);
+    let expected_hex: String = valid[expected]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    assert!(!request.to_string().contains(&expected_hex));
+    assert!(request.get("expected").is_none());
+    assert!(request.get("caseId").is_none());
+    let root = tempfile::tempdir().unwrap();
+    for (path, bytes) in &valid {
+        let file = root.path().join(path);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, bytes).unwrap();
+    }
+    let repository = MvpRepositorySource::new(root.path()).unwrap();
+    assert!(admit_mvp_inventory(&repository).is_ok());
+    let mut large_index = valid[index].clone();
+    large_index.extend(vec![b' '; 1_048_577]);
+    std::fs::write(root.path().join(index), large_index).unwrap();
+    let Err(error) = admit_mvp_inventory(&repository) else {
+        panic!("oversized repository index must fail");
+    };
+    assert!(error.contains("size limit"));
+    std::fs::write(root.path().join(index), &valid[index]).unwrap();
+    #[cfg(unix)]
+    {
+        let outside = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(outside.path(), &valid[input]).unwrap();
+        std::fs::remove_file(root.path().join(input)).unwrap();
+        std::os::unix::fs::symlink(outside.path(), root.path().join(input)).unwrap();
+        assert!(admit_mvp_inventory(&repository).is_err());
+    }
+
+    let mut altered_input = valid.clone();
+    altered_input.get_mut(input).unwrap().push(b'!');
+    assert!(admit_mvp_inventory(&altered_input).is_err());
+
+    let mut altered_expected = valid.clone();
+    altered_expected.get_mut(expected).unwrap().push(b'!');
+    assert!(admit_mvp_inventory(&altered_expected).is_err());
+
+    let mut missing_required_case = valid.clone();
+    let mut incomplete = manifest.clone();
+    incomplete["cases"].as_array_mut().unwrap().pop();
+    missing_required_case.insert(index.to_owned(), encode(&incomplete));
+    assert!(admit_mvp_inventory(&missing_required_case).is_err());
+
+    for mutation in [
+        "required",
+        "duplicate",
+        "unknown input",
+        "missing input",
+        "unused asset",
+        "wrong kind",
+        "path",
+        "operation",
+    ] {
+        let mut broken = manifest.clone();
+        match mutation {
+            "required" => broken["requiredCases"] = json!(["mvp.restore.fresh-two-libraries"]),
+            "duplicate" => {
+                let id = broken["cases"][0]["id"].clone();
+                broken["cases"][1]["id"] = id;
+            }
+            "unknown input" => broken["cases"][0]["inputs"]["trust-policy.json"] = json!("missing"),
+            "missing input" => {
+                broken["cases"][0]["inputs"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("trust-policy.json");
+            }
+            "unused asset" => broken["assets"].as_array_mut().unwrap().push(json!({
+                "id":"unused", "kind":"input",
+                "path":"spec/package/mck/fixtures/mvp-fresh-restore/signed/unused.json",
+                "sha256":digest(b"unused")
+            })),
+            "wrong kind" => {
+                broken["cases"][0]["inputs"]["trust-policy.json"] = json!("fresh-result")
+            }
+            "path" => {
+                broken["assets"][0]["path"] =
+                    json!("spec/package/mck/fixtures/mvp-fresh-restore/../../escape")
+            }
+            "operation" => broken["cases"][0]["operation"] = json!("update"),
+            _ => unreachable!(),
+        }
+        let mut source = valid.clone();
+        if mutation == "unused asset" {
+            source.insert(
+                "spec/package/mck/fixtures/mvp-fresh-restore/signed/unused.json".into(),
+                b"unused".to_vec(),
+            );
+        }
+        source.insert(index.to_owned(), encode(&broken));
+        assert!(admit_mvp_inventory(&source).is_err(), "{mutation}");
+    }
+
+    let mut oversized = valid.clone();
+    let mut oversized_manifest = manifest.clone();
+    let large_bytes = vec![b'x'; 1_048_577];
+    let asset = oversized_manifest["assets"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .find(|asset| asset["path"] == input)
+        .unwrap();
+    asset["sha256"] = json!(digest(&large_bytes));
+    oversized.insert(input.into(), large_bytes);
+    oversized.insert(index.into(), encode(&oversized_manifest));
+    let Err(error) = admit_mvp_inventory(&oversized) else {
+        panic!("oversized fixture must fail");
+    };
+    assert!(error.contains("size limit"));
+
+    let mut aggregate = valid.clone();
+    let mut aggregate_manifest = manifest.clone();
+    for asset in aggregate_manifest["assets"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .filter(|asset| asset["kind"] == "input")
+        .take(5)
+    {
+        let bytes = vec![b'x'; 900_000];
+        asset["sha256"] = json!(digest(&bytes));
+        aggregate.insert(asset["path"].as_str().unwrap().into(), bytes);
+    }
+    aggregate.insert(index.into(), encode(&aggregate_manifest));
+    let Err(error) = admit_mvp_inventory(&aggregate) else {
+        panic!("aggregate fixture must fail");
+    };
+    assert!(error.contains("size limit"));
+}
+
+#[test]
+fn signed_mvp_bootstrap_inventory_admits_two_real_cases_without_expected_wire_bytes() {
+    use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let source = MvpRepositorySource::new(root).unwrap();
+    let admitted = admit_mvp_inventory(&source).unwrap();
+    assert_eq!(admitted.cases().len(), 2);
+    for case in admitted.cases() {
+        let request = serde_json::to_value(case.request()).unwrap();
+        assert_eq!(request["files"].as_array().unwrap().len(), 15);
+        assert!(request.get("expected").is_none());
+        assert!(request.get("caseId").is_none());
+        assert!(!case.expected().is_empty());
+    }
+}

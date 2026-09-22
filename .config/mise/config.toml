@@ -284,6 +284,13 @@ run = [
     "bun run tools/run-package-mck.ts rust 0.1.0-draft.2",
 ]
 
+[tasks."package:mvp-bootstrap-check"]
+description = "Run the bounded signed local Library MVP bootstrap through native MCK and the Rust adapter"
+run = [
+    "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
+    "cargo run --locked -p morphir -- mck package mvp-run --source . --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg package-mvp",
+]
+
 [tasks."hooks:install"]
 description = "Activate the checked-in git hooks in .husky"
 run = "bun run tools/install-git-hooks.ts"
