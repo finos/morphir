@@ -1,0 +1,22 @@
+{
+  "content": {
+    "ir.json": "sha256:f6728c348ad9c0f8979ef6e284b0cdbaf7b62eef923893ad6e79f8b8f6682f16"
+  },
+  "dependencies": {},
+  "exports": {
+    "decision": "decision"
+  },
+  "formatVersion": "0.1.0-draft.1",
+  "ir": {
+    "formatVersion": "4",
+    "packageName": "example/child",
+    "payload": {
+      "mediaType": "application/json",
+      "path": "ir.json",
+      "profile": "classic"
+    }
+  },
+  "kind": "Library",
+  "packagePath": "example.com/finance/child",
+  "version": "1.0.0"
+}

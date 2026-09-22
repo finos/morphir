@@ -1,0 +1,290 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "profile": "local-library-mvp:0.1.0-draft.1",
+  "scope": "fresh-scoped-update",
+  "fixture": "signed",
+  "fixedClock": "2027-01-01T00:00:00Z",
+  "cases": [
+    {
+      "id": "mvp.update.eligible-target-child-move-sibling-frozen",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "updated",
+      "expectedLock": "expected/update.lock.json",
+      "exitCode": 0
+    },
+    {
+      "id": "mvp.update.multiple-targets",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/eligibility",
+        "example.com/finance/child@1.1.0"
+      ],
+      "expected": "updated",
+      "expectedLock": "expected/update.lock.json",
+      "exitCode": 0
+    },
+    {
+      "id": "mvp.update.multiple-targets-reordered",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/child@1.1.0",
+        "example.com/finance/eligibility"
+      ],
+      "expected": "updated",
+      "expectedLock": "expected/update.lock.json",
+      "exitCode": 0
+    },
+    {
+      "id": "mvp.update.exact-target",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/eligibility@1.3.0"
+      ],
+      "expected": "updated",
+      "expectedLock": "expected/update.lock.json",
+      "exitCode": 0
+    },
+    {
+      "id": "mvp.update.exact-old-target-preserves-child",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/eligibility@1.2.0"
+      ],
+      "expected": "updated",
+      "expectedLock": "expected/exact-old.lock.json",
+      "exitCode": 0
+    },
+    {
+      "id": "mvp.update.yanked-frozen-release",
+      "setup": "yanked-frozen",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "updated",
+      "expectedLock": "expected/yanked-frozen.lock.json",
+      "exitCode": 0
+    },
+    {
+      "id": "mvp.update.yanked-frozen-root",
+      "setup": "yanked-root",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "updated",
+      "expectedLock": "expected/yanked-root.lock.json",
+      "exitCode": 0
+    },
+    {
+      "id": "mvp.update.scope-conflict",
+      "setup": "scope-conflict",
+      "targets": [
+        "example.com/finance/eligibility@1.4.0"
+      ],
+      "expected": "refused",
+      "diagnostic": "ScopeConflict",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.revoked-frozen-release",
+      "setup": "revoked-frozen",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "revocation transition unsupported by MVP",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.empty-targets",
+      "setup": "fresh",
+      "targets": [],
+      "expected": "refused",
+      "diagnostic": "target",
+      "exitCode": 2
+    },
+    {
+      "id": "mvp.update.invalid-target",
+      "setup": "fresh",
+      "targets": [
+        "../invalid"
+      ],
+      "expected": "refused",
+      "diagnostic": "package",
+      "exitCode": 2
+    },
+    {
+      "id": "mvp.update.root-target",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/loan-rules"
+      ],
+      "expected": "refused",
+      "diagnostic": "InvalidInput",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.nonmember-target",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/missing"
+      ],
+      "expected": "refused",
+      "diagnostic": "InvalidInput",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.duplicate-target",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/eligibility",
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "InvalidInput",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.unavailable-exact-target",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/eligibility@9.9.9"
+      ],
+      "expected": "refused",
+      "diagnostic": "UnsatisfiableRequirements",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.yanked-exact-new-target",
+      "setup": "fresh",
+      "targets": [
+        "example.com/finance/eligibility@1.9.0"
+      ],
+      "expected": "refused",
+      "diagnostic": "UnsatisfiableRequirements",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.invalid-old-graph",
+      "setup": "invalid-graph",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "InvalidInput during Structure",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.invalid-acquisition-pin",
+      "setup": "acquisition-pin",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "record",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.invalid-statement-pin",
+      "setup": "statement-pin",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "old record acquisition mismatch",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.bad-timestamp-signature",
+      "setup": "tampered-signature",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "Signature threshold",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.bad-frozen-library-content",
+      "setup": "tampered-content",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "content digest mismatch",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.expired-timestamp",
+      "setup": "expired-timestamp",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "metadata is expired",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.uninitialized-state",
+      "setup": "uninitialized-state",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "trust state is uninitialized or missing",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.occupied-output",
+      "setup": "occupied-output",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "destination already exists",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.missing-established-state",
+      "setup": "missing-established-state",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "trust state database is missing",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.corrupt-state",
+      "setup": "corrupt-state",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "file is not a database",
+      "exitCode": 1
+    },
+    {
+      "id": "mvp.update.uncertain-state",
+      "setup": "uncertain-state",
+      "targets": [
+        "example.com/finance/eligibility"
+      ],
+      "expected": "refused",
+      "diagnostic": "unresolved prior operation",
+      "exitCode": 1
+    }
+  ],
+  "invariants": {
+    "inputLockBytes": "unchanged",
+    "registryBytes": "unchanged-after-setup",
+    "failureOutput": "absent-or-existing-sentinel-unchanged",
+    "successLock": "independently-frozen-full-lock",
+    "oldMetadata": "expired-v1-evidence-is-not-current-authority",
+    "selection": "eligible-target-maximized-child-moves-sibling-outside-old-closure-frozen",
+    "yankedNewChoice": "eligibility-1.9.0-excluded",
+    "determinism": "repeat-from-fresh-state-and-compare-exact-output-bytes"
+  }
+}

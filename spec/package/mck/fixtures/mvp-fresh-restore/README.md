@@ -84,7 +84,8 @@ All signing seeds are public test data and must never authorize real packages.
 
 The old integrity 80, resolution 78, and original draft.3 54 cases with 6 bound
 and 121 pending assets retain their identities and status. This descriptor does
-not relabel or count any of them as delivered. Scoped update,
-complete failed-write/concurrency coverage, consolidated compatibility reports,
+not relabel or count any of them as delivered. The separate
+[scoped-update corpus](../mvp-scoped-update/README.md) covers explicit target
+updates. Complete failed-write/concurrency coverage, consolidated compatibility reports,
 and six-target published-binary qualification remain MVP work. Automatic recovery,
 historical grants, and full production qualification remain deferred to #912.

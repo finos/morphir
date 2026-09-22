@@ -1,0 +1,148 @@
+{
+  "signed": {
+    "_type": "targets",
+    "expires": "2020-01-01T00:00:00Z",
+    "spec_version": "1.0.36",
+    "targets": {
+      "records/child-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/child",
+              "version": "1.0.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "7fc4bf19877caacbcddca6e6764e2b4f1b07956d93f0317412416caa3f7a9187"
+        },
+        "length": 623
+      },
+      "records/eligibility-1.2.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "6ff10b5d4fe96b5c3bf567f9eb159b278998b2886f201fbdd445569f10f2b424"
+        },
+        "length": 787
+      },
+      "records/loan-rules-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "22aaf668eb648b67da0204d02bb6e212b3193571264908e92b1d8cd43aa56649"
+        },
+        "length": 947
+      },
+      "records/sibling-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "1.0.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "de169761477b072c339caf9f22a46faccdc663aa69ecf73242fb7e4128f9a2a3"
+        },
+        "length": 629
+      },
+      "statements/child-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/child",
+              "version": "1.0.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "1a54d917090e78cd63680209a7b251dc1c8c75931dbf51f4c76a95fcb5217835"
+        },
+        "length": 1014
+      },
+      "statements/eligibility-1.2.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "68a8c3fe88996274da907614b558bc35125dd178a7c623494219392ef5e8deb0"
+        },
+        "length": 1226
+      },
+      "statements/loan-rules-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "541365fb849bc9b20fa1861dbb7cce62b4b1783e134cfc7fb7840dc1e8a12e72"
+        },
+        "length": 1442
+      },
+      "statements/sibling-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "1.0.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "11082ad003caa80606d996cf4b7c5d2f55c41e515c61f3920aea22fca1a23087"
+        },
+        "length": 1022
+      }
+    },
+    "version": 1
+  },
+  "signatures": [
+    {
+      "keyid": "b2758a474a6c30af3905b41b5a8d171192ec323ec79ebf2c4ce3a59c73743fdd",
+      "sig": "928b28b77d439ccdada6a53d8fa1be719e7de41e61ddf1f9415df2d1176a27370290d41f9bf833f4254827363cb6ec60090d85960473d47e3bb7e89ee168ae04"
+    }
+  ]
+}

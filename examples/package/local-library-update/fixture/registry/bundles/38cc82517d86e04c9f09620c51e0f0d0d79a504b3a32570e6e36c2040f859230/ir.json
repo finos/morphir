@@ -1,0 +1,68 @@
+{
+  "distribution": {
+    "Library": {
+      "def": {
+        "modules": {
+          "decision": {
+            "Public": {
+              "types": {
+                "decision": {
+                  "Public": {
+                    "CustomTypeDefinition": {
+                      "access": "Public",
+                      "constructors": {
+                        "approved": [],
+                        "declined": []
+                      },
+                      "typeParams": []
+                    }
+                  }
+                }
+              },
+              "values": {
+                "default-decision": {
+                  "Public": {
+                    "ExpressionBody": {
+                      "body": {
+                        "Constructor": "example/eligibility:decision#approved"
+                      },
+                      "inputTypes": {},
+                      "outputType": "example/eligibility:decision#decision"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dependencies": {
+        "example/child": {
+          "modules": {
+            "decision": {
+              "types": {
+                "decision": {
+                  "CustomTypeSpecification": {
+                    "constructors": {
+                      "approved": [],
+                      "declined": []
+                    },
+                    "typeParams": []
+                  }
+                }
+              },
+              "values": {
+                "default-decision": {
+                  "inputs": {},
+                  "output": "example/child:decision#decision"
+                }
+              }
+            }
+          }
+        }
+      },
+      "packageName": "example/eligibility"
+    }
+  },
+  "formatVersion": 4
+}
