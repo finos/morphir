@@ -1,0 +1,22 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "kind": "Library",
+  "packagePath": "example.com/finance/eligibility",
+  "version": "1.2.0",
+  "ir": {
+    "formatVersion": "4",
+    "packageName": "example/eligibility",
+    "payload": {
+      "path": "ir.json",
+      "mediaType": "application/json",
+      "profile": "classic"
+    }
+  },
+  "dependencies": {},
+  "exports": {
+    "decision": "decision"
+  },
+  "content": {
+    "ir.json": "sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43"
+  }
+}

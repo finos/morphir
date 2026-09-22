@@ -52,6 +52,7 @@ morphir-evaluator = { path = "../morphir-evaluator" }
 # https://github.com/finos/morphir/issues/886).
 morphir-opa = { path = "../morphir-opa", optional = true }
 morphir-mck = { path = "../morphir-mck" }
+morphir-package = { path = "../../ecosystem/morphir-rust/crates/morphir-package" }
 # `mck kit vendor --source github:finos/morphir` downloads one commit archive over HTTPS.
 reqwest.workspace = true
 # `mck run --filter` takes a Rust regular expression
@@ -110,7 +111,6 @@ rustix = { workspace = true, features = ["process"] }
 windows-sys = { workspace = true, features = ["Wdk_Storage_FileSystem", "Win32_System_IO", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp"] }
 
 [dev-dependencies]
-morphir-package = { path = "../../ecosystem/morphir-rust/crates/morphir-package" }
 jsonschema.workspace = true
 cucumber = { workspace = true }
 # `test-util` lets the playground provider's timeout test advance a virtual

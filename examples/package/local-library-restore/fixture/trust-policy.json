@@ -1,0 +1,27 @@
+{
+  "continuedUse": "fresh-metadata",
+  "formatVersion": "0.1.0-draft.3",
+  "kind": "LibraryTrustPolicy",
+  "publisherRules": [
+    {
+      "namespace": "example.com/finance",
+      "publicKeys": [
+        "4bd74eeea636378d476d9e885a3ac0f610b8649d5be70fdb1e54e742a67d7384",
+        "ea3cf4e0f710cf0198b289c99105e784ff2403ae6920d1035d6dbf51e7e48dd8"
+      ],
+      "threshold": 1
+    }
+  ],
+  "repositories": [
+    {
+      "bootstrapRoot": {
+        "digest": "sha256:655cacea8dc5a51e17a82f0c6c9065fadeef995edde1414bb93980b8f68b8c8a",
+        "version": 1
+      },
+      "identity": "sha256:aec72527f7dd06a472f1aab6a703500ff697db37b31a52ef80519b97b60c8be6",
+      "namespaces": [
+        "example.com/finance"
+      ]
+    }
+  ]
+}
