@@ -1,0 +1,8 @@
+[project]
+name = "examples/library-consumer"
+version = "0.1.0"
+source_directory = "generated"
+exposed_modules = ["decision"]
+
+[frontend]
+language = "gleam"

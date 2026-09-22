@@ -1,0 +1,30 @@
+{
+  "content": {
+    "ir.json": "sha256:5cd71742c4fe65d8f9cf9522cfb583da9a66095ba2a928b6d0711cea33864755"
+  },
+  "dependencies": {
+    "example/child": {
+      "packagePath": "example.com/finance/child",
+      "versionRange": {
+        "maximumExclusive": "2.0.0",
+        "minimumInclusive": "1.1.0"
+      }
+    }
+  },
+  "exports": {
+    "decision": "decision"
+  },
+  "formatVersion": "0.1.0-draft.1",
+  "ir": {
+    "formatVersion": "4",
+    "packageName": "example/eligibility",
+    "payload": {
+      "mediaType": "application/json",
+      "path": "ir.json",
+      "profile": "classic"
+    }
+  },
+  "kind": "Library",
+  "packagePath": "example.com/finance/eligibility",
+  "version": "1.3.0"
+}

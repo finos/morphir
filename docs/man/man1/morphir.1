@@ -39,6 +39,9 @@ Resolve an exact published root and write a new fully verified package lock
 \fBpackage refresh\fR
 Authenticate current registry metadata without resolving or restoring packages
 .TP
+\fBpackage update\fR
+Update explicit dependency targets and write a new fully verified package lock
+.TP
 \fBeval\fR
 Evaluate a program through a registered native provider
 .TP
@@ -444,6 +447,37 @@ Explicitly accept caller\-controlled local roots; hardened mode is unsupported
 .TP
 \fB\-\-json\fR
 Output exact accepted metadata digests as JSON
+.SH "MORPHIR PACKAGE UPDATE"
+Update explicit dependency targets and write a new fully verified package lock
+.PP
+\fBUsage:\fR morphir package update [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-lock\fR \fI<FILE>\fR
+Previous full package lock; always preserved
+.TP
+\fB\-\-target\fR \fI<PACKAGE[@VERSION]>\fR
+Dependency to update; repeat for multiple targets, optionally with an exact version
+.TP
+\fB\-\-policy\fR \fI<FILE>\fR
+Explicit trusted\-host policy file
+.TP
+\fB\-\-registry\fR \fI<DIR>\fR
+Caller\-controlled local registry; one registry per graph
+.TP
+\fB\-\-state\fR \fI<DIR>\fR
+Existing explicitly initialized trust\-state directory
+.TP
+\fB\-\-output\fR \fI<FILE>\fR
+New full lock file; its parent directory must exist
+.TP
+\fB\-\-assurance\fR \fI<ASSURANCE>\fR
+Explicitly accept caller\-controlled local roots; hardened mode is unsupported
+.TP
+\fB\-\-json\fR
+Output the verified update result as JSON
 .SH "MORPHIR EVAL"
 Evaluate a program through a registered native provider
 .PP

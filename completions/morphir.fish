@@ -109,6 +109,34 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
         complete file type=path
         complete dir type=path
     }
+    cmd update display_order=4 args_override_self=#false help="Update explicit dependency targets and write a new fully verified package lock" unknown_flags=error {
+        flag --lock help="Previous full package lock; always preserved" required=#true {
+            arg <FILE>
+        }
+        flag --target help="Dependency to update; repeat for multiple targets, optionally with an exact version" required=#true var=#true {
+            arg "<PACKAGE[@VERSION]>…" var=#true
+        }
+        flag --policy help="Explicit trusted-host policy file" required=#true {
+            arg <FILE>
+        }
+        flag --registry help="Caller-controlled local registry; one registry per graph" required=#true {
+            arg <DIR>
+        }
+        flag --state help="Existing explicitly initialized trust-state directory" required=#true {
+            arg <DIR>
+        }
+        flag --output help="New full lock file; its parent directory must exist" required=#true {
+            arg <FILE>
+        }
+        flag --assurance help="Explicitly accept caller-controlled local roots; hardened mode is unsupported" required=#true {
+            arg <ASSURANCE> {
+                choices portable
+            }
+        }
+        flag --json help="Output the verified update result as JSON"
+        complete file type=path
+        complete dir type=path
+    }
 }
 cmd eval display_order=5 args_override_self=#false help="Evaluate a program through a registered native provider" unknown_flags=error {
     flag --request help="Path to a version 1 evaluation request JSON file" required=#true {
