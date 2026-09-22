@@ -5,7 +5,10 @@ use std::path::{Path, PathBuf};
 
 use clap::{Args, Subcommand, ValueEnum};
 use miette::{IntoDiagnostic, WrapErr, miette};
-use morphir_package::local_registry::mvp::{self, InitializeRequest, RestoreRequest};
+use morphir_package::local_registry::mvp::{
+    self, InitializeRequest, ResolveRequest, RestoreRequest,
+};
+use morphir_package::resolution::{PackagePath, ReleaseId, StableVersion};
 use starbase::AppResult;
 
 /// Experimental local Library operations, separate from executable repositories.
@@ -18,6 +21,8 @@ pub enum PackageAction {
     },
     /// Restore an exact locked Library graph using fresh signed metadata
     Restore(RestoreArgs),
+    /// Resolve an exact published root and write a new fully verified package lock
+    Resolve(ResolveArgs),
 }
 
 /// Trust state is initialized only by an explicit command.
@@ -74,6 +79,41 @@ pub struct RestoreArgs {
     json: bool,
 }
 
+#[derive(Clone, Debug, Args)]
+pub struct ResolveArgs {
+    /// Exact published root release, for example example.com/finance/loan-rules@1.0.0
+    #[arg(long, value_name = "PACKAGE@VERSION", value_parser = parse_root_release)]
+    root: ReleaseId,
+    /// Explicit trusted-host policy file
+    #[arg(long, value_name = "FILE")]
+    policy: PathBuf,
+    /// Caller-controlled local registry; one registry per graph
+    #[arg(long, value_name = "DIR")]
+    registry: PathBuf,
+    /// Existing explicitly initialized trust-state directory
+    #[arg(long, value_name = "DIR")]
+    state: PathBuf,
+    /// New full lock file; its parent directory must exist
+    #[arg(long, value_name = "FILE")]
+    output: PathBuf,
+    /// Explicitly accept caller-controlled local roots; hardened mode is unsupported
+    #[arg(long, value_enum)]
+    assurance: Assurance,
+    /// Output the resolution result as JSON
+    #[arg(long)]
+    json: bool,
+}
+
+fn parse_root_release(input: &str) -> Result<ReleaseId, String> {
+    let (package, version) = input
+        .split_once('@')
+        .ok_or_else(|| "expected PACKAGE@VERSION with an exact stable version".to_owned())?;
+    Ok(ReleaseId::new(
+        PackagePath::parse(package).map_err(|error| error.to_string())?,
+        StableVersion::parse(version).map_err(|error| error.to_string())?,
+    ))
+}
+
 pub async fn run(action: &PackageAction) -> AppResult<miette::Report> {
     match action {
         PackageAction::Trust {
@@ -106,6 +146,22 @@ pub async fn run(action: &PackageAction) -> AppResult<miette::Report> {
             .map_err(|error| miette!("{error}"))?;
             emit(args.json, &result, || {
                 format!("Restored verified Libraries to {}", args.output.display())
+            })?;
+        }
+        PackageAction::Resolve(args) => {
+            let Assurance::Portable = args.assurance;
+            let policy = read_bounded(&args.policy, 1024 * 1024)?;
+            let result = mvp::resolve(ResolveRequest {
+                policy: &policy,
+                root: args.root.clone(),
+                registry: &args.registry,
+                state: &args.state,
+                output: &args.output,
+            })
+            .await
+            .map_err(|error| miette!("{error}"))?;
+            emit(args.json, &result, || {
+                format!("Wrote verified Library lock to {}", args.output.display())
             })?;
         }
     }

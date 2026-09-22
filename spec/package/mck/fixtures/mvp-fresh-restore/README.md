@@ -1,10 +1,17 @@
-# Fresh exact-lock restore MVP fixture
+# Fresh resolution and exact-lock restore MVP fixture
 
 This fixture supplies the first executable CLI slice of the
 `local-library-mvp:0.1.0-draft.1` prerelease profile. The separate
 [case descriptor](cases.json) freezes outcomes before execution. It does not claim
 the full MVP milestone, the production recovery profile, or the 296-obligation
 portable inventory has passed.
+
+The separate [resolve descriptor](resolve-cases.json) adds 13 fixed cases for
+initial resolution from an exact published root. Its expected full lock is
+[expected/resolve.lock.json](expected/resolve.lock.json), authored from the signed
+fixture with deterministic local reference IDs. It is never captured from runtime
+output. The original 15 restore cases and signed inputs are unchanged. The resolve
+fixture has one candidate per package; it does not establish backtracking coverage.
 
 The [signed directory](signed/) contains an exact two-Library lock, an explicit
 bootstrap root, publisher policy, and local registry. Both Libraries, registry
@@ -31,6 +38,8 @@ From the parent checkout:
 ```sh
 cargo test --locked -p morphir-mck --test package_mvp_fixture
 cargo test --locked -p morphir --test package_mvp
+cargo test --locked -p morphir-mck --test package_resolve_fixture
+cargo test --locked -p morphir --test package_resolve
 cargo run --locked -p morphir-mck --example package_mvp_fixture -- \
   --source . --check spec/package/mck/fixtures/mvp-fresh-restore/signed
 ```
@@ -64,7 +73,7 @@ All signing seeds are public test data and must never authorize real packages.
 
 The old integrity 80, resolution 78, and original draft.3 54 cases with 6 bound
 and 121 pending assets retain their identities and status. This descriptor does
-not relabel or count any of them as delivered. Deterministic resolve/update,
+not relabel or count any of them as delivered. Explicit refresh/scoped update,
 complete failed-write/concurrency coverage, consolidated compatibility reports,
 and six-target published-binary qualification remain MVP work. Automatic recovery,
 historical grants, and full production qualification remain deferred to #912.

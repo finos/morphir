@@ -33,6 +33,9 @@ Initialize a new state directory from a policy\-pinned bootstrap root
 \fBpackage restore\fR
 Restore an exact locked Library graph using fresh signed metadata
 .TP
+\fBpackage resolve\fR
+Resolve an exact published root and write a new fully verified package lock
+.TP
 \fBeval\fR
 Evaluate a program through a registered native provider
 .TP
@@ -388,6 +391,34 @@ Explicitly accept caller\-controlled local roots; hardened mode is unsupported
 .TP
 \fB\-\-json\fR
 Output the restore result as JSON
+.SH "MORPHIR PACKAGE RESOLVE"
+Resolve an exact published root and write a new fully verified package lock
+.PP
+\fBUsage:\fR morphir package resolve [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-root\fR \fI<PACKAGE@VERSION>\fR
+Exact published root release, for example example.com/finance/loan\-rules@1.0.0
+.TP
+\fB\-\-policy\fR \fI<FILE>\fR
+Explicit trusted\-host policy file
+.TP
+\fB\-\-registry\fR \fI<DIR>\fR
+Caller\-controlled local registry; one registry per graph
+.TP
+\fB\-\-state\fR \fI<DIR>\fR
+Existing explicitly initialized trust\-state directory
+.TP
+\fB\-\-output\fR \fI<FILE>\fR
+New full lock file; its parent directory must exist
+.TP
+\fB\-\-assurance\fR \fI<ASSURANCE>\fR
+Explicitly accept caller\-controlled local roots; hardened mode is unsupported
+.TP
+\fB\-\-json\fR
+Output the resolution result as JSON
 .SH "MORPHIR EVAL"
 Evaluate a program through a registered native provider
 .PP

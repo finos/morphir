@@ -1,14 +1,14 @@
 ---
 version: 1
-title: Restore and consume signed local Libraries
-description: Provision explicit package trust, restore a complete locked graph from a local registry, and generate and compile a restored Library in a consumer project.
+title: Resolve, restore and consume signed local Libraries
+description: Provision explicit package trust, resolve a published root into a verified full lock, restore its graph, and generate and compile a restored Library in a consumer project.
 tags: [area:package, area:generate, language:gleam, backend:gleam, ir:v4, kind:positive, suite:offline, workspace:directory]
 provider: rego
 ---
 
-# Restore and consume signed local Libraries
+# Resolve, restore and consume signed local Libraries
 
-This self-contained example uses a signed local registry and a full package lock.
+This self-contained example resolves a full package lock from a signed local registry.
 The trust policy and bootstrap root are explicit inputs. The signing keys are
 public test keys; use independently trusted keys for your own registry.
 
@@ -52,6 +52,30 @@ passes if {
 }
 ```
 
+### Resolve the published root into a new lock
+
+Resolve starts from an exact published release. It authenticates the registry,
+selects the dependency graph and verifies every selected Library before writing
+the full lock. An existing lock destination is never overwritten.
+
+```yaml morphir:command
+id: resolve
+name: Resolve and verify the complete Library graph
+timeout_seconds: 60
+stdout_json: true
+```
+
+```sh
+morphir package resolve --root example.com/finance/loan-rules@1.0.0 --policy fixture/trust-policy.json --registry fixture/registry --state trust-state --output consumer/morphir.lock --assurance portable --json
+```
+
+```yaml morphir:golden
+id: resolved-lock
+command: resolve
+actual: consumer/morphir.lock
+expected_file: golden/resolve.lock.json
+```
+
 ### Restore the exact locked graph
 
 The restore verifies metadata, publisher authorization and all package bytes
@@ -68,7 +92,7 @@ captures:
 ```
 
 ```sh
-morphir package restore --policy fixture/trust-policy.json --lock fixture/morphir.lock --registry fixture/registry --state trust-state --output consumer/libraries --assurance portable --json
+morphir package restore --policy fixture/trust-policy.json --lock consumer/morphir.lock --registry fixture/registry --state trust-state --output consumer/libraries --assurance portable --json
 ```
 
 ```yaml morphir:assertion
@@ -163,7 +187,7 @@ stdout_json: true
 ```
 
 ```sh
-morphir package restore --policy fixture/trust-policy.json --lock fixture/morphir.lock --registry fixture/registry --state trust-state --output consumer/replayed --assurance portable --json
+morphir package restore --policy fixture/trust-policy.json --lock consumer/morphir.lock --registry fixture/registry --state trust-state --output consumer/replayed --assurance portable --json
 ```
 
 ```yaml morphir:assertion
@@ -185,6 +209,6 @@ passes if {
 ```yaml morphir:golden
 id: lock-preserved
 command: replay
-actual: fixture/morphir.lock
-expected_file: fixture/morphir.lock
+actual: consumer/morphir.lock
+expected_file: golden/resolve.lock.json
 ```
