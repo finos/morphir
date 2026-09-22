@@ -656,22 +656,13 @@ fn vendor_is_exact_pinned_upstream_plus_the_reviewed_version_patch() {
 
 #[test]
 fn upstream_tuf_is_absent_from_every_production_dependency_path() {
+    // Cargo may fetch uncached platform manifests to inspect the complete graph.
+    // This Cargo dependency-graph check is separate from offline fixture verification.
     for name in ["morphir-mck", "morphir"] {
         let output = std::process::Command::new(env!("CARGO"))
             .args([
-                "tree",
-                "--locked",
-                "--offline",
-                "-p",
-                name,
-                "--edges",
-                "normal",
-                "--target",
-                "all",
-                "--prefix",
-                "none",
-                "--format",
-                "{p}",
+                "tree", "--locked", "-p", name, "--edges", "normal", "--target", "all", "--prefix",
+                "none", "--format", "{p}",
             ])
             .current_dir(source())
             .output()
