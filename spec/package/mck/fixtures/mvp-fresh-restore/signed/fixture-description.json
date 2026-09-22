@@ -1,0 +1,48 @@
+{
+  "authoring": {
+    "expectedResultsGenerated": false,
+    "publisherVerifier": "ring",
+    "signer": "ed25519-dalek",
+    "tufVerifier": "rust-tuf 0.3.0-beta14 with reviewed literal 1.0.36 patch"
+  },
+  "fixedClock": "2027-01-01T00:00:00Z",
+  "inputDigests": {
+    "spec/package/mck/fixtures/local-registry/unsigned/eligibility-statement-payload.json": "sha256:98b42b54516d679247a649a95c554dd310f71be357046ad3ecd81f4e3b0d7d31",
+    "spec/package/mck/fixtures/local-registry/unsigned/loan-rules-statement-payload.json": "sha256:b6c9301e78a523f8037dd6bf1fbd2b7ca89aa836b293e13d72f776db26a6d683",
+    "spec/package/mck/fixtures/two-libraries/eligibility/ir.json": "sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43",
+    "spec/package/mck/fixtures/two-libraries/eligibility/manifest.json": "sha256:0a91b5e3a5e377fa4557212fc5b561a66067d67292123136575e46ce5a3fd0b7",
+    "spec/package/mck/fixtures/two-libraries/loan-rules/ir.json": "sha256:b1884eeb8364f96c6405cc45f2fe07a006c22f066a4136656ad05dda9c9a94cc",
+    "spec/package/mck/fixtures/two-libraries/loan-rules/manifest.json": "sha256:e98ea924e66b96a5050e2c3a690f9534db32f5971401d2965791546872ecb7a3",
+    "spec/package/mck/fixtures/two-libraries/lock-core.json": "sha256:6470c10d02092c9bf6c2ba9d945c88d2d0310cad2fffc25226acd87f85e3129b"
+  },
+  "keyDerivation": "SHA-256 of UTF-8 morphir-mck-fixture:<label>; public test seeds only",
+  "kind": "PublicDeterministicSignedFixture",
+  "profile": "local-library-mvp:0.1.0-draft.1",
+  "publicKeys": [
+    {
+      "label": "root",
+      "publicKey": "6cbe6d7bbf430ecd4e07c4207170a19a9c87f97b24aacd907e6dfeab9b1b73cd"
+    },
+    {
+      "label": "timestamp",
+      "publicKey": "726b284d76f09867dc21b4dfd571715a1b89b78941566f51804e1d9574cc9b05"
+    },
+    {
+      "label": "snapshot",
+      "publicKey": "73c1aa8c28113cd683a518703fd717db7f5b1ebebff00849474b00fddcdc76f1"
+    },
+    {
+      "label": "targets",
+      "publicKey": "2f7ade27d7087a4f9664f09614a63c9590b1fb648e7598dd18f3a54edf8c1cb4"
+    },
+    {
+      "label": "publisher-a",
+      "publicKey": "4bd74eeea636378d476d9e885a3ac0f610b8649d5be70fdb1e54e742a67d7384"
+    },
+    {
+      "label": "publisher-b",
+      "publicKey": "ea3cf4e0f710cf0198b289c99105e784ff2403ae6920d1035d6dbf51e7e48dd8"
+    }
+  ],
+  "sourceFixture": "spec/package/mck/fixtures/local-registry/assets/signed"
+}
