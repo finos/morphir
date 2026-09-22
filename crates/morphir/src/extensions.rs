@@ -1,5 +1,8 @@
 //! CLI-owned integration boundary for built-in and installed extension providers.
 
+mod compile_wire;
+pub(crate) use compile_wire::compile_wire_request;
+
 use crate::error::CliError;
 use crate::home::MorphirHome;
 use morphir_daemon::ExtensionRegistry;
@@ -54,12 +57,20 @@ pub fn extension_registry_for(
         }
         selector => selector,
     };
-    let gleam =
-        NativeExtension::frontend_backend(GleamExtension).map_err(|error| CliError::Extension {
+    let gleam = NativeExtension::builder(GleamExtension)
+        .with_frontend()
+        .with_backend()
+        .with_workspace()
+        .finish()
+        .map_err(|error| CliError::Extension {
             message: format!("Failed to construct native Gleam provider: {error}"),
         })?;
-    let elm =
-        NativeExtension::frontend_backend(ElmExtension).map_err(|error| CliError::Extension {
+    let elm = NativeExtension::builder(ElmExtension)
+        .with_frontend()
+        .with_backend()
+        .with_workspace()
+        .finish()
+        .map_err(|error| CliError::Extension {
             message: format!("Failed to construct native Elm provider: {error}"),
         })?;
     let mut registry = ExtensionRegistry::new();
@@ -148,7 +159,7 @@ pub async fn invoke_frontend(
                 snapshot,
                 resolved.info().id.as_str(),
                 methods::COMPILE,
-                request,
+                compile_wire_request(&request, resolved.invocation_mode()),
             )
             .await
         }
@@ -415,7 +426,7 @@ mod tests {
     use crate::home::MorphirHome;
     use morphir_daemon::{InvocationPolicy, ResolvedBackend, ResolvedFrontend};
     use morphir_extension_sdk::{
-        CompileOptions, CompilePackage, CompileRequest, GenerateRequest, SourceDocument,
+        CompileOptions, CompilePackage, CompileRequest, GenerateRequest, SourceDocument, SourceSet,
     };
     use serde_json::json;
     use std::collections::HashMap;
@@ -446,12 +457,15 @@ mod tests {
     fn compile_request(output_dir: &Path) -> CompileRequest {
         CompileRequest {
             language_id: "gleam".into(),
-            documents: vec![SourceDocument {
-                uri: "file:///workspace/src/main.gleam".into(),
-                language_id: "gleam".into(),
-                version: 1,
-                text: "pub fn hello() {\n  \"world\"\n}\n".into(),
-            }],
+            sources: SourceSet {
+                root: Some("file:///workspace/src".into()),
+                documents: vec![SourceDocument {
+                    uri: "file:///workspace/src/main.gleam".into(),
+                    language_id: "gleam".into(),
+                    version: 1,
+                    text: "pub fn hello() {\n  \"world\"\n}\n".into(),
+                }],
+            },
             package: CompilePackage {
                 name: "example/hello".into(),
                 exposed_modules: Some(vec![]),
@@ -463,7 +477,6 @@ mod tests {
                 ir_version: "4.0.0".into(),
                 extra: HashMap::from([
                     ("outputDir".into(), json!(output_dir)),
-                    ("sourceRootUri".into(), json!("file:///workspace/src")),
                     ("emitParseStage".into(), json!(false)),
                     ("emitParseStageFatal".into(), json!(false)),
                 ]),

@@ -38,8 +38,8 @@ use morphir_daemon::extensions::{
 use morphir_devkit::{ConfigLoadOptions, discover_config, load_config_context_with};
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::{
-    Artifact, CompileOptions, CompilePackage, CompileRequest, CompileResult, Diagnostic,
-    DiagnosticSeverity, GenerateRequest, GenerateResult, SourceDocument, SourceLocation,
+    Artifact, CompileRequest, CompileResult, Diagnostic, DiagnosticSeverity, GenerateRequest,
+    GenerateResult, SourceLocation,
 };
 use serde_json::Value;
 
@@ -250,7 +250,7 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                 },
             })?;
         let provider_id = resolved.info().id.clone();
-        let request = compile_request(params);
+        let request = compile_request(params)?;
         request
             .source_paths()
             .map_err(|error| CliError::Validation {
@@ -491,49 +491,36 @@ fn extension_working_directory(home: &MorphirHome) -> PathBuf {
 ///
 /// The playground compiles one self-contained package, so `dependencies` is
 /// always empty.
-fn compile_request(params: PlaygroundCompileParams) -> CompileRequest {
-    CompileRequest {
-        language_id: params.language_id,
-        documents: params
-            .documents
-            .into_iter()
-            .map(|document| SourceDocument {
-                uri: document.uri,
-                language_id: document.language_id,
-                version: document.version,
-                text: document.text,
-            })
-            .collect(),
-        // The playground protocol now spells exposure exactly as the SDK does:
-        // omitted exposes every module, an explicit empty list exposes none.
-        package: CompilePackage {
-            name: params.package.name,
-            exposed_modules: params.package.exposed_modules,
-        },
-        dependencies: Vec::new(),
-        baseline: None,
-        options: compile_options(params.ir_version, &params.options),
-    }
+fn compile_request(params: PlaygroundCompileParams) -> Result<CompileRequest, CliError> {
+    // The browser protocol still carries documents and an optional root in its
+    // options. Let the SDK normalize that existing envelope into SourceSet and
+    // reject conflicting or malformed root aliases at the boundary.
+    serde_json::from_value(serde_json::json!({
+        "languageId": params.language_id,
+        "documents": params.documents,
+        "package": params.package,
+        "dependencies": [],
+        "options": compile_options(params.ir_version, &params.options),
+    }))
+    .map_err(|error| CliError::Validation {
+        message: format!("Invalid playground compile request: {error}"),
+    })
 }
 
-/// Fold free-form playground options into typed compile options.
+/// Prepare the browser options for the SDK's compile-envelope decoder.
 ///
-/// `typesOnly` is lifted into its typed field, and `irVersion` is dropped
-/// because the request's own `irVersion` is authoritative; both are reserved
-/// keys that `CompileOptions` refuses to serialize from `extra`.
-fn compile_options(ir_version: String, options: &Value) -> CompileOptions {
+/// `typesOnly` retains its boolean default, and the request's own `irVersion`
+/// is authoritative. The decoder moves the source root into the source set.
+fn compile_options(ir_version: String, options: &Value) -> HashMap<String, Value> {
     let mut extra = option_map(options);
     let types_only = extra
         .remove("typesOnly")
         .and_then(|value| value.as_bool())
         .unwrap_or(false);
-    extra.remove("irVersion");
+    extra.insert("typesOnly".into(), Value::Bool(types_only));
+    extra.insert("irVersion".into(), Value::String(ir_version));
     deny_output_options(&mut extra);
-    CompileOptions {
-        types_only,
-        ir_version,
-        extra,
-    }
+    extra
 }
 
 fn generate_options(options: &Value) -> HashMap<String, Value> {
@@ -1394,6 +1381,7 @@ mod tests {
             "typesOnly": true,
             "irVersion": "9",
             "outputDir": "/tmp/somewhere",
+            "sourceRootUri": "file:///src",
             "strict": true
         });
 
@@ -1406,10 +1394,19 @@ mod tests {
         let requests = invoker.compiles.lock().unwrap();
         let sent = serde_json::to_value(&requests[0]).expect("the request serializes");
         assert_eq!(sent["languageId"], "elm");
-        assert_eq!(sent["documents"].as_array().unwrap().len(), 1);
-        assert_eq!(sent["documents"][0]["uri"], "file:///src/Main.elm");
-        assert_eq!(sent["documents"][0]["text"], "module Main exposing (..)");
-        assert_eq!(sent["documents"][0]["version"], 1);
+        assert!(sent.get("documents").is_none());
+        assert_eq!(sent["sources"]["root"], "file:///src");
+        assert!(sent["options"].get("sourceRootUri").is_none());
+        assert_eq!(sent["sources"]["documents"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            sent["sources"]["documents"][0]["uri"],
+            "file:///src/Main.elm"
+        );
+        assert_eq!(
+            sent["sources"]["documents"][0]["text"],
+            "module Main exposing (..)"
+        );
+        assert_eq!(sent["sources"]["documents"][0]["version"], 1);
         assert_eq!(sent["package"]["name"], "playground/main");
         assert_eq!(sent["package"]["exposedModules"][0], "Main");
         assert_eq!(
