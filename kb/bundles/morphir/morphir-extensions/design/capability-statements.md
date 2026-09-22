@@ -113,7 +113,7 @@ A statement has the same content in every phase (source `spec`):
 
 ```json
 {
-  "statementVersion": 1,
+  "statementVersion": "1.0.0-draft.1",
   "protocolVersions": ["0.1"],
   "extension": {
     "id": "morphir-elm",
@@ -129,7 +129,7 @@ A statement has the same content in every phase (source `spec`):
       "incremental": false,
       "multiDocument": false
     },
-    "workspace": { "protocolVersions": [1], "discover": true }
+    "workspace": { "protocolVersions": ["1.0.0-draft.1"], "discover": true }
   },
   "requires": { "host": ">=0.4.0-alpha.7" },
   "critical": ["requires.host"]
@@ -195,14 +195,14 @@ A probe starts the artifact and sends `describe`. What that start costs depends 
 - For a `wasm` artifact, the host instantiates the module in the WASM engine. The module is
   memory-isolated and has no direct file or network access.
 
-## Bundle descriptor, schema 2
+## Bundle descriptor, version 2
 
 A release has one descriptor, with one entry per artifact. Each entry carries the statement that its
 artifact returned from `describe` on its platform (source `spec`):
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": "2.0.0-draft.1",
   "extensionId": "morphir-elm",
   "shortId": "elm",
   "version": "0.3.0",
@@ -257,7 +257,7 @@ sequenceDiagram
     alt statements differ and platformDifferences is "none"
         Asm-->>Author: release job fails
     else equal, or difference declared
-        Asm->>GH: descriptor (schema 2), artifacts, checksums
+        Asm->>GH: descriptor (version 2), artifacts, checksums
     end
     User->>Repo: publish --bundle (WASM or process)
     Repo->>Repo: verify every digest and checksum
@@ -299,7 +299,7 @@ rules (source `spec`):
 1. Must-ignore unless critical. At every boundary (bundle descriptor, index record, installed record,
    statement, `describe` result) a reader ignores an optional member it does not understand. It refuses
    a member listed in `critical` that it does not understand.
-2. Schema ranges. A host reads schema `N` and `N-1` of each format. A publisher writes the highest schema
+2. Schema ranges. A host reads the current released major and the previous released major of each format, plus the exact drafts it lists. A publisher writes the highest version
    that the oldest host it targets can read.
 3. Minimum host. An extension that needs a newer host states `requires.host` and lists it in `critical`.
 4. `describe` is optional. On `-32601`, or on a refusal before `initialize`, the host falls back to a
@@ -326,9 +326,9 @@ Only a critical change needs the "Both" path.
 ### The bootstrap host release
 
 Released hosts follow none of these rules, so one host release has to come first. It is a host-only
-release that implements rules 1 to 5 and still reads schema-1 descriptors and records. Until it ships,
-extensions keep writing the flat schema-1 keys. After it ships and the pins move, extensions adopt
-statements and schema 2.
+release that implements rules 1 to 5 and still reads version-1 descriptors and records. Until it ships,
+extensions keep writing the flat version-1 keys. After it ships and the pins move, extensions adopt
+statements and version 2.
 
 The same release meets the removal condition of three transitional mechanisms from #915: the legacy
 compile envelope in the Rust SDK, `compile_wire_request` in the CLI, and the `TRANSITIONAL_FIELDS` skip.
@@ -338,12 +338,12 @@ All three retire when the pins move. The bootstrap host is the release that carr
 ## Consequences for work in flight
 
 - The morphir-elm branch `feat/mep-workspace-discovery` writes `workspaceDiscovery: true` as a flat key.
-  That is the old shape, but it is correct under schema 1, and the bootstrap host converts it (rule 5).
+  That is the old shape, but it is correct under version 1, and the bootstrap host converts it (rule 5).
   The branch keeps the key. Its pull request waits until #921 is agreed.
 - `multiDocument`, added in step 5 of #917, is in no installed record today. An installed provider
   therefore always reads as single-document. Statements fix that without a new record field.
 - The MEP draft documents (sources `protocol` and `distribution`) do not yet describe `describe`,
-  statements or schema 2. #921 names them as the durable home for this design.
+  statements or version 2. #921 names them as the durable home for this design.
 
 ## Alternatives rejected
 
@@ -372,7 +372,7 @@ These questions are open in #921:
 5. Can a process probe get an operating-system sandbox where one is available, for example a restricted
    profile on macOS or a namespace on Linux?
 
-What would change the position: if the bootstrap host release cannot keep reading schema-1 records, the
+What would change the position: if the bootstrap host release cannot keep reading version-1 records, the
 single-side release paths do not hold, and decision 0004 reopens. If a process probe turns out to need
 more than `describe` to give a useful answer, the no-side-effects contract of decision 0003 reopens.
 

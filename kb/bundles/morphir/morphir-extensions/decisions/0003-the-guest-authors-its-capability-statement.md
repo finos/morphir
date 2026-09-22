@@ -30,7 +30,7 @@ answer from the guest. These are decisions 1 to 5 of finos/morphir#921 (source `
 | 5 | Each artifact carries its own statement. Artifacts of one release may differ under two guards: the release declares the difference, and install and `extension info` show it. |
 
 [Capability statements across the extension lifecycle](/design/capability-statements.md) is the
-narrative home. It gives the statement shape, the lifecycle phases and the schema-2 bundle descriptor.
+narrative home. It gives the statement shape, the lifecycle phases and the version-2 bundle descriptor.
 
 ## Summary
 
@@ -131,7 +131,7 @@ failure this decision set out to move earlier.
 ## Consequences
 
 - Release tooling for each extension runs `describe` once per platform and writes the answers into a
-  schema-2 bundle descriptor. `.github/extensions.toml` capability flags in finos/morphir-rust and
+  version-2 bundle descriptor. `.github/extensions.toml` capability flags in finos/morphir-rust and
   capability entries in `extension.json` in finos/morphir-elm stop being authored by hand.
 - MEP gains `morphir.extension.describe`. The MEP draft (`docs/design/draft/extensions/protocol.md`) does
   not describe it yet.

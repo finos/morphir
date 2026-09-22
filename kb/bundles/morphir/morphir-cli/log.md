@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-22
+
+* **Creation**: Added [SemVer is the default contract versioning scheme](/decisions/0003-semver-is-the-default-contract-versioning-scheme.md).
+
 ## 2026-09-20
 
 * **Creation**: Added [Configuration and lifecycle](/configuration-and-lifecycle.md).

@@ -5,7 +5,7 @@ state: Accepted
 decided: 2026-09-22
 tags: [extensions, capabilities, mep, distribution, release, compatibility]
 status: stable
-description: Every reader of extension formats ignores unknown members unless they are marked critical, accepts schema N and N-1, and converts old records, so host and extension changes ship on their own after one bootstrap host release.
+description: Every reader of extension formats ignores unknown members unless they are marked critical, accepts the current and previous released major and listed drafts, and converts old records, so host and extension changes ship on their own after one bootstrap host release.
 sources:
   - id: spec
     resource: https://github.com/finos/morphir/discussions/921
@@ -32,7 +32,7 @@ One bootstrap host release comes first. These are decisions 6 to 11 of finos/mor
 | # | Decision |
 | --- | --- |
 | 6 | Readers ignore unknown members unless they are marked critical, at every boundary. |
-| 7 | Formats carry a schema version, and readers accept a range: `N` and `N-1`. |
+| 7 | Formats carry a SemVer version, and readers accept a range: the current and previous released major, plus the exact drafts they list ([SemVer is the default contract versioning scheme](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md)). |
 | 8 | An extension may state the minimum host it needs, as a critical member (`requires.host`). |
 | 9 | `morphir.extension.describe` is optional for guests. A host falls back to `initialize`, `capabilities`, `shutdown`. |
 | 10 | A record without a statement is converted, not refused. The host builds a statement from the old flat keys and marks it `declared` rather than `probed`. |
@@ -59,7 +59,7 @@ the rules themselves.
 | Option | Outcome | Why |
 | --- | --- | --- |
 | Must-ignore unless critical, at every boundary | Chosen | Old readers accept new optional members, and still refuse a change of meaning |
-| Schema ranges `N` and `N-1` | Chosen | A new host reads the formats that released extensions still write |
+| Version ranges: current and previous released major, plus listed drafts | Chosen | A new host reads the formats that released extensions still write |
 | `requires.host` as a critical member | Chosen | An extension that needs a newer host says so, and an older host refuses with a clear message |
 | `describe` optional, with a session fallback | Chosen | Released guests without `describe` keep working |
 | Convert old records and mark them `declared` | Chosen | Installed extensions keep working, and the record shows it was never probed |
@@ -84,7 +84,7 @@ old reader refuses by name instead of guessing. Capability kinds stay strict, as
 does not know is an error.
 
 Decision 7 covers changes that must-ignore cannot absorb, such as a renamed or restructured member. A host
-reads schema `N` and `N-1` of each format. A publisher writes the highest schema that the oldest host it
+reads the current released major and the previous released major of each format, plus the exact drafts it lists. A publisher writes the highest version that the oldest host it
 targets can read. One step of overlap gives each side one release to catch up. Whether one step is
 enough is judged, not measured.
 
@@ -100,7 +100,7 @@ Decision 10 keeps installed extensions working. A record written before statemen
 keys. The host builds a statement from them and marks it `declared`, so a reader can tell it from a
 `probed` statement. Install and the first session then verify it as usual. The morphir-elm branch
 `feat/mep-workspace-discovery`, which writes `workspaceDiscovery: true` as a flat key, relies on this
-decision: its key is correct under schema 1, and the bootstrap host converts it.
+decision: its key is correct under version 1, and the bootstrap host converts it.
 
 Decision 11 follows from the others. A host-only release must read every supported older descriptor,
 record and guest. Its gate is a host compatibility suite: the new CLI publishes, installs and compiles
@@ -111,9 +111,9 @@ passes, the host releases, the extension pin moves, and then `test:cli-release` 
 change needs that path.
 
 Released hosts follow none of these rules, which is why one bootstrap host release is unavoidable. It is
-a host-only release that implements decisions 6 to 10 and still reads schema-1 descriptors and
-records. Until it ships, extensions keep writing the flat schema-1 keys. After it ships and the pins
-move, extensions adopt statements and schema 2.
+a host-only release that implements decisions 6 to 10 and still reads version-1 descriptors and
+records. Until it ships, extensions keep writing the flat version-1 keys. After it ships and the pins
+move, extensions adopt statements and version 2.
 
 The bootstrap release also meets the removal condition of three transitional mechanisms from
 finos/morphir#915 (source `single-file-thread`): the legacy compile envelope in the Rust SDK,
@@ -155,17 +155,17 @@ them instead: host first, then the extension, with a gate between.
 - Every host parser for the bundle descriptor, the index record and the installed catalog drops
   `deny_unknown_fields` in favor of must-ignore with a `critical` list. Each format gains a schema
   version.
-- The next host release is the bootstrap release. It implements the rules, reads schema 1, and retires
+- The next host release is the bootstrap release. It implements the rules, reads version 1, and retires
   the legacy compile envelope, `compile_wire_request` and the `TRANSITIONAL_FIELDS` skip once the pins
   move.
-- Extensions keep writing flat schema-1 keys until the bootstrap host ships and the pins move.
+- Extensions keep writing flat version-1 keys until the bootstrap host ships and the pins move.
 - A host compatibility suite becomes the gate for host-only releases. `test:cli-release` grows to cover
   the Elm process bundle.
 - A statement is either `probed` or `declared`, and readers can tell which.
 
 ## Revisit when
 
-Revisit the `N`/`N-1` range if a format needs to change twice within one host release cycle, since one
+Revisit the two-major range if a format needs to change twice within one host release cycle, since one
 step of overlap would then strand an extension. Revisit decision 6 if an optional member is ever ignored in a
 way that changes behavior without being marked critical. Revisit the release paths once the bootstrap
 host has shipped and the host compatibility suite has gated at least one host-only release.

@@ -72,6 +72,17 @@ The Morphir IR specification and JSON schemas are available in the morphir-dotne
 
 See the [Domain Modeling guide](docs/developers/domain-modeling.md).
 
+### Contract Versioning
+
+Every versioned contract Morphir defines (protocols, document and schema formats, capability statements) uses **SemVer 2.0 version strings by default**. Apply this to a new contract without asking.
+
+- A released version is compatible within its major. Readers ignore unknown members unless a `critical` list names them. A breaking change takes a new major.
+- A prerelease such as `1.0.0-draft.3` matches only exactly. Drafts are refined in place and promise no compatibility with each other.
+- A reader supports the current released major, the previous released major, and the exact drafts it lists.
+- Recorded exceptions: MEP keeps `0.1` until its next protocol change, and Morphir IR `formatVersion` follows its own IR decisions.
+
+See the decision [SemVer is the default contract versioning scheme](kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md).
+
 ## Development Practices
 
 ### Repository tooling and compatibility checks

@@ -166,7 +166,10 @@ An extension manifest needs:
 
 The runtime kind is independent from the acquisition source. A GitHub Release may contain a portable WASM module, a native process, or a JVM process. A daemon entry may require no artifact at all when policy permits connecting to an existing endpoint.
 
-The `schemaVersion` field is a quoted `"major.minor"` JSON string. Schema `"1.0"`
+The `schemaVersion` field is a quoted `"major.minor"` JSON string. This is the
+form records had before SemVer became the default contract versioning scheme;
+readers keep accepting it as version 1, and the next record version uses a
+SemVer string. Schema `"1.0"`
 extension records require matching metadata for every declared frontend or
 backend capability and use these rules for runnable artifacts:
 
@@ -229,14 +232,14 @@ change and a host release. `extension repository publish` also accepts only a
 single-artifact WASM bundle, so a multi-platform process extension such as the
 Elm MEP extension has no supported path to an installed record.
 
-### Release descriptor, schema 2
+### Release descriptor, version 2
 
 A release has one descriptor with one entry per artifact. Each entry carries the
 statement that the artifact returned from `describe` on its own platform:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": "2.0.0-draft.1",
   "extensionId": "morphir-elm",
   "shortId": "elm",
   "version": "0.3.0",
@@ -275,7 +278,7 @@ sequenceDiagram
     Guest-->>CI: statement
     CI->>Asm: artifact, sha256, statement
     Asm->>Asm: compare statements across artifacts
-    Asm-->>User: descriptor (schema 2), artifacts, checksums
+    Asm-->>User: descriptor (version 2), artifacts, checksums
     User->>Repo: publish --bundle (process or wasm)
     Repo->>Repo: verify every digest and checksum
     opt an artifact runs on this host
@@ -334,9 +337,12 @@ Every document that carries a statement follows the same rules:
 1. **Must-ignore unless critical.** A reader ignores an optional member it does
    not understand, and refuses a member named in `critical` that it does not
    understand.
-2. **Schema ranges.** A host reads schema `N` and `N-1` of the descriptor and
-   of each record. A publisher writes the highest schema that the oldest host
-   it targets reads.
+2. **Schema ranges.** A host reads the current released major and the previous released
+   major of the descriptor and of each record, plus the exact drafts it lists.
+   A publisher writes the highest version that the oldest host it targets
+   reads. Versions follow the default
+   [SemVer contract versioning](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md)
+   rule: a draft such as `2.0.0-draft.1` matches only exactly.
 3. **Minimum host.** An extension that needs a newer host states `requires.host`
    and lists it in `critical`.
 4. **`describe` is optional.** A host falls back to a session when an extension
@@ -355,8 +361,8 @@ These rules let a host and an extension release independently:
 
 A host released before these rules existed follows none of them. The first host
 release that implements them is therefore a host-only release that still reads
-schema-1 descriptors and records. Extensions keep writing schema 1 until that
-release is pinned, and adopt statements and schema 2 afterward.
+version-1 descriptors and records. Extensions keep writing version 1 until that
+release is pinned, and adopt statements and version 2 afterward.
 
 ## Morphir Scala example
 
