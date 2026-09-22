@@ -1,0 +1,94 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "profile": "local-library-mvp:0.1.0-draft.1",
+  "scope": "metadata-only-refresh",
+  "fixture": "signed",
+  "fixedClock": "2027-01-01T00:00:00Z",
+  "cases": [
+    {
+      "id": "mvp.refresh.fresh-metadata",
+      "setup": "fresh",
+      "expected": "refreshed"
+    },
+    {
+      "id": "mvp.refresh.bad-timestamp-signature",
+      "setup": "tampered-signature",
+      "expected": "refused",
+      "diagnostic": "Signature threshold"
+    },
+    {
+      "id": "mvp.refresh.expired-timestamp",
+      "setup": "expired-timestamp",
+      "expected": "refused",
+      "diagnostic": "metadata is expired"
+    },
+    {
+      "id": "mvp.refresh.uninitialized-state",
+      "setup": "uninitialized-state",
+      "expected": "refused",
+      "diagnostic": "trust state is uninitialized or missing"
+    },
+    {
+      "id": "mvp.refresh.missing-established-state",
+      "setup": "missing-established-state",
+      "expected": "refused",
+      "diagnostic": "trust state database is missing"
+    },
+    {
+      "id": "mvp.refresh.corrupt-state",
+      "setup": "corrupt-state",
+      "expected": "refused",
+      "diagnostic": "file is not a database"
+    },
+    {
+      "id": "mvp.refresh.uncertain-state",
+      "setup": "uncertain-state",
+      "expected": "refused",
+      "diagnostic": "unresolved prior operation"
+    },
+    {
+      "id": "mvp.refresh.historical-policy-unsupported",
+      "setup": "historical-policy",
+      "expected": "refused",
+      "diagnostic": "MVP requires fresh-metadata policy"
+    },
+    {
+      "id": "mvp.refresh.damaged-bundle",
+      "setup": "damaged-bundle",
+      "expected": "refreshed"
+    },
+    {
+      "id": "mvp.refresh.missing-bundle",
+      "setup": "missing-bundle",
+      "expected": "refreshed"
+    },
+    {
+      "id": "mvp.refresh.damaged-publisher-envelope",
+      "setup": "damaged-publisher-envelope",
+      "expected": "refreshed"
+    },
+    {
+      "id": "mvp.refresh.missing-publisher-envelope",
+      "setup": "missing-publisher-envelope",
+      "expected": "refreshed"
+    },
+    {
+      "id": "mvp.refresh.damaged-record",
+      "setup": "damaged-record",
+      "expected": "refreshed"
+    },
+    {
+      "id": "mvp.refresh.missing-record",
+      "setup": "missing-record",
+      "expected": "refreshed"
+    }
+  ],
+  "invariants": {
+    "inputLockBytes": "unchanged",
+    "registryBytes": "unchanged-after-setup",
+    "consumerOutput": "absent",
+    "successReceipt": "expected/refresh.json",
+    "receiptDigests": "sha256-of-exact-original-signed-envelope-bytes",
+    "packageAuthority": "none; no-selection-or-package-authorization"
+  }
+}

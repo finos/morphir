@@ -7,6 +7,7 @@ Restore freshly authenticated Libraries from a local registry (MVP)
 
 ## Subcommands
 
+- [`morphir package refresh <FLAGS>`](package/refresh.md)
 - [`morphir package resolve <FLAGS>`](package/resolve.md)
 - [`morphir package restore <FLAGS>`](package/restore.md)
 - [`morphir package trust <SUBCOMMAND>`](package/trust.md)

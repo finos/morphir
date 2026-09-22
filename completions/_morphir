@@ -100,6 +100,25 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
         complete file type=path
         complete dir type=path
     }
+    cmd refresh display_order=3 args_override_self=#false help="Authenticate current registry metadata without resolving or restoring packages" unknown_flags=error {
+        flag --policy help="Explicit trusted-host policy file" required=#true {
+            arg <FILE>
+        }
+        flag --registry help="Caller-controlled local registry whose current metadata will be authenticated" required=#true {
+            arg <DIR>
+        }
+        flag --state help="Existing explicitly initialized trust-state directory" required=#true {
+            arg <DIR>
+        }
+        flag --assurance help="Explicitly accept caller-controlled local roots; hardened mode is unsupported" required=#true {
+            arg <ASSURANCE> {
+                choices portable
+            }
+        }
+        flag --json help="Output exact accepted metadata digests as JSON"
+        complete file type=path
+        complete dir type=path
+    }
 }
 cmd eval display_order=5 args_override_self=#false help="Evaluate a program through a registered native provider" unknown_flags=error {
     flag --request help="Path to a version 1 evaluation request JSON file" required=#true {
