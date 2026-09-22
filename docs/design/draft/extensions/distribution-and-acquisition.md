@@ -157,7 +157,7 @@ An extension manifest needs:
 
 - extension identity and version;
 - supported MEP versions;
-- declared capabilities and matching frontend languages or backend targets;
+- a capability statement for each artifact, captured from the extension itself (see [Capability statements in distribution](#capability-statements-in-distribution));
 - requested permissions;
 - one or more artifacts;
 - each artifact's runtime kind, source, digest, and platform constraints;
@@ -209,11 +209,160 @@ The host supports these activation modes behind one session contract:
 - start a managed daemon, wait for its endpoint, and then use the daemon transport;
 - call a built-in provider through the same logical operation contract where practical.
 
+## Capability statements in distribution
+
+The [protocol](./protocol.md#capability-statements) defines the capability
+statement and the `morphir.extension.describe` method that returns it. This
+section defines how the statement travels from a release to an installed
+record. The working specification is
+[finos/morphir#921](https://github.com/finos/morphir/discussions/921).
+
+### The gap this closes
+
+Until statements exist, capabilities are declared by hand in a release
+manifest (`.github/extensions.toml` in morphir-rust, `extension.json` in
+morphir-elm) and turned into capability kinds by key: `languages` becomes
+`frontend`, `targets` becomes `backend`, `workspaceDiscovery` becomes
+`workspace`. Every parser of these documents rejects unknown fields, so each new
+capability needs a manifest key, a writer in every packaging tool, a host parser
+change and a host release. `extension repository publish` also accepts only a
+single-artifact WASM bundle, so a multi-platform process extension such as the
+Elm MEP extension has no supported path to an installed record.
+
+### Release descriptor, schema 2
+
+A release has one descriptor with one entry per artifact. Each entry carries the
+statement that the artifact returned from `describe` on its own platform:
+
+```json
+{
+  "schemaVersion": 2,
+  "extensionId": "morphir-elm",
+  "shortId": "elm",
+  "version": "0.3.0",
+  "gitCommit": "<40 hexadecimal characters>",
+  "platformDifferences": "none",
+  "artifacts": [
+    {
+      "platform": "aarch64-apple-darwin",
+      "runtime": "process",
+      "filename": "morphir-elm-extension-0.3.0-aarch64-apple-darwin.tgz",
+      "sha256": "<64 hexadecimal characters>",
+      "statement": { "extension": { "types": ["frontend", "workspace"] } }
+    }
+  ]
+}
+```
+
+A WASM release is the case with one artifact and no `platform`. A bundle
+directory contains the descriptor, every artifact it lists and one checksum per
+artifact, and nothing else.
+
+### Publication and installation
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CI as Release job (per platform)
+    participant Guest as Extension
+    participant Asm as Release assembly
+    actor User
+    participant Repo as repository publish
+    participant Inst as extension install
+    participant Host as Host session
+
+    CI->>Guest: describe
+    Guest-->>CI: statement
+    CI->>Asm: artifact, sha256, statement
+    Asm->>Asm: compare statements across artifacts
+    Asm-->>User: descriptor (schema 2), artifacts, checksums
+    User->>Repo: publish --bundle (process or wasm)
+    Repo->>Repo: verify every digest and checksum
+    opt an artifact runs on this host
+        Repo->>Guest: describe
+        Repo->>Repo: equal to its statement, else refuse
+    end
+    User->>Inst: install
+    Inst->>Inst: select the artifact for this platform, verify digest
+    Inst->>Guest: describe, unless --no-probe
+    Inst->>Inst: equal to the record, else refuse
+    User->>Host: compile or generate
+    Host->>Guest: initialize
+    Host->>Host: equal to the installed statement, else refuse
+```
+
+**Figure 1:** A statement comes from the extension at packaging time and is
+checked against the extension three more times. Notice that installation is the
+first place where the artifact that will run is on the machine that runs it:
+publication can check only the artifacts that run on the publishing host.
+
+The repository index record and the installed record keep each artifact's
+statement unchanged. The installed record keeps only the statement of the
+installed artifact. The host's provider registry reads that statement, so a
+member such as `frontend.multiDocument` or the `workspace` kind is known before
+a session starts.
+
+`extension install --no-probe` skips the install-time `describe`. It exists for
+users who do not accept that a `process` artifact runs at installation rather
+than at first use. The first session still compares the statement.
+
+The existing checks in [Extension flow](#extension-flow) gain one stage:
+
+| Stage | Compared values | Result on mismatch |
+|---|---|---|
+| Install probe against record | The complete statement of the selected artifact | Installation stops before the artifact is recorded. |
+
+### Platform differences
+
+Artifacts of one release may report different statements. Two guards apply:
+
+1. **A difference is declared, never accidental.** The release job compares the
+   statements it collected. When they differ and `platformDifferences` is
+   `"none"`, the job fails. A release that differs on purpose sets
+   `"declared"`.
+2. **A difference is visible.** `extension install` and `extension info` report
+   when the installed artifact's statement differs from other artifacts of the
+   same release, naming the members that differ.
+
+The index record never merges statements. A merged statement would claim a
+capability that some installed artifact does not have.
+
+## Compatibility and release paths
+
+Every document that carries a statement follows the same rules:
+
+1. **Must-ignore unless critical.** A reader ignores an optional member it does
+   not understand, and refuses a member named in `critical` that it does not
+   understand.
+2. **Schema ranges.** A host reads schema `N` and `N-1` of the descriptor and
+   of each record. A publisher writes the highest schema that the oldest host
+   it targets reads.
+3. **Minimum host.** An extension that needs a newer host states `requires.host`
+   and lists it in `critical`.
+4. **`describe` is optional.** A host falls back to a session when an extension
+   does not implement it.
+5. **Old records are converted.** A record without a statement becomes a
+   statement built from its capability keys, marked `declared` rather than
+   `probed`. Installation and the first session verify it as usual.
+
+These rules let a host and an extension release independently:
+
+| Release path | What must hold | Gate |
+|---|---|---|
+| Host only | The new host reads every supported older descriptor, record and extension (rules 2, 4 and 5). | The host compatibility suite: CI runs the released bundles pinned in `.config/published-extension-bundles.toml` through the new host. |
+| Extension only | The extension works with the host release it targets, or states `requires.host` (rules 1 and 3). | The extension's release check runs its bundle through the pinned host release. |
+| Both | The host releases first, then the extension. They never have to release at the same time. | The host suite passes and the host releases; the extension pin moves and its release check passes. |
+
+A host released before these rules existed follows none of them. The first host
+release that implements them is therefore a host-only release that still reads
+schema-1 descriptors and records. Extensions keep writing schema 1 until that
+release is pinned, and adopt statements and schema 2 afterward.
+
 ## Morphir Scala example
 
 Morphir Scala publishes native CLI archives, a portable executable JVM assembly, and checksums through GitHub Releases. An extension record can point at those independently released assets instead of packaging them with the Morphir CLI.
 
-On Windows ARM64, the resolver selects the JVM artifact because GraalVM Native Image does not provide a Windows ARM64 target. Installation verifies the release checksum and records a launch description such as `java -jar <artifact> extension stdio`. Other platforms may select a native artifact from the same extension version. Both variants must report the same MEP identity and capabilities.
+On Windows ARM64, the resolver selects the JVM artifact because GraalVM Native Image does not provide a Windows ARM64 target. Installation verifies the release checksum and records a launch description such as `java -jar <artifact> extension stdio`. Other platforms may select a native artifact from the same extension version. Both variants must report the same MEP identity. Their capabilities may differ only when the release declares the difference; see [Platform differences](#platform-differences).
 
 The existing `morphir server` command becomes an extension daemon only if it implements a specified MEP transport and lifecycle. Otherwise Morphir Scala should expose a dedicated MEP entry point. A user-facing HTTP server and a host-managed standard-stream process have different lifecycle and logging requirements.
 
@@ -247,6 +396,10 @@ independently built artifact through the production host boundary.
 4. Which signature or build-provenance policy establishes publisher authenticity?
 5. How does a host distinguish a daemon it owns from an endpoint it only connects to?
 6. Which yank and revocation behavior must work before the first public repository?
+7. What canonical form do two capability statements take before they are compared?
+8. Which range syntax does `requires.host` use, and how are prerelease host versions matched?
+9. Should publisher provenance or a signature cover each artifact's capability statement?
+10. Can an install-time probe of a `process` artifact run under an operating-system sandbox where one is available?
 
 ## Non-goals
 
