@@ -3,7 +3,6 @@
   "$id": "https://morphir.finos.org/spec/package/local-library-portable/0.1.0-draft.1/portable-local-registry-profile.schema.json",
   "title": "Portable Local Library required inventory, definition planning only",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "profile",
     "artifactContract",
@@ -17,11 +16,7 @@
   "properties": {
     "profile": {
       "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "name",
-        "version"
-      ],
+      "required": [ "name", "version" ],
       "properties": {
         "name": {
           "const": "local-library-portable"
@@ -29,7 +24,8 @@
         "version": {
           "const": "0.1.0-draft.1"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "artifactContract": {
       "const": "0.1.0-draft.3"
@@ -45,7 +41,6 @@
     },
     "requiredGroups": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "common",
         "posix",
@@ -89,13 +84,14 @@
             "pattern": "^portable-local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "environments": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "os",
@@ -110,30 +106,16 @@
             "minLength": 1
           },
           "os": {
-            "enum": [
-              "linux",
-              "macos",
-              "windows"
-            ]
+            "enum": [ "linux", "macos", "windows" ]
           },
           "architecture": {
-            "enum": [
-              "x86-64",
-              "aarch64"
-            ]
+            "enum": [ "x86-64", "aarch64" ]
           },
           "filesystem": {
-            "enum": [
-              "ext4",
-              "apfs",
-              "ntfs"
-            ]
+            "enum": [ "ext4", "apfs", "ntfs" ]
           },
           "caseSensitivity": {
-            "enum": [
-              "sensitive",
-              "insensitive"
-            ]
+            "enum": [ "sensitive", "insensitive" ]
           },
           "requiredGroups": {
             "type": "array",
@@ -147,22 +129,39 @@
               ]
             }
           }
-        }
-      },
-      "minItems": 1
+        },
+        "additionalProperties": false
+      }
     },
     "cases": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "group",
-          "requirement",
-          "provenance",
-          "definition"
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "provenance": {
+                  "properties": {
+                    "kind": {
+                      "const": "source-case"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "required": [ "derivation" ]
+            },
+            "else": {
+              "not": {
+                "required": [ "derivation" ]
+              }
+            }
+          }
         ],
+        "required": [ "id", "group", "requirement", "provenance", "definition" ],
         "properties": {
           "id": {
             "type": "string",
@@ -185,11 +184,7 @@
             "oneOf": [
               {
                 "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "kind",
-                  "caseId"
-                ],
+                "required": [ "kind", "caseId" ],
                 "properties": {
                   "kind": {
                     "const": "source-case"
@@ -198,15 +193,12 @@
                     "type": "string",
                     "pattern": "^local-registry\\.[a-z]+\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               {
                 "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "kind",
-                  "document"
-                ],
+                "required": [ "kind", "document" ],
                 "properties": {
                   "kind": {
                     "const": "contract"
@@ -219,13 +211,13 @@
                       "mck/README.md"
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
             ]
           },
           "derivation": {
             "type": "object",
-            "additionalProperties": false,
             "required": [
               "removeSetup",
               "removeObservations",
@@ -251,20 +243,14 @@
                 "const": "unchanged"
               },
               "consumptionObservations": {
-                "enum": [
-                  "complete",
-                  "not-applicable"
-                ]
+                "enum": [ "complete", "not-applicable" ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "definition": {
             "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "kind",
-              "reason"
-            ],
+            "required": [ "kind", "reason" ],
             "properties": {
               "kind": {
                 "const": "pending"
@@ -273,38 +259,13 @@
                 "type": "string",
                 "minLength": 1
               }
-            }
+            },
+            "additionalProperties": false
           }
         },
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "provenance": {
-                  "properties": {
-                    "kind": {
-                      "const": "source-case"
-                    }
-                  }
-                }
-              }
-            },
-            "then": {
-              "required": [
-                "derivation"
-              ]
-            },
-            "else": {
-              "not": {
-                "required": [
-                  "derivation"
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "minItems": 1
+        "additionalProperties": false
+      }
     }
-  }
+  },
+  "additionalProperties": false
 }
