@@ -292,17 +292,17 @@ impl<O: SessionOpener> ExtensionInvoker for SessionReuseInvoker<O> {
         request: CompileRequest,
     ) -> Result<CompileResult, CliError> {
         let provider = resolved.info().id.clone();
-        match self
+        let result = self
             .via_session(
                 home,
                 working_directory,
                 &provider,
                 Resolved::Frontend(resolved),
                 methods::COMPILE,
-                &request,
+                &crate::extensions::compile_wire_request(&request, resolved.invocation_mode()),
             )
-            .await?
-        {
+            .await?;
+        match result {
             Some(result) => Ok(result),
             None => {
                 self.opener
@@ -364,7 +364,7 @@ mod tests {
     };
     use morphir_extension_sdk::{
         BackendCapability, CompileOptions, CompilePackage, ExtensionCapabilities, ExtensionInfo,
-        ExtensionType, FrontendCapability, LanguageCapability, SourceSet,
+        ExtensionType, FrontendCapability, LanguageCapability,
     };
     use serde_json::json;
     use std::collections::HashMap;
@@ -612,10 +612,7 @@ mod tests {
     fn compile_request() -> CompileRequest {
         CompileRequest {
             language_id: "gleam".into(),
-            sources: SourceSet {
-                root: None,
-                documents: vec![],
-            },
+            sources: Default::default(),
             package: CompilePackage {
                 name: "example/test".into(),
                 exposed_modules: Some(vec![]),

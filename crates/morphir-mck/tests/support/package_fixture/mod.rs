@@ -19,3 +19,5 @@ mod dsse;
 pub use dsse::{decode_hex, verify_dsse};
 mod relationships;
 pub use relationships::verify_relationships;
+#[allow(dead_code)]
+pub mod mvp;

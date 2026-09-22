@@ -65,6 +65,11 @@ struct Cli {
 
 #[derive(Clone, Subcommand)]
 enum Commands {
+    /// Restore freshly authenticated Libraries from a local registry (MVP)
+    Package {
+        #[command(subcommand)]
+        action: commands::package::PackageAction,
+    },
     /// Evaluate a program through a registered native provider
     Eval(commands::eval::EvalArgs),
     /// Run notebook or Markdown integration scenarios through real CLI processes
@@ -990,6 +995,7 @@ impl AppSession for MorphirSession {
 
     async fn execute(&mut self) -> AppResult<miette::Report> {
         match &self.command {
+            Commands::Package { action } => commands::package::run(action).await,
             Commands::Eval(args) => commands::eval::run_eval(args.clone()).map(|()| None),
             Commands::Itest(args) => commands::itest::run_itest(args.clone()),
             Commands::Validate { input } => run_validate(input.clone()),

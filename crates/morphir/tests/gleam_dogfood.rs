@@ -44,7 +44,7 @@ fn compile(documents: Vec<SourceDocument>) -> serde_json::Value {
         .compile(CompileRequest {
             language_id: "gleam".into(),
             sources: SourceSet {
-                root: Some("file:///src".into()),
+                root: None,
                 documents,
             },
             package: CompilePackage {

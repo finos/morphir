@@ -1083,7 +1083,13 @@ async fn invoke_frontend(
 
     let request = single_file_request(context);
     match ready
-        .invoke::<CompileResult>(methods::COMPILE, request)
+        .invoke::<CompileResult>(
+            methods::COMPILE,
+            crate::extensions::compile_wire_request(
+                &request,
+                morphir_daemon::InvocationMode::ProcessMep,
+            ),
+        )
         .await
     {
         InvokeOutcome::Success(session, result) => {

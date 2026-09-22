@@ -21,6 +21,18 @@ Print version
 Relocate the out root, which defaults to .morphir/out under the workspace root. MORPHIR_OUT_DIR does the same
 .SH COMMANDS
 .TP
+\fBpackage\fR
+Restore freshly authenticated Libraries from a local registry (MVP)
+.TP
+\fBpackage trust\fR
+Explicitly provision local package trust
+.TP
+\fBpackage trust init\fR
+Initialize a new state directory from a policy\-pinned bootstrap root
+.TP
+\fBpackage restore\fR
+Restore an exact locked Library graph using fresh signed metadata
+.TP
 \fBeval\fR
 Evaluate a program through a registered native provider
 .TP
@@ -329,6 +341,53 @@ Generate JSON Schema for Morphir IR
 .TP
 \fBversion\fR
 Print version information
+.SH "MORPHIR PACKAGE TRUST INIT"
+Initialize a new state directory from a policy\-pinned bootstrap root
+.PP
+\fBUsage:\fR morphir package trust init [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-policy\fR \fI<FILE>\fR
+Explicit trusted\-host policy file
+.TP
+\fB\-\-root\fR \fI<FILE>\fR
+Bootstrap root whose exact digest is pinned by the policy
+.TP
+\fB\-\-state\fR \fI<DIR>\fR
+New local trust\-state directory; existing state is never reset
+.TP
+\fB\-\-json\fR
+Output the initialization result as JSON
+.SH "MORPHIR PACKAGE RESTORE"
+Restore an exact locked Library graph using fresh signed metadata
+.PP
+\fBUsage:\fR morphir package restore [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-policy\fR \fI<FILE>\fR
+Explicit trusted\-host policy file
+.TP
+\fB\-\-lock\fR \fI<FILE>\fR
+Full package lock; replay never rewrites it
+.TP
+\fB\-\-registry\fR \fI<DIR>\fR
+Caller\-controlled local registry; the MVP supports one registry per graph
+.TP
+\fB\-\-state\fR \fI<DIR>\fR
+Existing explicitly initialized trust\-state directory
+.TP
+\fB\-\-output\fR \fI<DIR>\fR
+Destination for the complete verified Library graph
+.TP
+\fB\-\-assurance\fR \fI<ASSURANCE>\fR
+Explicitly accept caller\-controlled local roots; hardened mode is unsupported
+.TP
+\fB\-\-json\fR
+Output the restore result as JSON
 .SH "MORPHIR EVAL"
 Evaluate a program through a registered native provider
 .PP

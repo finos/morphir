@@ -1,0 +1,30 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "kind": "Library",
+  "packagePath": "example.com/finance/loan-rules",
+  "version": "1.0.0",
+  "ir": {
+    "formatVersion": "4",
+    "packageName": "example/loan-rules",
+    "payload": {
+      "path": "ir.json",
+      "mediaType": "application/json",
+      "profile": "classic"
+    }
+  },
+  "dependencies": {
+    "example/eligibility": {
+      "packagePath": "example.com/finance/eligibility",
+      "versionRange": {
+        "minimumInclusive": "1.0.0",
+        "maximumExclusive": "2.0.0"
+      }
+    }
+  },
+  "exports": {
+    "eligibility": "eligibility"
+  },
+  "content": {
+    "ir.json": "sha256:b1884eeb8364f96c6405cc45f2fe07a006c22f066a4136656ad05dda9c9a94cc"
+  }
+}

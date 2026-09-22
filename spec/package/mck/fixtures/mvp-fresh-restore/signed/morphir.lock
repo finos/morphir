@@ -1,0 +1,133 @@
+{
+  "acquisitions": [
+    {
+      "record": {
+        "digest": "sha256:3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251",
+        "path": "records/eligibility-1.2.0.json"
+      },
+      "registry": "finance",
+      "release": {
+        "packagePath": "example.com/finance/eligibility",
+        "version": "1.2.0"
+      },
+      "source": {
+        "kind": "registry-directory",
+        "path": "bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886"
+      },
+      "statement": "eligibility-statement"
+    },
+    {
+      "record": {
+        "digest": "sha256:35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0",
+        "path": "records/loan-rules-1.0.0.json"
+      },
+      "registry": "finance",
+      "release": {
+        "packagePath": "example.com/finance/loan-rules",
+        "version": "1.0.0"
+      },
+      "source": {
+        "kind": "registry-directory",
+        "path": "bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e"
+      },
+      "statement": "loan-rules-statement"
+    }
+  ],
+  "evidence": [
+    {
+      "digest": "sha256:4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1",
+      "id": "eligibility-statement",
+      "kind": "release-statement",
+      "path": "statements/eligibility-1.2.0.json",
+      "registry": "finance"
+    },
+    {
+      "digest": "sha256:9a5cafd0b1976144798f2084cfb6ed3625a61fe0a56df6a3521573275367f8c6",
+      "id": "finance-root",
+      "kind": "tuf-root",
+      "path": "metadata/1.root.json",
+      "registry": "finance"
+    },
+    {
+      "digest": "sha256:9cc590f7328e43e14597bab4bfc82e2192457e7bec07684d63a622b8f97bbe0e",
+      "id": "finance-snapshot",
+      "kind": "tuf-snapshot",
+      "path": "metadata/1.snapshot.json",
+      "registry": "finance"
+    },
+    {
+      "digest": "sha256:a5f5d6f3346a6e6c8639bb0d41cf65d6b4aa0bebbc8f871cef023a194100868c",
+      "id": "finance-targets",
+      "kind": "tuf-targets",
+      "path": "metadata/1.targets.json",
+      "registry": "finance"
+    },
+    {
+      "digest": "sha256:42ef09963e40de1cff6de42d5680d4c67e9f337693fb804af2873f5ee4d19636",
+      "id": "finance-timestamp",
+      "kind": "tuf-timestamp",
+      "path": "metadata/1.timestamp.json",
+      "registry": "finance"
+    },
+    {
+      "digest": "sha256:abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a",
+      "id": "loan-rules-statement",
+      "kind": "release-statement",
+      "path": "statements/loan-rules-1.0.0.json",
+      "registry": "finance"
+    }
+  ],
+  "formatVersion": "0.1.0-draft.3",
+  "graph": {
+    "nodes": [
+      {
+        "bindings": [
+          {
+            "irPackageName": "example/eligibility",
+            "target": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            }
+          }
+        ],
+        "contentDigest": "sha256:345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e",
+        "irPackageName": "example/loan-rules",
+        "manifestDigest": "sha256:23bbfeda3a3539a0a27546f5e261c4b325c3484327157898f0c54cbe36a8c9c2",
+        "release": {
+          "packagePath": "example.com/finance/loan-rules",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "bindings": [],
+        "contentDigest": "sha256:5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886",
+        "irPackageName": "example/eligibility",
+        "manifestDigest": "sha256:7441f6bc460eeded5a5c5a286d07256fd0eaaca93bcb1fe8ea97c8dcd920532c",
+        "release": {
+          "packagePath": "example.com/finance/eligibility",
+          "version": "1.2.0"
+        }
+      }
+    ],
+    "root": {
+      "packagePath": "example.com/finance/loan-rules",
+      "version": "1.0.0"
+    }
+  },
+  "kind": "LibraryLock",
+  "registries": [
+    {
+      "id": "finance",
+      "snapshot": "finance-snapshot"
+    }
+  ],
+  "resolution": {
+    "policy": "flat-library:0.1.0-draft.2",
+    "profile": "local-library",
+    "requiredCapabilities": [
+      "dsse-ed25519",
+      "local-directory",
+      "tuf-1.0.36"
+    ]
+  }
+}

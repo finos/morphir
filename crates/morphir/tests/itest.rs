@@ -290,7 +290,7 @@ fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
             String::from_utf8_lossy(&output.stderr)
         );
         let expected = if suite == root.join("examples") {
-            15
+            16
         } else {
             1
         };
