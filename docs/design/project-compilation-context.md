@@ -57,10 +57,10 @@ single-file Elm route remains v3-only and rejects an explicit v4 override.
 
 ## Source identity across MEP hosts
 
-`CompileRequest.documents` is the complete compilation unit. Hosts supply
-document contents; resolving an identity does not authorize filesystem or
-network access. `options.sourceRootUri` is a standard optional MEP option,
-shared by CLI and UI callers, with these rules:
+`CompileRequest.sources` is the complete compilation unit. Its `documents`
+field supplies document contents; resolving an identity does not authorize
+filesystem or network access. `sources.root` is the standard optional MEP
+source root, shared by CLI and UI callers, with these rules:
 
 - Use an absolute hierarchical URI for the source root. Absolute native paths
   remain accepted for compatibility; hosts should emit file URIs for local files.
@@ -77,11 +77,20 @@ shared by CLI and UI callers, with these rules:
   source paths to language-specific module names and reject name collisions.
 
 The Rust SDK owns validation through `CompileRequest::source_paths()` and the
-validated `SourceRoot` and `SourcePath` types. The wire option stays in the
-existing options object so an upgraded host and frontend need no new request
-envelope. Python derives `domain/models.py` as `domain.models`; a nested
-`__init__.py` represents its package module according to the Python frontend's
-documented rules.
+validated `SourceRoot` and `SourcePath` types. Keeping the root in the same
+`SourceSet` as its documents prevents document replacement or combination from
+silently changing module identities.
+
+On the wire the root still has a second spelling. A provider released before
+`SourceSet` existed receives the root as `options.sourceRootUri` alongside a
+top-level `documents` array, and the host selects that envelope for process and
+WASM providers while native providers receive `sources`. A frontend built on the
+SDK never sees the difference — the decoder normalizes both into `SourceSet` —
+so this concerns hosts and released artifacts, not frontend authors.
+
+Python derives `domain/models.py` as `domain.models`; a nested `__init__.py`
+represents its package module according to the Python frontend's documented
+rules.
 
 One root per compilation gives stable module identity across local paths,
 editor documents, and generated source round trips. Computing a common ancestor

@@ -40,8 +40,8 @@ return in the response and the view offers them as downloads.
 Four pieces are already built, and the design is shaped by them.
 
 The Morphir Extension Protocol carries everything the pipeline needs.
-`CompileRequest` already accepts `documents: Vec<SourceDocument>` with an
-`options.irVersion`, and `CompileResult` returns `{ir, irVersion}`, which
+`CompileRequest` accepts a `SourceSet` with source documents and an optional
+root, plus `options.irVersion`. `CompileResult` returns `{ir, irVersion}`, which
 feeds `GenerateRequest {ir, target, options}` unchanged. The whole pipeline
 composes in memory. No step needs a file.
 
@@ -177,10 +177,13 @@ Three methods join `ConnectedMethod` in
 | `morphir.playground.compile` | `{languageId, documents, package, irVersion, options}` | `{success, irVersion, ir, diagnostics, modules}` |
 | `morphir.playground.generate` | `{ir, irVersion, target, options}` | `{success, artifacts, diagnostics}` |
 
-The compile parameters are `CompileRequest` without `dependencies`, using the
-same field names, so the provider builds the protocol request by adding an
-empty dependency list rather than translating between shapes. Generate adds
-`irVersion` so the provider can resolve a backend without sniffing the IR.
+The compile parameters keep browser-facing `documents` and omit `dependencies`.
+That payload is already the shape of the SDK's legacy compile envelope, so the
+provider hands it to the decoder with an empty dependency list and lets it
+normalize into `SourceSet`, rather than translating between shapes itself —
+which also means a malformed or conflicting source root is rejected by the same
+contract that governs every other host. Generate adds `irVersion` so the
+provider can resolve a backend without sniffing the IR.
 
 `CONNECTED_PROTOCOL_VERSION` goes to 2. The web assets are built from
 finos/morphir-ui and checked in under `ui/assets/`, so the host and the app
@@ -307,9 +310,9 @@ start a process backed extension. Debounced automatic compilation becomes
 reasonable once the session actor is in place and its effect on latency is
 measured.
 
-The editor holds a list of documents from the start, matching
-`CompileRequest.documents`, and the first version shows a single tab.
-Adding tabs later is view work with no protocol change.
+The editor holds a list of documents from the start. The provider places that
+list in `CompileRequest.sources.documents`, and the first version shows a single
+tab. Adding tabs later is view work with no protocol change.
 
 Documents and selections persist through the existing `ConfigService`, so a
 reload does not lose work.

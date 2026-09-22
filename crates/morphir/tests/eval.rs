@@ -37,6 +37,10 @@ fn report(output: &std::process::Output) -> Value {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this test drives `morphir eval`, and the evaluator is compiled out by --no-default-features"
+)]
 fn eval_reports_values_and_undefined_without_treating_false_as_failure() {
     let output = evaluate(&request(
         "package example\ntest_ok := input.answer == 42\ntest_false := false\ntest_undefined if input.missing\ntest_object := {\"answer\": input.answer}",
@@ -64,6 +68,10 @@ fn eval_reports_values_and_undefined_without_treating_false_as_failure() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this test drives `morphir eval`, and the evaluator is compiled out by --no-default-features"
+)]
 fn eval_retains_error_reports_for_invalid_source_missing_rules_and_runtime_errors() {
     for (source, entrypoint) in [
         ("this is not rego", "data.example.test_ok"),
@@ -114,6 +122,10 @@ fn eval_rejects_invalid_request_contracts() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this test drives `morphir eval`, and the evaluator is compiled out by --no-default-features"
+)]
 fn eval_bounds_expensive_rule_execution() {
     let mut req = request(
         "package example\ntest_ok := count([x | x := input.values[_]; y := input.values[_]; x == y])",

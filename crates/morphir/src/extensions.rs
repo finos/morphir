@@ -450,6 +450,10 @@ mod tests {
                 };
                 assert_eq!(frontend.invocation_mode(), expected);
                 assert_eq!(backend.invocation_mode(), expected);
+                assert!(frontend.capabilities().workspace.is_some());
+                if policy == InvocationPolicy::PreferDirect {
+                    assert!(frontend.native_extension().unwrap().workspace().is_some());
+                }
             }
         }
     }
