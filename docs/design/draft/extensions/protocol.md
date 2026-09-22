@@ -278,7 +278,7 @@ The working specification is
     },
     "workspace": { "protocolVersions": ["0.1.0-draft.1"], "discover": true }
   },
-  "requires": { "host": ">=0.4.0-alpha.7" },
+  "requires": { "host": [">=0.4.0-alpha.7"] },
   "critical": ["requires.host"]
 }
 ```
@@ -287,9 +287,11 @@ A reader checks `types`, the capability kinds, strictly: an unknown kind is an
 error. A reader carries `capabilities` unchanged, uses the members it
 understands and ignores the others. `critical` lists member paths that change
 meaning; a reader that does not understand a listed path refuses and names it.
-`requires.host` is a SemVer requirement over the host version, in the syntax of
-the Rust `semver` crate's `VersionReq`; a host outside the range refuses and names
-the range.
+`requires.host` is a list of single SemVer comparators over the host version,
+such as `[">=0.4.0-alpha.7", "<0.5.0"]`, all of which must hold. Single
+comparators parse the same way in the Rust `semver` crate and in `@std/semver`;
+combined range strings do not, because the two libraries separate comparators
+differently. A host outside the range refuses and names the range.
 
 ### `morphir.extension.describe`
 

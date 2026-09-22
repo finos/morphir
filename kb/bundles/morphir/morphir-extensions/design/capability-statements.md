@@ -131,7 +131,7 @@ A statement has the same content in every phase (source `spec`):
     },
     "workspace": { "protocolVersions": ["0.1.0-draft.1"], "discover": true }
   },
-  "requires": { "host": ">=0.4.0-alpha.7" },
+  "requires": { "host": [">=0.4.0-alpha.7"] },
   "critical": ["requires.host"]
 }
 ```
@@ -143,8 +143,8 @@ Readers treat its parts in four ways:
   the rest.
 - `critical` lists member paths that change meaning. A reader that does not understand a listed path
   refuses and names that path.
-- `requires.host` is a semver range over the host version. A host outside the range refuses, and its
-  message names the range.
+- `requires.host` is a list of single SemVer comparators over the host version, such as `[">=0.4.0-alpha.7", "<0.5.0"]`, all of which must hold. A host outside the range refuses, and its message names the
+  range. Single comparators parse the same way in the Rust `semver` crate and in `@std/semver`.
 
 #921 states these rules without a reason for the split between strict kinds and lenient members. Our
 reading, which is an assumption: a kind decides which operations the host may call, so a guess is
@@ -361,8 +361,8 @@ Each row is argued in the decision record named in its last column.
 
 ## Unresolved
 
-These questions are open in #921. The `requires.host` syntax is settled: it is a SemVer requirement in
-the Rust `semver` crate's `VersionReq` syntax, as the default contract versioning decision states.
+These questions are open in #921. The `requires.host` syntax is settled: it is a list of single SemVer
+comparators, which the Rust `semver` crate and `@std/semver` parse the same way.
 
 1. What canonical form do two statements take before a reader compares them (key order, number
    spelling)?

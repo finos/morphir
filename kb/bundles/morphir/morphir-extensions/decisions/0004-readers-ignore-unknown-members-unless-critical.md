@@ -88,8 +88,8 @@ reads the current released major and the previous released major of each format,
 targets can read. One step of overlap gives each side one release to catch up. Whether one step is
 enough is judged, not measured.
 
-Decision 8 gives an extension a way to depend on a host feature. `requires.host` is a semver range over the
-host version. Because the extension lists it in `critical`, a host too old to know the member refuses
+Decision 8 gives an extension a way to depend on a host feature. `requires.host` is a list of single SemVer
+comparators over the host version, all of which must hold. Because the extension lists it in `critical`, a host too old to know the member refuses
 instead of ignoring it. A host outside the range refuses with a message that names the range.
 
 Decision 9 keeps released guests working. A guest without `describe` answers `-32601`, or refuses because

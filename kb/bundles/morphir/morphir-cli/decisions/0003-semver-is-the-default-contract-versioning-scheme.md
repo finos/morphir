@@ -49,20 +49,30 @@ and package release versions
 ## Implementation
 
 Code uses an established SemVer library and never a hand-written version type. In Rust that is
-the `semver` crate, already a workspace dependency:
+the `semver` crate, already a workspace dependency. In TypeScript it is `@std/semver`:
 
-| Rule | `semver` crate |
-| --- | --- |
-| A version | `semver::Version` |
-| Compatible within the major, and within the minor on `0.y.z` | a caret `VersionReq`, such as `^0.1.0`, which follows Cargo's rules |
-| A draft matches only exactly | an exact `VersionReq`, such as `=0.1.0-draft.1` |
-| A minimum host | a `VersionReq` checked against the host's own `Version` |
+| Rule | Rust: `semver` crate | TypeScript: `@std/semver` (JSR) |
+| --- | --- | --- |
+| A version | `semver::Version` | `parse` returning `SemVer` |
+| Compatible within the major, and within the minor on `0.y.z` | caret `VersionReq`, such as `^0.1.0` | `parseRange("^0.1.0")` with `satisfies` |
+| A draft matches only exactly | exact `VersionReq`, such as `=0.1.0-draft.1` | `parseRange("=0.1.0-draft.1")` |
+| A minimum host | each comparator of `requires.host` as a `VersionReq` | each comparator as a range |
+
+Both libraries follow Cargo's caret rules and the same prerelease rule, so a reader in either
+language accepts the same versions. `@std/semver` is pure ESM with no runtime APIs, so it runs in
+Node, Deno, Bun, browsers and other WinterTC runtimes; install it through JSR, which also serves npm
+projects.
+
+The two libraries differ in how a range string separates comparators: Rust uses commas, and
+`@std/semver` uses npm syntax, a space for "and" and `||` for "or". A range that crosses languages
+on the wire is therefore a list of single comparators, such as `[">=0.4.0", "<0.5.0"]`, all of which
+must hold. Each single comparator parses the same way in both.
 
 A reader's supported set is a list of requirements: carets for released lines and exact
 requirements for drafts. A caret alone is not enough for drafts. The crate lets a prerelease
 satisfy a comparator that has the same `major.minor.patch` and a prerelease, so `^0.1.0-draft.1`
 also matches `0.1.0-draft.2`, which breaks the exact-match rule. Other languages use their
-established SemVer library the same way.
+established SemVer library the same way, choosing one with the same caret and prerelease rules.
 
 ## Why
 
