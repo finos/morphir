@@ -45,6 +45,7 @@ provider evaluates assertions.
 | [Installed OpenAPI backend](backends/openapi/scenarios.md) | Local bundle publication/installation, native Elm to default v4, JSON Schema and OpenAPI schema components, task provenance and installed outputs | Pinned OpenAPI 0.1.1 WASM bundle |
 | [Avro v3 compatibility](backends/v3-compatibility/avro/scenarios.md) and [OpenAPI v3 compatibility](backends/v3-compatibility/openapi/scenarios.md) | Explicit v3 compilation and successful Avro, JSON Schema and OpenAPI generation with the same providers | Both pinned WASM bundles |
 | [Signed local Library resolve and restore](package/local-library-restore/scenarios.md) | Explicit trust, metadata-only refresh preserving locks, authenticated full-lock resolution, fresh two-Library restore/replay, generated and compiled provider code in a consumer project | Offline, fresh signed fixture |
+| [Signed local Library scoped update](package/local-library-update/scenarios.md) | Explicit target update, movement within the old dependency closure, frozen outside pins, full-lock preservation and updated provider consumption | Offline, fresh signed fixture |
 | [CLI basics](cli/basics/scenarios.md) | Version reporting and public command help in independent Markdown scenarios | Offline |
 | [Classic multi-file Elm](morphir-elm-compat/scenarios.md) | Config discovery and the released provider's **known rejection** of multiple source documents | Reference Elm 0.1.0 |
 

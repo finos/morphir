@@ -1,0 +1,14 @@
+{
+  "payloadType": "application/vnd.morphir.library-release.v0.1.0-draft.3+json",
+  "payload": "eyJjb250ZW50RGlnZXN0Ijoic2hhMjU2OjExZTNlZmM5MGEzNWE1YTA1NTI4Mzk0ZmY5YmNkNjhjZTkyZDBlMWNhNjIzYWRlYTYxZmMyMjJjN2ZjZWFlNTEiLCJkZXBlbmRlbmNpZXMiOltdLCJmb3JtYXRWZXJzaW9uIjoiMC4xLjAtZHJhZnQuMyIsImlyUGFja2FnZU5hbWUiOiJleGFtcGxlL2NoaWxkIiwia2luZCI6IkxpYnJhcnlSZWxlYXNlU3RhdGVtZW50IiwibWFuaWZlc3REaWdlc3QiOiJzaGEyNTY6NTMxODg2OTEwYzcyMmMyMmY5MjdmN2FjNzM0NjM0NTIzZTNhYzYwMzYxNjEwMDhkYjg2NzRhNTE4YTlkNzA0MiIsInJlbGVhc2UiOnsicGFja2FnZVBhdGgiOiJleGFtcGxlLmNvbS9maW5hbmNlL2NoaWxkIiwidmVyc2lvbiI6IjEuMS4wIn19",
+  "signatures": [
+    {
+      "keyid": "4bd74eeea636378d476d9e885a3ac0f610b8649d5be70fdb1e54e742a67d7384",
+      "sig": "zJFDE7F5SXnUjM3mt9fZTWpTWhC/c4ZqjfezIhBH+G4oFRc34GL1a8dYjn2M4285RgB7yZBZEayjf5wOjmX6DQ=="
+    },
+    {
+      "keyid": "ea3cf4e0f710cf0198b289c99105e784ff2403ae6920d1035d6dbf51e7e48dd8",
+      "sig": "vTh69XzB1GdQ9akSy0eQyzDB+y2F5dPYfbvcWnFmK1yy0+ikYfoJJBN90owDZBejhNX+EVtmEmNtl7TXxaT/Cw=="
+    }
+  ]
+}

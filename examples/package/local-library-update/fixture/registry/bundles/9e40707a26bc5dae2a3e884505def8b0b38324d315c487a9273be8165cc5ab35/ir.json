@@ -1,0 +1,77 @@
+{
+  "distribution": {
+    "Library": {
+      "def": {
+        "modules": {
+          "eligibility": {
+            "Public": {
+              "values": {
+                "decision": {
+                  "Public": {
+                    "ExpressionBody": {
+                      "body": {
+                        "Reference": "example/eligibility:decision#default-decision"
+                      },
+                      "inputTypes": {},
+                      "outputType": "example/eligibility:decision#decision"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dependencies": {
+        "example/eligibility": {
+          "modules": {
+            "decision": {
+              "types": {
+                "decision": {
+                  "CustomTypeSpecification": {
+                    "constructors": {
+                      "approved": [],
+                      "declined": []
+                    },
+                    "typeParams": []
+                  }
+                }
+              },
+              "values": {
+                "default-decision": {
+                  "inputs": {},
+                  "output": "example/eligibility:decision#decision"
+                }
+              }
+            }
+          }
+        },
+        "example/sibling": {
+          "modules": {
+            "decision": {
+              "types": {
+                "decision": {
+                  "CustomTypeSpecification": {
+                    "constructors": {
+                      "approved": [],
+                      "declined": []
+                    },
+                    "typeParams": []
+                  }
+                }
+              },
+              "values": {
+                "default-decision": {
+                  "inputs": {},
+                  "output": "example/sibling:decision#decision"
+                }
+              }
+            }
+          }
+        }
+      },
+      "packageName": "example/loan-rules"
+    }
+  },
+  "formatVersion": 4
+}

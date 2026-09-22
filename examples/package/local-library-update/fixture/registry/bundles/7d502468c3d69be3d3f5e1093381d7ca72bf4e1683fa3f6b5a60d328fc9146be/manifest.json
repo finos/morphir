@@ -1,0 +1,22 @@
+{
+  "content": {
+    "ir.json": "sha256:14323bc8ca4951b89d8383ff80634fdf61e24cd3ca8fbb72543b2a0dde140f75"
+  },
+  "dependencies": {},
+  "exports": {
+    "decision": "decision"
+  },
+  "formatVersion": "0.1.0-draft.1",
+  "ir": {
+    "formatVersion": "4",
+    "packageName": "example/sibling",
+    "payload": {
+      "mediaType": "application/json",
+      "path": "ir.json",
+      "profile": "classic"
+    }
+  },
+  "kind": "Library",
+  "packagePath": "example.com/finance/sibling",
+  "version": "2.0.0"
+}

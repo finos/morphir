@@ -1,0 +1,214 @@
+{
+  "acquisitions": [
+    {
+      "record": {
+        "digest": "sha256:7fc4bf19877caacbcddca6e6764e2b4f1b07956d93f0317412416caa3f7a9187",
+        "path": "records/child-1.0.0.json"
+      },
+      "registry": "local",
+      "release": {
+        "packagePath": "example.com/finance/child",
+        "version": "1.0.0"
+      },
+      "source": {
+        "kind": "registry-directory",
+        "path": "bundles/8e96b58b12feaffa2d9658984392e84f615ff99bae70c9cd996021895faef758"
+      },
+      "statement": "statement-0"
+    },
+    {
+      "record": {
+        "digest": "sha256:6ff10b5d4fe96b5c3bf567f9eb159b278998b2886f201fbdd445569f10f2b424",
+        "path": "records/eligibility-1.2.0.json"
+      },
+      "registry": "local",
+      "release": {
+        "packagePath": "example.com/finance/eligibility",
+        "version": "1.2.0"
+      },
+      "source": {
+        "kind": "registry-directory",
+        "path": "bundles/a0e38fbb5df0b0c80f307a164cf3500e36ddc094bc7820f67240cfb9dad7fc5b"
+      },
+      "statement": "statement-1"
+    },
+    {
+      "record": {
+        "digest": "sha256:22aaf668eb648b67da0204d02bb6e212b3193571264908e92b1d8cd43aa56649",
+        "path": "records/loan-rules-1.0.0.json"
+      },
+      "registry": "local",
+      "release": {
+        "packagePath": "example.com/finance/loan-rules",
+        "version": "1.0.0"
+      },
+      "source": {
+        "kind": "registry-directory",
+        "path": "bundles/9e40707a26bc5dae2a3e884505def8b0b38324d315c487a9273be8165cc5ab35"
+      },
+      "statement": "statement-2"
+    },
+    {
+      "record": {
+        "digest": "sha256:de169761477b072c339caf9f22a46faccdc663aa69ecf73242fb7e4128f9a2a3",
+        "path": "records/sibling-1.0.0.json"
+      },
+      "registry": "local",
+      "release": {
+        "packagePath": "example.com/finance/sibling",
+        "version": "1.0.0"
+      },
+      "source": {
+        "kind": "registry-directory",
+        "path": "bundles/a73211757c78702f407d5481de74dd89d7e4eee383083550e2da699bc247edcd"
+      },
+      "statement": "statement-3"
+    }
+  ],
+  "evidence": [
+    {
+      "digest": "sha256:9a5cafd0b1976144798f2084cfb6ed3625a61fe0a56df6a3521573275367f8c6",
+      "id": "root",
+      "kind": "tuf-root",
+      "path": "metadata/1.root.json",
+      "registry": "local"
+    },
+    {
+      "digest": "sha256:b5910ddcabaa1ab17059086084aff5b4f836973be64851dbd73008d02fcd3cac",
+      "id": "snapshot",
+      "kind": "tuf-snapshot",
+      "path": "metadata/1.snapshot.json",
+      "registry": "local"
+    },
+    {
+      "digest": "sha256:1a54d917090e78cd63680209a7b251dc1c8c75931dbf51f4c76a95fcb5217835",
+      "id": "statement-0",
+      "kind": "release-statement",
+      "path": "statements/child-1.0.0.json",
+      "registry": "local"
+    },
+    {
+      "digest": "sha256:68a8c3fe88996274da907614b558bc35125dd178a7c623494219392ef5e8deb0",
+      "id": "statement-1",
+      "kind": "release-statement",
+      "path": "statements/eligibility-1.2.0.json",
+      "registry": "local"
+    },
+    {
+      "digest": "sha256:541365fb849bc9b20fa1861dbb7cce62b4b1783e134cfc7fb7840dc1e8a12e72",
+      "id": "statement-2",
+      "kind": "release-statement",
+      "path": "statements/loan-rules-1.0.0.json",
+      "registry": "local"
+    },
+    {
+      "digest": "sha256:11082ad003caa80606d996cf4b7c5d2f55c41e515c61f3920aea22fca1a23087",
+      "id": "statement-3",
+      "kind": "release-statement",
+      "path": "statements/sibling-1.0.0.json",
+      "registry": "local"
+    },
+    {
+      "digest": "sha256:0bec5fc4851bf1a3709bfd1aaa0a92c54e2e482092154ce3e3e8c4d1033dd6ae",
+      "id": "targets",
+      "kind": "tuf-targets",
+      "path": "metadata/1.targets.json",
+      "registry": "local"
+    },
+    {
+      "digest": "sha256:a27be80bfc0a302b608826f4e6ce93121ad3cbabdf3f962342f50278167a74f1",
+      "id": "timestamp",
+      "kind": "tuf-timestamp",
+      "path": "metadata/1.timestamp.json",
+      "registry": "local"
+    }
+  ],
+  "formatVersion": "0.1.0-draft.3",
+  "graph": {
+    "nodes": [
+      {
+        "bindings": [
+          {
+            "irPackageName": "example/eligibility",
+            "target": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            }
+          },
+          {
+            "irPackageName": "example/sibling",
+            "target": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "contentDigest": "sha256:9e40707a26bc5dae2a3e884505def8b0b38324d315c487a9273be8165cc5ab35",
+        "irPackageName": "example/loan-rules",
+        "manifestDigest": "sha256:75d7b444c7bc05a3142d518413d6aa1311470793b1c2cbbb2ad7549900d5552f",
+        "release": {
+          "packagePath": "example.com/finance/loan-rules",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "bindings": [],
+        "contentDigest": "sha256:8e96b58b12feaffa2d9658984392e84f615ff99bae70c9cd996021895faef758",
+        "irPackageName": "example/child",
+        "manifestDigest": "sha256:ffab585e3328a70a667232c184117099f44f64a9a4e93c77e32a40757dcc3439",
+        "release": {
+          "packagePath": "example.com/finance/child",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "bindings": [
+          {
+            "irPackageName": "example/child",
+            "target": {
+              "packagePath": "example.com/finance/child",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "contentDigest": "sha256:a0e38fbb5df0b0c80f307a164cf3500e36ddc094bc7820f67240cfb9dad7fc5b",
+        "irPackageName": "example/eligibility",
+        "manifestDigest": "sha256:f51ed864ccf0074ca6f5afb4a2acc89eb668d41cde758d0baf89155275a0ccce",
+        "release": {
+          "packagePath": "example.com/finance/eligibility",
+          "version": "1.2.0"
+        }
+      },
+      {
+        "bindings": [],
+        "contentDigest": "sha256:a73211757c78702f407d5481de74dd89d7e4eee383083550e2da699bc247edcd",
+        "irPackageName": "example/sibling",
+        "manifestDigest": "sha256:7fbba62b87bf9be0f726daf727e73da569a52274125a04687664118ebd1d086d",
+        "release": {
+          "packagePath": "example.com/finance/sibling",
+          "version": "1.0.0"
+        }
+      }
+    ],
+    "root": {
+      "packagePath": "example.com/finance/loan-rules",
+      "version": "1.0.0"
+    }
+  },
+  "kind": "LibraryLock",
+  "registries": [
+    {
+      "id": "local",
+      "snapshot": "snapshot"
+    }
+  ],
+  "resolution": {
+    "policy": "flat-library:0.1.0-draft.2",
+    "profile": "local-library",
+    "requiredCapabilities": [
+      "dsse-ed25519",
+      "local-directory",
+      "tuf-1.0.36"
+    ]
+  }
+}
