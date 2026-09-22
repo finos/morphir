@@ -16,6 +16,10 @@ The integration driver copies this directory into an isolated workspace.
 inputs. Its public deterministic signing keys are for tests only. The policy
 requires fresh metadata; the bootstrap root is pinned by exact digest. The
 expected generated source is reviewed static text, not generated during a test.
+All positive TUF roles expire at `2100-01-01T00:00:00Z`, and independent fixture
+tests verify them at `2099-01-01T00:00:00Z`. This fixed test-only horizon keeps the
+example usable with the CLI's real clock. It is not a production expiry policy;
+the public fixture keys must never authorize real packages.
 
 This first delivery supports one caller-controlled local registry, an existing
 output parent and a new output destination. Lock metadata pins must match the

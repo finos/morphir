@@ -15,10 +15,10 @@
   "repositories": [
     {
       "bootstrapRoot": {
-        "digest": "sha256:655cacea8dc5a51e17a82f0c6c9065fadeef995edde1414bb93980b8f68b8c8a",
+        "digest": "sha256:9a5cafd0b1976144798f2084cfb6ed3625a61fe0a56df6a3521573275367f8c6",
         "version": 1
       },
-      "identity": "sha256:aec72527f7dd06a472f1aab6a703500ff697db37b31a52ef80519b97b60c8be6",
+      "identity": "sha256:d8ad73bc7ab21a1ce0841a22b7a51c1d1a1cb23d38608c0c2c1b636c79b0ca2b",
       "namespaces": [
         "example.com/finance"
       ]

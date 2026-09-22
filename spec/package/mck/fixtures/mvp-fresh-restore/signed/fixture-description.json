@@ -17,6 +17,7 @@
   },
   "keyDerivation": "SHA-256 of UTF-8 morphir-mck-fixture:<label>; public test seeds only",
   "kind": "PublicDeterministicSignedFixture",
+  "positiveMetadataExpires": "2100-01-01T00:00:00Z",
   "profile": "local-library-mvp:0.1.0-draft.1",
   "publicKeys": [
     {

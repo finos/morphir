@@ -7,11 +7,14 @@ the full MVP milestone, the production recovery profile, or the 296-obligation
 portable inventory has passed.
 
 The [signed directory](signed/) contains an exact two-Library lock, an explicit
-bootstrap root, publisher policy, and local registry. Both Libraries and all
-signatures retain the independently authored bytes from the
-[original signed fixture](../local-registry/assets/signed/README.md). Only the
-policy changes to require `fresh-metadata`. Metadata and payload hashes remain
-unchanged. No package runtime authors these inputs or their expected results.
+bootstrap root, publisher policy, and local registry. Both Libraries, registry
+records and publisher statements retain the independently authored bytes from the
+[original signed fixture](../local-registry/assets/signed/README.md). The MVP-only
+TUF metadata is independently re-signed with a fixed expiry of
+`2100-01-01T00:00:00Z` for every role. Parent links, root identity, bootstrap pin
+and lock evidence hashes bind those new exact bytes. The policy requires
+`fresh-metadata`. No package runtime authors these inputs or their expected results;
+the original historical fixture remains unchanged.
 
 The root package `example.com/finance/loan-rules` version `1.0.0` depends on
 `example.com/finance/eligibility` version `1.2.0`. Both payloads satisfy the official
@@ -41,14 +44,19 @@ integration remains separate work; these tests are not an MCK report.
 
 Authoring uses the existing public deterministic Ed25519 Dalek signer. Independent
 TUF verification uses the pinned upstream Rust TUF client; publisher verification
-uses Ring. The fixture tests check all links and digests against the preserved
-historical fixture, then check the stricter MVP policy. The expired timestamp
+uses Ring. The fixture tests verify the new metadata links and digests, preserve
+the historical package and publisher bytes, and check the stricter MVP policy.
+They also check all 15 copied example inputs and the unchanged golden. The expired timestamp
 variant is signed independently, so an expiry failure cannot be confused with a
 bad signature. Content tampering preserves valid JSON and valid registry signatures;
 publisher-policy tampering preserves valid registry authentication.
 
-The verification clock is fixed at `2027-01-01T00:00:00Z`. The CLI uses real time.
-Timestamp expiry remains `2027-02-01T00:00:00Z`; fixtures do not renew themselves.
+The baseline verification clock is fixed at `2027-01-01T00:00:00Z`. An additional
+independent positive check verifies all roles at `2099-01-01T00:00:00Z`.
+The CLI and executable example use real time, with no test clock override.
+All positive role expiries are fixed at `2100-01-01T00:00:00Z`; fixtures do not
+renew themselves. This long horizon keeps the static example usable and is not
+a recommendation for production metadata lifetime.
 The independently signed expiry variant expired on `2020-01-01T00:00:00Z`.
 All signing seeds are public test data and must never authorize real packages.
 

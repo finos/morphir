@@ -1,49 +1,44 @@
 {
   "signed": {
     "_type": "targets",
+    "expires": "2100-01-01T00:00:00Z",
     "spec_version": "1.0.36",
-    "version": 1,
-    "expires": "2028-01-01T00:00:00Z",
     "targets": {
       "records/eligibility-1.2.0.json": {
-        "length": 641,
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            },
+            "status": "active"
+          }
+        },
         "hashes": {
           "sha256": "3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251"
         },
+        "length": 641
+      },
+      "records/loan-rules-1.0.0.json": {
         "custom": {
           "morphir": {
             "formatVersion": "0.1.0-draft.3",
             "kind": "LibraryRelease",
             "release": {
-              "packagePath": "example.com/finance/eligibility",
-              "version": "1.2.0"
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
             },
             "status": "active"
           }
-        }
-      },
-      "records/loan-rules-1.0.0.json": {
-        "length": 796,
+        },
         "hashes": {
           "sha256": "35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0"
         },
-        "custom": {
-          "morphir": {
-            "formatVersion": "0.1.0-draft.3",
-            "kind": "LibraryRelease",
-            "release": {
-              "packagePath": "example.com/finance/loan-rules",
-              "version": "1.0.0"
-            },
-            "status": "active"
-          }
-        }
+        "length": 796
       },
       "statements/eligibility-1.2.0.json": {
-        "length": 1030,
-        "hashes": {
-          "sha256": "4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1"
-        },
         "custom": {
           "morphir": {
             "formatVersion": "0.1.0-draft.3",
@@ -53,13 +48,13 @@
               "version": "1.2.0"
             }
           }
-        }
+        },
+        "hashes": {
+          "sha256": "4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1"
+        },
+        "length": 1030
       },
       "statements/loan-rules-1.0.0.json": {
-        "length": 1238,
-        "hashes": {
-          "sha256": "abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a"
-        },
         "custom": {
           "morphir": {
             "formatVersion": "0.1.0-draft.3",
@@ -69,14 +64,19 @@
               "version": "1.0.0"
             }
           }
-        }
+        },
+        "hashes": {
+          "sha256": "abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a"
+        },
+        "length": 1238
       }
-    }
+    },
+    "version": 1
   },
   "signatures": [
     {
       "keyid": "b2758a474a6c30af3905b41b5a8d171192ec323ec79ebf2c4ce3a59c73743fdd",
-      "sig": "de9c6d8687dfb60a6e3f04202870949ec207ef18d89c1cdbc09960f9583a1fd12d2998c88cafb227491f4ce4bf3508d0cc8812db8a49e9848028e14c3e509e0d"
+      "sig": "3786453c1d85df8fd5e1977b203bfcd5b29e1b3eb53f062e984280167ea5acc6dd912fdf0bfb31c419b315e6b1d20eb03ce9ede0d1aefb6bd49d4605567d7805"
     }
   ]
 }

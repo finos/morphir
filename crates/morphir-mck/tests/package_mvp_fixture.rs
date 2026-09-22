@@ -52,6 +52,15 @@ fn mvp_profile_freezes_separate_first_restore_outcomes() {
 }
 
 #[test]
+fn mvp_positive_metadata_remains_fresh_through_2099() {
+    let frozen = fixture::read_files(&source().join(fixture::mvp::PATH)).unwrap();
+    assert_eq!(
+        fixture::verify_tuf(&frozen, "2099-01-01T00:00:00Z").unwrap(),
+        4
+    );
+}
+
+#[test]
 fn mvp_fixture_reproduces_and_independently_authenticates() {
     assert_eq!(fixture::mvp::PROFILE, mvp::PROFILE);
     let generated = fixture::mvp::generate_mvp(&source()).unwrap();
@@ -61,16 +70,52 @@ fn mvp_fixture_reproduces_and_independently_authenticates() {
     let historical = fixture::read_files(&source().join(fixture::SIGNED_PATH)).unwrap();
     fixture::verify_relationships(&source(), &historical).unwrap();
     for (path, bytes) in &frozen {
-        if path.starts_with("registry/") || path == "morphir.lock" {
+        if path.starts_with("registry/bundles/") || path.starts_with("registry/targets/") {
             assert_eq!(historical[path], *bytes, "preserved signed fixture: {path}");
         }
     }
+    let lock: Value = serde_json::from_slice(&frozen["morphir.lock"]).unwrap();
+    let mut old_lock: Value = serde_json::from_slice(&historical["morphir.lock"]).unwrap();
+    for evidence in old_lock["evidence"].as_array_mut().unwrap() {
+        if evidence["kind"] != "release-statement" {
+            let path = format!("registry/{}", evidence["path"].as_str().unwrap());
+            evidence["digest"] = fixture::signing::digest(&frozen[&path]).into();
+        }
+    }
+    assert_eq!(lock, old_lock, "only re-signed role evidence pins change");
     let mut expected_policy: Value =
         serde_json::from_slice(&historical["trust-policy.json"]).unwrap();
     expected_policy["continuedUse"] = "fresh-metadata".into();
+    let root: Value = serde_json::from_slice(&frozen["registry/metadata/1.root.json"]).unwrap();
+    expected_policy["repositories"][0]["identity"] =
+        fixture::signing::digest(&serde_json::to_vec(&root["signed"]).unwrap()).into();
+    expected_policy["repositories"][0]["bootstrapRoot"]["digest"] =
+        fixture::signing::digest(&frozen["registry/metadata/1.root.json"]).into();
     assert_eq!(
         serde_json::from_slice::<Value>(&frozen["trust-policy.json"]).unwrap(),
         expected_policy
+    );
+}
+
+#[test]
+fn example_copies_exactly_the_fifteen_mvp_inputs() {
+    let frozen = fixture::read_files(&source().join(fixture::mvp::PATH)).unwrap();
+    let inputs: fixture::Files = frozen
+        .into_iter()
+        .filter(|(path, _)| {
+            path.starts_with("registry/")
+                || matches!(path.as_str(), "morphir.lock" | "trust-policy.json")
+        })
+        .collect();
+    assert_eq!(inputs.len(), 15);
+    let example = source().join("examples/package/local-library-restore");
+    assert_eq!(
+        fixture::read_files(&example.join("fixture")).unwrap(),
+        inputs
+    );
+    assert_eq!(
+        fs::read(example.join("golden/decision.gleam")).unwrap(),
+        fs::read(source().join(mvp::PATH).join("expected/decision.gleam")).unwrap()
     );
 }
 
