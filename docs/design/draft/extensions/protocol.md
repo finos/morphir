@@ -309,14 +309,17 @@ Passing content rather than paths has four consequences:
   "method": "morphir.frontend.compile",
   "params": {
     "languageId": "elm",
-    "documents": [
-      {
-        "uri": "file:///work/Example.elm",
-        "languageId": "elm",
-        "version": 1,
-        "text": "module Example exposing (add)\n\nadd : Int -> Int -> Int\nadd a b = a + b\n"
-      }
-    ],
+    "sources": {
+      "root": "file:///work",
+      "documents": [
+        {
+          "uri": "file:///work/Example.elm",
+          "languageId": "elm",
+          "version": 1,
+          "text": "module Example exposing (add)\n\nadd : Int -> Int -> Int\nadd a b = a + b\n"
+        }
+      ]
+    },
     "package": {
       "name": "local/example",
       "exposedModules": ["Example"]
@@ -368,10 +371,12 @@ prelude, and dependency interfaces — differs from `baseline.contextDigest`, or
 a baseline that carries none, ignores the whole baseline rather than reuse
 entries computed against something else.
 
-`options.sourceRootUri` supplies the absolute source root for stable relative
-document identities. Relative document paths retain their nesting. Multiple
-documents containing absolute URIs require this option; one absolute document
-without it retains basename identity for existing single-document callers.
+`sources.root` supplies the absolute source root for stable relative document
+identities. The root travels with the documents whose identities depend on it,
+so replacing or combining source sets cannot silently rename modules. Relative
+document paths retain their nesting. Multiple documents containing absolute
+URIs require this field; one absolute document without it retains basename
+identity for existing single-document callers.
 Absolute documents must be below the root, with matching scheme and authority.
 Query and fragment metadata do not affect identity. Decode path segments once;
 reject dot segments, encoded separators, invalid UTF-8, outside-root paths, and

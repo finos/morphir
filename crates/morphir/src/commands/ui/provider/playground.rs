@@ -39,7 +39,7 @@ use morphir_devkit::{ConfigLoadOptions, discover_config, load_config_context_wit
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::{
     Artifact, CompileOptions, CompilePackage, CompileRequest, CompileResult, Diagnostic,
-    DiagnosticSeverity, GenerateRequest, GenerateResult, SourceDocument, SourceLocation,
+    DiagnosticSeverity, GenerateRequest, GenerateResult, SourceDocument, SourceLocation, SourceSet,
 };
 use serde_json::Value;
 
@@ -494,16 +494,19 @@ fn extension_working_directory(home: &MorphirHome) -> PathBuf {
 fn compile_request(params: PlaygroundCompileParams) -> CompileRequest {
     CompileRequest {
         language_id: params.language_id,
-        documents: params
-            .documents
-            .into_iter()
-            .map(|document| SourceDocument {
-                uri: document.uri,
-                language_id: document.language_id,
-                version: document.version,
-                text: document.text,
-            })
-            .collect(),
+        sources: SourceSet {
+            root: None,
+            documents: params
+                .documents
+                .into_iter()
+                .map(|document| SourceDocument {
+                    uri: document.uri,
+                    language_id: document.language_id,
+                    version: document.version,
+                    text: document.text,
+                })
+                .collect(),
+        },
         // The playground protocol now spells exposure exactly as the SDK does:
         // omitted exposes every module, an explicit empty list exposes none.
         package: CompilePackage {
@@ -1406,10 +1409,17 @@ mod tests {
         let requests = invoker.compiles.lock().unwrap();
         let sent = serde_json::to_value(&requests[0]).expect("the request serializes");
         assert_eq!(sent["languageId"], "elm");
-        assert_eq!(sent["documents"].as_array().unwrap().len(), 1);
-        assert_eq!(sent["documents"][0]["uri"], "file:///src/Main.elm");
-        assert_eq!(sent["documents"][0]["text"], "module Main exposing (..)");
-        assert_eq!(sent["documents"][0]["version"], 1);
+        assert!(sent["sources"].get("root").is_none());
+        assert_eq!(sent["sources"]["documents"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            sent["sources"]["documents"][0]["uri"],
+            "file:///src/Main.elm"
+        );
+        assert_eq!(
+            sent["sources"]["documents"][0]["text"],
+            "module Main exposing (..)"
+        );
+        assert_eq!(sent["sources"]["documents"][0]["version"], 1);
         assert_eq!(sent["package"]["name"], "playground/main");
         assert_eq!(sent["package"]["exposedModules"][0], "Main");
         assert_eq!(

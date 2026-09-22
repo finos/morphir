@@ -364,7 +364,7 @@ mod tests {
     };
     use morphir_extension_sdk::{
         BackendCapability, CompileOptions, CompilePackage, ExtensionCapabilities, ExtensionInfo,
-        ExtensionType, FrontendCapability, LanguageCapability,
+        ExtensionType, FrontendCapability, LanguageCapability, SourceSet,
     };
     use serde_json::json;
     use std::collections::HashMap;
@@ -612,7 +612,10 @@ mod tests {
     fn compile_request() -> CompileRequest {
         CompileRequest {
             language_id: "gleam".into(),
-            documents: vec![],
+            sources: SourceSet {
+                root: None,
+                documents: vec![],
+            },
             package: CompilePackage {
                 name: "example/test".into(),
                 exposed_modules: Some(vec![]),

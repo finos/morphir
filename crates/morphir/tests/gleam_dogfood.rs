@@ -43,7 +43,10 @@ fn compile(documents: Vec<SourceDocument>) -> serde_json::Value {
     let result = GleamExtension
         .compile(CompileRequest {
             language_id: "gleam".into(),
-            documents,
+            sources: SourceSet {
+                root: Some("file:///src".into()),
+                documents,
+            },
             package: CompilePackage {
                 name: "morphir/ir-model".into(),
                 exposed_modules: None,

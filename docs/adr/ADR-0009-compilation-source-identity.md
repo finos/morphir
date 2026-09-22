@@ -8,7 +8,8 @@ A MEP compilation contains one package and a complete set of source documents.
 Hosts provide a source root when several documents use absolute URIs. The SDK
 validates their relative identities through one shared contract, while each
 frontend owns the mapping from those paths to language-specific module names.
-The root remains `options.sourceRootUri` to preserve the existing request shape.
+The root is `CompileRequest.sources.root`, next to the documents whose module
+identities depend on it.
 
 Inferring the common ancestor would change module identities when a caller adds
 or removes documents. Per-document module IDs or multiple roots would require
