@@ -1,7 +1,10 @@
 
 [workspace]
 members = ["crates/*"]
-exclude = ["third_party/rust-tuf"]
+exclude = [
+    "third_party/rust-tuf",
+    "ecosystem/morphir-rust/third_party/morphir-package-tough",
+]
 default-members = ["crates/morphir"]
 resolver = "3"
 
