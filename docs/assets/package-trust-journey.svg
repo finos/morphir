@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="420" viewBox="0 0 600 420" role="img" aria-labelledby="title desc">
+  <title id="title">From your trust choices to a verified Library</title>
+  <desc id="desc">You or your administrator approve registries and publishers. Morphir checks signatures, exact bytes, fresh metadata and saved state. The restored Library graph still needs your review and tests.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#475569"/></marker>
+  </defs>
+  <rect width="600" height="420" rx="16" fill="#f8fafc"/>
+  <g font-family="system-ui, -apple-system, sans-serif" text-anchor="middle" fill="#172554">
+    <rect x="24" y="20" width="552" height="104" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="300" y="56" font-size="25" font-weight="700">You choose who to trust</text>
+    <text x="300" y="92" font-size="21">Approved registries and publishers</text>
+    <path d="M300 131 V150" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="24" y="160" width="552" height="104" rx="14" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+    <text x="300" y="195" font-size="25" font-weight="700">Morphir checks the release</text>
+    <text x="300" y="226" font-size="20">Signatures and exact file bytes</text>
+    <text x="300" y="251" font-size="20">Fresh metadata and saved trust state</text>
+    <path d="M300 271 V290" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="24" y="300" width="552" height="100" rx="14" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
+    <text x="300" y="338" font-size="25" font-weight="700">Verified Libraries reach your project</text>
+    <text x="300" y="374" font-size="21">You still review and test the model</text>
+  </g>
+</svg>
