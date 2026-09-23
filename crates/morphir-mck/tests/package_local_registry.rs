@@ -966,6 +966,26 @@ fn mvp_refresh_case_ids_bind_their_setup_and_input_variants() {
         source.insert(index.to_owned(), encode(&altered));
         assert!(admit_mvp_inventory(&source).is_err(), "{mutation}");
     }
+
+    let mut altered = manifest.clone();
+    let cases = altered["cases"].as_array_mut().unwrap();
+    let signature = cases
+        .iter()
+        .position(|case| case["id"] == "mvp.refresh.bad-timestamp-signature")
+        .unwrap();
+    let expired = cases
+        .iter()
+        .position(|case| case["id"] == "mvp.refresh.expired-timestamp")
+        .unwrap();
+    let first = cases[signature]["expected"].clone();
+    cases[signature]["expected"] = cases[expired]["expected"].clone();
+    cases[expired]["expected"] = first;
+    let mut source = assets;
+    source.insert(index.to_owned(), encode(&altered));
+    assert!(
+        admit_mvp_inventory(&source).is_err(),
+        "swapped fixed refresh observations must fail admission"
+    );
 }
 
 #[test]

@@ -360,9 +360,24 @@ fn refresh_case_matches_setup(case: &Case) -> bool {
         }
         _ => return false,
     }
+    let expected_id = if matches!(
+        suffix,
+        "bad-timestamp-signature"
+            | "expired-timestamp"
+            | "uninitialized-state"
+            | "missing-established-state"
+            | "corrupt-state"
+            | "uncertain-state"
+            | "historical-policy-unsupported"
+    ) {
+        format!("refresh-{suffix}")
+    } else {
+        "refresh-refreshed".into()
+    };
     case.environment.trust_state == trust_state
         && case.environment.output == OutputSetup::Absent
         && case.inputs == expected
+        && case.expected == expected_id
 }
 
 pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInventory, String> {
