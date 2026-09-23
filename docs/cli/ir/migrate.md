@@ -44,5 +44,5 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
 - **`--output-layout <OUTPUT_LAYOUT>`** — Output storage layout (inferred from the output path when omitted)
 
   **Choices:** `single-file`, `vfs`
-- **`--input-format <INPUT_FORMAT>`** — Input serialization profile (json or yaml; inferred when omitted)
-- **`--output-format <OUTPUT_FORMAT>`** — Output serialization profile (json or yaml; extension then YAML default when omitted)
+- **`--input-format <INPUT_FORMAT>`** — Input serialization profile (json, yaml, or ion; inferred when omitted)
+- **`--output-format <OUTPUT_FORMAT>`** — Output serialization profile (json, yaml, or ion; extension then YAML default when omitted)

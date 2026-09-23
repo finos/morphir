@@ -143,6 +143,16 @@ Morphir annotations are an `annotations` list on `module::spec`, a `public::spec
 
 A document literal is `(document <payload>)`. The payload is the document. An integer lexeme is an Ion int. Any other number is an Ion decimal written with the stored lexeme. Ion float, timestamp, blob, clob, symbol, and s-expression are rejected inside the payload. A document cannot appear in a pattern. A v4 float literal that keeps its source text is `(float "<lexeme>")`. A bare Ion float means the shortest spelling of that finite value.
 
+## Document tree
+
+A document tree uses the same logical paths as the JSON and YAML profiles. The Ion profile name is `ion` and the extension is `.ion`. Discovery reads `manifest.ion`. A second manifest in the same directory (`manifest.json`, `manifest.yaml`, or `manifest.yml`) makes the root ambiguous.
+
+Each file holds one Ion value. Its members are the members of the JSON file at the same logical path (`manifest`, `module`, `NAME.type`, `NAME.value`). The file has no `morphir::` header, no `morphir_footer`, and no `ionVersion`. The extension selects the profile. The annotation spelling above stays on a single-file distribution.
+
+A writer emits the JSON profile's canonical text. That text is one Ion value, and a number keeps its lexeme. A reader accepts that text. It also accepts Ion text whose field names are symbols. It reads an S-expression as a list and ignores annotations on a value. It rejects a blob, a clob, a timestamp, a symbol value, and a duplicate field name. A non-integer Ion decimal is read through Ion's display (`1.5d2`, `0.`) and stored as a JSON number.
+
+The compatibility kit's profile list stays `json` and `yaml`. This profile is storage.
+
 ## Out of scope
 
-A package specification has no `annotations` member. Whether v4 should add one is [issue 944](https://github.com/finos/morphir/issues/944). This draft does not define an Ion document tree. One Ion artifact is one distribution.
+A package specification has no `annotations` member. Whether v4 should add one is [issue 944](https://github.com/finos/morphir/issues/944).

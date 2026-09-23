@@ -11,14 +11,14 @@ This document provides complete specifications for all file formats used in VFS 
 
 A document tree maps logical `manifest`, `module`, `NAME.type`, and `NAME.value` documents to one homogeneous physical serialization profile:
 
-| Logical document | JSON profile | YAML profile |
-| --- | --- | --- |
-| `manifest` | `manifest.json` | `manifest.yaml` |
-| `module` | `module.json` | `module.yaml` |
-| `NAME.type` | `NAME.type.json` | `NAME.type.yaml` |
-| `NAME.value` | `NAME.value.json` | `NAME.value.yaml` |
+| Logical document | JSON profile | YAML profile | Ion profile |
+| --- | --- | --- | --- |
+| `manifest` | `manifest.json` | `manifest.yaml` | `manifest.ion` |
+| `module` | `module.json` | `module.yaml` | `module.ion` |
+| `NAME.type` | `NAME.type.json` | `NAME.type.yaml` | `NAME.type.ion` |
+| `NAME.value` | `NAME.value.json` | `NAME.value.yaml` | `NAME.value.ion` |
 
-The extension is not part of a logical identity. A generated tree MUST use one profile for every file. If discovery finds both `manifest.json` and `manifest.yaml`, it MUST report ambiguity and MUST NOT select one implicitly. The structures documented below apply to both profiles; JSON examples use the [JSON profile](json-profile.md), and their YAML equivalents use the [YAML profile](yaml-profile.md).
+The extension is not part of a logical identity. A generated tree MUST use one profile for every file. If discovery finds more than one of `manifest.json`, `manifest.yaml`, `manifest.yml`, and `manifest.ion`, it MUST report ambiguity and MUST NOT select one implicitly. The structures documented below apply to every profile. JSON examples use the [JSON profile](json-profile.md), and their YAML equivalents use the [YAML profile](yaml-profile.md). A generated Ion file is that JSON profile's canonical text, which is valid Ion. A reader also accepts Ion text whose field names are symbols.
 
 ## Logical paths
 
@@ -40,9 +40,10 @@ file extensions. Under `deps/`, the segment beginning with `@` ends the package 
 version; it is a bare `@` while the v4 model carries no version (see [Dependencies](#dependencies)).
 
 The profile decides the extension at the physical boundary and nowhere else: `.json` for the JSON profile,
-`.yaml` for the YAML profile. Going the other way, a physical name with `.json`, `.yaml`, or `.yml` maps back to
-its logical path; a file with any other extension is not part of the tree and is ignored. Because the extension
-is chosen at that boundary, the same logical tree renders into either profile without renaming anything.
+`.yaml` for the YAML profile, and `.ion` for the Ion profile. Going the other way, a physical name with `.json`,
+`.yaml`, `.yml`, or `.ion` maps back to its logical path; a file with any other extension is not part of the
+tree and is ignored. Because the extension is chosen at that boundary, the same logical tree renders into each
+profile without renaming anything.
 
 > `mode` is a concept of the [Morphir Compatibility Kit](https://github.com/finos/morphir/tree/main/spec/ir/mck),
 > where a `file` fence may be marked `mode=read` so the kit driver checks only the read direction. It is not a
@@ -63,7 +64,7 @@ In VFS mode, a Morphir IR distribution is organized as:
             └── value-name.value.yaml  # Value definitions
 ```
 
-The corresponding JSON tree replaces each `.yaml` extension with `.json`.
+The corresponding JSON tree replaces each `.yaml` extension with `.json`. The Ion tree replaces each `.yaml` extension with `.ion`.
 
 ## File Types
 

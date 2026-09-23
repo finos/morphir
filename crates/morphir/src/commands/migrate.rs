@@ -164,7 +164,7 @@ fn write_single_file(
             "morphir::ir::codec::unknown_output_format",
             Stage::Detection,
             format!("no codec is registered for '{output_format}'"),
-            "select json or yaml, or register the requested codec",
+            "select json, yaml, or ion, or register the requested codec",
         )
     })?;
     let mut warnings = Vec::new();
@@ -239,7 +239,7 @@ fn run_events(
                     "morphir::ir::codec::unknown_input_format",
                     Stage::Detection,
                     format!("no codec is registered for '{}'", input_selection.format),
-                    "select json or yaml, or register the requested codec",
+                    "select json, yaml, or ion, or register the requested codec",
                 )
             })?;
             let file = File::open(input).map_err(|error| {

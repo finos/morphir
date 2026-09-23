@@ -4940,6 +4940,7 @@ dependencies = [
  "bigdecimal",
  "granit-parser",
  "indexmap",
+ "ion-rs",
  "lasso",
  "num-bigint 0.5.1",
  "rstest",

@@ -53,11 +53,6 @@ impl IrStorage {
                 });
             }
         };
-        if layout == IrLayout::DocumentTree && format == FormatId::ion() {
-            return Err(CliError::Validation {
-                message: "ir.format ion is a single-file distribution, not a document tree".into(),
-            });
-        }
         Ok(Self { layout, format })
     }
 
@@ -302,9 +297,10 @@ fn read_vfs_bytes(path: &VfsPath) -> Result<Vec<u8>, CliError> {
 }
 
 /// Probe an explicit `-i` path: an IR file, a document-tree directory (a
-/// `manifest.json`/`manifest.yaml` root), or a compile-output directory (a
-/// `.dest` directory, or any older directory shaped like one) that holds
-/// `morphir-ir.json`, `morphir-ir.yaml`, or a `morphir-ir/` document tree.
+/// `manifest.json`/`manifest.yaml`/`manifest.ion` root), or a compile-output
+/// directory (a `.dest` directory, or any older directory shaped like one)
+/// that holds `morphir-ir.json`, `morphir-ir.yaml`, `morphir-ir.ion`, or a
+/// `morphir-ir/` document tree.
 pub fn probe_external(path: &Path) -> Result<(PathBuf, IrDescriptor), CliError> {
     if path.is_dir() && !is_document_tree_root(path) {
         return probe_compile_output_directory(path);
@@ -356,7 +352,7 @@ fn is_document_tree_root(path: &Path) -> bool {
 /// looks for what it *does* produce instead: a single-file JSON/YAML
 /// artifact, or its own nested `morphir-ir/` document tree.
 fn probe_compile_output_directory(path: &Path) -> Result<(PathBuf, IrDescriptor), CliError> {
-    for name in ["morphir-ir.json", "morphir-ir.yaml"] {
+    for name in ["morphir-ir.json", "morphir-ir.yaml", "morphir-ir.ion"] {
         let candidate = path.join(name);
         if candidate.is_file() {
             return probe_external(&candidate);
@@ -369,8 +365,8 @@ fn probe_compile_output_directory(path: &Path) -> Result<(PathBuf, IrDescriptor)
     Err(CliError::Validation {
         message: format!(
             "'{}' has no Morphir IR: looked for a document-tree manifest \
-             (manifest.json, manifest.yaml, manifest.yml), a single-file artifact \
-             (morphir-ir.json, morphir-ir.yaml), and a morphir-ir/ document tree",
+             (manifest.json, manifest.yaml, manifest.yml, manifest.ion), a single-file artifact \
+             (morphir-ir.json, morphir-ir.yaml, morphir-ir.ion), and a morphir-ir/ document tree",
             path.display()
         ),
     })
@@ -462,7 +458,12 @@ mod tests {
                 .relative_path(),
             "morphir-ir.ion"
         );
-        assert!(IrStorage::from_config(Some(&section("document-tree", "ion"))).is_err());
+        assert_eq!(
+            IrStorage::from_config(Some(&section("document-tree", "ion")))
+                .unwrap()
+                .relative_path(),
+            "morphir-ir"
+        );
         // An unrecognized `ir.layout` value can no longer reach here through
         // ordinary config loading — `IrSection`'s `Deserialize` now rejects it
         // first — but `IrStorage::from_config` keeps its own check too, in
@@ -498,6 +499,19 @@ mod tests {
         let value = read_value(temp.path(), &descriptor).unwrap();
         assert_eq!(value["distribution"]["Library"]["packageName"], "acme/app");
         assert_eq!(value["formatVersion"], "4.0.0");
+    }
+
+    #[test]
+    fn ion_document_tree_round_trips() {
+        let temp = tempfile::tempdir().unwrap();
+        let storage = IrStorage::from_config(Some(&section("document-tree", "ion"))).unwrap();
+        let descriptor = write_v4(temp.path(), &storage, &sample_ir()).unwrap();
+        assert_eq!(descriptor.layout, IrLayout::DocumentTree);
+        assert_eq!(descriptor.format, "ion");
+        assert!(temp.path().join("morphir-ir/manifest.ion").is_file());
+        let value = read_value(temp.path(), &descriptor).unwrap();
+        assert_eq!(value["formatVersion"], 4);
+        assert_eq!(value["distribution"]["Library"]["packageName"], "acme/app");
     }
 
     fn yaml_single_file_round_trips() {
@@ -645,6 +659,7 @@ mod tests {
         assert!(message.contains(&empty.display().to_string()), "{message}");
         assert!(message.contains("morphir-ir.json"), "{message}");
         assert!(message.contains("morphir-ir.yaml"), "{message}");
-        assert!(message.contains("manifest"), "{message}");
+        assert!(message.contains("morphir-ir.ion"), "{message}");
+        assert!(message.contains("manifest.ion"), "{message}");
     }
 }

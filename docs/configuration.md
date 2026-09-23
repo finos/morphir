@@ -153,7 +153,7 @@ strict_mode = false
 # Storage compile writes: single-file or document-tree
 layout = "single-file"
 
-# Serialization format: json or yaml
+# Serialization format: json, yaml, or ion
 format = "json"
 ```
 
