@@ -165,7 +165,7 @@ pub async fn mvp_run(args: MvpRunArgs) -> AppResult<miette::Report> {
     let run = tokio::task::block_in_place(|| {
         run_mvp_process(&inventory, &args.adapter, &args.adapter_args, limits)
     });
-    println!("MVP fresh restore: {}", run.summary_line());
+    println!("MVP local Library: {}", run.summary_line());
     for (case, message) in run.failures() {
         println!("{case}: {message}");
     }

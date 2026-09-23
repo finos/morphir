@@ -1,0 +1,12 @@
+{
+  "outcome": "resolved",
+  "output": "present",
+  "outputFiles": [
+    {
+      "path": "morphir.lock",
+      "sha256": "sha256:2db3c346d885528c3ef46d60ed9c563d5f6ba45992ef2f6a3c7dfc294d5b8f24"
+    }
+  ],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

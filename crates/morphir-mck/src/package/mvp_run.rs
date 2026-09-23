@@ -9,7 +9,7 @@ use std::ffi::{OsStr, OsString};
 
 const PROFILE: &str = "local-library-mvp:0.1.0-draft.1";
 const CONTRACT: &str = "0.1.0-draft.3";
-const OPERATION: &str = "restore-local-library";
+const OPERATIONS: [&str; 2] = ["restore-local-library", "resolve-local-library"];
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,11 +61,17 @@ impl MvpCapabilities {
             || caps.implementation_version.is_empty()
             || caps.profiles.len() > 1
             || caps.profiles.iter().any(|profile| profile != PROFILE)
-            || caps.operations.len() > 1
+            || caps.operations.len() > OPERATIONS.len()
             || caps
                 .operations
                 .iter()
-                .any(|operation| operation != OPERATION)
+                .any(|operation| !OPERATIONS.contains(&operation.as_str()))
+            || caps
+                .operations
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                != caps.operations.len()
         {
             return Err("invalid MVP adapter capabilities".into());
         }
@@ -73,7 +79,7 @@ impl MvpCapabilities {
     }
 
     fn supports_mvp(&self) -> bool {
-        self.profiles.len() == 1 && self.operations.len() == 1
+        self.profiles.len() == 1 && self.operations.len() == OPERATIONS.len()
     }
 }
 
@@ -113,6 +119,7 @@ enum RefusalReason {
     UnresolvedOperation,
     HistoricalEvidenceUnsupported,
     BundleInventoryMismatch,
+    PublishedRootUnavailable,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -138,6 +145,12 @@ struct Package {
     deny_unknown_fields
 )]
 enum Observation {
+    Resolved {
+        output: OutputState,
+        output_files: Vec<OutputFile>,
+        lock_unchanged: bool,
+        registry_unchanged: bool,
+    },
     Restored {
         packages: Vec<Package>,
         output: OutputState,
@@ -159,6 +172,25 @@ impl Observation {
     fn parse(body: Value) -> Result<Self, String> {
         let mut observation: Self = serde_json::from_value(body).map_err(|e| e.to_string())?;
         match &mut observation {
+            Self::Resolved {
+                output,
+                output_files,
+                lock_unchanged,
+                registry_unchanged,
+            } => {
+                if *output != OutputState::Present
+                    || output_files.len() != 1
+                    || output_files[0].path != "morphir.lock"
+                    || !output_files[0]
+                        .sha256
+                        .strip_prefix("sha256:")
+                        .is_some_and(is_sha256_hex)
+                    || !*lock_unchanged
+                    || !*registry_unchanged
+                {
+                    return Err("invalid MVP resolved observation".into());
+                }
+            }
             Self::Restored {
                 packages,
                 output,
@@ -212,7 +244,10 @@ impl Observation {
                     OutputState::Absent => output_files.is_empty(),
                     OutputState::PreservedSentinel => {
                         output_files.len() == 1
-                            && output_files[0].path == "sentinel.txt"
+                            && matches!(
+                                output_files[0].path.as_str(),
+                                "sentinel.txt" | "morphir.lock"
+                            )
                             && output_files[0]
                                 .sha256
                                 .strip_prefix("sha256:")
@@ -233,7 +268,7 @@ impl MvpRun {
     fn new(inventory: &AdmittedMvpInventory) -> Self {
         Self {
             profile: PROFILE,
-            scope: "fresh-exact-lock-restore",
+            scope: "fresh-local-library-workflow",
             kit_hash: inventory.content_hash().to_string(),
             testee: None,
             records: Vec::new(),
@@ -371,7 +406,7 @@ mod tests {
         let source =
             MvpRepositorySource::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")).unwrap();
         let inventory = admit_mvp_inventory(&source).unwrap();
-        assert_eq!(inventory.cases().len(), 15);
+        assert_eq!(inventory.cases().len(), 28);
         for case in inventory.cases() {
             let value = serde_json::from_slice(case.expected()).unwrap();
             Observation::parse(value).unwrap_or_else(|error| panic!("{}: {error}", case.id()));

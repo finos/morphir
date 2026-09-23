@@ -33,6 +33,21 @@ const RESTORE_CASES: [&str; 15] = [
     "mvp.restore.evidence-path-mismatch",
     "mvp.restore.undeclared-bundle-entry",
 ];
+const RESOLVE_CASES: [&str; 13] = [
+    "mvp.resolve.fresh-two-libraries",
+    "mvp.resolve.absent-published-root",
+    "mvp.resolve.bad-timestamp-signature",
+    "mvp.resolve.bad-library-content",
+    "mvp.resolve.unauthorized-publisher",
+    "mvp.resolve.uninitialized-state",
+    "mvp.resolve.occupied-output",
+    "mvp.resolve.historical-policy-unsupported",
+    "mvp.resolve.expired-timestamp",
+    "mvp.resolve.missing-established-state",
+    "mvp.resolve.corrupt-state",
+    "mvp.resolve.uncertain-state",
+    "mvp.resolve.undeclared-bundle-entry",
+];
 const RESTORE_INPUTS: [&str; 15] = [
     "morphir.lock",
     "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
@@ -131,6 +146,8 @@ enum AssetKind {
 struct Case {
     id: String,
     operation: String,
+    #[serde(default)]
+    root: Option<String>,
     environment: MvpEnvironment,
     inputs: BTreeMap<String, String>,
     expected: String,
@@ -172,6 +189,7 @@ pub struct AdmittedMvpInventory {
 pub struct AdmittedMvpCase {
     id: String,
     operation: String,
+    root: Option<String>,
     environment: MvpEnvironment,
     inputs: BTreeMap<String, Vec<u8>>,
     expected: Vec<u8>,
@@ -184,6 +202,8 @@ pub struct AdmittedMvpCase {
 pub struct MvpRequest {
     op: &'static str,
     profile: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exact_root: Option<String>,
     environment: MvpEnvironment,
     files: Vec<MvpInputFile>,
 }
@@ -223,8 +243,13 @@ impl AdmittedMvpCase {
 
     pub fn request(&self) -> MvpRequest {
         MvpRequest {
-            op: "restore-local-library",
+            op: if self.operation == "resolve" {
+                "resolve-local-library"
+            } else {
+                "restore-local-library"
+            },
             profile: "local-library-mvp:0.1.0-draft.1",
+            exact_root: self.root.clone(),
             environment: self.environment,
             files: self
                 .inputs
@@ -249,15 +274,15 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
     }
     if manifest.format_version != VERSION
         || manifest.profile != PROFILE
-        || manifest.scope != "fresh-exact-lock-restore"
+        || manifest.scope != "fresh-local-library-workflow"
     {
         return Err("unsupported MVP inventory profile, version, or scope".into());
     }
     let required: BTreeSet<_> = manifest.required_cases.iter().map(String::as_str).collect();
-    if manifest.required_cases.len() != RESTORE_CASES.len()
-        || required != RESTORE_CASES.into_iter().collect()
+    if manifest.required_cases.len() != RESTORE_CASES.len() + RESOLVE_CASES.len()
+        || required != RESTORE_CASES.into_iter().chain(RESOLVE_CASES).collect()
     {
-        return Err("MVP restore required-case inventory differs from the profile".into());
+        return Err("MVP required-case inventory differs from the profile".into());
     }
 
     let mut total_bytes = index_bytes.len();
@@ -306,7 +331,18 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
         if !required.contains(case.id.as_str()) || !case_ids.insert(case.id.clone()) {
             return Err(format!("unexpected or duplicate MVP case {}", case.id));
         }
-        if case.operation != "restore" || case.inputs.is_empty() {
+        let operation_matches_id = (case.operation == "restore"
+            && RESTORE_CASES.contains(&case.id.as_str())
+            && case.root.is_none())
+            || (case.operation == "resolve"
+                && RESOLVE_CASES.contains(&case.id.as_str())
+                && case.root.as_deref()
+                    == Some(if case.id == "mvp.resolve.absent-published-root" {
+                        "example.com/finance/loan-rules@9.9.9"
+                    } else {
+                        "example.com/finance/loan-rules@1.0.0"
+                    }));
+        if !operation_matches_id || case.inputs.is_empty() {
             return Err(format!(
                 "unsupported MVP bootstrap operation in {}",
                 case.id
@@ -352,6 +388,7 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
         cases.push(AdmittedMvpCase {
             id: case.id,
             operation: case.operation,
+            root: case.root,
             environment: case.environment,
             inputs,
             expected: expected.clone(),
