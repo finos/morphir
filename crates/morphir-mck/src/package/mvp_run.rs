@@ -78,16 +78,23 @@ impl MvpCapabilities {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 enum OutputState {
     Present,
     Absent,
+    PreservedSentinel,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 enum RefusalCategory {
     MetadataAuthentication,
+    PackageIntegrity,
+    PublisherAuthorization,
+    InvalidInput,
+    TrustState,
+    OutputConflict,
+    UnsupportedPolicy,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -95,6 +102,17 @@ enum RefusalCategory {
 enum RefusalReason {
     TimestampSignatureThreshold,
     TimestampExpired,
+    ContentDigestMismatch,
+    PublisherSignatureInvalid,
+    UnsafeAcquisitionPath,
+    Uninitialized,
+    DestinationExists,
+    HistoricalAuthorizationUnsupported,
+    MissingEstablishedDatabase,
+    CorruptEstablishedDatabase,
+    UnresolvedOperation,
+    HistoricalEvidenceUnsupported,
+    BundleInventoryMismatch,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -131,6 +149,7 @@ enum Observation {
         category: RefusalCategory,
         reason: RefusalReason,
         output: OutputState,
+        output_files: Vec<OutputFile>,
         lock_unchanged: bool,
         registry_unchanged: bool,
     },
@@ -184,11 +203,24 @@ impl Observation {
             }
             Self::Refused {
                 output,
+                output_files,
                 lock_unchanged,
                 registry_unchanged,
                 ..
             } => {
-                if *output != OutputState::Absent || !*lock_unchanged || !*registry_unchanged {
+                let output_valid = match output {
+                    OutputState::Absent => output_files.is_empty(),
+                    OutputState::PreservedSentinel => {
+                        output_files.len() == 1
+                            && output_files[0].path == "sentinel.txt"
+                            && output_files[0]
+                                .sha256
+                                .strip_prefix("sha256:")
+                                .is_some_and(is_sha256_hex)
+                    }
+                    OutputState::Present => false,
+                };
+                if !output_valid || !*lock_unchanged || !*registry_unchanged {
                     return Err("invalid MVP refusal observation".into());
                 }
             }
@@ -201,7 +233,7 @@ impl MvpRun {
     fn new(inventory: &AdmittedMvpInventory) -> Self {
         Self {
             profile: PROFILE,
-            scope: "bootstrap",
+            scope: "fresh-exact-lock-restore",
             kit_hash: inventory.content_hash().to_string(),
             testee: None,
             records: Vec::new(),
@@ -327,4 +359,22 @@ pub fn run_mvp_process(
         run.adapter_error = Some(error.to_string());
     }
     run
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Observation;
+    use crate::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+
+    #[test]
+    fn all_frozen_restore_observations_are_structurally_admitted() {
+        let source =
+            MvpRepositorySource::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")).unwrap();
+        let inventory = admit_mvp_inventory(&source).unwrap();
+        assert_eq!(inventory.cases().len(), 15);
+        for case in inventory.cases() {
+            let value = serde_json::from_slice(case.expected()).unwrap();
+            Observation::parse(value).unwrap_or_else(|error| panic!("{}: {error}", case.id()));
+        }
+    }
 }

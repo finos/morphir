@@ -296,13 +296,14 @@ async fn invoke_installed(
                 && capability
                     .protocol_versions
                     .iter()
-                    .any(morphir_workspace::speaks_workspace_discovery_protocol)
+                    .any(portable::speaks_workspace_discovery_protocol)
         })
     {
         let _ = ready.shutdown().await;
         return Err(extension_error(format!(
-            "Installed workspace provider '{}' did not negotiate discovery protocol 1",
-            snapshot.installed().extension_id()
+            "Installed workspace provider '{}' did not negotiate discovery protocol {}",
+            snapshot.installed().extension_id(),
+            portable::WORKSPACE_DISCOVERY_PROTOCOL
         )));
     }
     let (ready, response) = match ready

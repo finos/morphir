@@ -562,9 +562,9 @@ jobs:
       - name: Run independent Rust package resolution implementation
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
         run: mise run package:resolution-check:rust
-      - name: Run signed local Library MVP bootstrap through native MCK
+      - name: Run signed local Library MVP fresh restore through native MCK
         if: ${{ !cancelled() && steps.integration.outcome == 'success' }}
-        run: mise run package:mvp-bootstrap-check
+        run: mise run package:mvp-restore-check
       - name: Upload package compatibility reports
         uses: actions/upload-artifact@v7
         if: always()

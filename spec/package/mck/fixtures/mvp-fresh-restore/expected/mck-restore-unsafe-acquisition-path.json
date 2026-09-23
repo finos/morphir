@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "invalid-input",
+  "reason": "unsafe-acquisition-path",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

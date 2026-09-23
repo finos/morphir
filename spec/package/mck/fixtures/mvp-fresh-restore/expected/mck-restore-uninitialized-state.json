@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "trust-state",
+  "reason": "uninitialized",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}
