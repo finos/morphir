@@ -18,7 +18,7 @@ concurrency:
 jobs:
   qualify:
     name: Published MCK (${{ matrix.target }})
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -73,7 +73,7 @@ jobs:
           node-version: '24'
 
       - name: Prepare published CLI, exact-commit kit and native harness
-        timeout-minutes: 35
+        timeout-minutes: 45
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_TARGET: ${{ matrix.target }}
@@ -88,7 +88,7 @@ jobs:
       # An explicit TCP probe must fail under isolation.
       - name: Accept without networking on Linux
         if: runner.os == 'Linux'
-        timeout-minutes: 6
+        timeout-minutes: 12
         shell: bash
         run: |
           set -euo pipefail
@@ -97,13 +97,15 @@ jobs:
             MORPHIR_MCK_PREACQUIRED_KIT="$MORPHIR_MCK_PREACQUIRED_KIT" \
             MORPHIR_MCK_REQUIRE_NETWORK_DENIAL="$MORPHIR_MCK_REQUIRE_NETWORK_DENIAL" \
             MORPHIR_MCK_ACCEPTANCE_EVIDENCE="$MORPHIR_MCK_ACCEPTANCE_EVIDENCE" \
-            timeout 300s unshare --net "$MCK_TEST_EXE" \
+            MORPHIR_MCK_MVP_REQUIRED="${MORPHIR_MCK_MVP_REQUIRED:-}" \
+            MORPHIR_MCK_MVP_ADAPTER="${MORPHIR_MCK_MVP_ADAPTER:-}" \
+            timeout 600s unshare --net "$MCK_TEST_EXE" \
             installed_cli_runs_vendored_kit_without_tool_runtimes \
             2>&1 | tee .dev/out/mck-release-acceptance/offline.log
 
       - name: Accept without networking on macOS
         if: runner.os == 'macOS'
-        timeout-minutes: 5
+        timeout-minutes: 11
         shell: bash
         run: |
           set -euo pipefail
@@ -115,7 +117,7 @@ jobs:
       # Rule removal runs locally even while the Actions service is unreachable.
       - name: Accept without networking on disposable Windows runner
         if: runner.os == 'Windows'
-        timeout-minutes: 7
+        timeout-minutes: 12
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -130,9 +132,9 @@ jobs:
               -ArgumentList 'installed_cli_runs_vendored_kit_without_tool_runtimes' `
               -RedirectStandardOutput '.dev/out/mck-release-acceptance/offline.log' `
               -RedirectStandardError '.dev/out/mck-release-acceptance/offline-stderr.log' -PassThru
-            if (-not $process.WaitForExit(300000)) {
+            if (-not $process.WaitForExit(600000)) {
               taskkill /PID $process.Id /T /F
-              throw 'Native acceptance exceeded five minutes'
+              throw 'Native acceptance exceeded ten minutes'
             }
             if ($process.ExitCode -ne 0) { throw "Native acceptance failed: $($process.ExitCode)" }
           } finally {

@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.4] - 2026-09-23
+
 ### Added
+- The native package MVP profile runs 70 required local Library cases across fresh trust, metadata refresh, full-lock resolve and restore, scoped update, and refusal paths. `morphir mck package mvp-run` writes one versioned prerelease JSON report; `mvp-report check` independently verifies the complete inventory, and `mvp-report render` writes a standalone offline HTML view.
+- Published CLI acceptance on all six native targets runs the downloaded beta.4 binary against those 70 cases and both signed local Library examples under operating-system network denial. It retains the JSON/HTML reports, example logs, and negative checking evidence alongside the unchanged 80 integrity and 78 resolution cases.
 - `morphir compile --input` accepts files from any language whose provider declares their suffix, and repeats: several files from one directory compile together. The provider synthesizes the project through workspace discovery, naming the package and exposing every selected module; `--package-name` is required for more than one file (#917).
 - `morphir generate --from-partial-compile` consumes a compile of selected files. Such a compile is marked in its task record, and an implicit `generate` refuses it otherwise, because its IR need not match the project's declared exposure.
 
@@ -460,7 +464,8 @@ alpha, 0.4.0-alpha.5, only moved the release pipeline to the Rust binary.
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.3...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.4...HEAD
+[0.4.0-beta.4]: https://github.com/finos/morphir/compare/v0.4.0-beta.3...v0.4.0-beta.4
 [0.4.0-beta.3]: https://github.com/finos/morphir/compare/v0.4.0-beta.2...v0.4.0-beta.3
 [0.4.0-beta.2]: https://github.com/finos/morphir/compare/v0.4.0-beta.1...v0.4.0-beta.2
 [0.4.0-beta.1]: https://github.com/finos/morphir/compare/v0.4.0-alpha.7...v0.4.0-beta.1

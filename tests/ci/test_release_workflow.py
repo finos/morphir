@@ -53,7 +53,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
             "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
         ):
             self.assertIn(f"target: {target}", workflow)
-        self.assertIn("timeout-minutes: 45", workflow)
+        self.assertIn("timeout-minutes: 60", workflow)
         self.assertIn("node .dev/acceptance-tools/tools/mck-release-acceptance.mjs", workflow)
         self.assertIn("unshare --net", workflow)
         self.assertIn("(deny network*)", workflow)
@@ -64,7 +64,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("github-hosted", workflow)
         self.assertIn("MORPHIR_MCK_REQUIRE_NETWORK_DENIAL", workflow)
         self.assertIn("MORPHIR_MCK_PREACQUIRED_KIT", workflow)
-        self.assertIn("WaitForExit(300000)", workflow)
+        self.assertIn("WaitForExit(600000)", workflow)
         self.assertNotIn("continue-on-error", workflow)
         self.assertIn("- '.github/workflows/mck-release-acceptance.yml'", self.ci_workflow)
         self.assertIn("- 'tools/mck-release-acceptance.mjs'", self.ci_workflow)
@@ -96,6 +96,19 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn('actual["kit"]["snapshotDigest"]', runtime)
         self.assertIn('without_volatile(expected)["records"]', runtime)
 
+    def test_package_mvp_acceptance_uses_published_binary_with_prepared_native_adapter(self) -> None:
+        workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
+        prepare = (REPO_ROOT / "tools/mck-release-acceptance.mjs").read_text()
+        runtime = (REPO_ROOT / "crates/morphir/tests/mck_run.rs").read_text()
+        self.assertIn('entry.name === "mck_package_mvp"', prepare)
+        self.assertIn('"--package", "morphir-mck-adapter"', prepare)
+        self.assertIn('MORPHIR_MCK_MVP_REQUIRED: "1"', prepare)
+        self.assertIn('MORPHIR_MCK_MVP_ADAPTER: mvpAdapter', prepare)
+        self.assertIn('MORPHIR_MCK_MVP_ADAPTER="${MORPHIR_MCK_MVP_ADAPTER:-}"', workflow)
+        self.assertIn('mvp_acceptance::qualify(work.path(), &run', runtime)
+        self.assertIn('"package-mvp.json"', runtime)
+        self.assertIn('"package-examples.log"', runtime)
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
@@ -104,7 +117,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_workspace_uses_release_prerelease_version(self) -> None:
         workspace = tomllib.loads(WORKSPACE_TOML_PATH.read_text(encoding="utf-8"))
-        self.assertEqual("0.4.0-beta.3", workspace["workspace"]["package"]["version"])
+        self.assertEqual("0.4.0-beta.4", workspace["workspace"]["package"]["version"])
 
         lockfile = tomllib.loads(CARGO_LOCK_PATH.read_text(encoding="utf-8"))
         workspace_packages = {
@@ -113,7 +126,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
             if package["name"] in {"morphir", "morphir-mck"}
         }
         self.assertEqual(
-            {"morphir": "0.4.0-beta.3", "morphir-mck": "0.4.0-beta.3"},
+            {"morphir": "0.4.0-beta.4", "morphir-mck": "0.4.0-beta.4"},
             workspace_packages,
         )
 
