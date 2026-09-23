@@ -18,5 +18,7 @@ inferred types. It requires an explicit `morphir/SDK` dependency specification
 for imported SDK types; an absent or incompatible interface fails compilation.
 Unsupported value forms also fail this mode instead of producing a partial
 executable package. `typesOnly` still omits values with a diagnostic. The five
-literal results here are independent expectations; execution of the compiled
-rule and a separate hand-authored runtime vector remain implementation work.
+literal results here are independent expectations. A direct native test executes
+the compiled rule against them, and separate hand-authored IR vectors test the
+runtime without invoking the compiler. The public versioned evaluation
+request/report and CLI path remain under review.
