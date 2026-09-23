@@ -279,6 +279,48 @@ fn compiled_v3_arity_rule_matches_five_fixed_cases() {
     }
 }
 
+#[test]
+fn compiled_v3_arity_rule_reports_missing_dependency_and_budget_separately() {
+    use morphir_core::ir::classic;
+    use morphir_runtime::{EvaluationError, EvaluationLimits, RuntimeValue, evaluate_v3};
+    let path =
+        |text: &str| classic::Path::new(text.split('/').map(classic::Name::from_str).collect());
+    let entrypoint = classic::FQName::new(
+        path("morphir/ir-specification"),
+        path("morphir/validation/arity"),
+        classic::Name::from_str("check-arity"),
+    );
+    let compiled: classic::Distribution = serde_json::from_value(compile_arity_rule()).unwrap();
+    let arguments = vec![
+        RuntimeValue::Integer(1),
+        RuntimeValue::List(vec![RuntimeValue::Unit]),
+    ];
+    assert_eq!(
+        evaluate_v3(
+            &compiled,
+            &entrypoint,
+            arguments.clone(),
+            EvaluationLimits {
+                fuel: 1,
+                max_call_depth: 256
+            }
+        ),
+        Err(EvaluationError::FuelExhausted),
+    );
+    let mut missing_sdk = compiled;
+    let classic::DistributionBody::Library(_, dependencies, _) = &mut missing_sdk.distribution;
+    dependencies.clear();
+    assert_eq!(
+        evaluate_v3(
+            &missing_sdk,
+            &entrypoint,
+            arguments,
+            EvaluationLimits::default()
+        ),
+        Err(EvaluationError::MissingDependency(path("morphir/SDK"))),
+    );
+}
+
 fn compile(documents: Vec<SourceDocument>) -> serde_json::Value {
     let result = GleamExtension
         .compile(CompileRequest {
