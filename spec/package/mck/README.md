@@ -32,12 +32,12 @@ The runner owns loading and comparison; package behavior stays in the independen
 `mvp-cases.json` is a separate, versioned `local-library-mvp:0.1.0-draft.1`
 inventory. It binds all 15 original fresh exact-lock restore cases, one
 generated-lock replay case, 13 frozen initial resolve cases, and 14 metadata-only
-refresh cases. These include signed two-Library success, authentication and
+refresh cases, plus 27 frozen scoped-update cases. These include signed two-Library success, authentication and
 integrity refusals, trust-state failures, unsupported historical policy, an
 absent exact root, occupied destinations, and refresh with damaged or missing
 package assets. Every
 referenced input and fixed expected result has a SHA-256 digest. Exact required
-case IDs, the base 15 restore/resolve or seven refresh input mounts, bounded optional variant files, and the
+case IDs, the base 15 restore/resolve, seven refresh or 50 update input mounts, bounded variant files, and the
 typed environment descriptor are admitted before the adapter starts. The
 signed positive inputs are unchanged.
 
@@ -50,9 +50,9 @@ morphir mck package mvp-run --source . \
 ```
 
 The JSON-lines session advertises package contract `0.1.0-draft.3`, the MVP
-profile and `restore-local-library`/`resolve-local-library`/`refresh-local-library`. Requests carry confined input bytes and an
+profile and `restore-local-library`/`resolve-local-library`/`refresh-local-library`/`update-local-library`. Requests carry confined input bytes, explicit update targets and an
 input-only environment descriptor; case IDs and expected outcomes remain with
-the runner. The adapter returns a structured restore, resolved lock, refresh receipt, or typed
+the runner. The adapter returns a structured restore, resolved or updated full lock, refresh receipt, or typed
 refusal observation. Fixed results compare the complete published-file path and
 SHA-256 inventory, including the independently frozen exact lock, or an
 absent/unchanged-sentinel output plus a narrow refusal reason.
@@ -60,8 +60,7 @@ Admission rejects oversized individual assets and oversized total input before
 request construction.
 Missing capability, malformed response, transport failure, or an unexecuted
 required case fails the run. `mise run package:mvp-check` must report
-43 pass, 0 fail and 0 kit-error. Scoped update,
-the consolidated prerelease JSON/offline HTML report, and downloaded-binary
+70 pass, 0 fail and 0 kit-error. The consolidated prerelease JSON/offline HTML report and downloaded-binary
 qualification remain separate MVP gates.
 
 All four parent gates now use the native runner: `package:check`,

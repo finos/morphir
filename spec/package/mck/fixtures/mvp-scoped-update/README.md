@@ -2,6 +2,12 @@
 
 This sibling corpus leaves the historical draft.2/draft.3 and first-restore fixtures unchanged. It covers the `local-library-mvp:0.1.0-draft.1` prerelease profile through the real CLI. `tests/support/package_update.rs` only copies and mutates isolated inputs; it does not resolve packages or execute a compatibility runner.
 
+The shared MCK inventory in `spec/package/mck/mvp-cases.json` binds all 27
+cases to the independent Rust adapter. Each mounted input is compared with the
+isolated CLI preparation byte for byte, and successful output digests come from
+the frozen full locks below. Run `mise run package:mvp-check` to require all 70
+restore, resolve, replay, refresh and update cases with no skips.
+
 The old graph is `loan-rules@1.0.0 -> eligibility@1.2.0 -> child@1.0.0`, with a separate `loan-rules -> sibling@1.0.0` edge. The root remains fixed. Updating eligibility selects 1.3.0, whose minimum child requirement forces child to 1.1.0. Sibling 1.1.0 is advertised but remains pinned to 1.0.0 because it lies outside eligibility's old closure. Exact eligibility 1.2.0 preserves child 1.0.0. Reordered multiple targets select the same frozen full lock.
 
 The old lock refers to signed metadata version 1, expired in 2020. Fresh metadata version 2 authenticates unchanged immutable records for every old node. This distinguishes fresh authorization from historical evidence replay. New selection excludes the advertised yanked eligibility 1.9.0. Separate signed views yank the frozen sibling or root, revoke the sibling, or expose eligibility 1.4.0 requiring sibling 2.0.0. An exact request for 1.4.0 requires a change outside the old closure and must report a scope conflict.

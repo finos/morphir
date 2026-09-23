@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "resolution",
+  "reason": "unsatisfiable-requirements",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

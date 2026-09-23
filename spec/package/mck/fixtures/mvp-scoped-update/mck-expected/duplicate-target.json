@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "invalid-input",
+  "reason": "invalid-update-targets",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

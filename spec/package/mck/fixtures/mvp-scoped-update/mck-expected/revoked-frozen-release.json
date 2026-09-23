@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "unsupported-policy",
+  "reason": "revocation-transition-unsupported",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}
