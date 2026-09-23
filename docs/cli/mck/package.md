@@ -8,4 +8,5 @@ Inspect package definitions or run versioned compatibility suites
 ## Subcommands
 
 - [`morphir mck package inspect <--source <DIR>> <--contract <VERSION>>`](../mck/package/inspect.md)
+- [`morphir mck package mvp-run <FLAGS>`](../mck/package/mvp-run.md)
 - [`morphir mck package run <FLAGS>`](../mck/package/run.md)

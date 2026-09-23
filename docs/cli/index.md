@@ -112,6 +112,7 @@
 - [`morphir mck package <SUBCOMMAND>`](mck/package.md)
 - [`morphir mck package inspect <--source <DIR>> <--contract <VERSION>>`](mck/package/inspect.md)
 - [`morphir mck package run <FLAGS>`](mck/package/run.md)
+- [`morphir mck package mvp-run <FLAGS>`](mck/package/mvp-run.md)
 - [`morphir mck report <SUBCOMMAND>`](mck/report.md)
 - [`morphir mck report check [FLAGS] <REPORT> <ALLOWED_FAILING>`](mck/report/check.md)
 - [`morphir mck report render [--format <FORMAT>] <-o --output <OUTPUT>> <REPORT>`](mck/report/render.md)

@@ -312,6 +312,9 @@ Inspect draft.3 candidate definitions and pending assets without running restore
 \fBmck package run\fR
 Run an integrity or resolution corpus against an explicit adapter
 .TP
+\fBmck package mvp\-run\fR
+Run the admitted local Library MVP bootstrap cases through an explicit adapter
+.TP
 \fBmck report\fR
 Check compatibility evidence or render a saved report as offline HTML
 .TP
@@ -2085,6 +2088,34 @@ An argument for the adapter; repeat for more
 .TP
 \fB\-\-report\fR \fI<FILE>\fR
 Write the package contract's JSON report to this file
+.TP
+\fB\-\-timeout\fR \fI<MS>\fR
+Maximum duration of one adapter request and response, in milliseconds
+.RS
+\fIDefault: \fR30000
+.RE
+.TP
+\fB\-\-session\-timeout\fR \fI<MS>\fR
+Maximum duration of the adapter session, in milliseconds
+.RS
+\fIDefault: \fR1800000
+.RE
+.SH "MORPHIR MCK PACKAGE MVP-RUN"
+Run the admitted local Library MVP bootstrap cases through an explicit adapter
+.PP
+\fBUsage:\fR morphir mck package mvp\-run [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-source\fR \fI<DIR>\fR
+Repository root containing the closed MVP inventory and signed fixtures
+.TP
+\fB\-\-adapter\fR \fI<PROGRAM>\fR
+Adapter executable, launched directly without a shell
+.TP
+\fB\-\-adapter\-arg\fR \fI<ARG>\fR
+An argument for the adapter; repeat for more
 .TP
 \fB\-\-timeout\fR \fI<MS>\fR
 Maximum duration of one adapter request and response, in milliseconds
