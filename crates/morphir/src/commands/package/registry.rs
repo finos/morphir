@@ -5,12 +5,17 @@ use std::path::{Path, PathBuf};
 
 use clap::{Args, Subcommand};
 use miette::{IntoDiagnostic, WrapErr, miette};
+#[cfg(target_os = "macos")]
 use morphir_package::authoring::AuthoredLibrary;
+use morphir_package::local_registry::publication::Draft;
 #[cfg(target_os = "macos")]
 use morphir_package::local_registry::publication::Registry;
-use morphir_package::local_registry::publication::{Draft, Predecessor, Proposal};
+#[cfg(target_os = "macos")]
+use morphir_package::local_registry::publication::{Predecessor, Proposal};
 
-use super::author::{read_bundle, read_key, stage_files};
+use super::author::read_key;
+#[cfg(target_os = "macos")]
+use super::author::{read_bundle, stage_files};
 use super::{emit, read_bounded};
 
 #[derive(Clone, Debug, Subcommand)]
@@ -294,6 +299,7 @@ pub(super) fn publish(_args: &PublishArgs) -> miette::Result<()> {
     ))
 }
 
+#[cfg(target_os = "macos")]
 fn read_release(directory: &Path) -> miette::Result<(Vec<u8>, Vec<u8>)> {
     if !fs::symlink_metadata(directory)
         .into_diagnostic()?
