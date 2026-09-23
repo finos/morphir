@@ -18,6 +18,7 @@
     "mvp.restore.evidence-digest-mismatch",
     "mvp.restore.evidence-path-mismatch",
     "mvp.restore.undeclared-bundle-entry",
+    "mvp.restore.generated-lock-replay",
     "mvp.resolve.fresh-two-libraries",
     "mvp.resolve.absent-published-root",
     "mvp.resolve.bad-timestamp-signature",
@@ -344,6 +345,12 @@
       "kind": "expected",
       "path": "spec/package/mck/fixtures/mvp-fresh-restore/expected/mck-resolve-undeclared-bundle-entry.json",
       "sha256": "sha256:078d4be636422b6c14274f9f12da0df6f06938619d8734899042bdec74a026fe"
+    },
+    {
+      "id": "generated-morphir.lock",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/expected/resolve.lock.json",
+      "sha256": "sha256:2db3c346d885528c3ef46d60ed9c563d5f6ba45992ef2f6a3c7dfc294d5b8f24"
     }
   ],
   "cases": [
@@ -738,6 +745,32 @@
         "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/undeclared.txt": "undeclared-bundle-entry"
       },
       "expected": "restore-undeclared-bundle-entry"
+    },
+    {
+      "id": "mvp.restore.generated-lock-replay",
+      "operation": "restore",
+      "environment": {
+        "trustState": "initialized",
+        "output": "absent"
+      },
+      "inputs": {
+        "morphir.lock": "generated-morphir.lock",
+        "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json": "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
+        "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json": "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json",
+        "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json": "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json",
+        "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json": "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json",
+        "registry/metadata/1.root.json": "registry/metadata/1.root.json",
+        "registry/metadata/1.snapshot.json": "registry/metadata/1.snapshot.json",
+        "registry/metadata/1.targets.json": "registry/metadata/1.targets.json",
+        "registry/metadata/1.timestamp.json": "registry/metadata/1.timestamp.json",
+        "registry/metadata/timestamp.json": "registry/metadata/timestamp.json",
+        "registry/targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json": "registry/targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json",
+        "registry/targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json": "registry/targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json",
+        "registry/targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json": "registry/targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json",
+        "registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json": "registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json",
+        "trust-policy.json": "trust-policy.json"
+      },
+      "expected": "restore-fresh-two-libraries"
     },
     {
       "id": "mvp.resolve.fresh-two-libraries",
