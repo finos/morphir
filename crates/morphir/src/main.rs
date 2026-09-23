@@ -746,7 +746,7 @@ enum MckPackageAction {
     Inspect(commands::mck::package::InspectArgs),
     /// Run an integrity or resolution corpus against an explicit adapter
     Run(commands::mck::package::RunArgs),
-    /// Run the admitted local Library MVP bootstrap cases through an explicit adapter
+    /// Run the admitted local Library MVP fresh-restore cases through an explicit adapter
     MvpRun(commands::mck::package::MvpRunArgs),
 }
 

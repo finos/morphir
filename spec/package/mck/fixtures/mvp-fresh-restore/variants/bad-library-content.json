@@ -1,0 +1,39 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "example/eligibilitx",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "decision": {
+            "Public": {
+              "types": {
+                "decision": {
+                  "Public": {
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": { "approved": [], "declined": [] }
+                    }
+                  }
+                }
+              },
+              "values": {
+                "default-decision": {
+                  "Public": {
+                    "ExpressionBody": {
+                      "inputTypes": {},
+                      "outputType": "example/eligibility:decision#decision",
+                      "body": { "Constructor": "example/eligibility:decision#approved" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

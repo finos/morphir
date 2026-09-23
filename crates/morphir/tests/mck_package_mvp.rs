@@ -1,4 +1,4 @@
-//! The public command admits the complete bootstrap corpus before adapter spawn.
+//! The public command admits the complete fresh-restore corpus before adapter spawn.
 use std::{path::Path, process::Command};
 
 #[test]
@@ -15,7 +15,7 @@ fn public_mvp_run_requires_admission_and_an_explicit_adapter() {
     assert_eq!(output.status.code(), Some(1));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("MVP bootstrap: 0 pass, 0 fail, 2 kit-error"),
+        stdout.contains("MVP fresh restore: 0 pass, 0 fail, 15 kit-error"),
         "{stdout}"
     );
 

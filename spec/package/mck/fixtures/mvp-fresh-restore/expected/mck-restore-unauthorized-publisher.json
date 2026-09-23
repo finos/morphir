@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "publisher-authorization",
+  "reason": "publisher-signature-invalid",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}
