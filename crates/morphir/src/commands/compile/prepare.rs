@@ -366,7 +366,12 @@ pub async fn prepare_compile(
     .map_err(|error| CliError::Validation {
         message: error.to_string(),
     })?;
-    if captured.sources.len() > 1 && !provider.capability().multi_document {
+    // Cardinality is negotiated for a selection of files, which a provider
+    // synthesizes and may only take one at a time. A project compile has
+    // always submitted its whole source set, and an installed record cannot
+    // say whether its provider takes more than one document, so a project is
+    // left to the provider.
+    if selection && captured.sources.len() > 1 && !provider.capability().multi_document {
         return Err(CliError::Extension {
             message: format!(
                 "Provider '{}' compiles one document per request: it does not declare \

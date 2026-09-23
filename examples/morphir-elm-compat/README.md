@@ -5,11 +5,10 @@ modules, `ElmCompat.Main` and `ElmCompat.Api`. Main defines product/order types
 and business functions; Api defines request/response types and operations.
 
 The consolidated CLI discovers its name, source directory and exposed modules.
-The released reference Elm extension 0.3.0 accepts exactly one source document
-and does not declare `frontend.multiDocument`, so it cannot compile this whole
-project yet. The CLI refuses the compile before invoking the extension, naming the
-provider and the capability. The executable [scenario](scenarios.md) checks that
-rejection and the absence of an installed IR file. This is known-limitation coverage, not successful compilation.
+The released reference Elm extension 0.3.0 accepts exactly one source document,
+so it cannot compile this whole project yet. The executable
+[scenario](scenarios.md) checks that specific rejection and the absence of an
+installed IR file. This is known-limitation coverage, not successful compilation.
 Beads `morphir-o6vm.15` tracks multi-source support and classic language inference.
 
 Prepare the release using the [catalog instructions](../README.md#prepare-the-reference-elm-scenarios), then run:

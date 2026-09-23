@@ -129,7 +129,6 @@ import rego.v1
 passes if {
     input.exitCode == 1
     input.artifacts.installed.kind == "missing"
-    contains(input.stderr, "morphir-elm")
-    contains(input.stderr, "frontend.multiDocument")
+    contains(input.stderr, "requires exactly one source document")
 }
 ```
