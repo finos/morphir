@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="440" viewBox="0 0 600 440" role="img" aria-labelledby="title desc">
+  <title id="title">Registry and publisher approval are both required</title>
+  <desc id="desc">An approved registry supplies a signed listing of releases. An approved publisher signs a release statement. Morphir requires both, then checks the actual package content and current metadata.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#475569"/></marker>
+  </defs>
+  <rect width="600" height="440" rx="16" fill="#f8fafc"/>
+  <g font-family="system-ui, -apple-system, sans-serif" text-anchor="middle" fill="#172554">
+    <rect x="20" y="24" width="270" height="152" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="155" y="60" font-size="23" font-weight="700">Approved registry</text>
+    <text x="155" y="96" font-size="21">Which releases</text>
+    <text x="155" y="122" font-size="21">does it offer?</text>
+    <text x="155" y="155" font-size="19">Signed release listing</text>
+    <rect x="310" y="24" width="270" height="152" rx="14" fill="#fef3c7" stroke="#a16207" stroke-width="2"/>
+    <text x="445" y="60" font-size="23" font-weight="700">Approved publisher</text>
+    <text x="445" y="96" font-size="21">Who is allowed</text>
+    <text x="445" y="122" font-size="21">to sign this release?</text>
+    <text x="445" y="155" font-size="19">Signed release statement</text>
+    <path d="M155 184 V213 H281" fill="none" stroke="#475569" stroke-width="3"/>
+    <path d="M445 184 V213 H319" fill="none" stroke="#475569" stroke-width="3"/>
+    <circle cx="300" cy="213" r="22" fill="#172554"/>
+    <text x="300" y="221" font-size="27" font-weight="700" fill="#fff">+</text>
+    <path d="M300 242 V270" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="24" y="282" width="552" height="134" rx="14" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+    <text x="300" y="321" font-size="25" font-weight="700">Morphir needs both approvals</text>
+    <text x="300" y="357" font-size="21">It also checks the actual content</text>
+    <text x="300" y="385" font-size="21">and the current registry metadata</text>
+  </g>
+</svg>

@@ -1,7 +1,7 @@
 ---
 title: Install and use Libraries
 sidebar_label: Install and use
-sidebar_position: 4
+sidebar_position: 6
 ---
 
 # Install and use Libraries
@@ -48,6 +48,9 @@ example. For a real registry, obtain the policy and trusted root independently
 from an administrator you trust.
 
 ## 2. Establish trust once
+
+For a short explanation of the policy, trusted root, and saved state used here,
+see [Trust explained simply](trust-explained.md).
 
 ```sh
 morphir package trust init --policy fixture/trust-policy.json --root fixture/registry/metadata/1.root.json --state trust-state --json

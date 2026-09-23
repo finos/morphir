@@ -1,7 +1,7 @@
 ---
 title: Create a Library package
 sidebar_label: Create a Library
-sidebar_position: 2
+sidebar_position: 4
 ---
 
 # Create a Library package

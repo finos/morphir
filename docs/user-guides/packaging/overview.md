@@ -20,6 +20,10 @@ interchange format.
 
 ## Follow the workflow
 
+If trust is new to you, start with [Why package trust matters](why-package-trust.md)
+and [Trust explained simply](trust-explained.md). They explain the purpose of the
+checks and the experience we are working toward.
+
 The guides use two Libraries throughout. `eligibility` provides a `Decision` type
 with `Approved` and `Declined` constructors. `loan-rules` depends on it.
 

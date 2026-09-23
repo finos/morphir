@@ -1,7 +1,7 @@
 ---
 title: Publish Libraries to a local registry
 sidebar_label: Publish locally
-sidebar_position: 3
+sidebar_position: 5
 ---
 
 # Publish Libraries to a local registry
@@ -10,6 +10,9 @@ Local publication makes a Library release discoverable and verifiable in a
 directory registry. That registry holds package files plus signed information
 about which releases it offers and who published them. Consumers use the directory
 through `morphir package resolve` and `restore`.
+
+New to signing and trust? Read [Why package trust matters](why-package-trust.md)
+or [Trust explained simply](trust-explained.md) first.
 
 :::caution Early access: publisher tooling is not yet available
 This guide describes **Morphir CLI v0.4.0-beta.4**. It has no public command to
