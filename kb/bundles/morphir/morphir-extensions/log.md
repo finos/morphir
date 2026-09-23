@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-23
+
+* **Creation**: Added [Elm providers normalize explicit package names](/decisions/0005-elm-providers-normalize-explicit-package-names.md).
+
 ## 2026-09-22
 
 * **Creation**: Added [Capability statements across the extension lifecycle](/design/capability-statements.md), the narrative home for capability statements, from finos/morphir#921.
