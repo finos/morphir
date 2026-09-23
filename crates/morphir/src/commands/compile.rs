@@ -3420,6 +3420,7 @@ enabled = true
                             compile: true,
                             incremental: false,
                             fragments: false,
+                            multi_document: false,
                         }),
                         ..ExtensionCapabilities::default()
                     },
