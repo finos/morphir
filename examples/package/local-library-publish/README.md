@@ -4,7 +4,7 @@ This source-built early-access example starts with `src/main.gleam`, compiles a
 classic V4 Library, and publishes a signed release to a new local registry. A
 separate consumer can then resolve, restore and generate source from that release.
 The publisher path is currently qualified on macOS. It is not part of the
-v0.4.0-beta.4 binary.
+v0.4.0-beta.5 binary.
 
 Run the [executable scenario](scenarios.md) from the repository root with
 `mise run test:examples -- --filter 'package/local-library-publish#publish-and-consume'`.

@@ -21,7 +21,7 @@ a complete publication workflow.
 ## Source-built CLI preview
 
 The source-built CLI now has an early authoring path for a **dependency-free classic
-JSON V4** Library. This command is not in v0.4.0-beta.4. The checked-in
+JSON V4** Library. This command is not in v0.4.0-beta.5. The checked-in
 [`hello` publication example](https://github.com/finos/morphir/tree/main/examples/package/local-library-publish)
 starts with Gleam source and this `authoring.json`:
 
