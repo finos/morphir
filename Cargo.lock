@@ -4770,6 +4770,7 @@ dependencies = [
  "morphir-okf",
  "morphir-opa",
  "morphir-package",
+ "morphir-runtime",
  "morphir-workspace",
  "owo-colors",
  "pulldown-cmark",
@@ -5014,6 +5015,7 @@ dependencies = [
  "extism-pdk",
  "getrandom 0.2.17",
  "gleam-core",
+ "im",
  "indexmap",
  "morphir-common",
  "morphir-core",
@@ -5164,6 +5166,13 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "morphir-runtime"
+version = "0.4.0-beta.4"
+dependencies = [
+ "morphir-core",
 ]
 
 [[package]]
