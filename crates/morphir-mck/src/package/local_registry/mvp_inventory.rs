@@ -336,11 +336,12 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
             && case.root.is_none())
             || (case.operation == "resolve"
                 && RESOLVE_CASES.contains(&case.id.as_str())
-                && matches!(
-                    case.root.as_deref(),
-                    Some("example.com/finance/loan-rules@1.0.0")
-                        | Some("example.com/finance/loan-rules@9.9.9")
-                ));
+                && case.root.as_deref()
+                    == Some(if case.id == "mvp.resolve.absent-published-root" {
+                        "example.com/finance/loan-rules@9.9.9"
+                    } else {
+                        "example.com/finance/loan-rules@1.0.0"
+                    }));
         if !operation_matches_id || case.inputs.is_empty() {
             return Err(format!(
                 "unsupported MVP bootstrap operation in {}",

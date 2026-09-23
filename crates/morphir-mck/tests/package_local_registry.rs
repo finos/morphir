@@ -893,6 +893,42 @@ fn mvp_admission_requires_exact_bound_inventory_before_adapter_spawn() {
 }
 
 #[test]
+fn mvp_resolve_exact_roots_are_bound_to_case_ids() {
+    use morphir_mck::package::local_registry::admit_mvp_inventory;
+    let index = "spec/package/mck/mvp-cases.json";
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let index_bytes = std::fs::read(repo.join(index)).unwrap();
+    let manifest: serde_json::Value = serde_json::from_slice(&index_bytes).unwrap();
+    let mut assets = std::collections::BTreeMap::from([(index.to_owned(), index_bytes)]);
+    for asset in manifest["assets"].as_array().unwrap() {
+        let path = asset["path"].as_str().unwrap();
+        assets.insert(path.to_owned(), std::fs::read(repo.join(path)).unwrap());
+    }
+    for (case_id, wrong_root) in [
+        (
+            "mvp.resolve.fresh-two-libraries",
+            "example.com/finance/loan-rules@9.9.9",
+        ),
+        (
+            "mvp.resolve.absent-published-root",
+            "example.com/finance/loan-rules@1.0.0",
+        ),
+    ] {
+        let mut altered = manifest.clone();
+        let case = altered["cases"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|case| case["id"] == case_id)
+            .unwrap();
+        case["root"] = json!(wrong_root);
+        let mut source = assets.clone();
+        source.insert(index.to_owned(), encode(&altered));
+        assert!(admit_mvp_inventory(&source).is_err(), "{case_id}");
+    }
+}
+
+#[test]
 fn signed_mvp_inventory_admits_required_real_cases_without_expected_wire_bytes() {
     use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
