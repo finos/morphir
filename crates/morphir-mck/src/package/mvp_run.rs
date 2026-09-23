@@ -3,12 +3,17 @@
 use super::local_registry::AdmittedMvpInventory;
 use crate::kit::hash::is_sha256_hex;
 use crate::transport::{Limits, Session};
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ffi::{OsStr, OsString};
+use std::time::SystemTime;
+
+mod report;
 
 const PROFILE: &str = "local-library-mvp:0.1.0-draft.1";
 const CONTRACT: &str = "0.1.0-draft.3";
+const REPORT_VERSION: &str = "0.1.0-draft.1";
 const OPERATIONS: [&str; 4] = [
     "restore-local-library",
     "resolve-local-library",
@@ -16,11 +21,18 @@ const OPERATIONS: [&str; 4] = [
     "update-local-library",
 ];
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct MvpRun {
-    profile: &'static str,
-    scope: &'static str,
+    contract_version: Version,
+    suite: String,
+    started_at: String,
+    driver: MvpDriver,
+    adapter: MvpAdapter,
+    selection: MvpSelection,
+    profile: String,
+    scope: String,
     kit_hash: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     testee: Option<MvpCapabilities>,
@@ -29,8 +41,32 @@ pub struct MvpRun {
     adapter_error: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct MvpDriver {
+    name: String,
+    version: String,
+    commit: Option<String>,
+    dirty: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct MvpAdapter {
+    command: Vec<String>,
+    request_timeout_ms: u64,
+    session_timeout_ms: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct MvpSelection {
+    kind: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct MvpRecord {
     case_id: String,
     result: MvpResult,
@@ -38,7 +74,7 @@ pub struct MvpRecord {
     message: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum MvpResult {
     Pass,
@@ -330,10 +366,33 @@ impl Observation {
 }
 
 impl MvpRun {
-    fn new(inventory: &AdmittedMvpInventory) -> Self {
+    fn new(
+        inventory: &AdmittedMvpInventory,
+        program: &OsStr,
+        args: &[OsString],
+        limits: Limits,
+    ) -> Self {
+        let driver = crate::provenance::Driver::current();
         Self {
-            profile: PROFILE,
-            scope: "fresh-local-library-workflow",
+            contract_version: Version::parse(REPORT_VERSION).expect("static MVP report version"),
+            suite: "package".into(),
+            started_at: crate::report::iso_timestamp(SystemTime::now()),
+            driver: MvpDriver {
+                name: driver.name.into(),
+                version: driver.version.into(),
+                commit: driver.commit.map(str::to_owned),
+                dirty: driver.dirty,
+            },
+            adapter: MvpAdapter {
+                command: std::iter::once(program.to_string_lossy().into_owned())
+                    .chain(args.iter().map(|arg| arg.to_string_lossy().into_owned()))
+                    .collect(),
+                request_timeout_ms: limits.request_timeout.as_millis() as u64,
+                session_timeout_ms: limits.session_timeout.as_millis() as u64,
+            },
+            selection: MvpSelection { kind: "all".into() },
+            profile: PROFILE.into(),
+            scope: "fresh-local-library-workflow".into(),
             kit_hash: inventory.content_hash().to_string(),
             testee: None,
             records: Vec::new(),
@@ -388,6 +447,69 @@ impl MvpRun {
                 .map(|message| (record.case_id.as_str(), message))
         })
     }
+
+    pub fn from_json(text: &str) -> Result<Self, String> {
+        let report: Self = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        if report.contract_version
+            != Version::parse(REPORT_VERSION).expect("static MVP report version")
+            || report.suite != "package"
+            || report.profile != PROFILE
+            || report.scope != "fresh-local-library-workflow"
+            || report.selection.kind != "all"
+            || report.driver.name.is_empty()
+            || report.driver.version.is_empty()
+            || report
+                .adapter
+                .command
+                .first()
+                .is_none_or(|program| program.is_empty())
+            || chrono::DateTime::parse_from_rfc3339(&report.started_at).is_err()
+            || report.driver.commit.as_ref().is_some_and(|commit| {
+                commit.len() != 40 || !commit.bytes().all(|b| b.is_ascii_hexdigit())
+            })
+            || report.adapter.request_timeout_ms == 0
+            || report.adapter.session_timeout_ms == 0
+        {
+            return Err("invalid MVP report context or unsupported version".into());
+        }
+        Ok(report)
+    }
+
+    pub fn check_inventory(&self, inventory: &AdmittedMvpInventory) -> Result<usize, String> {
+        if self.kit_hash != inventory.content_hash().to_string() {
+            return Err(
+                "MVP report kit hash differs from the independently loaded inventory".into(),
+            );
+        }
+        if self.adapter_error.is_some() {
+            return Err("MVP adapter session failed".into());
+        }
+        let capabilities_valid = self.testee.as_ref().is_some_and(|caps| {
+            serde_json::to_value(caps)
+                .ok()
+                .and_then(|value| MvpCapabilities::parse(value).ok())
+                .is_some_and(|parsed| parsed.supports_mvp())
+        });
+        if !capabilities_valid {
+            return Err("required MVP capabilities were not negotiated".into());
+        }
+        if self.records.len() != inventory.cases().len() {
+            return Err(format!(
+                "MVP record inventory count: expected {}, found {}",
+                inventory.cases().len(),
+                self.records.len()
+            ));
+        }
+        for (index, (record, case)) in self.records.iter().zip(inventory.cases()).enumerate() {
+            if record.case_id != case.id() {
+                return Err(format!("MVP record inventory differs at index {index}"));
+            }
+            if record.result != MvpResult::Pass || record.message.is_some() {
+                return Err(format!("MVP case {} did not pass", record.case_id));
+            }
+        }
+        Ok(self.records.len())
+    }
 }
 
 /// Every admitted required case is represented, including failures before or
@@ -398,7 +520,7 @@ pub fn run_mvp_process(
     args: &[OsString],
     limits: Limits,
 ) -> MvpRun {
-    let mut run = MvpRun::new(inventory);
+    let mut run = MvpRun::new(inventory, program, args, limits);
     let mut session = match Session::spawn(&program.to_os_string(), args, limits) {
         Ok(session) => session,
         Err(error) => {

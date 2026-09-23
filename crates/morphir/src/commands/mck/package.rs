@@ -138,6 +138,9 @@ pub struct MvpRunArgs {
     /// An argument for the adapter; repeat for more
     #[arg(long = "adapter-arg", value_name = "ARG", allow_hyphen_values = true)]
     pub adapter_args: Vec<OsString>,
+    /// Write one versioned JSON report, including failures, to this file
+    #[arg(long, value_name = "FILE")]
+    pub report: Option<PathBuf>,
     /// Maximum duration of one adapter request and response, in milliseconds
     #[arg(long, value_name = "MS", default_value_t = 30_000, value_parser = clap::value_parser!(u64).range(1..))]
     pub timeout: u64,
@@ -165,6 +168,15 @@ pub async fn mvp_run(args: MvpRunArgs) -> AppResult<miette::Report> {
     let run = tokio::task::block_in_place(|| {
         run_mvp_process(&inventory, &args.adapter, &args.adapter_args, limits)
     });
+    if let Some(path) = &args.report {
+        let text = format!("{}\n", to_tab_json(&run));
+        if let Err(error) = super::report::write_atomic(path, text.as_bytes()) {
+            return finish(Outcome::Error(format!(
+                "cannot write {}: {error}",
+                path.display()
+            )));
+        }
+    }
     println!("MVP local Library: {}", run.summary_line());
     for (case, message) in run.failures() {
         println!("{case}: {message}");
@@ -173,5 +185,74 @@ pub async fn mvp_run(args: MvpRunArgs) -> AppResult<miette::Report> {
         Outcome::Passed
     } else {
         Outcome::Failed
+    })
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct MvpReportCheckArgs {
+    /// Versioned local Library MVP JSON report
+    pub report: PathBuf,
+    /// Repository root containing the independent admitted MVP inventory
+    #[arg(long, value_name = "DIR")]
+    pub source: PathBuf,
+}
+
+pub fn mvp_report_check(args: MvpReportCheckArgs) -> AppResult<miette::Report> {
+    use morphir_mck::package::MvpRun;
+    use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+    let result = (|| {
+        let text = std::fs::read_to_string(&args.report)
+            .map_err(|error| format!("cannot read {}: {error}", args.report.display()))?;
+        let report = MvpRun::from_json(&text)?;
+        let source = MvpRepositorySource::new(&args.source)?;
+        let inventory = admit_mvp_inventory(&source)?;
+        let count = report.check_inventory(&inventory)?;
+        println!("Verified MVP inventory: {count} required cases, all passing");
+        Ok::<_, String>(())
+    })();
+    finish(match result {
+        Ok(()) => Outcome::Passed,
+        Err(error) => Outcome::Error(error),
+    })
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct MvpReportRenderArgs {
+    /// Versioned local Library MVP JSON report
+    pub report: PathBuf,
+    /// Standalone HTML output file; cannot overwrite the JSON input
+    #[arg(short, long, value_name = "FILE")]
+    pub output: PathBuf,
+}
+
+pub fn mvp_report_render(args: MvpReportRenderArgs) -> AppResult<miette::Report> {
+    use morphir_mck::package::MvpRun;
+    if args.output.exists() {
+        match same_file::is_same_file(&args.report, &args.output) {
+            Ok(true) => {
+                return finish(Outcome::Usage(
+                    "HTML output must not overwrite its JSON input".into(),
+                ));
+            }
+            Ok(false) => {}
+            Err(error) => {
+                return finish(Outcome::Error(format!(
+                    "cannot compare input and output: {error}"
+                )));
+            }
+        }
+    }
+    let result = (|| {
+        let text = std::fs::read_to_string(&args.report)
+            .map_err(|error| format!("cannot read {}: {error}", args.report.display()))?;
+        let report = MvpRun::from_json(&text)?;
+        super::report::write_atomic(&args.output, report.render_html().as_bytes())
+            .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+        println!("Wrote {}", args.output.display());
+        Ok::<_, String>(())
+    })();
+    finish(match result {
+        Ok(()) => Outcome::Passed,
+        Err(error) => Outcome::Error(error),
     })
 }

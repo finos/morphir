@@ -9,6 +9,7 @@ Run admitted local Library MVP cases through an explicit adapter
 - **`--source <DIR>`** — Repository root containing the closed MVP inventory and signed fixtures
 - **`--adapter <PROGRAM>`** — Adapter executable, launched directly without a shell
 - **`--adapter-arg <ARG>…`** — An argument for the adapter; repeat for more
+- **`--report <FILE>`** — Write one versioned JSON report, including failures, to this file
 - **`--timeout <MS>`** — Maximum duration of one adapter request and response, in milliseconds
 
   **Default:** `30000`

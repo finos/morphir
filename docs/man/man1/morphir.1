@@ -315,6 +315,15 @@ Run an integrity or resolution corpus against an explicit adapter
 \fBmck package mvp\-run\fR
 Run admitted local Library MVP cases through an explicit adapter
 .TP
+\fBmck package mvp\-report\fR
+Check or render a versioned local Library MVP report
+.TP
+\fBmck package mvp\-report check\fR
+Compare every report record with the independently admitted MVP inventory
+.TP
+\fBmck package mvp\-report render\fR
+Render a standalone offline HTML view of a versioned MVP report
+.TP
 \fBmck report\fR
 Check compatibility evidence or render a saved report as offline HTML
 .TP
@@ -2120,6 +2129,9 @@ Adapter executable, launched directly without a shell
 \fB\-\-adapter\-arg\fR \fI<ARG>\fR
 An argument for the adapter; repeat for more
 .TP
+\fB\-\-report\fR \fI<FILE>\fR
+Write one versioned JSON report, including failures, to this file
+.TP
 \fB\-\-timeout\fR \fI<MS>\fR
 Maximum duration of one adapter request and response, in milliseconds
 .RS
@@ -2131,6 +2143,36 @@ Maximum duration of the adapter session, in milliseconds
 .RS
 \fIDefault: \fR1800000
 .RE
+.SH "MORPHIR MCK PACKAGE MVP-REPORT CHECK"
+Compare every report record with the independently admitted MVP inventory
+.PP
+\fBUsage:\fR morphir mck package mvp\-report check [OPTIONS] <REPORT>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-source\fR \fI<DIR>\fR
+Repository root containing the independent admitted MVP inventory
+\fBArguments:\fR
+.PP
+.TP
+\fB<REPORT>\fR
+Versioned local Library MVP JSON report
+.SH "MORPHIR MCK PACKAGE MVP-REPORT RENDER"
+Render a standalone offline HTML view of a versioned MVP report
+.PP
+\fBUsage:\fR morphir mck package mvp\-report render [OPTIONS] <REPORT>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-o, \-\-output\fR \fI<FILE>\fR
+Standalone HTML output file; cannot overwrite the JSON input
+\fBArguments:\fR
+.PP
+.TP
+\fB<REPORT>\fR
+Versioned local Library MVP JSON report
 .SH "MORPHIR MCK REPORT CHECK"
 Verify report inventory and the binding's allowed\-failing baseline
 .PP

@@ -334,6 +334,19 @@ hash. Full engine admission rejects pending assets. Exact-case admission is
 test-only and cannot turn the candidate corpus into a compatibility report.
 `package run` continues to accept only its implemented draft.1/draft.2 contracts.
 
+The separate `package mvp-run` command executes the required local Library MVP
+profile through the same native runner and an explicit adapter. `--report FILE`
+writes one `0.1.0-draft.1` prerelease JSON report, including failed runs. The
+report records driver version and source state, start time, adapter command and
+timeouts, negotiated capabilities, profile, full-inventory selection, admitted
+kit hash and all ordered required results. `package mvp-report check REPORT
+--source DIR` independently reloads the admitted 70-case inventory and rejects
+missing, extra or reordered records, a changed kit hash, invalid capabilities,
+and any failed case or adapter session. `package mvp-report render REPORT
+--output FILE` writes offline HTML atomically. Rendering never certifies the
+inventory or a passing run. The existing IR `report` command and draft.1/draft.2
+package contracts remain separate.
+
 ## `package run` (PKG-1)
 
 `morphir mck package run` extends the same engine with the existing package

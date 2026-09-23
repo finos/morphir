@@ -2,7 +2,7 @@
 use morphir_mck::package::local_registry::{
     AdmittedMvpInventory, MvpRepositorySource, admit_mvp_inventory,
 };
-use morphir_mck::package::run_mvp_process;
+use morphir_mck::package::{MvpRun, run_mvp_process};
 use morphir_mck::transport::Limits;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -223,6 +223,83 @@ fn all_fixed_results_pass_over_input_only_transcript_and_wrong_results_fail() {
         };
         assert_eq!(record["result"], expected, "record {index}: {record}");
     }
+}
+
+#[test]
+fn versioned_mvp_report_checks_the_independent_inventory() {
+    let inventory = inventory();
+    let (report, _) = run_replies(&inventory, &fixed_replies(&inventory));
+    assert_eq!(report["contractVersion"], "0.1.0-draft.1");
+    assert_eq!(report["suite"], "package");
+    assert!(report["startedAt"].is_string());
+    assert!(report["driver"]["version"].is_string());
+    assert!(report["adapter"]["command"].is_array());
+    assert_eq!(report["selection"]["kind"], "all");
+
+    let parsed = MvpRun::from_json(&report.to_string()).unwrap();
+    assert_eq!(parsed.check_inventory(&inventory).unwrap(), 70);
+
+    let mut missing = report.clone();
+    missing["records"].as_array_mut().unwrap().pop();
+    assert!(
+        MvpRun::from_json(&missing.to_string())
+            .unwrap()
+            .check_inventory(&inventory)
+            .is_err()
+    );
+
+    let mut extra = report.clone();
+    let duplicate = extra["records"][0].clone();
+    extra["records"].as_array_mut().unwrap().push(duplicate);
+    assert!(
+        MvpRun::from_json(&extra.to_string())
+            .unwrap()
+            .check_inventory(&inventory)
+            .is_err()
+    );
+
+    let mut wrong_hash = report.clone();
+    wrong_hash["kitHash"] = json!(format!("sha256:{}", "0".repeat(64)));
+    assert!(
+        MvpRun::from_json(&wrong_hash.to_string())
+            .unwrap()
+            .check_inventory(&inventory)
+            .is_err()
+    );
+
+    let (mut wrong_capabilities, _) = run_replies(&inventory, &fixed_replies(&inventory));
+    wrong_capabilities["testee"]["operations"][0] = json!("not-an-operation");
+    assert!(
+        MvpRun::from_json(&wrong_capabilities.to_string())
+            .unwrap()
+            .check_inventory(&inventory)
+            .is_err()
+    );
+
+    let mut bad_context = report.clone();
+    bad_context["startedAt"] = json!("yesterday");
+    assert!(MvpRun::from_json(&bad_context.to_string()).is_err());
+    bad_context["startedAt"] = report["startedAt"].clone();
+    bad_context["adapter"]["command"] = json!([""]);
+    assert!(MvpRun::from_json(&bad_context.to_string()).is_err());
+    bad_context["adapter"]["command"] = report["adapter"]["command"].clone();
+    bad_context["contractVersion"] = json!("0.1.0-draft.1+unlisted");
+    assert!(MvpRun::from_json(&bad_context.to_string()).is_err());
+}
+
+#[test]
+fn mvp_html_is_offline_and_escapes_failure_text() {
+    let inventory = inventory();
+    let (mut report, _) = run_replies(&inventory, &fixed_replies(&inventory));
+    report["records"][0]["result"] = json!("fail");
+    report["records"][0]["message"] = json!("<script>alert('x')</script>");
+    let parsed = MvpRun::from_json(&report.to_string()).unwrap();
+    let html = parsed.render_html();
+    assert!(html.contains("MVP local Library report"));
+    assert!(html.contains("70 required cases"));
+    assert!(html.contains("&lt;script&gt;"));
+    assert!(!html.contains("<script>alert('x')</script>"));
+    assert!(!html.contains("https://"));
 }
 
 #[test]
