@@ -12,7 +12,7 @@ your own. Preparing a bundle is one part of publication; it does not make the bu
 available to `morphir package resolve` yet.
 
 :::caution Early access
-This guide targets **Morphir CLI v0.4.0-beta.4**. Package formats and authoring
+This guide targets **Morphir CLI v0.4.0-beta.5**. Package formats and authoring
 workflows may change. There is no public package creation or packing command in
 this release. The steps below work with bundle files directly and do not constitute
 a complete publication workflow.
@@ -43,7 +43,7 @@ a `default-decision` value. A consumer can generate source from that model.
 To inspect a complete, known-good bundle, download the examples once:
 
 ```sh
-git clone --depth 1 --branch v0.4.0-beta.4 https://github.com/finos/morphir.git morphir-package-examples
+git clone --depth 1 --branch v0.4.0-beta.5 https://github.com/finos/morphir.git morphir-package-examples
 cd morphir-package-examples
 mkdir my-library
 cp spec/package/mck/fixtures/two-libraries/eligibility/ir.json my-library/ir.json
@@ -129,7 +129,7 @@ records it in `morphir.lock`.
 You now know the bundle's inputs and can inspect the worked files. A custom bundle
 still needs semantic verification, a signed publisher statement, and authenticated
 registry metadata before consumers can resolve it. The
-[Library format contract](https://github.com/finos/morphir/blob/v0.4.0-beta.4/spec/package/library-contract.md)
+[Library format contract](https://github.com/finos/morphir/blob/v0.4.0-beta.5/spec/package/library-contract.md)
 contains the detailed restrictions for tool authors.
 
 Continue with [publishing locally](publishing-locally.md) to understand that boundary,

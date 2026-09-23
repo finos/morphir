@@ -11,7 +11,7 @@ and restore verified copies into another project. A Library contains Morphir IR 
 a release manifest describing its identity, public modules, dependencies, and files.
 
 :::caution Early access
-These guides describe **Morphir CLI v0.4.0-beta.4**. Packaging is an early-access
+These guides describe **Morphir CLI v0.4.0-beta.5**. Packaging is an early-access
 feature. Commands, configuration, file formats, and supported workflows may change
 between releases. Pin the CLI version when following these examples and review
 release notes before upgrading. The draft format markers do not promise a stable
@@ -74,7 +74,7 @@ the model. They are separate names. Release versions do not become part of IR na
 ## Before you start
 
 Install the [Morphir CLI](../../getting-started/morphir-cli.md) using the
-[v0.4.0-beta.4 release](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.4),
+[v0.4.0-beta.5 release](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.5),
 then check `morphir --version`. File-copy commands in these guides use a POSIX shell,
 such as Bash or Git Bash on Windows. Windows users should also follow the CLI
 guide's [long-path setup](../../getting-started/morphir-cli.md#windows-enable-long-paths).

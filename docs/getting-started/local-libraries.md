@@ -7,7 +7,7 @@ sidebar_label: Signed local Libraries
 # Use signed local Libraries
 
 :::caution Early access
-This guide describes Morphir CLI **v0.4.0-beta.4**. Packaging commands and formats
+This guide describes Morphir CLI **v0.4.0-beta.5**. Packaging commands and formats
 may change between releases. For the full introduction, including bundle creation,
 local publication limits, and a step-by-step consumer walkthrough, read the
 [packaging guides](../user-guides/packaging/overview.md).
