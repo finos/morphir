@@ -1034,3 +1034,38 @@ fn a_nested_block_comment_before_the_module_declaration_does_not_change_identity
     assert_eq!(modules[0][0], serde_json::json!([["acme"], ["widget"]]));
     assert_eq!(modules[0][1]["access"], "Public");
 }
+
+/// A configured extension that nothing names, and that cannot start, does
+/// not stop a compile it has nothing to do with: the host skips it with a
+/// warning and selects the provider it would have selected anyway.
+#[test]
+fn an_unavailable_configured_extension_does_not_block_another_provider() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(
+        dir.join("morphir.toml"),
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\n\n[frontend]\nlanguage = 'gleam'\n\n[extensions.offline-codegen]\ncommand = 'no-such-executable'\nenabled = true\n",
+    )
+    .unwrap();
+    fs::write(dir.join("src/api.gleam"), "pub type Answer { Answer }\n").unwrap();
+
+    let (ok, _out, err) = morphir(dir, &["compile"]);
+    assert!(ok, "{err}");
+    assert!(
+        err.contains("offline-codegen"),
+        "expected a skip warning: {err}"
+    );
+
+    let (ok, _out, err) = morphir(
+        dir,
+        &[
+            "compile",
+            "--input",
+            "src/api.gleam",
+            "--config",
+            "morphir.toml",
+        ],
+    );
+    assert!(ok, "{err}");
+}

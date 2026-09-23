@@ -723,16 +723,19 @@ async fn infer_language(
     workspace: &Path,
 ) -> Result<String, CliError> {
     let frontend = config.and_then(|context| context.config.frontend.as_ref());
-    let named: Vec<String> = match flag_extension {
+    // A provider something names must answer; one that is only launched by
+    // `[extensions.<id>] command` may be a backend or be offline, and must not
+    // stop a compile it has nothing to do with.
+    let selected: Vec<String> = match flag_extension {
         Some(id) => vec![id.to_owned()],
-        None => {
-            let mut ids = frontend_extension::configured_ids(frontend)?;
-            ids.extend(configured_command_ids(config));
-            ids.sort();
-            ids.dedup();
-            ids
-        }
+        None => frontend_extension::configured_ids(frontend)?,
     };
+    let mut named = selected.clone();
+    if flag_extension.is_none() {
+        named.extend(configured_command_ids(config));
+        named.sort();
+        named.dedup();
+    }
     // (provider id, language id, suffixes)
     let mut claims: Vec<(String, String, Vec<String>)> = Vec::new();
     let mut add = |id: &str, capability: &FrontendCapability| {
@@ -751,14 +754,27 @@ async fn infer_language(
             .collect(),
     };
     for only in registry_ids {
-        if let Some(id) = only
-            && let Some(launch) = configured_launch(config, id, workspace)?
-        {
-            let negotiated = crate::extensions::probe_process(launch, id).await?;
-            if let Some(capability) = negotiated.capabilities.frontend.as_ref() {
-                add(id, capability);
+        if let Some(id) = only {
+            let required = selected.iter().any(|selected| selected == id);
+            let probed = match configured_launch(config, id, workspace) {
+                Ok(Some(launch)) => Some(crate::extensions::probe_process(launch, id).await),
+                Ok(None) => None,
+                Err(error) => Some(Err(error)),
+            };
+            match probed {
+                Some(Ok(negotiated)) => {
+                    if let Some(capability) = negotiated.capabilities.frontend.as_ref() {
+                        add(id, capability);
+                    }
+                    continue;
+                }
+                Some(Err(error)) if required => return Err(error),
+                Some(Err(error)) => {
+                    skip_unavailable(id, &error);
+                    continue;
+                }
+                None => {}
             }
-            continue;
         }
         let registry = crate::extensions::extension_registry_for(installed.to_vec(), only)?;
         if let Some(id) = flag_extension
@@ -918,6 +934,12 @@ fn configured_command_ids(config: Option<&ConfigContext>) -> Vec<String> {
     ids
 }
 
+/// Report a configured extension that nothing named and that could not be
+/// asked what it provides. It is left out of provider selection, not fatal.
+fn skip_unavailable(id: &str, error: &CliError) {
+    eprintln!("warning: skipping configured extension '{id}' while selecting a frontend: {error}");
+}
+
 /// The configured process provider for `language` when nothing names one.
 ///
 /// A configuration that launches an extension by `[extensions.<id>] command`
@@ -932,10 +954,24 @@ async fn unnamed_configured_provider(
 ) -> Result<Option<(String, ProcessLaunch)>, CliError> {
     let mut serving = Vec::new();
     for id in configured_command_ids(config) {
-        let Some(launch) = configured_launch(config, &id, workspace)? else {
-            continue;
+        // Nothing named this extension, so one that cannot start is skipped:
+        // it may be a backend, or offline, and has nothing to do with this
+        // compile.
+        let launch = match configured_launch(config, &id, workspace) {
+            Ok(Some(launch)) => launch,
+            Ok(None) => continue,
+            Err(error) => {
+                skip_unavailable(&id, &error);
+                continue;
+            }
         };
-        let negotiated = crate::extensions::probe_process(launch.clone(), &id).await?;
+        let negotiated = match crate::extensions::probe_process(launch.clone(), &id).await {
+            Ok(negotiated) => negotiated,
+            Err(error) => {
+                skip_unavailable(&id, &error);
+                continue;
+            }
+        };
         let declares = negotiated
             .capabilities
             .frontend
