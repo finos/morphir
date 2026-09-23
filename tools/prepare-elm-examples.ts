@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** The pinned reference release; see .config/published-extension-bundles.toml. */
-export const REQUIRED_VERSION = "0.3.0";
+export const REQUIRED_VERSION = "0.3.1";
 
 export function prepareElmExamples(root: string, executable: string, version: string): void {
 	if (version !== REQUIRED_VERSION) {
@@ -23,7 +23,7 @@ export function prepareElmExamples(root: string, executable: string, version: st
 		channels: ["stable"],
 		mepVersions: ["0.1"],
 		// The published record names the capability kinds the executable reports, or the host
-		// refuses the session. 0.3.0 serves workspace discovery for single-file compiles.
+		// refuses the session. 0.3.1 serves workspace discovery for single-file compiles.
 		capabilities: ["frontend", "workspace"],
 		frontend: {
 			languages: [{ id: "elm", fileExtensions: [".elm"] }],
