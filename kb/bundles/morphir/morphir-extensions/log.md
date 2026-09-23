@@ -3,6 +3,8 @@
 ## 2026-09-23
 
 * **Creation**: Added [Elm providers normalize explicit package names](/decisions/0005-elm-providers-normalize-explicit-package-names.md).
+* **Creation**: Added [The describe fallback reports only what a session reports](/decisions/0006-the-describe-fallback-reports-only-what-a-session-reports.md), refining decision 9 of 0004.
+* **Update**: [Capability statements across the extension lifecycle](/design/capability-statements.md) names the `-32014` (not initialized) refusal.
 
 ## 2026-09-22
 

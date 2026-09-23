@@ -20,6 +20,7 @@ Compile-time extensions to the Morphir CLI: frontend and process providers, thei
 * [The guest authors its capability statement](/decisions/0003-the-guest-authors-its-capability-statement.md) - The extension itself is the only author of its capability statement, which packaging captures with morphir.extension.describe, publish accepts for process bundles, install probes on the selected artifact, and each artifact carries separately.
 * [Readers ignore unknown members unless critical](/decisions/0004-readers-ignore-unknown-members-unless-critical.md) - Every reader of extension formats ignores unknown members unless they are marked critical, accepts the current and previous released major and listed drafts, and converts old records, so host and extension changes ship on their own after one bootstrap host release.
 * [Elm providers normalize explicit package names](/decisions/0005-elm-providers-normalize-explicit-package-names.md) - Every Elm workspace provider reads an explicit package name with both `.` and `/` as segment separators and reports one normal form, lowercase words joined by `-` and segments joined by `/`, which keeps the Morphir IR package path unchanged.
+* [The describe fallback reports only what a session reports](/decisions/0006-the-describe-fallback-reports-only-what-a-session-reports.md) - A refusal before initialize has its own MEP error code, -32014, and a statement the host builds from a fallback session holds only what that session reports, with no requires or critical members.
 
 ## Design
 
