@@ -39,6 +39,16 @@ fn repository_name(name: &str) -> miette::Result<RepositoryName> {
     RepositoryName::parse(name).map_err(|error| miette::miette!("Invalid repository name: {error}"))
 }
 
+/// How this CLI names itself to an extension. Publish and install describe an
+/// artifact as the same host, so an extension that shapes its statement by
+/// host sees the same host at both steps.
+pub(crate) fn host_peer() -> morphir_extension_sdk::protocol::PeerInfo {
+    morphir_extension_sdk::protocol::PeerInfo {
+        name: "morphir-cli".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+    }
+}
+
 /// The host version an extension's `requires.host` is checked against: this CLI.
 fn host_version() -> morphir_workspace::Version {
     env!("CARGO_PKG_VERSION")
@@ -368,7 +378,7 @@ async fn describe_publish_artifact(
         ProcessLaunch, SpawnedProcessTransport, process::DescriptionSource,
     };
     use morphir_distribution::PublicationDescription;
-    use morphir_extension_sdk::protocol::{InitializeParams, PeerInfo, SUPPORTED_MEP_VERSIONS};
+    use morphir_extension_sdk::protocol::{InitializeParams, SUPPORTED_MEP_VERSIONS};
     let path = std::path::PathBuf::from(artifact.filename().as_str());
     let invalid = |reason: String| morphir_distribution::DistributionError::InvalidReleaseBundle {
         path: path.clone(),
@@ -417,10 +427,7 @@ async fn describe_publish_artifact(
                 .iter()
                 .map(|version| (*version).into())
                 .collect(),
-            host: PeerInfo {
-                name: "morphir".into(),
-                version: host_version().to_string(),
-            },
+            host: host_peer(),
         })
         .await
         .map_err(|error| invalid(format!("Failed to describe process: {error}")))?;

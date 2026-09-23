@@ -161,7 +161,7 @@ fn real_published_morphir_scala_elm_resolves_host() {
         .describe(InitializeParams {
             protocol_versions: vec![MEP_VERSION.into()],
             host: PeerInfo {
-                name: "morphir".into(),
+                name: "morphir-cli".into(),
                 version: env!("CARGO_PKG_VERSION").into(),
             },
         })

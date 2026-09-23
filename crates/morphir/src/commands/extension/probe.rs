@@ -5,7 +5,7 @@ use morphir_distribution::{
     ArtifactRuntime, DistributionError, InstalledExtension, ProbeSource, StatementProvenance,
     StatementRecord, VerifiedArtifact,
 };
-use morphir_extension_sdk::protocol::{InitializeParams, PeerInfo, SUPPORTED_MEP_VERSIONS};
+use morphir_extension_sdk::protocol::{InitializeParams, SUPPORTED_MEP_VERSIONS};
 
 pub(super) async fn statement(
     artifact: &VerifiedArtifact,
@@ -44,10 +44,7 @@ pub(super) async fn statement(
                 .iter()
                 .map(|version| (*version).into())
                 .collect(),
-            host: PeerInfo {
-                name: "morphir-cli".into(),
-                version: env!("CARGO_PKG_VERSION").into(),
-            },
+            host: super::host_peer(),
         })
         .await
         .map_err(|error| DistributionError::Probe(error.to_string()))?;
