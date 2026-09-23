@@ -27,18 +27,19 @@ use IR report fields. Every case is required, so a skip, failure or kit error me
 exit 1. Invalid arguments mean exit 2. Kit errors are reported before an adapter starts.
 The runner owns loading and comparison; package behavior stays in the independent adapters.
 
-## Local Library MVP fresh-restore execution
+## Local Library MVP execution
 
 `mvp-cases.json` is a separate, versioned `local-library-mvp:0.1.0-draft.1`
-inventory. It binds all 15 frozen fresh exact-lock restore cases, including the
-signed two-Library success, authentication and integrity refusals, trust-state
-failures, unsupported historical policy, and an occupied destination. Every
+inventory. It binds all 15 frozen fresh exact-lock restore cases and 13 frozen
+initial resolve cases, including signed two-Library success, authentication and
+integrity refusals, trust-state failures, unsupported historical policy, an
+absent exact root and occupied destinations. Every
 referenced input and fixed expected result has a SHA-256 digest. Exact required
 case IDs, the base 15 input mounts, bounded optional variant files, and the
 typed environment descriptor are admitted before the adapter starts. The
 signed positive inputs are unchanged.
 
-Run this executable restore inventory through the one native MCK runner and an
+Run this executable inventory through the one native MCK runner and an
 explicit external adapter:
 
 ```sh
@@ -47,16 +48,17 @@ morphir mck package mvp-run --source . \
 ```
 
 The JSON-lines session advertises package contract `0.1.0-draft.3`, the MVP
-profile and `restore-local-library`. Requests carry confined input bytes and an
+profile and `restore-local-library`/`resolve-local-library`. Requests carry confined input bytes and an
 input-only environment descriptor; case IDs and expected outcomes remain with
-the runner. The adapter returns a structured restore or typed refusal
-observation. Fixed results compare the complete published-file path and SHA-256
-inventory, or an absent/unchanged-sentinel output plus a narrow refusal reason.
+the runner. The adapter returns a structured restore, resolved-lock or typed
+refusal observation. Fixed results compare the complete published-file path and
+SHA-256 inventory, including the independently frozen exact lock, or an
+absent/unchanged-sentinel output plus a narrow refusal reason.
 Admission rejects oversized individual assets and oversized total input before
 request construction.
 Missing capability, malformed response, transport failure, or an unexecuted
-required case fails the run. `mise run package:mvp-restore-check` must report
-15 pass, 0 fail and 0 kit-error. Authenticated resolve, refresh, scoped update,
+required case fails the run. `mise run package:mvp-check` must report
+28 pass, 0 fail and 0 kit-error. Generated-lock replay, refresh, scoped update,
 the consolidated prerelease JSON/offline HTML report, and downloaded-binary
 qualification remain separate MVP gates.
 

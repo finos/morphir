@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "package-integrity",
+  "reason": "bundle-inventory-mismatch",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

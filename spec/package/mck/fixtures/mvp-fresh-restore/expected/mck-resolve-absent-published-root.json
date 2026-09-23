@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "invalid-input",
+  "reason": "published-root-unavailable",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

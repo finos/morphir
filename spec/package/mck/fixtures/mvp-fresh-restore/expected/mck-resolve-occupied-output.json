@@ -1,0 +1,14 @@
+{
+  "outcome": "refused",
+  "category": "output-conflict",
+  "reason": "destination-exists",
+  "output": "preserved-sentinel",
+  "outputFiles": [
+    {
+      "path": "morphir.lock",
+      "sha256": "sha256:f01f017ba20623e8154cdcd63fb16d79795bc0d6f57271934e5a9864b772d425"
+    }
+  ],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

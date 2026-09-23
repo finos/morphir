@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "package-integrity",
+  "reason": "content-digest-mismatch",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}
