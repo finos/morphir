@@ -547,11 +547,13 @@ enum ExtensionRepositoryAction {
         /// Repository name
         name: String,
     },
-    /// Publish a verified release bundle to a configured repository
+    /// Publish a verified WASM or process release bundle to a configured repository
+    ///
+    /// Version-2 WASM artifacts remain declared and are not probed.
     Publish {
         /// Repository name
         name: String,
-        /// Release bundle directory
+        /// Bundle directory with release.json, each artifact and its .sha256 file. Publish runs the artifact for this platform to check its capabilities.
         #[arg(long)]
         bundle: std::path::PathBuf,
     },
@@ -1210,6 +1212,7 @@ impl AppSession for MorphirSession {
                             name.clone(),
                             bundle.clone(),
                         )
+                        .await
                     }
                     ExtensionRepositoryAction::Verify { name } => {
                         run_extension_repository_verify(&self.operation_id, name.clone())

@@ -3,10 +3,12 @@
 
 - **Usage:** `morphir extension repository publish <--bundle <BUNDLE>> <NAME>`
 
-Publish a verified release bundle to a configured repository
+Publish a verified WASM or process release bundle to a configured repository
+
+Version-2 WASM artifacts remain declared and are not probed.
 
 ## Arguments
 - **`<NAME>`** — Repository name
 
 ## Flags
-- **`--bundle <BUNDLE>`** — Release bundle directory
+- **`--bundle <BUNDLE>`** — Bundle directory with release.json, each artifact and its .sha256 file. Publish runs the artifact for this platform to check its capabilities
