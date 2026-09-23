@@ -72,6 +72,39 @@ Use one supported document per directory. Having both `scenario.ipynb` and
 `scenarios.md` in one directory is an error. Scenario directory names cannot
 contain the reserved `#` separator.
 
+## Host compatibility suite
+
+The host compatibility suite is the gate for a host-only release. CI runs it on
+CLI changes against the releases pinned in `.config/published-extension-bundles.toml`.
+Each extension gets a fresh Morphir home and project. The CLI initializes a local
+repository, publishes the bundle, installs with the default probe, checks
+provenance, compiles Elm or generates backend artifacts, then removes the extension
+and checks that the catalog is empty. After installation the repository is removed,
+so compile and generate use only the installed artifacts. The suite does not block
+network access.
+
+```sh
+mise run ci:fetch-published-bundles
+mise run test:host-compatibility
+```
+
+The task runs the six ignored tests in `crates/morphir/tests/host_compatibility.rs`
+with the release CLI built from this tree. Set `MORPHIR_PUBLISHED_BUNDLES` to use
+another fetched bundle directory. A relative path is taken from the repository root. Missing bundles fail the suite. WASM bundles use
+their released version-1 descriptors. Process executables get a host-platform
+version-2 bundle in shared test support; the current releases use the session
+fallback during publication and installation.
+
+The fetcher pins Linux x86_64 process executables. On macOS arm64, supply builds
+of the same pinned releases with absolute paths:
+
+```sh
+MORPHIR_ELM_EXTENSION_BIN=/absolute/path/to/morphir-elm-extension \
+MORPHIR_SCALA_ELM_EXTENSION_BIN=/absolute/path/to/morphir-scala-elm-mac-aarch64-0.5.0-M08 \
+MORPHIR_PUBLISHED_BUNDLES=/absolute/path/to/published-bundles \
+mise run test:host-compatibility
+```
+
 ## Markdown scenarios
 
 Use `scenarios.md` for ordinary Markdown authoring. YAML frontmatter provides
