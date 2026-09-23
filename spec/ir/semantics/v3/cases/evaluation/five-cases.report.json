@@ -1,0 +1,239 @@
+{
+  "version": "1.1.0-draft.1",
+  "provider": "morphir_ir",
+  "results": [
+    {
+      "id": "zero",
+      "entrypoint": "morphir/ir-specification:morphir/validation/arity#check-arity",
+      "status": "value",
+      "value": {
+        "type": [
+          "Reference",
+          {},
+          [
+            [
+              [
+                "morphir"
+              ],
+              [
+                "ir",
+                "specification"
+              ]
+            ],
+            [
+              [
+                "morphir"
+              ],
+              [
+                "validation"
+              ],
+              [
+                "arity"
+              ]
+            ],
+            [
+              "arity",
+              "outcome"
+            ]
+          ],
+          []
+        ],
+        "value": {
+          "kind": "constructor",
+          "name": "morphir/ir-specification:morphir/validation/arity#valid",
+          "arguments": []
+        }
+      }
+    },
+    {
+      "id": "one",
+      "entrypoint": "morphir/ir-specification:morphir/validation/arity#check-arity",
+      "status": "value",
+      "value": {
+        "type": [
+          "Reference",
+          {},
+          [
+            [
+              [
+                "morphir"
+              ],
+              [
+                "ir",
+                "specification"
+              ]
+            ],
+            [
+              [
+                "morphir"
+              ],
+              [
+                "validation"
+              ],
+              [
+                "arity"
+              ]
+            ],
+            [
+              "arity",
+              "outcome"
+            ]
+          ],
+          []
+        ],
+        "value": {
+          "kind": "constructor",
+          "name": "morphir/ir-specification:morphir/validation/arity#valid",
+          "arguments": []
+        }
+      }
+    },
+    {
+      "id": "two",
+      "entrypoint": "morphir/ir-specification:morphir/validation/arity#check-arity",
+      "status": "value",
+      "value": {
+        "type": [
+          "Reference",
+          {},
+          [
+            [
+              [
+                "morphir"
+              ],
+              [
+                "ir",
+                "specification"
+              ]
+            ],
+            [
+              [
+                "morphir"
+              ],
+              [
+                "validation"
+              ],
+              [
+                "arity"
+              ]
+            ],
+            [
+              "arity",
+              "outcome"
+            ]
+          ],
+          []
+        ],
+        "value": {
+          "kind": "constructor",
+          "name": "morphir/ir-specification:morphir/validation/arity#valid",
+          "arguments": []
+        }
+      }
+    },
+    {
+      "id": "too-few",
+      "entrypoint": "morphir/ir-specification:morphir/validation/arity#check-arity",
+      "status": "value",
+      "value": {
+        "type": [
+          "Reference",
+          {},
+          [
+            [
+              [
+                "morphir"
+              ],
+              [
+                "ir",
+                "specification"
+              ]
+            ],
+            [
+              [
+                "morphir"
+              ],
+              [
+                "validation"
+              ],
+              [
+                "arity"
+              ]
+            ],
+            [
+              "arity",
+              "outcome"
+            ]
+          ],
+          []
+        ],
+        "value": {
+          "kind": "constructor",
+          "name": "morphir/ir-specification:morphir/validation/arity#mismatch",
+          "arguments": [
+            {
+              "kind": "integer",
+              "value": "1"
+            },
+            {
+              "kind": "integer",
+              "value": "0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "too-many",
+      "entrypoint": "morphir/ir-specification:morphir/validation/arity#check-arity",
+      "status": "value",
+      "value": {
+        "type": [
+          "Reference",
+          {},
+          [
+            [
+              [
+                "morphir"
+              ],
+              [
+                "ir",
+                "specification"
+              ]
+            ],
+            [
+              [
+                "morphir"
+              ],
+              [
+                "validation"
+              ],
+              [
+                "arity"
+              ]
+            ],
+            [
+              "arity",
+              "outcome"
+            ]
+          ],
+          []
+        ],
+        "value": {
+          "kind": "constructor",
+          "name": "morphir/ir-specification:morphir/validation/arity#mismatch",
+          "arguments": [
+            {
+              "kind": "integer",
+              "value": "1"
+            },
+            {
+              "kind": "integer",
+              "value": "2"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

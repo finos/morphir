@@ -4982,6 +4982,8 @@ dependencies = [
 name = "morphir-evaluator"
 version = "0.4.0-beta.5"
 dependencies = [
+ "morphir-core",
+ "morphir-runtime",
  "serde",
  "serde_json",
  "thiserror 2.0.20",

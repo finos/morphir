@@ -82,6 +82,36 @@ backend configuration through `rand`/`getrandom`; its clock, execution limits
 and allowed nondeterministic operations also need host-specific validation.
 Milestone 0 therefore does not ship a browser evaluator.
 
+## Experimental classic V3 provider
+
+The first native Morphir IR pilot accepts the exact string version
+`"1.1.0-draft.1"` with `provider: "morphir_ir"`. Numeric `version: 1`
+continues to identify the Rego contract above. The new request embeds a
+complete classic V3 `Distribution` in `program.distribution` with
+`program.kind: "morphir_ir"`, and carries 1–64 ordered `calls`. Each call has
+a unique `id`, a canonical function `entrypoint`, and `arguments` containing
+classic V3 `type` values paired with tagged runtime `value` objects. A complete
+five-call fixture and its literal expected report live in
+`spec/ir/semantics/v3/cases/evaluation/`.
+
+The initial codec supports unit, boolean, signed 64-bit integer strings,
+strings, lists, tuples, and fully named constructors. It rejects unsupported
+input and output types rather than coercing them to JSON. Entrypoints,
+argument arity and types, tagged values, and external dependency signatures
+are validated before execution; invalid requests produce a diagnostic and no
+report. The first executable SDK values are `basics#add` and `basics#equal`
+with pinned two-Int signatures. The provider does not load packages from the
+host environment.
+
+Requests are bounded to 8,388,608 bytes and 64 JSON container levels. The
+`limits` object requires `fuel` in 1–1,000,000 and `maxCallDepth` in 1–1024;
+`timeout_ms` remains 1–300,000. Runtime checks fuel and depth per call and a
+cooperative deadline across the batch. A runtime failure yields a result with
+`status: "error"`, `code`, and `message`; other calls still produce their
+ordered results. `morphir eval --json` prints that report and exits nonzero
+when any call fails. This pilot covers V3 arity validation and is not a claim
+that arbitrary classic V3 programs are evaluable.
+
 ## Target state
 
 ```mermaid
@@ -95,18 +125,16 @@ flowchart LR
     Contract --> Native[Native Morphir IR provider]
 ```
 
-The CLI and Rego paths are implemented. The WASM host and native Morphir IR
-provider are follow-up work. Hosts load inputs, enforce permissions and budgets,
+The CLI, Rego, and first classic V3 native pilot paths are implemented. The
+WASM host and broader native Morphir IR support are follow-up work. Hosts load inputs, enforce permissions and budgets,
 and present diagnostics. Providers evaluate already-loaded programs. Neither
 notebook metadata nor UI code should encode another evaluator's semantics.
 
-The native provider will add an explicit IR case to the program ADT, declaring
-supported IR versions and dependency resolution. It will validate function
-entrypoints and input codecs against function signatures, then return values or
-diagnostics through the common result model. Morphir runtime values require an
-explicit versioned wire representation for constructors, tuples, records,
-numeric types and non-JSON values; JSON transport is not permission to erase
-those distinctions. Unsupported features must return diagnostics.
+Future native provider work can expand the IR program and value ADTs after
+review. Morphir runtime values require an explicit versioned wire
+representation for constructors, tuples, records, numeric types and non-JSON
+values; JSON transport is not permission to erase those distinctions.
+Unsupported features must return diagnostics.
 
 Keep pure evaluation separate from host capabilities. No implicit clock,
 filesystem, network or process access belongs in the core. Native and WASM
