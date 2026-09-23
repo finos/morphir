@@ -24,7 +24,7 @@ use commands::{
     run_extension_repository_init, run_extension_repository_inspect, run_extension_repository_list,
     run_extension_repository_publish, run_extension_repository_remove,
     run_extension_repository_verify, run_extension_search, run_extension_uninstall,
-    run_extension_update, run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip,
+    run_extension_update, run_generate, run_gleam_generate, run_gleam_roundtrip,
     run_kb_add_concept, run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index,
     run_kb_intent_cancel, run_kb_intent_check, run_kb_intent_init, run_kb_intent_list,
     run_kb_intent_move, run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release,
@@ -83,9 +83,9 @@ enum Commands {
         /// Extension id that provides the language (for example `morphir-elm-native`); overrides `[frontend.<language>] extension`, and defaults to the language's default provider
         #[arg(long)]
         extension: Option<String>,
-        /// Input source directory or file. A single .elm file is compiled by the selected Elm provider: an installed process extension by default, or a builtin such as morphir-elm-native via --extension.
-        #[arg(short, long)]
-        input: Option<String>,
+        /// Source files or a directory. Files compile exactly those sources, named by the provider that declares their suffix; repeat the flag to select several from one directory. A directory replaces the project's source directory.
+        #[arg(short, long, action = clap::ArgAction::Append)]
+        input: Vec<String>,
         /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
         #[arg(short, long)]
         output: Option<String>,
@@ -141,6 +141,9 @@ enum Commands {
             action = clap::ArgAction::Append
         )]
         option: Vec<String>,
+        /// Generate from the last compile even when it compiled an explicit selection of source files rather than the project
+        #[arg(long)]
+        from_partial_compile: bool,
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -560,9 +563,9 @@ enum ExtensionRepositoryAction {
 enum GleamAction {
     /// Compile Gleam source to Morphir IR
     Compile {
-        /// Input source directory or file
-        #[arg(short, long)]
-        input: Option<String>,
+        /// Source files or a directory; see `morphir compile --input`
+        #[arg(short, long, action = clap::ArgAction::Append)]
+        input: Vec<String>,
         /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
         #[arg(short, long)]
         output: Option<String>,
@@ -593,9 +596,9 @@ enum GleamAction {
     },
     /// Roundtrip: compile then generate (for testing)
     Roundtrip {
-        /// Input source directory or file
-        #[arg(short, long)]
-        input: Option<String>,
+        /// Source files or a directory; see `morphir compile --input`
+        #[arg(short, long, action = clap::ArgAction::Append)]
+        input: Vec<String>,
         /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
         #[arg(short, long)]
         output: Option<String>,
@@ -911,82 +914,111 @@ impl MorphirSession {
     }
 }
 
+/// The compile a command asks for, and whether it is the compile half of a
+/// roundtrip. `None` for a command that does not compile.
+fn compile_intent(
+    command: &Commands,
+    out: &commands::OutOverrides,
+) -> Option<(CompileOptions, bool)> {
+    match command {
+        Commands::Compile {
+            language,
+            extension,
+            input,
+            output,
+            package_name,
+            config,
+            project,
+            ir_version,
+            json,
+            json_lines,
+            no_cache,
+            elm_doc_comments,
+            elm_ordering,
+        } => Some((
+            CompileOptions {
+                language: language.clone(),
+                extension: extension.clone(),
+                input: input.clone(),
+                output: output.clone(),
+                package_name: package_name.clone(),
+                config_path: config.clone(),
+                project: project.clone(),
+                ir_version: *ir_version,
+                json: *json,
+                json_lines: *json_lines,
+                no_cache: *no_cache,
+                elm_modes: commands::compile::ElmModeFlags {
+                    doc_comments: elm_doc_comments.clone(),
+                    ordering: elm_ordering.clone(),
+                },
+                out: out.clone(),
+            },
+            false,
+        )),
+        Commands::Gleam {
+            action,
+            json,
+            json_lines,
+        } => {
+            let (input, output, package_name, config, project, roundtrip) = match action {
+                GleamAction::Compile {
+                    input,
+                    output,
+                    package_name,
+                    config,
+                    project,
+                } => (input, output.clone(), package_name, config, project, false),
+                // The roundtrip installs its generated code, not its IR.
+                GleamAction::Roundtrip {
+                    input,
+                    package_name,
+                    config,
+                    project,
+                    ..
+                } => (input, None, package_name, config, project, true),
+                GleamAction::Generate { .. } => return None,
+            };
+            Some((
+                CompileOptions {
+                    language: Some("gleam".to_owned()),
+                    extension: None,
+                    input: input.clone(),
+                    output,
+                    package_name: package_name.clone(),
+                    config_path: config.clone(),
+                    project: project.clone(),
+                    ir_version: None,
+                    json: *json,
+                    json_lines: *json_lines,
+                    // Reuse the workspace compile cache, as the generic
+                    // compile command does.
+                    no_cache: false,
+                    // The Elm compatibility modes never reach a Gleam provider.
+                    elm_modes: Default::default(),
+                    out: out.clone(),
+                },
+                roundtrip,
+            ))
+        }
+        _ => None,
+    }
+}
+
 #[async_trait::async_trait]
 impl AppSession for MorphirSession {
     type Error = miette::Report;
 
     async fn startup(&mut self) -> AppResult<miette::Report> {
-        // Only a whole-project compile has its configuration resolved here. The
-        // single-file path applies a different rule (configuration optional,
-        // discovery only under `--project`), and unifying them would change
-        // behaviour, so it still resolves its own. Every other command must
-        // reach `Ready` without touching the filesystem at all, so
-        // `current_dir()` is called only inside this branch, not up front.
-        let compile = match &self.command {
-            Commands::Compile {
-                config,
-                project,
-                input,
-                language,
-                ..
-            } if !commands::compile::is_single_file_request(
-                input.as_deref(),
-                language.as_deref(),
-            ) =>
-            {
-                Some((config.clone(), project.clone()))
-            }
-            // `morphir gleam compile` and the compile half of `morphir gleam
-            // roundtrip` reach `run_provider_compile` too (Gleam is never the
-            // single-file language), through `run_gleam_compile`, so they
-            // need the same resolved configuration.
-            Commands::Gleam {
-                action:
-                    GleamAction::Compile {
-                        config, project, ..
-                    }
-                    | GleamAction::Roundtrip {
-                        config, project, ..
-                    },
-                ..
-            } => Some((config.clone(), project.clone())),
-            _ => None,
-        };
-
-        let ready = match compile {
-            None => Ready {
-                start_dir: None,
-                config: None,
-            },
-            Some((config_flag, project_flag)) => {
-                let start_dir = std::env::current_dir()
-                    .map_err(|error| crate::error::CliError::FileSystem { error })?;
-                let config_file = match config_flag.as_deref() {
-                    Some(path) => {
-                        commands::compile::absolute_from(&start_dir, std::path::Path::new(path))
-                    }
-                    None => morphir_devkit::discover_config(&start_dir)
-                        .map_err(|error| crate::error::CliError::Config { error })?
-                        .ok_or_else(|| crate::error::CliError::Config {
-                            error: anyhow::anyhow!(
-                                "No morphir.toml, morphir.yaml, or morphir.json found"
-                            ),
-                        })?,
-                };
-                let context = morphir_devkit::load_config_context_with(
-                    &config_file,
-                    &morphir_devkit::ConfigLoadOptions {
-                        project: project_flag
-                            .map(morphir_devkit::config::ProjectSelection::Explicit)
-                            .unwrap_or_default(),
-                        ..Default::default()
-                    },
-                )
-                .map_err(|error| crate::error::CliError::Config { error })?;
-                Ready {
-                    start_dir: Some(start_dir),
-                    config: Some(context),
-                }
+        // A command that compiles has its compile prepared here, through the
+        // one preparation every compile entry point shares; which project and
+        // sources it compiles is that preparation's business, not a
+        // prediction made here. Every other command reaches `Ready` without
+        // touching the filesystem at all.
+        let ready = match compile_intent(&self.command, &self.out) {
+            None => Ready::default(),
+            Some((options, roundtrip)) => {
+                Ready::with_compile(commands::compile::prepare_compile(options, roundtrip).await?)
             }
         };
 
@@ -1001,45 +1033,7 @@ impl AppSession for MorphirSession {
             Commands::Eval(args) => commands::eval::run_eval(args.clone()).map(|()| None),
             Commands::Itest(args) => commands::itest::run_itest(args.clone()),
             Commands::Validate { input } => run_validate(input.clone()),
-            Commands::Compile {
-                language,
-                extension,
-                input,
-                output,
-                package_name,
-                config,
-                project,
-                ir_version,
-                json,
-                json_lines,
-                no_cache,
-                elm_doc_comments,
-                elm_ordering,
-            } => {
-                let ready = self.ready()?;
-                run_compile(
-                    CompileOptions {
-                        language: language.clone(),
-                        extension: extension.clone(),
-                        input: input.clone(),
-                        output: output.clone(),
-                        package_name: package_name.clone(),
-                        config_path: config.clone(),
-                        project: project.clone(),
-                        ir_version: *ir_version,
-                        json: *json,
-                        json_lines: *json_lines,
-                        no_cache: *no_cache,
-                        elm_modes: commands::compile::ElmModeFlags {
-                            doc_comments: elm_doc_comments.clone(),
-                            ordering: elm_ordering.clone(),
-                        },
-                        out: self.out.clone(),
-                    },
-                    ready,
-                )
-                .await
-            }
+            Commands::Compile { .. } => run_compile(self.ready()?).await,
             Commands::Generate {
                 target,
                 input,
@@ -1047,6 +1041,7 @@ impl AppSession for MorphirSession {
                 config,
                 project,
                 option,
+                from_partial_compile,
                 json,
                 json_lines,
             } => {
@@ -1057,6 +1052,7 @@ impl AppSession for MorphirSession {
                     config_path: config.clone(),
                     project: project.clone(),
                     backend_options: option.clone(),
+                    from_partial_compile: *from_partial_compile,
                     json: *json,
                     json_lines: *json_lines,
                     out: self.out.clone(),
@@ -1288,27 +1284,7 @@ impl AppSession for MorphirSession {
                 json,
                 json_lines,
             } => match action {
-                GleamAction::Compile {
-                    input,
-                    output,
-                    package_name,
-                    config,
-                    project,
-                } => {
-                    let ready = self.ready()?;
-                    run_gleam_compile(
-                        self.out.clone(),
-                        input.clone(),
-                        output.clone(),
-                        package_name.clone(),
-                        config.clone(),
-                        project.clone(),
-                        *json,
-                        *json_lines,
-                        ready,
-                    )
-                    .await
-                }
+                GleamAction::Compile { .. } => run_compile(self.ready()?).await,
                 GleamAction::Generate {
                     input,
                     output,
@@ -1327,18 +1303,15 @@ impl AppSession for MorphirSession {
                     .await
                 }
                 GleamAction::Roundtrip {
-                    input,
                     output,
-                    package_name,
                     config,
                     project,
+                    ..
                 } => {
                     let ready = self.ready()?;
                     run_gleam_roundtrip(
                         self.out.clone(),
-                        input.clone(),
                         output.clone(),
-                        package_name.clone(),
                         config.clone(),
                         project.clone(),
                         *json,

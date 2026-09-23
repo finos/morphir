@@ -297,10 +297,12 @@ a higher-precedence layer beats a `layout` in a lower one, exactly as two
 `layout` settings would. Within one layer an explicit `ir.layout` wins over
 an `ir.mode` beside it, and Morphir warns that the `mode` had no effect.
 
-The single-file Elm compile path (`morphir compile --input <file>` without a
-project config) always writes classic v3 JSON and ignores `[ir]` entirely; if
-a `--config` was given whose `[ir].layout` or `[ir].format` asks for
-something else, it prints a warning that those settings do not apply.
+A compile of selected files (`morphir compile --input <file>...`) always
+writes single-file JSON and ignores `[ir].layout` and `[ir].format`; if a
+`--config` was given whose `[ir]` asks for something else, it prints a warning
+that those settings do not apply. Its task record carries a `compileScope` of
+`explicit-selection`, and an implicit `generate` refuses such a record unless
+`--from-partial-compile` is given.
 
 `generate -i <path>` accepts any of:
 

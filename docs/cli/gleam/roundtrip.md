@@ -6,7 +6,7 @@
 Roundtrip: compile then generate (for testing)
 
 ## Flags
-- **`-i --input <INPUT>`** — Input source directory or file
+- **`-i --input <INPUT>…`** — Source files or a directory; see `morphir compile --input`
 - **`-o --output <OUTPUT>`** — Install task outputs into this directory after the run. Canonical output stays under .morphir/out
 - **`--package-name <PACKAGE_NAME>`** — Package name override
 - **`--config <CONFIG>`** — Explicit config file path

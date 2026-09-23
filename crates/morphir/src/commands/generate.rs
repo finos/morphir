@@ -28,6 +28,45 @@ pub fn resolve_ir_task(_context: &ConfigContext) -> TaskId {
     TaskId::compile()
 }
 
+/// Refuse to consume, implicitly, a compile of an explicit source selection.
+///
+/// Such a compile is marked in its task record. Its IR holds only the selected
+/// modules, which need not match the project's declared exposure, so a
+/// generate that took it for the project's build would publish a partial
+/// distribution. A record from before the mark existed has unknown scope and
+/// is consumed as before; an explicit `--input` never reads a record at all.
+fn refuse_partial_compile(record: &TaskResult, acknowledged: bool) -> Result<(), CliError> {
+    let Some(scope) = record
+        .extra
+        .get(crate::commands::compile::COMPILE_SCOPE_KEY)
+    else {
+        return Ok(());
+    };
+    if acknowledged
+        || scope.get("kind").and_then(|kind| kind.as_str()) != Some("explicit-selection")
+    {
+        return Ok(());
+    }
+    let sources = scope
+        .get("sources")
+        .and_then(|sources| sources.as_array())
+        .map(|sources| {
+            sources
+                .iter()
+                .filter_map(|source| source.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .unwrap_or_default();
+    Err(CliError::Validation {
+        message: format!(
+            "the last compile built an explicit selection of source files ({sources}), not the \
+             project, so its IR may not match the project's declared exposure. Compile the \
+             project, or pass --from-partial-compile to generate from the selection anyway"
+        ),
+    })
+}
+
 /// Run the generate command
 pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report> {
     use crate::output::{GenerateOutput, OutputFormat, write_generate_human, write_output};
@@ -38,6 +77,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         config_path,
         project,
         backend_options,
+        from_partial_compile,
         json,
         json_lines,
         out,
@@ -146,6 +186,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
                     .into());
                 }
             };
+            refuse_partial_compile(&record, from_partial_compile)?;
             let descriptor = record.ir.ok_or_else(|| CliError::Validation {
                 message: format!("task '{}' produced no IR descriptor", record.task),
             })?;

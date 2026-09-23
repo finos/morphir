@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `morphir compile --input` accepts files from any language whose provider declares their suffix, and repeats: several files from one directory compile together. The provider synthesizes the project through workspace discovery, naming the package and exposing every selected module; `--package-name` is required for more than one file (#917).
+- `morphir generate --from-partial-compile` consumes a compile of selected files. Such a compile is marked in its task record, and an implicit `generate` refuses it otherwise, because its IR need not match the project's declared exposure.
+
 ### Changed
+- There is one compile route. The CLI's single-file Elm route, its Elm module-header scanner and its `morphir-<language>` default are gone: the language comes from `--language`, the configuration or the suffix a provider declares, and every restriction comes from a declared capability, with refusals naming the provider. A compile of selected files negotiates the IR version with its provider, so `--ir-version 4` now works with a provider that serves it; without the flag it keeps the oldest release the provider serves. A provider that does not declare `frontend.multiDocument` is refused a multi-file selection before it is invoked; a project compile still submits its whole source set.
+- `morphir gleam roundtrip` with only files as input and no `--config` or `--project` is refused before compiling, because its generate half needs a project.
+- The published Elm extension pin moves to `extension/elm/v0.3.0`, which serves workspace discovery.
 - Package integrity and resolution CI now use the native Morphir CLI against independent TypeScript and Rust adapters. TypeScript adopts qualified beta.3 for its installed-adapter checks; the replaced package runner, runner APIs and temporary parity tooling are retired. Independent package implementations, draft.3 helpers and frozen acceptance evidence remain.
 
 ## [0.4.0-beta.3] - 2026-09-21

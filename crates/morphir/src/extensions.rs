@@ -17,6 +17,7 @@ use morphir_extension_sdk::{
     CompileRequest, CompileResult, GenerateRequest, GenerateResult, NativeExtension,
 };
 use morphir_gleam_binding::GleamExtension;
+use morphir_workspace::{DiscoveryRequest, DiscoveryResponse};
 use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
 
@@ -164,6 +165,119 @@ pub async fn invoke_frontend(
             .await
         }
     }
+}
+
+/// Ask a resolved frontend's provider to discover an ad-hoc source selection,
+/// through only the mode selected by the registry.
+///
+/// A discovery refusal is a successful answer carrying
+/// [`DiscoveryResponse::Failure`]; only a provider that could not answer at
+/// all is an error here.
+pub async fn invoke_workspace_discovery(
+    home: &MorphirHome,
+    workspace: &Path,
+    resolved: &ResolvedFrontend,
+    request: DiscoveryRequest,
+) -> Result<DiscoveryResponse, CliError> {
+    let provider = resolved.info().id.as_str();
+    match resolved.invocation_mode() {
+        InvocationMode::NativeDirect => {
+            let resolved = resolved.clone();
+            blocking(resolved.info().id.clone(), move || {
+                resolved
+                    .native_workspace()
+                    .ok_or_else(|| {
+                        unavailable_mode(resolved.info().id.as_str(), "native workspace")
+                    })?
+                    .discover(request)
+                    .map_err(|error| CliError::Extension {
+                        message: format!(
+                            "Native workspace provider '{}' failed: {error}",
+                            resolved.info().id
+                        ),
+                    })
+            })
+            .await
+        }
+        InvocationMode::NativeMep => {
+            let loaded = resolved
+                .native_mep_session()
+                .ok_or_else(|| unavailable_mode(provider, "native MEP workspace"))?;
+            invoke_loaded(loaded, provider, methods::WORKSPACE_DISCOVER, request).await
+        }
+        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
+            let snapshot = resolved
+                .installed_snapshot()
+                .ok_or_else(|| unavailable_mode(provider, "installed MEP workspace"))?;
+            invoke_installed(
+                home,
+                workspace,
+                snapshot,
+                provider,
+                methods::WORKSPACE_DISCOVER,
+                request,
+            )
+            .await
+        }
+    }
+}
+
+/// What a spawned process provider said about itself when a session was
+/// negotiated with it.
+#[derive(Debug, Clone)]
+pub struct NegotiatedProvider {
+    /// The extension's identity and declared roles.
+    pub info: morphir_extension_sdk::ExtensionInfo,
+    /// The capabilities the session negotiated.
+    pub capabilities: morphir_extension_sdk::ExtensionCapabilities,
+}
+
+/// Start a process provider, negotiate a session, record what it declares,
+/// and stop it again.
+///
+/// A provider configured by `[extensions.<id>] command` has no installed
+/// record to read capabilities from, so the only way to learn them is to ask.
+pub async fn probe_process(
+    launch: morphir_daemon::extensions::ProcessLaunch,
+    provider: &str,
+) -> Result<NegotiatedProvider, CliError> {
+    let loaded = morphir_daemon::extensions::SpawnedProcessSession::spawn_typestate(launch)
+        .await
+        .map_err(|error| CliError::Extension {
+            message: format!("Failed to start provider '{provider}': {error}"),
+        })?;
+    let ready = loaded
+        .initialize(host_initialize_params())
+        .await
+        .map_err(|failure| session_failure(provider, "initialize", failure))?;
+    let negotiated = NegotiatedProvider {
+        info: ready.negotiated().extension().clone(),
+        capabilities: ready.negotiated().capabilities().clone(),
+    };
+    ready
+        .shutdown()
+        .await
+        .map_err(|failure| session_failure(provider, "shutdown", failure))?;
+    Ok(negotiated)
+}
+
+/// Start a process provider and invoke one method over a fresh session.
+pub async fn invoke_process<P, R>(
+    launch: morphir_daemon::extensions::ProcessLaunch,
+    provider: &str,
+    method: &str,
+    request: P,
+) -> Result<R, CliError>
+where
+    P: Serialize,
+    R: DeserializeOwned,
+{
+    let loaded = morphir_daemon::extensions::SpawnedProcessSession::spawn_typestate(launch)
+        .await
+        .map_err(|error| CliError::Extension {
+            message: format!("Failed to start provider '{provider}': {error}"),
+        })?;
+    invoke_loaded(loaded, provider, method, request).await
 }
 
 /// Invoke a resolved backend through only the mode selected by the registry.

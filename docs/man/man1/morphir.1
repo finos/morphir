@@ -536,7 +536,7 @@ Source language (e.g., gleam, elm)
 Extension id that provides the language (for example `morphir\-elm\-native`); overrides `[frontend.<language>] extension`, and defaults to the language's default provider
 .TP
 \fB\-i, \-\-input\fR \fI<INPUT>\fR
-Input source directory or file. A single .elm file is compiled by the selected Elm provider: an installed process extension by default, or a builtin such as morphir\-elm\-native via \-\-extension
+Source files or a directory. Files compile exactly those sources, named by the provider that declares their suffix; repeat the flag to select several from one directory. A directory replaces the project's source directory
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
 Install task outputs into this directory after the run. Canonical output stays under .morphir/out
@@ -592,6 +592,9 @@ Declared workspace\-relative member path or exact project name
 .TP
 \fB\-\-option\fR \fI<KEY=VALUE>\fR
 Override a backend option as KEY=VALUE. May be repeated
+.TP
+\fB\-\-from\-partial\-compile\fR
+Generate from the last compile even when it compiled an explicit selection of source files rather than the project
 .TP
 \fB\-\-json\fR
 Output as JSON
@@ -2254,7 +2257,7 @@ Compile Gleam source to Morphir IR
 .PP
 .TP
 \fB\-i, \-\-input\fR \fI<INPUT>\fR
-Input source directory or file
+Source files or a directory; see `morphir compile \-\-input`
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
 Install task outputs into this directory after the run. Canonical output stays under .morphir/out
@@ -2295,7 +2298,7 @@ Roundtrip: compile then generate (for testing)
 .PP
 .TP
 \fB\-i, \-\-input\fR \fI<INPUT>\fR
-Input source directory or file
+Source files or a directory; see `morphir compile \-\-input`
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
 Install task outputs into this directory after the run. Canonical output stays under .morphir/out

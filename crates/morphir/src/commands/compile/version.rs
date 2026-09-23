@@ -1,8 +1,10 @@
 //! Select and validate the concrete IR requested from a frontend.
 
-use super::{CliError, CompileResult, IrDescriptor, IrSection, IrVersion};
+use super::{CliError, CompileResult, IrVersion};
 use crate::commands::ir_storage::{self, IrStorage};
+use morphir_common::config::model::IrSection;
 use morphir_core::ir::{classic, v4};
+use morphir_devkit::IrDescriptor;
 use std::path::Path;
 
 /// Parse a supported compile version at the CLI boundary.

@@ -1,45 +1,8 @@
 //! Gleam-specific subcommands
 
-use crate::commands::compile::CompileOptions;
 use crate::commands::out_context::OutOverrides;
 use crate::commands::{GenerateOptions, run_compile, run_generate};
 use starbase::AppResult;
-
-/// Run Gleam compile command (convenience wrapper)
-#[allow(clippy::too_many_arguments)]
-pub async fn run_gleam_compile(
-    out: OutOverrides,
-    input: Option<String>,
-    output: Option<String>,
-    package_name: Option<String>,
-    config_path: Option<String>,
-    project: Option<String>,
-    json: bool,
-    json_lines: bool,
-    ready: &crate::SessionReady,
-) -> AppResult<miette::Report> {
-    run_compile(
-        CompileOptions {
-            language: Some("gleam".to_string()), // Set language to gleam
-            extension: None,
-            input,
-            output,
-            package_name,
-            config_path,
-            project,
-            ir_version: None,
-            json,
-            json_lines,
-            // Reuse the workspace compile cache, as with the generic compile command.
-            no_cache: false,
-            // The Elm compatibility modes never reach a Gleam provider.
-            elm_modes: Default::default(),
-            out,
-        },
-        ready,
-    )
-    .await
-}
 
 /// Run Gleam generate command (convenience wrapper)
 pub async fn run_gleam_generate(
@@ -58,6 +21,7 @@ pub async fn run_gleam_generate(
         config_path,
         project,
         backend_options: Vec::new(),
+        from_partial_compile: false,
         json,
         json_lines,
         out,
@@ -65,31 +29,32 @@ pub async fn run_gleam_generate(
     .await
 }
 
-/// Run Gleam roundtrip (compile then generate)
-#[allow(clippy::too_many_arguments)]
+/// Run Gleam roundtrip: the compile `startup` prepared, then generate.
+///
+/// The generate half consumes the compile this same command just ran, so a
+/// selection it compiled is acknowledged rather than refused.
 pub async fn run_gleam_roundtrip(
     out: OutOverrides,
-    input: Option<String>,
     output: Option<String>,
-    package_name: Option<String>,
     config_path: Option<String>,
     project: Option<String>,
     json: bool,
     json_lines: bool,
     ready: &crate::SessionReady,
 ) -> AppResult<miette::Report> {
-    run_gleam_compile(
-        out.clone(),
-        input,
-        None,
-        package_name,
-        config_path.clone(),
-        project.clone(),
+    run_compile(ready).await?;
+
+    run_generate(GenerateOptions {
+        target: Some("gleam".to_string()),
+        input: None,
+        output,
+        config_path,
+        project,
+        backend_options: Vec::new(),
+        from_partial_compile: true,
         json,
         json_lines,
-        ready,
-    )
-    .await?;
-
-    run_gleam_generate(out, None, output, config_path, project, json, json_lines).await
+        out,
+    })
+    .await
 }

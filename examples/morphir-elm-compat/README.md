@@ -5,7 +5,7 @@ modules, `ElmCompat.Main` and `ElmCompat.Api`. Main defines product/order types
 and business functions; Api defines request/response types and operations.
 
 The consolidated CLI discovers its name, source directory and exposed modules.
-The released reference Elm extension 0.1.0 accepts exactly one source document,
+The released reference Elm extension 0.3.0 accepts exactly one source document,
 so it cannot compile this whole project yet. The executable
 [scenario](scenarios.md) checks that specific rejection and the absence of an
 installed IR file. This is known-limitation coverage, not successful compilation.

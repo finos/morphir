@@ -119,6 +119,30 @@ pub fn from_config(
     from_config_typed(frontend, language).map_err(CliError::from)
 }
 
+/// Every provider id the configuration names, for any language.
+///
+/// A run that has not settled its language yet still has to know which
+/// providers the configuration makes reachable, since an opt-in built-in is
+/// registered only when something names it. With no `--extension` to fall
+/// back on, a malformed value is the same configuration error [`resolve`]
+/// would report, so it is reported here, before anything depends on it.
+pub fn configured_ids(frontend: Option<&FrontendSection>) -> Result<Vec<String>, CliError> {
+    let Some(frontend) = frontend else {
+        return Ok(Vec::new());
+    };
+    let mut languages: Vec<&String> = frontend.settings.keys().collect();
+    languages.sort();
+    let mut ids = Vec::new();
+    for language in languages {
+        if let Some(id) = from_config(Some(frontend), language)? {
+            ids.push(id);
+        }
+    }
+    ids.sort();
+    ids.dedup();
+    Ok(ids)
+}
+
 /// What a run does with the configured provider for a language.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Resolved<'a> {

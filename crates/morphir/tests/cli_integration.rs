@@ -534,14 +534,26 @@ fn write_test_index(
     write_test_index_with_frontend(directory, id, name, version, bytes, ("test", ".test", "4"))
 }
 
+/// An index for a real Elm provider. `workspace` states whether the provider
+/// serves workspace discovery: the published record must name the same
+/// capability kinds the executable reports, or the host refuses the session.
 fn write_elm_test_index(
     directory: &std::path::Path,
     id: &str,
     name: &str,
     version: &str,
     bytes: &[u8],
+    workspace: bool,
 ) -> TestIndex {
-    write_test_index_with_frontend(directory, id, name, version, bytes, ("elm", ".elm", "3"))
+    write_test_index_with_capabilities(
+        directory,
+        id,
+        name,
+        version,
+        bytes,
+        ("elm", ".elm", "3"),
+        workspace,
+    )
 }
 
 fn write_test_index_with_frontend(
@@ -552,7 +564,24 @@ fn write_test_index_with_frontend(
     bytes: &[u8],
     frontend: (&str, &str, &str),
 ) -> TestIndex {
+    write_test_index_with_capabilities(directory, id, name, version, bytes, frontend, false)
+}
+
+fn write_test_index_with_capabilities(
+    directory: &std::path::Path,
+    id: &str,
+    name: &str,
+    version: &str,
+    bytes: &[u8],
+    frontend: (&str, &str, &str),
+    workspace: bool,
+) -> TestIndex {
     let (language, file_extension, ir_version) = frontend;
+    let capabilities = if workspace {
+        serde_json::json!(["frontend", "workspace"])
+    } else {
+        serde_json::json!(["frontend"])
+    };
     let root = directory.join("index");
     let filename = if cfg!(windows) {
         format!("{id}.exe")
@@ -572,7 +601,7 @@ fn write_test_index_with_frontend(
         "version": version,
         "channels": ["stable"],
         "mepVersions": ["0.1"],
-        "capabilities": ["frontend"],
+        "capabilities": capabilities,
         "frontend": {
             "languages": [{"id": language, "fileExtensions": [file_extension]}],
             "irVersions": [ir_version],
@@ -861,9 +890,11 @@ fn elm_native_compile_produces_v4_ir_for_a_two_module_project() {
     );
 }
 
-// The native Elm binding is opt-in: reaching it takes `--extension`. Without
-// one, an Elm compile still asks for the `morphir-elm` extension, and says so
-// when it is not installed.
+// The native Elm binding is opt-in: reaching it takes `--extension` or a
+// configuration naming it. Without either, a project compile asks for the
+// `morphir-elm` extension, and a file compile reports that no provider it can
+// reach declares the `.elm` suffix — the CLI no longer knows which provider a
+// suffix belongs to, only what providers declare.
 #[test]
 fn elm_native_is_not_the_default_elm_provider() {
     let temp = TempDir::new().unwrap();
@@ -871,9 +902,9 @@ fn elm_native_is_not_the_default_elm_provider() {
     let project = temp.path().join("project");
     write_elm_project(&project);
 
-    for arguments in [
-        vec!["compile", "--input", "src/My/Types.elm"],
-        vec!["compile"],
+    for (arguments, expected) in [
+        (vec!["compile", "--input", "src/My/Types.elm"], "'.elm'"),
+        (vec!["compile"], "morphir-elm"),
     ] {
         let compile = run_morphir(&arguments, &home, &project);
 
@@ -888,7 +919,7 @@ fn elm_native_is_not_the_default_elm_provider() {
             !stderr.contains("morphir-elm-native"),
             "{arguments:?}: {stderr}"
         );
-        assert!(stderr.contains("morphir-elm"), "{arguments:?}: {stderr}");
+        assert!(stderr.contains(expected), "{arguments:?}: {stderr}");
     }
     assert!(
         !project
@@ -1724,9 +1755,9 @@ fn a_blank_configured_extension_names_the_key() {
 }
 
 /// Requirement: a single-file compile that loaded a configuration honours the
-/// provider it names. This route only loads one when `--config` or `--project`
-/// says so; without either the language's default provider applies, which for
-/// Elm is the installed `morphir-elm` extension.
+/// provider it names. A file compile only loads one when `--config` or
+/// `--project` says so; without either, only installed and default providers
+/// are reachable, and none of them declares `.elm` here.
 #[test]
 fn single_file_honours_a_configured_extension_only_with_a_config() {
     let temp = TempDir::new().unwrap();
@@ -1752,7 +1783,7 @@ fn single_file_honours_a_configured_extension_only_with_a_config() {
         String::from_utf8_lossy(&without_config.stderr)
     );
     let stderr = compacted_stderr(&without_config);
-    assert!(stderr.contains("morphir-elm"), "{stderr}");
+    assert!(stderr.contains("'.elm'"), "{stderr}");
     assert!(!stderr.contains("morphir-elm-native"), "{stderr}");
 }
 
@@ -2844,6 +2875,7 @@ fn real_installed_morphir_elm_is_verified_and_activates_offline() {
         "Morphir Elm frontend",
         &version,
         false,
+        CompileShape::File,
     );
 }
 
@@ -2852,13 +2884,27 @@ fn real_installed_morphir_elm_is_verified_and_activates_offline() {
 fn real_installed_morphir_scala_elm_is_selected_and_activates_offline() {
     let version = std::env::var("MORPHIR_SCALA_ELM_EXTENSION_VERSION")
         .expect("set MORPHIR_SCALA_ELM_EXTENSION_VERSION to the packaged extension version");
+    // morphir-scala-elm does not declare workspace discovery yet, so it cannot
+    // compile a selection of files; it compiles a project instead (tracked as
+    // morphir-0xdg).
     verify_real_installed_elm_provider(
         "MORPHIR_SCALA_ELM_EXTENSION_BIN",
         "morphir-scala-elm",
         "Morphir Scala Elm frontend",
         &version,
         true,
+        CompileShape::Project,
     );
+}
+
+/// How a real-provider check compiles its one Elm source.
+#[derive(Clone, Copy)]
+enum CompileShape {
+    /// `--input Example.elm`: the provider synthesizes the project, which
+    /// needs workspace discovery.
+    File,
+    /// A `morphir.toml` project whose source directory holds the file.
+    Project,
 }
 
 fn verify_real_installed_elm_provider(
@@ -2867,7 +2913,11 @@ fn verify_real_installed_elm_provider(
     extension_name: &str,
     version: &str,
     select_explicitly: bool,
+    shape: CompileShape,
 ) {
+    // A provider that compiles a selection of files serves workspace discovery,
+    // and its published record declares it.
+    let workspace = matches!(shape, CompileShape::File);
     let executable = std::env::var_os(executable_environment_variable)
         .map(PathBuf::from)
         .unwrap_or_else(|| panic!("set {executable_environment_variable} to the extension"));
@@ -2876,8 +2926,14 @@ fn verify_real_installed_elm_provider(
 
     let tamper_case = temp.path().join("source-tamper");
     let tampered_home = tamper_case.join("home");
-    let tampered_index =
-        write_elm_test_index(&tamper_case, extension_id, extension_name, version, &bytes);
+    let tampered_index = write_elm_test_index(
+        &tamper_case,
+        extension_id,
+        extension_name,
+        version,
+        &bytes,
+        workspace,
+    );
     std::fs::write(&tampered_index.source, b"tampered source bytes").unwrap();
     assert!(
         add_test_repository(
@@ -2908,7 +2964,14 @@ fn verify_real_installed_elm_provider(
     let project = temp.path().join("offline-project");
     let home = project.join("home");
     std::fs::create_dir_all(&project).unwrap();
-    let index = write_elm_test_index(&project, extension_id, extension_name, version, &bytes);
+    let index = write_elm_test_index(
+        &project,
+        extension_id,
+        extension_name,
+        version,
+        &bytes,
+        workspace,
+    );
     assert!(
         add_test_repository("local-dev", &index.root, &home, &project)
             .status
@@ -2949,21 +3012,37 @@ fn verify_real_installed_elm_provider(
     assert_eq!(std::fs::read(&installed_path).unwrap(), bytes);
 
     std::fs::remove_dir_all(&index.root).unwrap();
-    let source = project.join("Example.elm");
+    let source = match shape {
+        CompileShape::File => project.join("Example.elm"),
+        CompileShape::Project => {
+            std::fs::create_dir_all(project.join("src")).unwrap();
+            let selection = if select_explicitly {
+                format!("[frontend.elm]\nextension = \"{extension_id}\"\n")
+            } else {
+                String::new()
+            };
+            std::fs::write(
+                project.join("morphir.toml"),
+                format!(
+                    "[project]\nname = \"acme/example\"\nversion = \"1.0.0\"\nsource_directory = \"src\"\nexposed_modules = [\"Example\"]\n\n[frontend]\nlanguage = \"elm\"\n\n{selection}\n[ir]\nformat_version = 3\n"
+                ),
+            )
+            .unwrap();
+            project.join("src/Example.elm")
+        }
+    };
     let output_path = project.join(".morphir/out/compile.dest/morphir-ir.json");
     std::fs::write(
         &source,
         "module Example exposing (add)\n\nadd : Int -> Int -> Int\nadd left right = left + right\n",
     )
     .unwrap();
-    let mut compile_arguments = vec![
-        "compile",
-        "--language",
-        "elm",
-        "--input",
-        source.to_str().unwrap(),
-    ];
-    if select_explicitly {
+    let source_text = source.to_str().unwrap().to_owned();
+    let mut compile_arguments = match shape {
+        CompileShape::File => vec!["compile", "--language", "elm", "--input", &source_text],
+        CompileShape::Project => vec!["compile"],
+    };
+    if select_explicitly && matches!(shape, CompileShape::File) {
         compile_arguments.extend_from_slice(&["--extension", extension_id]);
     }
     let compile = run_morphir(&compile_arguments, &home, &project);
