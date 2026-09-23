@@ -277,7 +277,7 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
     }
 }
 cmd eval display_order=5 args_override_self=#false help="Evaluate a program through a registered native provider" unknown_flags=error {
-    flag --request help="Path to a version 1 evaluation request JSON file" required=#true {
+    flag --request help="Path to a version 1 or native IR draft evaluation request JSON file" required=#true {
         arg <FILE>
     }
     flag --json help="Print the versioned evaluation report as JSON"
