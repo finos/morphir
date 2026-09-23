@@ -12,6 +12,8 @@ initial resolution from an exact published root. Its expected full lock is
 fixture with deterministic local reference IDs. It is never captured from runtime
 output. The original 15 restore cases and signed inputs are unchanged. The resolve
 fixture has one candidate per package; it does not establish backtracking coverage.
+The MVP MCK also mounts this frozen resolved lock in a separate required restore
+case, checking that the generated lock replays against the signed registry.
 
 The [refresh descriptor](refresh-cases.json) adds 14 fixed metadata-only cases.
 Its [expected receipt](expected/refresh.json) identifies the exact signed timestamp

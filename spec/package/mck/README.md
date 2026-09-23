@@ -30,8 +30,8 @@ The runner owns loading and comparison; package behavior stays in the independen
 ## Local Library MVP execution
 
 `mvp-cases.json` is a separate, versioned `local-library-mvp:0.1.0-draft.1`
-inventory. It binds all 15 frozen fresh exact-lock restore cases and 13 frozen
-initial resolve cases, including signed two-Library success, authentication and
+inventory. It binds all 15 original fresh exact-lock restore cases, one
+generated-lock replay case, and 13 frozen initial resolve cases, including signed two-Library success, authentication and
 integrity refusals, trust-state failures, unsupported historical policy, an
 absent exact root and occupied destinations. Every
 referenced input and fixed expected result has a SHA-256 digest. Exact required
@@ -58,7 +58,7 @@ Admission rejects oversized individual assets and oversized total input before
 request construction.
 Missing capability, malformed response, transport failure, or an unexecuted
 required case fails the run. `mise run package:mvp-check` must report
-28 pass, 0 fail and 0 kit-error. Generated-lock replay, refresh, scoped update,
+29 pass, 0 fail and 0 kit-error. Metadata-only refresh, scoped update,
 the consolidated prerelease JSON/offline HTML report, and downloaded-binary
 qualification remain separate MVP gates.
 

@@ -16,7 +16,7 @@ const MAX_FILE_BYTES: u64 = 1_048_576;
 const MAX_TOTAL_BYTES: usize = 4_194_304;
 const PROFILE: &str = "local-library-mvp";
 const VERSION: &str = "0.1.0-draft.1";
-const RESTORE_CASES: [&str; 15] = [
+const RESTORE_CASES: [&str; 16] = [
     "mvp.restore.fresh-two-libraries",
     "mvp.restore.bad-timestamp-signature",
     "mvp.restore.bad-library-content",
@@ -32,6 +32,7 @@ const RESTORE_CASES: [&str; 15] = [
     "mvp.restore.evidence-digest-mismatch",
     "mvp.restore.evidence-path-mismatch",
     "mvp.restore.undeclared-bundle-entry",
+    "mvp.restore.generated-lock-replay",
 ];
 const RESOLVE_CASES: [&str; 13] = [
     "mvp.resolve.fresh-two-libraries",

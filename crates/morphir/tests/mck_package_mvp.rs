@@ -15,7 +15,7 @@ fn public_mvp_run_requires_admission_and_an_explicit_adapter() {
     assert_eq!(output.status.code(), Some(1));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("MVP local Library: 0 pass, 0 fail, 28 kit-error"),
+        stdout.contains("MVP local Library: 0 pass, 0 fail, 29 kit-error"),
         "{stdout}"
     );
 

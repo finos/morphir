@@ -406,7 +406,7 @@ mod tests {
         let source =
             MvpRepositorySource::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")).unwrap();
         let inventory = admit_mvp_inventory(&source).unwrap();
-        assert_eq!(inventory.cases().len(), 28);
+        assert_eq!(inventory.cases().len(), 29);
         for case in inventory.cases() {
             let value = serde_json::from_slice(case.expected()).unwrap();
             Observation::parse(value).unwrap_or_else(|error| panic!("{}: {error}", case.id()));

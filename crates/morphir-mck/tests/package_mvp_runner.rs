@@ -5,6 +5,7 @@ use morphir_mck::package::local_registry::{
 use morphir_mck::package::run_mvp_process;
 use morphir_mck::transport::Limits;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::{ffi::OsString, path::Path};
 
 const CAPS: &str = r#"{"id":1,"suite":"package","contractVersion":"0.1.0-draft.3","implementation":"fixture","implementationVersion":"1","profiles":["local-library-mvp:0.1.0-draft.1"],"operations":["restore-local-library","resolve-local-library"]}"#;
@@ -13,6 +14,37 @@ fn inventory() -> AdmittedMvpInventory {
     let source =
         MvpRepositorySource::new(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     admit_mvp_inventory(&source).unwrap()
+}
+
+#[test]
+fn generated_lock_is_a_required_restore_input() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let generated = std::fs::read(
+        root.join("spec/package/mck/fixtures/mvp-fresh-restore/expected/resolve.lock.json"),
+    )
+    .unwrap();
+    let admitted = inventory();
+    let replay = admitted
+        .cases()
+        .iter()
+        .find(|case| case.id() == "mvp.restore.generated-lock-replay")
+        .expect("generated-lock replay must be a required case");
+    assert_eq!(replay.operation(), "restore");
+    assert_eq!(replay.inputs().get("morphir.lock"), Some(&generated));
+    let resolved = admitted
+        .cases()
+        .iter()
+        .find(|case| case.id() == "mvp.resolve.fresh-two-libraries")
+        .unwrap();
+    let expected: Value = serde_json::from_slice(resolved.expected()).unwrap();
+    let digest: String = Sha256::digest(&generated)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    assert_eq!(
+        expected["outputFiles"][0]["sha256"],
+        format!("sha256:{digest}")
+    );
 }
 
 #[test]
@@ -35,7 +67,7 @@ fn frozen_initial_resolve_cases_are_required_by_the_public_mvp_inventory() {
         let id = case["id"].as_str().unwrap();
         assert!(ids.contains(id), "missing required resolve case: {id}");
     }
-    assert_eq!(ids.len(), 28);
+    assert_eq!(ids.len(), 29);
 }
 
 fn fixed_replies(inventory: &AdmittedMvpInventory) -> Vec<Value> {
@@ -97,7 +129,7 @@ fn missing_mvp_capability_fails_every_required_case_without_skips() {
         Limits::DEFAULT,
     );
     let report = serde_json::to_value(&run).unwrap();
-    assert_eq!(report["records"].as_array().unwrap().len(), 28);
+    assert_eq!(report["records"].as_array().unwrap().len(), 29);
     assert!(
         report["records"]
             .as_array()
@@ -113,7 +145,7 @@ fn all_fixed_results_pass_over_input_only_transcript_and_wrong_results_fail() {
     let inventory = inventory();
     let replies = fixed_replies(&inventory);
     let (report, requests) = run_replies(&inventory, &replies);
-    assert_eq!(report["records"].as_array().unwrap().len(), 28);
+    assert_eq!(report["records"].as_array().unwrap().len(), 29);
     assert!(
         report["records"]
             .as_array()
@@ -124,17 +156,17 @@ fn all_fixed_results_pass_over_input_only_transcript_and_wrong_results_fail() {
     );
     assert_eq!(report["testee"]["implementation"], "fixture");
     assert_eq!(report["scope"], "fresh-local-library-workflow");
-    assert_eq!(requests.len(), 28);
+    assert_eq!(requests.len(), 29);
     for (index, request) in requests.into_iter().enumerate() {
         assert_eq!(
             request["op"],
-            if index < 15 {
+            if index < 16 {
                 "restore-local-library"
             } else {
                 "resolve-local-library"
             }
         );
-        if index >= 15 {
+        if index >= 16 {
             assert!(
                 request["exactRoot"]
                     .as_str()
@@ -152,7 +184,7 @@ fn all_fixed_results_pass_over_input_only_transcript_and_wrong_results_fail() {
     wrong[0]["packages"][0]["version"] = json!("1.2.1");
     wrong[6]["outputFiles"][0]["sha256"] = json!(format!("sha256:{}", "0".repeat(64)));
     let (report, _) = run_replies(&inventory, &wrong);
-    assert_eq!(report["records"].as_array().unwrap().len(), 28);
+    assert_eq!(report["records"].as_array().unwrap().len(), 29);
     for (index, record) in report["records"].as_array().unwrap().iter().enumerate() {
         let expected = if index == 0 || index == 6 {
             "fail"
@@ -177,7 +209,7 @@ fn adapter_disappearing_after_one_case_keeps_the_required_denominator() {
         Limits::DEFAULT,
     );
     let report = serde_json::to_value(&run).unwrap();
-    assert_eq!(report["records"].as_array().unwrap().len(), 28);
+    assert_eq!(report["records"].as_array().unwrap().len(), 29);
     assert_eq!(report["records"][0]["result"], "pass");
     assert!(
         report["records"]

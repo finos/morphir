@@ -753,7 +753,7 @@ fn mvp_admission_requires_exact_bound_inventory_before_adapter_spawn() {
         valid.insert(path.to_owned(), std::fs::read(repo.join(path)).unwrap());
     }
     let admitted = admit_mvp_inventory(&valid).expect("complete fixture inventory admits");
-    assert_eq!(admitted.cases().len(), 28);
+    assert_eq!(admitted.cases().len(), 29);
     let request = serde_json::to_value(admitted.cases()[0].request()).unwrap();
     assert_eq!(request["op"], "restore-local-library");
     assert_eq!(request["profile"], "local-library-mvp:0.1.0-draft.1");
@@ -934,7 +934,7 @@ fn signed_mvp_inventory_admits_required_real_cases_without_expected_wire_bytes()
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let source = MvpRepositorySource::new(root).unwrap();
     let admitted = admit_mvp_inventory(&source).unwrap();
-    assert_eq!(admitted.cases().len(), 28);
+    assert_eq!(admitted.cases().len(), 29);
     for case in admitted.cases() {
         let request = serde_json::to_value(case.request()).unwrap();
         assert!((15..=16).contains(&request["files"].as_array().unwrap().len()));
@@ -945,7 +945,7 @@ fn signed_mvp_inventory_admits_required_real_cases_without_expected_wire_bytes()
 }
 
 #[test]
-fn admitted_restore_inventory_covers_every_frozen_mvp_case() {
+fn admitted_restore_inventory_covers_original_cases_and_generated_lock_replay() {
     use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let source = MvpRepositorySource::new(&root).unwrap();
@@ -961,6 +961,7 @@ fn admitted_restore_inventory_covers_every_frozen_mvp_case() {
         .iter()
         .map(|case| case["id"].as_str().unwrap().to_owned())
         .collect::<Vec<_>>();
+    expected.push("mvp.restore.generated-lock-replay".to_owned());
     expected.sort();
     let mut actual = admitted
         .cases()
