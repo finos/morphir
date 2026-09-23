@@ -5101,7 +5101,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "cucumber",
- "curve25519-dalek 4.1.3",
+ "curve25519-dalek 5.0.0",
  "ed25519-zebra",
  "fs2",
  "futures",
@@ -5136,7 +5136,7 @@ dependencies = [
  "hex",
  "jiff",
  "log",
- "pem",
+ "pem 4.0.0",
  "percent-encoding",
  "rustls",
  "serde",
@@ -5727,6 +5727,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d30c53c26bc5b31a98cd02d20f25a7c8567146caf63ed593a9d87b2775291be"
 dependencies = [
  "base64 0.22.1",
+ "serde_core",
+]
+
+[[package]]
+name = "pem"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d354a98a3d1251555de99e8fdd8afda05573c31b82f59063a7b0a29b5527f120"
+dependencies = [
+ "base64 0.23.1",
  "serde_core",
 ]
 
@@ -8429,7 +8439,7 @@ dependencies = [
  "jiff",
  "log",
  "olpc-cjson",
- "pem",
+ "pem 3.0.6",
  "percent-encoding",
  "rustls",
  "serde",
