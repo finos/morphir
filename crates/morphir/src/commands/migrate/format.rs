@@ -63,12 +63,33 @@ pub(crate) fn resolve_input(
                 "select the manifest's format or convert the complete tree first",
             ));
         }
+        // JSON and YAML trees are v4 only. An Ion tree is v3 or v4, and its manifest says which.
+        let version = if detected == FormatId::ion() {
+            let manifest = path.join("manifest.ion");
+            detect_version(&probe(&manifest)?, &detected)?
+        } else {
+            IrVersion::V4
+        };
         return Ok(InputSelection {
             format: detected,
-            version: IrVersion::V4,
+            version,
             layout: Layout::DocumentTree,
         });
     }
+    let input = probe(path)?;
+    let format = explicit
+        .or_else(|| format_from_extension(path))
+        .unwrap_or_else(|| detect_format(&input));
+    let version = detect_version(&input, &format)?;
+    Ok(InputSelection {
+        format,
+        version,
+        layout: Layout::SingleFile,
+    })
+}
+
+/// The first `PROBE_BYTES` of a file.
+fn probe(path: &Path) -> Result<Vec<u8>, TransportDiagnostic> {
     let mut input = Vec::new();
     File::open(path)
         .and_then(|reader| reader.take(PROBE_BYTES).read_to_end(&mut input))
@@ -79,15 +100,7 @@ pub(crate) fn resolve_input(
                 "verify that the input path is a readable IR artifact",
             )
         })?;
-    let format = explicit
-        .or_else(|| format_from_extension(path))
-        .unwrap_or_else(|| detect_format(&input));
-    let version = detect_version(&input, &format)?;
-    Ok(InputSelection {
-        format,
-        version,
-        layout: Layout::SingleFile,
-    })
+    Ok(input)
 }
 
 fn format_from_extension(path: &Path) -> Option<FormatId> {
@@ -137,6 +150,8 @@ fn detect_version(input: &[u8], format: &FormatId) -> Result<IrVersion, Transpor
         let suffix = &source[key + "\"formatVersion\"".len()..];
         let colon = suffix.find(':').ok_or_else(|| missing_version(format))?;
         scalar_token(&suffix[colon + 1..]).to_owned()
+    } else if format == &FormatId::ion() {
+        ion_header_scalar(source, "formatVersion").ok_or_else(|| missing_version(format))?
     } else {
         yaml_root_scalar(source, "formatVersion").ok_or_else(|| missing_version(format))?
     };
@@ -207,6 +222,20 @@ fn yaml_root_scalar(source: &str, requested_key: &str) -> Option<String> {
     None
 }
 
+/// The scalar after the first `key:` in an Ion header. The field name may be a bare, quoted, or
+/// single-quoted symbol, so the name is matched on its own and the separator after it.
+fn ion_header_scalar(source: &str, key: &str) -> Option<String> {
+    let mut rest = source;
+    while let Some(at) = rest.find(key) {
+        let after = rest[at + key.len()..].trim_start_matches(['\'', '"']);
+        if let Some(value) = after.trim_start().strip_prefix(':') {
+            return Some(scalar_token(value).to_owned());
+        }
+        rest = &rest[at + key.len()..];
+    }
+    None
+}
+
 fn scalar_token(source: &str) -> &str {
     let source = source.trim_start();
     if let Some(quote @ ('\'' | '"')) = source.chars().next() {
@@ -242,6 +271,32 @@ fn detection_error(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const ION_V3_HEADER: &str = "morphir::{\n  ionVersion: \"0.1.0-draft.1\",\n  formatVersion: \"3.0.0\",\n  kind: library,\n  packageName: \"example\",\n}\n";
+
+    #[test]
+    fn an_ion_file_reports_its_header_version() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("model.ion");
+        std::fs::write(&path, format!("{ION_V3_HEADER}morphir_footer::{{}}\n")).unwrap();
+
+        let selection = resolve_input(&path, None).unwrap();
+
+        assert_eq!(selection.format, FormatId::ion());
+        assert_eq!(selection.version, IrVersion::V3);
+    }
+
+    #[test]
+    fn an_ion_tree_reports_its_manifest_version() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::write(temp.path().join("manifest.ion"), ION_V3_HEADER).unwrap();
+
+        let selection = resolve_input(temp.path(), None).unwrap();
+
+        assert_eq!(selection.format, FormatId::ion());
+        assert_eq!(selection.layout, Layout::DocumentTree);
+        assert_eq!(selection.version, IrVersion::V3);
+    }
 
     #[test]
     fn output_resolution_uses_flag_then_extension_then_yaml() {
