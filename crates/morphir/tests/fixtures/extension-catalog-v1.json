@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "extensions": [{
+    "extensionId": "morphir-test",
+    "name": "Morphir test frontend",
+    "version": "1.2.3",
+    "runtime": "process",
+    "platform": {"os": "linux", "arch": "x86_64"},
+    "args": ["fallback"],
+    "digest": "<artifact digest>",
+    "storePath": "<artifact store path>",
+    "capabilities": ["frontend"],
+    "mepVersions": ["<SDK MEP_VERSION>"],
+    "index": {"kind": "local-directory", "identity": "<index root>", "revision": "<index digest>"},
+    "frontend": {"languages": [{"id": "test", "fileExtensions": [".test"]}], "irVersions": ["4"], "compile": true},
+    "executable": true
+  }]
+}
