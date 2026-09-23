@@ -35,7 +35,7 @@ morphir itest examples --filter elm/single-file --keep-temp
 ```
 
 Reference Elm cases use `suite:elm-reference` and require an explicitly prepared
-extension 0.1.0 executable. Follow the
+extension 0.3.0 executable. Follow the
 [catalog preparation instructions](https://github.com/finos/morphir/blob/main/examples/README.md#prepare-the-reference-elm-scenarios)
 before selecting them or running all examples without a tag. The helper stages
 local fixture repositories; commands in each scenario register and install the

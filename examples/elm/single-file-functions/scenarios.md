@@ -9,7 +9,7 @@ workspace: {kind: directory, path: '.', exclude: [installed]}
 
 # Single-file Elm functions
 
-Prepare extension 0.1.0 with `mise run examples:prepare-elm -- /path/to/morphir-elm-extension` first. The driver installs the prepared artifact into a fresh Morphir home. Missing prerequisites fail; the scenario does not download them. Compilation checks IR structure, not function evaluation.
+Prepare extension 0.3.0 with `mise run examples:prepare-elm -- /path/to/morphir-elm-extension` first. The driver installs the prepared artifact into a fresh Morphir home. Missing prerequisites fail; the scenario does not download them. Compilation checks IR structure, not function evaluation.
 
 ## Compile functions
 
@@ -40,16 +40,16 @@ passes if {
 }
 ```
 
-### Install reference Elm 0.1.0
+### Install reference Elm 0.3.0
 
 ```yaml morphir:command
 id: install
-name: Install reference Elm 0.1.0
+name: Install reference Elm 0.3.0
 timeout_seconds: 60
 ```
 
 ```sh
-morphir extension install morphir-elm --repository fixture --version 0.1.0
+morphir extension install morphir-elm --repository fixture --version 0.3.0
 ```
 
 ```yaml morphir:assertion

@@ -410,6 +410,7 @@ mod tests {
                             compile: true,
                             incremental: false,
                             fragments: false,
+                            multi_document: false,
                         }),
                         backend: Some(BackendCapability {
                             targets: vec!["gleam".to_owned()],

@@ -18,6 +18,10 @@ pub struct GenerateOptions {
     pub project: Option<String>,
     /// Backend-specific `KEY=VALUE` overrides.
     pub backend_options: Vec<String>,
+    /// Consume a compile of an explicit source selection. Without it, an
+    /// implicit input refuses such a compile, since its IR need not match the
+    /// project's declared exposure.
+    pub from_partial_compile: bool,
     /// Emit JSON output.
     pub json: bool,
     /// Emit JSON Lines output.

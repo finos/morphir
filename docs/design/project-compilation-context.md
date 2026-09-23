@@ -43,17 +43,24 @@ configuration model. Legacy `morphir.json` continues to normalize `name`,
 An omitted project version defaults to `0.1.0`, as in legacy normalization;
 opening a discovered project does not require adding a version just to read its model.
 
-The existing single-file Elm route is an isolated compilation: it synthesizes
-exposure for the one submitted module. A surrounding project's exposure list
-does not add unsubmitted modules to that request. Project-mode compilation,
-including Python, forwards the configured exposure list for its complete source set.
+A compile of selected files (`--input` naming files) is an isolated compilation.
+The provider that declares the files' suffix synthesizes the project through
+workspace discovery: it names the package, unless `--package-name` or a loaded
+manifest supplies the name, and exposes every selected module. A surrounding
+project's exposure list does not add unsubmitted modules to that request, and an
+ambient manifest is read only when `--config` or `--project` asks for it.
+Project-mode compilation, including Python, forwards the configured exposure list
+for its complete source set.
 
 Project compilation requests the selected IR version when resolving and invoking
 the frontend. A provider must advertise that version, and both its result and
 embedded document header must match the request. V3 supports JSON/YAML single-file
 storage; v4 also supports document trees. Task records retain the emitted version,
-so generation and workspace model loading read the correct transport. The isolated
-single-file Elm route remains v3-only and rejects an explicit v4 override.
+so generation and workspace model loading read the correct transport. A compile of
+selected files negotiates the version with its provider too: it requests
+`--ir-version` when given and otherwise the oldest release the provider serves, so
+it keeps the classic IR single-file compiles have always written while a newer
+release stays one flag away.
 
 ## Source identity across MEP hosts
 

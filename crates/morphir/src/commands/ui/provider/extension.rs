@@ -291,7 +291,13 @@ async fn invoke_installed(
         .capabilities()
         .workspace
         .as_ref()
-        .is_some_and(|capability| capability.discover && capability.protocol_versions.contains(&1))
+        .is_some_and(|capability| {
+            capability.discover
+                && capability
+                    .protocol_versions
+                    .iter()
+                    .any(morphir_workspace::speaks_workspace_discovery_protocol)
+        })
     {
         let _ = ready.shutdown().await;
         return Err(extension_error(format!(

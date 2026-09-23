@@ -12,5 +12,6 @@ Generate code from Morphir IR
 - **`--config <CONFIG>`** — Explicit config file path
 - **`--project <PROJECT>`** — Declared workspace-relative member path or exact project name
 - **`--option <KEY=VALUE>…`** — Override a backend option as KEY=VALUE. May be repeated
+- **`--from-partial-compile`** — Generate from the last compile even when it compiled an explicit selection of source files rather than the project
 - **`--json`** — Output as JSON
 - **`--json-lines`** — Output as JSON Lines (streaming)

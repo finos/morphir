@@ -4,9 +4,12 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+/** The pinned reference release; see .config/published-extension-bundles.toml. */
+export const REQUIRED_VERSION = "0.3.0";
+
 export function prepareElmExamples(root: string, executable: string, version: string): void {
-	if (version !== "0.1.0") {
-		throw new Error("These examples require morphir-elm extension 0.1.0.");
+	if (version !== REQUIRED_VERSION) {
+		throw new Error(`These examples require morphir-elm extension ${REQUIRED_VERSION}.`);
 	}
 	const bytes = readFileSync(executable);
 	if (!bytes.length) throw new Error("Elm extension executable is empty.");
@@ -19,7 +22,9 @@ export function prepareElmExamples(root: string, executable: string, version: st
 		version,
 		channels: ["stable"],
 		mepVersions: ["0.1"],
-		capabilities: ["frontend"],
+		// The published record names the capability kinds the executable reports, or the host
+		// refuses the session. 0.3.0 serves workspace discovery for single-file compiles.
+		capabilities: ["frontend", "workspace"],
 		frontend: {
 			languages: [{ id: "elm", fileExtensions: [".elm"] }],
 			irVersions: ["3"],
@@ -54,6 +59,6 @@ if (import.meta.main) {
 		throw new Error("Pass the downloaded morphir-elm-extension executable, or set MORPHIR_ELM_EXTENSION_BIN.");
 	}
 	const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-	prepareElmExamples(root, executable, process.env.MORPHIR_ELM_EXTENSION_VERSION ?? "0.1.0");
-	console.log("Prepared reference Elm examples with extension 0.1.0. Run morphir itest examples --tag suite:elm-reference.");
+	prepareElmExamples(root, executable, process.env.MORPHIR_ELM_EXTENSION_VERSION ?? REQUIRED_VERSION);
+	console.log(`Prepared reference Elm examples with extension ${REQUIRED_VERSION}. Run morphir itest examples --tag suite:elm-reference.`);
 }
