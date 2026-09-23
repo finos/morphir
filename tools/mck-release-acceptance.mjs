@@ -79,6 +79,16 @@ if (artifacts.length !== 1) throw new Error("expected one native mck_run test ex
 // qualifiable, and require the complete package test set once it exists.
 const metadata = JSON.parse(run("cargo", ["metadata", "--locked", "--no-deps", "--format-version", "1"]));
 const qualificationTargets = sourceQualificationTargets(metadata);
+const cliPackage = metadata.packages.find(pkg => pkg.name === "morphir");
+const hasMvp = cliPackage?.targets.some(entry => entry.kind.includes("test") && entry.name === "mck_package_mvp");
+let mvpAdapter;
+if (hasMvp) {
+  const built = run("cargo", ["build", "--locked", "--manifest-path", "ecosystem/morphir-rust/Cargo.toml", "--package", "morphir-mck-adapter", "--target", target, "--message-format=json-render-diagnostics"]);
+  const adapters = built.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line))
+    .filter(entry => entry.reason === "compiler-artifact" && entry.target.name === "mck-adapter-rust" && entry.executable);
+  if (adapters.length !== 1) throw new Error("expected one native MVP adapter executable");
+  mvpAdapter = adapters[0].executable;
+}
 const qualification = spawnSync("cargo", ["test", "--locked", "--package", "morphir-mck", "--target", target, ...qualificationTargets.flatMap(name => ["--test", name])], {
   cwd: root, encoding: "utf8", timeout: 600_000, maxBuffer: 16 * 1024 * 1024,
 });
@@ -125,6 +135,7 @@ const environment = {
   MORPHIR_MCK_PREACQUIRED_KIT: kit,
   MORPHIR_MCK_REQUIRE_NETWORK_DENIAL: probe,
   MORPHIR_MCK_ACCEPTANCE_EVIDENCE: evidence,
+  ...(hasMvp ? { MORPHIR_MCK_MVP_REQUIRED: "1", MORPHIR_MCK_MVP_ADAPTER: mvpAdapter } : {}),
 };
 if (!process.env.GITHUB_ENV) throw new Error("GITHUB_ENV is required to hand off prepared inputs");
 for (const [key, value] of Object.entries(environment)) {

@@ -38,7 +38,7 @@ Operating-system network denial applies to the test process and its children:
 - Linux runs the native test in an isolated network namespace.
 - macOS runs it with a sandbox profile denying network operations.
 - Windows adds an outbound block rule only on a disposable GitHub-hosted runner,
-  executes the native test with a five-minute limit, and removes the rule in a
+  executes the native test with a ten-minute limit, and removes the rule in a
   `finally` block. Never apply that workflow step to a workstation or persistent runner.
 
 Preparation first proves that a direct TCP connection to the configured external
@@ -63,6 +63,18 @@ every case and reproduce the complete ordered frozen reports, excluding only
 `driverVersion` and `startedAt`. The [baseline provenance](https://github.com/finos/morphir/blob/main/spec/mck/baseline/package/README.md)
 records the source revisions and capture procedure.
 
+Starting at beta.4, preparation also compiles the pinned Rust package MVP adapter
+from the tagged source. The isolated runtime copies it beside the downloaded
+CLI and runs all 70 required local Library cases with `mck package mvp-run`.
+`mvp-report check` independently verifies the full inventory and all passing
+results; `mvp-report render` produces standalone HTML. The runtime removes one
+record from a copy of the report and requires the checker to reject it. It
+also runs the downloaded CLI's `itest` command on the signed local Library
+restore and scoped-update examples. Those examples exercise explicit trust,
+fresh metadata, resolution, restore, and generated provider consumption. All
+inputs are copied from the checked-out tag before execution. These checks do
+not replace the 80/78 historical gates.
+
 Each matrix job uploads acquisition metadata, the network-denial result, kit status,
 source and acquired-kit reports, HTML, and runtime logs. Package-capable tags also
 upload `package-integrity.json`, `package-resolution.json` and `package-runtime.json`.
@@ -71,6 +83,10 @@ Checksums establish archive
 integrity relative to the published checksum; they do not authenticate an independent
 publisher. The replay proves runner behavior against fixed answers, not an independent
 binding's implementation. Separate binding adoption gates remain necessary.
+Beta.4 jobs additionally retain `package-mvp.json`, `package-mvp.html`,
+`package-mvp-negative.log`, `package-mvp-runtime.json` and
+`package-examples.log`. The harness copies these as it runs, so a later failure
+still leaves the earlier report and command output in the uploaded artifact.
 
 For normal development, the existing installed-CLI smoke still vendors the embedded
 kit. `MORPHIR_MCK_PREACQUIRED_KIT` selects a previously acquired snapshot directory;
