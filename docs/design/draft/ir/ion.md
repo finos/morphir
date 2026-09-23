@@ -78,13 +78,13 @@ A function type is binary. A list type is a reference to `morphir/SDK:list#list`
 
 ```ion
 public::def::custom::type::{
-  module: "Eligibility",
-  name: "Result",
+  module: "eligibility",
+  name: "result",
   typeParams: ["a", "b"],
   access: public,
   constructors: [
-    { name: "Ok", args: [ { name: "value", type: "a" } ] },
-    { name: "Err", args: [ { name: "reason", type: "b" } ] },
+    { name: "ok", args: [ { name: "value", type: "a" } ] },
+    { name: "err", args: [ { name: "reason", type: "b" } ] },
   ],
 }
 ```
@@ -100,7 +100,7 @@ The body is an S-expression. The first symbol is the node. Apply is binary. A ba
 | Node | Spelling |
 | --- | --- |
 | Reference | `(ref 'morphir/SDK:basics#equal')` |
-| Constructor | `(constructor 'example/finance:Eligibility#Ok')` |
+| Constructor | `(constructor 'example/finance:eligibility#ok')` |
 | Apply | `(apply fn arg)` |
 | Lambda | `(lambda [score] body)` |
 | If | `(if cond then else)` |
@@ -184,6 +184,20 @@ public::def::alias::type::{
   typeExp: "morphir/SDK:basics#int",
 }
 ```
+
+### Names that look like tree files
+
+A module, type, or value may be named `manifest` or `module`. The distribution manifest is only the tree root's `manifest.ion`, and a module's own file is only the `module` leaf of its directory. A node file always ends in `.type` or `.value`, and an escaped name holds only lowercase letters, digits, `-`, and `_`, so no name collides with either file.
+
+| Name | Path |
+| --- | --- |
+| Module `manifest` in package `example` | `pkg/example/manifest/module.ion` |
+| Type `manifest` in that module | `pkg/example/manifest/manifest.type.ion` |
+| Type `module` in that module | `pkg/example/manifest/module.type.ion` |
+| Module `manifest/module` | `pkg/example/manifest/module/module.ion` |
+| Type `con`, a Windows device name | `pkg/example/module/con_.type.ion` |
+
+A `module.ion` directly under the package directory is rejected. A module path has at least one name, so its file is `pkg/<package>/<module>/module.ion`.
 
 The compatibility kit's profile list stays `json` and `yaml`. The Ion tree is storage.
 
