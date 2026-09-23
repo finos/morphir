@@ -18,7 +18,7 @@ A document tree maps logical `manifest`, `module`, `NAME.type`, and `NAME.value`
 | `NAME.type` | `NAME.type.json` | `NAME.type.yaml` | `NAME.type.ion` |
 | `NAME.value` | `NAME.value.json` | `NAME.value.yaml` | `NAME.value.ion` |
 
-The extension is not part of a logical identity. A generated tree MUST use one profile for every file. If discovery finds more than one of `manifest.json`, `manifest.yaml`, `manifest.yml`, and `manifest.ion`, it MUST report ambiguity and MUST NOT select one implicitly. The structures documented below apply to every profile. JSON examples use the [JSON profile](json-profile.md), and their YAML equivalents use the [YAML profile](yaml-profile.md). A generated Ion file is that JSON profile's canonical text, which is valid Ion. A reader also accepts Ion text whose field names are symbols.
+The extension is not part of a logical identity. A generated tree MUST use one profile for every file. If discovery finds more than one of `manifest.json`, `manifest.yaml`, `manifest.yml`, and `manifest.ion`, it MUST report ambiguity and MUST NOT select one implicitly. The structures documented below apply to the JSON and YAML profiles. JSON examples use the [JSON profile](json-profile.md), and their YAML equivalents use the [YAML profile](yaml-profile.md). The Ion profile uses the same paths, but each Ion file holds the annotated elements of a single-file Ion distribution, and the path supplies the names. See the [Ion draft](../../../../design/draft/ir/ion.md#document-tree).
 
 ## Logical paths
 
@@ -41,9 +41,9 @@ version; it is a bare `@` while the v4 model carries no version (see [Dependenci
 
 The profile decides the extension at the physical boundary and nowhere else: `.json` for the JSON profile,
 `.yaml` for the YAML profile, and `.ion` for the Ion profile. Going the other way, a physical name with `.json`,
-`.yaml`, `.yml`, or `.ion` maps back to its logical path; a file with any other extension is not part of the
-tree and is ignored. Because the extension is chosen at that boundary, the same logical tree renders into each
-profile without renaming anything.
+`.yaml`, or `.yml` maps back to its logical path, and an Ion tree also maps `.ion`; a file with any other extension
+is not part of the tree and is ignored. Because the extension is chosen at that boundary, the same logical paths
+render into each profile without renaming anything.
 
 > `mode` is a concept of the [Morphir Compatibility Kit](https://github.com/finos/morphir/tree/main/spec/ir/mck),
 > where a `file` fence may be marked `mode=read` so the kit driver checks only the read direction. It is not a

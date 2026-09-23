@@ -145,13 +145,47 @@ A document literal is `(document <payload>)`. The payload is the document. An in
 
 ## Document tree
 
-A document tree uses the same logical paths as the JSON and YAML profiles. The Ion profile name is `ion` and the extension is `.ion`. Discovery reads `manifest.ion`. A second manifest in the same directory (`manifest.json`, `manifest.yaml`, or `manifest.yml`) makes the root ambiguous.
+An Ion document tree uses the same paths as the JSON and YAML trees, with the `.ion` extension: `manifest.ion`, `pkg/<package>/<module>/module.ion`, `<stem>.type.ion`, and `<stem>.value.ion`, plus the same three file kinds under `deps/<package>/@/<module>/`. Directory segments and stems are escaped file stems, so `morphir/SDK` is `deps/morphir/_sdk/@/`. Discovery reads `manifest.ion`. A second manifest (`manifest.json`, `manifest.yaml`, or `manifest.yml`) makes the root ambiguous. The tree applies to v3 and v4.
 
-Each file holds one Ion value. Its members are the members of the JSON file at the same logical path (`manifest`, `module`, `NAME.type`, `NAME.value`). The file has no `morphir::` header, no `morphir_footer`, and no `ionVersion`. The extension selects the profile. The annotation spelling above stays on a single-file distribution.
+Each file holds the annotated elements of the single-file spelling. The path is the scope:
 
-A writer emits the JSON profile's canonical text. That text is one Ion value, and a number keeps its lexeme. A reader accepts that text. It also accepts Ion text whose field names are symbols. It reads an S-expression as a list and ignores annotations on a value. It rejects a blob, a clob, a timestamp, a symbol value, and a duplicate field name. A non-integer Ion decimal is read through Ion's display (`1.5d2`, `0.`) and stored as a JSON number.
+| File | Elements |
+| --- | --- |
+| `manifest.ion` | The `morphir::` header, then one `package::spec` for each dependency |
+| `module.ion` | The module element, then any of its types and values |
+| `<stem>.type.ion` | That one type |
+| `<stem>.value.ion` | That one value |
 
-The compatibility kit's profile list stays `json` and `yaml`. This profile is storage.
+The path supplies the package, the module, and a node's name, so a file may omit `package`, `module`, and `name`. A name that is present must match the path. A type or value inside `module.ion` states its `name`, because the path does not name it.
+
+The header carries `ionVersion`, `formatVersion`, `kind`, `packageName`, and `pathBudget`. Each `package::spec::{ name }` in the manifest names one dependency. The list keeps the dependency order and keeps a dependency that has no modules. A `package::spec` there may also carry inline `modules`, which merge with the `deps/` files. No tree file has a `morphir_footer`. The end of a file ends it.
+
+Under `pkg/`, `module.ion` holds one `public::def::module` or `private::def::module`. A second one is rejected. Under `deps/`, `module.ion` holds `module::spec` fragments, which may repeat and merge. A member stated by two fragments is rejected. A v3 tree has no `deps/`, because the v3 codec does not encode dependencies yet.
+
+A tree reads as the datagram that holds the same elements. The manifest's header comes first, then each dependency, then each module with its children inline, then a footer. In a module directory the module file comes first, then the type files, then the value files, each in path order. Children merge by the single-file rules. A type or value defined twice after the merge is rejected. A tree orders modules and their members by path. That order is the one thing a tree does not keep.
+
+A writer that starts from the IR puts only the module header in `module.ion` and writes one file per type and one file per value. It omits every name the path supplies. When the path budget cuts a stem, the stem ends in `__` and eight hex digits and no longer spells the name, so that file keeps its `name`. A reader checks a stated name against a cut stem by its prefix and hash.
+
+```ion
+// pkg/example/finance/eligibility/module.ion
+public::def::module::{
+  doc: "Credit eligibility.",
+}
+
+public::def::alias::type::{
+  name: "decision",
+  typeExp: "morphir/SDK:basics#int",
+}
+```
+
+```ion
+// pkg/example/finance/eligibility/score.type.ion
+public::def::alias::type::{
+  typeExp: "morphir/SDK:basics#int",
+}
+```
+
+The compatibility kit's profile list stays `json` and `yaml`. The Ion tree is storage.
 
 ## Out of scope
 

@@ -510,10 +510,12 @@ mod tests {
         assert_eq!(descriptor.format, "ion");
         assert!(temp.path().join("morphir-ir/manifest.ion").is_file());
         let value = read_value(temp.path(), &descriptor).unwrap();
-        assert_eq!(value["formatVersion"], 4);
+        // An Ion tree carries the release string, as a single-file Ion distribution does.
+        assert_eq!(value["formatVersion"], "4.0.0");
         assert_eq!(value["distribution"]["Library"]["packageName"], "acme/app");
     }
 
+    #[test]
     fn yaml_single_file_round_trips() {
         let temp = tempfile::tempdir().unwrap();
         let storage = IrStorage::from_config(Some(&section("single-file", "yaml"))).unwrap();
