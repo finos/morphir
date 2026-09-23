@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use clap::{Args, Subcommand, ValueEnum};
 use miette::{IntoDiagnostic, WrapErr, miette};
 use morphir_package::local_registry::mvp::{
-    self, InitializeRequest, ResolveRequest, RestoreRequest,
+    self, InitializeRequest, RefreshRequest, ResolveRequest, RestoreRequest, UpdateRequest,
 };
-use morphir_package::resolution::{PackagePath, ReleaseId, StableVersion};
+use morphir_package::resolution::{PackagePath, ReleaseId, StableVersion, UpdateTarget};
 use starbase::AppResult;
 
 /// Experimental local Library operations, separate from executable repositories.
@@ -23,6 +23,10 @@ pub enum PackageAction {
     Restore(RestoreArgs),
     /// Resolve an exact published root and write a new fully verified package lock
     Resolve(ResolveArgs),
+    /// Authenticate current registry metadata without resolving or restoring packages
+    Refresh(RefreshArgs),
+    /// Update explicit dependency targets and write a new fully verified package lock
+    Update(UpdateArgs),
 }
 
 /// Trust state is initialized only by an explicit command.
@@ -104,6 +108,66 @@ pub struct ResolveArgs {
     json: bool,
 }
 
+#[derive(Clone, Debug, Args)]
+pub struct RefreshArgs {
+    /// Explicit trusted-host policy file
+    #[arg(long, value_name = "FILE")]
+    policy: PathBuf,
+    /// Caller-controlled local registry whose current metadata will be authenticated
+    #[arg(long, value_name = "DIR")]
+    registry: PathBuf,
+    /// Existing explicitly initialized trust-state directory
+    #[arg(long, value_name = "DIR")]
+    state: PathBuf,
+    /// Explicitly accept caller-controlled local roots; hardened mode is unsupported
+    #[arg(long, value_enum)]
+    assurance: Assurance,
+    /// Output exact accepted metadata digests as JSON
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Clone, Debug, Args)]
+pub struct UpdateArgs {
+    /// Previous full package lock; always preserved
+    #[arg(long, value_name = "FILE")]
+    lock: PathBuf,
+    /// Dependency to update; repeat for multiple targets, optionally with an exact version
+    #[arg(long, required = true, value_name = "PACKAGE[@VERSION]", value_parser = parse_update_target)]
+    target: Vec<UpdateTarget>,
+    /// Explicit trusted-host policy file
+    #[arg(long, value_name = "FILE")]
+    policy: PathBuf,
+    /// Caller-controlled local registry; one registry per graph
+    #[arg(long, value_name = "DIR")]
+    registry: PathBuf,
+    /// Existing explicitly initialized trust-state directory
+    #[arg(long, value_name = "DIR")]
+    state: PathBuf,
+    /// New full lock file; its parent directory must exist
+    #[arg(long, value_name = "FILE")]
+    output: PathBuf,
+    /// Explicitly accept caller-controlled local roots; hardened mode is unsupported
+    #[arg(long, value_enum)]
+    assurance: Assurance,
+    /// Output the verified update result as JSON
+    #[arg(long)]
+    json: bool,
+}
+
+fn parse_update_target(input: &str) -> Result<UpdateTarget, String> {
+    if let Some((package, version)) = input.split_once('@') {
+        Ok(UpdateTarget::Exact {
+            package_path: PackagePath::parse(package).map_err(|error| error.to_string())?,
+            version: StableVersion::parse(version).map_err(|error| error.to_string())?,
+        })
+    } else {
+        Ok(UpdateTarget::Eligible {
+            package_path: PackagePath::parse(input).map_err(|error| error.to_string())?,
+        })
+    }
+}
+
 fn parse_root_release(input: &str) -> Result<ReleaseId, String> {
     let (package, version) = input
         .split_once('@')
@@ -162,6 +226,44 @@ pub async fn run(action: &PackageAction) -> AppResult<miette::Report> {
             .map_err(|error| miette!("{error}"))?;
             emit(args.json, &result, || {
                 format!("Wrote verified Library lock to {}", args.output.display())
+            })?;
+        }
+        PackageAction::Update(args) => {
+            let Assurance::Portable = args.assurance;
+            let policy = read_bounded(&args.policy, 1024 * 1024)?;
+            let lock = read_bounded(&args.lock, 16 * 1024 * 1024)?;
+            let result = mvp::update(UpdateRequest {
+                policy: &policy,
+                lock: &lock,
+                targets: &args.target,
+                registry: &args.registry,
+                state: &args.state,
+                output: &args.output,
+            })
+            .await
+            .map_err(|error| miette!("{error}"))?;
+            emit(args.json, &result, || {
+                format!(
+                    "Wrote updated verified Library lock to {}",
+                    args.output.display()
+                )
+            })?;
+        }
+        PackageAction::Refresh(args) => {
+            let Assurance::Portable = args.assurance;
+            let policy = read_bounded(&args.policy, 1024 * 1024)?;
+            let result = mvp::refresh(RefreshRequest {
+                policy: &policy,
+                registry: &args.registry,
+                state: &args.state,
+            })
+            .await
+            .map_err(|error| miette!("{error}"))?;
+            emit(args.json, &result, || {
+                format!(
+                    "Refreshed authenticated registry metadata from {}",
+                    args.registry.display()
+                )
             })?;
         }
     }

@@ -749,6 +749,8 @@ enum MckPackageAction {
     Inspect(commands::mck::package::InspectArgs),
     /// Run an integrity or resolution corpus against an explicit adapter
     Run(commands::mck::package::RunArgs),
+    /// Run the admitted local Library MVP bootstrap cases through an explicit adapter
+    MvpRun(commands::mck::package::MvpRunArgs),
 }
 
 #[derive(Clone, Subcommand)]
@@ -1223,6 +1225,9 @@ impl AppSession for MorphirSession {
                         commands::mck::package::inspect(args.clone())
                     }
                     MckPackageAction::Run(args) => commands::mck::package::run(args.clone()).await,
+                    MckPackageAction::MvpRun(args) => {
+                        commands::mck::package::mvp_run(args.clone()).await
+                    }
                 },
                 MckAction::Report { action } => match action {
                     MckReportAction::Check(args) => commands::mck::report::run_check(args.clone()),

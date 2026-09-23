@@ -103,6 +103,53 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
         complete file type=path
         complete dir type=path
     }
+    cmd refresh display_order=3 args_override_self=#false help="Authenticate current registry metadata without resolving or restoring packages" unknown_flags=error {
+        flag --policy help="Explicit trusted-host policy file" required=#true {
+            arg <FILE>
+        }
+        flag --registry help="Caller-controlled local registry whose current metadata will be authenticated" required=#true {
+            arg <DIR>
+        }
+        flag --state help="Existing explicitly initialized trust-state directory" required=#true {
+            arg <DIR>
+        }
+        flag --assurance help="Explicitly accept caller-controlled local roots; hardened mode is unsupported" required=#true {
+            arg <ASSURANCE> {
+                choices portable
+            }
+        }
+        flag --json help="Output exact accepted metadata digests as JSON"
+        complete file type=path
+        complete dir type=path
+    }
+    cmd update display_order=4 args_override_self=#false help="Update explicit dependency targets and write a new fully verified package lock" unknown_flags=error {
+        flag --lock help="Previous full package lock; always preserved" required=#true {
+            arg <FILE>
+        }
+        flag --target help="Dependency to update; repeat for multiple targets, optionally with an exact version" required=#true var=#true {
+            arg "<PACKAGE[@VERSION]>…" var=#true
+        }
+        flag --policy help="Explicit trusted-host policy file" required=#true {
+            arg <FILE>
+        }
+        flag --registry help="Caller-controlled local registry; one registry per graph" required=#true {
+            arg <DIR>
+        }
+        flag --state help="Existing explicitly initialized trust-state directory" required=#true {
+            arg <DIR>
+        }
+        flag --output help="New full lock file; its parent directory must exist" required=#true {
+            arg <FILE>
+        }
+        flag --assurance help="Explicitly accept caller-controlled local roots; hardened mode is unsupported" required=#true {
+            arg <ASSURANCE> {
+                choices portable
+            }
+        }
+        flag --json help="Output the verified update result as JSON"
+        complete file type=path
+        complete dir type=path
+    }
 }
 cmd eval display_order=5 args_override_self=#false help="Evaluate a program through a registered native provider" unknown_flags=error {
     flag --request help="Path to a version 1 evaluation request JSON file" required=#true {
@@ -1087,6 +1134,24 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             }
             complete dir type=path
             complete file type=path
+        }
+        cmd mvp-run display_order=2 args_override_self=#false help="Run the admitted local Library MVP bootstrap cases through an explicit adapter" unknown_flags=value {
+            flag --source help="Repository root containing the closed MVP inventory and signed fixtures" required=#true {
+                arg <DIR>
+            }
+            flag --adapter help="Adapter executable, launched directly without a shell" required=#true {
+                arg <PROGRAM>
+            }
+            flag --adapter-arg help="An argument for the adapter; repeat for more" var=#true allow_hyphen_values=#true {
+                arg <ARG>… var=#true
+            }
+            flag --timeout help="Maximum duration of one adapter request and response, in milliseconds" default="30000" {
+                arg <MS>
+            }
+            flag --session-timeout help="Maximum duration of the adapter session, in milliseconds" default="1800000" {
+                arg <MS>
+            }
+            complete dir type=path
         }
     }
     cmd report display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {

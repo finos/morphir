@@ -1,0 +1,8 @@
+{
+  "outcome": "refused",
+  "category": "metadata-authentication",
+  "reason": "timestamp-signature-threshold",
+  "output": "absent",
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

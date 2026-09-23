@@ -1,0 +1,165 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "profile": "local-library-mvp",
+  "scope": "bootstrap",
+  "requiredCases": [
+    "mvp.restore.fresh-two-libraries",
+    "mvp.restore.bad-timestamp-signature"
+  ],
+  "assets": [
+    {
+      "id": "morphir.lock",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/morphir.lock",
+      "sha256": "sha256:842e46bc14c5a9f5956c79407dea64d9fc765a611e066fa2584ccf075f526a3e"
+    },
+    {
+      "id": "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
+      "sha256": "sha256:b1884eeb8364f96c6405cc45f2fe07a006c22f066a4136656ad05dda9c9a94cc"
+    },
+    {
+      "id": "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json",
+      "sha256": "sha256:e98ea924e66b96a5050e2c3a690f9534db32f5971401d2965791546872ecb7a3"
+    },
+    {
+      "id": "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json",
+      "sha256": "sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43"
+    },
+    {
+      "id": "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json",
+      "sha256": "sha256:0a91b5e3a5e377fa4557212fc5b561a66067d67292123136575e46ce5a3fd0b7"
+    },
+    {
+      "id": "registry/metadata/1.root.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/metadata/1.root.json",
+      "sha256": "sha256:9a5cafd0b1976144798f2084cfb6ed3625a61fe0a56df6a3521573275367f8c6"
+    },
+    {
+      "id": "registry/metadata/1.snapshot.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/metadata/1.snapshot.json",
+      "sha256": "sha256:9cc590f7328e43e14597bab4bfc82e2192457e7bec07684d63a622b8f97bbe0e"
+    },
+    {
+      "id": "registry/metadata/1.targets.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/metadata/1.targets.json",
+      "sha256": "sha256:a5f5d6f3346a6e6c8639bb0d41cf65d6b4aa0bebbc8f871cef023a194100868c"
+    },
+    {
+      "id": "registry/metadata/1.timestamp.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/metadata/1.timestamp.json",
+      "sha256": "sha256:42ef09963e40de1cff6de42d5680d4c67e9f337693fb804af2873f5ee4d19636"
+    },
+    {
+      "id": "registry/metadata/timestamp.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/metadata/timestamp.json",
+      "sha256": "sha256:42ef09963e40de1cff6de42d5680d4c67e9f337693fb804af2873f5ee4d19636"
+    },
+    {
+      "id": "registry/targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json",
+      "sha256": "sha256:35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0"
+    },
+    {
+      "id": "registry/targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json",
+      "sha256": "sha256:3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251"
+    },
+    {
+      "id": "registry/targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json",
+      "sha256": "sha256:4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1"
+    },
+    {
+      "id": "registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json",
+      "sha256": "sha256:abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a"
+    },
+    {
+      "id": "trust-policy.json",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/signed/trust-policy.json",
+      "sha256": "sha256:154ca0013e6884b0cb1f384af9e3f719dd4e7da3940aab06f6ad12b2b3ef6d4f"
+    },
+    {
+      "id": "bad-timestamp",
+      "kind": "input",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/variants/bad-timestamp-signature.json",
+      "sha256": "sha256:0b9402abdc2a30dfff4ba93452fecbd36ce650ca13f9739ddfbf312c36cfdb14"
+    },
+    {
+      "id": "fresh-result",
+      "kind": "expected",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/expected/mck-fresh-restore.json",
+      "sha256": "sha256:9c56182826085253f5d9b7c7cbb24bc626eae72137badb94d3a1d23ced3b776a"
+    },
+    {
+      "id": "bad-result",
+      "kind": "expected",
+      "path": "spec/package/mck/fixtures/mvp-fresh-restore/expected/mck-bad-timestamp-signature.json",
+      "sha256": "sha256:7d2c19da6b2e5d50426789f739990673f28a8263e77e883a6d7fc2ebc8056269"
+    }
+  ],
+  "cases": [
+    {
+      "id": "mvp.restore.fresh-two-libraries",
+      "operation": "restore",
+      "inputs": {
+        "morphir.lock": "morphir.lock",
+        "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json": "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
+        "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json": "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json",
+        "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json": "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json",
+        "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json": "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json",
+        "registry/metadata/1.root.json": "registry/metadata/1.root.json",
+        "registry/metadata/1.snapshot.json": "registry/metadata/1.snapshot.json",
+        "registry/metadata/1.targets.json": "registry/metadata/1.targets.json",
+        "registry/metadata/1.timestamp.json": "registry/metadata/1.timestamp.json",
+        "registry/metadata/timestamp.json": "registry/metadata/timestamp.json",
+        "registry/targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json": "registry/targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json",
+        "registry/targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json": "registry/targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json",
+        "registry/targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json": "registry/targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json",
+        "registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json": "registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json",
+        "trust-policy.json": "trust-policy.json"
+      },
+      "expected": "fresh-result"
+    },
+    {
+      "id": "mvp.restore.bad-timestamp-signature",
+      "operation": "restore",
+      "inputs": {
+        "morphir.lock": "morphir.lock",
+        "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json": "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
+        "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json": "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json",
+        "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json": "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/ir.json",
+        "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json": "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/manifest.json",
+        "registry/metadata/1.root.json": "registry/metadata/1.root.json",
+        "registry/metadata/1.snapshot.json": "registry/metadata/1.snapshot.json",
+        "registry/metadata/1.targets.json": "registry/metadata/1.targets.json",
+        "registry/metadata/1.timestamp.json": "bad-timestamp",
+        "registry/metadata/timestamp.json": "bad-timestamp",
+        "registry/targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json": "registry/targets/records/35657eeeb56fe90fcd8caf026695fe510c7bdad2118590109403c27b8fd6eaf0.loan-rules-1.0.0.json",
+        "registry/targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json": "registry/targets/records/3b8065de6416cd51ac9a3ce684110e523bce2efb700276bbda8b0fb633ced251.eligibility-1.2.0.json",
+        "registry/targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json": "registry/targets/statements/4a269a16e2565353d152d233333b80add72b29651e6b13308c922628eb9efcb1.eligibility-1.2.0.json",
+        "registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json": "registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json",
+        "trust-policy.json": "trust-policy.json"
+      },
+      "expected": "bad-result"
+    }
+  ]
+}

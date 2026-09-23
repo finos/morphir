@@ -1,0 +1,37 @@
+{
+  "content": {
+    "ir.json": "sha256:c39f0bf2b4e24ce75d6e1a550447c9222ee560152b5b53dd42b69399707bab77"
+  },
+  "dependencies": {
+    "example/eligibility": {
+      "packagePath": "example.com/finance/eligibility",
+      "versionRange": {
+        "maximumExclusive": "2.0.0",
+        "minimumInclusive": "1.0.0"
+      }
+    },
+    "example/sibling": {
+      "packagePath": "example.com/finance/sibling",
+      "versionRange": {
+        "maximumExclusive": "3.0.0",
+        "minimumInclusive": "1.0.0"
+      }
+    }
+  },
+  "exports": {
+    "eligibility": "eligibility"
+  },
+  "formatVersion": "0.1.0-draft.1",
+  "ir": {
+    "formatVersion": "4",
+    "packageName": "example/loan-rules",
+    "payload": {
+      "mediaType": "application/json",
+      "path": "ir.json",
+      "profile": "classic"
+    }
+  },
+  "kind": "Library",
+  "packagePath": "example.com/finance/loan-rules",
+  "version": "1.0.0"
+}

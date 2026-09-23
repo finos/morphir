@@ -6,8 +6,9 @@ Run from the repository root:
 morphir itest examples --filter package/local-library-restore
 ```
 
-The scenario initializes explicit trust, resolves an exact published root into a
-new complete lock, restores both Libraries, generates Gleam from the restored eligibility provider and compiles that
+The scenario initializes explicit trust, refreshes authenticated registry metadata,
+resolves an exact published root into a new complete lock, refreshes again without
+changing the lock, restores both Libraries, generates Gleam from the restored eligibility provider and compiles that
 source in the consumer project. It then freshly authorizes a second exact replay.
 The integration driver copies this directory into an isolated workspace.
 
@@ -27,6 +28,14 @@ has one eligible version per package; it does not demonstrate backtracking.
 Initial selection excludes yanked releases and refuses catalogs with revoked
 records. Full revocation transitions remain in the production-grade milestone.
 
+`morphir package refresh` authenticates the current timestamp, snapshot and targets
+and commits the accepted trust state. Its receipt reports the exact signed
+timestamp and snapshot digests. Refresh does not read package records, publisher
+envelopes or bundles, and grants no package authority. A later restore still
+verifies all package material. Refresh preserves existing locks; metadata that
+advances beyond their pins requires a separate resolution or update workflow.
+Authenticated revoked declarations are refused within this MVP boundary.
+
 This delivery supports one caller-controlled local registry, an existing
 output parent and a new output destination. Lock metadata pins must match the
 freshly authenticated view; older historical evidence is not supported by this
@@ -36,5 +45,5 @@ initialized explicitly and cannot be reset by repeating initialization.
 A missing, corrupt or unresolved store is refused. Do not delete established
 trust state to bypass a refusal. Automatic recovery, historical grants and full
 provider/power-loss qualification are tracked in finos/morphir#912. This example
-proves initial resolution, fresh restore and provider code generation/compilation; it does not claim
+proves explicit metadata refresh, initial resolution, fresh restore and provider code generation/compilation; it does not claim
 cross-package code linking or evaluation of the generated program.

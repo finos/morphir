@@ -1,0 +1,346 @@
+{
+  "signed": {
+    "_type": "targets",
+    "expires": "2100-01-01T00:00:00Z",
+    "spec_version": "1.0.36",
+    "targets": {
+      "records/child-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/child",
+              "version": "1.0.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "7fc4bf19877caacbcddca6e6764e2b4f1b07956d93f0317412416caa3f7a9187"
+        },
+        "length": 623
+      },
+      "records/child-1.1.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/child",
+              "version": "1.1.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "08b9d3c17d69313fb79de02f337e94d09deaa7133d88ea78902a361bbd1dca1c"
+        },
+        "length": 623
+      },
+      "records/eligibility-1.2.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "6ff10b5d4fe96b5c3bf567f9eb159b278998b2886f201fbdd445569f10f2b424"
+        },
+        "length": 787
+      },
+      "records/eligibility-1.3.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.3.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "4574e0d5afeceb9ac13158c4090117d5f90634c76bca184fb654a995276d54ee"
+        },
+        "length": 787
+      },
+      "records/eligibility-1.4.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.4.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "c5e62ad0aa9e8da6c8baa162f4fd07e51b150b9ea1dfe8897e2681b85759eeff"
+        },
+        "length": 938
+      },
+      "records/eligibility-1.9.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.9.0"
+            },
+            "status": "yanked"
+          }
+        },
+        "hashes": {
+          "sha256": "d51922be4d43955dbc106c042bc0d4c11bda03533618d13d9f5973233d55fab1"
+        },
+        "length": 787
+      },
+      "records/loan-rules-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "22aaf668eb648b67da0204d02bb6e212b3193571264908e92b1d8cd43aa56649"
+        },
+        "length": 947
+      },
+      "records/sibling-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "1.0.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "de169761477b072c339caf9f22a46faccdc663aa69ecf73242fb7e4128f9a2a3"
+        },
+        "length": 629
+      },
+      "records/sibling-1.1.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "1.1.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "bbbca38e706f38d251155929abc9c7f562019d95d83747cf9bf243b6b2e1eb9d"
+        },
+        "length": 629
+      },
+      "records/sibling-2.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryRelease",
+            "release": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "2.0.0"
+            },
+            "status": "active"
+          }
+        },
+        "hashes": {
+          "sha256": "50dc712fccce5390cc2b7b5d741218de636f04ee7563a4aec2da64d7e37150a4"
+        },
+        "length": 629
+      },
+      "statements/child-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/child",
+              "version": "1.0.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "1a54d917090e78cd63680209a7b251dc1c8c75931dbf51f4c76a95fcb5217835"
+        },
+        "length": 1014
+      },
+      "statements/child-1.1.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/child",
+              "version": "1.1.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "3f7141db7cbdb470dca4be1a4b0558f509f7698279ccd7155d9406d916dc8102"
+        },
+        "length": 1014
+      },
+      "statements/eligibility-1.2.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.2.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "68a8c3fe88996274da907614b558bc35125dd178a7c623494219392ef5e8deb0"
+        },
+        "length": 1226
+      },
+      "statements/eligibility-1.3.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.3.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "f8c8d323760a7677194799aeebd52988db52a95d46a9bf86158dd72b08606b14"
+        },
+        "length": 1226
+      },
+      "statements/eligibility-1.4.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.4.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "0283942a44fd4e45f85879b313c4e0ad9efd8b425349f3f0bdaa0d7618410c34"
+        },
+        "length": 1426
+      },
+      "statements/eligibility-1.9.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/eligibility",
+              "version": "1.9.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "6de9b6296cbda61d2c25354de4e86428f9dd2b2bd8b33f861990e1ceb3bd4ba4"
+        },
+        "length": 1226
+      },
+      "statements/loan-rules-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/loan-rules",
+              "version": "1.0.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "541365fb849bc9b20fa1861dbb7cce62b4b1783e134cfc7fb7840dc1e8a12e72"
+        },
+        "length": 1442
+      },
+      "statements/sibling-1.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "1.0.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "11082ad003caa80606d996cf4b7c5d2f55c41e515c61f3920aea22fca1a23087"
+        },
+        "length": 1022
+      },
+      "statements/sibling-1.1.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "1.1.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "972e08c7c7bdd5783d62faaa5575a07a01f1be481cbd14dc6c978ff9575c7dbd"
+        },
+        "length": 1022
+      },
+      "statements/sibling-2.0.0.json": {
+        "custom": {
+          "morphir": {
+            "formatVersion": "0.1.0-draft.3",
+            "kind": "LibraryReleaseStatement",
+            "release": {
+              "packagePath": "example.com/finance/sibling",
+              "version": "2.0.0"
+            }
+          }
+        },
+        "hashes": {
+          "sha256": "07646d30eae32c739bf6c2f8955479c62ac9642e2f076a4aeb17a5f3e7bb42bd"
+        },
+        "length": 1022
+      }
+    },
+    "version": 2
+  },
+  "signatures": [
+    {
+      "keyid": "b2758a474a6c30af3905b41b5a8d171192ec323ec79ebf2c4ce3a59c73743fdd",
+      "sig": "cb59e79b37aec229289cb1c32507f0032275de8fefde26bf6907651735aa8bf96596f4b8f07e77a22724e644b273ef85ee9b0d40036b71e81f69f24a48bde904"
+    }
+  ]
+}

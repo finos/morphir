@@ -1,0 +1,14 @@
+{
+  "payloadType": "application/vnd.morphir.library-release.v0.1.0-draft.3+json",
+  "payload": "eyJjb250ZW50RGlnZXN0Ijoic2hhMjU2OjhmMTRjYjNjODdlNjlhZTBhNGRmNWIzNjg4MTQzODlkNzZkYjYxNzdhN2Y1MjE0NjlhOTFlZmNlZTAyNGZiOGUiLCJkZXBlbmRlbmNpZXMiOlt7ImlyUGFja2FnZU5hbWUiOiJleGFtcGxlL2NoaWxkIiwicGFja2FnZVBhdGgiOiJleGFtcGxlLmNvbS9maW5hbmNlL2NoaWxkIiwidmVyc2lvblJhbmdlIjp7Im1heGltdW1FeGNsdXNpdmUiOiIyLjAuMCIsIm1pbmltdW1JbmNsdXNpdmUiOiIxLjEuMCJ9fSx7ImlyUGFja2FnZU5hbWUiOiJleGFtcGxlL3NpYmxpbmciLCJwYWNrYWdlUGF0aCI6ImV4YW1wbGUuY29tL2ZpbmFuY2Uvc2libGluZyIsInZlcnNpb25SYW5nZSI6eyJtYXhpbXVtRXhjbHVzaXZlIjoiMy4wLjAiLCJtaW5pbXVtSW5jbHVzaXZlIjoiMi4wLjAifX1dLCJmb3JtYXRWZXJzaW9uIjoiMC4xLjAtZHJhZnQuMyIsImlyUGFja2FnZU5hbWUiOiJleGFtcGxlL2VsaWdpYmlsaXR5Iiwia2luZCI6IkxpYnJhcnlSZWxlYXNlU3RhdGVtZW50IiwibWFuaWZlc3REaWdlc3QiOiJzaGEyNTY6ZDkwZjE2YmY0Y2U4ZWRlMzA2OWZhMDUwZTBmYjVlMWE5MjM1NGM3NTk2ODg2N2YxNDFiMjdkZGY3NjRjMjk1NCIsInJlbGVhc2UiOnsicGFja2FnZVBhdGgiOiJleGFtcGxlLmNvbS9maW5hbmNlL2VsaWdpYmlsaXR5IiwidmVyc2lvbiI6IjEuNC4wIn19",
+  "signatures": [
+    {
+      "keyid": "4bd74eeea636378d476d9e885a3ac0f610b8649d5be70fdb1e54e742a67d7384",
+      "sig": "lIUNkLlzkbllJ4Gu+T8/8YTLqnhAHZoNgBfJ5MpQpGxkcfMvj/YuspAjpqUQYcyZkL1ipSzk0na0PMqr5T+FCA=="
+    },
+    {
+      "keyid": "ea3cf4e0f710cf0198b289c99105e784ff2403ae6920d1035d6dbf51e7e48dd8",
+      "sig": "f0f+TBcP3tSc5VsF1DP3rPN8GamNnawYvRw4Um70CQLKMAp0V4uck4EmFgBbYZRgOcWHM2O2537mpY/s93f9CA=="
+    }
+  ]
+}

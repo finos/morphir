@@ -1,0 +1,36 @@
+{
+  "outcome": "restored",
+  "packages": [
+    {
+      "packagePath": "example.com/finance/eligibility",
+      "version": "1.2.0",
+      "directory": "example.com/finance/eligibility/1.2.0"
+    },
+    {
+      "packagePath": "example.com/finance/loan-rules",
+      "version": "1.0.0",
+      "directory": "example.com/finance/loan-rules/1.0.0"
+    }
+  ],
+  "output": "present",
+  "outputFiles": [
+    {
+      "path": "example.com/finance/eligibility/1.2.0/ir.json",
+      "sha256": "sha256:243e640848e5ee728224c0bc9090c67cf434d9814cec77745daad918119ceb43"
+    },
+    {
+      "path": "example.com/finance/eligibility/1.2.0/manifest.json",
+      "sha256": "sha256:0a91b5e3a5e377fa4557212fc5b561a66067d67292123136575e46ce5a3fd0b7"
+    },
+    {
+      "path": "example.com/finance/loan-rules/1.0.0/ir.json",
+      "sha256": "sha256:b1884eeb8364f96c6405cc45f2fe07a006c22f066a4136656ad05dda9c9a94cc"
+    },
+    {
+      "path": "example.com/finance/loan-rules/1.0.0/manifest.json",
+      "sha256": "sha256:e98ea924e66b96a5050e2c3a690f9534db32f5971401d2965791546872ecb7a3"
+    }
+  ],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

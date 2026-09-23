@@ -1,7 +1,7 @@
 ---
 version: 1
 title: Resolve, restore and consume signed local Libraries
-description: Provision explicit package trust, resolve a published root into a verified full lock, restore its graph, and generate and compile a restored Library in a consumer project.
+description: Provision explicit package trust, refresh authenticated metadata, resolve a published root into a verified full lock, restore its graph, and generate and compile a restored Library in a consumer project.
 tags: [area:package, area:generate, language:gleam, backend:gleam, ir:v4, kind:positive, suite:offline, workspace:directory]
 provider: rego
 ---
@@ -52,6 +52,52 @@ passes if {
 }
 ```
 
+### Refresh the registry metadata
+
+Refresh authenticates the current metadata and records the accepted trust state.
+Its digests identify the exact signed timestamp and snapshot bytes. It does not
+read package bundles, authorize package use or change a lock.
+
+```yaml morphir:command
+id: refresh
+name: Authenticate current registry metadata
+timeout_seconds: 60
+stdout_json: true
+```
+
+```sh
+morphir package refresh --policy fixture/trust-policy.json --registry fixture/registry --state trust-state --assurance portable --json
+```
+
+```yaml morphir:assertion
+id: refresh-check
+command: refresh
+entrypoints: [data.refreshed.passes]
+```
+
+```rego
+package refreshed
+import rego.v1
+
+passes if {
+    input.exitCode == 0
+    input.stdoutJson == {
+        "profile": "local-library-mvp",
+        "profileVersion": "0.1.0-draft.1",
+        "registry": "local",
+        "timestampDigest": "sha256:42ef09963e40de1cff6de42d5680d4c67e9f337693fb804af2873f5ee4d19636",
+        "snapshotDigest": "sha256:9cc590f7328e43e14597bab4bfc82e2192457e7bec07684d63a622b8f97bbe0e"
+    }
+}
+```
+
+```yaml morphir:golden
+id: refresh-preserves-fixture-lock
+command: refresh
+actual: fixture/morphir.lock
+expected_file: fixture/morphir.lock
+```
+
 ### Resolve the published root into a new lock
 
 Resolve starts from an exact published release. It authenticates the registry,
@@ -72,6 +118,53 @@ morphir package resolve --root example.com/finance/loan-rules@1.0.0 --policy fix
 ```yaml morphir:golden
 id: resolved-lock
 command: resolve
+actual: consumer/morphir.lock
+expected_file: golden/resolve.lock.json
+```
+
+### Refresh again without changing the generated lock
+
+Refresh is explicit and independent of resolution. Repeating it authenticates
+the same signed metadata again and preserves the generated lock exactly.
+If the registry advances, its new metadata digests do not rewrite an older lock;
+exact restore still checks that lock's pins against the authenticated view.
+
+```yaml morphir:command
+id: refresh-locked
+name: Refresh metadata while retaining the complete lock
+timeout_seconds: 60
+stdout_json: true
+```
+
+```sh
+morphir package refresh --policy fixture/trust-policy.json --registry fixture/registry --state trust-state --assurance portable --json
+```
+
+```yaml morphir:assertion
+id: refresh-locked-check
+command: refresh-locked
+entrypoints: [data.locked_refresh.passes]
+```
+
+```rego
+package locked_refresh
+import rego.v1
+
+passes if {
+    input.exitCode == 0
+    input.stdoutJson == {
+        "profile": "local-library-mvp",
+        "profileVersion": "0.1.0-draft.1",
+        "registry": "local",
+        "timestampDigest": "sha256:42ef09963e40de1cff6de42d5680d4c67e9f337693fb804af2873f5ee4d19636",
+        "snapshotDigest": "sha256:9cc590f7328e43e14597bab4bfc82e2192457e7bec07684d63a622b8f97bbe0e"
+    }
+}
+```
+
+```yaml morphir:golden
+id: refresh-preserves-generated-lock
+command: refresh-locked
 actual: consumer/morphir.lock
 expected_file: golden/resolve.lock.json
 ```
