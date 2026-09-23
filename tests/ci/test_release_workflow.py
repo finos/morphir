@@ -144,9 +144,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn('EXPECTED_TAG="v${VERSION}"', self.workflow)
         self.assertIn('if [ "$TAG" != "$EXPECTED_TAG" ]; then', self.workflow)
 
-    def test_windows_git_long_paths_are_enabled_before_cargo_setup(self) -> None:
+    def test_windows_git_long_paths_are_enabled_before_submodule_checkout(self) -> None:
         acceptance = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
-        for workflow in (self.workflow, acceptance):
+        for workflow, checkout in (
+            (self.workflow.split("  package-cli:", 1)[1], "name: Checkout code"),
+            (acceptance.split("  qualify:", 1)[1], "name: Check out the published source tag"),
+        ):
             with self.subTest(workflow=workflow.splitlines()[0]):
                 self.assertIn("name: Configure Windows Git paths", workflow)
                 setup = workflow.split("name: Configure Windows Git paths", 1)[1].split("\n      - name:", 1)[0]
@@ -154,7 +157,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertIn("git config --global core.longpaths true", setup)
                 self.assertIn("CARGO_NET_GIT_FETCH_WITH_CLI=true", setup)
                 self.assertIn("$env:GITHUB_ENV", setup)
-                self.assertLess(workflow.index("name: Configure Windows Git paths"), workflow.index("name: Install Rust"))
+                self.assertLess(workflow.index("name: Configure Windows Git paths"), workflow.index(checkout))
 
     def test_cli_build_covers_supported_targets(self) -> None:
         targets = {
