@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "trust-state",
+  "reason": "missing-established-database",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

@@ -3,7 +3,7 @@
 
 - **Usage:** `morphir mck package mvp-run <FLAGS>`
 
-Run the admitted local Library MVP bootstrap cases through an explicit adapter
+Run the admitted local Library MVP fresh-restore cases through an explicit adapter
 
 ## Flags
 - **`--source <DIR>`** — Repository root containing the closed MVP inventory and signed fixtures

@@ -656,6 +656,7 @@ mod tests {
                     compile: true,
                     incremental: false,
                     fragments: false,
+                    multi_document: false,
                 }),
                 ..Default::default()
             }
@@ -746,6 +747,7 @@ mod tests {
                     compile: true,
                     incremental: false,
                     fragments: false,
+                    multi_document: false,
                 }),
                 ..Default::default()
             }

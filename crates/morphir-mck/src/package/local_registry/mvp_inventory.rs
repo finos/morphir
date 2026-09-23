@@ -16,11 +16,24 @@ const MAX_FILE_BYTES: u64 = 1_048_576;
 const MAX_TOTAL_BYTES: usize = 4_194_304;
 const PROFILE: &str = "local-library-mvp";
 const VERSION: &str = "0.1.0-draft.1";
-const BOOTSTRAP_CASES: [&str; 2] = [
+const RESTORE_CASES: [&str; 15] = [
     "mvp.restore.fresh-two-libraries",
     "mvp.restore.bad-timestamp-signature",
+    "mvp.restore.bad-library-content",
+    "mvp.restore.unauthorized-publisher",
+    "mvp.restore.unsafe-acquisition-path",
+    "mvp.restore.uninitialized-state",
+    "mvp.restore.occupied-output",
+    "mvp.restore.historical-policy-unsupported",
+    "mvp.restore.expired-timestamp",
+    "mvp.restore.missing-established-state",
+    "mvp.restore.corrupt-state",
+    "mvp.restore.uncertain-state",
+    "mvp.restore.evidence-digest-mismatch",
+    "mvp.restore.evidence-path-mismatch",
+    "mvp.restore.undeclared-bundle-entry",
 ];
-const BOOTSTRAP_INPUTS: [&str; 15] = [
+const RESTORE_INPUTS: [&str; 15] = [
     "morphir.lock",
     "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
     "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/manifest.json",
@@ -37,6 +50,7 @@ const BOOTSTRAP_INPUTS: [&str; 15] = [
     "registry/targets/statements/abef7639162c3cb96cf6df5aa87aa46ef63d3c0d171719b3445d4d0f8d05494a.loan-rules-1.0.0.json",
     "trust-policy.json",
 ];
+const EXTRA_BUNDLE_INPUT: &str = "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/undeclared.txt";
 
 /// Reads only the MVP inventory and its fixture subtree from a repository.
 /// Canonicalization rejects symlinks that leave the admitted fixture root.
@@ -117,8 +131,33 @@ enum AssetKind {
 struct Case {
     id: String,
     operation: String,
+    environment: MvpEnvironment,
     inputs: BTreeMap<String, String>,
     expected: String,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct MvpEnvironment {
+    trust_state: TrustState,
+    output: OutputSetup,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum TrustState {
+    Initialized,
+    Uninitialized,
+    MissingDatabase,
+    CorruptDatabase,
+    UnresolvedOperation,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum OutputSetup {
+    Absent,
+    Sentinel,
 }
 
 /// Owns exactly the bytes authenticated during admission. A later adapter
@@ -133,6 +172,7 @@ pub struct AdmittedMvpInventory {
 pub struct AdmittedMvpCase {
     id: String,
     operation: String,
+    environment: MvpEnvironment,
     inputs: BTreeMap<String, Vec<u8>>,
     expected: Vec<u8>,
 }
@@ -144,6 +184,7 @@ pub struct AdmittedMvpCase {
 pub struct MvpRequest {
     op: &'static str,
     profile: &'static str,
+    environment: MvpEnvironment,
     files: Vec<MvpInputFile>,
 }
 
@@ -184,6 +225,7 @@ impl AdmittedMvpCase {
         MvpRequest {
             op: "restore-local-library",
             profile: "local-library-mvp:0.1.0-draft.1",
+            environment: self.environment,
             files: self
                 .inputs
                 .iter()
@@ -202,20 +244,20 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
         return Err("MVP index size limit exceeded".into());
     }
     let manifest: Manifest = serde_json::from_slice(&index_bytes).map_err(|e| e.to_string())?;
-    if manifest.assets.len() > 32 {
+    if manifest.assets.len() > 64 {
         return Err("MVP asset count limit exceeded".into());
     }
     if manifest.format_version != VERSION
         || manifest.profile != PROFILE
-        || manifest.scope != "bootstrap"
+        || manifest.scope != "fresh-exact-lock-restore"
     {
         return Err("unsupported MVP inventory profile, version, or scope".into());
     }
     let required: BTreeSet<_> = manifest.required_cases.iter().map(String::as_str).collect();
-    if manifest.required_cases.len() != BOOTSTRAP_CASES.len()
-        || required != BOOTSTRAP_CASES.into_iter().collect()
+    if manifest.required_cases.len() != RESTORE_CASES.len()
+        || required != RESTORE_CASES.into_iter().collect()
     {
-        return Err("MVP bootstrap required-case inventory differs from the profile".into());
+        return Err("MVP restore required-case inventory differs from the profile".into());
     }
 
     let mut total_bytes = index_bytes.len();
@@ -271,8 +313,16 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
             ));
         }
         let mounted: BTreeSet<_> = case.inputs.keys().map(String::as_str).collect();
-        if mounted != BOOTSTRAP_INPUTS.into_iter().collect() {
-            return Err(format!("incomplete MVP bootstrap inputs in {}", case.id));
+        let required_mounts: BTreeSet<_> = RESTORE_INPUTS.into_iter().collect();
+        if !required_mounts.is_subset(&mounted)
+            || mounted.len() > required_mounts.len() + 1
+            || mounted.iter().any(|mount| {
+                !required_mounts.contains(mount)
+                    && *mount != "initialization-policy.json"
+                    && *mount != EXTRA_BUNDLE_INPUT
+            })
+        {
+            return Err(format!("incomplete MVP restore inputs in {}", case.id));
         }
         let mut inputs = BTreeMap::new();
         for (mount, id) in case.inputs {
@@ -280,6 +330,7 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
             if !mount.starts_with("registry/")
                 && mount != "trust-policy.json"
                 && mount != "morphir.lock"
+                && mount != "initialization-policy.json"
             {
                 return Err(format!("invalid MVP input mount {mount}"));
             }
@@ -301,6 +352,7 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
         cases.push(AdmittedMvpCase {
             id: case.id,
             operation: case.operation,
+            environment: case.environment,
             inputs,
             expected: expected.clone(),
         });

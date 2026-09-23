@@ -1121,7 +1121,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete dir type=path
             complete file type=path
         }
-        cmd mvp-run display_order=2 args_override_self=#false help="Run the admitted local Library MVP bootstrap cases through an explicit adapter" unknown_flags=value {
+        cmd mvp-run display_order=2 args_override_self=#false help="Run the admitted local Library MVP fresh-restore cases through an explicit adapter" unknown_flags=value {
             flag --source help="Repository root containing the closed MVP inventory and signed fixtures" required=#true {
                 arg <DIR>
             }
