@@ -37,6 +37,13 @@ fn repository_name(name: &str) -> miette::Result<RepositoryName> {
     RepositoryName::parse(name).map_err(|error| miette::miette!("Invalid repository name: {error}"))
 }
 
+/// The host version an extension's `requires.host` is checked against: this CLI.
+fn host_version() -> morphir_workspace::Version {
+    env!("CARGO_PKG_VERSION")
+        .parse()
+        .expect("the CLI version is SemVer")
+}
+
 fn install_selected(
     home: &MorphirHome,
     repository: &str,
@@ -44,15 +51,16 @@ fn install_selected(
     requested: Selection,
 ) -> miette::Result<morphir_distribution::InstalledExtension> {
     let repository = repository_name(repository)?;
+    let host = host_version();
     let selected = ExtensionRepositories::new(home)
-        .resolve(&repository, id, requested, &Platform::current())
+        .resolve(&repository, id, requested, &Platform::current(), &host)
         .map_err(|error| {
             miette::miette!(
                 "Failed to resolve extension '{id}' from repository '{repository}': {error}"
             )
         })?;
     ExtensionInstaller::new(home)
-        .install(selected)
+        .install(selected, &host)
         .map_err(|error| miette::miette!("Failed to install extension '{id}': {error}"))
 }
 
