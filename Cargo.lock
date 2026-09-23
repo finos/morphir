@@ -4770,6 +4770,7 @@ dependencies = [
  "morphir-okf",
  "morphir-opa",
  "morphir-package",
+ "morphir-runtime",
  "morphir-workspace",
  "owo-colors",
  "pulldown-cmark",
@@ -4981,6 +4982,9 @@ dependencies = [
 name = "morphir-evaluator"
 version = "0.4.0-beta.5"
 dependencies = [
+ "morphir-core",
+ "morphir-runtime",
+ "semver",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
@@ -5005,6 +5009,7 @@ name = "morphir-gleam-binding"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "cap-fs-ext 4.0.3",
  "cap-std 4.0.3",
  "chrono",
@@ -5014,6 +5019,7 @@ dependencies = [
  "extism-pdk",
  "getrandom 0.2.17",
  "gleam-core",
+ "im",
  "indexmap",
  "morphir-common",
  "morphir-core",
@@ -5022,6 +5028,7 @@ dependencies = [
  "num-bigint 0.5.1",
  "percent-encoding",
  "pretty",
+ "rmp-serde",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -5164,6 +5171,13 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "morphir-runtime"
+version = "0.4.0-beta.5"
+dependencies = [
+ "morphir-core",
 ]
 
 [[package]]

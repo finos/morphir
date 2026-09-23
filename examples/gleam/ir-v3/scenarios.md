@@ -29,7 +29,7 @@ captures:
 ```
 
 ```sh
-morphir compile --ir-version 3 --json
+morphir compile --ir-version 3 --types-only --json
 ```
 
 ```yaml morphir:assertion

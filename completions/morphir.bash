@@ -290,7 +290,7 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
     }
 }
 cmd eval display_order=5 args_override_self=#false help="Evaluate a program through a registered native provider" unknown_flags=error {
-    flag --request help="Path to a version 1 evaluation request JSON file" required=#true {
+    flag --request help="Path to a version 1 or native IR draft evaluation request JSON file" required=#true {
         arg <FILE>
     }
     flag --json help="Print the versioned evaluation report as JSON"
@@ -336,6 +336,7 @@ cmd compile display_order=7 args_override_self=#false help="Compile source code 
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     flag --no-cache help="Ignore the incremental compile cache for this run"
+    flag --types-only help="Compile type declarations only, omitting value bodies"
     flag --elm-doc-comments help="How Elm doc comments become IR doc text. Overrides [frontend.elm] doc_comments and MORPHIR_FRONTEND__ELM__DOC_COMMENTS" {
         arg <MODE> {
             choices morphir-elm trimmed

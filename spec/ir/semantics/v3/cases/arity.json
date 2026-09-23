@@ -1,0 +1,11 @@
+{
+  "rule": "morphir/ir-specification:morphir/validation/arity#check-arity",
+  "subjectFormatVersion": "3.0.0",
+  "cases": [
+    { "id": "zero", "expectedArity": 0, "arguments": [], "expected": { "kind": "Valid" } },
+    { "id": "one", "expectedArity": 1, "arguments": ["Unit"], "expected": { "kind": "Valid" } },
+    { "id": "two", "expectedArity": 2, "arguments": ["Unit", "Unit"], "expected": { "kind": "Valid" } },
+    { "id": "too-few", "expectedArity": 1, "arguments": [], "expected": { "kind": "Mismatch", "expected": 1, "actual": 0 } },
+    { "id": "too-many", "expectedArity": 1, "arguments": ["Unit", "Unit"], "expected": { "kind": "Mismatch", "expected": 1, "actual": 2 } }
+  ]
+}

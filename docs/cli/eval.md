@@ -6,5 +6,5 @@
 Evaluate a program through a registered native provider
 
 ## Flags
-- **`--request <FILE>`** — Path to a version 1 evaluation request JSON file
+- **`--request <FILE>`** — Path to a version 1 or native IR draft evaluation request JSON file
 - **`--json`** — Print the versioned evaluation report as JSON

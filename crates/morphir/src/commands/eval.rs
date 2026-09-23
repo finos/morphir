@@ -4,12 +4,13 @@ use clap::Args;
 use miette::{Context, IntoDiagnostic, Result};
 #[cfg(feature = "rego")]
 use morphir_evaluator::Evaluator;
+use morphir_evaluator::ir_draft::IrEvaluationRequest;
 use morphir_evaluator::{EvaluationOutcome, EvaluationReport, EvaluationRequest, ProviderId};
 use std::{fs, path::PathBuf};
 
 #[derive(Args, Clone, Debug)]
 pub struct EvalArgs {
-    /// Path to a version 1 evaluation request JSON file
+    /// Path to a version 1 or native IR draft evaluation request JSON file
     #[arg(long, value_name = "FILE")]
     pub request: PathBuf,
     /// Print the versioned evaluation report as JSON
@@ -21,6 +22,38 @@ pub fn run_eval(args: EvalArgs) -> Result<()> {
     let source = fs::read(&args.request)
         .into_diagnostic()
         .wrap_err_with(|| format!("cannot read evaluation request {}", args.request.display()))?;
+    if serde_json::from_slice::<serde_json::Value>(&source)
+        .ok()
+        .and_then(|request| request.get("version").cloned())
+        .is_some_and(|version| version.is_string())
+    {
+        let request = IrEvaluationRequest::from_slice(&source)
+            .into_diagnostic()
+            .wrap_err("invalid evaluation request")?;
+        let report = request.evaluate();
+        if args.json {
+            println!("{}", serde_json::to_string(&report).into_diagnostic()?);
+        } else {
+            for result in &report.results {
+                match &result.value {
+                    Some(value) => println!(
+                        "{}: {}",
+                        result.entrypoint,
+                        serde_json::to_string(value).into_diagnostic()?
+                    ),
+                    None => println!(
+                        "{}: error: {}",
+                        result.entrypoint,
+                        result.message.as_deref().unwrap_or("unknown error")
+                    ),
+                }
+            }
+        }
+        if report.has_errors() {
+            miette::bail!("evaluation failed; see the evaluation report");
+        }
+        return Ok(());
+    }
     let request: EvaluationRequest = serde_json::from_slice(&source)
         .into_diagnostic()
         .wrap_err("invalid evaluation request")?;

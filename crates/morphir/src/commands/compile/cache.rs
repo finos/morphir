@@ -278,6 +278,7 @@ impl CompileCache {
             interface_digest: cached.interface_digest?,
             depends_on: cached.depends_on,
             ir: cached.ir?,
+            frontend_state: cached.frontend_state,
         })
     }
 
@@ -375,6 +376,7 @@ mod tests {
             interface_digest: Some(format!("sha256:interface-{name}")),
             depends_on: vec!["My.Other".into()],
             ir: Some(json!({ "module": name })),
+            frontend_state: None,
             diagnostics: Vec::new(),
         }
     }
@@ -384,10 +386,9 @@ mod tests {
     fn results_written_come_back_as_a_baseline() {
         let temp = tempfile::tempdir().unwrap();
         let cache = CompileCache::open(temp.path(), "morphir-elm-native", "example/domain");
-        let results = vec![
-            module("My.Other", ModuleStatus::Compiled),
-            module("My.Types", ModuleStatus::Compiled),
-        ];
+        let mut first_result = module("My.Other", ModuleStatus::Compiled);
+        first_result.frontend_state = Some(json!("typed-interface"));
+        let results = vec![first_result, module("My.Types", ModuleStatus::Compiled)];
 
         cache
             .write_results(&key(), context_digest(), &results)
@@ -408,6 +409,7 @@ mod tests {
         assert_eq!(first.interface_digest, "sha256:interface-My.Other");
         assert_eq!(first.depends_on, vec!["My.Other".to_owned()]);
         assert_eq!(first.ir, json!({ "module": "My.Other" }));
+        assert_eq!(first.frontend_state, Some(json!("typed-interface")));
     }
 
     // Requirement: results compiled under another key describe something else,

@@ -9,4 +9,7 @@ description = "Host-independent Morphir evaluation request and report contract"
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+semver = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
+morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
+morphir-runtime = { path = "../../ecosystem/morphir-rust/crates/morphir-runtime" }

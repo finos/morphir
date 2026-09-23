@@ -700,7 +700,7 @@ Evaluate a program through a registered native provider
 .PP
 .TP
 \fB\-\-request\fR \fI<FILE>\fR
-Path to a version 1 evaluation request JSON file
+Path to a version 1 or native IR draft evaluation request JSON file
 .TP
 \fB\-\-json\fR
 Print the versioned evaluation report as JSON
@@ -771,6 +771,9 @@ Output as JSON Lines (streaming)
 .TP
 \fB\-\-no\-cache\fR
 Ignore the incremental compile cache for this run
+.TP
+\fB\-\-types\-only\fR
+Compile type declarations only, omitting value bodies
 .TP
 \fB\-\-elm\-doc\-comments\fR \fI<MODE>\fR
 How Elm doc comments become IR doc text. Overrides [frontend.elm] doc_comments and MORPHIR_FRONTEND__ELM__DOC_COMMENTS

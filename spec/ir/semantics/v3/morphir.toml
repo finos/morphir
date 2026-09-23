@@ -1,0 +1,6 @@
+[project]
+name = "morphir/ir-specification"
+source_directory = "src"
+
+[frontend]
+language = "gleam"

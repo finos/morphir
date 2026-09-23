@@ -110,6 +110,9 @@ enum Commands {
         /// Ignore the incremental compile cache for this run
         #[arg(long)]
         no_cache: bool,
+        /// Compile type declarations only, omitting value bodies
+        #[arg(long)]
+        types_only: bool,
         /// How Elm doc comments become IR doc text. Overrides [frontend.elm] doc_comments and MORPHIR_FRONTEND__ELM__DOC_COMMENTS.
         #[arg(long, value_name = "MODE", value_parser = ["morphir-elm", "trimmed"])]
         elm_doc_comments: Option<String>,
@@ -951,6 +954,7 @@ fn compile_intent(
             json,
             json_lines,
             no_cache,
+            types_only,
             elm_doc_comments,
             elm_ordering,
         } => Some((
@@ -966,6 +970,7 @@ fn compile_intent(
                 json: *json,
                 json_lines: *json_lines,
                 no_cache: *no_cache,
+                types_only: *types_only,
                 elm_modes: commands::compile::ElmModeFlags {
                     doc_comments: elm_doc_comments.clone(),
                     ordering: elm_ordering.clone(),
@@ -1012,6 +1017,7 @@ fn compile_intent(
                     // Reuse the workspace compile cache, as the generic
                     // compile command does.
                     no_cache: false,
+                    types_only: false,
                     // The Elm compatibility modes never reach a Gleam provider.
                     elm_modes: Default::default(),
                     out: out.clone(),

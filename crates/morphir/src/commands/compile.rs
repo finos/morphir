@@ -57,6 +57,8 @@ pub struct CompileOptions {
     pub json_lines: bool,
     /// Ignore the workspace's incremental compile cache for this run.
     pub no_cache: bool,
+    /// Compile declarations without executable value bodies.
+    pub types_only: bool,
     /// Elm compatibility modes from the command line, which override
     /// `[frontend.elm]` and the environment. See [`elm_modes`].
     pub elm_modes: elm_modes::Flags,
@@ -503,6 +505,7 @@ mod incremental_tests {
             interface_digest: Some("sha256:interface".into()),
             depends_on: Vec::new(),
             ir: Some(serde_json::json!({ "module": "My.Other" })),
+            frontend_state: None,
             diagnostics: Vec::new(),
         }];
         assert!(cache_write_is_warranted(&compile_result(false, results)));
