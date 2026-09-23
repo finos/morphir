@@ -46,7 +46,10 @@ explicit external adapter:
 
 ```sh
 morphir mck package mvp-run --source . \
-  --adapter /path/to/morphir-mck-adapter --adapter-arg package-mvp
+  --adapter /path/to/morphir-mck-adapter --adapter-arg package-mvp \
+  --report mvp-report.json
+morphir mck package mvp-report check mvp-report.json --source .
+morphir mck package mvp-report render mvp-report.json --output mvp-report.html
 ```
 
 The JSON-lines session advertises package contract `0.1.0-draft.3`, the MVP
@@ -60,8 +63,16 @@ Admission rejects oversized individual assets and oversized total input before
 request construction.
 Missing capability, malformed response, transport failure, or an unexecuted
 required case fails the run. `mise run package:mvp-check` must report
-70 pass, 0 fail and 0 kit-error. The consolidated prerelease JSON/offline HTML report and downloaded-binary
-qualification remain separate MVP gates.
+70 pass, 0 fail and 0 kit-error. The `--report` option writes a single
+`0.1.0-draft.1` JSON document even when execution fails. It contains driver,
+adapter command and time limits, negotiated capabilities, profile, all-case
+selection, the admitted kit hash, ordered required records and diagnostics.
+`mvp-report check` reloads the independent inventory and rejects a changed kit
+hash, missing, extra or reordered records, invalid capabilities and any case or
+session failure. Rendering accepts a valid failing report to show diagnostics;
+the standalone HTML does not certify compatibility. The JSON stays authoritative.
+This prerelease shape is not frozen as a stable report contract. Downloaded-binary
+qualification is the subsequent MVP gate.
 
 All four parent gates now use the native runner: `package:check`,
 `package:check:rust`, `package:resolution-check` and `package:resolution-check:rust`.

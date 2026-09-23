@@ -1145,6 +1145,9 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             flag --adapter-arg help="An argument for the adapter; repeat for more" var=#true allow_hyphen_values=#true {
                 arg <ARG>… var=#true
             }
+            flag --report help="Write one versioned JSON report, including failures, to this file" {
+                arg <FILE>
+            }
             flag --timeout help="Maximum duration of one adapter request and response, in milliseconds" default="30000" {
                 arg <MS>
             }
@@ -1152,6 +1155,25 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
                 arg <MS>
             }
             complete dir type=path
+            complete file type=path
+        }
+        cmd mvp-report display_order=3 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check or render a versioned local Library MVP report" unknown_flags=error {
+            cmd check display_order=0 args_override_self=#false help="Compare every report record with the independently admitted MVP inventory" unknown_flags=error {
+                flag --source help="Repository root containing the independent admitted MVP inventory" required=#true {
+                    arg <DIR>
+                }
+                arg <REPORT> help="Versioned local Library MVP JSON report"
+                complete report type=path
+                complete dir type=path
+            }
+            cmd render display_order=1 args_override_self=#false help="Render a standalone offline HTML view of a versioned MVP report" unknown_flags=error {
+                flag "-o --output" help="Standalone HTML output file; cannot overwrite the JSON input" required=#true {
+                    arg <FILE>
+                }
+                arg <REPORT> help="Versioned local Library MVP JSON report"
+                complete report type=path
+                complete file type=path
+            }
         }
     }
     cmd report display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
