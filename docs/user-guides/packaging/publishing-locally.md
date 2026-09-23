@@ -17,10 +17,61 @@ or [Trust explained simply](trust-explained.md) first.
 :::caution Early access: publisher tooling is not yet available
 This guide describes **Morphir CLI v0.4.0-beta.5**. It has no public command to
 initialize a model-package registry, sign a release, or publish a Library. This
-article explains the publication inputs and how to try a prepared local registry.
-It is not a runnable recipe for publishing a new custom release. The format and
-future publishing workflow may change.
+article also shows the newer source-built preview separately. The beta.5 steps
+below explain the publication inputs and how to try a prepared local registry;
+they do not publish a custom release. Formats and workflows may change.
 :::
+
+## Source-built CLI preview
+
+The source-built CLI can publish a dependency-free classic V4 Library to an
+explicitly initialized local registry on **macOS**. This path is not in
+v0.4.0-beta.5; publication on other platforms awaits qualification. Continue
+from [Create a Library](creating-a-library.md#source-built-cli-preview) in the
+same shell, where `$work` points to a temporary directory. The checked-in
+[`hello` example](https://github.com/finos/morphir/tree/main/examples/package/local-library-publish)
+includes `bootstrap.mjs`, a small helper that builds the public root and policy
+documents for this tutorial. The CLI does not create or implicitly trust an
+authority.
+
+First make a publisher key and four distinct registry-role keys. Each file is
+an explicit Ed25519 seed, kept in a private directory outside the checkout:
+
+```sh
+mkdir -m 700 "$work/keys"
+expires=$(node bootstrap.mjs expiry)
+for role in publisher root targets snapshot timestamp; do
+  openssl rand -hex 32 > "$work/keys/$role.key"
+  chmod 600 "$work/keys/$role.key"
+  morphir --no-banner package registry key-info --key-file "$work/keys/$role.key" --json > "$work/$role-info.json"
+done
+node bootstrap.mjs root "$expires" "$work/root-info.json" "$work/targets-info.json" "$work/snapshot-info.json" "$work/timestamp-info.json" > "$work/unsigned-root.json"
+morphir package registry sign-metadata --input "$work/unsigned-root.json" --key-file "$work/keys/root.key" --output "$work/root.json"
+node bootstrap.mjs policy "$work/root.json" "$work/publisher-info.json" > "$work/policy.json"
+```
+
+The policy pins the **exact signed root bytes** and authorizes only the tutorial
+publisher key for `example.com`. Keep the five seed files private; the consumer
+receives only `root.json` and `policy.json`. The helper chooses an expiry one
+year from now for this tutorial; set your own renewal policy for real use.
+
+Now sign and publish the release:
+
+```sh
+morphir package sign --bundle "$work/hello-bundle" --key-file "$work/keys/publisher.key" --output "$work/hello-release"
+morphir package registry init --root "$work/root.json" --policy "$work/policy.json" --registry "$work/registry" --publisher-state "$work/publisher-state"
+morphir package registry prepare --bundle "$work/hello-bundle" --release "$work/hello-release" --policy "$work/policy.json" --registry "$work/registry" --publisher-state "$work/publisher-state" --expires "$expires" --output "$work/proposal-draft"
+morphir package registry sign-proposal --draft "$work/proposal-draft/draft.json" --targets-key-file "$work/keys/targets.key" --snapshot-key-file "$work/keys/snapshot.key" --timestamp-key-file "$work/keys/timestamp.key" --output "$work/proposal.json"
+morphir package publish --bundle "$work/hello-bundle" --release "$work/hello-release" --predecessor "$work/proposal-draft/predecessor.json" --proposal "$work/proposal.json" --policy "$work/policy.json" --registry "$work/registry" --publisher-state "$work/publisher-state"
+```
+
+`prepare` binds the draft to the current registry view. If another writer publishes
+first, prepare and sign a new proposal; `publish` will not silently change the
+old one. Keep `publisher-state` for restart and recovery. A second project can
+use **only public** `root.json` and `policy.json` to initialize trust, then
+`resolve` and `restore` the release as shown in
+[Installing and using Libraries](installing-and-using.md). The
+[CLI reference](../../cli/package/registry.md) describes the exact command inputs.
 
 ## What publication needs
 

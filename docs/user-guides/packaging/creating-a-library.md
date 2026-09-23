@@ -18,6 +18,38 @@ this release. The steps below work with bundle files directly and do not constit
 a complete publication workflow.
 :::
 
+## Source-built CLI preview
+
+The source-built CLI now has an early authoring path for a **dependency-free classic
+JSON V4** Library. This command is not in v0.4.0-beta.5. The checked-in
+[`hello` publication example](https://github.com/finos/morphir/tree/main/examples/package/local-library-publish)
+starts with Gleam source and this `authoring.json`:
+
+```json
+{
+  "packagePath": "example.com/finance/hello",
+  "version": "1.0.0",
+  "dependencies": {},
+  "exports": { "main": "main" }
+}
+```
+
+From the source checkout, compile and create a new bundle directory:
+
+```sh
+cd examples/package/local-library-publish
+work=$(mktemp -d)
+morphir compile --ir-version 4 --output "$work/compiled"
+morphir package create --ir "$work/compiled/morphir-ir.json" --manifest-input authoring.json --output "$work/hello-bundle"
+```
+
+The command checks the IR identity and exports, derives the exact-byte digest,
+and writes `manifest.json` beside `ir.json`. It rejects a nonempty dependency map
+in this first authoring profile. An existing output path is left untouched.
+The [CLI reference](../../cli/package/create.md) lists all options. Continue with
+the source-built steps in [publishing locally](publishing-locally.md#source-built-cli-preview)
+using the same shell and `$work` directory.
+
 ## 1. Choose the release identity
 
 Our example has these names:

@@ -24,6 +24,33 @@ Relocate the out root, which defaults to .morphir/out under the workspace root. 
 \fBpackage\fR
 Restore freshly authenticated Libraries from a local registry (MVP)
 .TP
+\fBpackage create\fR
+Create a verified dependency\-free classic V4 Library bundle
+.TP
+\fBpackage sign\fR
+Sign a verified Library with an explicitly supplied local key
+.TP
+\fBpackage registry\fR
+Manage explicitly initialized local Library publication
+.TP
+\fBpackage registry key\-info\fR
+Inspect the public Ed25519 key and TUF key ID for an explicit local seed
+.TP
+\fBpackage registry sign\-metadata\fR
+Sign a caller\-authored TUF role with an explicit local key
+.TP
+\fBpackage registry init\fR
+Initialize absent publisher state from a caller\-signed root and policy
+.TP
+\fBpackage registry prepare\fR
+Prepare an unsigned successor against the exact current view
+.TP
+\fBpackage registry sign\-proposal\fR
+Sign a prepared successor with explicit local operator keys
+.TP
+\fBpackage publish\fR
+Commit exact caller\-signed successor metadata for a Library
+.TP
 \fBpackage trust\fR
 Explicitly provision local package trust
 .TP
@@ -362,6 +389,180 @@ Generate JSON Schema for Morphir IR
 .TP
 \fBversion\fR
 Print version information
+.SH "MORPHIR PACKAGE CREATE"
+Create a verified dependency\-free classic V4 Library bundle
+.PP
+\fBUsage:\fR morphir package create [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<FILE>\fR
+Already compiled classic JSON V4 Library IR
+.TP
+\fB\-\-manifest\-input\fR \fI<FILE>\fR
+Authoring fields: packagePath, version, dependencies and exports
+.TP
+\fB\-\-output\fR \fI<DIR>\fR
+New bundle directory; existing paths are never replaced
+.TP
+\fB\-\-json\fR
+Output the created Library identity as JSON
+.SH "MORPHIR PACKAGE SIGN"
+Sign a verified Library with an explicitly supplied local key
+.PP
+\fBUsage:\fR morphir package sign [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-bundle\fR \fI<DIR>\fR
+Verified bundle directory containing only manifest.json and ir.json
+.TP
+\fB\-\-key\-file\fR \fI<FILE>\fR
+Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline
+.TP
+\fB\-\-output\fR \fI<DIR>\fR
+New directory for public release record and signature envelope
+.TP
+\fB\-\-json\fR
+Output the signer public key as JSON
+.SH "MORPHIR PACKAGE REGISTRY KEY-INFO"
+Inspect the public Ed25519 key and TUF key ID for an explicit local seed
+.PP
+\fBUsage:\fR morphir package registry key\-info [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-key\-file\fR \fI<FILE>\fR
+Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline
+.TP
+\fB\-\-json\fR
+Output the public key, TUF key and key ID as JSON
+.SH "MORPHIR PACKAGE REGISTRY SIGN-METADATA"
+Sign a caller\-authored TUF role with an explicit local key
+.PP
+\fBUsage:\fR morphir package registry sign\-metadata [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-input\fR \fI<FILE>\fR
+Unsigned top\-level TUF role JSON
+.TP
+\fB\-\-key\-file\fR \fI<FILE>\fR
+Explicit Ed25519 seed file used to sign this role
+.TP
+\fB\-\-output\fR \fI<FILE>\fR
+New signed role envelope file
+.TP
+\fB\-\-json\fR
+.SH "MORPHIR PACKAGE REGISTRY INIT"
+Initialize absent publisher state from a caller\-signed root and policy
+.PP
+\fBUsage:\fR morphir package registry init [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-policy\fR \fI<FILE>\fR
+Trust policy pinning the caller\-signed bootstrap root and publisher keys
+.TP
+\fB\-\-root\fR \fI<FILE>\fR
+Caller\-signed bootstrap TUF root envelope
+.TP
+\fB\-\-registry\fR \fI<DIR>\fR
+New local registry directory
+.TP
+\fB\-\-publisher\-state\fR \fI<DIR>\fR
+New private publisher\-state directory
+.TP
+\fB\-\-json\fR
+.SH "MORPHIR PACKAGE REGISTRY PREPARE"
+Prepare an unsigned successor against the exact current view
+.PP
+\fBUsage:\fR morphir package registry prepare [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-bundle\fR \fI<DIR>\fR
+Verified Library bundle from package create
+.TP
+\fB\-\-release\fR \fI<DIR>\fR
+Signed Library release from package sign
+.TP
+\fB\-\-policy\fR \fI<FILE>\fR
+Trust policy used when initializing the registry
+.TP
+\fB\-\-registry\fR \fI<DIR>\fR
+Existing local registry directory
+.TP
+\fB\-\-publisher\-state\fR \fI<DIR>\fR
+Existing private publisher\-state directory
+.TP
+\fB\-\-expires\fR \fI<TIMESTAMP>\fR
+Expiry for newly signed metadata, as an RFC 3339 UTC timestamp
+.TP
+\fB\-\-output\fR \fI<DIR>\fR
+New directory for draft.json and predecessor.json
+.TP
+\fB\-\-json\fR
+.SH "MORPHIR PACKAGE REGISTRY SIGN-PROPOSAL"
+Sign a prepared successor with explicit local operator keys
+.PP
+\fBUsage:\fR morphir package registry sign\-proposal [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-draft\fR \fI<FILE>\fR
+draft.json from package registry prepare
+.TP
+\fB\-\-targets\-key\-file\fR \fI<FILE>\fR
+Explicit Ed25519 key for the TUF targets role
+.TP
+\fB\-\-snapshot\-key\-file\fR \fI<FILE>\fR
+Explicit Ed25519 key for the TUF snapshot role
+.TP
+\fB\-\-timestamp\-key\-file\fR \fI<FILE>\fR
+Explicit Ed25519 key for the TUF timestamp role
+.TP
+\fB\-\-output\fR \fI<FILE>\fR
+New file containing exact signed role bytes
+.TP
+\fB\-\-json\fR
+.SH "MORPHIR PACKAGE PUBLISH"
+Commit exact caller\-signed successor metadata for a Library
+.PP
+\fBUsage:\fR morphir package publish [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-bundle\fR \fI<DIR>\fR
+Exact Library bundle passed to package registry prepare
+.TP
+\fB\-\-release\fR \fI<DIR>\fR
+Exact signed Library release passed to package registry prepare
+.TP
+\fB\-\-predecessor\fR \fI<FILE>\fR
+predecessor.json from package registry prepare
+.TP
+\fB\-\-proposal\fR \fI<FILE>\fR
+Caller\-signed proposal from package registry sign\-proposal
+.TP
+\fB\-\-policy\fR \fI<FILE>\fR
+Trust policy used when initializing the registry
+.TP
+\fB\-\-registry\fR \fI<DIR>\fR
+Existing local registry directory
+.TP
+\fB\-\-publisher\-state\fR \fI<DIR>\fR
+Existing private publisher\-state directory
+.TP
+\fB\-\-json\fR
 .SH "MORPHIR PACKAGE TRUST INIT"
 Initialize a new state directory from a policy\-pinned bootstrap root
 .PP

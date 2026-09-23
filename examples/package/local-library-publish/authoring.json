@@ -1,0 +1,6 @@
+{
+  "packagePath": "example.com/finance/hello",
+  "version": "1.0.0",
+  "dependencies": {},
+  "exports": { "main": "main" }
+}

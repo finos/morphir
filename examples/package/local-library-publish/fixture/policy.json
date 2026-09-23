@@ -1,0 +1,26 @@
+{
+  "formatVersion": "0.1.0-draft.3",
+  "kind": "LibraryTrustPolicy",
+  "repositories": [
+    {
+      "identity": "sha256:82afe302f0b19b9e86262c54bfd7350dbd4cfbd1f90e325cdd7a88f86c95365b",
+      "bootstrapRoot": {
+        "version": 1,
+        "digest": "sha256:82afe302f0b19b9e86262c54bfd7350dbd4cfbd1f90e325cdd7a88f86c95365b"
+      },
+      "namespaces": [
+        "example.com"
+      ]
+    }
+  ],
+  "publisherRules": [
+    {
+      "namespace": "example.com",
+      "publicKeys": [
+        "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+      ],
+      "threshold": 1
+    }
+  ],
+  "continuedUse": "fresh-metadata"
+}

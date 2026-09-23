@@ -37,7 +37,145 @@ flag --out-dir help="Relocate the out root, which defaults to .morphir/out under
 }
 complete path type=path
 cmd package display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Restore freshly authenticated Libraries from a local registry (MVP)" unknown_flags=error {
-    cmd trust display_order=0 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Explicitly provision local package trust" unknown_flags=error {
+    cmd create display_order=0 args_override_self=#false help="Create a verified dependency-free classic V4 Library bundle" unknown_flags=error {
+        flag --ir help="Already compiled classic JSON V4 Library IR" required=#true {
+            arg <FILE>
+        }
+        flag --manifest-input help="Authoring fields: packagePath, version, dependencies and exports" required=#true {
+            arg <FILE>
+        }
+        flag --output help="New bundle directory; existing paths are never replaced" required=#true {
+            arg <DIR>
+        }
+        flag --json help="Output the created Library identity as JSON"
+        complete file type=path
+        complete dir type=path
+    }
+    cmd sign display_order=1 args_override_self=#false help="Sign a verified Library with an explicitly supplied local key" unknown_flags=error {
+        flag --bundle help="Verified bundle directory containing only manifest.json and ir.json" required=#true {
+            arg <DIR>
+        }
+        flag --key-file help="Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline" required=#true {
+            arg <FILE>
+        }
+        flag --output help="New directory for public release record and signature envelope" required=#true {
+            arg <DIR>
+        }
+        flag --json help="Output the signer public key as JSON"
+        complete dir type=path
+        complete file type=path
+    }
+    cmd registry display_order=2 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage explicitly initialized local Library publication" unknown_flags=error {
+        cmd key-info display_order=0 args_override_self=#false help="Inspect the public Ed25519 key and TUF key ID for an explicit local seed" unknown_flags=error {
+            flag --key-file help="Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline" required=#true {
+                arg <FILE>
+            }
+            flag --json help="Output the public key, TUF key and key ID as JSON"
+            complete file type=path
+        }
+        cmd sign-metadata display_order=1 args_override_self=#false help="Sign a caller-authored TUF role with an explicit local key" unknown_flags=error {
+            flag --input help="Unsigned top-level TUF role JSON" required=#true {
+                arg <FILE>
+            }
+            flag --key-file help="Explicit Ed25519 seed file used to sign this role" required=#true {
+                arg <FILE>
+            }
+            flag --output help="New signed role envelope file" required=#true {
+                arg <FILE>
+            }
+            flag --json
+            complete file type=path
+        }
+        cmd init display_order=2 args_override_self=#false help="Initialize absent publisher state from a caller-signed root and policy" unknown_flags=error {
+            flag --policy help="Trust policy pinning the caller-signed bootstrap root and publisher keys" required=#true {
+                arg <FILE>
+            }
+            flag --root help="Caller-signed bootstrap TUF root envelope" required=#true {
+                arg <FILE>
+            }
+            flag --registry help="New local registry directory" required=#true {
+                arg <DIR>
+            }
+            flag --publisher-state help="New private publisher-state directory" required=#true {
+                arg <DIR>
+            }
+            flag --json
+            complete file type=path
+            complete dir type=path
+        }
+        cmd prepare display_order=3 args_override_self=#false help="Prepare an unsigned successor against the exact current view" unknown_flags=error {
+            flag --bundle help="Verified Library bundle from package create" required=#true {
+                arg <DIR>
+            }
+            flag --release help="Signed Library release from package sign" required=#true {
+                arg <DIR>
+            }
+            flag --policy help="Trust policy used when initializing the registry" required=#true {
+                arg <FILE>
+            }
+            flag --registry help="Existing local registry directory" required=#true {
+                arg <DIR>
+            }
+            flag --publisher-state help="Existing private publisher-state directory" required=#true {
+                arg <DIR>
+            }
+            flag --expires help="Expiry for newly signed metadata, as an RFC 3339 UTC timestamp" required=#true {
+                arg <TIMESTAMP>
+            }
+            flag --output help="New directory for draft.json and predecessor.json" required=#true {
+                arg <DIR>
+            }
+            flag --json
+            complete dir type=path
+            complete file type=path
+        }
+        cmd sign-proposal display_order=4 args_override_self=#false help="Sign a prepared successor with explicit local operator keys" unknown_flags=error {
+            flag --draft help="draft.json from package registry prepare" required=#true {
+                arg <FILE>
+            }
+            flag --targets-key-file help="Explicit Ed25519 key for the TUF targets role" required=#true {
+                arg <FILE>
+            }
+            flag --snapshot-key-file help="Explicit Ed25519 key for the TUF snapshot role" required=#true {
+                arg <FILE>
+            }
+            flag --timestamp-key-file help="Explicit Ed25519 key for the TUF timestamp role" required=#true {
+                arg <FILE>
+            }
+            flag --output help="New file containing exact signed role bytes" required=#true {
+                arg <FILE>
+            }
+            flag --json
+            complete file type=path
+        }
+    }
+    cmd publish display_order=3 args_override_self=#false help="Commit exact caller-signed successor metadata for a Library" unknown_flags=error {
+        flag --bundle help="Exact Library bundle passed to package registry prepare" required=#true {
+            arg <DIR>
+        }
+        flag --release help="Exact signed Library release passed to package registry prepare" required=#true {
+            arg <DIR>
+        }
+        flag --predecessor help="predecessor.json from package registry prepare" required=#true {
+            arg <FILE>
+        }
+        flag --proposal help="Caller-signed proposal from package registry sign-proposal" required=#true {
+            arg <FILE>
+        }
+        flag --policy help="Trust policy used when initializing the registry" required=#true {
+            arg <FILE>
+        }
+        flag --registry help="Existing local registry directory" required=#true {
+            arg <DIR>
+        }
+        flag --publisher-state help="Existing private publisher-state directory" required=#true {
+            arg <DIR>
+        }
+        flag --json
+        complete dir type=path
+        complete file type=path
+    }
+    cmd trust display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Explicitly provision local package trust" unknown_flags=error {
         cmd init display_order=0 args_override_self=#false help="Initialize a new state directory from a policy-pinned bootstrap root" unknown_flags=error {
             flag --policy help="Explicit trusted-host policy file" required=#true {
                 arg <FILE>
@@ -53,7 +191,7 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
             complete dir type=path
         }
     }
-    cmd restore display_order=1 args_override_self=#false help="Restore an exact locked Library graph using fresh signed metadata" unknown_flags=error {
+    cmd restore display_order=5 args_override_self=#false help="Restore an exact locked Library graph using fresh signed metadata" unknown_flags=error {
         flag --policy help="Explicit trusted-host policy file" required=#true {
             arg <FILE>
         }
@@ -78,7 +216,7 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
         complete file type=path
         complete dir type=path
     }
-    cmd resolve display_order=2 args_override_self=#false help="Resolve an exact published root and write a new fully verified package lock" unknown_flags=error {
+    cmd resolve display_order=6 args_override_self=#false help="Resolve an exact published root and write a new fully verified package lock" unknown_flags=error {
         flag --root help="Exact published root release, for example example.com/finance/loan-rules@1.0.0" required=#true {
             arg <PACKAGE@VERSION>
         }
@@ -103,7 +241,7 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
         complete file type=path
         complete dir type=path
     }
-    cmd refresh display_order=3 args_override_self=#false help="Authenticate current registry metadata without resolving or restoring packages" unknown_flags=error {
+    cmd refresh display_order=7 args_override_self=#false help="Authenticate current registry metadata without resolving or restoring packages" unknown_flags=error {
         flag --policy help="Explicit trusted-host policy file" required=#true {
             arg <FILE>
         }
@@ -122,7 +260,7 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
         complete file type=path
         complete dir type=path
     }
-    cmd update display_order=4 args_override_self=#false help="Update explicit dependency targets and write a new fully verified package lock" unknown_flags=error {
+    cmd update display_order=8 args_override_self=#false help="Update explicit dependency targets and write a new fully verified package lock" unknown_flags=error {
         flag --lock help="Previous full package lock; always preserved" required=#true {
             arg <FILE>
         }

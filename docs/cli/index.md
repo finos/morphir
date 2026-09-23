@@ -16,6 +16,15 @@
 ## Subcommands
 
 - [`morphir package <SUBCOMMAND>`](package.md)
+- [`morphir package create <FLAGS>`](package/create.md)
+- [`morphir package sign <FLAGS>`](package/sign.md)
+- [`morphir package registry <SUBCOMMAND>`](package/registry.md)
+- [`morphir package registry key-info <--key-file <FILE>> [--json]`](package/registry/key-info.md)
+- [`morphir package registry sign-metadata <FLAGS>`](package/registry/sign-metadata.md)
+- [`morphir package registry init <FLAGS>`](package/registry/init.md)
+- [`morphir package registry prepare <FLAGS>`](package/registry/prepare.md)
+- [`morphir package registry sign-proposal <FLAGS>`](package/registry/sign-proposal.md)
+- [`morphir package publish <FLAGS>`](package/publish.md)
 - [`morphir package trust <SUBCOMMAND>`](package/trust.md)
 - [`morphir package trust init <FLAGS>`](package/trust/init.md)
 - [`morphir package restore <FLAGS>`](package/restore.md)
