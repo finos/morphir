@@ -9,7 +9,11 @@ use std::ffi::{OsStr, OsString};
 
 const PROFILE: &str = "local-library-mvp:0.1.0-draft.1";
 const CONTRACT: &str = "0.1.0-draft.3";
-const OPERATIONS: [&str; 2] = ["restore-local-library", "resolve-local-library"];
+const OPERATIONS: [&str; 3] = [
+    "restore-local-library",
+    "resolve-local-library",
+    "refresh-local-library",
+];
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -138,6 +142,16 @@ struct Package {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RefreshReceipt {
+    profile: String,
+    profile_version: String,
+    registry: String,
+    timestamp_digest: String,
+    snapshot_digest: String,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(
     tag = "outcome",
     rename_all = "lowercase",
@@ -145,6 +159,13 @@ struct Package {
     deny_unknown_fields
 )]
 enum Observation {
+    Refreshed {
+        receipt: RefreshReceipt,
+        output: OutputState,
+        output_files: Vec<OutputFile>,
+        lock_unchanged: bool,
+        registry_unchanged: bool,
+    },
     Resolved {
         output: OutputState,
         output_files: Vec<OutputFile>,
@@ -172,6 +193,30 @@ impl Observation {
     fn parse(body: Value) -> Result<Self, String> {
         let mut observation: Self = serde_json::from_value(body).map_err(|e| e.to_string())?;
         match &mut observation {
+            Self::Refreshed {
+                receipt,
+                output,
+                output_files,
+                lock_unchanged,
+                registry_unchanged,
+            } => {
+                if receipt.profile != "local-library-mvp"
+                    || receipt.profile_version != "0.1.0-draft.1"
+                    || receipt.registry != "local"
+                    || [
+                        receipt.timestamp_digest.as_str(),
+                        receipt.snapshot_digest.as_str(),
+                    ]
+                    .iter()
+                    .any(|digest| !digest.strip_prefix("sha256:").is_some_and(is_sha256_hex))
+                    || *output != OutputState::Absent
+                    || !output_files.is_empty()
+                    || !*lock_unchanged
+                    || !*registry_unchanged
+                {
+                    return Err("invalid MVP refreshed observation".into());
+                }
+            }
             Self::Resolved {
                 output,
                 output_files,
@@ -406,7 +451,7 @@ mod tests {
         let source =
             MvpRepositorySource::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")).unwrap();
         let inventory = admit_mvp_inventory(&source).unwrap();
-        assert_eq!(inventory.cases().len(), 29);
+        assert_eq!(inventory.cases().len(), 43);
         for case in inventory.cases() {
             let value = serde_json::from_slice(case.expected()).unwrap();
             Observation::parse(value).unwrap_or_else(|error| panic!("{}: {error}", case.id()));

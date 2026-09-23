@@ -49,6 +49,22 @@ const RESOLVE_CASES: [&str; 13] = [
     "mvp.resolve.uncertain-state",
     "mvp.resolve.undeclared-bundle-entry",
 ];
+const REFRESH_CASES: [&str; 14] = [
+    "mvp.refresh.fresh-metadata",
+    "mvp.refresh.bad-timestamp-signature",
+    "mvp.refresh.expired-timestamp",
+    "mvp.refresh.uninitialized-state",
+    "mvp.refresh.missing-established-state",
+    "mvp.refresh.corrupt-state",
+    "mvp.refresh.uncertain-state",
+    "mvp.refresh.historical-policy-unsupported",
+    "mvp.refresh.damaged-bundle",
+    "mvp.refresh.missing-bundle",
+    "mvp.refresh.damaged-publisher-envelope",
+    "mvp.refresh.missing-publisher-envelope",
+    "mvp.refresh.damaged-record",
+    "mvp.refresh.missing-record",
+];
 const RESTORE_INPUTS: [&str; 15] = [
     "morphir.lock",
     "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
@@ -67,6 +83,15 @@ const RESTORE_INPUTS: [&str; 15] = [
     "trust-policy.json",
 ];
 const EXTRA_BUNDLE_INPUT: &str = "registry/bundles/5922bc8860f6cd008b9cda341be7f3a776ea332e63261392e94c17e19a647886/undeclared.txt";
+const REFRESH_INPUTS: [&str; 7] = [
+    "morphir.lock",
+    "registry/metadata/1.root.json",
+    "registry/metadata/1.snapshot.json",
+    "registry/metadata/1.targets.json",
+    "registry/metadata/1.timestamp.json",
+    "registry/metadata/timestamp.json",
+    "trust-policy.json",
+];
 
 /// Reads only the MVP inventory and its fixture subtree from a repository.
 /// Canonicalization rejects symlinks that leave the admitted fixture root.
@@ -154,14 +179,14 @@ struct Case {
     expected: String,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct MvpEnvironment {
     trust_state: TrustState,
     output: OutputSetup,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 enum TrustState {
     Initialized,
@@ -171,7 +196,7 @@ enum TrustState {
     UnresolvedOperation,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 enum OutputSetup {
     Absent,
@@ -244,10 +269,10 @@ impl AdmittedMvpCase {
 
     pub fn request(&self) -> MvpRequest {
         MvpRequest {
-            op: if self.operation == "resolve" {
-                "resolve-local-library"
-            } else {
-                "restore-local-library"
+            op: match self.operation.as_str() {
+                "resolve" => "resolve-local-library",
+                "refresh" => "refresh-local-library",
+                _ => "restore-local-library",
             },
             profile: "local-library-mvp:0.1.0-draft.1",
             exact_root: self.root.clone(),
@@ -264,13 +289,89 @@ impl AdmittedMvpCase {
     }
 }
 
+fn refresh_case_matches_setup(case: &Case) -> bool {
+    let mut expected: BTreeMap<String, String> = RESTORE_INPUTS
+        .into_iter()
+        .map(|path| (path.to_owned(), path.to_owned()))
+        .collect();
+    let mut trust_state = TrustState::Initialized;
+    let suffix = case.id.strip_prefix("mvp.refresh.").unwrap_or_default();
+    match suffix {
+        "fresh-metadata" => {}
+        "bad-timestamp-signature" | "expired-timestamp" => {
+            let asset = if suffix == "bad-timestamp-signature" {
+                "bad-timestamp-signature"
+            } else {
+                "expired-timestamp"
+            };
+            for path in [
+                "registry/metadata/1.timestamp.json",
+                "registry/metadata/timestamp.json",
+            ] {
+                expected.insert(path.into(), asset.into());
+            }
+        }
+        "uninitialized-state" => trust_state = TrustState::Uninitialized,
+        "missing-established-state" => trust_state = TrustState::MissingDatabase,
+        "corrupt-state" => trust_state = TrustState::CorruptDatabase,
+        "uncertain-state" => trust_state = TrustState::UnresolvedOperation,
+        "historical-policy-unsupported" => {
+            expected.insert("trust-policy.json".into(), "historical-policy".into());
+            expected.insert(
+                "initialization-policy.json".into(),
+                "trust-policy.json".into(),
+            );
+        }
+        "damaged-bundle" | "missing-bundle" => {
+            for path in RESTORE_INPUTS
+                .into_iter()
+                .filter(|path| path.starts_with("registry/bundles/"))
+            {
+                if suffix == "missing-bundle" {
+                    expected.remove(path);
+                } else if path.ends_with("/ir.json") {
+                    expected.insert(path.into(), "refresh-damaged-bundle".into());
+                }
+            }
+        }
+        "damaged-publisher-envelope" | "missing-publisher-envelope" => {
+            for path in RESTORE_INPUTS
+                .into_iter()
+                .filter(|path| path.starts_with("registry/targets/statements/"))
+            {
+                if suffix == "missing-publisher-envelope" {
+                    expected.remove(path);
+                } else {
+                    expected.insert(path.into(), "refresh-damaged-evidence".into());
+                }
+            }
+        }
+        "damaged-record" | "missing-record" => {
+            for path in RESTORE_INPUTS
+                .into_iter()
+                .filter(|path| path.starts_with("registry/targets/records/"))
+            {
+                if suffix == "missing-record" {
+                    expected.remove(path);
+                } else {
+                    expected.insert(path.into(), "refresh-damaged-evidence".into());
+                }
+            }
+        }
+        _ => return false,
+    }
+    case.environment.trust_state == trust_state
+        && case.environment.output == OutputSetup::Absent
+        && case.inputs == expected
+}
+
 pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInventory, String> {
     let index_bytes = source.read(INDEX)?;
     if index_bytes.len() as u64 > MAX_FILE_BYTES {
         return Err("MVP index size limit exceeded".into());
     }
     let manifest: Manifest = serde_json::from_slice(&index_bytes).map_err(|e| e.to_string())?;
-    if manifest.assets.len() > 64 {
+    if manifest.assets.len() > 96 {
         return Err("MVP asset count limit exceeded".into());
     }
     if manifest.format_version != VERSION
@@ -280,8 +381,14 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
         return Err("unsupported MVP inventory profile, version, or scope".into());
     }
     let required: BTreeSet<_> = manifest.required_cases.iter().map(String::as_str).collect();
-    if manifest.required_cases.len() != RESTORE_CASES.len() + RESOLVE_CASES.len()
-        || required != RESTORE_CASES.into_iter().chain(RESOLVE_CASES).collect()
+    if manifest.required_cases.len()
+        != RESTORE_CASES.len() + RESOLVE_CASES.len() + REFRESH_CASES.len()
+        || required
+            != RESTORE_CASES
+                .into_iter()
+                .chain(RESOLVE_CASES)
+                .chain(REFRESH_CASES)
+                .collect()
     {
         return Err("MVP required-case inventory differs from the profile".into());
     }
@@ -342,7 +449,10 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
                         "example.com/finance/loan-rules@9.9.9"
                     } else {
                         "example.com/finance/loan-rules@1.0.0"
-                    }));
+                    }))
+            || (case.operation == "refresh"
+                && REFRESH_CASES.contains(&case.id.as_str())
+                && case.root.is_none());
         if !operation_matches_id || case.inputs.is_empty() {
             return Err(format!(
                 "unsupported MVP bootstrap operation in {}",
@@ -350,14 +460,20 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
             ));
         }
         let mounted: BTreeSet<_> = case.inputs.keys().map(String::as_str).collect();
-        let required_mounts: BTreeSet<_> = RESTORE_INPUTS.into_iter().collect();
+        let required_mounts: BTreeSet<_> = if case.operation == "refresh" {
+            REFRESH_INPUTS.into_iter().collect()
+        } else {
+            RESTORE_INPUTS.into_iter().collect()
+        };
+        let allowed_mounts: BTreeSet<_> = RESTORE_INPUTS
+            .into_iter()
+            .chain(["initialization-policy.json", EXTRA_BUNDLE_INPUT])
+            .collect();
         if !required_mounts.is_subset(&mounted)
-            || mounted.len() > required_mounts.len() + 1
-            || mounted.iter().any(|mount| {
-                !required_mounts.contains(mount)
-                    && *mount != "initialization-policy.json"
-                    && *mount != EXTRA_BUNDLE_INPUT
-            })
+            || mounted.len() > 16
+            || mounted.iter().any(|mount| !allowed_mounts.contains(mount))
+            || (case.operation != "refresh" && mounted.len() > required_mounts.len() + 1)
+            || (case.operation == "refresh" && !refresh_case_matches_setup(&case))
         {
             return Err(format!("incomplete MVP restore inputs in {}", case.id));
         }

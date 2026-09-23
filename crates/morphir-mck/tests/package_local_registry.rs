@@ -753,7 +753,7 @@ fn mvp_admission_requires_exact_bound_inventory_before_adapter_spawn() {
         valid.insert(path.to_owned(), std::fs::read(repo.join(path)).unwrap());
     }
     let admitted = admit_mvp_inventory(&valid).expect("complete fixture inventory admits");
-    assert_eq!(admitted.cases().len(), 29);
+    assert_eq!(admitted.cases().len(), 43);
     let request = serde_json::to_value(admitted.cases()[0].request()).unwrap();
     assert_eq!(request["op"], "restore-local-library");
     assert_eq!(request["profile"], "local-library-mvp:0.1.0-draft.1");
@@ -929,15 +929,55 @@ fn mvp_resolve_exact_roots_are_bound_to_case_ids() {
 }
 
 #[test]
+fn mvp_refresh_case_ids_bind_their_setup_and_input_variants() {
+    use morphir_mck::package::local_registry::admit_mvp_inventory;
+    let index = "spec/package/mck/mvp-cases.json";
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let index_bytes = std::fs::read(repo.join(index)).unwrap();
+    let manifest: serde_json::Value = serde_json::from_slice(&index_bytes).unwrap();
+    let mut assets = std::collections::BTreeMap::from([(index.to_owned(), index_bytes)]);
+    for asset in manifest["assets"].as_array().unwrap() {
+        let path = asset["path"].as_str().unwrap();
+        assets.insert(path.to_owned(), std::fs::read(repo.join(path)).unwrap());
+    }
+    for mutation in ["swap inputs", "swap state", "wrong operation"] {
+        let mut altered = manifest.clone();
+        let case = altered["cases"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|case| case["id"] == "mvp.refresh.missing-bundle")
+            .unwrap();
+        match mutation {
+            "swap inputs" => {
+                case["inputs"] = manifest["cases"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|case| case["id"] == "mvp.refresh.fresh-metadata")
+                    .unwrap()["inputs"]
+                    .clone();
+            }
+            "swap state" => case["environment"]["trustState"] = json!("uninitialized"),
+            "wrong operation" => case["operation"] = json!("restore"),
+            _ => unreachable!(),
+        }
+        let mut source = assets.clone();
+        source.insert(index.to_owned(), encode(&altered));
+        assert!(admit_mvp_inventory(&source).is_err(), "{mutation}");
+    }
+}
+
+#[test]
 fn signed_mvp_inventory_admits_required_real_cases_without_expected_wire_bytes() {
     use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let source = MvpRepositorySource::new(root).unwrap();
     let admitted = admit_mvp_inventory(&source).unwrap();
-    assert_eq!(admitted.cases().len(), 29);
+    assert_eq!(admitted.cases().len(), 43);
     for case in admitted.cases() {
         let request = serde_json::to_value(case.request()).unwrap();
-        assert!((15..=16).contains(&request["files"].as_array().unwrap().len()));
+        assert!((7..=16).contains(&request["files"].as_array().unwrap().len()));
         assert!(request.get("expected").is_none());
         assert!(request.get("caseId").is_none());
         assert!(!case.expected().is_empty());
