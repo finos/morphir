@@ -427,10 +427,10 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
             choices single-file vfs
         }
     }
-    flag --input-format help="Input serialization profile (json or yaml; inferred when omitted)" {
+    flag --input-format help="Input serialization profile (json, yaml, or ion; inferred when omitted)" {
         arg <INPUT_FORMAT>
     }
-    flag --output-format help="Output serialization profile (json or yaml; extension then YAML default when omitted)" {
+    flag --output-format help="Output serialization profile (json, yaml, or ion; extension then YAML default when omitted)" {
         arg <OUTPUT_FORMAT>
     }
     arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
@@ -691,10 +691,10 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
                 choices single-file vfs
             }
         }
-        flag --input-format help="Input serialization profile (json or yaml; inferred when omitted)" {
+        flag --input-format help="Input serialization profile (json, yaml, or ion; inferred when omitted)" {
             arg <INPUT_FORMAT>
         }
-        flag --output-format help="Output serialization profile (json or yaml; extension then YAML default when omitted)" {
+        flag --output-format help="Output serialization profile (json, yaml, or ion; extension then YAML default when omitted)" {
             arg <OUTPUT_FORMAT>
         }
         arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
