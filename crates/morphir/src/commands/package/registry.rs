@@ -1,5 +1,6 @@
 //! Explicit local model-Library publication commands.
 
+#[cfg(target_os = "macos")]
 use std::fs;
 use std::path::{Path, PathBuf};
 

@@ -6,6 +6,12 @@ separate consumer can then resolve, restore and generate source from that releas
 The publisher path is currently qualified on macOS. It is not part of the
 v0.4.0-beta.4 binary.
 
+Run the [executable scenario](scenarios.md) from the repository root with
+`mise run test:examples -- --filter 'package/local-library-publish#publish-and-consume'`.
+It starts from an absent registry and uses public, test-only signing seeds in
+`fixture/keys`. The signed bootstrap root and pinned policy under `fixture/`
+are frozen inputs; never reuse these keys for a real registry.
+
 Follow [Create a Library](../../../docs/user-guides/packaging/creating-a-library.md#source-built-cli-preview)
 and [Publish locally](../../../docs/user-guides/packaging/publishing-locally.md#source-built-cli-preview)
 from a source checkout. Keep the same shell and its `$work` variable for both

@@ -39,27 +39,28 @@ an explicit Ed25519 seed, kept in a private directory outside the checkout:
 
 ```sh
 mkdir -m 700 "$work/keys"
+expires=$(node bootstrap.mjs expiry)
 for role in publisher root targets snapshot timestamp; do
   openssl rand -hex 32 > "$work/keys/$role.key"
   chmod 600 "$work/keys/$role.key"
   morphir --no-banner package registry key-info --key-file "$work/keys/$role.key" --json > "$work/$role-info.json"
 done
-node bootstrap.mjs root 2027-01-01T00:00:00Z "$work/root-info.json" "$work/targets-info.json" "$work/snapshot-info.json" "$work/timestamp-info.json" > "$work/unsigned-root.json"
+node bootstrap.mjs root "$expires" "$work/root-info.json" "$work/targets-info.json" "$work/snapshot-info.json" "$work/timestamp-info.json" > "$work/unsigned-root.json"
 morphir package registry sign-metadata --input "$work/unsigned-root.json" --key-file "$work/keys/root.key" --output "$work/root.json"
 node bootstrap.mjs policy "$work/root.json" "$work/publisher-info.json" > "$work/policy.json"
 ```
 
 The policy pins the **exact signed root bytes** and authorizes only the tutorial
 publisher key for `example.com`. Keep the five seed files private; the consumer
-receives only `root.json` and `policy.json`. Choose a root and metadata expiry
-appropriate to your use rather than copying the tutorial dates.
+receives only `root.json` and `policy.json`. The helper chooses an expiry one
+year from now for this tutorial; set your own renewal policy for real use.
 
 Now sign and publish the release:
 
 ```sh
 morphir package sign --bundle "$work/hello-bundle" --key-file "$work/keys/publisher.key" --output "$work/hello-release"
 morphir package registry init --root "$work/root.json" --policy "$work/policy.json" --registry "$work/registry" --publisher-state "$work/publisher-state"
-morphir package registry prepare --bundle "$work/hello-bundle" --release "$work/hello-release" --policy "$work/policy.json" --registry "$work/registry" --publisher-state "$work/publisher-state" --expires 2027-01-01T00:00:00Z --output "$work/proposal-draft"
+morphir package registry prepare --bundle "$work/hello-bundle" --release "$work/hello-release" --policy "$work/policy.json" --registry "$work/registry" --publisher-state "$work/publisher-state" --expires "$expires" --output "$work/proposal-draft"
 morphir package registry sign-proposal --draft "$work/proposal-draft/draft.json" --targets-key-file "$work/keys/targets.key" --snapshot-key-file "$work/keys/snapshot.key" --timestamp-key-file "$work/keys/timestamp.key" --output "$work/proposal.json"
 morphir package publish --bundle "$work/hello-bundle" --release "$work/hello-release" --predecessor "$work/proposal-draft/predecessor.json" --proposal "$work/proposal.json" --policy "$work/policy.json" --registry "$work/registry" --publisher-state "$work/publisher-state"
 ```

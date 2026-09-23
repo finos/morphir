@@ -359,6 +359,32 @@ jobs:
           mise run examples:prepare-backends
           target/release/morphir itest examples --tag suite:wasm-backends
 
+  library-publish-macos:
+    name: Library publication (macOS)
+    runs-on: macos-15
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install mise
+        uses: jdx/mise-action@v4
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Set up Rust CI
+        uses: ./.github/actions/setup-rust-ci
+
+      - name: Test authoring and publication
+        run: cargo test --locked --package morphir --test package_author_publish
+
+      - name: Publish and consume the example Library
+        run: mise run test:examples -- --filter 'package/local-library-publish#publish-and-consume'
+
   # Generate and diff-check CLI reference docs — parallel with extension builds
   # and integration tests (only needs a debug morphir build, not extensions).
   check-cli-docs:
@@ -599,7 +625,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, morphir-cli-test, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]
+    needs: [changes, lint, morphir-cli-test, library-publish-macos, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]
     if: always()
     steps:
       - name: Check results
@@ -623,6 +649,7 @@ jobs:
           fi
           require "${{ needs.changes.outputs.rust }}" lint "${{ needs.lint.result }}"
           require "${{ needs.changes.outputs.rust }}" morphir-cli-test "${{ needs.morphir-cli-test.result }}"
+          require "${{ needs.changes.outputs.rust }}" library-publish-macos "${{ needs.library-publish-macos.result }}"
           require "${{ needs.changes.outputs.rust }}" check-cli-docs "${{ needs.check-cli-docs.result }}"
           if [[ "${{ needs.changes.outputs.rust }}" == "true" || "${{ needs.changes.outputs.rust-conformance }}" == "true" ]]; then
             require true rust-conformance "${{ needs.rust-conformance.result }}"
