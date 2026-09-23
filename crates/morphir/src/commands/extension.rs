@@ -1,5 +1,7 @@
 //! Verified extension artifact management.
 
+mod probe;
+
 use crate::home::MorphirHome;
 use crate::observability::OperationId;
 use morphir_daemon::{InvocationMode, ProviderOrigin};
@@ -65,26 +67,50 @@ fn install_selected(
 }
 
 /// Resolve, verify, and install one extension from a configured repository.
-pub fn run_extension_install(
+pub async fn run_extension_install(
     operation_id: &OperationId,
     name: String,
     repository: String,
     channel: Option<String>,
     version: Option<String>,
+    no_probe: bool,
 ) -> AppResult<miette::Report> {
     let home = MorphirHome::resolve()
         .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
     let id = extension_id(&name)?;
-    let catalog = InstalledCatalog::load(&home)
-        .map_err(|error| miette::miette!("Failed to load installed extensions: {error}"))?;
-    if let Some(installed) = catalog.get(&id) {
-        return Err(miette::miette!(
-            "Extension '{id}' is already installed at version {}; use 'morphir extension update'",
-            installed.version()
-        ));
+    // Loading even an empty catalog creates its synchronization lock. On a fresh
+    // home, defer that write until the selected artifact has passed its probe.
+    if home
+        .extensions_catalog_file()
+        .try_exists()
+        .map_err(|error| miette::miette!("Failed to inspect installed extensions: {error}"))?
+    {
+        let catalog = InstalledCatalog::load(&home)
+            .map_err(|error| miette::miette!("Failed to load installed extensions: {error}"))?;
+        if let Some(installed) = catalog.get(&id) {
+            return Err(miette::miette!(
+                "Extension '{id}' is already installed at version {}; use 'morphir extension update'",
+                installed.version()
+            ));
+        }
     }
     let requested = selection(channel.as_deref(), version.as_deref())?;
-    let entry = install_selected(&home, &repository, &id, requested.clone())?;
+    let host = host_version();
+    let selected = ExtensionRepositories::new(&home)
+        .resolve(
+            &repository_name(&repository)?,
+            &id,
+            requested.clone(),
+            &Platform::current(),
+            &host,
+        )
+        .map_err(|error| miette::miette!("Failed to resolve extension '{id}': {error}"))?;
+    let entry = ExtensionInstaller::new(&home)
+        .install_with_probe(selected, &host, async |artifact| {
+            probe::statement(artifact, no_probe).await
+        })
+        .await
+        .map_err(|error| miette::miette!("Failed to install extension '{id}': {error}"))?;
     tracing::info!(
         schema_version = 1,
         component = "cli",
@@ -102,6 +128,7 @@ pub fn run_extension_install(
         entry.version(),
         requested
     );
+    probe::print_statement(&entry);
     Ok(None)
 }
 
@@ -185,6 +212,7 @@ pub fn run_extension_list() -> AppResult<miette::Report> {
             entry.version(),
             snapshot.selection()
         );
+        probe::print_statement(entry);
     }
     Ok(None)
 }

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `morphir extension install` probes the selected process artifact before it commits: it runs `describe`, or a session when the extension does not implement it, and refuses the install when the answer disagrees with the declared statement, leaving nothing behind. `--no-probe` skips the probe. Install and `extension list` show the capability kinds and whether the statement was probed (kb `morphir-extensions` decision 0003, #921). An install from a version-1 index record keeps the version-1 catalog shape, so an older CLI can still read a shared Morphir home.
+
 ### Changed
 - Extension formats follow the capability-statement compatibility rules (kb `morphir-extensions` decision 0004): the bundle descriptor, index record and installed catalog ignore unknown members unless they are listed as critical, carry SemVer schema versions, and old records still load. An extension's `requires.host` is checked against this CLI's version. The `morphir-rust` pin moves to `689df2a` (finos/morphir-rust#223, #224, #225).
 - Every Elm provider reads an explicit package name in a selection of files with both `.` and `/` as segment separators, and reports one normal form: `--package-name My.Package`, or a borrowed manifest named `Documentation.Decoration`, now works with every Elm provider and names `my/package` or `documentation/decoration`. The IR package path does not change. The pins move to `morphir-rust` `adf03d8`, `extension/elm/v0.3.1` and `morphir-scala-elm` `v0.5.0-M08` (kb `morphir-extensions` decision 0005).

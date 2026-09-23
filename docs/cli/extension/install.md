@@ -12,3 +12,4 @@ Install a Morphir extension
 - **`--repository <REPOSITORY>`** — Named extension repository configured in Morphir Home
 - **`--channel <CHANNEL>`** — Moving release channel (defaults to stable)
 - **`--version <VERSION>`** — Exact semantic version
+- **`--no-probe`** — Skip executing the selected artifact to verify its capability statement

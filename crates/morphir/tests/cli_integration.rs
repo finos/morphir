@@ -1,5 +1,8 @@
 //! Integration tests for CLI commands
 
+#[path = "cli_integration/extension_probe.rs"]
+mod extension_probe;
+
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -599,7 +602,7 @@ fn write_test_index_with_capabilities(
         "name": name,
         "version": version,
         "channels": ["stable"],
-        "mepVersions": ["0.1"],
+        "mepVersions": [morphir_extension_sdk::protocol::MEP_VERSION],
         "capabilities": capabilities,
         "frontend": {
             "languages": [{"id": language, "fileExtensions": [file_extension]}],
@@ -2202,6 +2205,7 @@ fn extension_install_uses_verified_repository_and_list_reports_the_exact_version
         &[
             "extension",
             "install",
+            "--no-probe",
             "morphir-test",
             "--repository",
             "local-dev",
@@ -2611,6 +2615,7 @@ fn extension_install_resolves_from_a_named_repository() {
         &[
             "extension",
             "install",
+            "--no-probe",
             "morphir-test",
             "--repository",
             "local-dev",
@@ -2772,6 +2777,7 @@ fn extension_update_re_resolves_to_an_exact_version() {
         &[
             "extension",
             "install",
+            "--no-probe",
             "morphir-test",
             "--repository",
             "first",
@@ -2829,6 +2835,7 @@ fn extension_uninstall_removes_active_state_but_retains_store_bytes() {
         &[
             "extension",
             "install",
+            "--no-probe",
             "morphir-test",
             "--repository",
             "local-dev",
@@ -2968,6 +2975,11 @@ fn verify_real_installed_elm_provider(
             .join(format!("{extension_id}.json")),
     )
     .unwrap();
+    let installed: serde_json::Value = serde_json::from_str(&catalog).unwrap();
+    for member in ["statement", "statementSource", "probeSource"] {
+        assert!(installed["extensions"][0].get(member).is_none());
+    }
+    assert!(String::from_utf8_lossy(&install.stdout).contains("Statement: declared"));
     assert!(catalog.contains(version));
     assert!(catalog.contains(&index.digest));
     assert!(lock.contains(version));
@@ -3111,7 +3123,14 @@ fn gleam_legacy_selector_preserves_an_installed_provider_with_that_id() {
             .success()
     );
     let install = run_morphir(
-        &["extension", "install", id, "--repository", "legacy"],
+        &[
+            "extension",
+            "install",
+            id,
+            "--repository",
+            "legacy",
+            "--no-probe",
+        ],
         &home,
         temp.path(),
     );
@@ -3177,6 +3196,7 @@ fn installed_gleam_frontend_overrides_the_native_provider() {
         &[
             "extension",
             "install",
+            "--no-probe",
             "morphir-installed-gleam",
             "--repository",
             "local-dev",
@@ -3473,6 +3493,7 @@ fn generate_routes_exact_v3_string_ir_to_an_installed_provider() {
         &[
             "extension",
             "install",
+            "--no-probe",
             "morphir-avro",
             "--repository",
             "local-dev",

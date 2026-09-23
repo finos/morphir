@@ -473,6 +473,9 @@ enum ExtensionAction {
         /// Exact semantic version
         #[arg(long, conflicts_with = "channel")]
         version: Option<String>,
+        /// Skip executing the selected artifact to verify its capability statement
+        #[arg(long)]
+        no_probe: bool,
     },
     /// List installed Morphir extensions
     List,
@@ -1159,13 +1162,18 @@ impl AppSession for MorphirSession {
                     repository,
                     channel,
                     version,
-                } => run_extension_install(
-                    &self.operation_id,
-                    name.clone(),
-                    repository.clone(),
-                    channel.clone(),
-                    version.clone(),
-                ),
+                    no_probe,
+                } => {
+                    run_extension_install(
+                        &self.operation_id,
+                        name.clone(),
+                        repository.clone(),
+                        channel.clone(),
+                        version.clone(),
+                        *no_probe,
+                    )
+                    .await
+                }
                 ExtensionAction::List => run_extension_list(),
                 ExtensionAction::Search { query } => {
                     run_extension_search(&self.operation_id, query.clone())

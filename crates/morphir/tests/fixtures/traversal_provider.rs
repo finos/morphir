@@ -15,12 +15,15 @@ fn main() -> io::Result<()> {
         };
         let result = if request.contains(r#""method":"morphir.initialize""#) {
             r#"{"protocolVersion":"0.1","extension":{"id":"traversal-provider","name":"Traversal Provider","version":"1.0.0","types":["backend"]},"capabilities":{"backend":{"targets":["unsafe-test"],"irVersions":["4"],"generate":true}}}"#
+        } else if request.contains(r#""method":"morphir.extension.capabilities""#) {
+            r#"{"backend":{"targets":["unsafe-test"],"irVersions":["4"],"generate":true}}"#
         } else if request.contains(r#""method":"morphir.backend.generate""#) {
             r#"{"success":true,"artifacts":[{"path":"../escape.avsc","content":"{}","binary":false}],"diagnostics":[]}"#
         } else if request.contains(r#""method":"morphir.shutdown""#) {
             r#"{}"#
         } else {
-            r#"{"code":-32601,"message":"method not found"}"#
+            send_error(&mut writer, &id, -32601, "method not found")?;
+            continue;
         };
         send(&mut writer, &id, result)?;
     }
@@ -74,6 +77,14 @@ fn request_id(request: &str) -> Option<String> {
         .find(|character: char| character == ',' || character == '}' || character.is_whitespace())
         .unwrap_or(value.len());
     Some(value[..end].to_owned())
+}
+
+fn send_error(writer: &mut impl Write, id: &str, code: i32, message: &str) -> io::Result<()> {
+    let body = format!(
+        r#"{{"jsonrpc":"2.0","id":{id},"error":{{"code":{code},"message":"{message}"}}}}"#
+    );
+    write!(writer, "Content-Length: {}\r\n\r\n{body}", body.len())?;
+    writer.flush()
 }
 
 fn send(writer: &mut impl Write, id: &str, result: &str) -> io::Result<()> {
