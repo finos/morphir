@@ -1017,12 +1017,15 @@ mod tests {
         let home = MorphirHome::resolve_from(Some(root.path().join("home").as_os_str()), None)
             .expect("an explicit Morphir home resolves");
         let id = ExtensionId::parse(extension_id).expect("the extension ID parses");
+        let host: morphir_workspace::Version = env!("CARGO_PKG_VERSION")
+            .parse()
+            .expect("the CLI version is SemVer");
         let selected = LocalIndex::open(&index)
             .expect("the local index opens")
-            .resolve(&id, Selection::Channel(Channel::Stable), &platform)
+            .resolve(&id, Selection::Channel(Channel::Stable), &platform, &host)
             .expect("the index resolves the extension");
         ExtensionInstaller::new(&home)
-            .install(selected)
+            .install(selected, &host)
             .expect("the extension installs");
         let snapshot = list_installed(&home)
             .expect("the installed catalog is readable")
