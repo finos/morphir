@@ -4,7 +4,7 @@ use clap::Args;
 use miette::{Context, IntoDiagnostic, Result};
 #[cfg(feature = "rego")]
 use morphir_evaluator::Evaluator;
-use morphir_evaluator::ir_draft::{IrEvaluationRequest, VERSION as IR_DRAFT_VERSION};
+use morphir_evaluator::ir_draft::IrEvaluationRequest;
 use morphir_evaluator::{EvaluationOutcome, EvaluationReport, EvaluationRequest, ProviderId};
 use std::{fs, path::PathBuf};
 
@@ -25,7 +25,7 @@ pub fn run_eval(args: EvalArgs) -> Result<()> {
     if serde_json::from_slice::<serde_json::Value>(&source)
         .ok()
         .and_then(|request| request.get("version").cloned())
-        == Some(serde_json::Value::String(IR_DRAFT_VERSION.into()))
+        .is_some_and(|version| version.is_string())
     {
         let request = IrEvaluationRequest::from_slice(&source)
             .into_diagnostic()

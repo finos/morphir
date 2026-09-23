@@ -49,6 +49,20 @@ fn eval_ir_draft_rejects_preflight_errors_without_a_report() {
 }
 
 #[test]
+fn eval_ir_draft_rejects_unsupported_string_version_with_native_diagnostic() {
+    let mut request = fixed_request();
+    request["version"] = json!("1.1.0-draft.2");
+    let output = evaluate(&request);
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("UNSUPPORTED_EVALUATION_VERSION"),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
 fn eval_ir_draft_emits_runtime_error_report_and_exits_nonzero() {
     let mut request = fixed_request();
     request["calls"] = json!([request["calls"][0].clone()]);

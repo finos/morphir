@@ -505,6 +505,7 @@ mod incremental_tests {
             interface_digest: Some("sha256:interface".into()),
             depends_on: Vec::new(),
             ir: Some(serde_json::json!({ "module": "My.Other" })),
+            frontend_state: None,
             diagnostics: Vec::new(),
         }];
         assert!(cache_write_is_warranted(&compile_result(false, results)));

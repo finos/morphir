@@ -2,6 +2,7 @@
 
 use morphir_core::ir::classic as ir;
 use morphir_runtime::{EvaluationError, EvaluationLimits, RuntimeValue, evaluate_v3_with_deadline};
+use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -28,7 +29,7 @@ fn error(code: &'static str, message: impl Into<String>) -> IrRequestError {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RequestWire {
-    version: Value,
+    version: Version,
     provider: String,
     program: ProgramWire,
     calls: Vec<CallWire>,
@@ -97,7 +98,7 @@ pub struct IrEvaluationRequest {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct IrEvaluationReport {
-    pub version: String,
+    pub version: Version,
     pub provider: String,
     pub results: Vec<IrResult>,
 }
@@ -141,7 +142,19 @@ impl IrEvaluationRequest {
     }
 
     pub fn from_value(value: Value) -> Result<Self, IrRequestError> {
-        if value.get("version") != Some(&Value::String(VERSION.into())) {
+        let supported = VersionReq::parse(&format!("={VERSION}"))
+            .expect("exact native IR draft version requirement");
+        let Some(version) = value
+            .get("version")
+            .and_then(Value::as_str)
+            .and_then(|version| Version::parse(version).ok())
+        else {
+            return Err(error(
+                "UNSUPPORTED_EVALUATION_VERSION",
+                "native IR evaluation requires 1.1.0-draft.1",
+            ));
+        };
+        if !supported.matches(&version) {
             return Err(error(
                 "UNSUPPORTED_EVALUATION_VERSION",
                 "native IR evaluation requires 1.1.0-draft.1",
@@ -149,7 +162,7 @@ impl IrEvaluationRequest {
         }
         let wire: RequestWire = serde_json::from_value(value)
             .map_err(|e| error("INVALID_EVALUATION_REQUEST", e.to_string()))?;
-        if wire.version != VERSION {
+        if !supported.matches(&wire.version) {
             return Err(error(
                 "UNSUPPORTED_EVALUATION_VERSION",
                 "unsupported evaluation version",
@@ -307,7 +320,7 @@ impl IrEvaluationRequest {
             })
             .collect();
         IrEvaluationReport {
-            version: VERSION.into(),
+            version: Version::parse(VERSION).expect("native IR draft report version"),
             provider: "morphir_ir".into(),
             results,
         }
@@ -467,45 +480,57 @@ fn supported_type(
             arguments.len() == 1 && supported_type(distribution, &arguments[0], vars, seen)
         }
         ir::Type::Reference(_, name, arguments) => {
+            if !arguments
+                .iter()
+                .all(|argument| supported_type(distribution, argument, vars, seen))
+            {
+                return false;
+            }
             if !seen.insert(name.clone()) {
                 return true;
             }
-            let ir::DistributionBody::Library(package, _, definition) = &distribution.distribution;
-            if &name.package_path != package {
-                return false;
-            }
-            let Some(module) = definition
-                .modules
-                .iter()
-                .find(|module| module.path == name.module_path)
-            else {
-                return false;
-            };
-            let Some((_, controlled)) = module
-                .definition
-                .value
-                .types
-                .iter()
-                .find(|(local, _)| local == &name.local_name)
-            else {
-                return false;
-            };
-            let ir::TypeDefinition::Custom(params, constructors) = &controlled.value.value else {
-                return false;
-            };
-            if params.len() != arguments.len() {
-                return false;
-            }
-            let bindings: HashMap<_, _> = params
-                .iter()
-                .cloned()
-                .zip(arguments.iter().cloned())
-                .collect();
-            constructors.value.iter().all(|ctor| {
-                ctor.args
+            let supported = (|| {
+                let ir::DistributionBody::Library(package, _, definition) =
+                    &distribution.distribution;
+                if &name.package_path != package {
+                    return false;
+                }
+                let Some(module) = definition
+                    .modules
                     .iter()
-                    .all(|(_, field)| supported_type(distribution, field, &bindings, seen))
-            })
+                    .find(|module| module.path == name.module_path)
+                else {
+                    return false;
+                };
+                let Some((_, controlled)) = module
+                    .definition
+                    .value
+                    .types
+                    .iter()
+                    .find(|(local, _)| local == &name.local_name)
+                else {
+                    return false;
+                };
+                let ir::TypeDefinition::Custom(params, constructors) = &controlled.value.value
+                else {
+                    return false;
+                };
+                if params.len() != arguments.len() {
+                    return false;
+                }
+                let bindings: HashMap<_, _> = params
+                    .iter()
+                    .cloned()
+                    .zip(arguments.iter().cloned())
+                    .collect();
+                constructors.value.iter().all(|ctor| {
+                    ctor.args
+                        .iter()
+                        .all(|(_, field)| supported_type(distribution, field, &bindings, seen))
+                })
+            })();
+            seen.remove(name);
+            supported
         }
         _ => false,
     }
@@ -778,8 +803,10 @@ fn collect_external_references(
     references: &mut Vec<ir::FQName>,
 ) {
     match value {
-        ir::Value::Reference(_, name) if &name.package_path != package => {
-            references.push(name.clone())
+        ir::Value::Reference(_, name) | ir::Value::Constructor(_, name) => {
+            if &name.package_path != package {
+                references.push(name.clone());
+            }
         }
         ir::Value::Apply(_, function, argument) => {
             collect_external_references(function, package, references);
@@ -801,6 +828,20 @@ fn collect_external_references(
                 collect_external_references(value, package, references);
             }
         }
+        ir::Value::Record(_, fields) => {
+            for (_, value) in fields {
+                collect_external_references(value, package, references);
+            }
+        }
+        ir::Value::Field(_, record, _) => {
+            collect_external_references(record, package, references);
+        }
+        ir::Value::Update(_, record, fields) => {
+            collect_external_references(record, package, references);
+            for (_, value) in fields {
+                collect_external_references(value, package, references);
+            }
+        }
         ir::Value::Lambda(_, _, body) => collect_external_references(body, package, references),
         ir::Value::LetDefinition(_, _, definition, body) => {
             collect_external_references(&definition.body, package, references);
@@ -816,6 +857,9 @@ fn collect_external_references(
             collect_external_references(bound, package, references);
             collect_external_references(body, package, references);
         }
-        _ => {}
+        ir::Value::FieldFunction(_, _)
+        | ir::Value::Literal(_, _)
+        | ir::Value::Unit(_)
+        | ir::Value::Variable(_, _) => {}
     }
 }

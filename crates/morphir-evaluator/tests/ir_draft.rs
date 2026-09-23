@@ -1,3 +1,4 @@
+use morphir_core::ir::classic as ir;
 use morphir_evaluator::ir_draft::{IrEvaluationReport, IrEvaluationRequest};
 use serde_json::{Value, json};
 
@@ -122,5 +123,97 @@ fn draft_ir_runtime_budget_error_is_a_coded_report() {
     assert_eq!(
         report.results[0].message.as_deref(),
         Some("Evaluation fuel exhausted")
+    );
+}
+
+#[test]
+fn draft_ir_preflight_finds_external_refs_inside_record_forms() {
+    let external = ir::FQName::new(
+        ir::Path::new(vec![ir::Name::from_str("missing")]),
+        ir::Path::new(vec![ir::Name::from_str("module")]),
+        ir::Name::from_str("entry"),
+    );
+    let attr: ir::Type<ir::Attrs> = ir::Type::Unit(ir::Attrs::None);
+    let reference: ir::Value<ir::Attrs, ir::Type<ir::Attrs>> =
+        ir::Value::Reference(attr.clone(), external.clone());
+    let record = ir::Value::Record(
+        attr.clone(),
+        vec![(ir::Name::from_str("hidden"), reference.clone())],
+    );
+    let forms = [
+        record.clone(),
+        ir::Value::Field(
+            attr.clone(),
+            Box::new(record.clone()),
+            ir::Name::from_str("hidden"),
+        ),
+        ir::Value::Update(
+            attr,
+            Box::new(record),
+            vec![(ir::Name::from_str("hidden"), reference)],
+        ),
+    ];
+    for form in forms {
+        let mut request = fixed_request();
+        *request
+            .pointer_mut(
+                "/program/distribution/distribution/3/modules/12/1/value/values/2/1/value/value/body",
+            )
+            .unwrap() = serde_json::to_value(form).unwrap();
+        assert_eq!(
+            IrEvaluationRequest::from_value(request)
+                .err()
+                .map(|error| error.code),
+            Some("MISSING_DEPENDENCY")
+        );
+    }
+}
+
+#[test]
+fn draft_ir_preflight_validates_each_generic_output_instantiation() {
+    let mut request = fixed_request();
+    let distribution: ir::Distribution =
+        serde_json::from_value(request["program"]["distribution"].clone()).unwrap();
+    let ir::DistributionBody::Library(package, _, definition) = &distribution.distribution;
+    let module = &definition.modules[0];
+    let access_controlled = ir::FQName::new(
+        package.clone(),
+        module.path.clone(),
+        ir::Name::from_str("accessControlled"),
+    );
+    let int: ir::Type<ir::Attrs> = ir::Type::Reference(
+        ir::Attrs::None,
+        ir::FQName::new(
+            ir::Path::new(vec![
+                ir::Name::from_str("morphir"),
+                ir::Name::from_str("SDK"),
+            ]),
+            ir::Path::new(vec![ir::Name::from_str("basics")]),
+            ir::Name::from_str("int"),
+        ),
+        vec![],
+    );
+    let unsupported: ir::Type<ir::Attrs> = ir::Type::Function(
+        ir::Attrs::None,
+        Box::new(ir::Type::Unit(ir::Attrs::None)),
+        Box::new(ir::Type::Unit(ir::Attrs::None)),
+    );
+    let output = ir::Type::Tuple(
+        ir::Attrs::None,
+        vec![
+            ir::Type::Reference(ir::Attrs::None, access_controlled.clone(), vec![int]),
+            ir::Type::Reference(ir::Attrs::None, access_controlled, vec![unsupported]),
+        ],
+    );
+    *request
+        .pointer_mut(
+            "/program/distribution/distribution/3/modules/12/1/value/values/2/1/value/value/outputType",
+        )
+        .unwrap() = serde_json::to_value(output).unwrap();
+    assert_eq!(
+        IrEvaluationRequest::from_value(request)
+            .err()
+            .map(|error| error.code),
+        Some("UNSUPPORTED_RETURN_CODEC")
     );
 }
