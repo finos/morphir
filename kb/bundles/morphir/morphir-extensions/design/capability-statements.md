@@ -165,7 +165,7 @@ only the refinement.
 
 After `describe`, the caller may send `morphir.exit` without a session. `describe` is optional for
 guests. A guest that does not implement it answers `-32601` (method not found), or refuses the request
-because it came before `initialize`. In both cases the host falls back to `initialize`, the
+with `-32014` (not initialized) because it came before `initialize`. In both cases the host falls back to `initialize`, the
 `initialized` notification, `morphir.extension.capabilities`, `shutdown` and `exit`, and reads what it can from that
 session.
 
@@ -309,7 +309,7 @@ rules (source `spec`):
 2. Schema ranges. A host reads the current released major and the previous released major of each format, plus the exact drafts it lists. A publisher writes the highest version
    that the oldest host it targets can read.
 3. Minimum host. An extension that needs a newer host states `requires.host` and lists it in `critical`.
-4. `describe` is optional. On `-32601`, or on a refusal before `initialize`, the host falls back to a
+4. `describe` is optional. On `-32601`, or on `-32014` before `initialize`, the host falls back to a
    session.
 5. Old records are converted. The host turns a record without a statement into a statement built from
    its flat keys, and marks it `declared` rather than `probed`. Install and the first session verify it

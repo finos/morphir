@@ -4993,6 +4993,7 @@ dependencies = [
  "extism-pdk",
  "morphir-workspace",
  "percent-encoding",
+ "semver",
  "serde",
  "serde_json",
  "thiserror 2.0.20",

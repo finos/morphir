@@ -9,7 +9,7 @@ workspace: {kind: directory, path: '.', exclude: [installed]}
 
 # Classic morphir.json project
 
-Prepare extension 0.3.0 with `mise run examples:prepare-elm -- /path/to/morphir-elm-extension` first. The driver installs the prepared artifact into a fresh Morphir home. Missing prerequisites fail; the scenario does not download them. Compilation checks IR structure, not function evaluation.
+Prepare extension 0.3.1 with `mise run examples:prepare-elm -- /path/to/morphir-elm-extension` first. The driver installs the prepared artifact into a fresh Morphir home. Missing prerequisites fail; the scenario does not download them. Compilation checks IR structure, not function evaluation.
 
 The released extension accepts exactly one source document. This scenario records the current rejection, not successful project compilation. The full project remains on disk for follow-up `morphir-o6vm.15`.
 
@@ -42,16 +42,16 @@ passes if {
 }
 ```
 
-### Install reference Elm 0.3.0
+### Install reference Elm 0.3.1
 
 ```yaml morphir:command
 id: install
-name: Install reference Elm 0.3.0
+name: Install reference Elm 0.3.1
 timeout_seconds: 60
 ```
 
 ```sh
-morphir extension install morphir-elm --repository fixture --version 0.3.0
+morphir extension install morphir-elm --repository fixture --version 0.3.1
 ```
 
 ```yaml morphir:assertion

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Every Elm provider reads an explicit package name in a selection of files with both `.` and `/` as segment separators, and reports one normal form: `--package-name My.Package`, or a borrowed manifest named `Documentation.Decoration`, now works with every Elm provider and names `my/package` or `documentation/decoration`. The IR package path does not change. The pins move to `morphir-rust` `adf03d8`, `extension/elm/v0.3.1` and `morphir-scala-elm` `v0.5.0-M08` (kb `morphir-extensions` decision 0005).
+- The MEP draft assigns `-32014` (not initialized) to a request that is not allowed before `morphir.initialize` or after shutdown, and a statement built from a `describe` fallback session holds only what the session reports (kb decision 0006).
+
 ## [0.4.0-beta.4] - 2026-09-23
 
 ### Added

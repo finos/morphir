@@ -110,7 +110,7 @@ The host follows this sequence:
 6. Send `morphir.shutdown` and wait for its response.
 7. Send the `morphir.exit` notification.
 
-Before initialization, an extension may accept only `morphir.initialize`, `morphir.extension.describe`, `morphir.ping`, and `morphir.exit`. After shutdown, it may accept only `morphir.exit`.
+Before initialization, an extension may accept only `morphir.initialize`, `morphir.extension.describe`, `morphir.ping`, and `morphir.exit`. After shutdown, it may accept only `morphir.exit`. An extension refuses any other request in those states with `-32014` (not initialized).
 
 A host may also start an extension only to read its capability statement: it sends `morphir.extension.describe` and then `morphir.exit`, with no session. See [Capability statements](#capability-statements).
 
@@ -303,13 +303,15 @@ differently. A host outside the range refuses and names the range.
 | Result | the capability statement |
 | Side effects | none: no workspace access, no network, no writes, no dependence on environment values the host did not pass |
 
-`describe` is optional for an extension. A host that receives `-32601`, or a
-refusal because the request came before `morphir.initialize`, reads what it can
+`describe` is optional for an extension. A host that receives `-32601`, or
+`-32014` because the request came before `morphir.initialize`, reads what it can
 through a session instead, following the lifecycle: `morphir.initialize`, the
 `morphir.initialized` notification, `morphir.extension.capabilities`,
 `morphir.shutdown` and `morphir.exit`. A session reports less than a statement,
 so the statement the host builds from it lists only the negotiated protocol
-version and has no `requires` or `critical` members.
+version and has no `requires` or `critical` members. An extension released before
+`-32014` was assigned may refuse with another code; a host may also recognize such
+a refusal by its message, but must not fall back on any other error.
 
 ### Where the statement is read
 
@@ -785,6 +787,7 @@ MEP uses standard JSON-RPC error codes and reserves these server errors:
 | `-32011` | protocol version mismatch | Initialization found no compatible version |
 | `-32012` | permission denied | The operation requires a permission the host did not grant |
 | `-32013` | capability unavailable | The extension did not advertise the requested capability |
+| `-32014` | not initialized | The request is not allowed before `morphir.initialize` or after `morphir.shutdown` |
 | `-32800` | request cancelled | The receiver cancelled the requested operation |
 
 Parse errors, invalid requests, unknown methods, and invalid parameters use the standard JSON-RPC codes. Source-language errors belong in operation results as diagnostics.
