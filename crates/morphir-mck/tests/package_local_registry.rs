@@ -753,7 +753,7 @@ fn mvp_admission_requires_exact_bound_inventory_before_adapter_spawn() {
         valid.insert(path.to_owned(), std::fs::read(repo.join(path)).unwrap());
     }
     let admitted = admit_mvp_inventory(&valid).expect("complete fixture inventory admits");
-    assert_eq!(admitted.cases().len(), 43);
+    assert_eq!(admitted.cases().len(), 70);
     let request = serde_json::to_value(admitted.cases()[0].request()).unwrap();
     assert_eq!(request["op"], "restore-local-library");
     assert_eq!(request["profile"], "local-library-mvp:0.1.0-draft.1");
@@ -989,19 +989,93 @@ fn mvp_refresh_case_ids_bind_their_setup_and_input_variants() {
 }
 
 #[test]
+fn mvp_update_cases_bind_targets_variants_and_fixed_observations() {
+    use morphir_mck::package::local_registry::admit_mvp_inventory;
+    let index = "spec/package/mck/mvp-cases.json";
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(repo.join(index)).unwrap()).unwrap();
+    let mut assets = std::collections::BTreeMap::new();
+    for asset in manifest["assets"].as_array().unwrap() {
+        let path = asset["path"].as_str().unwrap();
+        assets.insert(path.to_owned(), std::fs::read(repo.join(path)).unwrap());
+    }
+    for mutation in [
+        "swap inputs",
+        "swap targets",
+        "swap expected",
+        "swap state",
+        "wrong operation",
+    ] {
+        let mut altered = manifest.clone();
+        let case = altered["cases"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|case| case["id"] == "mvp.update.scope-conflict")
+            .unwrap();
+        let fresh = manifest["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|case| case["id"] == "mvp.update.eligible-target-child-move-sibling-frozen")
+            .unwrap();
+        match mutation {
+            "swap inputs" => case["inputs"] = fresh["inputs"].clone(),
+            "swap targets" => case["targets"] = fresh["targets"].clone(),
+            "swap expected" => case["expected"] = fresh["expected"].clone(),
+            "swap state" => case["environment"]["trustState"] = json!("uninitialized"),
+            "wrong operation" => case["operation"] = json!("resolve"),
+            _ => unreachable!(),
+        }
+        let mut source = assets.clone();
+        source.insert(index.into(), encode(&altered));
+        assert!(admit_mvp_inventory(&source).is_err(), "{mutation}");
+    }
+}
+
+#[test]
 fn signed_mvp_inventory_admits_required_real_cases_without_expected_wire_bytes() {
     use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let source = MvpRepositorySource::new(root).unwrap();
     let admitted = admit_mvp_inventory(&source).unwrap();
-    assert_eq!(admitted.cases().len(), 43);
+    assert_eq!(admitted.cases().len(), 70);
     for case in admitted.cases() {
         let request = serde_json::to_value(case.request()).unwrap();
-        assert!((7..=16).contains(&request["files"].as_array().unwrap().len()));
+        assert!((7..=51).contains(&request["files"].as_array().unwrap().len()));
         assert!(request.get("expected").is_none());
         assert!(request.get("caseId").is_none());
         assert!(!case.expected().is_empty());
     }
+}
+
+#[test]
+fn admitted_update_inventory_matches_all_frozen_scoped_cases() {
+    use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let source = MvpRepositorySource::new(&root).unwrap();
+    let admitted = admit_mvp_inventory(&source).unwrap();
+    let frozen: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.join("spec/package/mck/fixtures/mvp-scoped-update/cases.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    let mut expected = frozen["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|case| case["id"].as_str().unwrap().to_owned())
+        .collect::<Vec<_>>();
+    expected.sort();
+    let mut actual = admitted
+        .cases()
+        .iter()
+        .filter(|case| case.operation() == "update")
+        .map(|case| case.id().to_owned())
+        .collect::<Vec<_>>();
+    actual.sort();
+    assert_eq!(actual, expected);
 }
 
 #[test]

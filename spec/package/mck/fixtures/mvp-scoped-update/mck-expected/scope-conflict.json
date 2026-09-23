@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "resolution",
+  "reason": "update-scope-conflict",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

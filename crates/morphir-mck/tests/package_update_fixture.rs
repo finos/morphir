@@ -45,6 +45,49 @@ use author::fixture;
 mod update;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use sha2::{Digest, Sha256};
+
+#[test]
+fn mck_update_inputs_match_independent_cli_case_preparation() {
+    use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+    let root = source();
+    let inventory = admit_mvp_inventory(&MvpRepositorySource::new(&root).unwrap()).unwrap();
+    let corpus = update::load(&root);
+    for case in &corpus.cases {
+        let admitted = inventory
+            .cases()
+            .iter()
+            .find(|admitted| admitted.id() == case.id)
+            .unwrap();
+        let temporary = tempfile::tempdir().unwrap();
+        let prepared = update::prepare(&root, temporary.path(), case);
+        let request = serde_json::to_value(admitted.request()).unwrap();
+        assert_eq!(
+            request["targets"],
+            serde_json::json!(case.targets),
+            "{}",
+            case.id
+        );
+        assert_eq!(admitted.inputs().len(), 50, "{}", case.id);
+        for (path, bytes) in admitted.inputs() {
+            assert_eq!(
+                *bytes,
+                fs::read(temporary.path().join(path)).unwrap(),
+                "{}: {path}",
+                case.id
+            );
+        }
+        assert_eq!(prepared.targets, case.targets);
+        if let Some(expected_lock) = &case.expected_lock {
+            let expected: Value = serde_json::from_slice(admitted.expected()).unwrap();
+            assert_eq!(
+                expected["outputFiles"][0]["sha256"],
+                digest(&fs::read(temporary.path().join(expected_lock)).unwrap()),
+                "{}",
+                case.id
+            );
+        }
+    }
+}
 fn digest(data: &[u8]) -> String {
     format!(
         "sha256:{}",

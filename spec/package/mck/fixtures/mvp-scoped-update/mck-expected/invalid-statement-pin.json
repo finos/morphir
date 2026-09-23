@@ -1,0 +1,9 @@
+{
+  "outcome": "refused",
+  "category": "invalid-input",
+  "reason": "old-record-acquisition-mismatch",
+  "output": "absent",
+  "outputFiles": [],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

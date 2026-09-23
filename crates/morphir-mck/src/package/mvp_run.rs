@@ -9,10 +9,11 @@ use std::ffi::{OsStr, OsString};
 
 const PROFILE: &str = "local-library-mvp:0.1.0-draft.1";
 const CONTRACT: &str = "0.1.0-draft.3";
-const OPERATIONS: [&str; 3] = [
+const OPERATIONS: [&str; 4] = [
     "restore-local-library",
     "resolve-local-library",
     "refresh-local-library",
+    "update-local-library",
 ];
 
 #[derive(Debug, Serialize)]
@@ -105,6 +106,7 @@ enum RefusalCategory {
     TrustState,
     OutputConflict,
     UnsupportedPolicy,
+    Resolution,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -124,6 +126,12 @@ enum RefusalReason {
     HistoricalEvidenceUnsupported,
     BundleInventoryMismatch,
     PublishedRootUnavailable,
+    InvalidUpdateTargets,
+    InvalidOldLock,
+    OldRecordAcquisitionMismatch,
+    UpdateScopeConflict,
+    UnsatisfiableRequirements,
+    RevocationTransitionUnsupported,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -167,6 +175,12 @@ enum Observation {
         registry_unchanged: bool,
     },
     Resolved {
+        output: OutputState,
+        output_files: Vec<OutputFile>,
+        lock_unchanged: bool,
+        registry_unchanged: bool,
+    },
+    Updated {
         output: OutputState,
         output_files: Vec<OutputFile>,
         lock_unchanged: bool,
@@ -218,6 +232,12 @@ impl Observation {
                 }
             }
             Self::Resolved {
+                output,
+                output_files,
+                lock_unchanged,
+                registry_unchanged,
+            }
+            | Self::Updated {
                 output,
                 output_files,
                 lock_unchanged,
@@ -451,7 +471,7 @@ mod tests {
         let source =
             MvpRepositorySource::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")).unwrap();
         let inventory = admit_mvp_inventory(&source).unwrap();
-        assert_eq!(inventory.cases().len(), 43);
+        assert_eq!(inventory.cases().len(), 70);
         for case in inventory.cases() {
             let value = serde_json::from_slice(case.expected()).unwrap();
             Observation::parse(value).unwrap_or_else(|error| panic!("{}: {error}", case.id()));

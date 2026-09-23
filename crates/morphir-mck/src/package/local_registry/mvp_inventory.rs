@@ -65,6 +65,40 @@ const REFRESH_CASES: [&str; 14] = [
     "mvp.refresh.damaged-record",
     "mvp.refresh.missing-record",
 ];
+const UPDATE_CASES: [&str; 27] = [
+    "mvp.update.eligible-target-child-move-sibling-frozen",
+    "mvp.update.multiple-targets",
+    "mvp.update.multiple-targets-reordered",
+    "mvp.update.exact-target",
+    "mvp.update.exact-old-target-preserves-child",
+    "mvp.update.yanked-frozen-release",
+    "mvp.update.yanked-frozen-root",
+    "mvp.update.scope-conflict",
+    "mvp.update.revoked-frozen-release",
+    "mvp.update.empty-targets",
+    "mvp.update.invalid-target",
+    "mvp.update.root-target",
+    "mvp.update.nonmember-target",
+    "mvp.update.duplicate-target",
+    "mvp.update.unavailable-exact-target",
+    "mvp.update.yanked-exact-new-target",
+    "mvp.update.invalid-old-graph",
+    "mvp.update.invalid-acquisition-pin",
+    "mvp.update.invalid-statement-pin",
+    "mvp.update.bad-timestamp-signature",
+    "mvp.update.bad-frozen-library-content",
+    "mvp.update.expired-timestamp",
+    "mvp.update.uninitialized-state",
+    "mvp.update.occupied-output",
+    "mvp.update.missing-established-state",
+    "mvp.update.corrupt-state",
+    "mvp.update.uncertain-state",
+];
+// SHA-256 of the 50 sorted, LF-separated mount paths in the reviewed signed
+// scoped-update fixture. This closes the large fixture set without repeating
+// its content-addressed paths in executable code.
+const UPDATE_MOUNTS_SHA256: &str =
+    "f0a49167476fb200308edf0efe951b53183f735842f3b5442ae5acbb4e5663d3";
 const RESTORE_INPUTS: [&str; 15] = [
     "morphir.lock",
     "registry/bundles/345706de972523b65c8711a4367d61f143035770145519576aeaaf18733d874e/ir.json",
@@ -174,6 +208,8 @@ struct Case {
     operation: String,
     #[serde(default)]
     root: Option<String>,
+    #[serde(default)]
+    targets: Option<Vec<String>>,
     environment: MvpEnvironment,
     inputs: BTreeMap<String, String>,
     expected: String,
@@ -216,6 +252,7 @@ pub struct AdmittedMvpCase {
     id: String,
     operation: String,
     root: Option<String>,
+    targets: Option<Vec<String>>,
     environment: MvpEnvironment,
     inputs: BTreeMap<String, Vec<u8>>,
     expected: Vec<u8>,
@@ -230,6 +267,8 @@ pub struct MvpRequest {
     profile: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     exact_root: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    targets: Option<Vec<String>>,
     environment: MvpEnvironment,
     files: Vec<MvpInputFile>,
 }
@@ -272,10 +311,12 @@ impl AdmittedMvpCase {
             op: match self.operation.as_str() {
                 "resolve" => "resolve-local-library",
                 "refresh" => "refresh-local-library",
+                "update" => "update-local-library",
                 _ => "restore-local-library",
             },
             profile: "local-library-mvp:0.1.0-draft.1",
             exact_root: self.root.clone(),
+            targets: self.targets.clone(),
             environment: self.environment,
             files: self
                 .inputs
@@ -380,13 +421,101 @@ fn refresh_case_matches_setup(case: &Case) -> bool {
         && case.expected == expected_id
 }
 
+fn update_case_matches_setup(case: &Case) -> bool {
+    let Some(suffix) = case.id.strip_prefix("mvp.update.") else {
+        return false;
+    };
+    let target = "example.com/finance/eligibility";
+    let targets: &[&str] = match suffix {
+        "multiple-targets" => &[target, "example.com/finance/child@1.1.0"],
+        "multiple-targets-reordered" => &["example.com/finance/child@1.1.0", target],
+        "exact-target" => &["example.com/finance/eligibility@1.3.0"],
+        "exact-old-target-preserves-child" => &["example.com/finance/eligibility@1.2.0"],
+        "scope-conflict" => &["example.com/finance/eligibility@1.4.0"],
+        "empty-targets" => &[],
+        "invalid-target" => &["../invalid"],
+        "root-target" => &["example.com/finance/loan-rules"],
+        "nonmember-target" => &["example.com/finance/missing"],
+        "duplicate-target" => &[target, target],
+        "unavailable-exact-target" => &["example.com/finance/eligibility@9.9.9"],
+        "yanked-exact-new-target" => &["example.com/finance/eligibility@1.9.0"],
+        _ if UPDATE_CASES.contains(&case.id.as_str()) => &[target],
+        _ => return false,
+    };
+    if case
+        .targets
+        .as_ref()
+        .is_none_or(|actual| actual.iter().map(String::as_str).collect::<Vec<_>>() != targets)
+    {
+        return false;
+    }
+    let trust_state = match suffix {
+        "uninitialized-state" => TrustState::Uninitialized,
+        "missing-established-state" => TrustState::MissingDatabase,
+        "corrupt-state" => TrustState::CorruptDatabase,
+        "uncertain-state" => TrustState::UnresolvedOperation,
+        _ => TrustState::Initialized,
+    };
+    let output = if suffix == "occupied-output" {
+        OutputSetup::Sentinel
+    } else {
+        OutputSetup::Absent
+    };
+    if case.environment.trust_state != trust_state
+        || case.environment.output != output
+        || case.expected != format!("mck-expected/{suffix}.json")
+        || case.inputs.len() != 50
+    {
+        return false;
+    }
+    let mount_names = case
+        .inputs
+        .keys()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join("\n");
+    if sha256_hex(mount_names.as_bytes()) != UPDATE_MOUNTS_SHA256 {
+        return false;
+    }
+    let variant_mounts: &[&str] = match suffix {
+        "scope-conflict"
+        | "yanked-frozen-release"
+        | "yanked-frozen-root"
+        | "revoked-frozen-release" => &[
+            "registry/metadata/2.snapshot.json",
+            "registry/metadata/2.targets.json",
+            "registry/metadata/2.timestamp.json",
+            "registry/metadata/timestamp.json",
+        ],
+        "invalid-old-graph" | "invalid-acquisition-pin" | "invalid-statement-pin" => {
+            &["morphir.lock"]
+        }
+        "bad-timestamp-signature" | "expired-timestamp" => &[
+            "registry/metadata/2.timestamp.json",
+            "registry/metadata/timestamp.json",
+        ],
+        "bad-frozen-library-content" => &[
+            "registry/bundles/a73211757c78702f407d5481de74dd89d7e4eee383083550e2da699bc247edcd/ir.json",
+        ],
+        _ => &[],
+    };
+    case.inputs.iter().all(|(mount, id)| {
+        let expected = if variant_mounts.contains(&mount.as_str()) {
+            format!("mck-inputs/{suffix}/{}", mount.replace('/', "__"))
+        } else {
+            format!("signed/{mount}")
+        };
+        id == &expected
+    })
+}
+
 pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInventory, String> {
     let index_bytes = source.read(INDEX)?;
     if index_bytes.len() as u64 > MAX_FILE_BYTES {
         return Err("MVP index size limit exceeded".into());
     }
     let manifest: Manifest = serde_json::from_slice(&index_bytes).map_err(|e| e.to_string())?;
-    if manifest.assets.len() > 96 {
+    if manifest.assets.len() > 192 {
         return Err("MVP asset count limit exceeded".into());
     }
     if manifest.format_version != VERSION
@@ -397,12 +526,13 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
     }
     let required: BTreeSet<_> = manifest.required_cases.iter().map(String::as_str).collect();
     if manifest.required_cases.len()
-        != RESTORE_CASES.len() + RESOLVE_CASES.len() + REFRESH_CASES.len()
+        != RESTORE_CASES.len() + RESOLVE_CASES.len() + REFRESH_CASES.len() + UPDATE_CASES.len()
         || required
             != RESTORE_CASES
                 .into_iter()
                 .chain(RESOLVE_CASES)
                 .chain(REFRESH_CASES)
+                .chain(UPDATE_CASES)
                 .collect()
     {
         return Err("MVP required-case inventory differs from the profile".into());
@@ -456,9 +586,11 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
         }
         let operation_matches_id = (case.operation == "restore"
             && RESTORE_CASES.contains(&case.id.as_str())
-            && case.root.is_none())
+            && case.root.is_none()
+            && case.targets.is_none())
             || (case.operation == "resolve"
                 && RESOLVE_CASES.contains(&case.id.as_str())
+                && case.targets.is_none()
                 && case.root.as_deref()
                     == Some(if case.id == "mvp.resolve.absent-published-root" {
                         "example.com/finance/loan-rules@9.9.9"
@@ -467,7 +599,12 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
                     }))
             || (case.operation == "refresh"
                 && REFRESH_CASES.contains(&case.id.as_str())
-                && case.root.is_none());
+                && case.root.is_none()
+                && case.targets.is_none())
+            || (case.operation == "update"
+                && UPDATE_CASES.contains(&case.id.as_str())
+                && case.root.is_none()
+                && update_case_matches_setup(&case));
         if !operation_matches_id || case.inputs.is_empty() {
             return Err(format!(
                 "unsupported MVP bootstrap operation in {}",
@@ -484,11 +621,12 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
             .into_iter()
             .chain(["initialization-policy.json", EXTRA_BUNDLE_INPUT])
             .collect();
-        if !required_mounts.is_subset(&mounted)
-            || mounted.len() > 16
-            || mounted.iter().any(|mount| !allowed_mounts.contains(mount))
-            || (case.operation != "refresh" && mounted.len() > required_mounts.len() + 1)
-            || (case.operation == "refresh" && !refresh_case_matches_setup(&case))
+        if case.operation != "update"
+            && (!required_mounts.is_subset(&mounted)
+                || mounted.len() > 16
+                || mounted.iter().any(|mount| !allowed_mounts.contains(mount))
+                || (case.operation != "refresh" && mounted.len() > required_mounts.len() + 1)
+                || (case.operation == "refresh" && !refresh_case_matches_setup(&case)))
         {
             return Err(format!("incomplete MVP restore inputs in {}", case.id));
         }
@@ -521,6 +659,7 @@ pub fn admit_mvp_inventory(source: &dyn CorpusSource) -> Result<AdmittedMvpInven
             id: case.id,
             operation: case.operation,
             root: case.root,
+            targets: case.targets,
             environment: case.environment,
             inputs,
             expected: expected.clone(),

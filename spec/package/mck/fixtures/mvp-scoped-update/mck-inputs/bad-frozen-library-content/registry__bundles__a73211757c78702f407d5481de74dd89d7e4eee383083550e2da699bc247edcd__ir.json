@@ -1,0 +1,45 @@
+{
+  "distribution": {
+    "Library": {
+      "def": {
+        "modules": {
+          "decision": {
+            "Public": {
+              "types": {
+                "decision": {
+                  "Public": {
+                    "CustomTypeDefinition": {
+                      "access": "Public",
+                      "constructors": {
+                        "approved": [],
+                        "declined": []
+                      },
+                      "typeParams": []
+                    }
+                  }
+                }
+              },
+              "values": {
+                "default-decision": {
+                  "Public": {
+                    "ExpressionBody": {
+                      "body": {
+                        "Constructor": "example/sibling:decision#approved"
+                      },
+                      "inputTypes": {},
+                      "outputType": "example/sibling:decision#decision"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dependencies": {},
+      "packageName": "example/sibling"
+    }
+  },
+  "formatVersion": 4
+}
+
