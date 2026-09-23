@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `morphir extension repository publish --bundle` accepts a version-2 process bundle: `release.json`, one raw executable per platform and each one's `.sha256` file. Publish checks every digest and statement before running anything, runs the artifact for this platform to check its capabilities, and writes index records that keep each declared statement and record whether it was probed. Archives, mixed WASM and process bundles, and platform ABIs the index cannot represent are refused (kb `morphir-extensions` decision 0003, #921).
 - `morphir extension install` probes the selected process artifact before it commits: it runs `describe`, or a session when the extension does not implement it, and refuses the install when the answer disagrees with the declared statement, leaving nothing behind. `--no-probe` skips the probe. Install and `extension list` show the capability kinds and whether the statement was probed (kb `morphir-extensions` decision 0003, #921). An install from a version-1 index record keeps the version-1 catalog shape, so an older CLI can still read a shared Morphir home.
 
 ### Changed

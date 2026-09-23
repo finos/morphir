@@ -5126,3 +5126,7 @@ fn re_installing_after_a_storage_change_removes_the_stale_file() {
         "foreign file touched"
     );
 }
+
+#[cfg(unix)]
+#[path = "support/process_publish.rs"]
+mod process_publish;

@@ -473,8 +473,13 @@ cmd extension display_order=20 subcommand_required=#true arg_required_else_help=
         cmd remove display_order=6 args_override_self=#false help="Remove configuration without deleting endpoint content" unknown_flags=error {
             arg <NAME> help="Repository name"
         }
-        cmd publish display_order=7 args_override_self=#false help="Publish a verified release bundle to a configured repository" unknown_flags=error {
-            flag --bundle help="Release bundle directory" required=#true {
+        cmd publish display_order=7 args_override_self=#false help="Publish a verified WASM or process release bundle to a configured repository" unknown_flags=error {
+            long_help #"""
+Publish a verified WASM or process release bundle to a configured repository
+
+Version-2 WASM artifacts remain declared and are not probed.
+"""#
+            flag --bundle help="Bundle directory with release.json, each artifact and its .sha256 file. Publish runs the artifact for this platform to check its capabilities" required=#true {
                 arg <BUNDLE>
             }
             arg <NAME> help="Repository name"

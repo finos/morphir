@@ -39,6 +39,16 @@ fn repository_name(name: &str) -> miette::Result<RepositoryName> {
     RepositoryName::parse(name).map_err(|error| miette::miette!("Invalid repository name: {error}"))
 }
 
+/// How this CLI names itself to an extension. Publish and install describe an
+/// artifact as the same host, so an extension that shapes its statement by
+/// host sees the same host at both steps.
+pub(crate) fn host_peer() -> morphir_extension_sdk::protocol::PeerInfo {
+    morphir_extension_sdk::protocol::PeerInfo {
+        name: "morphir-cli".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+    }
+}
+
 /// The host version an extension's `requires.host` is checked against: this CLI.
 fn host_version() -> morphir_workspace::Version {
     env!("CARGO_PKG_VERSION")
@@ -304,7 +314,7 @@ pub fn run_extension_repository_init(
 }
 
 /// Verify a release bundle and publish it through a configured repository name.
-pub fn run_extension_repository_publish(
+pub async fn run_extension_repository_publish(
     operation_id: &OperationId,
     name: String,
     bundle: std::path::PathBuf,
@@ -321,9 +331,15 @@ pub fn run_extension_repository_publish(
         .ok_or_else(|| miette::miette!("Extension repository '{name}' is not local"))?;
     let repository = LocalExtensionRepository::open(directory)
         .map_err(|error| miette::miette!("Failed to open extension repository: {error}"))?;
-    let publication = repository
-        .publish(&bundle)
-        .map_err(|error| miette::miette!("Failed to publish extension release: {error}"))?;
+    let runtime = tokio::runtime::Handle::current();
+    let publication = tokio::task::spawn_blocking(move || {
+        repository.publish_with_process_probe(&bundle, |artifact, bytes| {
+            runtime.block_on(describe_publish_artifact(&home, artifact, bytes))
+        })
+    })
+    .await
+    .map_err(|error| miette::miette!("Extension publication task failed: {error}"))?
+    .map_err(|error| miette::miette!("Failed to publish extension release: {error}"))?;
     let status = match publication.status() {
         PublicationStatus::Published => "published",
         PublicationStatus::AlreadyPresent => "already-present",
@@ -351,6 +367,83 @@ pub fn run_extension_repository_publish(
         publication.release().version()
     );
     Ok(None)
+}
+
+async fn describe_publish_artifact(
+    home: &MorphirHome,
+    artifact: &morphir_distribution::BundleArtifactDescriptor,
+    bytes: &[u8],
+) -> morphir_distribution::Result<morphir_distribution::PublicationDescription> {
+    use morphir_daemon::extensions::{
+        ProcessLaunch, SpawnedProcessTransport, process::DescriptionSource,
+    };
+    use morphir_distribution::PublicationDescription;
+    use morphir_extension_sdk::protocol::{InitializeParams, SUPPORTED_MEP_VERSIONS};
+    let path = std::path::PathBuf::from(artifact.filename().as_str());
+    let invalid = |reason: String| morphir_distribution::DistributionError::InvalidReleaseBundle {
+        path: path.clone(),
+        reason,
+    };
+    std::fs::create_dir_all(home.temp_dir())
+        .map_err(|error| invalid(format!("Failed to prepare process description: {error}")))?;
+    let mut staging = tempfile::Builder::new();
+    staging.prefix("publish-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        staging.permissions(std::fs::Permissions::from_mode(0o700));
+    }
+    let workspace = staging
+        .tempdir_in(home.temp_dir())
+        .map_err(|error| invalid(format!("Failed to prepare process description: {error}")))?;
+    // Stage the verified bytes privately. A describe fallback may report a
+    // subset of the declared kinds, so ordinary exact discovery validation
+    // must not run before publication applies the SDK's agreement rule.
+    let executable = workspace.path().join(artifact.filename().as_str());
+    std::fs::write(&executable, bytes)
+        .map_err(|error| invalid(format!("Failed to stage process for describe: {error}")))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).map_err(
+            |error| {
+                invalid(format!(
+                    "Failed to make describe process executable: {error}"
+                ))
+            },
+        )?;
+    }
+    let launch = ProcessLaunch::new(
+        &artifact.statement().extension.id,
+        executable,
+        workspace.path(),
+    );
+    let transport = SpawnedProcessTransport::spawn(launch)
+        .await
+        .map_err(|error| invalid(format!("Failed to start process for describe: {error}")))?;
+    let description = transport
+        .describe(InitializeParams {
+            protocol_versions: SUPPORTED_MEP_VERSIONS
+                .iter()
+                .map(|version| (*version).into())
+                .collect(),
+            host: host_peer(),
+        })
+        .await
+        .map_err(|error| invalid(format!("Failed to describe process: {error}")))?;
+    let statement = description.statement;
+    match description.source {
+        DescriptionSource::Describe => Ok(PublicationDescription::Describe(statement)),
+        DescriptionSource::SessionFallback => {
+            Ok(PublicationDescription::SessionFallback {
+                protocol_version: statement.protocol_versions.into_iter().next().ok_or_else(
+                    || invalid("Description fallback has no negotiated protocol version".into()),
+                )?,
+                extension: statement.extension,
+                capabilities: statement.capabilities,
+            })
+        }
+    }
 }
 
 /// Search enabled extension repositories by identity or display name.

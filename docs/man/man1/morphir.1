@@ -172,7 +172,7 @@ Disable a configured repository
 Remove configuration without deleting endpoint content
 .TP
 \fBextension repository publish\fR
-Publish a verified release bundle to a configured repository
+Publish a verified WASM or process release bundle to a configured repository
 .TP
 \fBextension repository verify\fR
 Validate repository metadata without installing anything
@@ -1069,7 +1069,9 @@ Remove configuration without deleting endpoint content
 \fB<NAME>\fR
 Repository name
 .SH "MORPHIR EXTENSION REPOSITORY PUBLISH"
-Publish a verified release bundle to a configured repository
+Publish a verified WASM or process release bundle to a configured repository
+
+Version\-2 WASM artifacts remain declared and are not probed.
 .PP
 \fBUsage:\fR morphir extension repository publish [OPTIONS] <NAME>
 .PP
@@ -1077,7 +1079,7 @@ Publish a verified release bundle to a configured repository
 .PP
 .TP
 \fB\-\-bundle\fR \fI<BUNDLE>\fR
-Release bundle directory
+Bundle directory with release.json, each artifact and its .sha256 file. Publish runs the artifact for this platform to check its capabilities
 \fBArguments:\fR
 .PP
 .TP
