@@ -12,6 +12,8 @@ use std::process::Output;
 
 use serde_json::Value;
 
+#[path = "support/mvp_acceptance.rs"]
+mod mvp_acceptance;
 #[path = "support/package_acceptance.rs"]
 mod package_acceptance;
 
@@ -333,6 +335,9 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     );
 
     package_acceptance::qualify(work.path(), &adapter, &run, denied_probe.as_deref());
+    if std::env::var_os("MORPHIR_MCK_MVP_REQUIRED").is_some_and(|value| !value.is_empty()) {
+        mvp_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
+    }
 
     if let Some(directory) = std::env::var_os("MORPHIR_MCK_ACCEPTANCE_EVIDENCE") {
         let directory = Path::new(&directory);
@@ -344,8 +349,15 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
             "package-integrity.json",
             "package-resolution.json",
             "package-runtime.json",
+            "package-mvp.json",
+            "package-mvp.html",
+            "package-mvp-runtime.json",
+            "package-mvp-negative.log",
+            "package-examples.log",
         ] {
-            std::fs::copy(work.path().join(name), directory.join(name)).unwrap();
+            if work.path().join(name).exists() {
+                std::fs::copy(work.path().join(name), directory.join(name)).unwrap();
+            }
         }
         std::fs::write(directory.join("kit-status.json"), status.stdout).unwrap();
         std::fs::write(
@@ -613,6 +625,10 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "missing_prepared_adapter_fails_closed",
+            mvp_acceptance::missing_prepared_adapter_fails_closed,
+        ),
         (
             "installed_cli_qualification_requires_package_evidence",
             package_acceptance::installed_cli_qualification_requires_package_evidence,

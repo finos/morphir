@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Every Elm provider reads an explicit package name in a selection of files with both `.` and `/` as segment separators, and reports one normal form: `--package-name My.Package`, or a borrowed manifest named `Documentation.Decoration`, now works with every Elm provider and names `my/package` or `documentation/decoration`. The IR package path does not change. The pins move to `morphir-rust` `adf03d8`, `extension/elm/v0.3.1` and `morphir-scala-elm` `v0.5.0-M08` (kb `morphir-extensions` decision 0005).
+- The MEP draft assigns `-32014` (not initialized) to a request that is not allowed before `morphir.initialize` or after shutdown, and a statement built from a `describe` fallback session holds only what the session reports (kb decision 0006).
+
+## [0.4.0-beta.4] - 2026-09-23
+
 ### Added
+- The native package MVP profile runs 70 required local Library cases across fresh trust, metadata refresh, full-lock resolve and restore, scoped update, and refusal paths. `morphir mck package mvp-run` writes one versioned prerelease JSON report; `mvp-report check` independently verifies the complete inventory, and `mvp-report render` writes a standalone offline HTML view.
+- Published CLI acceptance on all six native targets runs the downloaded beta.4 binary against those 70 cases and both signed local Library examples under operating-system network denial. It retains the JSON/HTML reports, example logs, and negative checking evidence alongside the unchanged 80 integrity and 78 resolution cases.
 - `morphir compile --input` accepts files from any language whose provider declares their suffix, and repeats: several files from one directory compile together. The provider synthesizes the project through workspace discovery, naming the package and exposing every selected module; `--package-name` is required for more than one file (#917).
 - `morphir generate --from-partial-compile` consumes a compile of selected files. Such a compile is marked in its task record, and an implicit `generate` refuses it otherwise, because its IR need not match the project's declared exposure.
 
@@ -16,8 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `morphir gleam roundtrip` with only files as input and no `--config` or `--project` is refused before compiling, because its generate half needs a project.
 - The published Elm extension pin moves to `extension/elm/v0.3.0`, which serves workspace discovery.
 - The published `morphir-scala-elm` pin moves to `v0.5.0-M07`, which serves workspace discovery, so its CI check compiles a single file again (finos/morphir-scala#1070).
-- Every Elm provider reads an explicit package name in a selection of files with both `.` and `/` as segment separators, and reports one normal form: `--package-name My.Package`, or a borrowed manifest named `Documentation.Decoration`, now works with every Elm provider and names `my/package` or `documentation/decoration`. The IR package path does not change. The pins move to `morphir-rust` `adf03d8`, `extension/elm/v0.3.1` and `morphir-scala-elm` `v0.5.0-M08` (kb `morphir-extensions` decision 0005).
-- The MEP draft assigns `-32014` (not initialized) to a request that is not allowed before `morphir.initialize` or after shutdown, and a statement built from a `describe` fallback session holds only what the session reports (kb decision 0006).
 - Package integrity and resolution CI now use the native Morphir CLI against independent TypeScript and Rust adapters. TypeScript adopts qualified beta.3 for its installed-adapter checks; the replaced package runner, runner APIs and temporary parity tooling are retired. Independent package implementations, draft.3 helpers and frozen acceptance evidence remain.
 
 ## [0.4.0-beta.3] - 2026-09-21
@@ -462,7 +468,8 @@ alpha, 0.4.0-alpha.5, only moved the release pipeline to the Rust binary.
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.3...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.4...HEAD
+[0.4.0-beta.4]: https://github.com/finos/morphir/compare/v0.4.0-beta.3...v0.4.0-beta.4
 [0.4.0-beta.3]: https://github.com/finos/morphir/compare/v0.4.0-beta.2...v0.4.0-beta.3
 [0.4.0-beta.2]: https://github.com/finos/morphir/compare/v0.4.0-beta.1...v0.4.0-beta.2
 [0.4.0-beta.1]: https://github.com/finos/morphir/compare/v0.4.0-alpha.7...v0.4.0-beta.1

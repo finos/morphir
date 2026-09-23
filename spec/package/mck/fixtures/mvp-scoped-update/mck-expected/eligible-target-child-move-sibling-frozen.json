@@ -1,0 +1,12 @@
+{
+  "outcome": "updated",
+  "output": "present",
+  "outputFiles": [
+    {
+      "path": "morphir.lock",
+      "sha256": "sha256:7190428c25cd4b927c5db8bb9fbcbe936c81cfacc679734309a76424d332321a"
+    }
+  ],
+  "lockUnchanged": true,
+  "registryUnchanged": true
+}

@@ -40,6 +40,7 @@ const sidebars = {
         'getting-started/morphir-quick-start',
         'getting-started/Morphir Web UI',
         'getting-started/morphir-cli',
+        'getting-started/local-libraries',
         'getting-started/morphir-go-preview',
       ],
     },

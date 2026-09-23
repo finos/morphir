@@ -751,6 +751,19 @@ enum MckPackageAction {
     Run(commands::mck::package::RunArgs),
     /// Run admitted local Library MVP cases through an explicit adapter
     MvpRun(commands::mck::package::MvpRunArgs),
+    /// Check or render a versioned local Library MVP report
+    MvpReport {
+        #[command(subcommand)]
+        action: MckPackageReportAction,
+    },
+}
+
+#[derive(Clone, Subcommand)]
+enum MckPackageReportAction {
+    /// Compare every report record with the independently admitted MVP inventory
+    Check(commands::mck::package::MvpReportCheckArgs),
+    /// Render a standalone offline HTML view of a versioned MVP report
+    Render(commands::mck::package::MvpReportRenderArgs),
 }
 
 #[derive(Clone, Subcommand)]
@@ -1228,6 +1241,14 @@ impl AppSession for MorphirSession {
                     MckPackageAction::MvpRun(args) => {
                         commands::mck::package::mvp_run(args.clone()).await
                     }
+                    MckPackageAction::MvpReport { action } => match action {
+                        MckPackageReportAction::Check(args) => {
+                            commands::mck::package::mvp_report_check(args.clone())
+                        }
+                        MckPackageReportAction::Render(args) => {
+                            commands::mck::package::mvp_report_render(args.clone())
+                        }
+                    },
                 },
                 MckAction::Report { action } => match action {
                     MckReportAction::Check(args) => commands::mck::report::run_check(args.clone()),
