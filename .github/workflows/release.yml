@@ -77,21 +77,20 @@ jobs:
             archive: zip
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.release-info.outputs.tag }}
-          fetch-depth: 0
-          submodules: recursive
-
-      # Dependency snapshots exceed Windows' default path limit. Configure Git
-      # and select its client before setup-rust-ci invokes Cargo metadata.
+      # Git must accept long submodule fixture names during checkout itself.
       - name: Configure Windows Git paths
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           git config --global core.longpaths true
           "CARGO_NET_GIT_FETCH_WITH_CLI=true" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-info.outputs.tag }}
+          fetch-depth: 0
+          submodules: recursive
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
