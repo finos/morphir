@@ -20,6 +20,7 @@ tar.workspace = true
 unicode-normalization.workspace = true
 url.workspace = true
 chrono = "0.4"
+semver = { workspace = true, features = ["serde"] }
 
 # Adapter sessions terminate the adapter's whole process tree: a process group
 # on Unix, a Job Object on Windows.

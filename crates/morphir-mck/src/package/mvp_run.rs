@@ -3,6 +3,7 @@
 use super::local_registry::AdmittedMvpInventory;
 use crate::kit::hash::is_sha256_hex;
 use crate::transport::{Limits, Session};
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ffi::{OsStr, OsString};
@@ -24,7 +25,7 @@ const OPERATIONS: [&str; 4] = [
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct MvpRun {
-    contract_version: String,
+    contract_version: Version,
     suite: String,
     started_at: String,
     driver: MvpDriver,
@@ -373,7 +374,7 @@ impl MvpRun {
     ) -> Self {
         let driver = crate::provenance::Driver::current();
         Self {
-            contract_version: REPORT_VERSION.into(),
+            contract_version: Version::parse(REPORT_VERSION).expect("static MVP report version"),
             suite: "package".into(),
             started_at: crate::report::iso_timestamp(SystemTime::now()),
             driver: MvpDriver {
@@ -449,7 +450,8 @@ impl MvpRun {
 
     pub fn from_json(text: &str) -> Result<Self, String> {
         let report: Self = serde_json::from_str(text).map_err(|e| e.to_string())?;
-        if report.contract_version != REPORT_VERSION
+        if report.contract_version
+            != Version::parse(REPORT_VERSION).expect("static MVP report version")
             || report.suite != "package"
             || report.profile != PROFILE
             || report.scope != "fresh-local-library-workflow"

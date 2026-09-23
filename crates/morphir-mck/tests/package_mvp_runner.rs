@@ -282,6 +282,9 @@ fn versioned_mvp_report_checks_the_independent_inventory() {
     bad_context["startedAt"] = report["startedAt"].clone();
     bad_context["adapter"]["command"] = json!([""]);
     assert!(MvpRun::from_json(&bad_context.to_string()).is_err());
+    bad_context["adapter"]["command"] = report["adapter"]["command"].clone();
+    bad_context["contractVersion"] = json!("0.1.0-draft.1+unlisted");
+    assert!(MvpRun::from_json(&bad_context.to_string()).is_err());
 }
 
 #[test]

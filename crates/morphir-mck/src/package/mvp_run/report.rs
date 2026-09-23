@@ -9,7 +9,7 @@ impl MvpRun {
         );
         out.push_str(include_str!("../../report/html.css"));
         out.push_str("</style></head><body><a class=\"skip-link\" href=\"#records\">Skip to records</a><main><header><p class=\"eyebrow\">MORPHIR / COMPATIBILITY KIT</p><h1>MVP local Library report</h1>");
-        write!(out, "<p class=\"muted\">{} · Report draft <code>{}</code> · Started <time>{}</time></p></header>", escape(&self.profile), escape(&self.contract_version), escape(&self.started_at)).unwrap();
+        write!(out, "<p class=\"muted\">{} · Report draft <code>{}</code> · Started <time>{}</time></p></header>", escape(&self.profile), self.contract_version, escape(&self.started_at)).unwrap();
         let (passes, failures, errors) =
             self.records
                 .iter()
