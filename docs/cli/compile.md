@@ -17,6 +17,7 @@ Compile source code to Morphir IR
 - **`--json`** — Output as JSON
 - **`--json-lines`** — Output as JSON Lines (streaming)
 - **`--no-cache`** — Ignore the incremental compile cache for this run
+- **`--types-only`** — Compile type declarations only, omitting value bodies
 - **`--elm-doc-comments <MODE>`** — How Elm doc comments become IR doc text. Overrides [frontend.elm] doc_comments and MORPHIR_FRONTEND__ELM__DOC_COMMENTS
 
   **Choices:** `morphir-elm`, `trimmed`

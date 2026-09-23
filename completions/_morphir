@@ -333,6 +333,7 @@ cmd compile display_order=7 args_override_self=#false help="Compile source code 
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     flag --no-cache help="Ignore the incremental compile cache for this run"
+    flag --types-only help="Compile type declarations only, omitting value bodies"
     flag --elm-doc-comments help="How Elm doc comments become IR doc text. Overrides [frontend.elm] doc_comments and MORPHIR_FRONTEND__ELM__DOC_COMMENTS" {
         arg <MODE> {
             choices morphir-elm trimmed

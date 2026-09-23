@@ -478,7 +478,7 @@ pub async fn prepare_compile(
         }
     }
     let extension_options = ExtensionCompileOptions {
-        types_only: false,
+        types_only: options.types_only,
         ir_version: advertised_ir_version(&provider.capability().ir_versions, requested_version),
         extra,
     };

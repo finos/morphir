@@ -57,6 +57,8 @@ pub struct CompileOptions {
     pub json_lines: bool,
     /// Ignore the workspace's incremental compile cache for this run.
     pub no_cache: bool,
+    /// Compile declarations without executable value bodies.
+    pub types_only: bool,
     /// Elm compatibility modes from the command line, which override
     /// `[frontend.elm]` and the environment. See [`elm_modes`].
     pub elm_modes: elm_modes::Flags,
