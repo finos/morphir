@@ -1134,6 +1134,24 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete dir type=path
             complete file type=path
         }
+        cmd mvp-run display_order=2 args_override_self=#false help="Run the admitted local Library MVP bootstrap cases through an explicit adapter" unknown_flags=value {
+            flag --source help="Repository root containing the closed MVP inventory and signed fixtures" required=#true {
+                arg <DIR>
+            }
+            flag --adapter help="Adapter executable, launched directly without a shell" required=#true {
+                arg <PROGRAM>
+            }
+            flag --adapter-arg help="An argument for the adapter; repeat for more" var=#true allow_hyphen_values=#true {
+                arg <ARG>… var=#true
+            }
+            flag --timeout help="Maximum duration of one adapter request and response, in milliseconds" default="30000" {
+                arg <MS>
+            }
+            flag --session-timeout help="Maximum duration of the adapter session, in milliseconds" default="1800000" {
+                arg <MS>
+            }
+            complete dir type=path
+        }
     }
     cmd report display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
         cmd check display_order=0 args_override_self=#false help="Verify report inventory and the binding's allowed-failing baseline" unknown_flags=error {

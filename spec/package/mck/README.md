@@ -27,6 +27,38 @@ use IR report fields. Every case is required, so a skip, failure or kit error me
 exit 1. Invalid arguments mean exit 2. Kit errors are reported before an adapter starts.
 The runner owns loading and comparison; package behavior stays in the independent adapters.
 
+## Local Library MVP bootstrap execution
+
+`mvp-cases.json` is a separate, versioned `local-library-mvp:0.1.0-draft.1`
+bootstrap inventory. It binds the complete 15-file signed restore input for a
+fresh two-Library success and a timestamp-signature refusal, plus independently
+fixed expected outcomes. Every referenced input and expected file has a SHA-256
+digest; both exact case IDs and all 15 input mounts are required before the
+adapter starts. The invalid-signature variant is a new fixture; the signed
+positive inputs are unchanged.
+
+Run this initial executable slice through the one native MCK runner and an
+explicit external adapter:
+
+```sh
+morphir mck package mvp-run --source . \
+  --adapter /path/to/morphir-mck-adapter --adapter-arg package-mvp
+```
+
+The JSON-lines session advertises package contract `0.1.0-draft.3`, the MVP
+profile and `restore-local-library`. Requests carry only confined input bytes;
+case IDs and expected outcomes remain with the runner. The adapter must return
+one structured restore or metadata-authentication observation per request.
+Successful restore compares the complete published-file path and SHA-256
+inventory; the negative case fixes the timestamp signature-threshold reason.
+Admission rejects oversized individual assets and oversized total input before
+request construction.
+Missing capability, malformed response, transport failure, or an unexecuted
+required case fails the run. The command prints a bootstrap summary; its two
+cases are not the complete MVP qualification inventory. The consolidated
+prerelease report integration follows when the remaining workflow cases are
+admitted.
+
 All four parent gates now use the native runner: `package:check`,
 `package:check:rust`, `package:resolution-check` and `package:resolution-check:rust`.
 They retain one report per contract and independent implementation. The temporary

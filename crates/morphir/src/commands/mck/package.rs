@@ -126,3 +126,52 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
         Outcome::Failed
     })
 }
+
+#[derive(Args, Clone, Debug)]
+pub struct MvpRunArgs {
+    /// Repository root containing the closed MVP inventory and signed fixtures
+    #[arg(long, value_name = "DIR")]
+    pub source: PathBuf,
+    /// Adapter executable, launched directly without a shell
+    #[arg(long, value_name = "PROGRAM")]
+    pub adapter: OsString,
+    /// An argument for the adapter; repeat for more
+    #[arg(long = "adapter-arg", value_name = "ARG", allow_hyphen_values = true)]
+    pub adapter_args: Vec<OsString>,
+    /// Maximum duration of one adapter request and response, in milliseconds
+    #[arg(long, value_name = "MS", default_value_t = 30_000, value_parser = clap::value_parser!(u64).range(1..))]
+    pub timeout: u64,
+    /// Maximum duration of the adapter session, in milliseconds
+    #[arg(long, value_name = "MS", default_value_t = 1_800_000, value_parser = clap::value_parser!(u64).range(1..))]
+    pub session_timeout: u64,
+}
+
+pub async fn mvp_run(args: MvpRunArgs) -> AppResult<miette::Report> {
+    use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+    use morphir_mck::package::run_mvp_process;
+    let source = match MvpRepositorySource::new(&args.source) {
+        Ok(source) => source,
+        Err(error) => return finish(Outcome::Error(error)),
+    };
+    let inventory = match admit_mvp_inventory(&source) {
+        Ok(inventory) => inventory,
+        Err(error) => return finish(Outcome::Error(error)),
+    };
+    let limits = Limits {
+        request_timeout: Duration::from_millis(args.timeout),
+        session_timeout: Duration::from_millis(args.session_timeout),
+        ..Limits::DEFAULT
+    };
+    let run = tokio::task::block_in_place(|| {
+        run_mvp_process(&inventory, &args.adapter, &args.adapter_args, limits)
+    });
+    println!("MVP bootstrap: {}", run.summary_line());
+    for (case, message) in run.failures() {
+        println!("{case}: {message}");
+    }
+    finish(if run.exit_code() == 0 {
+        Outcome::Passed
+    } else {
+        Outcome::Failed
+    })
+}
