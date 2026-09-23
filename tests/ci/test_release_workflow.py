@@ -262,11 +262,11 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("--clobber", publish_job)
         self.assertNotIn("softprops/action-gh-release", publish_job)
 
-    def test_ci_requires_only_the_cli_rust_job(self) -> None:
+    def test_ci_requires_selected_rust_jobs(self) -> None:
         self.assertNotIn("\n  morphir-live:\n", self.ci_workflow)
-        # Parallelized Rust jobs: lint + two extension builds + test job feed into check
+        # The shared gate also requires the macOS publication qualification.
         self.assertIn(
-            "needs: [changes, lint, morphir-cli-test, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]",
+            "needs: [changes, lint, morphir-cli-test, library-publish-macos, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]",
             self.ci_workflow,
         )
         self.assertNotIn(
