@@ -110,7 +110,9 @@ The host follows this sequence:
 6. Send `morphir.shutdown` and wait for its response.
 7. Send the `morphir.exit` notification.
 
-Before initialization, an extension may accept only `morphir.initialize`, `morphir.ping`, and `morphir.exit`. After shutdown, it may accept only `morphir.exit`.
+Before initialization, an extension may accept only `morphir.initialize`, `morphir.extension.describe`, `morphir.ping`, and `morphir.exit`. After shutdown, it may accept only `morphir.exit`.
+
+A host may also start an extension only to read its capability statement: it sends `morphir.extension.describe` and then `morphir.exit`, with no session. See [Capability statements](#capability-statements).
 
 If the process exits before responding to `morphir.shutdown`, the host reports an extension failure. If it remains alive after `morphir.exit`, the host may terminate it after a configured grace period.
 
@@ -121,6 +123,7 @@ If the process exits before responding to `morphir.shutdown`, the host reports a
 | `morphir.initialize` | request | Negotiate the protocol version, identity, permissions, and capabilities |
 | `morphir.initialized` | notification | Tell the extension that the host accepted the handshake |
 | `morphir.ping` | request | Check whether the extension process can respond |
+| `morphir.extension.describe` | request | Read the extension's capability statement, before or after initialization, with no side effects |
 | `morphir.extension.info` | request | Read extension identity and version after initialization |
 | `morphir.extension.capabilities` | request | Read the negotiated capabilities after initialization |
 | `morphir.shutdown` | request | Ask the extension to stop accepting work |
@@ -241,7 +244,115 @@ usable.
 returns `CompileResult.moduleResults`; a host must not send a `baseline` to a
 frontend that advertises `incremental: false`. `fragments` is reserved for a
 future source-fragment compilation mode; it has no defined meaning in 0.1, and
-a host must not act on it.
+a host must not act on it. `multiDocument` says whether one compile request may
+carry more than one source document. It is absent from the wire when false. A
+host must not send a larger source set to a frontend that does not declare it;
+it refuses before dispatch and names the frontend.
+
+## Capability statements
+
+An extension's **capability statement** is what the extension says about
+itself: its identity, the capability kinds it implements, the members of each
+capability, and the protocol versions it speaks. The extension is the only
+author of its statement. Packaging, publication and installation copy the
+statement the extension reported; no manifest declares a capability by hand.
+The working specification is
+[finos/morphir#921](https://github.com/finos/morphir/discussions/921).
+
+```json
+{
+  "statementVersion": "0.1.0-draft.1",
+  "protocolVersions": ["0.1"],
+  "extension": {
+    "id": "morphir-elm",
+    "name": "Morphir Elm frontend",
+    "version": "0.3.0",
+    "types": ["frontend", "workspace"]
+  },
+  "capabilities": {
+    "frontend": {
+      "languages": [{ "id": "elm", "fileExtensions": [".elm"] }],
+      "irVersions": ["3"],
+      "compile": true,
+      "incremental": false
+    },
+    "workspace": { "protocolVersions": ["0.1.0-draft.1"], "discover": true }
+  },
+  "requires": { "host": [">=0.4.0-alpha.7"] },
+  "critical": ["requires.host"]
+}
+```
+
+A reader checks `types`, the capability kinds, strictly: an unknown kind is an
+error. A reader carries `capabilities` unchanged, uses the members it
+understands and ignores the others. `critical` lists member paths that change
+meaning; a reader that does not understand a listed path refuses and names it.
+`requires.host` is a list of single SemVer comparators over the host version,
+such as `[">=0.4.0-alpha.7", "<0.5.0"]`, all of which must hold. Single
+comparators parse the same way in the Rust `semver` crate and in `@std/semver`;
+combined range strings do not, because the two libraries separate comparators
+differently. A host outside the range refuses and names the range.
+
+### `morphir.extension.describe`
+
+| | |
+|---|---|
+| Kind | request |
+| Allowed | before `morphir.initialize`, and in any later state before shutdown |
+| Params | `{ "protocolVersions": ["0.1"] }`, the versions the caller understands |
+| Result | the capability statement |
+| Side effects | none: no workspace access, no network, no writes, no dependence on environment values the host did not pass |
+
+`describe` is optional for an extension. A host that receives `-32601`, or a
+refusal because the request came before `morphir.initialize`, reads what it can
+through a session instead, following the lifecycle: `morphir.initialize`, the
+`morphir.initialized` notification, `morphir.extension.capabilities`,
+`morphir.shutdown` and `morphir.exit`. A session reports less than a statement,
+so the statement the host builds from it lists only the negotiated protocol
+version and has no `requires` or `critical` members.
+
+### Where the statement is read
+
+| Phase | Caller | Extension answers | Extension side effects |
+|---|---|---|---|
+| package | release tooling, once per platform | `describe` | none |
+| publish | `extension repository publish`, for an artifact that runs on the publishing host | `describe` | none |
+| install | `extension install`, for the selected artifact, unless `--no-probe` | `describe` | none |
+| session | host | `initialize`, whose result must agree with the statement | none until an operation is called |
+| operate | host | operation methods | only through host functions or within its sandbox |
+| shutdown | host | `shutdown`, then `exit` | releases its resources |
+
+Publication, installation, update and removal remain host operations. The
+extension takes part in them only through `describe`, so it cannot change
+anything while it is published or installed. Reading a statement means running
+the artifact: a `process` artifact runs as a child process under the session's
+launch rules and with the user's rights, and a `wasm` artifact runs in the WASM
+engine without direct file or network access. The
+[distribution design](./distribution-and-acquisition.md#capability-statements-in-distribution)
+describes how the statement travels between these phases.
+
+### When a session agrees with a statement
+
+An initialization result is not a capability statement. It carries one
+negotiated `protocolVersion` and the capabilities available in that session,
+while a statement lists every protocol version the extension speaks and adds
+`requires` and `critical`. A host therefore does not test the two for
+equality. An initialization result **agrees with** a statement when all of the
+following hold:
+
+1. the extension's `id`, `name` and `version` are equal;
+2. the negotiated `protocolVersion` is one of the statement's `protocolVersions`;
+3. every capability kind the session reports is among the statement's `types`;
+4. every capability member the session reports has the value the statement
+   gives it.
+
+A session may offer less than its statement, because negotiation can narrow
+what one session provides. It may never offer a kind or a member the statement
+does not have, or a different value for one it does. A result that does not
+agree is refused, and the refusal names the first rule that failed.
+
+Comparing two statements, as publication and installation do, is a comparison
+of equal documents.
 
 ## Capability methods
 
@@ -701,10 +812,34 @@ Protocol versions use `major.minor` numbers.
 
 - A major version may remove fields or change their meaning.
 - A minor version may add optional fields, methods, capabilities, or enum values.
-- Receivers must ignore unknown object fields.
+- Receivers must ignore unknown object fields, unless a `critical` list names the field. A receiver that does not understand a critical field refuses and names it.
 - Receivers must reject unsupported methods with JSON-RPC error `-32601`.
 - A host must call only capabilities returned by initialization.
 - An extension must not change negotiated capabilities during a session.
+- An extension that needs a newer host states `requires.host` in its capability statement and lists it in `critical`.
+- A host must not require `morphir.extension.describe`; it falls back to a session when an extension does not implement it.
+
+### Version numbers
+
+A new versioned contract uses SemVer 2.0 version strings by default (see the
+knowledge-base decision
+[SemVer is the default contract versioning scheme](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md)). A
+released version is compatible within its major. A prerelease such as
+`0.1.0-draft.1` matches only exactly: drafts are refined in place and promise no
+compatibility with each other. A new contract starts at `0.1.0-draft.1` and moves
+to the `1.0.0-draft` line once its shape is settled. The capability statement starts at
+`statementVersion` `0.1.0-draft.1`, and the workspace discovery protocol moves
+from the integer `1` to `0.1.0-draft.1`.
+
+MEP itself is a recorded exception. It keeps `major.minor` protocol versions,
+currently `0.1`, until the next change to the protocol, which adopts SemVer.
+
+The same must-ignore rule applies to every document that carries a capability
+statement: the release descriptor, the repository index record and the
+installed record. The
+[distribution design](./distribution-and-acquisition.md#compatibility-and-release-paths)
+states the schema ranges those documents use and the order in which hosts and
+extensions release.
 
 The handshake chooses one exact protocol version. This makes compatibility behavior explicit and keeps extension packages testable against more than one host version.
 

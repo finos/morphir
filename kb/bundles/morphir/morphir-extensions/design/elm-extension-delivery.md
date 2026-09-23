@@ -128,6 +128,9 @@ enabled = true
 The release descriptor already carries what a process install needs: a platform, an archive and a
 digest per artifact. The CLI resolver already selects a process artifact by platform. The missing part
 is publication of process bundles in finos/morphir-rust.
+[Capability statements across the extension lifecycle](/design/capability-statements.md) proposes how
+publish accepts process bundles, and decision
+[0003](/decisions/0003-the-guest-authors-its-capability-statement.md) records that choice.
 
 The CLI can already install a process artifact from an authored local index. The
 example preparation helper stages a supplied executable, its digest and platform
