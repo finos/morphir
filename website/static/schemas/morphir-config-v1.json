@@ -112,7 +112,7 @@
           "description": "Serialization format compile writes.",
           "default": "json",
           "type": "string",
-          "enum": [ "json", "yaml" ]
+          "enum": [ "json", "yaml", "ion" ]
         },
         "strict_mode": {
           "type": "boolean"

@@ -23,7 +23,7 @@ const IR_STEM: &str = "morphir-ir";
 pub struct IrStorage {
     /// Single file or document tree.
     pub layout: IrLayout,
-    /// `json` or `yaml`.
+    /// `json`, `yaml`, or `ion`.
     pub format: FormatId,
 }
 
@@ -44,12 +44,20 @@ impl IrStorage {
         let format = match format_text {
             "json" => FormatId::json(),
             "yaml" => FormatId::yaml(),
+            "ion" => FormatId::ion(),
             other => {
                 return Err(CliError::Validation {
-                    message: format!("ir.format '{other}' is not supported; use json or yaml"),
+                    message: format!(
+                        "ir.format '{other}' is not supported; use json, yaml, or ion"
+                    ),
                 });
             }
         };
+        if layout == IrLayout::DocumentTree && format == FormatId::ion() {
+            return Err(CliError::Validation {
+                message: "ir.format ion is a single-file distribution, not a document tree".into(),
+            });
+        }
         Ok(Self { layout, format })
     }
 
@@ -58,6 +66,7 @@ impl IrStorage {
         match (self.layout, self.format.as_str()) {
             (IrLayout::DocumentTree, _) => IR_STEM,
             (IrLayout::SingleFile, "yaml") => "morphir-ir.yaml",
+            (IrLayout::SingleFile, "ion") => "morphir-ir.ion",
             (IrLayout::SingleFile, _) => "morphir-ir.json",
         }
     }
@@ -447,6 +456,13 @@ mod tests {
                 .relative_path(),
             "morphir-ir"
         );
+        assert_eq!(
+            IrStorage::from_config(Some(&section("single-file", "ion")))
+                .unwrap()
+                .relative_path(),
+            "morphir-ir.ion"
+        );
+        assert!(IrStorage::from_config(Some(&section("document-tree", "ion"))).is_err());
         // An unrecognized `ir.layout` value can no longer reach here through
         // ordinary config loading — `IrSection`'s `Deserialize` now rejects it
         // first — but `IrStorage::from_config` keeps its own check too, in
@@ -474,6 +490,16 @@ mod tests {
     }
 
     #[test]
+    fn ion_single_file_round_trips() {
+        let temp = tempfile::tempdir().unwrap();
+        let storage = IrStorage::from_config(Some(&section("single-file", "ion"))).unwrap();
+        let descriptor = write_v4(temp.path(), &storage, &sample_ir()).unwrap();
+        assert!(temp.path().join("morphir-ir.ion").is_file());
+        let value = read_value(temp.path(), &descriptor).unwrap();
+        assert_eq!(value["distribution"]["Library"]["packageName"], "acme/app");
+        assert_eq!(value["formatVersion"], "4.0.0");
+    }
+
     fn yaml_single_file_round_trips() {
         let temp = tempfile::tempdir().unwrap();
         let storage = IrStorage::from_config(Some(&section("single-file", "yaml"))).unwrap();

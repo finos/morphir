@@ -99,8 +99,15 @@ fn format_from_extension(path: &Path) -> Option<FormatId> {
     {
         Some("json") => Some(FormatId::json()),
         Some("yaml" | "yml") => Some(FormatId::yaml()),
+        Some("ion") => Some(FormatId::ion()),
         _ => None,
     }
+}
+
+fn ion_datagram(input: &[u8]) -> bool {
+    std::str::from_utf8(input)
+        .ok()
+        .is_some_and(|text| text.trim_start().starts_with("morphir::"))
 }
 
 fn detect_format(input: &[u8]) -> FormatId {
@@ -110,6 +117,7 @@ fn detect_format(input: &[u8]) -> FormatId {
         .find(|byte| !byte.is_ascii_whitespace())
     {
         Some(b'{' | b'[') => FormatId::json(),
+        Some(_) if ion_datagram(input) => FormatId::ion(),
         _ => FormatId::yaml(),
     }
 }
