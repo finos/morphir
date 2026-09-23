@@ -1,5 +1,10 @@
 //! Thin host for freshly authenticated local Library consumption.
 
+mod author;
+mod registry;
+pub use author::{CreateArgs, SignArgs};
+pub use registry::{PublishArgs, RegistryAction};
+
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
@@ -14,6 +19,17 @@ use starbase::AppResult;
 /// Experimental local Library operations, separate from executable repositories.
 #[derive(Clone, Debug, Subcommand)]
 pub enum PackageAction {
+    /// Create a verified dependency-free classic V4 Library bundle
+    Create(CreateArgs),
+    /// Sign a verified Library with an explicitly supplied local key
+    Sign(SignArgs),
+    /// Manage explicitly initialized local Library publication
+    Registry {
+        #[command(subcommand)]
+        action: RegistryAction,
+    },
+    /// Commit exact caller-signed successor metadata for a Library
+    Publish(PublishArgs),
     /// Explicitly provision local package trust
     Trust {
         #[command(subcommand)]
@@ -180,6 +196,10 @@ fn parse_root_release(input: &str) -> Result<ReleaseId, String> {
 
 pub async fn run(action: &PackageAction) -> AppResult<miette::Report> {
     match action {
+        PackageAction::Create(args) => author::create(args)?,
+        PackageAction::Sign(args) => author::sign(args)?,
+        PackageAction::Registry { action } => registry::run(action)?,
+        PackageAction::Publish(args) => registry::publish(args)?,
         PackageAction::Trust {
             action: TrustAction::Init(args),
         } => {
