@@ -9,6 +9,15 @@ Learn how to use Morphir to model business logic and build applications.
 
 ## 📋 Contents
 
+### Packaging
+
+Try the early-access Library packaging workflow:
+
+- [Packaging overview](packaging/overview.md)
+- [Create a Library package](packaging/creating-a-library.md)
+- [Publish Libraries locally](packaging/publishing-locally.md)
+- [Install and use Libraries](packaging/installing-and-using.md)
+
 ### Modeling Guides
 
 Learn how to model your business logic effectively:
