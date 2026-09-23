@@ -285,7 +285,7 @@ run = [
 ]
 
 [tasks."package:mvp-check"]
-description = "Run the signed local Library MVP restore and resolve inventory through native MCK and the Rust adapter"
+description = "Run the signed local Library MVP restore, resolve and refresh inventory through native MCK and the Rust adapter"
 run = [
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "cargo run --locked -p morphir -- mck package mvp-run --source . --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg package-mvp",
