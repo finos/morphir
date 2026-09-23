@@ -378,6 +378,8 @@ jobs:
 
       - name: Set up Rust CI
         uses: ./.github/actions/setup-rust-ci
+        with:
+          install-mold: "false"
 
       - name: Test authoring and publication
         run: cargo test --locked --package morphir --test package_author_publish
