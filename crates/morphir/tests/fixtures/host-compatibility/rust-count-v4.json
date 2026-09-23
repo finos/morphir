@@ -1,0 +1,28 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "acme/example",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "models": {
+            "Public": {
+              "types": {
+                "count": {
+                  "Public": {
+                    "TypeAliasDefinition": {
+                      "typeParams": [],
+                      "typeExp": "morphir/SDK:basics#int"
+                    }
+                  }
+                }
+              },
+              "values": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

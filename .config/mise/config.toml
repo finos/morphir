@@ -407,6 +407,11 @@ run = [
     "cargo test --locked --package morphir-evaluator --package morphir-opa",
 ]
 
+[tasks."test:host-compatibility"]
+description = "Gate host-only releases against the pinned published extensions"
+env.MORPHIR_PUBLISHED_BUNDLES = "{{ env.MORPHIR_PUBLISHED_BUNDLES | default(value='.dev/out/published-bundles') }}"
+run = "cargo test --locked --release --package morphir --test host_compatibility -- --ignored --nocapture"
+
 [tasks.test]
 description = "Run tests"
 run = "cargo test --all-features --workspace"

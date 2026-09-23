@@ -12,35 +12,24 @@ fn statement() -> Value {
     })
 }
 
-fn host_triple() -> String {
-    let suffix = match std::env::consts::OS {
-        "macos" => "apple-darwin",
-        "linux" => "unknown-linux-gnu",
-        other => panic!("unsupported test host {other}"),
-    };
-    format!("{}-{suffix}", std::env::consts::ARCH)
-}
+#[path = "process_bundle.rs"]
+mod process_bundle;
+use process_bundle::host_triple;
 
 fn bundle(root: &std::path::Path, bytes: &[u8], declared: Value) -> PathBuf {
-    let bundle = root.join("bundle");
-    std::fs::create_dir_all(&bundle).unwrap();
-    let other = if host_triple() == "x86_64-pc-windows-msvc" {
-        "aarch64-apple-darwin"
-    } else {
-        "x86_64-pc-windows-msvc"
-    };
-    let artifacts: Vec<_> = [(host_triple(), "host-extension", bytes), (other.into(), "other-extension", b"foreign executable".as_slice())]
-        .into_iter().map(|(platform, filename, bytes)| {
-            let digest = Sha256Digest::of_bytes(bytes);
-            std::fs::write(bundle.join(filename), bytes).unwrap();
-            std::fs::write(bundle.join(format!("{filename}.sha256")), format!("{digest}  {filename}\n")).unwrap();
-            json!({"platform": platform, "runtime": "process", "filename": filename, "sha256": digest, "statement": declared})
-        }).collect();
-    std::fs::write(bundle.join("release.json"), serde_json::to_vec(&json!({
-        "schemaVersion": "2.0.0-draft.1", "extensionId": declared["extension"]["id"], "shortId": "avro",
-        "version": declared["extension"]["version"], "platformDifferences": "none", "artifacts": artifacts
-    })).unwrap()).unwrap();
-    bundle
+    process_bundle::write_bundle(
+        root,
+        declared,
+        "avro",
+        &[
+            (&host_triple(), "host-extension", bytes),
+            (
+                "x86_64-pc-windows-msvc",
+                "other-extension",
+                b"foreign executable",
+            ),
+        ],
+    )
 }
 
 fn fixture() -> Vec<u8> {
@@ -143,38 +132,20 @@ fn process_bundle_refuses_describe_disagreement() {
 #[test]
 #[ignore = "requires MORPHIR_SCALA_ELM_EXTENSION_BIN pointing at the real 0.5.0-M08 executable"]
 fn real_published_morphir_scala_elm_resolves_host() {
-    use morphir_daemon::extensions::{ProcessLaunch, SpawnedProcessTransport};
-    use morphir_extension_sdk::protocol::{InitializeParams, PeerInfo};
     let executable = std::env::var_os("MORPHIR_SCALA_ELM_EXTENSION_BIN")
         .map(PathBuf::from)
         .expect("set MORPHIR_SCALA_ELM_EXTENSION_BIN");
     let temp = TempDir::new().unwrap();
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    let description = runtime.block_on(async {
-        SpawnedProcessTransport::spawn(ProcessLaunch::new(
-            "morphir-scala-elm",
-            &executable,
-            temp.path(),
-        ))
-        .await
-        .unwrap()
-        .describe(InitializeParams {
-            protocol_versions: vec![MEP_VERSION.into()],
-            host: PeerInfo {
-                name: "morphir-cli".into(),
-                version: env!("CARGO_PKG_VERSION").into(),
-            },
-        })
-        .await
-        .unwrap()
-    });
-    assert_eq!(description.statement.extension.version, "0.5.0-M08");
-    let declared = serde_json::to_value(description.statement).unwrap();
-    let bundle = bundle(
-        temp.path(),
-        &std::fs::read(executable).unwrap(),
-        declared.clone(),
+    let bundle = process_bundle::from_executable(
+        &temp.path().join("scratch"),
+        &executable,
+        "morphir-scala-elm",
+        "scala-elm",
+        "0.5.0-M08",
     );
+    let descriptor: Value =
+        serde_json::from_slice(&std::fs::read(bundle.join("release.json")).unwrap()).unwrap();
+    let declared = descriptor["artifacts"][0]["statement"].clone();
     let output = publish(temp.path(), &bundle);
     assert!(output.status.success(), "{}", compacted_stderr(&output));
     let index = LocalIndex::open(temp.path().join("repository")).unwrap();

@@ -309,6 +309,11 @@ jobs:
           printf 'MORPHIR_SCALA_ELM_EXTENSION_VERSION=%s\n' \
             "$(cat .dev/out/published-bundles/scala-elm/version.txt)" >> "$GITHUB_ENV"
 
+      - name: Run host compatibility suite
+        env:
+          MORPHIR_PUBLISHED_BUNDLES: ${{ github.workspace }}/.dev/out/published-bundles
+        run: cargo test --locked --release --package morphir --test host_compatibility -- --ignored --nocapture
+
       - name: Run Morphir Elm CLI integration tests
         env:
           MORPHIR_ELM_EXTENSION_BIN: >-

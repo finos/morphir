@@ -1,0 +1,32 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "acme/example",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "models": {
+            "Public": {
+              "types": {
+                "choice": {
+                  "Public": {
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "absent": [],
+                        "present": [["value", "morphir/SDK:string#string"]]
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}
