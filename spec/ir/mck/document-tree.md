@@ -401,7 +401,14 @@ distribution:
 
 ## document-tree-0010: v3 manifest {node=DistributionManifestFile version=3}
 
-A v3 tree's own manifest file is the same shape decision-for-decision as the v4 one (document-tree-0001), except every file says its own `formatVersion`, `"3.1.0"` (decision 0016). Version 3 is read and written in the classic model, whose only spelling is JSON (versions.md's own v3 cases carry no `yaml` fence either).
+A v3 tree's own manifest file is the same shape decision-for-decision as the v4 one (document-tree-0001), except every file says its own `formatVersion`, `"3.1.0"` (decision 0016). A v3 document tree has a YAML profile too, `manifest.yaml` alongside `manifest.json` (`docs/spec/ir/schemas/v3/document-tree-files.md`), the way every other v3 tree case in this file carries `yaml file` fences; this case pins both spellings like its v4 analogue, document-tree-0001.
+
+```yaml canonical
+formatVersion: 3.1.0
+distribution: Library
+package: my-org/my-project
+pathBudget: 4000
+```
 
 ```json canonical
 { "formatVersion": "3.1.0", "distribution": "Library", "package": "my-org/my-project", "pathBudget": 4000 }
@@ -661,11 +668,37 @@ document-tree-0011's set spelled in the JSON profile: the logical paths are iden
 { "formatVersion": "3.1.0", "name": "user", "def": { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } } }
 ```
 
+```yaml canonical
+formatVersion: 3
+distribution:
+  - Library
+  - [[my, org], [my, project]]
+  - []
+  - modules:
+      - - [[domain]]
+        - access: Public
+          value:
+            types:
+              - - [user]
+                - access: Public
+                  value:
+                    doc: ""
+                    value:
+                      - TypeAliasDefinition
+                      - []
+                      - - Reference
+                        - {}
+                        - [[[morphir], [s, d, k]], [[string]], [string]]
+                        - []
+            values: []
+            doc: null
+```
+
 ```json canonical
 { "formatVersion": 3, "distribution": ["Library", [["my", "org"], ["my", "project"]], [], { "modules": [[[["domain"]], { "access": "Public", "value": { "types": [[["user"], { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } }]], "values": [], "doc": null } }]] }] }
 ```
 
-## document-tree-0016: a v4 file in a v3 tree is rejected {node=Distribution version=3}
+## document-tree-0016: A v4 file in a v3 tree is rejected {node=Distribution version=3}
 
 A file's `formatVersion` must say `"3.1.0"`, the way `layout::read_tree_v3` checks every file of a v3 tree (document-tree-0010); document-tree-0011's node file with `formatVersion: "4.0.0"` instead is refused at that file's own member. `version_mismatch` is that reader's own code for this, confirmed against `ecosystem/morphir-rust/crates/morphir-mck-adapter/tests/protocol.rs`'s `a_v3_tree_diagnostic_comes_back_with_its_code_and_cursor`.
 
@@ -675,7 +708,7 @@ A file's `formatVersion` must say `"3.1.0"`, the way `layout::read_tree_v3` chec
 
 ## document-tree-0017: v3 tree files ignore $meta {node=Distribution version=3}
 
-Decision 0014 holds for a v3 tree too: a reader never reports `unknown_member` for `$meta` at the top level of a document-tree file, and never writes one. The v3 shape of document-tree-0005.
+Decision 0014 holds for a v3 tree too: a reader never reports `unknown_member` for `$meta` at the top level of a document-tree file, and never writes one. The v3 shape of document-tree-0005's `mode=read` set; unlike 0005 it pins the assembled document in both profiles, yaml and json, the way the other new v3 tree cases do.
 
 ```yaml file path=manifest set=v3-meta mode=read
 formatVersion: 3.1.0
