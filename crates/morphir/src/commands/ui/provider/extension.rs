@@ -11,7 +11,7 @@ use chrono::{SecondsFormat, Utc};
 use morphir_common::home::MorphirHome;
 use morphir_daemon::extensions::{
     InvokeOutcome, activate_transport,
-    protocol::{InitializeParams, MEP_VERSION, PeerInfo, methods},
+    protocol::{InitializeParams, MEP_VERSION, methods},
 };
 use morphir_devkit::{ConfigLoadOptions, build_workspace_discovery_request};
 use morphir_distribution::{
@@ -279,10 +279,7 @@ async fn invoke_installed(
     let ready = loaded
         .initialize(InitializeParams {
             protocol_versions: vec![MEP_VERSION.into()],
-            host: PeerInfo {
-                name: "morphir-cli".into(),
-                version: env!("CARGO_PKG_VERSION").into(),
-            },
+            host: crate::extensions::host_peer(),
         })
         .await
         .map_err(|failure| extension_error(failure.error().to_string()))?;
