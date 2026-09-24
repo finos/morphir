@@ -58,7 +58,7 @@ resolution, and generated Gleam is inspected but not executed.
 ## Prepare the reference Elm scenarios
 
 Download the executable for your host from the
-[Elm extension 0.4.0 release](https://github.com/finos/morphir-elm/releases/tag/extension/elm/v0.4.0),
+[Elm extension 0.3.1 release](https://github.com/finos/morphir-elm/releases/tag/extension/elm/v0.3.1),
 verify the archive against its published checksum, and extract it. Then run:
 
 ```sh
