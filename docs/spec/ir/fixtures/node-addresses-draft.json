@@ -1,0 +1,646 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "status": "reference-only",
+  "description": "Independent V3/V4 semantic node-address expectations for finos/morphir#957. No released MCK adapter operation executes these cases yet.",
+  "uriCases": [
+    {
+      "id": "node-uri-0001",
+      "purpose": "A V4 named record field has one address in all serialization profiles",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order/type-exp/record/field/customer-id",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "type",
+          "module": "domain",
+          "name": "order",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [
+          {
+            "kind": "type-expression"
+          },
+          {
+            "kind": "record-field",
+            "name": "customer-id"
+          }
+        ],
+        "revision": null,
+        "guard": null
+      },
+      "profiles": [
+        "json",
+        "yaml",
+        "document-tree"
+      ],
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order/type-exp/record/field/customer-id"
+    },
+    {
+      "id": "node-uri-0002",
+      "purpose": "A V3 Apply argument is a typed branch rather than a bare child index",
+      "uri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/argument",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "3.0.0",
+        "root": {
+          "kind": "value",
+          "module": "domain",
+          "name": "calculate-total",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [
+          {
+            "kind": "body"
+          },
+          {
+            "kind": "apply-argument"
+          }
+        ],
+        "revision": null,
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/argument"
+    },
+    {
+      "id": "node-uri-0003",
+      "purpose": "A slash within one module path component is percent encoded",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/sales%2Forders/type/order",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "type",
+          "module": "sales/orders",
+          "name": "order",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [],
+        "revision": null,
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/sales%2Forders/type/order"
+    },
+    {
+      "id": "node-uri-0004",
+      "purpose": "A pin selects one immutable artifact revision",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/order",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "type",
+          "module": "domain",
+          "name": "order",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [],
+        "revision": {
+          "algorithm": "sha256",
+          "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/order"
+    },
+    {
+      "id": "node-uri-0005",
+      "purpose": "A current workspace alias requires resolver context",
+      "uri": "morphir://ir/workspace/orders?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "workspace",
+          "alias": "orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "value",
+          "module": "domain",
+          "name": "calculate-total",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [],
+        "revision": null,
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/workspace/orders?format=4.0.0#/module/domain/value/calculate-total"
+    },
+    {
+      "id": "node-uri-0006",
+      "purpose": "A bare artifact format family is not a canonical exact URI version",
+      "uri": "morphir://ir/pkg/acme/orders?format=4#/module/domain/type/order",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0007",
+      "purpose": "Duplicate query parameters are ambiguous",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&format=3.0.0#/module/domain/type/order",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0008",
+      "purpose": "A lower-case percent escape is not canonical",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/sales%2forders/type/order",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0009",
+      "purpose": "Ordered indices are nonnegative canonical decimal integers",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/pair/type-exp/tuple/element/01",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0010",
+      "purpose": "A decoded Unicode word outside the Morphir name grammar is rejected",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/caf%C3%A9",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0011",
+      "purpose": "An unpinned ordered path carries a guard for its ordered-step lineage",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "type",
+          "module": "domain",
+          "name": "pair",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [
+          {
+            "kind": "type-expression"
+          },
+          {
+            "kind": "tuple-element",
+            "index": 1
+          }
+        ],
+        "revision": null,
+        "guard": {
+          "algorithm": "sha256",
+          "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1"
+    },
+    {
+      "id": "node-uri-0012",
+      "purpose": "An unpinned ordered child without a guard is unsafe",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0013",
+      "purpose": "A pinned ordered child needs no guard",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "type",
+          "module": "domain",
+          "name": "pair",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [
+          {
+            "kind": "type-expression"
+          },
+          {
+            "kind": "tuple-element",
+            "index": 1
+          }
+        ],
+        "revision": {
+          "algorithm": "sha256",
+          "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/pair/type-exp/tuple/element/1"
+    },
+    {
+      "id": "node-uri-0014",
+      "purpose": "Unknown query parameters do not silently change resolution",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&latest=true#/module/domain/type/order",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0015",
+      "purpose": "The whole V4 distribution is addressable",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/distribution",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "distribution"
+        },
+        "steps": [],
+        "revision": null,
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/distribution"
+    },
+    {
+      "id": "node-uri-0016",
+      "purpose": "A named module is addressable independently of its file layout",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "module",
+          "module": "domain",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [],
+        "revision": null,
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain"
+    },
+    {
+      "id": "node-uri-0017",
+      "purpose": "A type and value with the same name have distinct roots",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/value/order",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "value",
+          "module": "domain",
+          "name": "order",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [],
+        "revision": null,
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/value/order"
+    },
+    {
+      "id": "node-uri-0018",
+      "purpose": "The distribution own package is addressable separately from embedded dependencies",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/package",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "steps": [],
+        "revision": null,
+        "guard": null,
+        "root": {
+          "kind": "package",
+          "owner": {
+            "kind": "own-package"
+          }
+        }
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/package"
+    },
+    {
+      "id": "node-uri-0019",
+      "purpose": "An embedded dependency type has a typed owner and canonical package path",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/dependency/morphir%2FSDK/module/basics/type/int",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "steps": [],
+        "revision": null,
+        "guard": null,
+        "root": {
+          "kind": "type",
+          "owner": {
+            "kind": "dependency",
+            "packagePath": "morphir/SDK"
+          },
+          "module": "basics",
+          "name": "int"
+        }
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/dependency/morphir%2FSDK/module/basics/type/int"
+    },
+    {
+      "id": "node-uri-0020",
+      "purpose": "An Application entry-point ID is exact text rather than a Morphir Name",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/entry-point/launch-%C3%A9",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "package",
+          "packagePath": "acme/orders"
+        },
+        "formatVersion": "4.0.0",
+        "steps": [],
+        "revision": null,
+        "guard": null,
+        "root": {
+          "kind": "entry-point",
+          "name": "launch-é"
+        }
+      },
+      "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/entry-point/launch-%C3%A9"
+    }
+  ],
+  "legacyCases": [
+    {
+      "id": "node-legacy-0001",
+      "nodeId": "Acme.Orders:Domain:order.type#customerId",
+      "assumedShape": "TypeAliasDefinition with Record type expression and customer-id field",
+      "expectedUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/type/order/type-exp/record/field/customer-id"
+    },
+    {
+      "id": "node-legacy-0002",
+      "nodeId": "Acme.Orders:Domain:calculateTotal.value#0",
+      "assumedShape": "ValueDefinition with Apply body",
+      "expectedUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/function"
+    },
+    {
+      "id": "node-legacy-0003",
+      "nodeId": "Acme.Orders:Domain:calculateTotal.value#1",
+      "assumedShape": "ValueDefinition with Apply body",
+      "expectedUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/argument"
+    },
+    {
+      "id": "node-legacy-0004",
+      "nodeId": "Acme.Orders:Domain:order.type",
+      "assumedShape": "TypeAliasDefinition",
+      "expectedUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/type/order/type-exp"
+    },
+    {
+      "id": "node-legacy-0005",
+      "nodeId": "Acme.Orders:Domain:calculateTotal.value",
+      "assumedShape": "ValueDefinition",
+      "expectedUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body"
+    },
+    {
+      "id": "node-legacy-0006",
+      "nodeId": "Acme.Orders:Domain:order/type#customerId",
+      "legacySpelling": "slash-type",
+      "assumedShape": "TypeAliasDefinition with Record type expression and customer-id field",
+      "expectedUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/type/order/type-exp/record/field/customer-id"
+    },
+    {
+      "id": "node-legacy-0007",
+      "nodeId": "Acme.Orders:Domain:calculateTotal/value#1",
+      "legacySpelling": "slash-value",
+      "assumedShape": "ValueDefinition with Apply body",
+      "expectedUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/argument"
+    },
+    {
+      "id": "node-legacy-0008",
+      "nodeId": "Acme.Orders:Domain:order.unknown#customerId",
+      "expectedError": "invalid_legacy_node_id"
+    },
+    {
+      "id": "node-legacy-0009",
+      "nodeIds": [
+        "Acme.Orders:Domain:order.type#customerId",
+        "Acme.Orders:Domain:order/type#customerId"
+      ],
+      "expectedError": "duplicate_target"
+    },
+    {
+      "id": "node-legacy-0010",
+      "nodeId": "Acme.Orders:Domain:order.type#missingField",
+      "assumedShape": "TypeAliasDefinition with Record type expression but no missing-field entry",
+      "expectedError": "stale_target",
+      "expectedFileUnchanged": true
+    }
+  ],
+  "resolutionCases": [
+    {
+      "id": "node-resolve-0001",
+      "purpose": "A named current target follows the current artifact",
+      "subject": "V4 Library acme/orders with domain type order",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order",
+      "expectedOutcome": "resolved"
+    },
+    {
+      "id": "node-resolve-0002",
+      "purpose": "Deleting a named target makes an unpinned address stale",
+      "subject": "V4 Library acme/orders without domain type order",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order",
+      "expectedOutcome": "stale_target"
+    },
+    {
+      "id": "node-resolve-0003",
+      "purpose": "Two matching current package releases are not chosen arbitrarily",
+      "subject": "Resolver context contains two releases of acme/orders",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order",
+      "expectedOutcome": "ambiguous_artifact"
+    },
+    {
+      "id": "node-resolve-0004",
+      "purpose": "A pinned revision does not fall back to the current one",
+      "subject": "Only current revision bbbb is available",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/order",
+      "expectedOutcome": "revision_unavailable"
+    },
+    {
+      "id": "node-resolve-0005",
+      "purpose": "A V3 address cannot be silently rebound to a V4 artifact",
+      "subject": "Resolver context selects V4 Library acme/orders",
+      "uri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/type/order",
+      "expectedOutcome": "format_version_mismatch"
+    },
+    {
+      "id": "node-resolve-0006",
+      "purpose": "A changed constructor makes a typed child path stale",
+      "subject": "V4 value calculate-total body is a Variable, not Apply",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/value/calculate-total/body/apply/argument",
+      "expectedOutcome": "stale_target"
+    },
+    {
+      "id": "node-resolve-0007",
+      "purpose": "Changing an ordered child makes its unpinned lineage guard stale",
+      "subject": "V4 type pair has an inserted first tuple element; the selected ordered-step lineage has a different semantic fingerprint",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedOutcome": "stale_target"
+    },
+    {
+      "id": "node-resolve-0008",
+      "purpose": "An unchanged ordered-step lineage resolves in the current artifact",
+      "subject": "V4 type pair second tuple element has the recorded ordered-step lineage fingerprint",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedOutcome": "resolved"
+    },
+    {
+      "id": "node-resolve-0009",
+      "purpose": "A pinned URI resolves in its available verified snapshot after current changes",
+      "subject": "Immutable artifact revision aaaa contains V4 type pair with two tuple elements",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedOutcome": "resolved"
+    },
+    {
+      "id": "node-resolve-0010",
+      "purpose": "A moved ordered child with the original index no longer matches its guard",
+      "subject": "V4 tuple type pair has the same second element moved to index 0 and a different element at index 1",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedOutcome": "stale_target"
+    },
+    {
+      "id": "node-resolve-0011",
+      "purpose": "Two indistinguishable semantic siblings do not acquire historical object identity",
+      "subject": "V4 tuple type pair has two semantically identical elements; the guarded second position still has identical semantic content",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedOutcome": "resolved",
+      "limitation": "A swap of indistinguishable subtrees is not observable without stable IDs in IR"
+    },
+    {
+      "id": "node-resolve-0012",
+      "purpose": "A fetched snapshot with bytes that fail revision verification is rejected",
+      "subject": "Resolver returns a snapshot different from the requested sha256 revision",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/order",
+      "expectedOutcome": "revision_mismatch"
+    },
+    {
+      "id": "node-resolve-0013",
+      "purpose": "An index must not choose between two nodes with the same typed address",
+      "subject": "Malformed normalized model contains duplicate domain type order entries",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order",
+      "expectedOutcome": "ambiguous_target"
+    }
+  ],
+  "layoutEquivalenceCases": [
+    {
+      "id": "node-layout-0001",
+      "sourceCase": "document-tree-0003",
+      "purpose": "One V4 type expression retains its URI in canonical YAML, equivalent JSON, and the document tree",
+      "packagePath": "my-org/my-project",
+      "module": "domain",
+      "name": "user-ID",
+      "profiles": [
+        "yaml",
+        "json",
+        "document-tree"
+      ],
+      "expectedUri": "morphir://ir/pkg/my-org/my-project?format=4.0.0#/module/domain/type/user-ID/type-exp"
+    }
+  ],
+  "notes": [
+    "Repeated a and b hexadecimal digests are illustrative tokens, not computed digests of the sample artifacts.",
+    "Guard outcomes fix resolution behavior; cross-implementation hash vectors require a separately reviewed canonical semantic digest profile.",
+    "These reference cases do not count toward an MCK compatibility claim until a versioned shared adapter operation executes them."
+  ],
+  "sidecarCases": [
+    {
+      "id": "node-sidecar-0001",
+      "purpose": "Migrate one configured V3 sidecar in place, preserving Morphir-typed JSON values",
+      "storageLocation": "attributes/sensitivity.json",
+      "entryPoint": "Acme.Decorations:Sensitivity:Sensitivity",
+      "before": {
+        "Acme.Orders:Domain:order.type#customerId": [
+          "pII"
+        ],
+        "Acme.Orders:Domain:calculateTotal.value#1": [
+          "nPI"
+        ]
+      },
+      "expectedAfter": {
+        "formatVersion": "1.0.0-draft.1",
+        "targets": {
+          "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/type/order/type-exp/record/field/customer-id": [
+            "pII"
+          ],
+          "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/argument": [
+            "nPI"
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-sidecar-0002",
+      "purpose": "A V4 URI-keyed sidecar retains both definition and nested-field values on roundtrip",
+      "storageLocation": "attributes/documentation.json",
+      "entryPoint": "Acme.Decorations:Documentation:Documentation",
+      "before": {
+        "formatVersion": "1.0.0-draft.1",
+        "targets": {
+          "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order": {
+            "summary": "An order placed by a customer"
+          },
+          "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order/type-exp/record/field/customer-id": {
+            "summary": "Identifier of the customer who placed the order"
+          }
+        }
+      },
+      "expectedAfter": {
+        "formatVersion": "1.0.0-draft.1",
+        "targets": {
+          "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order": {
+            "summary": "An order placed by a customer"
+          },
+          "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order/type-exp/record/field/customer-id": {
+            "summary": "Identifier of the customer who placed the order"
+          }
+        }
+      }
+    },
+    {
+      "id": "node-sidecar-0003",
+      "purpose": "Colliding legacy spellings reject an all-or-nothing migration",
+      "storageLocation": "attributes/sensitivity.json",
+      "before": {
+        "Acme.Orders:Domain:order.type#customerId": [
+          "pII"
+        ],
+        "Acme.Orders:Domain:order/type#customerId": [
+          "nPI"
+        ]
+      },
+      "expectedError": "duplicate_target",
+      "expectedFileUnchanged": true
+    }
+  ]
+}
