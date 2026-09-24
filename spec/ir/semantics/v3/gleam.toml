@@ -3,4 +3,4 @@ version = "1.0.0"
 target = "javascript"
 
 [dependencies]
-gleam_stdlib = "== 0.68.1"
+gleam_stdlib = "== 0.71.0"
