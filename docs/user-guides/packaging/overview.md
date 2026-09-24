@@ -41,8 +41,8 @@ from source is unnecessary.
 
 | Operation | Early-access support |
 | --- | --- |
-| Prepare a Library bundle | The IR and manifest formats have worked examples. There is no public `morphir package create` or `pack` command. |
-| Publish a new Library release | The signed registry format is specified. A public package publication command is not available yet. |
+| Prepare a Library bundle | `morphir package create` builds a verified dependency-free classic V4 Library. Other Libraries use the worked IR and manifest examples; there is no `pack` command. |
+| Publish a new Library release | On macOS, `morphir package registry`, `sign` and `publish` publish a dependency-free classic V4 Library to an explicitly initialized local registry. Other platforms await qualification. |
 | Establish trust | `morphir package trust init` records an explicitly trusted bootstrap root. |
 | Select dependencies | `morphir package resolve` selects and verifies a complete graph from an exact published root, then writes `morphir.lock`. |
 | Install a locked graph | `morphir package restore` verifies and writes the Libraries into a new directory. |

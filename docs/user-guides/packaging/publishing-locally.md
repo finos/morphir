@@ -14,12 +14,12 @@ through `morphir package resolve` and `restore`.
 New to signing and trust? Read [Why package trust matters](why-package-trust.md)
 or [Trust explained simply](trust-explained.md) first.
 
-:::caution Early access: publisher tooling is not yet available
-This guide describes **Morphir CLI v0.4.0-beta.6**. It has no public command to
-initialize a model-package registry, sign a release, or publish a Library. This
-article also shows the newer source-built preview separately. The beta.5 steps
-below explain the publication inputs and how to try a prepared local registry;
-they do not publish a custom release. Formats and workflows may change.
+:::caution Early access: publisher tooling is limited
+This guide describes **Morphir CLI v0.4.0-beta.6**. Its `morphir package registry`,
+`sign` and `publish` commands publish only a dependency-free classic V4 Library, and
+only on macOS; see [the early publication path](#source-built-cli-preview). The
+later steps explain the publication inputs and how to try a prepared local
+registry. Formats and workflows may change.
 :::
 
 ## Source-built CLI preview

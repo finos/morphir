@@ -13,9 +13,10 @@ available to `morphir package resolve` yet.
 
 :::caution Early access
 This guide targets **Morphir CLI v0.4.0-beta.6**. Package formats and authoring
-workflows may change. There is no public package creation or packing command in
-this release. The steps below work with bundle files directly and do not constitute
-a complete publication workflow.
+workflows may change. `morphir package create` covers only a dependency-free
+classic V4 Library; see [the early authoring path](#source-built-cli-preview).
+The other steps below work with bundle files directly and do not constitute a
+complete publication workflow.
 :::
 
 ## Source-built CLI preview
