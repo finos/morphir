@@ -14,7 +14,7 @@ toolchains under `ecosystem/`.
 
 * [IR v4 stabilization](/ir-v4-stabilization.md) - The one register of what IR v4 has settled, where its sources still contradict each other, and which decisions remain open before the format can be called stable.
 * [Format-version support and revisions](/format-version-support.md) - How a Morphir IR reader states which format versions it reads, what a patch, minor and major revision may change, and where each binding publishes its table.
-* [Amazon Ion IR format](/ion-ir-format.md) - An unreleased draft that encodes Morphir IR v3 and v4 as Amazon Ion, as one datagram or as a document tree of annotated elements whose paths supply the names.
+* [Amazon Ion IR format](/ion-ir-format.md) - A draft encoding of Morphir IR v3 and v4 as Amazon Ion, as one datagram or as a document tree of annotated elements whose paths supply the names; a CLI prerelease ships its first codec.
 
 ## Decisions
 

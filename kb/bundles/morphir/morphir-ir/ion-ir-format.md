@@ -1,7 +1,7 @@
 ---
 type: Design Note
 title: Amazon Ion IR format
-description: "An unreleased draft that encodes Morphir IR v3 and v4 as Amazon Ion, as one datagram or as a document tree of annotated elements whose paths supply the names."
+description: "A draft encoding of Morphir IR v3 and v4 as Amazon Ion, as one datagram or as a document tree of annotated elements whose paths supply the names; a CLI prerelease ships its first codec."
 tags: [ir, ion, serialization, document-tree]
 status: draft
 sources:
@@ -27,28 +27,32 @@ sources:
 
 # Amazon Ion IR format
 
-An unreleased draft adds a third physical format for Morphir IR, [Amazon Ion](https://amazon-ion.github.io/ion-docs/),
+A draft adds a third physical format for Morphir IR, [Amazon Ion](https://amazon-ion.github.io/ion-docs/),
 beside JSON and YAML. The draft uses one Ion spelling for two layouts. A single file holds one distribution as a
 datagram of annotated elements. A document tree holds the same elements, one file per path, and the path supplies the
 names. Both layouts cover IR v3 and IR v4. This page is the narrative home for that capability. The normative text is
 the draft [`docs/design/draft/ir/ion.md`](https://github.com/finos/morphir/blob/main/docs/design/draft/ir/ion.md).
 
-## Status: unreleased
+## Status: draft, partly in a prerelease
 
-Nothing on this page has shipped. The first codec merged in
-[finos/morphir-rust#233](https://github.com/finos/morphir-rust/pull/233), and
-[finos/morphir-rust#248](https://github.com/finos/morphir-rust/pull/248) completes it. Issue
-[946](https://github.com/finos/morphir/issues/946) and beads epic `morphir-vvgi` track the plan. The spelling contract is `ionVersion`
-`0.1.0-draft.1`. A draft version matches only that exact string. Any change to the spelling can therefore break a file
-written today.
+The morphir CLI prerelease `0.4.0-beta.6` ships the first draft codec, as merged in
+[finos/morphir-rust#233](https://github.com/finos/morphir-rust/pull/233) (`e0318dc`). It reads and writes a single file
+and an Ion tree for a v3 library without dependencies and a v4 library with specification dependencies, alias and
+draft-incomplete types, and float and hole expressions. Everything else on this page is unreleased:
+[finos/morphir-rust#248](https://github.com/finos/morphir-rust/pull/248) completes the codec, and
+[finos/morphir#972](https://github.com/finos/morphir/pull/972) adds v3 Ion trees to the CLI. Issue
+[946](https://github.com/finos/morphir/issues/946) and beads epic `morphir-vvgi` track the plan.
+
+The spelling contract is `ionVersion` `0.1.0-draft.1` in both. A draft version matches only that exact string, so the
+spelling can still change, and a file written by `0.4.0-beta.6` is not promised to read in a later release.
 
 The IR v4 specification pages and schemas describe the JSON and YAML trees only, and IR v4 itself is still being
 stabilized (see [IR v4 stabilization](/ir-v4-stabilization.md)). The Ion tree is not part of that specification. The
 Morphir Compatibility Kit (MCK) is the shared test suite that every IR binding runs, and its protocol schema still
 lists only the `json` and `yaml` profiles.
 
-When a release ships the codec, the release author adds a Capability page and records the release here. Until then,
-this knowledge base describes the format as intent, not as behaviour a user can rely on.
+No Capability page describes the format yet. A draft contract in a prerelease is not behaviour a user can rely on, so
+this knowledge base records the format as intent until `ionVersion` leaves draft (`morphir-vvgi.11`).
 
 ## Delivery
 
