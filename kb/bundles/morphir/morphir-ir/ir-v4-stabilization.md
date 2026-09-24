@@ -84,7 +84,7 @@ documentation defect, listed under [Live contradictions](#live-contradictions).
 
 | Rule | Settled by |
 | ---- | ---------- |
-| `formatVersion`: integer `4` is canonical for 4.0.0; `"4.minor.patch"` strings name later revisions; no prerelease or build metadata; a reader declares what it reads as an interval support table, the reference table being `[3.0.0,3.1.0),[4.0.0,4.1.0)`, and rejects a release outside it before semantic decoding | [Decision 0016](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md), `docs/spec/ir/format-version.md`, both schemas, bead `morphir-l2p9` |
+| `formatVersion`: integer `4` is canonical for 4.0.0; `"4.minor.patch"` strings name later revisions; no prerelease or build metadata; a reader declares what it reads as an interval support table, the reference table being `[3.0.0,3.2.0),[4.0.0,4.1.0)` since IR `3.1.0`, and rejects a release outside it before semantic decoding | [Decision 0016](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md), [decision 0018](/decisions/0018-ir-3-1-adds-specs-and-v3-document-trees.md), `docs/spec/ir/format-version.md`, both schemas, bead `morphir-l2p9` |
 | Names: an initialism is an uppercase segment (`value-in-USD`); readers also accept the doubled-hyphen style and the legacy word array; document-tree filenames are an escape of the name (`value-in-_usd`) | [Decision 0001](/decisions/0001-name-canonicalization-and-initialism-encoding.md), [Decision 0002](/decisions/0002-both-name-encodings-behind-one-switch.md), both schemas, `docs/spec/draft/names.md`, the Rust naming module, `docs/spec/ir/fixtures/naming-conformance.json` |
 | A bare array in type position is a Tuple. A parameterized reference always carries the `Reference` wrapper: `{"Reference": ["morphir/SDK:list#list", "a"]}` | `TupleType` and `ReferenceType` in the schema, `document-tree-files.md`, bead `morphir-j442` (closed 2026-08-30) |
 | Access on a definition may be flattened: `{"access": "Public", "TypeAliasDefinition": {...}}` validates alongside the tag form `{"Public": {...}}` and the legacy `{access, value}` form | `AccessControlled` in the schema (third `anyOf` arm), bead `morphir-j442` |
@@ -188,7 +188,8 @@ These cannot be closed by editing prose. Each needs a maintainer decision, and e
    post-4.0.
 6. **Support-table grammar.** Decided in decision 0016: a support table is a union of intervals with one
    canonical spelling, a patch changes nothing a reader can observe, and the reference table is
-   `[3.0.0,3.1.0),[4.0.0,4.1.0)`; see [Format-version support and revisions](/format-version-support.md).
+   `[3.0.0,3.1.0),[4.0.0,4.1.0)`. [Decision 0018](/decisions/0018-ir-3-1-adds-specs-and-v3-document-trees.md) later
+   raised it to `[3.0.0,3.2.0),[4.0.0,4.1.0)`; see [Format-version support and revisions](/format-version-support.md).
 7. **Legacy-name compatibility boundary.** GitHub issue #793: migrate the books fixture to `product-ID`, or define
    a documented compatibility rule without weakening the canonical parser.
 8. **Naming codec home.** [Decision 0003](/decisions/0003-the-naming-codec-is-modelled-in-morphir.md) is still

@@ -10,9 +10,10 @@ status: draft
 
 A reader states what it reads as a support table: a union of intervals over release strings, in Maven-style interval
 notation, with one canonical spelling. A patch changes nothing a reader can observe, so a table's ceilings sit on minor
-boundaries. The reference table is `[3.0.0,3.1.0),[4.0.0,4.1.0)`. This page is the narrative home for that design. The
+boundaries. The reference table is `[3.0.0,3.2.0),[4.0.0,4.1.0)`. This page is the narrative home for that design. The
 reasoning is in [decision 0016](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md),
-and the normative text is the format-version page of the specification.
+and the normative text is the format-version page of the specification. The v3 ceiling moved from `3.1.0` to `3.2.0`
+when IR `3.1.0` was minted ([decision 0018](/decisions/0018-ir-3-1-adds-specs-and-v3-document-trees.md)).
 
 ## The revision promise
 
@@ -27,7 +28,7 @@ A revision exists when the kit carries cases for it. Before the formal 4.0.0 rel
 ## Support tables
 
 ```
-[3.0.0,3.1.0),[4.0.0,4.1.0)
+[3.0.0,3.2.0),[4.0.0,4.1.0)
 ```
 
 The grammar is small:
@@ -51,9 +52,9 @@ Three renderings exist for people; none is accepted as input:
 
 | Style | Reads as |
 | --- | --- |
-| Cargo | `>=3.0.0, <3.1.0` and `>=4.0.0, <4.1.0` |
-| Elm | `3.0.0 <= v < 3.1.0` and `4.0.0 <= v < 4.1.0` (an unbounded interval cannot be rendered) |
-| Prose | `3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0` |
+| Cargo | `>=3.0.0, <3.2.0` and `>=4.0.0, <4.1.0` |
+| Elm | `3.0.0 <= v < 3.2.0` and `4.0.0 <= v < 4.1.0` (an unbounded interval cannot be rendered) |
+| Prose | `3.0.0 up to but not including 3.2.0, or 4.0.0 up to but not including 4.1.0` |
 
 ## Compatibility results
 
@@ -72,10 +73,10 @@ Each binding declares its table where this table says.
 
 | Binding | Table | Published |
 | --- | --- | --- |
-| Specification reference | `[3.0.0,3.1.0),[4.0.0,4.1.0)` | format-version page and corpus |
+| Specification reference | `[3.0.0,3.2.0),[4.0.0,4.1.0)` | format-version page and corpus |
 | morphir-typescript (`@finos/morphir-ir`) | `[4.0.0,4.1.0)` | adapter `formatVersions`; run report |
-| morphir-rust (`morphir_core`) | `[3.0.0,3.1.0),[4.0.0,4.1.0)` | adapter `formatVersions`; run report |
-| morphir-ui | `[3.0.0,3.1.0),[4.0.0,4.1.0)` | README |
+| morphir-rust (`morphir_core`) | `[3.0.0,3.2.0),[4.0.0,4.1.0)` | adapter `formatVersions`; run report |
+| morphir-ui | `[3.0.0,3.1.0),[4.0.0,4.1.0)`, until it adopts `3.1.0` | README |
 
 The `mck` driver refuses a non-canonical `formatVersions`, prints the table in prose at the head of a run, and writes the
 canonical string into the report.
