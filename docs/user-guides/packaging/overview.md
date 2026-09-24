@@ -11,7 +11,7 @@ and restore verified copies into another project. A Library contains Morphir IR 
 a release manifest describing its identity, public modules, dependencies, and files.
 
 :::caution Early access
-These guides describe **Morphir CLI v0.4.0-beta.5**. Packaging is an early-access
+These guides describe **Morphir CLI v0.4.0-beta.6**. Packaging is an early-access
 feature. Commands, configuration, file formats, and supported workflows may change
 between releases. Pin the CLI version when following these examples and review
 release notes before upgrading. The draft format markers do not promise a stable
@@ -41,8 +41,8 @@ from source is unnecessary.
 
 | Operation | Early-access support |
 | --- | --- |
-| Prepare a Library bundle | The IR and manifest formats have worked examples. There is no public `morphir package create` or `pack` command. |
-| Publish a new Library release | The signed registry format is specified. A public package publication command is not available yet. |
+| Prepare a Library bundle | `morphir package create` builds a verified dependency-free classic V4 Library. Other Libraries use the worked IR and manifest examples; there is no `pack` command. |
+| Publish a new Library release | On macOS, `morphir package registry`, `sign` and `publish` publish a dependency-free classic V4 Library to an explicitly initialized local registry. Other platforms await qualification. |
 | Establish trust | `morphir package trust init` records an explicitly trusted bootstrap root. |
 | Select dependencies | `morphir package resolve` selects and verifies a complete graph from an exact published root, then writes `morphir.lock`. |
 | Install a locked graph | `morphir package restore` verifies and writes the Libraries into a new directory. |
@@ -74,7 +74,7 @@ the model. They are separate names. Release versions do not become part of IR na
 ## Before you start
 
 Install the [Morphir CLI](../../getting-started/morphir-cli.md) using the
-[v0.4.0-beta.5 release](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.5),
+[v0.4.0-beta.6 release](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.6),
 then check `morphir --version`. File-copy commands in these guides use a POSIX shell,
 such as Bash or Git Bash on Windows. Windows users should also follow the CLI
 guide's [long-path setup](../../getting-started/morphir-cli.md#windows-enable-long-paths).

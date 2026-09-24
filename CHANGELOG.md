@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.6] - 2026-09-24
+
 ### Added
+- Early-access local Library authoring and publication (#945): the CLI compiles a Gleam model into a verified dependency-free classic V4 Library, signs its release with an explicit local Ed25519 seed, and publishes it to an explicitly initialized local registry. Publication requires caller-signed TUF metadata and an exact predecessor, and runs on macOS only; other platforms await qualification. A separate project can initialize public trust, resolve, restore, generate and compile the published Library without a signing key. See the `hello` example in `examples/package/local-library-publish`.
+- The CLI identifies itself to extensions with `"kind": "cli"` in `initialize.host`, on every initialization path, independently of its name label (#954, finos/morphir-rust#235).
 - Draft Amazon Ion IR format, `ionVersion` `0.1.0-draft.1`, for IR v3 and v4 ([#946](https://github.com/finos/morphir/issues/946)). `ir.format = "ion"` writes `morphir-ir.ion`, one datagram of annotated elements with S-expression values. With `ir.layout = "document-tree"` it writes a tree whose root is `manifest.ion`. Each tree file holds the same elements, and the path supplies the package, module and name. The draft spelling can still change before a release. The compatibility kit's profiles stay `json` and `yaml`. The design is in `docs/design/draft/ir/ion.md` and the kb note `morphir-ir/ion-ir-format.md`.
 
 ### Changed
@@ -482,7 +486,8 @@ alpha, 0.4.0-alpha.5, only moved the release pipeline to the Rust binary.
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.5...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.6...HEAD
+[0.4.0-beta.6]: https://github.com/finos/morphir/compare/v0.4.0-beta.5...v0.4.0-beta.6
 [0.4.0-beta.5]: https://github.com/finos/morphir/compare/v0.4.0-beta.4...v0.4.0-beta.5
 [0.4.0-beta.4]: https://github.com/finos/morphir/compare/v0.4.0-beta.3...v0.4.0-beta.4
 [0.4.0-beta.3]: https://github.com/finos/morphir/compare/v0.4.0-beta.2...v0.4.0-beta.3

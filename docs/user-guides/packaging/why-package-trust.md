@@ -14,7 +14,7 @@ Package trust helps answer a practical question: **"Did I receive the release
 I am allowed to use, from the sources I chose to trust?"**
 
 :::note Early access
-This introduction accompanies **Morphir CLI v0.4.0-beta.5**. The trust workflow
+This introduction accompanies **Morphir CLI v0.4.0-beta.6**. The trust workflow
 and its configuration may change. See [Trust explained simply](trust-explained.md)
 for what works today and the experience we are working toward.
 :::
