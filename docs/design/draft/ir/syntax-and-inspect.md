@@ -134,6 +134,45 @@ inspect::matches(&registry, "elm", total.signature(), "List Order -> Decimal")?;
 - An unknown selector fails, and the error lists the nearest names.
 - `matches` normalizes the expected snippet and prints the actual node through the same syntax. It compares the two texts. On a mismatch it returns both texts and a unified diff.
 
+### morphir-inspect: ingesting and selecting
+
+An `Inspector` holds a whole distribution. A **selection** narrows it to one node or a set of nodes. Every later check works on the selection, so one document can serve many checks.
+
+**Sources.** A document can be ingested in four ways. Each gives the same `Inspector`:
+
+- a file or a document-tree directory, in any version, format or layout;
+- an inline document (a doc string, with its format from the content type);
+- a document-tree set built from inline files;
+- the answer of a compatibility-kit adapter (the kit's step library supplies this source).
+
+**Ways to select a node:**
+
+| Mechanism | Example | Resolved by |
+| --- | --- | --- |
+| Node address (URI) | `morphir://ir/pkg/acme/orders#/module/main/value/total/body/apply/argument` | `morphir-core` `node_address::NodeIndex` |
+| Legacy v3 NodeID | `Acme.Orders:Main:total` | `node_address::convert_v3_node_id` |
+| Selector | `main#total`, `pkg:module#name`, `module main` | `morphir-inspect` |
+| JSON pointer into the canonical JSON | `/distribution/Library/def/modules/main` | `morphir-inspect`, as an escape hatch |
+| Relative step | `the body`, `argument 2`, `field "name"`, `case 1` | the node kind's children, from the current selection |
+
+**Filters** narrow a selection to a set:
+
+- by node kind: `values`, `types`, `modules`, `constructors`, `fields`;
+- by name, with a glob: `create*`;
+- by where a node is: `in module "api"`, `in dependency "morphir/sdk"`;
+- by access: `public`, `private`.
+
+A filter runs over the current selection, so filters and drill-down steps chain. Each node in a set keeps its node address, so a failure names the exact node.
+
+```rust
+// sketch
+let ir = Inspector::open("orders.json")?;
+let total = ir.select(&Select::address("morphir://ir/pkg/acme/orders#/module/main/value/total"))?;
+let arg = total.drill(&Step::body())?.drill(&Step::argument(2))?;
+let creates = ir.select(&Select::all().values().in_module("api").named("create*").public())?;
+assert_eq!(creates.addresses().count(), 3);
+```
+
 ### morphir-inspect: comparison
 
 ```rust
@@ -203,6 +242,40 @@ Rules:
 - **Names:** a table shows names as the syntax spells them (`createOrder` in Elm). Selectors stay IR names (`main#total`).
 - **Failures:** every mismatch prints a unified diff.
 
+Steps for ingesting and selecting (sketch):
+
+```gherkin
+Scenario: Drill into a migrated value
+  Given the IR file "fixtures/orders.json"
+  When I select the node "morphir://ir/pkg/acme/orders#/module/main/value/total"
+  And I select its body
+  And I select argument 2
+  Then the selection should be an Apply
+  And its canonical JSON spelling is { "Variable": "order" }
+
+Scenario: Filter the public values of a module
+  Given the IR tree "fixtures/orders.morphir-dist"
+  When I select the public values in module "api" named "create*"
+  Then the selection should contain exactly:
+    | node                 | signature                     |
+    | api#create-order     | Request -> Result Error Order |
+    | api#create-invoice   | Order -> Invoice              |
+  And every selected value should have a native body
+
+Scenario: A legacy v3 NodeID resolves to the same node
+  Given the IR:
+    """json
+    { "formatVersion": 3, "distribution": ["Library", …] }
+    """
+  When I select the legacy node "Acme.Orders:Main:total"
+  Then the selection's node address should be "morphir://ir/pkg/acme/orders#/module/main/value/total"
+```
+
+- The source steps are `Given the IR file "<path>"`, `Given the IR tree "<path>"`, `Given the IR:` with a doc string, and `Given the IR tree set "<set>"` for inline files.
+- The selection steps are `When I select the node "<uri>"`, `…the legacy node "<id>"`, `…the <kind> "<selector>"`, `…the pointer "<json-pointer>"`, `…its <relative step>`, and the filter steps.
+- The check steps work on the current selection: its node kind, its canonical spelling in a format, its signature or definition through a syntax, `should contain exactly:` with a table, and `every selected <kind> should …`.
+- The compatibility kit reuses these steps with its adapter as the source. So a kit case can read a whole document or tree through the adapter, then drill into one node and check only that node's spelling.
+
 The seven raw-JSON steps in `crates/integration-tests/tests/cli.rs:258-470` keep their feature text but are rewritten on top of `morphir-inspect`. They then work for v3, YAML, Ion and trees too.
 
 ## Testing
@@ -214,6 +287,7 @@ The seven raw-JSON steps in `crates/integration-tests/tests/cli.rs:258-470` keep
 - **morphir-elm-binding:** its existing tests pass unchanged after the move, so the generated Elm keeps the same bytes.
 - **morphir-inspect:**
   - queries: the selectors, an unknown name listing the nearest names, and reading each format and layout;
+  - ingesting and selecting: each source; each selection mechanism resolves to the same node; relative drill-down steps; each filter and chains of filters; a failure that names the node address;
   - `matches`, with a diff;
   - comparison: same-version changes, a v3-to-v4 comparison with `NotComparable` facets, each ignorable facet, node addresses, and the JSON output.
 - **Steps:** one feature file that uses every step once and runs in CI with the other features, plus one scenario that must fail, to prove that a mismatch prints a unified diff.

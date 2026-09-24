@@ -130,6 +130,23 @@ The kit's steps (a step library in `morphir-mck`; `<format>` is `Ion`, `YAML` or
 
 Each step also takes a doc string in place of its last inline argument, for documents that span several lines.
 
+A case can also check part of a larger document. It reads a whole document or tree through the adapter, then selects one node by node address, legacy NodeID, selector or relative step, and checks that node. The source, selection and filter steps come from `morphir-inspect` ([ingesting and selecting](./syntax-and-inspect.md#morphir-inspect-ingesting-and-selecting)); the kit supplies the adapter as the source:
+
+```gherkin
+Scenario: document-tree-0020 A value inside a v3 tree keeps its body
+  Given the tree file "manifest" in set "v3-library":
+    """json
+    { "formatVersion": "3.1.0", "distribution": "Library", "package": "my-org/my-project", "pathBudget": 4000 }
+    """
+  And the tree file "pkg/my-org/my-project/domain/total.value" in set "v3-library":
+    """json
+    { "formatVersion": "3.1.0", "name": "total", "def": { … } }
+    """
+  When the adapter reads the "v3-library" tree
+  And I select the node "morphir://ir/pkg/my-org/my-project#/module/domain/value/total/body"
+  Then its canonical Ion spelling is (apply (ref 'morphir/SDK:list#sum') (variable 'orders'))
+```
+
 The outline rules for kit cases:
 
 - **One-line documents** go in an `Examples` table. A `|` inside a cell is written `\|`, as Gherkin requires.
