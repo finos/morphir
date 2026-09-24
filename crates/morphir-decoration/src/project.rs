@@ -107,7 +107,10 @@ impl DecorationProject {
                     kind: "target",
                     message: error.to_string(),
                 })?;
-            let classic::DistributionBody::Library(package, _, _) = &distribution.distribution;
+            let package = match &distribution.distribution {
+                classic::DistributionBody::Library(package, _, _)
+                | classic::DistributionBody::Specs(package, _, _) => package,
+            };
             let package_path = package
                 .segments
                 .iter()
@@ -147,7 +150,7 @@ impl DecorationProject {
                     })?;
                 ValueValidator::v3(&distribution, &decoration.entry_point)?
             }
-            Value::String(ref version) if version == "3.0.0" => {
+            Value::String(ref version) if version == "3.0.0" || version == "3.1.0" => {
                 let distribution: classic::Distribution = serde_json::from_str(&type_text)
                     .map_err(|error| ProjectError::Ir {
                         kind: "decoration type",
@@ -225,7 +228,11 @@ impl DecorationProject {
             .ok_or_else(|| ProjectError::Config("V3 migration requires a V3 target IR".into()))?;
         let path = self.checked_sidecar_path()?;
         let old = std::fs::read_to_string(&path).map_err(|source| io(&path, source))?;
-        let classic::DistributionBody::Library(package, _, _) = &distribution.distribution;
+        let classic::DistributionBody::Library(package, _, _) = &distribution.distribution else {
+            return Err(ProjectError::Config(
+                "V3 NodeID migration requires a Library target IR".into(),
+            ));
+        };
         let package_path = package
             .segments
             .iter()

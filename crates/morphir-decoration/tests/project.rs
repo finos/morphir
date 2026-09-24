@@ -1,3 +1,4 @@
+use morphir_core::ir::classic;
 use morphir_core::node_address::{NodeCatalog, NodeUri};
 use morphir_decoration::project::DecorationProject;
 use morphir_decoration::sidecar::DecorationSidecar;
@@ -8,6 +9,55 @@ const V3: &str = include_str!(
 const V4: &str = include_str!(
     "../../../ecosystem/morphir-rust/crates/morphir-core/tests/fixtures/ir/v4/v4-library-distribution.json"
 );
+
+#[test]
+fn configured_project_accepts_v3_specs_target_and_type() {
+    let root = tempfile::tempdir().unwrap();
+    let config = root.path().join("morphir.json");
+    let ir = root.path().join("morphir-ir.json");
+    let distribution = classic::Distribution {
+        format_version: 3,
+        distribution: classic::DistributionBody::Specs(
+            classic::Path::new(vec![classic::Name::from_str("Acme")]),
+            vec![],
+            classic::PackageSpecification {
+                modules: vec![classic::package::ModuleSpecEntry {
+                    path: classic::Path::new(vec![classic::Name::from_str("Domain")]),
+                    specification: classic::ModuleSpecification {
+                        types: vec![(
+                            classic::Name::from_str("Label"),
+                            classic::Documented::new(
+                                "",
+                                classic::TypeSpecification::Alias(
+                                    vec![],
+                                    classic::Type::Unit(classic::Attrs::None),
+                                ),
+                            ),
+                        )],
+                        values: vec![],
+                        doc: None,
+                    },
+                }],
+            },
+        ),
+    };
+    std::fs::write(&ir, serde_json::to_vec(&distribution).unwrap()).unwrap();
+    std::fs::write(&config, r#"{"decorations":{"labels":{"ir":"morphir-ir.json","entryPoint":"Acme:Domain:Label","storageLocation":"attributes/labels.json"}}}"#).unwrap();
+    let project = DecorationProject::open(&config, "labels", &ir).unwrap();
+    let target =
+        NodeUri::parse("morphir://ir/pkg/acme?format=3.1.0#/module/domain/type/label").unwrap();
+    project
+        .set(target.clone(), serde_json::Value::Null)
+        .unwrap();
+    assert!(
+        project
+            .load()
+            .unwrap()
+            .targets()
+            .contains_key(&target.to_string())
+    );
+    assert!(project.migrate_v3().is_err());
+}
 
 #[test]
 fn configured_project_sets_typed_v3_decorations_and_preserves_old_file_on_failure() {

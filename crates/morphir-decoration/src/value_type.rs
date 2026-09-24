@@ -61,10 +61,17 @@ impl ValueValidator {
         if distribution.format_version != 3 {
             return Err(error("$", "decoration type IR must be V3"));
         }
-        let classic::DistributionBody::Library(package, dependencies, definition) =
-            &distribution.distribution;
         let mut definitions = HashMap::new();
-        collect_v3_definitions(&mut definitions, &classic_path(package), definition)?;
+        let dependencies = match &distribution.distribution {
+            classic::DistributionBody::Library(package, dependencies, definition) => {
+                collect_v3_definitions(&mut definitions, &classic_path(package), definition)?;
+                dependencies
+            }
+            classic::DistributionBody::Specs(package, dependencies, specification) => {
+                collect_v3_specifications(&mut definitions, &classic_path(package), specification)?;
+                dependencies
+            }
+        };
         for (package, specification) in dependencies {
             collect_v3_specifications(&mut definitions, &classic_path(package), specification)?;
         }
