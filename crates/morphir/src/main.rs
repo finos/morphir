@@ -690,21 +690,24 @@ struct MigrateArgs {
 
 impl MigrateArgs {
     fn run(&self) -> AppResult<miette::Report> {
-        run_migrate(
-            self.input.clone(),
-            MigrateCommandOptions {
-                output: self.output.clone(),
-                target_version: self.target_version.clone(),
-                force_refresh: self.force_refresh,
-                no_cache: self.no_cache,
-                json: self.json,
-                expanded: self.expanded,
-                allow_partial: self.allow_partial,
-                output_layout: self.output_layout,
-                input_format: self.input_format.clone(),
-                output_format: self.output_format.clone(),
-            },
-        )
+        // Remote source resolution uses a blocking HTTP client.
+        tokio::task::block_in_place(|| {
+            run_migrate(
+                self.input.clone(),
+                MigrateCommandOptions {
+                    output: self.output.clone(),
+                    target_version: self.target_version.clone(),
+                    force_refresh: self.force_refresh,
+                    no_cache: self.no_cache,
+                    json: self.json,
+                    expanded: self.expanded,
+                    allow_partial: self.allow_partial,
+                    output_layout: self.output_layout,
+                    input_format: self.input_format.clone(),
+                    output_format: self.output_format.clone(),
+                },
+            )
+        })
     }
 }
 

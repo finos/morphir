@@ -85,32 +85,12 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
     Then the command should succeed
     And stdout should have V4 Library package "elm-compat"
 
-  @native @p0 @wip
-  Scenario: Migrate with dependency warning (Classic to V4)
-    Given I have a Classic IR file "morphir-ir.json" with:
-      """
-      {
-        "formatVersion": 1,
-        "distribution": [
-          "Library",
-          "Library",
-          ["com", "example", "test"],
-          [
-            {
-              "packageName": ["com", "example", "dependency"],
-              "packagePath": "/some/path"
-            }
-          ],
-          {
-            "modules": {}
-          }
-        ]
-      }
-      """
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+  @native @p0
+  Scenario: Migrate preserves Classic dependencies
+    Given I have a Classic IR file with dependency "acme/shared"
+    When I run "morphir migrate input.json --output output.json --target-version v4"
     Then the command should succeed
-    And the stderr should contain "Warning"
-    And the stderr should contain "dependencies"
+    And the file "output.json" should have V4 dependency "acme/shared"
 
   @native @p0
   Scenario: Migrate with expanded format option
@@ -124,23 +104,33 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
   # Remote Source Tests (P1)
   # ========================================================================
 
-  @native @p1 @remote @wip
+  @native @p1 @remote
   Scenario: Migrate from HTTP URL
-    Given I have internet connectivity
-    When I run "morphir migrate https://example.com/morphir-ir.json output.json --target v4"
-    Then the command should succeed or fail gracefully
-    # Note: May fail if URL not available, that's ok for test
+    Given a local HTTP source serves the Classic IR greeting fixture
+    When I migrate the HTTP fixture to "output.json"
+    Then the command should succeed
+    And the file "output.json" should have V4 Library package "elm-compat"
+    And the HTTP source should have received 1 request
 
-  @native @p1 @remote @wip
+  @native @p1 @remote
   Scenario: Migrate with force refresh
-    Given I have a cached remote IR
-    When I run "morphir migrate https://example.com/morphir-ir.json output.json --target v4 --force-refresh"
-    Then the command should succeed or fail gracefully
+    Given a local HTTP source serves the Classic IR greeting fixture
+    When I migrate the HTTP fixture to "first.json"
+    And I migrate the HTTP fixture to "cached.json"
+    And I migrate the HTTP fixture to "output.json" with "--force-refresh"
+    Then the command should succeed
+    And the file "output.json" should have V4 Library package "elm-compat"
+    And the HTTP source should have received 2 requests
 
-  @native @p1 @remote @wip
+  @native @p1 @remote
   Scenario: Migrate with no cache
-    When I run "morphir migrate https://example.com/morphir-ir.json output.json --target v4 --no-cache"
-    Then the command should succeed or fail gracefully
+    Given a local HTTP source serves the Classic IR greeting fixture
+    When I migrate the HTTP fixture to "first.json"
+    And I migrate the HTTP fixture to "cached.json"
+    And I migrate the HTTP fixture to "output.json" with "--no-cache"
+    Then the command should succeed
+    And the file "output.json" should have V4 Library package "elm-compat"
+    And the HTTP source should have received 2 requests
 
   # ========================================================================
   # WASM Mode Tests (P2 - Future)

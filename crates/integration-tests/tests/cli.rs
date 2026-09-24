@@ -5,12 +5,84 @@
 
 use cucumber::{World, given, then, when};
 use integration_tests::{CliTestContext, cli_tests_available};
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
+
+#[derive(Debug)]
+struct LocalHttpSource {
+    url: String,
+    requests: Arc<AtomicUsize>,
+    shutdown: Arc<AtomicBool>,
+    worker: Option<JoinHandle<()>>,
+}
+
+impl LocalHttpSource {
+    fn serve(bytes: Vec<u8>) -> Self {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind local HTTP source");
+        listener
+            .set_nonblocking(true)
+            .expect("configure local HTTP source");
+        let address = listener.local_addr().expect("local HTTP source address");
+        let requests = Arc::new(AtomicUsize::new(0));
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let request_count = Arc::clone(&requests);
+        let stop = Arc::clone(&shutdown);
+        let worker = thread::spawn(move || {
+            while !stop.load(Ordering::Relaxed) {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        stream
+                            .set_read_timeout(Some(Duration::from_secs(5)))
+                            .expect("set HTTP read timeout");
+                        let mut request = [0; 4096];
+                        let read = stream.read(&mut request).expect("read HTTP request");
+                        if !request[..read].starts_with(b"GET /greeting-example.json ") {
+                            continue;
+                        }
+                        request_count.fetch_add(1, Ordering::Relaxed);
+                        write!(
+                            stream,
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            bytes.len()
+                        )
+                        .expect("write HTTP response headers");
+                        stream.write_all(&bytes).expect("write HTTP response body");
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(error) => panic!("accept local HTTP request: {error}"),
+                }
+            }
+        });
+        Self {
+            url: format!("http://{address}/greeting-example.json"),
+            requests,
+            shutdown,
+            worker: Some(worker),
+        }
+    }
+}
+
+impl Drop for LocalHttpSource {
+    fn drop(&mut self) {
+        self.shutdown.store(true, Ordering::Relaxed);
+        if let Some(worker) = self.worker.take() {
+            worker.join().expect("stop local HTTP source");
+        }
+    }
+}
 
 /// World state for CLI cucumber tests
 #[derive(Debug, Default, World)]
 pub struct CliWorld {
     context: Option<CliTestContext>,
     last_result: Option<integration_tests::CommandResult>,
+    remote_source: Option<LocalHttpSource>,
 }
 
 #[given("the morphir CLI is built and available")]
@@ -49,6 +121,35 @@ fn copy_ir_fixture(world: &CliWorld, version: &str, name: &str) {
         .expect("temporary test directory")
         .write_source_file(name, &contents)
         .expect("copy IR fixture");
+}
+
+#[given(regex = r#"I have a Classic IR file with dependency "([^"]+)""#)]
+fn given_classic_ir_with_dependency(world: &mut CliWorld, dependency: String) {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    let mut document: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&fixture).expect("read Classic IR greeting fixture"))
+            .expect("parse Classic IR greeting fixture");
+    let dependency_path: Vec<Vec<&str>> = dependency
+        .split('/')
+        .map(|segment| segment.split('-').collect())
+        .collect();
+    document["distribution"][2] = serde_json::json!([[dependency_path, {"modules": []}]]);
+    world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .write_source_file("input.json", &document.to_string())
+        .expect("write Classic IR with dependency");
+}
+
+#[given("a local HTTP source serves the Classic IR greeting fixture")]
+fn given_local_http_source(world: &mut CliWorld) {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    world.remote_source = Some(LocalHttpSource::serve(
+        std::fs::read(&fixture).expect("read Classic IR greeting fixture"),
+    ));
 }
 
 #[given(regex = r#"I have a file "([^"]+)" with:"#)]
@@ -106,6 +207,31 @@ fn when_run_morphir(world: &mut CliWorld, command: String) {
     );
 }
 
+#[when(regex = r#"^I migrate the HTTP fixture to "([^"]+)"$"#)]
+fn when_migrate_http_fixture(world: &mut CliWorld, output: String) {
+    run_http_migration(world, &output, None);
+}
+
+#[when(regex = r#"^I migrate the HTTP fixture to "([^"]+)" with "([^"]+)"$"#)]
+fn when_migrate_http_fixture_with_option(world: &mut CliWorld, output: String, option: String) {
+    assert!(matches!(option.as_str(), "--force-refresh" | "--no-cache"));
+    run_http_migration(world, &output, Some(&option));
+}
+
+fn run_http_migration(world: &mut CliWorld, output: &str, option: Option<&str>) {
+    let url = world
+        .remote_source
+        .as_ref()
+        .expect("local HTTP source")
+        .url
+        .clone();
+    let option = option.unwrap_or("");
+    when_run_morphir(
+        world,
+        format!("morphir migrate {url} --output {output} --target-version v4 {option}"),
+    );
+}
+
 #[then("the command should succeed")]
 fn then_command_should_succeed(world: &mut CliWorld) {
     world
@@ -127,6 +253,26 @@ fn then_command_should_fail(world: &mut CliWorld) {
 #[then(regex = r#"the file "([^"]+)" should have V4 Library package "([^"]+)""#)]
 fn then_file_has_v4_library_package(world: &mut CliWorld, file: String, package: String) {
     assert_v4_library_package(&read_json_file(world, &file), &package);
+}
+
+#[then(regex = r#"the file "([^"]+)" should have V4 dependency "([^"]+)""#)]
+fn then_file_has_v4_dependency(world: &mut CliWorld, file: String, dependency: String) {
+    let document = read_json_file(world, &file);
+    assert!(
+        document["distribution"]["Library"]["dependencies"][&dependency]["modules"].is_object(),
+        "missing V4 dependency {dependency}"
+    );
+}
+
+#[then(regex = r#"the HTTP source should have received (\d+) requests?"#)]
+fn then_http_request_count(world: &mut CliWorld, expected: usize) {
+    let actual = world
+        .remote_source
+        .as_ref()
+        .expect("local HTTP source")
+        .requests
+        .load(Ordering::Relaxed);
+    assert_eq!(actual, expected);
 }
 
 #[then(regex = r#"the file "([^"]+)" should use the canonical V4 Library wrapper"#)]
