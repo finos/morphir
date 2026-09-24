@@ -187,42 +187,38 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
     And the debug logs should show envelope deserialization
     And the command should succeed
 
-  @envelope @p0 @wip
-  Scenario: Envelope contains proper metadata
-    Given I have JSON output mode enabled
-    And I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target v4 --json"
-    Then the JSON output should contain:
-      | field          | type    |
-      | success        | boolean |
-      | source_format  | string  |
-      | target_format  | string  |
-      | warnings       | array   |
+  @native @p0
+  Scenario: JSON result reports migration metadata
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4 --json"
+    Then the command should succeed
+    And stdout should report a V3 to V4 JSON migration from "greeting-example.json" to "output.json"
+    And the file "output.json" should have V4 Library package "elm-compat"
 
   # ========================================================================
   # Regression Tests (P1)
   # ========================================================================
 
-  @regression @p1 @wip
+  @regression @p1
   Scenario: Migrate preserves module structure
-    Given I have a Classic IR with multiple modules
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And all modules should be present in output
+    And the file "output.json" should contain V4 modules "api" and "main"
 
-  @regression @p1 @wip
+  @regression @p1
   Scenario: Migrate preserves type definitions
-    Given I have a Classic IR with type definitions
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And all type definitions should be present in output
+    And the file "output.json" should contain V4 types "api/request" and "main/product"
 
-  @regression @p1 @wip
+  @regression @p1
   Scenario: Migrate preserves value definitions
-    Given I have a Classic IR with value definitions
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And all value definitions should be present in output
+    And the file "output.json" should contain V4 values "api/create-order" and "main/calculate-total"
 
   # ========================================================================
   # V4 Format Validation (Correctness Check)

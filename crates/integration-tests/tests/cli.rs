@@ -123,6 +123,57 @@ fn then_stdout_has_v4_library_package(world: &mut CliWorld, package: String) {
     assert_v4_library_package(&document, &package);
 }
 
+#[then(regex = r#"stdout should report a V3 to V4 JSON migration from "([^"]+)" to "([^"]+)""#)]
+fn then_stdout_reports_migration(world: &mut CliWorld, input: String, output: String) {
+    let stdout = &world.last_result.as_ref().expect("CLI result").stdout;
+    let report: serde_json::Value = serde_json::from_str(stdout).expect("stdout must be JSON");
+    assert_eq!(report["success"], true);
+    assert_eq!(report["input"], input);
+    assert_eq!(report["output"], output);
+    assert_eq!(report["source"], "v3/json/single-file");
+    assert_eq!(report["target"], "v4/json/single-file");
+    assert!(report.get("error").is_none());
+}
+
+#[then(regex = r#"the file "([^"]+)" should contain V4 modules "([^"]+)" and "([^"]+)""#)]
+fn then_file_contains_v4_modules(
+    world: &mut CliWorld,
+    file: String,
+    first: String,
+    second: String,
+) {
+    let document = read_json_file(world, &file);
+    let modules = &document["distribution"]["Library"]["def"]["modules"];
+    for name in [&first, &second] {
+        assert!(
+            modules[name]["Public"].is_object(),
+            "missing V4 module {name}"
+        );
+    }
+}
+
+#[then(regex = r#"the file "([^"]+)" should contain V4 types "([^"]+)" and "([^"]+)""#)]
+fn then_file_contains_v4_types(world: &mut CliWorld, file: String, first: String, second: String) {
+    assert_v4_definitions(world, &file, "types", [&first, &second]);
+}
+
+#[then(regex = r#"the file "([^"]+)" should contain V4 values "([^"]+)" and "([^"]+)""#)]
+fn then_file_contains_v4_values(world: &mut CliWorld, file: String, first: String, second: String) {
+    assert_v4_definitions(world, &file, "values", [&first, &second]);
+}
+
+fn assert_v4_definitions(world: &CliWorld, file: &str, kind: &str, names: [&str; 2]) {
+    let document = read_json_file(world, file);
+    let modules = &document["distribution"]["Library"]["def"]["modules"];
+    for name in names {
+        let (module, definition) = name.split_once('/').expect("module/definition name");
+        assert!(
+            modules[module]["Public"][kind][definition].is_object(),
+            "missing V4 {kind} definition {name}"
+        );
+    }
+}
+
 #[then(regex = r#"the file "([^"]+)" should use expanded type references"#)]
 fn then_file_uses_expanded_type_references(world: &mut CliWorld, file: String) {
     let document = read_json_file(world, &file);
