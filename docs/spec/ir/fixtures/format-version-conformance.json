@@ -1,6 +1,6 @@
 {
   "contractVersion": 1,
-  "supportTable": "[3.0.0,3.1.0),[4.0.0,4.1.0)",
+  "supportTable": "[3.0.0,3.2.0),[4.0.0,4.1.0)",
   "scalarCases": [
     {
       "name": "historical v1 integer",
@@ -38,9 +38,16 @@
       "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
     },
     {
-      "name": "v3 later minor",
+      "name": "v3.1 release",
       "value": "3.1.0",
       "normalization": { "normalized": "3.1.0", "canonical": "3.1.0" },
+      "compatibility": "supported",
+      "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
+    },
+    {
+      "name": "v3 later minor",
+      "value": "3.2.0",
+      "normalization": { "normalized": "3.2.0", "canonical": "3.2.0" },
       "compatibility": "unsupported_format_version_minor",
       "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
     },
@@ -264,7 +271,7 @@
   ],
   "supportTableCases": {
     "parse": [
-      { "name": "reference table is canonical", "input": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "canonical": "[3.0.0,3.1.0),[4.0.0,4.1.0)" },
+      { "name": "older v3.0-only table is canonical", "input": "[3.0.0,3.1.0),[4.0.0,4.1.0)", "canonical": "[3.0.0,3.1.0),[4.0.0,4.1.0)" },
       { "name": "whitespace is dropped", "input": "[3.0.0, 3.1.0) , [4.0.0 ,4.1.0)", "canonical": "[3.0.0,3.1.0),[4.0.0,4.1.0)" },
       { "name": "inclusive upper advances", "input": "[4.0.0,4.0.2]", "canonical": "[4.0.0,4.0.3)" },
       { "name": "exclusive lower advances", "input": "(4.0.0,4.1.0)", "canonical": "[4.0.1,4.1.0)" },

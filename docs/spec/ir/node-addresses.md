@@ -68,7 +68,28 @@ A workspace alias is a nonempty lowercase ASCII slug matching `[a-z][a-z0-9]*(?:
 
 The fragment is a path of typed semantic steps. `distribution` selects the whole distribution; `package` selects its own package definition or specification. `dependency` plus a canonical package path selects one embedded dependency package, which can contain specifications in a Library or definitions in an Application. `entry-point` plus a name selects an Application entry point. `module` is followed by one canonical module-path component, then optionally `type` or `value` and one canonical local name. A `module` at the beginning of a fragment belongs to the artifact's own package; a dependency's module follows its `dependency` step. `type-exp` enters a type alias's expression; `body` enters a value definition's body. A constructor step such as `record`, `apply`, `tuple`, or `pattern-match` must match the current semantic variant. It is followed by a role that variant actually has, such as `field`, `function`, `argument`, `element`, or `case`, and then a canonical name or zero-based index when that role has multiple children. Generic JSON Pointer member names are not valid substitutes for semantic roles.
 
-This draft fixes only the roles exercised below. The exhaustive V3/V4 child-role grammar and reference cases for every constructor remain acceptance work in #957 before an adapter can claim the ability to address *any* node. In particular, value input/output types, let definitions, nested patterns, and general custom-type constructor arguments still need reviewed spellings. An implementation must reject an unrecognized role; it must not infer one from JSON member names.
+The draft now assigns roles to every V3/V4 type expression, value expression, pattern, and definition child. A role identifies a semantic edge, not a JSON member. The table gives the suffix added to the current node's fragment. `name` is one canonical Morphir name component; `n` is a zero-based index. The index checks that the parent has the stated constructor and child. An implementation rejects unknown roles.
+
+| Parent node | Child | Fragment suffix |
+| --- | --- | --- |
+| Type alias or value expression definition | Alias type or expression body | `/type-exp`, `/body` |
+| Value definition or specification | Named input type, output type | `/input/name`, `/output` |
+| V3 value definition | Input value annotation | `/input-annotation/name` |
+| Derived or incomplete type | Base type, partial type | `/derived/base-type`, `/incomplete/partial-type` |
+| Custom type | Constructor, its ordered argument type | `/constructor/name`, then `/argument/n` |
+| Record or extensible record type | Named field type | `/record/field/name`, `/extensible-record/field/name` |
+| Function or reference type | Parameter, result, ordered type argument | `/function/parameter`, `/function/result`, `/reference/argument/n` |
+| Tuple type or value | Ordered element | `/tuple/element/n` |
+| Apply or field value | Function, argument, field subject | `/apply/function`, `/apply/argument`, `/field/subject` |
+| Destructure or conditional value | Pattern, value, body; condition, then, else | `/destructure/pattern`, `/destructure/value`, `/destructure/body`; `/if/condition`, `/if/then`, `/if/else` |
+| Lambda or let value | Pattern, body; named definition, body | `/lambda/pattern`, `/lambda/body`; `/let/definition/name`, `/let/body` |
+| List or pattern-match value | Ordered element; subject, ordered case pattern or body | `/list/element/n`; `/pattern-match/subject`, `/pattern-match/case/n/pattern`, `/pattern-match/case/n/body` |
+| Record or update value | Named field; update subject or named field | `/record/field/name`; `/update/subject`, `/update/field/name` |
+| As, tuple, constructor or head-tail pattern | Child pattern | `/as-pattern/pattern`, `/tuple-pattern/element/n`, `/constructor-pattern/argument/n`, `/head-tail/head`, `/head-tail/tail` |
+| V4 external or incomplete value definition | Fallback or partial body | `/external/fallback`, `/incomplete/partial-body` |
+| V4 hole value or incomplete definition | Expected or retained type | `/hole/expected-type` |
+
+Distribution, package, module, type/value definition or specification, constructor, entry point, type expression, value expression, and pattern are addressable nodes. Literal payloads, names, annotations, attributes, documentation text, and external binding descriptors belong to their enclosing semantic node and do not receive separate node URIs in this draft. If a later metadata design needs one of those as an independent target, it must add a reviewed role rather than reuse a storage path.
 
 Components other than workspace aliases are UTF-8 percent encoded individually. Split fragment segments at literal `/` **before** decoding them; a slash inside one canonical package or module path is `%2F`. Use uppercase hex in percent escapes, encode reserved characters, and reject invalid UTF-8, duplicate query keys, unknown parameters, noncanonical Morphir name spellings, negative or leading-zero indices, and a URI that parses to more than one address. A canonical writer emits one spelling for each typed address. The [naming contract](../draft/names.md) decides whether a decoded package, module, type, value, or field name is valid; a URI does not admit arbitrary Unicode in those names merely because UTF-8 percent encoding can carry it. An Application entry-point key is a different domain value: preserve its exact nonempty identifier and percent encode it without Morphir-name normalization.
 
@@ -103,7 +124,9 @@ A named unpinned path follows the current node with that name. An ordered child 
 
 **Guard behavior decision:** an unpinned indexed URI uses a node fingerprint, not the revision of the whole artifact. The guard fingerprints the *ordered-step lineage*: the role, index, and selected semantic child at each ordered step in the path. This lets one guard cover multiple nested positional selections. Editing an unrelated module or adding an element after the selected position leaves the guard valid; changing the selected child or shifting its index makes it stale. An edit inside a selected child subtree may also change its fingerprint, even if the final descendant named by the URI did not change. The guard does not hash unrelated artifact content or physical JSON, YAML, and document-tree bytes.
 
-The proposed spelling is `guard=sha256:` followed by 64 lowercase hex digits. The URI parser checks the token's spelling; the resolver recomputes it for the selected current lineage and returns `stale_target` on a mismatch. Its canonical semantic input encoding is **not yet fixed**, so the example token below is illustrative and this draft does not grant cross-implementation guard compatibility. A reviewed digest profile and fixed cross-format hash vectors are required before activating guarded cases in MCK.
+The spelling is `guard=sha256:` followed by 64 lowercase hex digits. The URI parser checks the token's spelling. The resolver recomputes the selected current lineage and returns `stale_target` on a mismatch. The `draft.1` digest input starts with the UTF-8 bytes `morphir-node-fingerprint-draft.1` and a zero byte. For each ordered step from root to leaf, append a four-byte big-endian length and the UTF-8 role name, an eight-byte big-endian index, then an eight-byte big-endian length and the canonical JSON bytes of the selected typed IR child. A pattern-match case selection hashes the whole case (pattern and body), even when the URI descends through only one of them; swapping cases with equal bodies but different patterns must stale a body URI. Roles include `tuple/element`, `reference/argument`, `constructor/argument`, `list/element`, `pattern-match/case/pattern`, `pattern-match/case/body`, `tuple-pattern/element`, and `constructor-pattern/argument`. Hash the complete byte stream with SHA-256.
+
+Canonical child JSON comes from the normalized V3 or V4 model. Serialize V4 types in the expanded semantic form regardless of a caller's ambient compact-output setting. Omit `source` coordinates and tool `extensions` only from typed V4 IR attributes; keep arbitrary JSON inside a `DocumentLiteral` byte-for-byte as semantic payload. An empty typed `attributes` object is omitted. Keep semantic constraints and inferred types. Sort object keys by their decoded UTF-8 bytes, then apply JSON string escaping; keep array order and Unicode code points. The IR model's numeric literal lexeme remains part of that model. Source JSON/YAML whitespace, member order, document filenames, and unrelated siblings do not enter the hash. A V4 `Unit` type with default attributes writes `{"Unit":{}}`. Selecting it at `/tuple/element/1` gives `sha256:05709fcf331bd4125b9a2121fac18712390e8572bb545cd091be14bd925ffe92`. The same typed node loaded from V4 JSON, YAML, or a document tree produces this digest.
 
 ```text
 morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1
@@ -121,6 +144,7 @@ An unpinned URI with an ordered child and no guard is invalid. A pinned URI does
 | Outcome | Cause |
 | --- | --- |
 | `invalid_node_uri` | Invalid URI syntax, escaping, name, unknown role token, or missing required guard |
+| `artifact_mismatch` | The supplied artifact has a different package selector |
 | `ambiguous_artifact` | The current selector matches more than one artifact |
 | `revision_unavailable` | The requested immutable snapshot is absent |
 | `revision_mismatch` | Retrieved snapshot fails revision verification |
@@ -143,7 +167,7 @@ Elm V3 sidecars are flat JSON objects from `NodeID` strings to values decoded ag
 | --- | --- | --- |
 | `Acme.Orders:Domain` | Module | `#/module/domain` |
 | `Acme.Orders:Domain:order.type` | Type alias expression | `#/module/domain/type/order/type-exp` |
-| `Acme.Orders:Domain:accountId.type` | Sole argument type of the sole `accountId` custom-type constructor | Mapping deferred until the custom-type constructor argument role and guard profile are fixed |
+| `Acme.Orders:Domain:accountId.type` | Sole argument type of the sole `accountId` custom-type constructor | `#/module/domain/type/account-id/constructor/account-id/argument/0` plus a positional guard when unpinned |
 | `Acme.Orders:Domain:order.type#customerId` | Record field's type expression | `#/module/domain/type/order/type-exp/record/field/customer-id` |
 | `Acme.Orders:Domain:calculateTotal.value` | Value body | `#/module/domain/value/calculate-total/body` |
 | `Acme.Orders:Domain:calculateTotal.value#0` | `Apply` function | `#/module/domain/value/calculate-total/body/apply/function` |
@@ -154,11 +178,11 @@ The checked-in reference fixture includes `Morphir.Reference.Model:BooksAndRecor
 
 ## Sidecars and V4 layouts
 
-The current decoration configuration keeps `displayName`, schema `ir`, `entryPoint`, and `storageLocation`. A proposed first explicit sidecar envelope, `1.0.0-draft.1`, uses the **same** configured file and preserves each JSON value. It replaces bare V3 node-ID keys with validated URI keys; it does not create a companion file. The sidecar format and safe file writes belong to `morphir-uqub.8`, and typed value/target validation belongs to `morphir-uqub.12`.
+The decoration configuration keeps `displayName`, schema `ir`, `entryPoint`, and `storageLocation`. The first explicit sidecar envelope, `0.1.0-draft.1`, uses the **same** configured file and preserves each JSON value. It replaces bare V3 node-ID keys with validated URI keys; it does not create a companion file. The sidecar format and safe file writes are tracked by `morphir-uqub.8`, and typed value/target validation by `morphir-uqub.12`.
 
 ```json
 {
-  "formatVersion": "1.0.0-draft.1",
+  "formatVersion": "0.1.0-draft.1",
   "targets": {
     "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/type/order/type-exp/record/field/customer-id": ["pII"],
     "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/argument": ["nPI"]
@@ -170,7 +194,7 @@ A V4 sidecar uses the same envelope with `format=4.0.0`; its `targets` may inclu
 
 ```json
 {
-  "formatVersion": "1.0.0-draft.1",
+  "formatVersion": "0.1.0-draft.1",
   "targets": {
     "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order": {
       "summary": "An order placed by a customer"
@@ -192,4 +216,35 @@ The field type in `#/module/domain/type/order/type-exp/record/field/customer-id`
 
 The existing `morphir://pkg/.../order.type.json` locates that document, not the nested field. Translation needs the loaded artifact and its logical document mapping. A raw JSON Pointer appended to the document URI is not a semantic node address.
 
-The [draft node-address reference corpus](fixtures/node-addresses-draft.json) records independent positive and negative examples. It is not an executable MCK capability until the shared adapter protocol grows an address operation; the existing MCK checker remains the sole runner.
+The [draft node-address reference corpus](fixtures/node-addresses-draft.json) records the full typed URI grammar and resolver outcomes. The smaller [executable MCK corpus](https://github.com/finos/morphir/blob/main/spec/ir/mck/node-address-draft.json) checks V3 and V4 artifact resolution through the draft `node-address` adapter suite. The existing numeric V1 IR decode protocol remains unchanged; the new suite advertises `contractVersion: "0.1.0-draft.1"` and `operations: ["resolve"]`. The shared Rust MCK runner owns fixed outcomes and semantic node values; the adapter owns IR decoding and indexing.
+
+```sh
+morphir mck node-address run \
+  --adapter ./mck-adapter-rust \
+  --adapter-arg=--suite --adapter-arg=node-address \
+  --report node-address-report.json
+```
+
+For a configured decorator, `morphir decoration set` checks the target URI against the loaded target IR and the JSON value against the configured Morphir `entryPoint` type before replacing the sidecar. The draft sidecar can be V3 or V4. `show` and `validate` reject stale targets or invalid values; `migrate-v3` converts a flat V3 NodeID map at its existing `storageLocation` transactionally.
+
+```json
+{
+  "decorations": {
+    "sensitivity": {
+      "displayName": "Sensitivity",
+      "ir": "decorations/morphir-ir.json",
+      "entryPoint": "Acme.Decorations:Domain:Sensitivity",
+      "storageLocation": "attributes/sensitivity.json"
+    }
+  }
+}
+```
+
+```sh
+morphir decoration set sensitivity \
+  'morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order' \
+  --config morphir.json --ir morphir-ir.json --value sensitivity-value.json
+morphir decoration validate sensitivity --config morphir.json --ir morphir-ir.json
+```
+
+Both configured paths remain inside the project directory; `--ir` explicitly chooses the target artifact. The first CLI slice reads JSON IR and one JSON value per `--value` file. The semantic index itself also covers equivalent V4 YAML and document-tree layouts; those CLI transports can be added without changing URI keys.

@@ -1,0 +1,89 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "example/v4-test",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "domain": {
+            "access": "Public",
+            "value": {
+              "types": {
+                "pair": {
+                  "access": "Public",
+                  "TypeAliasDefinition": {
+                    "typeParams": [],
+                    "typeExp": {
+                      "Tuple": {
+                        "elements": [
+                          { "Unit": {} },
+                          { "Unit": {} }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "user-id": {
+                  "access": "Public",
+                  "TypeAliasDefinition": {
+                    "typeParams": [],
+                    "typeExp": "morphir/SDK:string#string"
+                  }
+                },
+                "incomplete-user": {
+                  "access": "Private",
+                  "IncompleteTypeDefinition": {
+                    "typeParams": [],
+                    "incompleteness": { "Draft": {} },
+                    "partialTypeExp": {
+                      "Record": {
+                        "fields": {
+                          "id": "morphir/SDK:string#string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {
+                "get-user-name": {
+                  "access": "Public",
+                  "ExpressionBody": {
+                    "inputTypes": {
+                      "user": "example/v4-test:domain#user-id"
+                    },
+                    "outputType": "morphir/SDK:string#string",
+                    "body": {
+                      "Hole": {
+                        "reason": {
+                          "UnresolvedReference": {
+                            "target": "example/v4-test:domain#user-name-lookup"
+                          }
+                        },
+                        "expectedType": "morphir/SDK:string#string"
+                      }
+                    }
+                  }
+                },
+                "native-add": {
+                  "access": "Public",
+                  "NativeBody": {
+                    "inputTypes": {
+                      "a": "morphir/SDK:basics#int",
+                      "b": "morphir/SDK:basics#int"
+                    },
+                    "outputType": "morphir/SDK:basics#int",
+                    "nativeInfo": {
+                      "hint": { "Arithmetic": {} }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

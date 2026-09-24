@@ -308,7 +308,10 @@ fn compiled_v3_arity_rule_reports_missing_dependency_and_budget_separately() {
         Err(EvaluationError::FuelExhausted),
     );
     let mut missing_sdk = compiled;
-    let classic::DistributionBody::Library(_, dependencies, _) = &mut missing_sdk.distribution;
+    let classic::DistributionBody::Library(_, dependencies, _) = &mut missing_sdk.distribution
+    else {
+        panic!("compiled Gleam IR must be a Library");
+    };
     dependencies.clear();
     assert_eq!(
         evaluate_v3(

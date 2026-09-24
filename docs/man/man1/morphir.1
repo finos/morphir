@@ -21,6 +21,21 @@ Print version
 Relocate the out root, which defaults to .morphir/out under the workspace root. MORPHIR_OUT_DIR does the same
 .SH COMMANDS
 .TP
+\fBdecoration\fR
+Manage typed V3/V4 decorator sidecars (draft)
+.TP
+\fBdecoration set\fR
+Add or replace one typed value at a semantic node URI
+.TP
+\fBdecoration show\fR
+Read and validate a sidecar, then print its JSON
+.TP
+\fBdecoration validate\fR
+Check all configured targets and values
+.TP
+\fBdecoration migrate\-v3\fR
+Replace a legacy flat V3 NodeID map with URI keys
+.TP
 \fBpackage\fR
 Restore freshly authenticated Libraries from a local registry (MVP)
 .TP
@@ -351,6 +366,11 @@ Compare every report record with the independently admitted MVP inventory
 \fBmck package mvp\-report render\fR
 Render a standalone offline HTML view of a versioned MVP report
 .TP
+\fBmck node\-address\fR
+Run the draft V3/V4 semantic node\-address corpus
+.TP
+\fBmck node\-address run\fR
+.TP
 \fBmck report\fR
 Check compatibility evidence or render a saved report as offline HTML
 .TP
@@ -389,6 +409,96 @@ Generate JSON Schema for Morphir IR
 .TP
 \fBversion\fR
 Print version information
+.SH "MORPHIR DECORATION SET"
+Add or replace one typed value at a semantic node URI
+.PP
+\fBUsage:\fR morphir decoration set [OPTIONS] <NAME> <TARGET>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Project config containing the named decoration
+.RS
+\fIDefault: \fRmorphir.json
+.RE
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+Exact V3 or V4 target IR JSON to decorate
+.TP
+\fB\-\-value\fR \fI<VALUE>\fR
+File containing one JSON value
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Decoration name from the project config
+.TP
+\fB<TARGET>\fR
+Portable Morphir node URI
+.SH "MORPHIR DECORATION SHOW"
+Read and validate a sidecar, then print its JSON
+.PP
+\fBUsage:\fR morphir decoration show [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Project config containing the named decoration
+.RS
+\fIDefault: \fRmorphir.json
+.RE
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+Exact V3 or V4 target IR JSON to decorate
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Decoration name from the project config
+.SH "MORPHIR DECORATION VALIDATE"
+Check all configured targets and values
+.PP
+\fBUsage:\fR morphir decoration validate [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Project config containing the named decoration
+.RS
+\fIDefault: \fRmorphir.json
+.RE
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+Exact V3 or V4 target IR JSON to decorate
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Decoration name from the project config
+.SH "MORPHIR DECORATION MIGRATE-V3"
+Replace a legacy flat V3 NodeID map with URI keys
+.PP
+\fBUsage:\fR morphir decoration migrate\-v3 [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Project config containing the named decoration
+.RS
+\fIDefault: \fRmorphir.json
+.RE
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+Exact V3 or V4 target IR JSON to decorate
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Decoration name from the project config
 .SH "MORPHIR PACKAGE CREATE"
 Create a verified dependency\-free classic V4 Library bundle
 .PP
@@ -2382,6 +2492,32 @@ Standalone HTML output file; cannot overwrite the JSON input
 .TP
 \fB<REPORT>\fR
 Versioned local Library MVP JSON report
+.SH "MORPHIR MCK NODE-ADDRESS RUN"
+\fBUsage:\fR morphir mck node\-address run [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<KIT>\fR
+Fixed V3/V4 node\-address case file
+.RS
+\fIDefault: \fRspec/ir/mck/node\-address\-draft.json
+.RE
+.TP
+\fB\-\-adapter\fR \fI<ADAPTER>\fR
+Adapter executable, launched without a shell
+.TP
+\fB\-\-adapter\-arg\fR \fI<ADAPTER_ARGS>\fR
+Adapter argument; repeat to pass \-\-suite node\-address
+.TP
+\fB\-\-report\fR \fI<REPORT>\fR
+Write the JSON report to this file
+.TP
+\fB\-\-timeout\fR \fI<TIMEOUT>\fR
+Maximum milliseconds per adapter exchange
+.RS
+\fIDefault: \fR30000
+.RE
 .SH "MORPHIR MCK REPORT CHECK"
 Verify report inventory and the binding's allowed\-failing baseline
 .PP

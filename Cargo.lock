@@ -4828,6 +4828,7 @@ dependencies = [
  "morphir-common",
  "morphir-core",
  "morphir-daemon",
+ "morphir-decoration",
  "morphir-devkit",
  "morphir-distribution",
  "morphir-elm-binding",
@@ -4983,6 +4984,19 @@ dependencies = [
  "unicode-casefold",
  "unicode-normalization",
  "wat",
+]
+
+[[package]]
+name = "morphir-decoration"
+version = "0.4.0-beta.6"
+dependencies = [
+ "indexmap",
+ "morphir-core",
+ "semver",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

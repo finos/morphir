@@ -202,6 +202,7 @@ description = "Run the native MCK against the pinned Rust adapter and check its 
 run = [
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "bun run tools/run-mck-gate.ts .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json spec/ir/mck ecosystem/morphir-rust/target/debug/mck-adapter-rust",
+    "cargo run --locked -p morphir -- mck node-address run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address --report .dev/out/mck/node-address-rust.json",
     "cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck",
 ]
 

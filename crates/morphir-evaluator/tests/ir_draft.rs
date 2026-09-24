@@ -20,6 +20,19 @@ fn draft_ir_request_evaluates_five_fixed_v3_cases() {
 }
 
 #[test]
+fn draft_ir_request_rejects_specs_without_an_entrypoint() {
+    let mut request = fixed_request();
+    request["program"]["distribution"] = json!({
+        "formatVersion": "3.1.0",
+        "distribution": ["Specs", [["my"]], [], {"modules": []}]
+    });
+    assert_eq!(
+        IrEvaluationRequest::from_value(request).unwrap_err().code,
+        "INVALID_IR_PROGRAM"
+    );
+}
+
+#[test]
 fn draft_ir_preflight_rejects_wrong_version_and_arguments() {
     for (pointer, replacement, code) in [
         ("/version", json!(2), "UNSUPPORTED_EVALUATION_VERSION"),
@@ -174,7 +187,9 @@ fn draft_ir_preflight_validates_each_generic_output_instantiation() {
     let mut request = fixed_request();
     let distribution: ir::Distribution =
         serde_json::from_value(request["program"]["distribution"].clone()).unwrap();
-    let ir::DistributionBody::Library(package, _, definition) = &distribution.distribution;
+    let ir::DistributionBody::Library(package, _, definition) = &distribution.distribution else {
+        panic!("fixed evaluation fixture must be a Library");
+    };
     let module = &definition.modules[0];
     let access_controlled = ir::FQName::new(
         package.clone(),

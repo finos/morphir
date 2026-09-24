@@ -15,6 +15,11 @@
 
 ## Subcommands
 
+- [`morphir decoration <SUBCOMMAND>`](decoration.md)
+- [`morphir decoration set <FLAGS> <NAME> <TARGET>`](decoration/set.md)
+- [`morphir decoration show [--config <CONFIG>] <--ir <IR>> <NAME>`](decoration/show.md)
+- [`morphir decoration validate [--config <CONFIG>] <--ir <IR>> <NAME>`](decoration/validate.md)
+- [`morphir decoration migrate-v3 [--config <CONFIG>] <--ir <IR>> <NAME>`](decoration/migrate-v3.md)
 - [`morphir package <SUBCOMMAND>`](package.md)
 - [`morphir package create <FLAGS>`](package/create.md)
 - [`morphir package sign <FLAGS>`](package/sign.md)
@@ -125,6 +130,8 @@
 - [`morphir mck package mvp-report <SUBCOMMAND>`](mck/package/mvp-report.md)
 - [`morphir mck package mvp-report check <--source <DIR>> <REPORT>`](mck/package/mvp-report/check.md)
 - [`morphir mck package mvp-report render <-o --output <FILE>> <REPORT>`](mck/package/mvp-report/render.md)
+- [`morphir mck node-address <SUBCOMMAND>`](mck/node-address.md)
+- [`morphir mck node-address run <FLAGS>`](mck/node-address/run.md)
 - [`morphir mck report <SUBCOMMAND>`](mck/report.md)
 - [`morphir mck report check [FLAGS] <REPORT> <ALLOWED_FAILING>`](mck/report/check.md)
 - [`morphir mck report render [--format <FORMAT>] <-o --output <OUTPUT>> <REPORT>`](mck/report/render.md)

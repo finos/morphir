@@ -545,6 +545,7 @@ jobs:
           path: |
             .dev/out/mck/morphir-rust.json
             .dev/out/mck/morphir-rust.html
+            .dev/out/mck/node-address-rust.json
 
       - name: Validate migrated IR against the v4 schema
         if: ${{ !cancelled() }}

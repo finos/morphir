@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/ir/mck/node-address-protocol.schema.json",
+  "title": "Draft node-address MCK adapter protocol",
+  "description": "Independent 0.1.0-draft.1 JSON-lines suite. The numeric V1 IR decode protocol is unchanged.",
+  "oneOf": [
+    {"$ref": "#/$defs/capabilitiesRequest"},
+    {"$ref": "#/$defs/resolveRequest"},
+    {"$ref": "#/$defs/exitRequest"},
+    {"$ref": "#/$defs/capabilitiesResponse"},
+    {"$ref": "#/$defs/resolvedResponse"},
+    {"$ref": "#/$defs/failureResponse"}
+  ],
+  "$defs": {
+    "id": {"type": "integer", "minimum": 1},
+    "capabilitiesRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "op"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "op": {"const": "capabilities"}}
+    },
+    "resolveRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "op", "input", "uri"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "op": {"const": "resolve"},
+        "input": {"type": "string", "description": "Exact V3 or V4 single-file JSON artifact bytes as UTF-8 text"},
+        "uri": {"type": "string", "minLength": 1}
+      }
+    },
+    "exitRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "op"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "op": {"const": "exit"}}
+    },
+    "capabilitiesResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "suite", "contractVersion", "implementation", "implementationVersion", "operations"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "suite": {"const": "node-address"},
+        "contractVersion": {"const": "0.1.0-draft.1"},
+        "implementation": {"type": "string", "minLength": 1},
+        "implementationVersion": {"type": "string", "minLength": 1},
+        "operations": {"const": ["resolve"]}
+      }
+    },
+    "resolvedResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ok", "outcome", "kind", "canonicalUri", "node"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "ok": {"const": true},
+        "outcome": {"const": "resolved"},
+        "kind": {"enum": ["Distribution", "Package", "Module", "TypeDefinition", "ValueDefinition", "Constructor", "TypeExpression", "ValueExpression", "Pattern", "EntryPoint"]},
+        "canonicalUri": {"type": "string", "minLength": 1},
+        "node": {}
+      }
+    },
+    "failureResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ok", "outcome"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "ok": {"const": false},
+        "outcome": {"enum": ["invalid_node_uri", "invalid_artifact", "artifact_mismatch", "ambiguous_artifact", "revision_unavailable", "revision_mismatch", "format_version_mismatch", "stale_target", "ambiguous_target"]}
+      }
+    }
+  }
+}

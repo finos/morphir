@@ -604,7 +604,7 @@ assertNamedCases(conformance.rootDiagnosticCases, "rootDiagnosticCases");
 const supportTable = conformance.supportTable;
 assert.equal(
 	supportTable,
-	"[3.0.0,3.1.0),[4.0.0,4.1.0)",
+	"[3.0.0,3.2.0),[4.0.0,4.1.0)",
 	"reference support table",
 );
 // The reference table's intervals each open at a baseline release, so the
