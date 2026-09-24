@@ -100,7 +100,7 @@ of the same pinned releases with absolute paths:
 
 ```sh
 MORPHIR_ELM_EXTENSION_BIN=/absolute/path/to/morphir-elm-extension \
-MORPHIR_SCALA_ELM_EXTENSION_BIN=/absolute/path/to/morphir-scala-elm-mac-aarch64-0.5.0-M08 \
+MORPHIR_SCALA_ELM_EXTENSION_BIN=/absolute/path/to/morphir-scala-elm-mac-aarch64-0.5.0-M09 \
 MORPHIR_PUBLISHED_BUNDLES=/absolute/path/to/published-bundles \
 mise run test:host-compatibility
 ```

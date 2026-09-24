@@ -82,7 +82,7 @@ if ($actual -ne $expected) { throw "Checksum verification failed" }
 ## Install the Python extension
 
 The CLI ships separately from language extensions. With CLI `0.4.0-beta.1` or
-later, install the `morphir-python` WASM bundle `extension/python/v0.2.0` to compile
+later, install the `morphir-python` WASM bundle `extension/python/v0.3.0` to compile
 supported Python ADTs, fixed tuples, conditional functions, typed calls and unary
 lambdas to Morphir IR v3 or v4 and generate Python. The earlier `v0.1.0` bundle does
 not compile with this CLI.

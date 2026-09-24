@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The published extension pins move to frontends that accept the `sources` compile envelope as well as the legacy top-level `documents`: `extension/python/v0.3.0`, `extension/rust/v0.2.0` and `morphir-scala-elm` `v0.5.0-M09`. With the Elm extension `v0.3.1`, which already reads both, every pinned frontend can take `sources`, so the CLI can stop sending the legacy envelope (#921). `INSTALLING.md` names the Python `v0.3.0` bundle.
+
 ## [0.4.0-beta.5] - 2026-09-23
 
 ### Added
