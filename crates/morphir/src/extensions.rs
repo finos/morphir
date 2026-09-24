@@ -156,21 +156,31 @@ pub async fn invoke_frontend(
             })
             .await
         }
-        mode @ InvocationMode::NativeMep => {
+        InvocationMode::NativeMep => {
             let provider = resolved.info().id.as_str();
             let native = builtin_provider(provider)?
                 .ok_or_else(|| unavailable_mode(provider, "native MEP frontend"))?;
-            let connection =
-                guest::resolved(home, workspace, provider, mode, Some(&native), None).await?;
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Native(&native),
+            )
+            .await?;
             guest::call_once(connection, provider, methods::COMPILE, request).await
         }
-        mode @ (InvocationMode::ProcessMep | InvocationMode::WasmMep) => {
+        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
             let provider = resolved.info().id.as_str();
             let snapshot = resolved
                 .installed_snapshot()
                 .ok_or_else(|| unavailable_mode(provider, "installed MEP frontend"))?;
-            let connection =
-                guest::resolved(home, workspace, provider, mode, None, Some(snapshot)).await?;
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Installed(snapshot),
+            )
+            .await?;
             guest::call_once(connection, provider, methods::COMPILE, &request).await
         }
     }
@@ -208,19 +218,29 @@ pub async fn invoke_workspace_discovery(
             })
             .await
         }
-        mode @ InvocationMode::NativeMep => {
+        InvocationMode::NativeMep => {
             let native = builtin_provider(provider)?
                 .ok_or_else(|| unavailable_mode(provider, "native MEP workspace"))?;
-            let connection =
-                guest::resolved(home, workspace, provider, mode, Some(&native), None).await?;
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Native(&native),
+            )
+            .await?;
             guest::call_once(connection, provider, methods::WORKSPACE_DISCOVER, request).await
         }
-        mode @ (InvocationMode::ProcessMep | InvocationMode::WasmMep) => {
+        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
             let snapshot = resolved
                 .installed_snapshot()
                 .ok_or_else(|| unavailable_mode(provider, "installed MEP workspace"))?;
-            let connection =
-                guest::resolved(home, workspace, provider, mode, None, Some(snapshot)).await?;
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Installed(snapshot),
+            )
+            .await?;
             guest::call_once(connection, provider, methods::WORKSPACE_DISCOVER, request).await
         }
     }
@@ -294,21 +314,31 @@ pub async fn invoke_backend(
             })
             .await
         }
-        mode @ InvocationMode::NativeMep => {
+        InvocationMode::NativeMep => {
             let provider = resolved.info().id.as_str();
             let native = builtin_provider(provider)?
                 .ok_or_else(|| unavailable_mode(provider, "native MEP backend"))?;
-            let connection =
-                guest::resolved(home, workspace, provider, mode, Some(&native), None).await?;
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Native(&native),
+            )
+            .await?;
             guest::call_once(connection, provider, methods::GENERATE, request).await
         }
-        mode @ (InvocationMode::ProcessMep | InvocationMode::WasmMep) => {
+        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
             let provider = resolved.info().id.as_str();
             let snapshot = resolved
                 .installed_snapshot()
                 .ok_or_else(|| unavailable_mode(provider, "installed MEP backend"))?;
-            let connection =
-                guest::resolved(home, workspace, provider, mode, None, Some(snapshot)).await?;
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Installed(snapshot),
+            )
+            .await?;
             guest::call_once(connection, provider, methods::GENERATE, request).await
         }
     }
@@ -695,7 +725,7 @@ while True:
     request = receive()
     method = request["method"]
     if "id" not in request:
-        if method == "exit":
+        if method == "morphir.exit":
             raise SystemExit(0)
         continue
     identifier = request["id"]

@@ -8,12 +8,15 @@
 //! The error texts are the ones the CLI reported when these calls ran on the
 //! daemon's typestate session. A `HostError` is formatted through
 //! `DaemonError` so a provider message keeps its `Extension error: ` prefix.
+//!
+//! "Guest" is the morphir-host word for an extension provider: a
+//! [`ProviderConnection`] and a `provider` parameter elsewhere in this crate
+//! name the same thing seen from the CLI.
 
-use super::{NegotiatedProvider, unavailable_mode};
+use super::NegotiatedProvider;
 use crate::error::CliError;
 use crate::home::MorphirHome;
 use morphir_daemon::DaemonError;
-use morphir_daemon::extensions::InvocationMode;
 use morphir_distribution::{InstalledExtensionSnapshot, activate_installed_snapshot};
 use morphir_extension_sdk::NativeExtension;
 use morphir_host::{
@@ -28,6 +31,22 @@ use std::path::Path;
 /// A checked MEP connection to one provider, ready to open.
 pub(crate) type ProviderConnection =
     CheckedConnection<JsonRpcConnection<Box<dyn Channel>, ExpectedChecks>>;
+
+/// The provider a caller already resolved and checked is present for its
+/// selected invocation mode.
+///
+/// Callers of [`resolved`] have already matched on
+/// [`InvocationMode`](morphir_daemon::extensions::InvocationMode) and
+/// reported their own "unavailable mode" text when the mode they need is
+/// missing, so `resolved` itself never needs to re-check the mode or hold an
+/// unreachable branch for it.
+pub(crate) enum GuestSource<'a> {
+    /// A `NativeMep` resolution: the built-in provider runs in this process.
+    Native(&'a NativeExtension),
+    /// A `ProcessMep` or `WasmMep` resolution: an installed provider is
+    /// activated as a separate guest.
+    Installed(&'a InstalledExtensionSnapshot),
+}
 
 /// Open a connection to a configured process provider.
 pub(crate) async fn configured(
@@ -49,27 +68,21 @@ pub(crate) async fn configured(
 /// Open a connection to a resolved provider that speaks MEP
 /// (`NativeMep`, `ProcessMep` or `WasmMep`).
 ///
-/// `native` is the built-in a `NativeMep` provider runs; `installed` is the
-/// snapshot a `ProcessMep` or `WasmMep` provider was resolved from. Callers
-/// check that the one their mode needs is present, and name their role in
-/// the text they report when it is not.
+/// The caller passes exactly the source its resolved invocation mode
+/// selected; see [`GuestSource`].
 pub(crate) async fn resolved(
     home: &MorphirHome,
     workspace: &Path,
     provider: &str,
-    mode: InvocationMode,
-    native: Option<&NativeExtension>,
-    installed: Option<&InstalledExtensionSnapshot>,
+    source: GuestSource<'_>,
 ) -> Result<ProviderConnection, CliError> {
-    match mode {
-        InvocationMode::NativeMep => {
-            let native = native.ok_or_else(|| unavailable_mode(provider, "native MEP"))?;
+    match source {
+        GuestSource::Native(native) => {
             let channel = NativeChannel::new(native);
             let expectation = channel.expectation();
             Ok(checked(Box::new(channel), expectation))
         }
-        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
-            let snapshot = installed.ok_or_else(|| unavailable_mode(provider, "installed MEP"))?;
+        GuestSource::Installed(snapshot) => {
             let artifact = activate_installed_snapshot(home, snapshot).map_err(|error| {
                 CliError::Extension {
                     message: format!("Failed to verify installed provider '{provider}': {error}"),
@@ -85,7 +98,6 @@ pub(crate) async fn resolved(
                 })?;
             Ok(guest.connection)
         }
-        InvocationMode::NativeDirect => Err(unavailable_mode(provider, "MEP")),
     }
 }
 
