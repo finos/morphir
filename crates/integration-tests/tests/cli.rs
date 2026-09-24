@@ -13,6 +13,103 @@ pub struct CliWorld {
     last_result: Option<integration_tests::CommandResult>,
 }
 
+#[given("the morphir CLI is built and available")]
+fn given_morphir_cli_is_available(_world: &mut CliWorld) {
+    assert!(
+        CliTestContext::get_morphir_binary().is_some(),
+        "build the morphir CLI before running integration tests"
+    );
+}
+
+#[given("I have a temporary test directory")]
+fn given_temp_directory(world: &mut CliWorld) {
+    world.context = Some(CliTestContext::new().expect("create temporary test directory"));
+}
+
+#[given(regex = r#"I have a Classic IR file from fixture "([^"]+)""#)]
+fn given_classic_ir_fixture(world: &mut CliWorld, name: String) {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3")
+        .join(&name);
+    let contents = std::fs::read_to_string(&fixture)
+        .unwrap_or_else(|error| panic!("read {}: {error}", fixture.display()));
+    world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .write_source_file(&name, &contents)
+        .expect("copy Classic IR fixture");
+}
+
+#[given(regex = r#"I have a file "([^"]+)" with:"#)]
+fn given_file_with_contents(world: &mut CliWorld, name: String, step: &cucumber::gherkin::Step) {
+    let contents = step.docstring().expect("file contents docstring");
+    world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .write_source_file(&name, contents)
+        .expect("write test file");
+}
+
+#[when(regex = r#"I run "([^"]+)""#)]
+fn when_run_morphir(world: &mut CliWorld, command: String) {
+    let args: Vec<&str> = command.split_whitespace().collect();
+    assert_eq!(args.first(), Some(&"morphir"), "expected a morphir command");
+    world.last_result = Some(
+        world
+            .context
+            .as_ref()
+            .expect("temporary test directory")
+            .execute_cli_command(&args[1..])
+            .expect("execute morphir command"),
+    );
+}
+
+#[then("the command should succeed")]
+fn then_command_should_succeed(world: &mut CliWorld) {
+    world
+        .last_result
+        .as_ref()
+        .expect("CLI result")
+        .assert_success();
+}
+
+#[then("the command should fail")]
+fn then_command_should_fail(world: &mut CliWorld) {
+    world
+        .last_result
+        .as_ref()
+        .expect("CLI result")
+        .assert_failure();
+}
+
+#[then(regex = r#"the file "([^"]+)" should have V4 Library package "([^"]+)""#)]
+fn then_file_has_v4_library_package(world: &mut CliWorld, file: String, package: String) {
+    let path = world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .project_root
+        .join(&file);
+    let document: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(&path).unwrap_or_else(|error| panic!("read {}: {error}", path.display())),
+    )
+    .expect("output must be valid JSON");
+    assert_eq!(document["formatVersion"], 4);
+    assert_eq!(document["distribution"]["Library"]["packageName"], package);
+    assert!(document["distribution"]["Library"]["def"]["modules"].is_object());
+}
+
+#[then(regex = r#"the stderr should contain "([^"]+)""#)]
+fn then_stderr_contains(world: &mut CliWorld, expected: String) {
+    let stderr = &world.last_result.as_ref().expect("CLI result").stderr;
+    assert!(
+        stderr.contains(&expected),
+        "stderr did not contain {expected:?}: {stderr}"
+    );
+}
+
 // Background step
 #[given("I have a temporary test project")]
 fn given_temp_project(world: &mut CliWorld) {
@@ -87,12 +184,12 @@ fn then_output_contains(world: &mut CliWorld, text: String) {
 
 #[tokio::main]
 async fn main() {
-    // All CLI tests are currently @wip - skip them
     CliWorld::cucumber()
-        .filter_run("tests/features", |feature, _rule, _scenario| {
-            // Skip features with @wip tag
-            let feature_has_wip = feature.tags.iter().any(|t| t == "wip");
-            !feature_has_wip
+        .fail_on_skipped()
+        .filter_run_and_exit("tests/features", |feature, rule, scenario| {
+            !feature.tags.iter().any(|tag| tag == "wip")
+                && !rule.is_some_and(|rule| rule.tags.iter().any(|tag| tag == "wip"))
+                && !scenario.tags.iter().any(|tag| tag == "wip")
         })
         .await;
 }

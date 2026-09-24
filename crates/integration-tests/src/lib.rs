@@ -34,12 +34,6 @@ use tempfile::TempDir;
 
 /// Check if CLI tests can run (morphir binary available or cargo run works)
 pub fn cli_tests_available() -> bool {
-    // Check if staged binary exists (preferred for CI)
-    if CliTestContext::find_workspace_root()
-        .is_some_and(|root| root.join(".morphir/build/bin/morphir").exists())
-    {
-        return true;
-    }
     // Check if morphir binary exists in target
     if CliTestContext::get_morphir_binary().is_some() {
         return true;
@@ -127,14 +121,17 @@ impl CliTestContext {
 
     /// Get the path to the morphir CLI binary
     pub fn get_morphir_binary() -> Option<PathBuf> {
+        let executable = format!("morphir{}", std::env::consts::EXE_SUFFIX);
         // First check for staged binary in .morphir/build/bin/
         // This is the preferred location for CI and pre-built binaries
         if let Some(workspace_root) = Self::find_workspace_root() {
-            let staged_release = workspace_root.join(".morphir/build/bin/morphir");
+            let staged_release = workspace_root.join(".morphir/build/bin").join(&executable);
             if staged_release.exists() {
                 return Some(staged_release);
             }
-            let staged_debug = workspace_root.join(".morphir/build/bin/morphir-debug");
+            let staged_debug = workspace_root
+                .join(".morphir/build/bin")
+                .join(format!("morphir-debug{}", std::env::consts::EXE_SUFFIX));
             if staged_debug.exists() {
                 return Some(staged_debug);
             }
@@ -154,9 +151,9 @@ impl CliTestContext {
         };
         let possible_paths = vec![
             // Release binary (preferred)
-            target_dir.join("release").join("morphir"),
+            target_dir.join("release").join(&executable),
             // Debug binary
-            target_dir.join("debug").join("morphir"),
+            target_dir.join("debug").join(&executable),
         ];
 
         possible_paths.into_iter().find(|path| path.exists())
