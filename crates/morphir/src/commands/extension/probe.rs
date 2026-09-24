@@ -1,10 +1,10 @@
 //! Probe the verified selected artifact before distribution commits the install.
-use morphir_daemon::extensions::process::DescriptionSource;
-use morphir_daemon::extensions::{ProcessLaunch, SpawnedProcessTransport};
 use morphir_distribution::{
     ArtifactRuntime, ClaimCheck, ClaimsRecord, DistributionError, InstalledExtension, ProbeSource,
     VerifiedArtifact,
 };
+use morphir_host::DescriptionSource;
+use morphir_host_native::process::{ProcessChannel, ProcessLaunch};
 pub(super) async fn claims(
     artifact: &VerifiedArtifact,
     no_probe: bool,
@@ -33,13 +33,15 @@ pub(super) async fn claims(
         ),
         |launch, arg| launch.arg(arg),
     );
-    let transport = SpawnedProcessTransport::spawn(launch)
-        .await
-        .map_err(|error| DistributionError::Probe(error.to_string()))?;
-    let description = transport
-        .describe(super::host_config().initialize_params())
-        .await
-        .map_err(|error| DistributionError::Probe(error.to_string()))?;
+    let channel = ProcessChannel::spawn(launch).await.map_err(|error| {
+        DistributionError::Probe(morphir_daemon::DaemonError::from(error).to_string())
+    })?;
+    let description =
+        morphir_host::describe(channel, &super::host_config(), &declared.extension.id)
+            .await
+            .map_err(|error| {
+                DistributionError::Probe(morphir_daemon::DaemonError::from(error).to_string())
+            })?;
     let source = match description.source {
         DescriptionSource::Describe => {
             // Exact agreement for claims the extension supplied; session rules for claims the

@@ -376,10 +376,9 @@ async fn describe_publish_artifact(
     artifact: &morphir_distribution::BundleArtifactDescriptor,
     bytes: &[u8],
 ) -> morphir_distribution::Result<morphir_distribution::PublicationDescription> {
-    use morphir_daemon::extensions::{
-        ProcessLaunch, SpawnedProcessTransport, process::DescriptionSource,
-    };
     use morphir_distribution::PublicationDescription;
+    use morphir_host::DescriptionSource;
+    use morphir_host_native::process::{ProcessChannel, ProcessLaunch};
     let path = std::path::PathBuf::from(artifact.filename().as_str());
     let invalid = |reason: String| morphir_distribution::DistributionError::InvalidReleaseBundle {
         path: path.clone(),
@@ -419,13 +418,21 @@ async fn describe_publish_artifact(
         executable,
         workspace.path(),
     );
-    let transport = SpawnedProcessTransport::spawn(launch)
-        .await
-        .map_err(|error| invalid(format!("Failed to start process for describe: {error}")))?;
-    let description = transport
-        .describe(host_config().initialize_params())
-        .await
-        .map_err(|error| invalid(format!("Failed to describe process: {error}")))?;
+    let channel = ProcessChannel::spawn(launch).await.map_err(|error| {
+        invalid(format!(
+            "Failed to start process for describe: {}",
+            morphir_daemon::DaemonError::from(error)
+        ))
+    })?;
+    let description =
+        morphir_host::describe(channel, &host_config(), &artifact.claims().extension.id)
+            .await
+            .map_err(|error| {
+                invalid(format!(
+                    "Failed to describe process: {}",
+                    morphir_daemon::DaemonError::from(error)
+                ))
+            })?;
     let claims = description.claims;
     match description.source {
         DescriptionSource::Describe => Ok(PublicationDescription::Describe(claims)),

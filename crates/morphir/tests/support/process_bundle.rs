@@ -1,7 +1,8 @@
 //! Version-2 process bundles assembled from executable release assets.
-use morphir_daemon::extensions::{ProcessLaunch, SpawnedProcessTransport};
 use morphir_distribution::Sha256Digest;
-use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo, PeerKind};
+use morphir_extension_sdk::protocol::{PeerInfo, PeerKind};
+use morphir_host::HostConfig;
+use morphir_host_native::process::{ProcessChannel, ProcessLaunch};
 use serde_json::{Value, json};
 use std::{
     fs,
@@ -53,17 +54,16 @@ pub fn from_executable(
     fs::copy(executable, &staged_executable).unwrap();
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let description = runtime.block_on(async {
-        SpawnedProcessTransport::spawn(ProcessLaunch::new(id, &staged_executable, stage.path()))
-            .await
-            .unwrap()
-            .describe(InitializeParams {
-                protocol_versions: vec![MEP_VERSION.into()],
-                host: PeerInfo {
-                    kind: PeerKind::Cli,
-                    name: "morphir-cli".into(),
-                    version: env!("CARGO_PKG_VERSION").into(),
-                },
-            })
+        let channel =
+            ProcessChannel::spawn(ProcessLaunch::new(id, &staged_executable, stage.path()))
+                .await
+                .unwrap();
+        let host_config = HostConfig::new(PeerInfo {
+            kind: PeerKind::Cli,
+            name: "morphir-cli".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+        });
+        morphir_host::describe(channel, &host_config, id)
             .await
             .unwrap()
     });
