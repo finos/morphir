@@ -5,8 +5,9 @@ use crate::commands::migrate::format::resolve_input;
 use crate::error::CliError;
 use morphir_common::config::model::IrSection;
 use morphir_common::ir_transport::{
-    CodecOptions, CodecRegistry, FormatId, IrVersion, Layout, discover_document_tree_format,
-    read_document_tree_with_options, write_document_tree_with_options,
+    CodecOptions, CodecRegistry, DocumentTreeSource, EventSource, FormatId, IrVersion, Layout,
+    discover_document_tree_format, read_document_tree_with_options,
+    write_document_tree_with_options,
 };
 use morphir_common::vfs::{VfsPath, physical_root};
 use morphir_core::ir::v4::IRFile;
@@ -269,6 +270,32 @@ pub(crate) fn read_value_from_vfs(
                         sink.as_mut(),
                     )
                     .map_err(transport)?;
+            }
+            serde_json::from_slice(&json).map_err(|error| CliError::Validation {
+                message: format!("{} did not convert to JSON: {error}", target.as_str()),
+            })
+        }
+        // Only the Ion tree holds v3; its events go through the JSON encoder as a single file's do.
+        IrLayout::DocumentTree if version == IrVersion::V3 => {
+            let registry = CodecRegistry::with_builtins();
+            let json_codec = codec(&registry, &FormatId::json())?;
+            let mut source = DocumentTreeSource::open(
+                target.clone(),
+                CodecOptions::new(version, Layout::DocumentTree, format),
+            )
+            .map_err(transport)?;
+            let mut json = Vec::new();
+            {
+                let mut sink = json_codec
+                    .encoder(
+                        &mut json,
+                        &CodecOptions::new(version, Layout::SingleFile, FormatId::json()),
+                    )
+                    .map_err(transport)?;
+                while let Some(event) = source.next_event().map_err(transport)? {
+                    sink.accept(event).map_err(transport)?;
+                }
+                sink.finish().map_err(transport)?;
             }
             serde_json::from_slice(&json).map_err(|error| CliError::Validation {
                 message: format!("{} did not convert to JSON: {error}", target.as_str()),
@@ -572,6 +599,44 @@ mod tests {
         let (_, descriptor) = probe_external(&temp.path().join("morphir-ir.json")).unwrap();
         assert_eq!(descriptor.layout, IrLayout::SingleFile);
         assert_eq!(descriptor.format, "json");
+    }
+
+    /// A v3 Ion tree, written from the v3 greeting example.
+    fn write_v3_ion_tree(root: &Path) {
+        use morphir_common::ir_transport::DocumentTreeSink;
+        let greeting =
+            include_str!("../../../../website/static/ir/examples/v3/greeting-example.json");
+        std::fs::create_dir_all(root).unwrap();
+        let mut sink = DocumentTreeSink::new(
+            physical_root(root),
+            CodecOptions::new(IrVersion::V3, Layout::DocumentTree, FormatId::ion()),
+        )
+        .unwrap();
+        CodecRegistry::with_builtins()
+            .codec(&FormatId::json())
+            .unwrap()
+            .decode(
+                &mut Cursor::new(greeting.as_bytes()),
+                &CodecOptions::new(IrVersion::V3, Layout::SingleFile, FormatId::json()),
+                &mut sink,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn a_v3_ion_tree_is_probed_and_read_as_v3() {
+        let temp = tempfile::tempdir().unwrap();
+        let tree = temp.path().join("tree");
+        write_v3_ion_tree(&tree);
+
+        let (base, descriptor) = probe_external(&tree).unwrap();
+        assert_eq!(descriptor.layout, IrLayout::DocumentTree);
+        assert_eq!(descriptor.format, "ion");
+        assert_eq!(descriptor.version, "v3");
+
+        let value = read_value(&base, &descriptor).unwrap();
+        assert_eq!(value["formatVersion"], 3);
+        assert_eq!(value["distribution"][0], "Library");
     }
 
     #[test]
