@@ -287,29 +287,23 @@ Reference: morphir/SDK:basics#add
 ```
 ````
 
-The same case in `spec/ir/mck/values.feature` (sketch):
+The same case in `spec/ir/mck/values.feature` (sketch). A scenario outline states one check over several formats or inputs, and each `Examples` row runs as its own scenario:
 
 ```gherkin
 @node:Value @version:4
 Feature: Values
 
-  Scenario: values-0003 Reference shorthand
-    Given a Value
-    Then its canonical YAML spelling is:
-      """yaml
-      Reference: morphir/SDK:basics#add
-      """
-    And its canonical JSON spelling is:
-      """json
-      { "Reference": "morphir/SDK:basics#add" }
-      """
-    And a reader accepts:
-      """json
-      "morphir/SDK:basics#add"
-      """
+  Scenario Outline: values-0003 Reference shorthand
+    Then its canonical <format> spelling is <spelling>
+    And a reader of <format> accepts <accepted>
+
+    Examples:
+      | format | spelling                                  | accepted                 |
+      | YAML   | Reference: morphir/SDK:basics#add         | Reference: morphir/SDK:basics#add |
+      | JSON   | { "Reference": "morphir/SDK:basics#add" } | "morphir/SDK:basics#add" |
 ```
 
-- **Mapping:** a case is a scenario, and the case id starts the scenario name. A case file is a feature. Heading keys become tags: `node=` → `@node:<Kind>`, `version=` → `@version:<n>`, `status=pending` → `@pending`, `compare=attributes` → `@compare:attributes`. Fence roles become steps: canonical, accepted (with an optional warning), rejected with a diagnostic or an expected node, and document-tree file sets (`Given the tree file "<path>":`, with `set` and `mode` in the step text).
+- **Mapping:** a case is a scenario, and the case id starts the scenario name. A case file is a feature. Heading keys become tags: `node=` → `@node:<Kind>`, `version=` → `@version:<n>`, `status=pending` → `@pending`, `compare=attributes` → `@compare:attributes`. Fence roles become steps: canonical, accepted (with an optional warning), rejected with a diagnostic or an expected node, and document-tree file sets (`Given the tree file "<path>":`, with `set` and `mode` in the step text). The converter writes a scenario outline where a case has one-line documents, with a row per format or per input, and a plain scenario with doc strings where a document spans several lines.
 - **Steps:** the kit's steps are a step library in `morphir-mck`. Each step sends its request to the adapter over the existing protocol, so adapters do not change.
 - **Commands:**
   - `morphir mck run` becomes a `Suite` over `spec/ir/mck/*.feature`. It adds the kit step library and the adapter, as a component started from `--adapter`.

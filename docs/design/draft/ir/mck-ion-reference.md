@@ -62,43 +62,50 @@ A tag names what a case asserts. Tags are native Gherkin, so any Gherkin tool ca
 
 | Tag | Asserts | Steps |
 | --- | --- | --- |
-| `@spelling` | How one node shape is canonically written in each format | Only "its canonical <format> spelling is:" steps, at most one per format. Each is pinned byte for byte. |
-| `@semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Exactly one "Given a <Node> whose canonical form is:" step with an `ion` doc string, then any accept, reject and tree-file steps in any format |
+| `@spelling` | How one node shape is canonically written in each format | Only canonical-spelling steps, usually one outline with a row per format, at most one per format. Each is pinned byte for byte. |
+| `@semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Exactly one "Given a <Node> whose canonical form is:" step with an `ion` doc string, then accept, reject and tree-file steps in any format, usually as outline rows |
 
 A spelling case may leave out a format. The runner then reports that format as `not-pinned`, not as a pass. A case with neither tag keeps its behaviour from the foundation's conversion, so the kit stays valid while the cases move over.
 
-`values-0003` as a spelling case, and a semantic case that uses the same shape (sketch):
+`values-0003` as a spelling case, and a semantic case that uses the same shape (sketch). Both are scenario outlines: one check over several formats, or over several inputs. Each `Examples` row runs as its own scenario and gives one report record.
 
 ```gherkin
 @node:Value @version:4
 Feature: Values
 
   @spelling
-  Scenario: values-0003 Reference shorthand
-    Then its canonical Ion spelling is:
-      """ion
-      (ref 'morphir/SDK:basics#add')
-      """
-    And its canonical YAML spelling is:
-      """yaml
-      Reference: morphir/SDK:basics#add
-      """
-    And its canonical JSON spelling is:
-      """json
-      { "Reference": "morphir/SDK:basics#add" }
-      """
+  Scenario Outline: values-0003 Reference shorthand
+    Then its canonical <format> spelling is <spelling>
+
+    Examples:
+      | format | spelling                                   |
+      | Ion    | (ref 'morphir/SDK:basics#add')             |
+      | YAML   | Reference: morphir/SDK:basics#add          |
+      | JSON   | { "Reference": "morphir/SDK:basics#add" }  |
 
   @semantic
-  Scenario: values-0031 A reference is read from its string shorthand
+  Scenario Outline: values-0031 A reference is read from its other spellings
     Given a Value whose canonical form is:
       """ion
       (ref 'morphir/SDK:basics#add')
       """
-    Then a reader accepts:
-      """json
-      "morphir/SDK:basics#add"
-      """
+    Then a reader of <format> accepts <input>
+
+    Examples:
+      | format | input                                                                    |
+      | JSON   | "morphir/SDK:basics#add"                                                 |
+      | JSON   | { "Reference": { "attributes": {}, "fqname": "morphir/SDK:basics#add" } } |
+
+    Examples: Refused spellings
+      | format | input                                            | diagnostic     |
+      | JSON   | { "Reference": "morphir/SDK:basics#add", "x": 1 } | unknown_member |
 ```
+
+The outline rules for kit cases:
+
+- **One-line documents** go in an `Examples` table. A `|` inside a cell is written `\|`, as Gherkin requires.
+- **Documents of several lines** stay as doc strings in plain scenarios, one check per step, because a table cell holds one line.
+- **Case ids:** a row's report record carries the case id from the scenario name and the row's position, for example `values-0003 row 2`.
 
 ### How the runner checks a semantic case
 
