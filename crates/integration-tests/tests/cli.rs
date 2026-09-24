@@ -5,7 +5,7 @@
 
 use cucumber::{World, given, then, when};
 use integration_tests::{CliTestContext, cli_tests_available};
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -38,9 +38,13 @@ impl LocalHttpSource {
                         stream
                             .set_read_timeout(Some(Duration::from_secs(5)))
                             .expect("set HTTP read timeout");
-                        let mut request = [0; 4096];
-                        let read = stream.read(&mut request).expect("read HTTP request");
-                        if !request[..read].starts_with(b"GET /greeting-example.json ") {
+                        let mut request_line = Vec::new();
+                        BufReader::new((&mut stream).take(4096))
+                            .read_until(b'\n', &mut request_line)
+                            .expect("read HTTP request line");
+                        if !request_line.ends_with(b"\r\n")
+                            || !request_line.starts_with(b"GET /greeting-example.json ")
+                        {
                             continue;
                         }
                         request_count.fetch_add(1, Ordering::Relaxed);
