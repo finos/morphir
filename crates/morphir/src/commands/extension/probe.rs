@@ -2,25 +2,23 @@
 use morphir_daemon::extensions::process::DescriptionSource;
 use morphir_daemon::extensions::{ProcessLaunch, SpawnedProcessTransport};
 use morphir_distribution::{
-    ArtifactRuntime, DistributionError, InstalledExtension, ProbeSource, StatementProvenance,
-    StatementRecord, VerifiedArtifact,
+    ArtifactRuntime, ClaimCheck, ClaimsRecord, DistributionError, InstalledExtension, ProbeSource,
+    VerifiedArtifact,
 };
-use morphir_extension_sdk::protocol::{InitializeParams, SUPPORTED_MEP_VERSIONS};
-
-pub(super) async fn statement(
+pub(super) async fn claims(
     artifact: &VerifiedArtifact,
     no_probe: bool,
-) -> morphir_distribution::Result<StatementRecord> {
+) -> morphir_distribution::Result<ClaimsRecord> {
     let selected = artifact.selected().artifact();
     let declared = selected
-        .statement()
-        .expect("resolved artifact has a statement");
-    let record = selected.declared_statement_record();
+        .claims()
+        .expect("resolved artifact has a claim set");
+    let record = selected.declared_claims_record();
     if no_probe || selected.runtime() == ArtifactRuntime::Wasm {
         if no_probe {
-            eprintln!("Note: extension statement was not probed (--no-probe).");
+            eprintln!("Note: extension claims were not checked (--no-probe).");
         } else {
-            eprintln!("Note: WASM extension statement was not probed; keeping declared statement.");
+            eprintln!("Note: WASM extension claims were not checked; keeping them unchecked.");
         }
         return Ok(record);
     }
@@ -39,28 +37,22 @@ pub(super) async fn statement(
         .await
         .map_err(|error| DistributionError::Probe(error.to_string()))?;
     let description = transport
-        .describe(InitializeParams {
-            protocol_versions: SUPPORTED_MEP_VERSIONS
-                .iter()
-                .map(|version| (*version).into())
-                .collect(),
-            host: crate::extensions::host_peer(),
-        })
+        .describe(super::host_config().initialize_params())
         .await
         .map_err(|error| DistributionError::Probe(error.to_string()))?;
     let source = match description.source {
         DescriptionSource::Describe => {
             declared
-                .check_statement(&description.statement)
+                .check_claims(&description.claims)
                 .map_err(|error| DistributionError::Probe(error.to_string()))?;
             ProbeSource::Describe
         }
         DescriptionSource::SessionFallback => {
             record
                 .check_session(
-                    &description.statement.protocol_versions[0],
-                    &description.statement.extension,
-                    &description.statement.capabilities,
+                    &description.claims.protocol_versions[0],
+                    &description.claims.extension,
+                    &description.claims.capabilities,
                 )
                 .map_err(|error| DistributionError::Probe(error.to_string()))?;
             ProbeSource::SessionFallback
@@ -69,17 +61,15 @@ pub(super) async fn statement(
     Ok(record.probed(source))
 }
 
-pub(super) fn print_statement(entry: &InstalledExtension) {
-    let provenance = match (entry.statement_provenance(), entry.probe_source()) {
-        (StatementProvenance::Declared, _) => "declared",
-        (StatementProvenance::Probed, Some(ProbeSource::Describe)) => "probed (describe)",
-        (StatementProvenance::Probed, Some(ProbeSource::SessionFallback)) => {
-            "probed (session fallback)"
-        }
-        (StatementProvenance::Probed, None) => "probed",
+pub(super) fn print_claims(entry: &InstalledExtension) {
+    let check = match (entry.claim_check(), entry.probe_source()) {
+        (ClaimCheck::Unchecked, _) => "unchecked",
+        (ClaimCheck::Probed, Some(ProbeSource::Describe)) => "probed (describe)",
+        (ClaimCheck::Probed, Some(ProbeSource::SessionFallback)) => "probed (session fallback)",
+        (ClaimCheck::Probed, None) => "probed",
     };
     let kinds = entry
-        .statement()
+        .claims()
         .extension
         .types
         .iter()
@@ -92,7 +82,7 @@ pub(super) fn print_statement(entry: &InstalledExtension) {
         })
         .collect::<Vec<_>>();
     println!(
-        "  Statement: {provenance}; capabilities: {}",
+        "  Claims: {check}; capabilities: {}",
         if kinds.is_empty() {
             "none".into()
         } else {

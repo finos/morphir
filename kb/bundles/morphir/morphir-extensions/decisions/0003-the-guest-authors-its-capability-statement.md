@@ -29,7 +29,7 @@ answer from the guest. These are decisions 1 to 5 of finos/morphir#921 (source `
 | 4 | `morphir extension install` probes the artifact it selected with `describe` and refuses on a mismatch. `extension install --no-probe` skips the probe. |
 | 5 | Each artifact carries its own statement. Artifacts of one release may differ under two guards: the release declares the difference, and install and `extension info` show it. |
 
-[Capability statements across the extension lifecycle](/design/capability-statements.md) is the
+[Capability statements across the extension lifecycle](/design/capability-claims.md) is the
 narrative home. It gives the statement shape, the lifecycle phases and the version-2 bundle descriptor.
 
 ## Summary

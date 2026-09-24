@@ -570,7 +570,7 @@ cmd extension display_order=20 subcommand_required=#true arg_required_else_help=
         flag --version help="Exact semantic version" conflicts=--channel {
             arg <VERSION>
         }
-        flag --no-probe help="Skip executing the selected artifact to verify its capability statement"
+        flag --no-probe help="Skip executing the selected artifact to check its capability claims"
         arg <NAME> help="Name of the extension to install"
     }
     cmd list display_order=1 args_override_self=#false help="List installed Morphir extensions" unknown_flags=error

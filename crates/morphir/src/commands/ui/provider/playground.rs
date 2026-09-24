@@ -493,18 +493,47 @@ fn extension_working_directory(home: &MorphirHome) -> PathBuf {
 /// always empty.
 fn compile_request(params: PlaygroundCompileParams) -> Result<CompileRequest, CliError> {
     // The browser protocol still carries documents and an optional root in its
-    // options. Let the SDK normalize that existing envelope into SourceSet and
-    // reject conflicting or malformed root aliases at the boundary.
+    // options. The SDK takes only the `sources` envelope, so the root moves out
+    // of the options and into the source set here.
+    let mut options = compile_options(params.ir_version, &params.options);
+    let root = take_source_root(&mut options)?;
     serde_json::from_value(serde_json::json!({
         "languageId": params.language_id,
-        "documents": params.documents,
+        "sources": { "root": root, "documents": params.documents },
         "package": params.package,
         "dependencies": [],
-        "options": compile_options(params.ir_version, &params.options),
+        "options": options,
     }))
     .map_err(|error| CliError::Validation {
         message: format!("Invalid playground compile request: {error}"),
     })
+}
+
+/// The source root the browser names in its options, as `sourceRootUri` or
+/// `sourceRoot`, removed from the options. Two different roots are refused.
+fn take_source_root(options: &mut HashMap<String, Value>) -> Result<Option<String>, CliError> {
+    let mut root: Option<String> = None;
+    for key in ["sourceRootUri", "sourceRoot"] {
+        let Some(value) = options.remove(key) else {
+            continue;
+        };
+        let Value::String(text) = value else {
+            return Err(CliError::Validation {
+                message: format!("Invalid playground compile request: {key} is a string"),
+            });
+        };
+        match &root {
+            Some(existing) if *existing != text => {
+                return Err(CliError::Validation {
+                    message: format!(
+                        "Invalid playground compile request: sourceRootUri and sourceRoot name different roots ({existing} and {text})"
+                    ),
+                });
+            }
+            _ => root = Some(text),
+        }
+    }
+    Ok(root)
 }
 
 /// Prepare the browser options for the SDK's compile-envelope decoder.
@@ -1096,6 +1125,36 @@ mod tests {
                 )
                 .expect("the backend double registers");
         }
+    }
+
+    #[test]
+    fn a_request_naming_two_different_source_roots_is_refused() {
+        let mut params = compile_params("elm", "module Main exposing (..)");
+        params.options = serde_json::json!({
+            "sourceRootUri": "file:///src",
+            "sourceRoot": "file:///other"
+        });
+
+        let error = compile_request(params).expect_err("two roots are refused");
+
+        assert!(
+            format!("{error:?}").contains("different roots"),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn matching_source_root_aliases_become_one_root() {
+        let mut params = compile_params("elm", "module Main exposing (..)");
+        params.options = serde_json::json!({
+            "sourceRootUri": "file:///src",
+            "sourceRoot": "file:///src"
+        });
+
+        let request = serde_json::to_value(compile_request(params).unwrap()).unwrap();
+
+        assert_eq!(request["sources"]["root"], "file:///src");
+        assert!(request["options"].get("sourceRoot").is_none());
     }
 
     fn compile_params(language_id: &str, text: &str) -> PlaygroundCompileParams {

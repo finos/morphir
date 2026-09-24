@@ -168,7 +168,7 @@ fn wasm(short_id: &str, ir: Value, options: &[&str]) {
     let host = HostCompatibility::new();
     host.publish_and_install(&bundle, &id, pinned_version(&pin));
     let catalog = host.catalog();
-    for member in ["statement", "statementSource", "probeSource"] {
+    for member in ["claims", "claimCheck", "probeSource"] {
         assert!(
             catalog["extensions"][0].get(member).is_none(),
             "version-1 catalog must retain its legacy shape: {catalog}"
@@ -176,7 +176,7 @@ fn wasm(short_id: &str, ir: Value, options: &[&str]) {
     }
     assert!(
         host.run(&["extension", "list"])
-            .contains("Statement: declared")
+            .contains("Claims: unchecked")
     );
     fs::write(
         host.project.join("morphir.toml"),
@@ -239,7 +239,7 @@ fn elm(short_id: &str, id: &str, override_variable: &str) {
     host.publish_and_install(&bundle, id, pinned_version(&pin));
     let catalog = host.catalog();
     assert_eq!(
-        catalog["extensions"][0]["statementSource"], "probed",
+        catalog["extensions"][0]["claimCheck"], "probed",
         "{catalog}"
     );
     assert_eq!(
@@ -249,8 +249,8 @@ fn elm(short_id: &str, id: &str, override_variable: &str) {
     let declared: Value =
         serde_json::from_slice(&fs::read(bundle.join("release.json")).unwrap()).unwrap();
     assert_eq!(
-        catalog["extensions"][0]["statement"],
-        declared["artifacts"][0]["statement"]
+        catalog["extensions"][0]["claims"],
+        declared["artifacts"][0]["claims"]
     );
     fs::write(
         host.project.join("Example.elm"),

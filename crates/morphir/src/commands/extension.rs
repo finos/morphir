@@ -46,6 +46,18 @@ fn host_version() -> morphir_workspace::Version {
         .expect("the CLI version is SemVer")
 }
 
+/// How this CLI introduces itself to extensions, and the MEP versions it offers.
+///
+/// Publish, install, compile, generate, and the workbench all use it, so an
+/// extension sees the same host at every step.
+pub(crate) fn host_config() -> morphir_host::HostConfig {
+    morphir_host::HostConfig::new(morphir_extension_sdk::protocol::PeerInfo {
+        kind: morphir_extension_sdk::protocol::PeerKind::Cli,
+        name: "morphir-cli".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+    })
+}
+
 fn install_selected(
     home: &MorphirHome,
     repository: &str,
@@ -107,7 +119,7 @@ pub async fn run_extension_install(
         .map_err(|error| miette::miette!("Failed to resolve extension '{id}': {error}"))?;
     let entry = ExtensionInstaller::new(&home)
         .install_with_probe(selected, &host, async |artifact| {
-            probe::statement(artifact, no_probe).await
+            probe::claims(artifact, no_probe).await
         })
         .await
         .map_err(|error| miette::miette!("Failed to install extension '{id}': {error}"))?;
@@ -128,7 +140,7 @@ pub async fn run_extension_install(
         entry.version(),
         requested
     );
-    probe::print_statement(&entry);
+    probe::print_claims(&entry);
     Ok(None)
 }
 
@@ -212,7 +224,7 @@ pub fn run_extension_list() -> AppResult<miette::Report> {
             entry.version(),
             snapshot.selection()
         );
-        probe::print_statement(entry);
+        probe::print_claims(entry);
     }
     Ok(None)
 }
@@ -368,7 +380,6 @@ async fn describe_publish_artifact(
         ProcessLaunch, SpawnedProcessTransport, process::DescriptionSource,
     };
     use morphir_distribution::PublicationDescription;
-    use morphir_extension_sdk::protocol::{InitializeParams, SUPPORTED_MEP_VERSIONS};
     let path = std::path::PathBuf::from(artifact.filename().as_str());
     let invalid = |reason: String| morphir_distribution::DistributionError::InvalidReleaseBundle {
         path: path.clone(),
@@ -404,7 +415,7 @@ async fn describe_publish_artifact(
         )?;
     }
     let launch = ProcessLaunch::new(
-        &artifact.statement().extension.id,
+        &artifact.claims().extension.id,
         executable,
         workspace.path(),
     );
@@ -412,27 +423,19 @@ async fn describe_publish_artifact(
         .await
         .map_err(|error| invalid(format!("Failed to start process for describe: {error}")))?;
     let description = transport
-        .describe(InitializeParams {
-            protocol_versions: SUPPORTED_MEP_VERSIONS
-                .iter()
-                .map(|version| (*version).into())
-                .collect(),
-            host: crate::extensions::host_peer(),
-        })
+        .describe(host_config().initialize_params())
         .await
         .map_err(|error| invalid(format!("Failed to describe process: {error}")))?;
-    let statement = description.statement;
+    let claims = description.claims;
     match description.source {
-        DescriptionSource::Describe => Ok(PublicationDescription::Describe(statement)),
-        DescriptionSource::SessionFallback => {
-            Ok(PublicationDescription::SessionFallback {
-                protocol_version: statement.protocol_versions.into_iter().next().ok_or_else(
-                    || invalid("Description fallback has no negotiated protocol version".into()),
-                )?,
-                extension: statement.extension,
-                capabilities: statement.capabilities,
-            })
-        }
+        DescriptionSource::Describe => Ok(PublicationDescription::Describe(claims)),
+        DescriptionSource::SessionFallback => Ok(PublicationDescription::SessionFallback {
+            protocol_version: claims.protocol_versions.into_iter().next().ok_or_else(|| {
+                invalid("Description fallback has no negotiated protocol version".into())
+            })?,
+            extension: claims.extension,
+            capabilities: claims.capabilities,
+        }),
     }
 }
 
@@ -716,5 +719,21 @@ mod tests {
             selection(None, Some("2.100.0")).unwrap(),
             Selection::Exact(Version::new(2, 100, 0))
         );
+    }
+
+    #[test]
+    fn every_extension_call_offers_the_same_host_and_versions() {
+        let params = super::host_config().initialize_params();
+        assert_eq!(params.host.name, "morphir-cli");
+        assert_eq!(params.host.version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(
+            params.host.kind,
+            morphir_extension_sdk::protocol::PeerKind::Cli
+        );
+        let supported: Vec<String> = morphir_extension_sdk::protocol::SUPPORTED_MEP_VERSIONS
+            .iter()
+            .map(|version| (*version).to_owned())
+            .collect();
+        assert_eq!(params.protocol_versions, supported);
     }
 }

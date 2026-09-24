@@ -2976,10 +2976,10 @@ fn verify_real_installed_elm_provider(
     )
     .unwrap();
     let installed: serde_json::Value = serde_json::from_str(&catalog).unwrap();
-    for member in ["statement", "statementSource", "probeSource"] {
+    for member in ["claims", "claimCheck", "probeSource"] {
         assert!(installed["extensions"][0].get(member).is_none());
     }
-    assert!(String::from_utf8_lossy(&install.stdout).contains("Statement: declared"));
+    assert!(String::from_utf8_lossy(&install.stdout).contains("Claims: unchecked"));
     assert!(catalog.contains(version));
     assert!(catalog.contains(&index.digest));
     assert!(lock.contains(version));

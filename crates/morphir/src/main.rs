@@ -476,7 +476,7 @@ enum ExtensionAction {
         /// Exact semantic version
         #[arg(long, conflicts_with = "channel")]
         version: Option<String>,
-        /// Skip executing the selected artifact to verify its capability statement
+        /// Skip executing the selected artifact to check its capability claims
         #[arg(long)]
         no_probe: bool,
     },
