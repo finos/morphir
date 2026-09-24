@@ -39,21 +39,21 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
       | v4-with-values.json            |
       | v4-empty-package.json          |
 
-  @native @p0 @wip
-  Scenario: Migrate same format (Classic to Classic) is a no-op
-    Given I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target classic"
+  @native @p0
+  Scenario: Re-encode Classic IR as Classic IR
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v3"
     Then the command should succeed
-    And the file "output.json" should exist
-    And the stderr should contain "Copying"
+    And the file "output.json" should have Classic Library package "elm-compat"
+    And the stderr should contain "Migration complete"
 
-  @native @p0 @wip
-  Scenario: Migrate same format (V4 to V4) is a no-op
-    Given I have a V4 IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+  @native @p0
+  Scenario: Re-encode V4 IR as V4 IR
+    Given I have a V4 IR file from fixture "complete-example.json"
+    When I run "morphir migrate complete-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should exist
-    And the stderr should contain "Copying"
+    And the file "output.json" should have V4 Library package "regulation"
+    And the stderr should contain "Migration complete"
 
   @native @p0 @error-handling
   Scenario: Handle invalid target version
@@ -78,13 +78,12 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
     Then the command should fail
     And the stderr should contain "morphir::ir::detection::missing_format_version"
 
-  @native @p0 @wip
+  @native @p0
   Scenario: Migrate to stdout with JSON mode
-    Given I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json --target v4 --json"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --target-version v4 --json"
     Then the command should succeed
-    And stdout should contain valid JSON
-    And stdout should contain "formatVersion"
+    And stdout should have V4 Library package "elm-compat"
 
   @native @p0 @wip
   Scenario: Migrate with dependency warning (Classic to V4)
@@ -113,13 +112,13 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
     And the stderr should contain "Warning"
     And the stderr should contain "dependencies"
 
-  @native @p0 @wip
+  @native @p0
   Scenario: Migrate with expanded format option
-    Given I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target v4 --expanded"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4 --expanded"
     Then the command should succeed
-    And the file "output.json" should exist
-    # Note: Expanded format means non-compact JSON (more readable, more bytes)
+    And the file "output.json" should have V4 Library package "elm-compat"
+    And the file "output.json" should use expanded type references
 
   # ========================================================================
   # Remote Source Tests (P1)

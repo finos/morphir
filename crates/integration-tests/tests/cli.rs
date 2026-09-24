@@ -28,17 +28,27 @@ fn given_temp_directory(world: &mut CliWorld) {
 
 #[given(regex = r#"I have a Classic IR file from fixture "([^"]+)""#)]
 fn given_classic_ir_fixture(world: &mut CliWorld, name: String) {
+    copy_ir_fixture(world, "v3", &name);
+}
+
+#[given(regex = r#"I have a V4 IR file from fixture "([^"]+)""#)]
+fn given_v4_ir_fixture(world: &mut CliWorld, name: String) {
+    copy_ir_fixture(world, "v4", &name);
+}
+
+fn copy_ir_fixture(world: &CliWorld, version: &str, name: &str) {
     let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../website/static/ir/examples/v3")
-        .join(&name);
+        .join("../../website/static/ir/examples")
+        .join(version)
+        .join(name);
     let contents = std::fs::read_to_string(&fixture)
         .unwrap_or_else(|error| panic!("read {}: {error}", fixture.display()));
     world
         .context
         .as_ref()
         .expect("temporary test directory")
-        .write_source_file(&name, &contents)
-        .expect("copy Classic IR fixture");
+        .write_source_file(name, &contents)
+        .expect("copy IR fixture");
 }
 
 #[given(regex = r#"I have a file "([^"]+)" with:"#)]
@@ -86,16 +96,58 @@ fn then_command_should_fail(world: &mut CliWorld) {
 
 #[then(regex = r#"the file "([^"]+)" should have V4 Library package "([^"]+)""#)]
 fn then_file_has_v4_library_package(world: &mut CliWorld, file: String, package: String) {
+    assert_v4_library_package(&read_json_file(world, &file), &package);
+}
+
+#[then(regex = r#"the file "([^"]+)" should have Classic Library package "([^"]+)""#)]
+fn then_file_has_classic_library_package(world: &mut CliWorld, file: String, package: String) {
+    let document = read_json_file(world, &file);
+    assert_eq!(document["formatVersion"], 3);
+    assert_eq!(document["distribution"][0], "Library");
+    assert_eq!(
+        document["distribution"][1],
+        serde_json::json!([package.split('-').collect::<Vec<_>>()])
+    );
+    assert_eq!(
+        document["distribution"][3]["modules"]
+            .as_array()
+            .map(Vec::len),
+        Some(2)
+    );
+}
+
+#[then(regex = r#"stdout should have V4 Library package "([^"]+)""#)]
+fn then_stdout_has_v4_library_package(world: &mut CliWorld, package: String) {
+    let stdout = &world.last_result.as_ref().expect("CLI result").stdout;
+    let document: serde_json::Value = serde_json::from_str(stdout).expect("stdout must be JSON IR");
+    assert_v4_library_package(&document, &package);
+}
+
+#[then(regex = r#"the file "([^"]+)" should use expanded type references"#)]
+fn then_file_uses_expanded_type_references(world: &mut CliWorld, file: String) {
+    let document = read_json_file(world, &file);
+    assert_eq!(
+        document
+            .pointer("/distribution/Library/def/modules/api/Public/types/request/Public/TypeAliasDefinition/typeExp/Record/fields/action/Reference/fqname")
+            .and_then(serde_json::Value::as_str),
+        Some("morphir/SDK:string#string")
+    );
+}
+
+fn read_json_file(world: &CliWorld, file: &str) -> serde_json::Value {
     let path = world
         .context
         .as_ref()
         .expect("temporary test directory")
         .project_root
-        .join(&file);
-    let document: serde_json::Value = serde_json::from_slice(
+        .join(file);
+    serde_json::from_slice(
         &std::fs::read(&path).unwrap_or_else(|error| panic!("read {}: {error}", path.display())),
     )
-    .expect("output must be valid JSON");
+    .expect("output must be valid JSON")
+}
+
+fn assert_v4_library_package(document: &serde_json::Value, package: &str) {
     assert_eq!(document["formatVersion"], 4);
     assert_eq!(document["distribution"]["Library"]["packageName"], package);
     assert!(document["distribution"]["Library"]["def"]["modules"].is_object());
