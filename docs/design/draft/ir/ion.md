@@ -135,7 +135,7 @@ public::def::native::value::{
 }
 ```
 
-`hint` is `arithmetic`, `comparison`, `stringOp`, `collectionOp`, or `platformSpecific::{ platform }`. An external body lists `{ targetPlatform, externalName }` and may carry a fallback `body`. An incomplete body uses `incompleteness: draft` or `incompleteness: hole::{ reason }`. The reason is `unresolvedReference::{ target }`, `deletedDuringRefactor::{ txId }`, or `typeMismatch::{ expected, found }`.
+`hint` is `arithmetic`, `comparison`, `stringOp`, `collectionOp`, or `platformSpecific::{ platform }`. A native body may also carry a `description` string. An external body lists `{ targetPlatform, externalName }` and may carry a fallback `body`. An incomplete body uses `incompleteness: draft` or `incompleteness: hole::{ reason }`. The reason is `unresolvedReference::{ target }`, `deletedDuringRefactor::{ txId }`, or `typeMismatch::{ expected, found }`.
 
 A hole expression is `(hole reason)` or `(hole reason expectedType)`. An incomplete type is `public::def::incomplete::type` with an optional `partialTypeExp`.
 
