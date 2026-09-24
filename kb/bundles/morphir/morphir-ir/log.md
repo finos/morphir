@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-24
+
+* **Update**: [Amazon Ion IR format](/ion-ir-format.md) records that CLI prerelease `0.4.0-beta.6` ships the first draft codec, and that finos/morphir-rust#248 completes the codec for v3 dependencies and every v4 node except attributes, Morphir annotations and document literals.
+
 ## 2026-09-23
 
 * **Creation**: Added [Amazon Ion IR format](/ion-ir-format.md).

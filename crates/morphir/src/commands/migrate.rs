@@ -92,20 +92,24 @@ fn migrate(
             "select --target-version v4; downgrade remains unavailable until lossless rules are specified",
         ));
     }
-    if target_version == IrVersion::V3 && output_layout == Layout::DocumentTree {
-        return Err(command_error(
-            "morphir::ir::document_tree::version_unsupported",
-            Stage::Detection,
-            "the granular document-tree layout is defined for v4",
-            "select a single-file v3 output or migrate to v4",
-        ));
-    }
     let output_format = resolve_output_format(
         options.output_format.clone(),
         options.output.as_deref(),
         output_layout,
         options.json,
     )?;
+    // The JSON and YAML trees are defined for v4. The Ion tree is defined for v3 and v4.
+    if target_version == IrVersion::V3
+        && output_layout == Layout::DocumentTree
+        && output_format != FormatId::ion()
+    {
+        return Err(command_error(
+            "morphir::ir::document_tree::version_unsupported",
+            Stage::Detection,
+            "the JSON and YAML document trees are defined for v4",
+            "select --output-format ion, a single-file v3 output, or migrate to v4",
+        ));
+    }
     let migration_options = MigrationOptions {
         allow_partial: options.allow_partial,
         encoding: if options.expanded {
