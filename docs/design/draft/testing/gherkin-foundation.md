@@ -298,10 +298,19 @@ Feature: Values
     And a reader of <format> accepts <accepted>
 
     Examples:
-      | format | spelling                                  | accepted                 |
+      | format | spelling                                  | accepted                          |
       | YAML   | Reference: morphir/SDK:basics#add         | Reference: morphir/SDK:basics#add |
-      | JSON   | { "Reference": "morphir/SDK:basics#add" } | "morphir/SDK:basics#add" |
+      | JSON   | { "Reference": "morphir/SDK:basics#add" } | "morphir/SDK:basics#add"          |
+
+  Scenario Outline: values-0003 A malformed reference is refused
+    Then a reader of <format> rejects <input> with <diagnostic>
+
+    Examples:
+      | format | input                                             | diagnostic     |
+      | JSON   | { "Reference": "morphir/SDK:basics#add", "x": 1 } | unknown_member |
 ```
+
+Accepted and rejected inputs are separate outlines, because their steps differ. The full step vocabulary, including warnings, a different node kind and document-tree sets, is in the [kit draft](../ir/mck-ion-reference.md#two-kinds-of-case).
 
 - **Mapping:** a case is a scenario, and the case id starts the scenario name. A case file is a feature. Heading keys become tags: `node=` → `@node:<Kind>`, `version=` → `@version:<n>`, `status=pending` → `@pending`, `compare=attributes` → `@compare:attributes`. Fence roles become steps: canonical, accepted (with an optional warning), rejected with a diagnostic or an expected node, and document-tree file sets (`Given the tree file "<path>":`, with `set` and `mode` in the step text). The converter writes a scenario outline where a case has one-line documents, with a row per format or per input, and a plain scenario with doc strings where a document spans several lines.
 - **Steps:** the kit's steps are a step library in `morphir-mck`. Each step sends its request to the adapter over the existing protocol, so adapters do not change.

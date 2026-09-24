@@ -96,10 +96,39 @@ Feature: Values
       | JSON   | "morphir/SDK:basics#add"                                                 |
       | JSON   | { "Reference": { "attributes": {}, "fqname": "morphir/SDK:basics#add" } } |
 
-    Examples: Refused spellings
-      | format | input                                            | diagnostic     |
-      | JSON   | { "Reference": "morphir/SDK:basics#add", "x": 1 } | unknown_member |
+  @semantic
+  Scenario Outline: values-0032 A malformed reference is refused
+    Then a reader of <format> rejects <input> with <diagnostic>
+
+    Examples:
+      | format | input                                              | diagnostic     |
+      | JSON   | { "Reference": "morphir/SDK:basics#add", "x": 1 }  | unknown_member |
+      | YAML   | Reference: not-a-name                              | invalid_name   |
+      | Ion    | (ref 42)                                           | invalid_type   |
+
+  @semantic
+  Scenario Outline: values-0033 A tuple spelling is not a reference
+    Then a reader of <format> reads <input> as a <node>
+
+    Examples:
+      | format | input                               | node  |
+      | YAML   | [ morphir/SDK:basics#add ]          | Tuple |
 ```
+
+The kit's steps (a step library in `morphir-mck`; `<format>` is `Ion`, `YAML` or `JSON`, and `<Node>` is a node kind such as `Value`):
+
+| Step | Checks | Old fence role |
+| --- | --- | --- |
+| `Given a <Node> whose canonical form is:` with an `ion` doc string | Sets the case's reference document | none (new) |
+| `Then its canonical <format> spelling is <spelling>` or `…is:` with a doc string | A writer emits exactly this spelling | `canonical` |
+| `Then a reader of <format> accepts <input>` | A reader reads the input as the canonical form, with no warning | `accepted` |
+| `Then a reader of <format> accepts <input> with warning <code>` | The same, and the reader reports exactly that warning | `accepted warning=` |
+| `Then a reader of <format> rejects <input> with <diagnostic>` | A reader refuses the input with that diagnostic | `rejected diagnostic=` |
+| `Then a reader of <format> reads <input> as a <Node>` | A reader decodes the input as a different node kind | `rejected expect=` |
+| `Given the tree file "<path>" in set "<set>":` with a doc string | Adds one file to a document-tree set | `file path= set=` |
+| `Then the <set> tree reads back as:` / `…is refused with <diagnostic>` | Reads the set as a tree, and compares the result or the refusal | `file` sets with `canonical` or `rejected` |
+
+Each step also takes a doc string in place of its last inline argument, for documents that span several lines.
 
 The outline rules for kit cases:
 
