@@ -16,14 +16,14 @@ artifact = "morphir-openapi-extension-0.1.1"
 sha256 = "817dddbd06da52a7f5139c03c012bbdc31a0ea64958e2b09224aa73d8f9733ff"
 
 [bundles.python]
-tag = "extension/python/v0.2.0"
-artifact = "morphir-python-binding-0.2.0"
-sha256 = "b08aed79700df8d8613c681e0a3dc1de21b3a8163b318bf4470b340383441091"
+tag = "extension/python/v0.3.0"
+artifact = "morphir-python-binding-0.3.0"
+sha256 = "3a00b3c40aa0885da8bbe118724f10ae002ad26d1f81f41451094d39b23fbe03"
 
 [bundles.rust]
-tag = "extension/rust/v0.1.0"
-artifact = "morphir-rust-binding-0.1.0"
-sha256 = "1bd693be41250b6ce4cafc4d94be82967d50b99af9e01da5d6f880c01bc8947a"
+tag = "extension/rust/v0.2.0"
+artifact = "morphir-rust-binding-0.2.0"
+sha256 = "d8136a4d045ba615f6da201ad26561b14452d6cca17976e0f53b23022b4968a0"
 
 # A process extension is one executable per platform, released as an archive by the repository
 # that owns it. CI runs on x86_64 Linux, so that archive is the one pinned. `sha256` is the digest
@@ -42,7 +42,7 @@ executable = "morphir-elm-extension"
 
 [executables.scala-elm]
 repository = "finos/morphir-scala"
-tag = "v0.5.0-M08"
-asset = "morphir-scala-elm-linux-amd64-0.5.0-M08"
-sha256 = "e681d8b3a71f46810e8b6bbae4f48e2c72af05e813861417c0604bf94c2f06f4"
+tag = "v0.5.0-M09"
+asset = "morphir-scala-elm-linux-amd64-0.5.0-M09"
+sha256 = "bada31034ee96602505eca7390bfbf3cd92759391e7cdb16c2e860dcb9758ecc"
 executable = "morphir-scala-elm"
