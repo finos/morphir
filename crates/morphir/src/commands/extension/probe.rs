@@ -44,7 +44,7 @@ pub(super) async fn statement(
                 .iter()
                 .map(|version| (*version).into())
                 .collect(),
-            host: super::host_peer(),
+            host: crate::extensions::host_peer(),
         })
         .await
         .map_err(|error| DistributionError::Probe(error.to_string()))?;

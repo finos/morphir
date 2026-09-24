@@ -143,6 +143,7 @@ The host offers the protocol versions it supports. The extension selects one ver
   "params": {
     "protocolVersions": ["0.1"],
     "host": {
+      "kind": "cli",
       "name": "morphir-cli",
       "version": "0.1.0"
     },
@@ -162,6 +163,11 @@ The host offers the protocol versions it supports. The extension selects one ver
   }
 }
 ```
+
+`host.kind` identifies the host category independently of its display `name`.
+The CLI sends `"cli"`. The field is optional for compatibility with earlier
+MEP 0.1 hosts; receivers treat an absent or unrecognized kind as unspecified
+rather than inferring it from `name`.
 
 The workspace may be absent for configuration-free compilation. Version 0.1 sends source text and Morphir IR inside operation requests, so a frontend does not need workspace access.
 
