@@ -74,7 +74,7 @@ A string that is a canonical fully qualified name is a reference with no argumen
 | Function | `function::{ parameterType, returnType }` |
 | Unit | `unit::{}` |
 
-A function type is binary. A list type is a reference to `morphir/SDK:list#list`. A bare list at type position is a tuple. Attributes, when present, force the expanded struct.
+A function type is binary. A list type is a reference to `morphir/SDK:list#list`. A bare list at type position is a tuple. Attributes, when present, force the expanded struct, and they are members of it: `variable::{ name: "a", source: { … } }`. A tuple with attributes is `tuple::{ elements: [ … ], source: { … } }`.
 
 ```ion
 public::def::custom::type::{
@@ -120,7 +120,7 @@ The body is an S-expression. The first symbol is the node. Apply is binary. A ba
 
 `(lambda [score] body)` means an `as` pattern over a wildcard. The explicit form is `(lambda [(as (wildcard) score)] body)`. A bare symbol in pattern position is that same binding. `_` is a wildcard. The other pattern heads are `as`, `tuple`, `constructor`, `headTail`, a literal, and `()`.
 
-When a node has a non-empty attribute payload, a struct follows the head. v3 omits that struct when the payload is `[]`. v4 attributes are `source`, `constraints`, and `extensions` on a type, and `source`, `inferredType`, and `extensions` on a value or a pattern. Empty members are omitted. `constraints` and `extensions` hold JSON-compatible Ion only.
+When a node has a non-empty attribute payload, a struct follows the head. v3 omits that struct when the payload is `[]`. v4 attributes are `source`, `constraints`, and `extensions` on a type, and `source`, `inferredType`, and `extensions` on a value or a pattern. Empty members are omitted. `constraints` and `extensions` hold JSON-compatible Ion only, spelled as a document payload is. `source` is `{ startLine, startColumn, endLine, endColumn }`. In v4 the attribute struct is an unannotated struct right after the head, so attributes force the S-expression form of every shorthand: `(variable { … } x)`, `(int { … } 1)`, `(unit { … })`, `(wildcard { … })`, `(emptyList { … })`.
 
 ## v4 nodes
 
@@ -152,11 +152,9 @@ A custom type specification is `public::spec::custom::type` with `typeParams` an
 
 A v4 integer is an Ion int. An integer too large for the reader's Ion int is `(int "<digits>")`. In value position a let binding is `{ inputTypes, outputType, body }` and holds an expression body.
 
-Morphir annotations are an `annotations` list on `module::spec`, a `public::spec::` type, and `public::spec::value`. A definition rejects the field. A compact entry is `pkg:mod#local` or `pkg:mod#local:free text`. A structured entry is `{ name, arguments }`.
+Morphir annotations are an `annotations` list on `module::spec`, a `public::spec::` type, and `public::spec::value`. A definition rejects the field. A compact entry is `pkg:mod#local` or `pkg:mod#local:free text`. A structured entry is `{ name, arguments }`. A positional argument is a value, and a named argument is `{ name, value }`; no value is an unannotated struct, so the shape decides. A `package::spec` carries no annotations until [issue 944](https://github.com/finos/morphir/issues/944) decides.
 
-The codec does not yet encode v4 attributes, Morphir annotations, or document literals. It refuses them rather than dropping them.
-
-A document literal is `(document <payload>)`. The payload is the document. An integer lexeme is an Ion int. Any other number is an Ion decimal written with the stored lexeme. Ion float, timestamp, blob, clob, symbol, and s-expression are rejected inside the payload. A document cannot appear in a pattern. A v4 float literal that keeps its source text is `(float "<lexeme>")`. A bare Ion float means the shortest spelling of that finite value.
+A document literal is `(document <payload>)`. The payload is the document. Because a payload may be a struct, a document has attributes only when two arguments follow its head. A number keeps its lexeme. An integer lexeme is an Ion int. Any other number is an Ion decimal when the decimal's text gives the lexeme back, with `d` for `e`. A number an Ion int or decimal cannot keep, such as `1.5e+2` or an integer beyond the reader's Ion int, is `number::"<lexeme>"`. Ion float, timestamp, blob, clob, symbol, S-expression, and a typed null are rejected inside the payload. A document cannot appear in a pattern. A v4 float literal that keeps its source text is `(float "<lexeme>")`. A bare Ion float means the shortest spelling of that finite value.
 
 ## Document tree
 
