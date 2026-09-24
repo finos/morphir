@@ -157,7 +157,7 @@ An extension manifest needs:
 
 - extension identity and version;
 - supported MEP versions;
-- a capability statement for each artifact, captured from the extension itself (see [Capability statements in distribution](#capability-statements-in-distribution));
+- a capability claim set for each artifact, captured from the extension itself (see [Capability claims in distribution](#capability-claims-in-distribution));
 - requested permissions;
 - one or more artifacts;
 - each artifact's runtime kind, source, digest, and platform constraints;
@@ -212,17 +212,17 @@ The host supports these activation modes behind one session contract:
 - start a managed daemon, wait for its endpoint, and then use the daemon transport;
 - call a built-in provider through the same logical operation contract where practical.
 
-## Capability statements in distribution
+## Capability claims in distribution
 
-The [protocol](./protocol.md#capability-statements) defines the capability
-statement and the `morphir.extension.describe` method that returns it. This
-section defines how the statement travels from a release to an installed
+The [protocol](./protocol.md#capability-claims) defines the capability
+claim set and the `morphir.extension.describe` method that returns it. This
+section defines how the claim set travels from a release to an installed
 record. The working specification is
 [finos/morphir#921](https://github.com/finos/morphir/discussions/921).
 
 ### The gap this closes
 
-Until statements exist, capabilities are declared by hand in a release
+Until claim sets exist, capabilities are declared by hand in a release
 manifest (`.github/extensions.toml` in morphir-rust, `extension.json` in
 morphir-elm) and turned into capability kinds by key: `languages` becomes
 `frontend`, `targets` becomes `backend`, `workspaceDiscovery` becomes
@@ -235,11 +235,11 @@ Elm MEP extension has no supported path to an installed record.
 ### Release descriptor, version 2
 
 A release has one descriptor with one entry per artifact. Each entry carries the
-statement that the artifact returned from `describe` on its own platform:
+claim set that the artifact returned from `describe` on its own platform:
 
 ```json
 {
-  "schemaVersion": "2.0.0-draft.1",
+  "schemaVersion": "2.0.0-draft.2",
   "extensionId": "morphir-elm",
   "shortId": "elm",
   "version": "0.3.0",
@@ -251,7 +251,7 @@ statement that the artifact returned from `describe` on its own platform:
       "runtime": "process",
       "filename": "morphir-elm-extension-0.3.0-aarch64-apple-darwin.tgz",
       "sha256": "<64 hexadecimal characters>",
-      "statement": { "extension": { "types": ["frontend", "workspace"] } }
+      "claims": { "extension": { "types": ["frontend", "workspace"] } }
     }
   ]
 }
@@ -275,15 +275,15 @@ sequenceDiagram
     participant Host as Host session
 
     CI->>Guest: describe
-    Guest-->>CI: statement
-    CI->>Asm: artifact, sha256, statement
-    Asm->>Asm: compare statements across artifacts
+    Guest-->>CI: claims
+    CI->>Asm: artifact, sha256, claims
+    Asm->>Asm: compare claim sets across artifacts
     Asm-->>User: descriptor (version 2), artifacts, checksums
     User->>Repo: publish --bundle (process or wasm)
     Repo->>Repo: verify every digest and checksum
     opt an artifact runs on this host
         Repo->>Guest: describe
-        Repo->>Repo: equal to its statement, else refuse
+        Repo->>Repo: equal to its claims, else refuse
     end
     User->>Inst: install
     Inst->>Inst: select the artifact for this platform, verify digest
@@ -291,54 +291,60 @@ sequenceDiagram
     Inst->>Inst: equal to the record, else refuse
     User->>Host: compile or generate
     Host->>Guest: initialize
-    Host->>Host: agrees with the installed statement, else refuse
+    Host->>Host: agrees with the installed claims, else refuse
 ```
 
-**Figure 1:** A statement comes from the extension at packaging time and is
+**Figure 1:** A claim set comes from the extension at packaging time and is
 checked against the extension three more times. Notice that installation is the
 first place where the artifact that will run is on the machine that runs it:
 publication can check only the artifacts that run on the publishing host.
 
 The repository index record and the installed record keep each artifact's
-statement unchanged. The installed record keeps only the statement of the
-installed artifact. The host's provider registry reads that statement, so a
+claim set unchanged, in the member `claims`. The installed record keeps only
+the claim set of the installed artifact. The host's provider registry reads
+that claim set, so a
 member such as `frontend.multiDocument` or the `workspace` kind is known before
 a session starts.
 
-A session is compared with the installed statement by the
-[agreement rule](./protocol.md#when-a-session-agrees-with-a-statement), not by
+A session is compared with the installed claim set by the
+[agreement rule](./protocol.md#when-a-session-agrees-with-a-claim-set), not by
 equality: the session carries one negotiated protocol version and may offer less
-than the statement. Publication and installation compare two statements, which
+than the claim set. Publication and installation compare two claim sets, which
 must be equal.
 
 `extension install --no-probe` skips the install-time `describe`. It exists for
 users who do not accept that a `process` artifact runs at installation rather
-than at first use. The first session still compares the statement.
+than at first use. The first session still compares the claim set.
+
+An index record and an installed record say in `claimCheck` how their writer
+checked the claims: `probed` when it ran the artifact and read them, and
+`unchecked` when it did not, for example after `--no-probe`. `probeSource` says
+whether a probe used `describe` or fell back to a session (`session-fallback`).
 
 The existing checks in [Extension flow](#extension-flow) gain one stage:
 
 | Stage | Compared values | Result on mismatch |
 |---|---|---|
-| Install probe against record | The complete statement of the selected artifact | Installation stops before the artifact is recorded. |
+| Install probe against record | The complete claim set of the selected artifact | Installation stops before the artifact is recorded. |
 
 ### Platform differences
 
-Artifacts of one release may report different statements. Two guards apply:
+Artifacts of one release may report different claim sets. Two guards apply:
 
 1. **A difference is declared, never accidental.** The release job compares the
-   statements it collected. When they differ and `platformDifferences` is
+   claim sets it collected. When they differ and `platformDifferences` is
    `"none"`, the job fails. A release that differs on purpose sets
    `"declared"`.
 2. **A difference is visible.** `extension install` and `extension info` report
-   when the installed artifact's statement differs from other artifacts of the
+   when the installed artifact's claim set differs from other artifacts of the
    same release, naming the members that differ.
 
-The index record never merges statements. A merged statement would claim a
+The index record never merges claim sets. A merged claim set would claim a
 capability that some installed artifact does not have.
 
 ## Compatibility and release paths
 
-Every document that carries a statement follows the same rules:
+Every document that carries a claim set follows the same rules:
 
 1. **Must-ignore unless critical.** A reader ignores an optional member it does
    not understand, and refuses a member named in `critical` that it does not
@@ -348,14 +354,23 @@ Every document that carries a statement follows the same rules:
    A publisher writes the highest version that the oldest host it targets
    reads. Versions follow the default
    [SemVer contract versioning](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md)
-   rule: a draft such as `2.0.0-draft.1` matches only exactly.
+   rule: a draft such as `2.0.0-draft.2` matches only exactly.
 3. **Minimum host.** An extension that needs a newer host states `requires.host`
    and lists it in `critical`.
 4. **`describe` is optional.** A host falls back to a session when an extension
    does not implement it.
-5. **Old records are converted.** A record without a statement becomes a
-   statement built from its capability keys, marked `declared` rather than
+5. **Old records are converted.** A record without a claim set gets one
+   built from its capability keys, with `claimCheck` `unchecked` rather than
    `probed`. Installation and the first session verify it as usual.
+6. **Draft.1 records are converted.** The version-2 formats are at
+   `2.0.0-draft.2`, with the claim set at `claimsVersion` `0.1.0-draft.2`.
+   Their first draft, `2.0.0-draft.1`, named the member `statement`, the
+   provenance member `statementSource` (`declared` or `probed`) and the
+   critical-path prefix `statement.`. A reader still accepts a draft.1
+   descriptor, index record or installed record and converts it: `declared`
+   becomes `unchecked`, and a `statement.` path becomes `claims.`. A writer
+   emits only draft.2. A record that mixes draft.1 and draft.2 names or
+   versions is refused. Hosts `0.4.0-beta.6` and earlier cannot read draft.2.
 
 These rules let a host and an extension release independently:
 
@@ -368,7 +383,7 @@ These rules let a host and an extension release independently:
 A host released before these rules existed follows none of them. The first host
 release that implements them is therefore a host-only release that still reads
 version-1 descriptors and records. Extensions keep writing version 1 until that
-release is pinned, and adopt statements and version 2 afterward.
+release is pinned, and adopt claim sets and version 2 afterward.
 
 ## Morphir Scala example
 
@@ -408,8 +423,8 @@ independently built artifact through the production host boundary.
 4. Which signature or build-provenance policy establishes publisher authenticity?
 5. How does a host distinguish a daemon it owns from an endpoint it only connects to?
 6. Which yank and revocation behavior must work before the first public repository?
-7. What canonical form do two capability statements take before they are compared?
-8. Should publisher provenance or a signature cover each artifact's capability statement?
+7. What canonical form do two capability claim sets take before they are compared?
+8. Should publisher provenance or a signature cover each artifact's capability claim set?
 9. Can an install-time probe of a `process` artifact run under an operating-system sandbox where one is available?
 
 ## Non-goals

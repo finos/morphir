@@ -126,11 +126,13 @@ enabled = true
 ```
 
 The release descriptor already carries what a process install needs: a platform, an archive and a
-digest per artifact. The CLI resolver already selects a process artifact by platform. The missing part
-is publication of process bundles in finos/morphir-rust.
-[Capability statements across the extension lifecycle](/design/capability-statements.md) proposes how
-publish accepts process bundles, and decision
-[0003](/decisions/0003-the-guest-authors-its-capability-statement.md) records that choice.
+digest per artifact. The CLI resolver already selects a process artifact by platform. Since
+`0.4.0-beta.5`, `morphir extension repository publish --bundle` accepts a version-2 process bundle:
+raw executables with their `.sha256` files and a `release.json` carrying a capability claim set
+([Capability claims across the extension lifecycle](/design/capability-claims.md), decision
+[0003](/decisions/0003-the-guest-authors-its-capability-statement.md)). It refuses archives, so the
+Elm extension's archive release is not yet publishable as it stands. A version-2 Elm release is the
+remaining step (beads `morphir-o7m2.2`).
 
 The CLI can already install a process artifact from an authored local index. The
 example preparation helper stages a supplied executable, its digest and platform

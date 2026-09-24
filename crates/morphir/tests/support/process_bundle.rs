@@ -31,10 +31,10 @@ pub fn write_bundle(
         let digest = Sha256Digest::of_bytes(bytes);
         fs::write(bundle.join(filename), bytes).unwrap();
         fs::write(bundle.join(format!("{filename}.sha256")), format!("{digest}  {filename}\n")).unwrap();
-        json!({"platform": platform, "runtime": "process", "filename": filename, "sha256": digest, "statement": declared})
+        json!({"platform": platform, "runtime": "process", "filename": filename, "sha256": digest, "claims": declared})
     }).collect();
     fs::write(bundle.join("release.json"), serde_json::to_vec(&json!({
-        "schemaVersion": "2.0.0-draft.1", "extensionId": declared["extension"]["id"], "shortId": short_id,
+        "schemaVersion": "2.0.0-draft.2", "extensionId": declared["extension"]["id"], "shortId": short_id,
         "version": declared["extension"]["version"], "platformDifferences": "none", "artifacts": artifacts
     })).unwrap()).unwrap();
     bundle
@@ -70,11 +70,11 @@ pub fn from_executable(
             .unwrap()
     });
     assert_eq!(description.source, DescriptionSource::SessionFallback);
-    assert_eq!(description.statement.extension.id, id);
-    assert_eq!(description.statement.extension.version, version);
+    assert_eq!(description.claims.extension.id, id);
+    assert_eq!(description.claims.extension.version, version);
     write_bundle(
         scratch,
-        serde_json::to_value(description.statement).unwrap(),
+        serde_json::to_value(description.claims).unwrap(),
         short_id,
         &[(
             &host_triple(),

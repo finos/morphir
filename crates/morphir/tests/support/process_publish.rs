@@ -4,9 +4,9 @@ use morphir_distribution::{Channel, ExtensionId, LocalIndex, Platform, Selection
 use morphir_extension_sdk::protocol::MEP_VERSION;
 use serde_json::{Value, json};
 
-fn statement() -> Value {
+fn claim_set() -> Value {
     json!({
-        "statementVersion": "0.1.0-draft.1", "protocolVersions": [MEP_VERSION],
+        "claimsVersion": "0.1.0-draft.2", "protocolVersions": [MEP_VERSION],
         "extension": {"id": "morphir-avro", "name": "Morphir Avro", "version": "1.2.3", "types": ["backend"]},
         "capabilities": {"backend": {"targets": ["avro"], "irVersions": ["3"], "generate": true}}
     })
@@ -35,7 +35,7 @@ fn bundle(root: &std::path::Path, bytes: &[u8], declared: Value) -> PathBuf {
 fn fixture() -> Vec<u8> {
     backend_process_script().replace(
         "if method == \"morphir.initialize\":",
-        &format!("if method == \"morphir.extension.describe\":\n        result = json.loads({:?})\n    elif method == \"morphir.initialize\":", statement().to_string()),
+        &format!("if method == \"morphir.extension.describe\":\n        result = json.loads({:?})\n    elif method == \"morphir.initialize\":", claim_set().to_string()),
     ).into_bytes()
 }
 
@@ -65,7 +65,7 @@ fn publish(root: &std::path::Path, bundle: &std::path::Path) -> std::process::Ou
 #[test]
 fn process_bundle_publishes_and_resolves_host() {
     let temp = TempDir::new().unwrap();
-    let bundle = bundle(temp.path(), &fixture(), statement());
+    let bundle = bundle(temp.path(), &fixture(), claim_set());
     let output = publish(temp.path(), &bundle);
     assert!(output.status.success(), "{}", compacted_stderr(&output));
     let index = LocalIndex::open(temp.path().join("repository")).unwrap();
@@ -82,16 +82,16 @@ fn process_bundle_publishes_and_resolves_host() {
         &std::fs::read(temp.path().join("repository/extensions/morphir-avro.jsonl")).unwrap(),
     )
     .unwrap();
-    assert_eq!(record["artifacts"][0]["statementSource"], "probed");
+    assert_eq!(record["artifacts"][0]["claimCheck"], "probed");
     assert_eq!(record["artifacts"][0]["probeSource"], "describe");
-    assert_eq!(record["artifacts"][1]["statementSource"], "declared");
-    assert_eq!(record["artifacts"][1]["statement"], statement());
+    assert_eq!(record["artifacts"][1]["claimCheck"], "unchecked");
+    assert_eq!(record["artifacts"][1]["claims"], claim_set());
 }
 
 #[test]
 fn process_bundle_refuses_digest_mismatch() {
     let temp = TempDir::new().unwrap();
-    let bundle = bundle(temp.path(), &fixture(), statement());
+    let bundle = bundle(temp.path(), &fixture(), claim_set());
     std::fs::write(bundle.join("other-extension"), b"tampered").unwrap();
     let output = publish(temp.path(), &bundle);
     assert!(!output.status.success());
@@ -111,7 +111,7 @@ fn process_bundle_refuses_digest_mismatch() {
 #[test]
 fn process_bundle_refuses_describe_disagreement() {
     let temp = TempDir::new().unwrap();
-    let mut declared = statement();
+    let mut declared = claim_set();
     declared["capabilities"]["backend"]["generate"] = json!(false);
     let bundle = bundle(temp.path(), &fixture(), declared);
     let output = publish(temp.path(), &bundle);
@@ -145,7 +145,7 @@ fn real_published_morphir_scala_elm_resolves_host() {
     );
     let descriptor: Value =
         serde_json::from_slice(&std::fs::read(bundle.join("release.json")).unwrap()).unwrap();
-    let declared = descriptor["artifacts"][0]["statement"].clone();
+    let declared = descriptor["artifacts"][0]["claims"].clone();
     let output = publish(temp.path(), &bundle);
     assert!(output.status.success(), "{}", compacted_stderr(&output));
     let index = LocalIndex::open(temp.path().join("repository")).unwrap();
@@ -158,7 +158,7 @@ fn real_published_morphir_scala_elm_resolves_host() {
         )
         .unwrap();
     assert_eq!(
-        serde_json::to_value(selected.artifact().statement().unwrap()).unwrap(),
+        serde_json::to_value(selected.artifact().claims().unwrap()).unwrap(),
         declared
     );
     assert_eq!(
@@ -192,7 +192,7 @@ fn wasm_bundle_keeps_version_one_index_output() {
 #[test]
 fn process_bundle_accepts_an_agreeing_session_fallback() {
     let temp = TempDir::new().unwrap();
-    let mut declared = statement();
+    let mut declared = claim_set();
     declared["extension"]["types"] = json!(["backend", "workspace"]);
     declared["capabilities"]["workspace"] =
         json!({"discover": true, "protocolVersions": ["0.1.0-draft.1"]});
@@ -202,7 +202,7 @@ fn process_bundle_accepts_an_agreeing_session_fallback() {
     declared["future"] = json!({"retained": true});
     let script = backend_process_script()
         .replace("if method == \"morphir.initialize\":", "if method == \"morphir.extension.describe\":\n        result = {\"code\": -32601, \"message\": \"method not found\"}\n    elif method == \"morphir.initialize\":")
-        .replace("elif method == \"morphir.backend.generate\":", &format!("elif method == \"morphir.initialized\":\n        continue\n    elif method == \"morphir.extension.capabilities\":\n        result = json.loads({:?})\n    elif method == \"morphir.backend.generate\":", statement()["capabilities"].to_string()))
+        .replace("elif method == \"morphir.backend.generate\":", &format!("elif method == \"morphir.initialized\":\n        continue\n    elif method == \"morphir.extension.capabilities\":\n        result = json.loads({:?})\n    elif method == \"morphir.backend.generate\":", claim_set()["capabilities"].to_string()))
         .replace("{\"jsonrpc\": \"2.0\", \"id\": identifier, \"result\": result}", "{\"jsonrpc\": \"2.0\", \"id\": identifier, (\"error\" if \"code\" in result else \"result\"): result}");
     let bundle = bundle(temp.path(), script.as_bytes(), declared.clone());
     let output = publish(temp.path(), &bundle);
@@ -211,8 +211,8 @@ fn process_bundle_accepts_an_agreeing_session_fallback() {
         &std::fs::read(temp.path().join("repository/extensions/morphir-avro.jsonl")).unwrap(),
     )
     .unwrap();
-    assert_eq!(record["artifacts"][0]["statement"], declared);
-    assert_eq!(record["artifacts"][0]["statementSource"], "probed");
+    assert_eq!(record["artifacts"][0]["claims"], declared);
+    assert_eq!(record["artifacts"][0]["claimCheck"], "probed");
     assert_eq!(record["artifacts"][0]["probeSource"], "session-fallback");
 }
 
@@ -225,7 +225,7 @@ fn process_publication_stages_privately_under_home_and_cleans_up() {
             "import json",
             &format!("import os, pathlib, stat\npathlib.Path({:?}).write_text(__import__('json').dumps({{'path': os.getcwd(), 'mode': stat.S_IMODE(os.stat('.').st_mode)}}))\nimport json", observation.to_str().unwrap()),
         );
-        let mut declared = statement();
+        let mut declared = claim_set();
         if !succeeds {
             declared["capabilities"]["backend"]["generate"] = json!(false);
         }

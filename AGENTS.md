@@ -92,7 +92,7 @@ See the [Domain Modeling guide](docs/developers/domain-modeling.md).
 
 ### Contract Versioning
 
-Every versioned contract Morphir defines (protocols, document and schema formats, capability statements) uses **SemVer 2.0 version strings by default**. Apply this to a new contract without asking.
+Every versioned contract Morphir defines (protocols, document and schema formats, capability claim sets) uses **SemVer 2.0 version strings by default**. Apply this to a new contract without asking.
 
 - A released version is compatible within its major. Readers ignore unknown members unless a `critical` list names them. A breaking change takes a new major.
 - A prerelease such as `1.0.0-draft.3` matches only exactly. Drafts are refined in place and promise no compatibility with each other.
