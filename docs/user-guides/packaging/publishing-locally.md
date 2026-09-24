@@ -15,7 +15,7 @@ New to signing and trust? Read [Why package trust matters](why-package-trust.md)
 or [Trust explained simply](trust-explained.md) first.
 
 :::caution Early access: publisher tooling is limited
-This guide describes **Morphir CLI v0.4.0-beta.7**. Its `morphir package registry`,
+This guide describes **Morphir CLI v0.4.0-beta.8**. Its `morphir package registry`,
 `sign` and `publish` commands publish only a dependency-free classic V4 Library, and
 only on macOS; see [the early publication path](#source-built-cli-preview). The
 later steps explain the publication inputs and how to try a prepared local
@@ -94,7 +94,7 @@ bundle contents before admitting a release.
 
 ## Explore a prepared registry
 
-The [versioned example](https://github.com/finos/morphir/tree/v0.4.0-beta.7/examples/package/local-library-restore)
+The [versioned example](https://github.com/finos/morphir/tree/v0.4.0-beta.8/examples/package/local-library-restore)
 includes published `loan-rules@1.0.0` and `eligibility@1.2.0` releases. If you followed
 the creation article, return to the root of `morphir-package-examples` and copy the
 example to a new working directory:
@@ -135,8 +135,8 @@ missing authoring and publication tooling before depending on this feature for
 distribution. The current CLI does not turn your bundle into the signed registry
 objects above.
 
-The [local Library contract](https://github.com/finos/morphir/blob/v0.4.0-beta.7/spec/package/local-library-contract.md)
-and [trust profile](https://github.com/finos/morphir/blob/v0.4.0-beta.7/spec/package/package-trust-profile.md)
+The [local Library contract](https://github.com/finos/morphir/blob/v0.4.0-beta.8/spec/package/local-library-contract.md)
+and [trust profile](https://github.com/finos/morphir/blob/v0.4.0-beta.8/spec/package/package-trust-profile.md)
 describe the draft protocol for implementers. They specify more than the released
 CLI currently exposes. Example fixture generators and public test keys are not a
 supported publisher for your own releases.

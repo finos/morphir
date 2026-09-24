@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.8] - 2026-09-24
+
+### Fixed
+- An installed extension's claims keep `multiDocument` and the other nested capability members the version-2 descriptor supplies. `extension install` recorded them in the catalog but the host rebuilt a provider's capabilities from the flat members, so a frontend that claimed multi-document compile was run one document at a time. The install lock now pins the supplied claims at `index.claims`, so a later catalog edit cannot change them; a lock written by an earlier beta has no pin and falls back to the catalog (finos/morphir-rust#266, #921).
+
 ### Changed
+- The `morphir-rust` pin moves to `04ababf` (finos/morphir-rust#265, #266, #268 and #269). `extension-claims` prints a built guest's capability claims, and the WASM extension bundles carry version-2 descriptors with those claims.
+- The published WASM bundle pins move to the releases with version-2 descriptors: `extension/avro/v0.2.0`, `extension/openapi/v0.2.0`, `extension/python/v0.4.0` and `extension/rust/v0.3.0`. The host records their claims in the catalog with `claimCheck` `unchecked`, because it never probes a WASM artifact. These bundles need Morphir CLI `0.4.0-beta.7` or later to publish (#921).
 - The CLI's install probe, publish describe, and one-shot compile, generate and workspace discovery calls for configured, installed and native MEP providers now run through `morphir-host` sessions; the workbench session pool is unchanged. A provider that returns an invalid method result, such as an artifact path outside the output directory, is now shut down in order instead of being killed. Transport failures that begin as I/O or JSON decode errors now read `Extension error: IO error: ...` (or `Extension error: JSON error: ...`) instead of `IO error: ...`. The `morphir-rust` pin moves to `3b4e4fe` (finos/morphir-rust#263, which adds `morphir-host-native`; #963, #959).
 
 ## [0.4.0-beta.7] - 2026-09-24

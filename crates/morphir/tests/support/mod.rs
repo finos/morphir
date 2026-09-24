@@ -189,9 +189,15 @@ pub fn guest_metadata(guest_path: &Path, package_name: &str, backend: Value) -> 
         .as_str()
         .unwrap_or_else(|| panic!("{} has no version", descriptor.display()))
         .to_owned();
+    let backend = &release["artifacts"][0]["claims"]["capabilities"]["backend"];
+    assert!(
+        backend.is_object(),
+        "{} has no backend claims",
+        descriptor.display()
+    );
     let capabilities = serde_json::json!({
-        "targets": release["targets"],
-        "irVersions": release["irVersions"],
+        "targets": backend["targets"],
+        "irVersions": backend["irVersions"],
     });
     (version, capabilities)
 }

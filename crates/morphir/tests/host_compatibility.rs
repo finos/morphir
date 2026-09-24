@@ -167,13 +167,20 @@ fn wasm(short_id: &str, ir: Value, options: &[&str]) {
     let id = format!("morphir-{short_id}");
     let host = HostCompatibility::new();
     host.publish_and_install(&bundle, &id, pinned_version(&pin));
+    // The host never probes a WASM artifact, so it records the published claims unchecked.
     let catalog = host.catalog();
-    for member in ["claims", "claimCheck", "probeSource"] {
-        assert!(
-            catalog["extensions"][0].get(member).is_none(),
-            "version-1 catalog must retain its legacy shape: {catalog}"
-        );
-    }
+    assert_eq!(
+        catalog["extensions"][0]["claims"], descriptor["artifacts"][0]["claims"],
+        "{catalog}"
+    );
+    assert_eq!(
+        catalog["extensions"][0]["claimCheck"], "unchecked",
+        "{catalog}"
+    );
+    assert!(
+        catalog["extensions"][0].get("probeSource").is_none(),
+        "an unchecked WASM entry has no probe source: {catalog}"
+    );
     assert!(
         host.run(&["extension", "list"])
             .contains("Claims: unchecked")

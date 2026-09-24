@@ -131,6 +131,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "aliasable"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -216,6 +222,30 @@ name = "anyhow"
 version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
+
+[[package]]
+name = "apache-avro"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "312c1ea69e5fe9966e0029fb95aca8790100b85aff4f0d3b00a9337c74069a9c"
+dependencies = [
+ "bigdecimal",
+ "bon",
+ "digest 0.11.3",
+ "log",
+ "miniz_oxide 0.9.1",
+ "num-bigint 0.4.8",
+ "ouroboros",
+ "quad-rand",
+ "rand 0.10.2",
+ "regex-lite",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "strum",
+ "thiserror 2.0.20",
+ "uuid",
+]
 
 [[package]]
 name = "apple-native-keyring-store"
@@ -698,6 +728,7 @@ dependencies = [
  "num-bigint 0.4.8",
  "num-integer",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -841,6 +872,29 @@ dependencies = [
  "futures-io",
  "futures-lite",
  "piper",
+]
+
+[[package]]
+name = "bon"
+version = "3.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e3fac94a66da67200398458a25412bcc3f9b6443b5119a6cad9cf3ccfcd8cc6"
+dependencies = [
+ "bon-macros",
+]
+
+[[package]]
+name = "bon-macros"
+version = "3.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4654961ad0494e4774c5c60b4cb4cd0ae9b9d92d039d901638b1dba97ebebf5"
+dependencies = [
+ "darling 0.24.1",
+ "ident_case",
+ "prettyplease 0.3.0",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -1048,7 +1102,7 @@ version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ecb53484c9c167ba674026b656d8a27d7657a58e6066aa902bfb1a4aa00ae20"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "indexmap",
  "log",
  "proc-macro2",
@@ -1189,7 +1243,7 @@ version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9c751b79415d4e559e3d1fcf128e09e720eb673a06d26cf6f392d37d75b66e0"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn 3.0.3",
@@ -1506,7 +1560,7 @@ dependencies = [
  "cranelift-assembler-x64-meta",
  "cranelift-codegen-shared",
  "cranelift-srcgen",
- "heck",
+ "heck 0.5.0",
  "pulley-interpreter",
 ]
 
@@ -2969,7 +3023,7 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e2c0d8c632f8a251ce9a8198079b1022adc586ff4e3d33e18debd40eb463b31"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "peg",
  "quote",
  "serde",
@@ -3211,6 +3265,12 @@ checksum = "32069d97bb81e38fa67eab65e3393bf804bb85969f2bc06bf13f64aef5aba248"
 dependencies = [
  "hashbrown 0.17.1",
 ]
+
+[[package]]
+name = "heck"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "heck"
@@ -3766,7 +3826,7 @@ dependencies = [
 
 [[package]]
 name = "integration-tests"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "anyhow",
  "cucumber",
@@ -4181,7 +4241,7 @@ version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2da3f8ab5ce1bb124b6d082e62dffe997578ceaf0aeb9f3174a214589dc00f07"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
@@ -4367,7 +4427,7 @@ version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7566055976eb86ee8e8fbafa0fbdad985c5d7c3f4eed04fc11bb495f71e3856"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -4805,7 +4865,7 @@ dependencies = [
 
 [[package]]
 name = "morphir"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4884,8 +4944,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "morphir-avro-extension"
+version = "0.2.0"
+dependencies = [
+ "apache-avro",
+ "morphir-core",
+ "morphir-extension-sdk",
+ "morphir-projection",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "morphir-common"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "anyhow",
  "cap-fs-ext 4.0.3",
@@ -4925,7 +5000,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-config"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "secrecy",
  "serde",
@@ -4937,7 +5012,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-core"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "anyhow",
  "bigdecimal",
@@ -4956,7 +5031,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-daemon"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4988,7 +5063,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-decoration"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "indexmap",
  "morphir-core",
@@ -5001,7 +5076,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-devkit"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "anyhow",
  "cap-std 4.0.3",
@@ -5020,7 +5095,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-distribution"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "flate2",
  "fs2",
@@ -5043,7 +5118,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-elm-binding"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cc",
  "cucumber",
@@ -5067,7 +5142,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-evaluator"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "morphir-core",
  "morphir-runtime",
@@ -5079,7 +5154,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-extension-sdk"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "extism-pdk",
  "morphir-workspace",
@@ -5127,7 +5202,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-host"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "async-trait",
  "morphir-extension-sdk",
@@ -5142,11 +5217,13 @@ dependencies = [
 
 [[package]]
 name = "morphir-host-native"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
  "extism",
+ "morphir-avro-extension",
+ "morphir-common",
  "morphir-core",
  "morphir-distribution",
  "morphir-extension-sdk",
@@ -5164,7 +5241,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-kb"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "chrono",
  "morphir-okf",
@@ -5181,7 +5258,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-mck"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -5207,7 +5284,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-okf"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "pulldown-cmark",
  "regex",
@@ -5219,7 +5296,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-opa"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "morphir-evaluator",
  "regorus",
@@ -5228,7 +5305,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-package"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -5299,14 +5376,14 @@ dependencies = [
 
 [[package]]
 name = "morphir-runtime"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "morphir-core",
 ]
 
 [[package]]
 name = "morphir-workspace"
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 dependencies = [
  "globset",
  "morphir-config",
@@ -5728,6 +5805,30 @@ checksum = "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50"
 dependencies = [
  "futures-core",
  "pin-project-lite",
+]
+
+[[package]]
+name = "ouroboros"
+version = "0.18.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e0f050db9c44b97a94723127e6be766ac5c340c48f2c4bb3ffa11713744be59"
+dependencies = [
+ "aliasable",
+ "ouroboros_macro",
+ "static_assertions",
+]
+
+[[package]]
+name = "ouroboros_macro"
+version = "0.18.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c7028bdd3d43083f6d8d4d5187680d0d3560d54df4cc9d752005268b41e64d0"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "proc-macro2-diagnostics",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -6203,6 +6304,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prettyplease"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bfe0f4c752e450fc2faf62654f1c134747922825d5b04ca717b8874f41a40c0"
+dependencies = [
+ "proc-macro2",
+ "syn 3.0.3",
+]
+
+[[package]]
 name = "priority-queue"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6265,6 +6376,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro2-diagnostics"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af066a9c399a26e020ada66a034357a868728e72cd426f3adcd35f80d88d88c8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+ "version_check",
+ "yansi",
+]
+
+[[package]]
 name = "prost"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6290,12 +6414,12 @@ version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03da047801ff44bb6a4d407d4860c05fd70bb81714e6b2f3812603d5b145b042"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "itertools 0.14.0",
  "log",
  "multimap",
  "petgraph 0.8.3",
- "prettyplease",
+ "prettyplease 0.2.37",
  "prost 0.14.4",
  "prost-types",
  "regex",
@@ -6418,6 +6542,12 @@ dependencies = [
  "quote",
  "syn 2.0.119",
 ]
+
+[[package]]
+name = "quad-rand"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a651516ddc9168ebd67b24afd085a718be02f8858fe406591b013d101ce2f40"
 
 [[package]]
 name = "quick-xml"
@@ -7442,6 +7572,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5d440709e79d88e51ac01c4b72fc6cb7314017bb7da9eeff678aa94c10e3ea8"
+dependencies = [
+ "serde",
+ "serde_core",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7777,7 +7917,7 @@ version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1c97747dbf44bb1ca44a561ece23508e99cb592e862f22222dcf42f51d1e451"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -7951,7 +8091,7 @@ version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab85eea0270ee17587ed4156089e10b9e6880ee688791d45a905f5b1ca36f664"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -9451,7 +9591,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fd23d12cc95c451c1306db5bc63075fbebb612bb70c53b4237b1ce5bc178343"
 dependencies = [
  "anyhow",
- "heck",
+ "heck 0.5.0",
  "im-rc",
  "indexmap",
  "log",
@@ -9772,7 +9912,7 @@ checksum = "2192a77a00b9a67800c2b4e1c70fb6abca79d6b529e53a2ef9dcdcc36090330d"
 dependencies = [
  "anyhow",
  "bitflags 2.13.1",
- "heck",
+ "heck 0.5.0",
  "indexmap",
  "wit-parser",
 ]
@@ -9964,7 +10104,7 @@ version = "43.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bd7a197903e5b4ff5e13aef9c891960d71e92073600ecf4c86c7e795ac1c803"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",

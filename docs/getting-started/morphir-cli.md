@@ -22,14 +22,14 @@ Prebuilt binaries are published from [finos/morphir releases](https://github.com
 ### Install with mise
 
 ```shell
-mise use -g github:finos/morphir@0.4.0-beta.7
+mise use -g github:finos/morphir@0.4.0-beta.8
 ```
 
 To pin Morphir in a project's `mise.toml`:
 
 ```toml
 [tools]
-"github:finos/morphir" = "0.4.0-beta.7"
+"github:finos/morphir" = "0.4.0-beta.8"
 ```
 
 Run `mise install` after changing the configuration. Prereleases must be selected explicitly.
