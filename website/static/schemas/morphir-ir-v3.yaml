@@ -25,17 +25,47 @@ properties:
     description: "The IR format version, governed by the v3-and-later formatVersion contract. Integer 3 is the canonical v3.0.0 baseline; exact release strings identify later revisions in the v3 family"
   
   distribution:
-    description: "The distribution data, currently only Library distributions are supported."
-    type: array
-    minItems: 4
-    maxItems: 4
-    items:
-      - type: string
-        const: "Library"
-        description: "The type of distribution. Currently only Library is supported."
-      - $ref: "#/definitions/PackageName"
-      - $ref: "#/definitions/Dependencies"
-      - $ref: "#/definitions/PackageDefinition"
+    description: |
+      The distribution data: a Library, or from 3.1.0 a Specs distribution. A Library carries its package
+      definition. A Specs distribution carries only its package specification, and needs formatVersion
+      "3.1.0" or later.
+    oneOf:
+      - type: array
+        minItems: 4
+        maxItems: 4
+        items:
+          - type: string
+            const: "Library"
+            description: "A Library distribution: the package definition and its dependencies' specifications."
+          - $ref: "#/definitions/PackageName"
+          - $ref: "#/definitions/Dependencies"
+          - $ref: "#/definitions/PackageDefinition"
+      - type: array
+        minItems: 4
+        maxItems: 4
+        items:
+          - type: string
+            const: "Specs"
+            description: "A Specs distribution (3.1.0 and later): the package specification and its dependencies' specifications."
+          - $ref: "#/definitions/PackageName"
+          - $ref: "#/definitions/Dependencies"
+          - $ref: "#/definitions/PackageSpecification"
+
+if:
+  properties:
+    distribution:
+      type: array
+      items:
+        - const: "Specs"
+  required:
+    - distribution
+then:
+  properties:
+    formatVersion:
+      type: string
+      not:
+        pattern: "^3\\.0\\."
+      description: "A Specs distribution needs formatVersion 3.1.0 or later; integer 3 and 3.0.x strings are refused (specs_before_3_1)"
 
 definitions:
   # ===== Basic Building Blocks =====

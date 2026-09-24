@@ -9,6 +9,67 @@ description: "Changes and improvements in Morphir IR schema version 3"
 
 Version 3 of the Morphir IR schema introduces consistent capitalization across all tags, providing a uniform and predictable format.
 
+## Version 3.1.0
+
+`3.1.0` is a minor revision of version 3. It adds two things: a `Specs` distribution, and the v3 document tree. A
+`3.0.0` document stays valid and keeps its meaning.
+
+### Version rules
+
+A writer emits the lowest version that expresses its content:
+
+| Content | `formatVersion` a writer emits |
+| --- | --- |
+| Single-file `Library` | `3` (the `3.0.0` release), unchanged |
+| Single-file `Specs` | `"3.1.0"` |
+| Any file of a v3 document tree | `"3.1.0"` |
+
+A reader of `3.1.0` accepts the integer `3` and the strings `"3.0.0"` and `"3.1.0"`. It refuses `3.2.0` and later
+with `unsupported_format_version_minor`. The reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)` (see
+[Format version](../../format-version.md)). A reader that stays on `[3.0.0,3.1.0)` still reads every `3.0.0`
+document. It refuses a `Specs` distribution and every v3 tree with the same diagnostic.
+
+### The Specs distribution
+
+A `Specs` distribution publishes a package's specification without its definitions. It has the shape of a `Library`,
+with a package specification in place of the package definition:
+
+| Element | `Library` | `Specs` |
+| --- | --- | --- |
+| 1 | `"Library"` | `"Specs"` |
+| 2 | Package name | Package name |
+| 3 | Dependencies: package name and package specification pairs | The same |
+| 4 | Package definition | Package specification |
+
+```json
+{
+  "formatVersion": "3.1.0",
+  "distribution": [
+    "Specs",
+    [["my"], ["pkg"]],
+    [],
+    {
+      "modules": [
+        [[["basics"]], { "types": [[["int"], { "doc": "", "value": ["OpaqueTypeSpecification", []] }]], "values": [], "doc": "Basics." }]
+      ]
+    }
+  ]
+}
+```
+
+The modules of the fourth element are module specifications, spelled as a dependency's modules are. A reader MUST
+refuse a module definition there, such as one wrapped in `{ "access", "value" }`. A reader MUST refuse a `Specs`
+distribution that declares a release below `3.1.0` (the integer `3` or any `"3.0.x"`) with `specs_before_3_1`. The
+rule is the same in every serialization that carries v3.
+
+Migrating a v3 `Specs` distribution to v4 gives a v4 `Specs` distribution with `"formatVersion": 4`, as migrating a
+`Library` does.
+
+### The v3 document tree
+
+A v3 distribution can be stored as a JSON or YAML document tree. The tree uses the v4 tree's layout without change and
+holds classic v3 payloads. [Document Tree File Formats (Version 3)](./document-tree-files.md) specifies it.
+
 ## Key Changes from Version 2
 
 ### Consistent Capitalization

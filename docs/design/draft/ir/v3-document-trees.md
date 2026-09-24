@@ -10,6 +10,20 @@ tracking:
 
 # IR 3.1.0 and v3 document trees
 
+> **Status:** Implemented in morphir-rust ([finos/morphir-rust#256](https://github.com/finos/morphir-rust/pull/256) and [#257](https://github.com/finos/morphir-rust/pull/257)) and in the morphir CLI, and recorded in [decision 0018](../../../../kb/bundles/morphir/morphir-ir/decisions/0018-ir-3-1-adds-specs-and-v3-document-trees.md). The normative text is now [Document Tree File Formats (Version 3)](../../../spec/ir/schemas/v3/document-tree-files.md), the [3.1.0 section of What's New in Version 3](../../../spec/ir/schemas/v3/whats-new.md#version-310), the v3 JSON Schema, and the [format-version page](../../../spec/ir/format-version.md). This draft stays as the design record. Where it and the implementation differ, the implementation and the normative pages win:
+>
+> | This draft | Implementation |
+> | --- | --- |
+> | Does not say how a reader treats a `Specs` declared below `3.1.0` | Every reader (JSON, YAML, Ion) refuses it with `specs_before_3_1` |
+> | Does not say what a `Specs` body may hold | Its own modules must be module specifications; a definition-shaped module is refused, and an Ion `kind: specs` datagram refuses a definition with `definition_in_specs` |
+> | Does not say what migration does with a `Specs` | A v3 `Specs` migrates to a v4 `Specs` with `"formatVersion": 4`, as a `Library` does |
+> | A v3 manifest has no `entryPoints` | It has no member beyond `formatVersion`, `distribution`, `package`, `pathBudget` and `dependencies`: `entryPoints`, `version`, `created` and `layout` are `unknown_member`, and a module manifest does not accept the v4 alias `module` |
+> | Does not say what a dependency may name | A dependency naming the distribution's own package is `invalid_distribution_shape`; a repeated one is `duplicate_member` |
+> | `read_any_tree` dispatches on the manifest | Also, the v4 tree reader refuses a manifest of major 3 with `version_mismatch` at `manifest#/formatVersion` |
+> | The Ion spelling writes own modules as `module::spec` | A repeated own `module::spec` is refused with `duplicate_name`; own modules do not merge |
+> | `TreeParts<P>` holds a tree's parts | The kit has a `Payload` trait and a `TreeModel` trait with associated file types; there is no `TreeParts` type |
+> | `morphir ir migrate` writes v3 JSON and YAML trees | `morphir migrate` (also `morphir ir migrate`) `--target-version v3 --output-layout vfs` writes v3 trees with `--output-format json`, `yaml` or `ion`; in every tree format the manifest decides the version on read |
+
 This draft adds a minor revision of the classic IR, `3.1.0`. The revision adds two things. A v3 distribution may be a `Specs` distribution, and a v3 distribution may be stored as a JSON or YAML document tree. Before this revision, only the Ion tree held v3 ([issue 970](https://github.com/finos/morphir/issues/970)).
 
 A `3.0.0` document stays valid and keeps its meaning. A writer emits the lowest version that expresses its content. A reader that implements this draft accepts `[3.0.0,3.2.0)`.

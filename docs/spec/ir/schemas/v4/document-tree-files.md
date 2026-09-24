@@ -24,6 +24,9 @@ The extension is not part of a logical identity. A generated tree MUST use one p
 > logical paths, but its files hold annotated Ion elements instead of the structures below. See the
 > [Ion draft](../../../../design/draft/ir/ion.md#document-tree).
 
+A v3 distribution uses this layout with classic payloads from IR `3.1.0`; the
+[v3 document tree page](../v3/document-tree-files.md) specifies it.
+
 ## Logical paths
 
 A document tree is addressed by **logical paths**, and a logical path carries **no extension**:
