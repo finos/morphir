@@ -35,7 +35,7 @@ reports and transcript are unaffected.
 | `kit status` | matches `kit.lock.json`, exit 0 |
 
 The 8 TypeScript skips are `versions-0001`, `-0006`, `-0007` and `-0008`, fence 0, on both paths,
-each `version 3 not in capabilities`. The Rust binding declares `[3.0.0,3.1.0),[4.0.0,4.1.0)` and
+each `version 3 not in capabilities`. The Rust binding declares `[3.0.0,3.2.0),[4.0.0,4.1.0)` and
 runs them. `allowed-failing.json` for the Rust adapter is empty.
 
 ## Files

@@ -149,7 +149,7 @@ fn the_rust_runner_reproduces_the_rust_bindings_report_from_the_same_answers() {
     parity(
         "morphir-rust",
         713,
-        "morphir-rust supports IR format versions [3.0.0,3.1.0),[4.0.0,4.1.0) (3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0)",
+        "morphir-rust supports IR format versions [3.0.0,3.2.0),[4.0.0,4.1.0) (3.0.0 up to but not including 3.2.0, or 4.0.0 up to but not including 4.1.0)",
         "730 pass, 0 fail, 0 kit-error, 0 skipped",
     );
 }

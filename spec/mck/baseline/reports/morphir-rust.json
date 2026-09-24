@@ -2,7 +2,7 @@
 	"contractVersion": 1,
 	"binding": "morphir-rust",
 	"language": "rust",
-	"formatVersions": "[3.0.0,3.1.0),[4.0.0,4.1.0)",
+	"formatVersions": "[3.0.0,3.2.0),[4.0.0,4.1.0)",
 	"driverVersion": "0.3.0",
 	"kitVersion": "a2803f2cbfbb9baffe8a939e9462b18fd5bcdda0",
 	"startedAt": "2026-09-18T23:56:59.989Z",

@@ -614,7 +614,7 @@ mod tests {
             "contractVersion": 1,
             "binding": "morphir-rust",
             "language": "rust",
-            "formatVersions": "[3.0.0,3.1.0),[4.0.0,4.1.0)",
+            "formatVersions": "[3.0.0,3.2.0),[4.0.0,4.1.0)",
             "versions": [3, 4],
             "profiles": ["json", "yaml"],
             "layouts": ["single", "tree"],
@@ -639,7 +639,7 @@ mod tests {
     #[test]
     fn accepts_a_well_formed_capabilities_reply() {
         let parsed = parse_capabilities(&caps(json!({}))).unwrap();
-        assert_eq!(parsed.format_versions, "[3.0.0,3.1.0),[4.0.0,4.1.0)");
+        assert_eq!(parsed.format_versions, "[3.0.0,3.2.0),[4.0.0,4.1.0)");
         assert_eq!(parsed.versions, vec![3, 4]);
         assert_eq!(parsed.profiles, vec![Profile::Json, Profile::Yaml]);
         assert_eq!(parsed.nodes, vec!["Type", "Distribution"]);
