@@ -5142,7 +5142,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-host-native"
-version = "0.4.0-beta.6"
+version = "0.4.0-beta.7"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
