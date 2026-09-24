@@ -429,17 +429,18 @@ for which one module identities resolve against.
 - **Current** — `sources: { root?, documents }`. The root travels with the
   documents whose identities depend on it.
 - **Legacy** — a top-level `documents` array with the root in
-  `options.sourceRootUri`. This is what released providers were built against.
+  `options.sourceRootUri`. Providers released before `sources` existed were
+  built against it.
 
-The host chooses per provider rather than per request: a native provider
-receives the current envelope, while a process or WASM provider receives the
-legacy one, so a provider released before `sources` existed keeps working
-unchanged. See `compile_wire_request` in the CLI. A provider built on the SDK
-decodes either envelope and sees only the normalized `sources`, so an extension
-does not implement this distinction itself — it is a wire concern.
+The CLI sends the current envelope to every provider, native, process and WASM.
+CLI releases up to `0.4.0-beta.5` sent the legacy envelope to process and WASM
+providers, so a provider meant to work with those hosts accepts both. A
+provider built on the SDK decodes either envelope and sees only the normalized
+`sources`, so an extension does not implement this distinction itself — it is a
+wire concern.
 
-The legacy envelope is retained until an explicit protocol transition replaces
-it, at which point the host stops sending it and the decoder stops accepting it.
+The SDK stops accepting the legacy envelope once a released CLI sends only
+`sources`.
 
 ```json
 {

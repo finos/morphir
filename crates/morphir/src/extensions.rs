@@ -1,8 +1,5 @@
 //! CLI-owned integration boundary for built-in and installed extension providers.
 
-mod compile_wire;
-pub(crate) use compile_wire::compile_wire_request;
-
 use crate::error::CliError;
 use crate::home::MorphirHome;
 use morphir_daemon::ExtensionRegistry;
@@ -160,7 +157,7 @@ pub async fn invoke_frontend(
                 snapshot,
                 resolved.info().id.as_str(),
                 methods::COMPILE,
-                compile_wire_request(&request, resolved.invocation_mode()),
+                &request,
             )
             .await
         }

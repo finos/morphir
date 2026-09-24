@@ -180,10 +180,7 @@ impl Provider {
                     configured.launch.clone(),
                     &configured.id,
                     methods::COMPILE,
-                    crate::extensions::compile_wire_request(
-                        &request,
-                        morphir_daemon::InvocationMode::ProcessMep,
-                    ),
+                    &request,
                 )
                 .await
             }
