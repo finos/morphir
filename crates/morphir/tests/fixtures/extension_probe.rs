@@ -42,7 +42,7 @@ fn main() {
                 (
                     1,
                     format!(
-                        r#""result":{{"statementVersion":"0.1.0-draft.1","protocolVersions":["{protocol}"],"extension":{extension},"capabilities":{capabilities}}}"#
+                        r#""result":{{"claimsVersion":"0.1.0-draft.2","protocolVersions":["{protocol}"],"extension":{extension},"capabilities":{capabilities}}}"#
                     ),
                 )
             }

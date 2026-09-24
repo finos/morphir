@@ -37,11 +37,11 @@ fn setup(mode: &str) -> (TempDir, PathBuf, TestIndex) {
     let path = index.root.join("extensions/morphir-test.jsonl");
     let mut record: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    record["schemaVersion"] = "2.0.0-draft.1".into();
+    record["schemaVersion"] = "2.0.0-draft.2".into();
     record["frontend"]["incremental"] = false.into();
     record["frontend"]["fragments"] = false.into();
-    record["artifacts"][0]["statement"] = serde_json::json!({
-        "statementVersion": "0.1.0-draft.1", "protocolVersions": [MEP_VERSION],
+    record["artifacts"][0]["claims"] = serde_json::json!({
+        "claimsVersion": "0.1.0-draft.2", "protocolVersions": [MEP_VERSION],
         "extension": {"id": "morphir-test", "name": "Morphir test frontend", "version": "1.2.3", "types": ["frontend"]},
         "capabilities": {"frontend": record["frontend"].clone()}
     });
@@ -72,7 +72,7 @@ fn installed(home: &std::path::Path) -> serde_json::Value {
 }
 
 #[test]
-fn describe_records_probed_statement_and_lists_source() {
+fn describe_records_probed_claims_and_lists_source() {
     let (temp, home, _) = setup("describe");
     let output = run_morphir(
         &[
@@ -91,7 +91,7 @@ fn describe_records_probed_statement_and_lists_source() {
         String::from_utf8_lossy(&output.stderr)
     );
     let entry = installed(&home);
-    assert_eq!(entry["statementSource"], "probed");
+    assert_eq!(entry["claimCheck"], "probed");
     assert_eq!(entry["probeSource"], "describe");
     assert!(String::from_utf8_lossy(&output.stdout).contains("frontend"));
     let list = run_morphir(&["extension", "list"], &home, temp.path());
@@ -107,8 +107,53 @@ fn describe_records_probed_statement_and_lists_source() {
     );
 }
 
+/// An index record in the draft.1 spelling, as hosts 0.4.0-beta.5 and beta.6 wrote it, still
+/// installs, and the catalog this host writes uses only the draft.2 names (kb `morphir-extensions`
+/// decision 0007).
 #[test]
-fn session_fallback_records_probed_statement() {
+fn draft1_index_record_installs_with_draft2_catalog() {
+    let (temp, home, index) = setup("describe");
+    let path = index.root.join("extensions/morphir-test.jsonl");
+    let mut record: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    record["schemaVersion"] = "2.0.0-draft.1".into();
+    let artifact = record["artifacts"][0].as_object_mut().unwrap();
+    let mut claims = artifact.remove("claims").unwrap();
+    let claims_object = claims.as_object_mut().unwrap();
+    claims_object.remove("claimsVersion");
+    claims_object.insert("statementVersion".into(), "0.1.0-draft.1".into());
+    artifact.insert("statement".into(), claims);
+    std::fs::write(&path, format!("{record}\n")).unwrap();
+
+    let output = run_morphir(
+        &[
+            "extension",
+            "install",
+            "morphir-test",
+            "--repository",
+            "local",
+        ],
+        &home,
+        temp.path(),
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let catalog: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(home.join("catalog/extensions.json")).unwrap())
+            .unwrap();
+    let written = catalog.to_string();
+    assert!(!written.contains("\"statement"), "{written}");
+    let entry = &catalog["extensions"][0];
+    assert_eq!(entry["claimCheck"], "probed");
+    assert_eq!(entry["probeSource"], "describe");
+    assert_eq!(entry["claims"]["claimsVersion"], "0.1.0-draft.2");
+}
+
+#[test]
+fn session_fallback_records_probed_claims() {
     let (temp, home, _) = setup("fallback");
     let output = run_morphir(
         &[
@@ -126,7 +171,7 @@ fn session_fallback_records_probed_statement() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(installed(&home)["statementSource"], "probed");
+    assert_eq!(installed(&home)["claimCheck"], "probed");
     assert_eq!(installed(&home)["probeSource"], "session-fallback");
 }
 
@@ -168,7 +213,7 @@ fn disagreement_and_probe_failure_leave_no_install_state() {
 }
 
 #[test]
-fn no_probe_does_not_run_guest_and_records_declared() {
+fn no_probe_does_not_run_guest_and_records_unchecked() {
     let (temp, home, _) = setup("fail");
     let output = run_morphir(
         &[
@@ -187,18 +232,18 @@ fn no_probe_does_not_run_guest_and_records_declared() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(installed(&home)["statementSource"], "declared");
+    assert_eq!(installed(&home)["claimCheck"], "unchecked");
     assert!(installed(&home)["probeSource"].is_null());
     assert_eq!(
         String::from_utf8_lossy(&output.stderr)
-            .matches("not probed")
+            .matches("not checked")
             .count(),
         1
     );
 }
 
 #[test]
-fn wasm_keeps_declared_statement() {
+fn wasm_keeps_claims_unchecked() {
     let (temp, home, _) = setup("wasm");
     let output = run_morphir(
         &[
@@ -216,7 +261,7 @@ fn wasm_keeps_declared_statement() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(installed(&home)["statementSource"], "declared");
+    assert_eq!(installed(&home)["claimCheck"], "unchecked");
 }
 
 #[test]
@@ -287,8 +332,8 @@ fn no_probe_preserves_unknown_declared_members_and_clears_publisher_provenance()
     let path = index.root.join("extensions/morphir-test.jsonl");
     let mut record: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    record["artifacts"][0]["statement"]["future"] = serde_json::json!({"preserve": true});
-    record["artifacts"][0]["statementSource"] = "probed".into();
+    record["artifacts"][0]["claims"]["future"] = serde_json::json!({"preserve": true});
+    record["artifacts"][0]["claimCheck"] = "probed".into();
     std::fs::write(path, format!("{record}\n")).unwrap();
     let output = run_morphir(
         &[
@@ -307,8 +352,8 @@ fn no_probe_preserves_unknown_declared_members_and_clears_publisher_provenance()
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(installed(&home)["statementSource"], "declared");
-    assert_eq!(installed(&home)["statement"]["future"]["preserve"], true);
+    assert_eq!(installed(&home)["claimCheck"], "unchecked");
+    assert_eq!(installed(&home)["claims"]["future"]["preserve"], true);
 }
 
 #[test]
@@ -317,12 +362,12 @@ fn fallback_preserves_the_full_declaration_and_keeps_lock_consistent() {
     let path = index.root.join("extensions/morphir-test.jsonl");
     let mut record: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    let statement = &mut record["artifacts"][0]["statement"];
-    statement["protocolVersions"] = serde_json::json!([MEP_VERSION, "future-protocol"]);
-    statement["extension"]["types"] = serde_json::json!(["frontend", "validator"]);
-    statement["capabilities"]["validator"] = serde_json::json!({"validate": true});
-    statement["future"] = serde_json::json!({"preserve": true});
-    let declared = statement.clone();
+    let claims = &mut record["artifacts"][0]["claims"];
+    claims["protocolVersions"] = serde_json::json!([MEP_VERSION, "future-protocol"]);
+    claims["extension"]["types"] = serde_json::json!(["frontend", "validator"]);
+    claims["capabilities"]["validator"] = serde_json::json!({"validate": true});
+    claims["future"] = serde_json::json!({"preserve": true});
+    let declared = claims.clone();
     std::fs::write(path, format!("{record}\n")).unwrap();
     let output = run_morphir(
         &[
@@ -340,7 +385,7 @@ fn fallback_preserves_the_full_declaration_and_keeps_lock_consistent() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(installed(&home)["statement"], declared);
+    assert_eq!(installed(&home)["claims"], declared);
     let list = run_morphir(&["extension", "list"], &home, temp.path());
     assert!(
         list.status.success(),
@@ -358,9 +403,9 @@ fn fallback_preserves_artifact_host_requirements_for_later_activation() {
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     record["requires"] = serde_json::json!({"host": [format!("<={}", env!("CARGO_PKG_VERSION"))]});
     record["critical"] = serde_json::json!(["requires.host"]);
-    record["artifacts"][0]["statement"]["requires"] =
+    record["artifacts"][0]["claims"]["requires"] =
         serde_json::json!({"host": [format!(">={}", env!("CARGO_PKG_VERSION"))]});
-    record["artifacts"][0]["statement"]["critical"] = serde_json::json!(["requires.host"]);
+    record["artifacts"][0]["claims"]["critical"] = serde_json::json!(["requires.host"]);
     std::fs::write(path, format!("{record}\n")).unwrap();
     let output = run_morphir(
         &[
@@ -406,7 +451,7 @@ fn make_legacy(index: &TestIndex) {
     record["artifacts"][0]
         .as_object_mut()
         .unwrap()
-        .remove("statement");
+        .remove("claims");
     record["frontend"]
         .as_object_mut()
         .unwrap()
@@ -469,7 +514,7 @@ fn check_legacy_catalog(no_probe: bool) {
     assert_eq!(actual, expected);
     let list = run_morphir(&["extension", "list"], &home, temp.path());
     assert!(list.status.success());
-    assert!(String::from_utf8_lossy(&list.stdout).contains("Statement: declared"));
+    assert!(String::from_utf8_lossy(&list.stdout).contains("Claims: unchecked"));
 }
 
 #[test]
@@ -480,8 +525,8 @@ fn describe_and_bypass_store_identical_raw_declarations() {
         let path = index.root.join("extensions/morphir-test.jsonl");
         let mut record: serde_json::Value =
             serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-        record["artifacts"][0]["statement"]["future"] = serde_json::json!({"raw": [1, true]});
-        let declared = record["artifacts"][0]["statement"].clone();
+        record["artifacts"][0]["claims"]["future"] = serde_json::json!({"raw": [1, true]});
+        let declared = record["artifacts"][0]["claims"].clone();
         std::fs::write(path, format!("{record}\n")).unwrap();
         let mut args = vec![
             "extension",
@@ -500,8 +545,8 @@ fn describe_and_bypass_store_identical_raw_declarations() {
             String::from_utf8_lossy(&output.stderr)
         );
         let entry = installed(&home);
-        assert_eq!(entry["statement"], declared);
-        bodies.push(entry["statement"].clone());
+        assert_eq!(entry["claims"], declared);
+        bodies.push(entry["claims"].clone());
     }
     assert_eq!(bodies[0], bodies[1]);
 }
@@ -551,7 +596,7 @@ async fn staging_is_private_under_home_and_removed_after_success_or_failure() {
                         );
                     }
                     if succeeds {
-                        Ok(artifact.selected().artifact().declared_statement_record())
+                        Ok(artifact.selected().artifact().declared_claims_record())
                     } else {
                         Err(DistributionError::Probe("injected refusal".into()))
                     }
@@ -577,12 +622,12 @@ async fn install_rechecks_catalog_after_a_competing_install_commits() {
             // Both installs have resolved before the winner commits. No timing or sleeps required.
             ExtensionInstaller::new(&home)
                 .install_with_probe(selected.clone(), &host, async |winner| {
-                    Ok(winner.selected().artifact().declared_statement_record())
+                    Ok(winner.selected().artifact().declared_claims_record())
                 })
                 .await
                 .unwrap();
             committed = Some(std::fs::read(home.extensions_catalog_file()).unwrap());
-            Ok(artifact.selected().artifact().declared_statement_record())
+            Ok(artifact.selected().artifact().declared_claims_record())
         })
         .await;
     assert!(
