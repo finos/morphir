@@ -137,6 +137,22 @@ distribution:
         - $ref: "#/definitions/PackageName"
         - $ref: "#/definitions/Dependencies"
         - $ref: "#/definitions/PackageSpecification"
+
+# At the schema root: a Specs distribution needs formatVersion "3.1.0" or later.
+if:
+  properties:
+    distribution:
+      type: array
+      items:
+        - const: "Specs"
+  required:
+    - distribution
+then:
+  properties:
+    formatVersion:
+      type: string
+      not:
+        pattern: "^3\\.0\\."
 ```
 
 A v3 distribution can also be stored as a JSON or YAML document tree, from `3.1.0`. See

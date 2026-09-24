@@ -22,12 +22,14 @@ A writer emits the lowest version that expresses its content:
 | --- | --- |
 | Single-file `Library` | `3` (the `3.0.0` release), unchanged |
 | Single-file `Specs` | `"3.1.0"` |
-| Any file of a v3 document tree | `"3.1.0"` |
+| Any file of a v3 JSON or YAML document tree | `"3.1.0"` |
 
-A reader of `3.1.0` accepts the integer `3` and the strings `"3.0.0"` and `"3.1.0"`. It refuses `3.2.0` and later
-with `unsupported_format_version_minor`. The reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)` (see
+A reader of `3.1.0` accepts the integer `3` and the strings `"3.0.0"` and `"3.1.0"`. It refuses `3.2.0` and any later
+`3.x` release with `unsupported_format_version_minor`. The reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)` (see
 [Format version](../../format-version.md)). A reader that stays on `[3.0.0,3.1.0)` still reads every `3.0.0`
-document. It refuses a `Specs` distribution and every v3 tree with the same diagnostic.
+document. It refuses a `Specs` distribution and every v3 JSON or YAML tree with the same diagnostic. The draft Ion
+tree follows its own [Ion draft](../../../../design/draft/ir/ion.md#document-tree), where a v3 `library` tree still says
+`"3.0.0"`.
 
 ### The Specs distribution
 
@@ -68,7 +70,7 @@ Migrating a v3 `Specs` distribution to v4 gives a v4 `Specs` distribution with `
 ### The v3 document tree
 
 A v3 distribution can be stored as a JSON or YAML document tree. The tree uses the v4 tree's layout without change and
-holds classic v3 payloads. [Document Tree File Formats (Version 3)](./document-tree-files.md) specifies it.
+holds classic v3 payloads. The draft Ion tree is not part of this revision and follows the Ion draft. [Document Tree File Formats (Version 3)](./document-tree-files.md) specifies it.
 
 ## Key Changes from Version 2
 

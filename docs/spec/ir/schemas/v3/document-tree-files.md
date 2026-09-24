@@ -71,8 +71,10 @@ reader MUST read modules in sorted logical-path order.
 
 ## File Types
 
-Every file of a v3 tree MUST carry `"formatVersion": "3.1.0"`, as a string. The integer `3` and the string `"3.0.0"`
-are not valid in a tree file, because `3.0.0` has no document tree.
+Every file of a v3 JSON or YAML tree MUST carry `"formatVersion": "3.1.0"`, as a string. The integer `3` and the
+string `"3.0.0"` are not valid in such a file, because `3.0.0` has no JSON or YAML document tree. The draft Ion tree
+follows its own [Ion draft](../../../../design/draft/ir/ion.md#document-tree), where a v3 `library` tree says
+`"3.0.0"`.
 
 Envelope members hold canonical strings: the manifest's `package` and `dependencies`, a module's `path`, the names in
 its `types` and `values`, a node file's `name`, and the keys of `fileNames`. A payload under `def` or `spec` is classic
@@ -122,7 +124,7 @@ twice.
 | --- | --- | --- |
 | `formatVersion` | Yes | `"3.1.0"` |
 | `path` | Yes | The module path, as a canonical string |
-| `access` | No | `"Private"`; only in a module definition (see below) |
+| `access` | No | `"Public"` or `"Private"`; writers emit it only when `"Private"`; only in a module definition (see below) |
 | `doc` | No | Module documentation: a string, or an array of strings joined with a line break |
 | `types` | No | The module's type names, or inline entries (see below) |
 | `values` | No | The module's value names, or inline entries (see below) |
@@ -314,8 +316,8 @@ member inside that file.
 | Every listed name has its node file | `missing_member` | the missing file's path |
 | A payload decodes as the classic v3 JSON of its kind | `invalid_type` | `<file>#/def` or `<file>#/spec` |
 
-A top-level `$meta` member in any tree file is reserved, as in a v4 tree (decision 0014). A reader ignores it and
-never reports it as unknown, and a writer never emits it. The file-naming, stem and truncation rules are those of the
+A top-level `$meta` member in any tree file is reserved, as in a v4 tree (decision 0014). A reader MUST ignore it and
+MUST NOT report it as unknown. A writer MUST NOT emit it. The file-naming, stem and truncation rules are those of the
 [v4 tree](../v4/document-tree-files.md#validation-rules).
 
 ## Related Documentation

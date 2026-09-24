@@ -18,9 +18,9 @@ table became `[3.0.0,3.2.0),[4.0.0,4.1.0)`.
 
 ## Summary
 
-Before this revision, v3 had one distribution kind and one storage layout. A package could publish only a `Library`,
-which carries every definition. A tool that wanted a package's public face had to ship the definitions too. And only
-the draft Ion tree could hold v3 as a directory of files
+Before this revision, v3 had one distribution kind, and its only released layout was the single file. A package could
+publish only a `Library`, which carries every definition. A tool that wanted a package's public face had to ship the
+definitions too. And only the draft Ion tree could hold v3 as a directory of files
 ([issue 970](https://github.com/finos/morphir/issues/970)). The JSON and YAML trees, which the rest of the toolchain
 reads, were defined for v4 only.
 
@@ -43,8 +43,8 @@ that kind is a minor revision, so this is `3.1.0` and not a patch of `3.0.0`.
 A reader that stays on `[3.0.0,3.1.0)` refuses a `3.1.0` document with `unsupported_format_version_minor`, as decision
 0016 requires. If every writer moved to `"3.1.0"`, every new `Library` file would hit that refusal in morphir-elm,
 morphir-scala, morphir-python and morphir-ui, although the file holds nothing `3.0.0` cannot say. Emitting the lowest
-version that fits confines the refusal to content that is new: a `Specs` distribution and a v3 tree. The rule is
-proven by the Rust codec and the kit: kit case document-tree-0011 reads a v3 tree back as a single-file `Library` with
+version that fits confines the refusal to content that is new: a `Specs` distribution and a v3 tree. The Rust
+codec and the kit prove the rule: kit case document-tree-0011 reads a v3 tree back as a single-file `Library` with
 `"formatVersion": 3`, and distributions-0011 pins a single-file `Specs` at `"3.1.0"`.
 
 The same rule explains the refusal of a `Specs` declared below `3.1.0`. A `3.0.0` reader has no `Specs` case, so a file
@@ -78,7 +78,7 @@ maintenance, not a measured result: one implementation of the rules is less to k
 
 This is the simplest writer rule, and it matches what a writer does for v4 revisions. It was rejected because it
 breaks readers for no gain. A `Library` needs nothing from `3.1.0`, and every other binding that reads v3 still
-declares a `3.0` ceiling. Those readers would refuse every file a new CLI wrote, including files they read today.
+declares an exclusive upper bound of `3.1.0`. Those readers would refuse every file a new CLI wrote, including files they read today.
 
 ### Classic fragments verbatim in tree files
 
@@ -107,8 +107,8 @@ draft).
 1. The v3 JSON Schema accepts a `Specs` distribution beside `Library`, and requires `"3.1.0"` or later for it.
 2. `docs/spec/ir/schemas/v3/document-tree-files.md` specifies the v3 tree, and the v3 `whats-new.md` records `3.1.0`.
 3. The reference support table and the morphir-rust table became `[3.0.0,3.2.0),[4.0.0,4.1.0)`. Each other binding
-   raises its own table when it implements `3.1.0`. The TypeScript binding, morphir-elm, morphir-scala and
-   morphir-python have follow-up issues.
+   raises its own table when it implements `3.1.0`. Follow-up issues are to be filed for the TypeScript
+   binding, morphir-elm, morphir-scala and morphir-python.
 4. morphir-ui keeps `[3.0.0,3.1.0),[4.0.0,4.1.0)` until it adopts `3.1.0`. It reads every `3.0.0` document and refuses
    a `3.1.0` document with the minor-version diagnostic.
 5. `morphir migrate --target-version v3 --output-layout vfs` writes v3 trees in the JSON, YAML and Ion profiles, and the
