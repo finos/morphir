@@ -35,8 +35,10 @@ the draft [`docs/design/draft/ir/ion.md`](https://github.com/finos/morphir/blob/
 
 ## Status: unreleased
 
-Nothing on this page has shipped. The codec is in [finos/morphir-rust#233](https://github.com/finos/morphir-rust/pull/233),
-and [issue 946](https://github.com/finos/morphir/issues/946) tracks the plan. The spelling contract is `ionVersion`
+Nothing on this page has shipped. The first codec merged in
+[finos/morphir-rust#233](https://github.com/finos/morphir-rust/pull/233), and
+[finos/morphir-rust#248](https://github.com/finos/morphir-rust/pull/248) completes it. Issue
+[946](https://github.com/finos/morphir/issues/946) and beads epic `morphir-vvgi` track the plan. The spelling contract is `ionVersion`
 `0.1.0-draft.1`. A draft version matches only that exact string. Any change to the spelling can therefore break a file
 written today.
 
@@ -50,18 +52,18 @@ this knowledge base describes the format as intent, not as behaviour a user can 
 
 ## Delivery
 
-This repository has no intent bundle yet, so issue 946 carries the plan. Table 1 maps its steps to their state on the
-`feat/amazon-ion-ir` branches.
+This repository has no intent bundle yet, so issue 946 carries the plan and beads epic `morphir-vvgi` tracks the
+remaining work. Table 1 maps the plan's steps to their state after finos/morphir-rust#248.
 
-| Step in issue 946 | State on the branch |
+| Step in issue 946 | State |
 | --- | --- |
 | 1. Draft specification | Written in `docs/design/draft/ir/ion.md`, with the tree section added |
 | 2. Format registration | Done. The plan kept the tree JSON or YAML; the Ion tree was added later at a maintainer's request |
-| 3. v3 round trip | Done for a library without dependencies |
-| 4. v4 nodes | Partly done. A v4 library reads and writes; the other kinds and most nodes remain |
-| 5. Fixtures and diagnostics | Partly done. Two v4 fixtures and one v3 fixture round-trip; the listed diagnostics are not all asserted |
+| 3. v3 round trip | Done, including dependency specifications |
+| 4. v4 nodes | Done except attributes (`morphir-vvgi.6`), Morphir annotations and document literals (`morphir-vvgi.7`) |
+| 5. Fixtures and diagnostics | Partly done. Every canonical MCK node round-trips; the listed diagnostics are not all asserted (`morphir-vvgi.9`) |
 
-**Table 1:** Plan steps against the branch state as of finos/morphir-rust#233.
+**Table 1:** Plan steps against the state after finos/morphir-rust#248.
 
 ## Context
 
@@ -189,29 +191,30 @@ Ion is not a kit profile, for the single file or for the tree. The kit's profile
 and annotated elements are not that tree. The Ion codec in morphir-rust owns both layouts and shares only the path
 grammar with the kit.
 
-## Coverage on the branch
+## Coverage
 
-The codec's tests on the branch show this coverage. No release promises it. The tree covers what the single-file codec
-covers, because it reads through the same decoder.
+The codec's tests show this coverage; no release promises it. The tree covers what the single-file codec covers,
+because it reads through the same decoder. `ion_mck_cases.rs` in `morphir-common` round-trips the canonical JSON of
+every kit case in `spec/ir/mck/` through a single file and through an Ion tree.
 
 | IR | Read and written |
 | --- | --- |
-| v3 | A library with modules, alias and custom types, and values; no dependencies |
-| v4 | A library with specification dependencies |
-| v4 | Alias and draft-incomplete type definitions; opaque and alias type specifications |
-| v4 | Value definitions with an expression body or a native body with any hint except `platformSpecific` |
-| v4 | Expressions that are a float literal or a hole whose reason is an unresolved reference |
+| v3 | A library with modules, alias and custom types, values, and dependency specifications of every kind |
+| v4 | Library, specs and application distributions, with entry points and `package::def` dependencies |
+| v4 | Every type expression, type definition and type specification |
+| v4 | Every value expression and pattern, and expression, native, external and incomplete bodies |
+| v4 | Refused rather than dropped: attributes, Morphir annotations, document literals |
 
-**Table 4:** What the branch decoder and encoder accept.
+**Table 4:** What the decoder and encoder accept after finos/morphir-rust#248.
 
-The branch CLI writes an Ion tree as v4 only. A v3 Ion tree works through `DocumentTreeSink` and `DocumentTreeSource`
-in `morphir-common`, which is the transport API the CLI itself calls.
+The CLI writes a v3 Ion tree with `morphir ir migrate --target-version v3 --output-layout vfs --output-format ion`, and
+`generate -i` reads one as v3. The JSON and YAML trees stay v4 only, which
+[issue 970](https://github.com/finos/morphir/issues/970) tracks.
 
 ## Unresolved
 
-- The v4 `specs` and `application` distribution kinds, external and incomplete value bodies, `platformSpecific`
-  hints, document literals, and every v4 value head except `float` and `hole` are in the draft but not implemented.
-- v3 dependency specifications are in the draft but not implemented.
+- v4 attributes (`morphir-vvgi.6`), Morphir annotations and document literals (`morphir-vvgi.7`) are in the draft but
+  not implemented. The v4 reader also refuses the collapsed `morphir::` record (`morphir-vvgi.8`).
 - A tree orders modules, and the members inside a module, by path. A v3 module's member order therefore changes on a
   round trip. If a consumer depends on member order, the tree needs an order list, and that list would bring back the
   listing the design avoids.

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The draft Ion IR codec covers v3 dependency specifications and every v4 distribution kind and node the draft spells: specs and application distributions with entry points, every value expression and pattern, custom and derived types, and external and incomplete bodies (finos/morphir-rust#248). v4 attributes, Morphir annotations and document literals are refused rather than dropped. `morphir ir migrate --target-version v3 --output-layout vfs --output-format ion` writes a v3 Ion tree, and `generate -i` reads one; the JSON and YAML trees stay v4 only ([#970](https://github.com/finos/morphir/issues/970)). `ionVersion` stays `0.1.0-draft.1` ([#946](https://github.com/finos/morphir/issues/946)).
+
 ## [0.4.0-beta.6] - 2026-09-24
 
 ### Added

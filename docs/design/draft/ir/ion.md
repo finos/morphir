@@ -124,7 +124,16 @@ When a node has a non-empty attribute payload, a struct follows the head. v3 omi
 
 ## v4 nodes
 
-A `specs` distribution writes its own modules as `module::spec`. An `application` writes dependencies as `package::def` and puts `entryPoints` on the header. An entry point has `target` and `kind` (`main`, `command`, `handler`, `job`, or `policy`) and an optional `doc`.
+A `specs` distribution writes its own modules as `module::spec`, with no `package`. An `application` writes dependencies as `package::def::{ name, modules }`, whose modules are `public::def::module` values, and puts `entryPoints` on the header. `entryPoints` is a struct keyed by entry name. An entry point has `target` and `kind` (`main`, `command`, `handler`, `job`, or `policy`) and an optional `doc`.
+
+```ion
+morphir::{
+  formatVersion: "4.0.0",
+  kind: application,
+  packageName: "example",
+  entryPoints: { start: { target: "example:main#run", kind: main } },
+}
+```
 
 ```ion
 public::def::native::value::{
@@ -135,11 +144,17 @@ public::def::native::value::{
 }
 ```
 
-`hint` is `arithmetic`, `comparison`, `stringOp`, `collectionOp`, or `platformSpecific::{ platform }`. A native body may also carry a `description` string. An external body lists `{ targetPlatform, externalName }` and may carry a fallback `body`. An incomplete body uses `incompleteness: draft` or `incompleteness: hole::{ reason }`. The reason is `unresolvedReference::{ target }`, `deletedDuringRefactor::{ txId }`, or `typeMismatch::{ expected, found }`.
+`hint` is `arithmetic`, `comparison`, `stringOp`, `collectionOp`, or `platformSpecific::{ platform }`. A native body may also carry a `description` string. An external body is `public::def::external::value` with `externals: [ { targetPlatform, externalName } ]` and an optional fallback `body`. A target platform appears once. An incomplete body is `public::def::incomplete::value` with `incompleteness` and an optional partial `body`. `outputType` may be missing only there. `incompleteness` is `draft` or `hole::{ reason, partialBody }`, where the optional `partialBody` is a type. The reason is `unresolvedReference::{ target }`, `deletedDuringRefactor::{ txId }`, or `typeMismatch::{ expected, found }`.
 
 A hole expression is `(hole reason)` or `(hole reason expectedType)`. An incomplete type is `public::def::incomplete::type` with an optional `partialTypeExp`.
 
+A custom type specification is `public::spec::custom::type` with `typeParams` and `constructors`. A derived type specification is `public::spec::derived::type` with `baseType`, `fromBaseType`, and `toBaseType`; the last two are fully qualified names. v3 uses the same spellings, with v3 types.
+
+A v4 integer is an Ion int. An integer too large for the reader's Ion int is `(int "<digits>")`. In value position a let binding is `{ inputTypes, outputType, body }` and holds an expression body.
+
 Morphir annotations are an `annotations` list on `module::spec`, a `public::spec::` type, and `public::spec::value`. A definition rejects the field. A compact entry is `pkg:mod#local` or `pkg:mod#local:free text`. A structured entry is `{ name, arguments }`.
+
+The codec does not yet encode v4 attributes, Morphir annotations, or document literals. It refuses them rather than dropping them.
 
 A document literal is `(document <payload>)`. The payload is the document. An integer lexeme is an Ion int. Any other number is an Ion decimal written with the stored lexeme. Ion float, timestamp, blob, clob, symbol, and s-expression are rejected inside the payload. A document cannot appear in a pattern. A v4 float literal that keeps its source text is `(float "<lexeme>")`. A bare Ion float means the shortest spelling of that finite value.
 
@@ -151,16 +166,16 @@ Each file holds the annotated elements of the single-file spelling. The path is 
 
 | File | Elements |
 | --- | --- |
-| `manifest.ion` | The `morphir::` header, then one `package::spec` for each dependency |
+| `manifest.ion` | The `morphir::` header, then one `package::spec` (an application: `package::def`) for each dependency |
 | `module.ion` | The module element, then any of its types and values |
 | `<stem>.type.ion` | That one type |
 | `<stem>.value.ion` | That one value |
 
 The path supplies the package, the module, and a node's name, so a file may omit `package`, `module`, and `name`. A name that is present must match the path. A type or value inside `module.ion` states its `name`, because the path does not name it.
 
-The header carries `ionVersion`, `formatVersion`, `kind`, `packageName`, and `pathBudget`. Each `package::spec::{ name }` in the manifest names one dependency. The list keeps the dependency order and keeps a dependency that has no modules. A `package::spec` there may also carry inline `modules`, which merge with the `deps/` files. No tree file has a `morphir_footer`. The end of a file ends it.
+The header carries `ionVersion`, `formatVersion`, `kind`, `packageName`, and `pathBudget`. Each `package::spec::{ name }` in the manifest names one dependency; an application writes `package::def::{ name }`. The list keeps the dependency order and keeps a dependency that has no modules. A `package::spec` there may also carry inline `modules`, which merge with the `deps/` files. No tree file has a `morphir_footer`. The end of a file ends it.
 
-Under `pkg/`, `module.ion` holds one `public::def::module` or `private::def::module`. A second one is rejected. Under `deps/`, `module.ion` holds `module::spec` fragments, which may repeat and merge. A member stated by two fragments is rejected. A v3 tree has no `deps/`, because the v3 codec does not encode dependencies yet.
+Under `pkg/`, `module.ion` holds one `public::def::module` or `private::def::module`; a `specs` distribution holds `module::spec` there instead. A second definition module is rejected. Under `deps/`, `module.ion` holds `module::spec` fragments, which may repeat and merge; an application's dependencies hold one `public::def::module` each, because an application links its dependencies' definitions. A member stated by two fragments is rejected. The JSON and YAML trees are defined for v4 only; v3 there is [issue 970](https://github.com/finos/morphir/issues/970).
 
 A tree reads as the datagram that holds the same elements. The manifest's header comes first, then each dependency, then each module with its children inline, then a footer. In a module directory the module file comes first, then the type files, then the value files, each in path order. Children merge by the single-file rules. A type or value defined twice after the merge is rejected. A tree orders modules and their members by path. That order is the one thing a tree does not keep.
 
