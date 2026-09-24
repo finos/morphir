@@ -138,6 +138,22 @@ session outcome and ordered records. It is authoritative. HTML is an optional st
 that opens offline without a server or CDN. Rendering a report successfully does not establish
 passing tests or a valid compatibility claim.
 
+The draft semantic node-address contract has a separate executable suite at
+[`node-address-draft.json`](node-address-draft.json). Run it with
+`morphir mck node-address run --adapter ./mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address`.
+It uses `0.1.0-draft.1` capabilities and fixed V3/V4 resolve outcomes, leaving this IR
+decode protocol's numeric version 1 unchanged. The adapter decodes IR and builds its
+index; the shared MCK runner only reads fixture bytes and compares answers.
+Resolved cases compare the full normalized semantic node with a fixed corpus
+value, as well as its kind and canonical URI; a same-kind wrong target fails.
+The [closed wire schema](node-address-protocol.schema.json) describes its JSON-lines
+`capabilities`, `resolve`, and `exit` requests and resolved/failure responses.
+`resolve.input` is the exact UTF-8 text of one V3 or V4 single-file JSON artifact;
+`resolve.uri` is a portable Morphir node URI. A successful response contains a
+node kind, canonical URI, and normalized semantic node. A failure contains one
+specific resolver outcome. The first suite covers JSON artifact inputs; the
+core index separately tests equivalent V4 JSON, YAML, and document-tree layouts.
+
 `report check` strictly validates the draft schema without remote references, then independently
 loads the kit and verifies the snapshot digest and exact record inventory. Missing digest or a
 failed adapter session cannot pass. By default it requires a full-kit report; checking a filtered

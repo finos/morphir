@@ -559,9 +559,8 @@
       "id": "node-legacy-0011",
       "nodeId": "Acme.Orders:Domain:accountId.type",
       "assumedShape": "CustomTypeDefinition with exactly one same-named constructor and exactly one argument",
-      "expectedError": "mapping_not_specified",
-      "purpose": "Elm selects the sole constructor argument type; never retarget it to type-exp while argument roles and guard encoding remain draft",
-      "expectedFileUnchanged": true
+      "expectedUri": "morphir://ir/pkg/acme/orders?format=3.0.0&guard=sha256:614fc05ccde1917095dcdfaf1123aa7acbbf19dcef28f1a40297173396288d79#/module/domain/type/account-id/constructor/account-id/argument/0",
+      "purpose": "Elm selects the sole constructor argument type; preserve that target rather than retargeting to type-exp"
     },
     {
       "id": "node-legacy-0012",

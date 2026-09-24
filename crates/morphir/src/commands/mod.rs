@@ -1,6 +1,7 @@
 pub mod cache;
 pub mod compile;
 pub mod config;
+pub mod decoration;
 pub mod desktop;
 pub mod diagnostics;
 pub mod dist;

@@ -1,0 +1,17 @@
+[package]
+name = "morphir-decoration"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "V3/V4 Morphir decorator sidecars and typed values"
+
+[dependencies]
+morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+indexmap = { version = "2", features = ["serde"] }

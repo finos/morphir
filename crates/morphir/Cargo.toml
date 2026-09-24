@@ -45,6 +45,7 @@ async-trait = "0.1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 axum = { version = "0.8", features = ["ws"] }
 morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
+morphir-decoration = { path = "../morphir-decoration" }
 morphir-evaluator = { path = "../morphir-evaluator" }
 # Pulls in `regorus`, which unconditionally enables `msvc_spectre_libs`'s
 # `error` feature; that turns a missing "MSVC Spectre-mitigated libs" VS
