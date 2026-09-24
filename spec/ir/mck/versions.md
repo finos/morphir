@@ -141,3 +141,19 @@ morphir-elm writes a record field as `{ "name", "tpe" }`, never as a pair.
 ```json canonical
 ["Record", {}, [{ "name": ["first"], "tpe": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []] }]]
 ```
+
+## versions-0009: 3.1.0 is supported {node=FormatVersion version=3}
+
+IR 3.1.0 introduced the v3 `Specs` distribution (distributions-0006's classic counterpart) and the v3 document tree. Its baseline does not collapse to the bare integer `3`, the way distributions-0008 pins a later patch of a supported minor.
+
+```json canonical
+"3.1.0"
+```
+
+## versions-0010: 3.2.0 is a later minor {node=FormatVersion version=3}
+
+Governed by `docs/spec/ir/format-version.md`. The reader's support table names `[3.0.0,3.2.0)`, so `3.2.0` itself is refused the same way distributions-0001 refuses a v4 minor past its own table.
+
+```json rejected diagnostic=unsupported_format_version_minor
+"3.2.0"
+```

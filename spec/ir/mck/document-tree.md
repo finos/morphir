@@ -398,3 +398,318 @@ distribution:
 ```json canonical
 { "formatVersion": 4, "distribution": { "Application": { "packageName": "example", "dependencies": { "my-org/shared": { "modules": { "util": { "Public": { "types": {}, "values": { "identity": { "Public": { "ExpressionBody": { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "body": { "Variable": "x" } } } } } } } } } }, "def": { "modules": { "main": { "Public": { "types": {}, "values": { "run": { "Public": { "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#unit", "body": { "Unit": {} } } } } } } } } }, "entryPoints": { "start": { "target": "example:main#run", "kind": "main" } } } } }
 ```
+
+## document-tree-0010: v3 manifest {node=DistributionManifestFile version=3}
+
+A v3 tree's own manifest file is the same shape decision-for-decision as the v4 one (document-tree-0001), except every file says its own `formatVersion`, `"3.1.0"` (decision 0016). Version 3 is read and written in the classic model, whose only spelling is JSON (versions.md's own v3 cases carry no `yaml` fence either).
+
+```json canonical
+{ "formatVersion": "3.1.0", "distribution": "Library", "package": "my-org/my-project", "pathBudget": 4000 }
+```
+
+## document-tree-0011: v3 Library module with definition files {node=Distribution version=3}
+
+A v3 `Library` tree holds its own package's definitions under `pkg/`, laid out exactly as document-tree-0003 lays out a v4 one; only the envelope's `formatVersion` and what a node file's `def` carries differ. `def` is the classic payload exactly as a single v3 document writes it: `TypeAliasDefinition`'s tagged array, `Reference`'s empty attributes, and the fully qualified name as nested arrays.
+
+```yaml file path=manifest set=v3-lib
+formatVersion: 3.1.0
+distribution: Library
+package: my-org/my-project
+pathBudget: 4000
+```
+
+```yaml file path=pkg/my-org/my-project/domain/module set=v3-lib
+formatVersion: 3.1.0
+path: domain
+types: [user]
+values: []
+```
+
+```yaml file path=pkg/my-org/my-project/domain/user.type set=v3-lib
+formatVersion: 3.1.0
+name: user
+def:
+  access: Public
+  value:
+    doc: ""
+    value:
+      - TypeAliasDefinition
+      - []
+      - - Reference
+        - {}
+        - [[[morphir], [s, d, k]], [[string]], [string]]
+        - []
+```
+
+```yaml canonical
+formatVersion: 3
+distribution:
+  - Library
+  - [[my, org], [my, project]]
+  - []
+  - modules:
+      - - [[domain]]
+        - access: Public
+          value:
+            types:
+              - - [user]
+                - access: Public
+                  value:
+                    doc: ""
+                    value:
+                      - TypeAliasDefinition
+                      - []
+                      - - Reference
+                        - {}
+                        - [[[morphir], [s, d, k]], [[string]], [string]]
+                        - []
+            values: []
+            doc: null
+```
+
+```json canonical
+{ "formatVersion": 3, "distribution": ["Library", [["my", "org"], ["my", "project"]], [], { "modules": [[[["domain"]], { "access": "Public", "value": { "types": [[["user"], { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } }]], "values": [], "doc": null } }]] }] }
+```
+
+## document-tree-0012: v3 dependency specifications under deps {node=Distribution version=3}
+
+The v3 shape of document-tree-0008: a `Library` tree's dependencies live under `deps/<package path>/@/`, laid out like `pkg/`, and their node files carry `spec` rather than `def`.
+
+```yaml file path=manifest set=v3-deps
+formatVersion: 3.1.0
+distribution: Library
+package: my-org/my-project
+pathBudget: 4000
+dependencies: [morphir/SDK]
+```
+
+```yaml file path=pkg/my-org/my-project/domain/module set=v3-deps
+formatVersion: 3.1.0
+path: domain
+types: []
+values: []
+```
+
+```yaml file path=deps/morphir/_sdk/@/basics/module set=v3-deps
+formatVersion: 3.1.0
+path: basics
+types: [int]
+values: []
+```
+
+```yaml file path=deps/morphir/_sdk/@/basics/int.type set=v3-deps
+formatVersion: 3.1.0
+name: int
+spec:
+  doc: ""
+  value: [OpaqueTypeSpecification, []]
+```
+
+```yaml canonical
+formatVersion: 3
+distribution:
+  - Library
+  - [[my, org], [my, project]]
+  - - - [[morphir], [s, d, k]]
+      - modules:
+          - - [[basics]]
+            - types:
+                - - [int]
+                  - doc: ""
+                    value: [OpaqueTypeSpecification, []]
+              values: []
+              doc: null
+  - modules:
+      - - [[domain]]
+        - access: Public
+          value:
+            types: []
+            values: []
+            doc: null
+```
+
+```json canonical
+{ "formatVersion": 3, "distribution": ["Library", [["my", "org"], ["my", "project"]], [[[["morphir"], ["s", "d", "k"]], { "modules": [[[["basics"]], { "types": [[["int"], { "doc": "", "value": ["OpaqueTypeSpecification", []] }]], "values": [], "doc": null }]] }]], { "modules": [[[["domain"]], { "access": "Public", "value": { "types": [], "values": [], "doc": null } }]] }] }
+```
+
+## document-tree-0013: v3 Specs tree {node=Distribution version=3}
+
+A v3 `Specs` tree carries `spec` everywhere, even under its own `pkg/`: it has no definitions to hold. No dependencies here; document-tree-0012 already pins a dependency's node files, which carry `spec` regardless of the tree's own kind.
+
+```yaml file path=manifest set=v3-specs
+formatVersion: 3.1.0
+distribution: Specs
+package: my/pkg
+pathBudget: 4000
+```
+
+```yaml file path=pkg/my/pkg/basics/module set=v3-specs
+formatVersion: 3.1.0
+path: basics
+doc: Basics.
+types: [int]
+values: []
+```
+
+```yaml file path=pkg/my/pkg/basics/int.type set=v3-specs
+formatVersion: 3.1.0
+name: int
+spec:
+  doc: ""
+  value: [OpaqueTypeSpecification, []]
+```
+
+```yaml canonical
+formatVersion: 3.1.0
+distribution:
+  - Specs
+  - [[my], [pkg]]
+  - []
+  - modules:
+      - - [[basics]]
+        - types:
+            - - [int]
+              - doc: ""
+                value: [OpaqueTypeSpecification, []]
+          values: []
+          doc: Basics.
+```
+
+```json canonical
+{ "formatVersion": "3.1.0", "distribution": ["Specs", [["my"], ["pkg"]], [], { "modules": [[[["basics"]], { "types": [[["int"], { "doc": "", "value": ["OpaqueTypeSpecification", []] }]], "values": [], "doc": "Basics." }]] }] }
+```
+
+## document-tree-0014: v3 cut stem in fileNames {node=Distribution version=3}
+
+The v3 shape of document-tree-0004: the same budget, the same name, the same truncated stem and hash suffix; only the envelope differs.
+
+```yaml file path=manifest set=v3-truncate
+formatVersion: 3.1.0
+distribution: Library
+package: my-org/my-project
+pathBudget: 64
+```
+
+```yaml file path=pkg/my-org/my-project/domain/module set=v3-truncate
+formatVersion: 3.1.0
+path: domain
+types: [customer-relationship-management-record]
+values: []
+fileNames:
+  customer-relationship-management-record: customer-relati__44a101f8
+```
+
+```yaml file path=pkg/my-org/my-project/domain/customer-relati__44a101f8.type set=v3-truncate
+formatVersion: 3.1.0
+name: customer-relationship-management-record
+def:
+  access: Public
+  value:
+    doc: ""
+    value:
+      - TypeAliasDefinition
+      - []
+      - - Reference
+        - {}
+        - [[[morphir], [s, d, k]], [[string]], [string]]
+        - []
+```
+
+```yaml canonical
+formatVersion: 3
+distribution:
+  - Library
+  - [[my, org], [my, project]]
+  - []
+  - modules:
+      - - [[domain]]
+        - access: Public
+          value:
+            types:
+              - - [customer, relationship, management, record]
+                - access: Public
+                  value:
+                    doc: ""
+                    value:
+                      - TypeAliasDefinition
+                      - []
+                      - - Reference
+                        - {}
+                        - [[[morphir], [s, d, k]], [[string]], [string]]
+                        - []
+            values: []
+            doc: null
+```
+
+```json canonical
+{ "formatVersion": 3, "distribution": ["Library", [["my", "org"], ["my", "project"]], [], { "modules": [[[["domain"]], { "access": "Public", "value": { "types": [[["customer", "relationship", "management", "record"], { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } }]], "values": [], "doc": null } }]] }] }
+```
+
+## document-tree-0015: v3 JSON profile {node=Distribution version=3}
+
+document-tree-0011's set spelled in the JSON profile: the logical paths are identical, and only the bytes of each document change (document-tree-0006 does the same for a v4 tree).
+
+```json file path=manifest set=v3-lib-json
+{ "formatVersion": "3.1.0", "distribution": "Library", "package": "my-org/my-project", "pathBudget": 4000 }
+```
+
+```json file path=pkg/my-org/my-project/domain/module set=v3-lib-json
+{ "formatVersion": "3.1.0", "path": "domain", "types": ["user"], "values": [] }
+```
+
+```json file path=pkg/my-org/my-project/domain/user.type set=v3-lib-json
+{ "formatVersion": "3.1.0", "name": "user", "def": { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } } }
+```
+
+```json canonical
+{ "formatVersion": 3, "distribution": ["Library", [["my", "org"], ["my", "project"]], [], { "modules": [[[["domain"]], { "access": "Public", "value": { "types": [[["user"], { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } }]], "values": [], "doc": null } }]] }] }
+```
+
+## document-tree-0016: a v4 file in a v3 tree is rejected {node=Distribution version=3}
+
+A file's `formatVersion` must say `"3.1.0"`, the way `layout::read_tree_v3` checks every file of a v3 tree (document-tree-0010); document-tree-0011's node file with `formatVersion: "4.0.0"` instead is refused at that file's own member. `version_mismatch` is that reader's own code for this, confirmed against `ecosystem/morphir-rust/crates/morphir-mck-adapter/tests/protocol.rs`'s `a_v3_tree_diagnostic_comes_back_with_its_code_and_cursor`.
+
+```json rejected diagnostic=version_mismatch
+{ "formatVersion": "4.0.0", "name": "user", "def": { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } } }
+```
+
+## document-tree-0017: v3 tree files ignore $meta {node=Distribution version=3}
+
+Decision 0014 holds for a v3 tree too: a reader never reports `unknown_member` for `$meta` at the top level of a document-tree file, and never writes one. The v3 shape of document-tree-0005.
+
+```yaml file path=manifest set=v3-meta mode=read
+formatVersion: 3.1.0
+distribution: Library
+package: my-org/my-project
+pathBudget: 4000
+$meta:
+  generator: example
+```
+
+```yaml file path=pkg/my-org/my-project/domain/module set=v3-meta mode=read
+formatVersion: 3.1.0
+path: domain
+types: []
+values: []
+$meta:
+  generator: example
+```
+
+```yaml canonical
+formatVersion: 3
+distribution:
+  - Library
+  - [[my, org], [my, project]]
+  - []
+  - modules:
+      - - [[domain]]
+        - access: Public
+          value:
+            types: []
+            values: []
+            doc: null
+```
+
+```json canonical
+{ "formatVersion": 3, "distribution": ["Library", [["my", "org"], ["my", "project"]], [], { "modules": [[[["domain"]], { "access": "Public", "value": { "types": [], "values": [], "doc": null } }]] }] }
+```
