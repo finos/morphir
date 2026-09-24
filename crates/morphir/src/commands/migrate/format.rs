@@ -63,15 +63,12 @@ pub(crate) fn resolve_input(
                 "select the manifest's format or convert the complete tree first",
             ));
         }
-        // Every tree format is v3 or v4, and its manifest says which.
-        let manifest_name = match detected.as_str() {
-            "json" => "manifest.json",
-            "ion" => "manifest.ion",
-            _ if path.join("manifest.yaml").is_file() => "manifest.yaml",
-            _ => "manifest.yml",
+        let version = if detected == FormatId::ion() {
+            // An Ion tree is v3 or v4, and its manifest says which.
+            detect_version(&probe(&path.join("manifest.ion"))?, &detected)?
+        } else {
+            json_or_yaml_tree_version(path, &detected)
         };
-        let manifest = path.join(manifest_name);
-        let version = detect_version(&probe(&manifest)?, &detected)?;
         return Ok(InputSelection {
             format: detected,
             version,
@@ -88,6 +85,23 @@ pub(crate) fn resolve_input(
         version,
         layout: Layout::SingleFile,
     })
+}
+
+/// The version of a JSON or YAML tree. It is v3 only when its manifest positively says 3.x.
+/// Every other manifest, including one the probe cannot read, goes to the v4 transport, which
+/// reports its faults with the kit's diagnostics.
+fn json_or_yaml_tree_version(path: &Path, format: &FormatId) -> IrVersion {
+    let manifest = if format == &FormatId::json() {
+        path.join("manifest.json")
+    } else if path.join("manifest.yaml").is_file() {
+        path.join("manifest.yaml")
+    } else {
+        path.join("manifest.yml")
+    };
+    match probe(&manifest).and_then(|input| detect_version(&input, format)) {
+        Ok(IrVersion::V3) => IrVersion::V3,
+        _ => IrVersion::V4,
+    }
 }
 
 /// The first `PROBE_BYTES` of a file.
@@ -314,6 +328,31 @@ mod tests {
         assert_eq!(selection.format, FormatId::json());
         assert_eq!(selection.layout, Layout::DocumentTree);
         assert_eq!(selection.version, IrVersion::V3);
+    }
+
+    #[test]
+    fn a_json_or_yaml_tree_manifest_that_is_not_v3_goes_to_the_v4_reader() {
+        for (name, manifest) in [
+            ("manifest.json", r#"{"distribution":"Library"}"#),
+            (
+                "manifest.json",
+                r#"{"formatVersion":5,"distribution":"Library"}"#,
+            ),
+            (
+                "manifest.json",
+                r#"{"formatVersion":4,"distribution":"Library"}"#,
+            ),
+            ("manifest.yaml", "formatVersion: [unclosed\n"),
+            ("manifest.yml", "distribution: Library\n"),
+        ] {
+            let temp = tempfile::tempdir().unwrap();
+            std::fs::write(temp.path().join(name), manifest).unwrap();
+
+            let selection = resolve_input(temp.path(), None).unwrap();
+
+            assert_eq!(selection.layout, Layout::DocumentTree, "{name}: {manifest}");
+            assert_eq!(selection.version, IrVersion::V4, "{name}: {manifest}");
+        }
     }
 
     #[test]

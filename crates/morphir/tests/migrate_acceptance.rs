@@ -449,3 +449,61 @@ fn a_v3_distribution_round_trips_through_v3_json_and_yaml_trees() {
         assert_eq!(sorted_v3(&json), sorted_v3(&canonical), "{format}");
     }
 }
+
+/// A v4 JSON document tree whose manifest is replaced by `manifest`.
+fn v4_json_tree_with_manifest(temp: &TempDir, manifest: &str) -> PathBuf {
+    let tree = temp.path().join("model.morphir-dist");
+    assert_success(&migrate(
+        &greeting_v3(),
+        &tree,
+        &["--output-layout", "vfs", "--output-format", "json"],
+    ));
+    std::fs::write(tree.join("manifest.json"), manifest).unwrap();
+    tree
+}
+
+/// A tree manifest that is not v3 is read as v4, so the transport reports its faults.
+#[test]
+fn a_v4_tree_manifest_without_format_version_gets_the_transport_diagnostic() {
+    let temp = TempDir::new().unwrap();
+    let tree = v4_json_tree_with_manifest(
+        &temp,
+        r#"{ "distribution": "Library", "package": "elm-compat", "pathBudget": 4000 }"#,
+    );
+    let output_path = temp.path().join("model.json");
+
+    let output = migrate(&tree, &output_path, &["--output-layout", "single-file"]);
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("missing_format_version"), "stderr={stderr}");
+    assert!(
+        !stderr.contains("morphir::ir::detection::"),
+        "stderr={stderr}"
+    );
+    assert!(!output_path.exists());
+}
+
+#[test]
+fn a_tree_manifest_at_format_version_5_gets_the_transport_diagnostic() {
+    let temp = TempDir::new().unwrap();
+    let tree = v4_json_tree_with_manifest(
+        &temp,
+        r#"{ "formatVersion": 5, "distribution": "Library", "package": "elm-compat", "pathBudget": 4000 }"#,
+    );
+    let output_path = temp.path().join("model.json");
+
+    let output = migrate(&tree, &output_path, &["--output-layout", "single-file"]);
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("unsupported_format_version_major"),
+        "stderr={stderr}"
+    );
+    assert!(
+        !stderr.contains("morphir::ir::detection::"),
+        "stderr={stderr}"
+    );
+    assert!(!output_path.exists());
+}
