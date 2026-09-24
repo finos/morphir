@@ -62,6 +62,36 @@ fn given_file_with_contents(world: &mut CliWorld, name: String, step: &cucumber:
         .expect("write test file");
 }
 
+#[given(regex = r#"I have a minimal V4 (Library|Specs|Application) IR document"#)]
+fn given_minimal_v4_distribution(world: &mut CliWorld, variant: String) {
+    let distribution = match variant.as_str() {
+        "Library" => serde_json::json!({"Library": {
+            "packageName": "acme/shop",
+            "dependencies": {},
+            "def": {"modules": {"main": {"Public": {"types": {}, "values": {}}}}}
+        }}),
+        "Specs" => serde_json::json!({"Specs": {
+            "packageName": "acme/shop",
+            "dependencies": {},
+            "spec": {"modules": {"pricing": {"types": {}, "values": {}}}}
+        }}),
+        "Application" => serde_json::json!({"Application": {
+            "packageName": "acme/shop",
+            "dependencies": {},
+            "def": {"modules": {"main": {"Public": {"types": {}, "values": {}}}}},
+            "entryPoints": {"start": {"target": "acme/shop:main#run", "kind": "main"}}
+        }}),
+        _ => unreachable!("the step expression admits only three variants"),
+    };
+    let document = serde_json::json!({"formatVersion": 4, "distribution": distribution});
+    world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .write_source_file("input.json", &document.to_string())
+        .expect("write V4 IR document");
+}
+
 #[when(regex = r#"I run "([^"]+)""#)]
 fn when_run_morphir(world: &mut CliWorld, command: String) {
     let args: Vec<&str> = command.split_whitespace().collect();
@@ -97,6 +127,51 @@ fn then_command_should_fail(world: &mut CliWorld) {
 #[then(regex = r#"the file "([^"]+)" should have V4 Library package "([^"]+)""#)]
 fn then_file_has_v4_library_package(world: &mut CliWorld, file: String, package: String) {
     assert_v4_library_package(&read_json_file(world, &file), &package);
+}
+
+#[then(regex = r#"the file "([^"]+)" should use the canonical V4 Library wrapper"#)]
+fn then_file_uses_v4_library_wrapper(world: &mut CliWorld, file: String) {
+    let document = read_json_file(world, &file);
+    assert_eq!(document["formatVersion"], 4);
+    let distribution = document["distribution"]
+        .as_object()
+        .expect("V4 distribution must be an object");
+    assert_eq!(distribution.len(), 1);
+    let library = distribution["Library"]
+        .as_object()
+        .expect("Library wrapper must be an object");
+    assert_eq!(library["packageName"], "elm-compat");
+    assert!(library["dependencies"].is_object());
+    assert!(library["def"]["modules"]["api"].is_object());
+    assert!(library["def"]["modules"]["main"].is_object());
+}
+
+#[then(regex = r#"the file "([^"]+)" should preserve the V4 (Library|Specs|Application) wrapper"#)]
+fn then_file_preserves_v4_wrapper(world: &mut CliWorld, file: String, variant: String) {
+    let document = read_json_file(world, &file);
+    assert_eq!(document["formatVersion"], 4);
+    let distribution = document["distribution"]
+        .as_object()
+        .expect("V4 distribution must be an object");
+    assert_eq!(distribution.len(), 1);
+    let payload = distribution[&variant]
+        .as_object()
+        .expect("variant wrapper must be an object");
+    assert_eq!(payload["packageName"], "acme/shop");
+    assert!(payload["dependencies"].is_object());
+    match variant.as_str() {
+        "Library" => assert!(payload["def"]["modules"]["main"].is_object()),
+        "Specs" => assert!(payload["spec"]["modules"]["pricing"].is_object()),
+        "Application" => {
+            assert!(payload["def"]["modules"]["main"].is_object());
+            assert_eq!(
+                payload["entryPoints"]["start"]["target"],
+                "acme/shop:main#run"
+            );
+            assert_eq!(payload["entryPoints"]["start"]["kind"], "main");
+        }
+        _ => unreachable!("the step expression admits only three variants"),
+    }
 }
 
 #[then(regex = r#"the file "([^"]+)" should have Classic Library package "([^"]+)""#)]

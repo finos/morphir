@@ -224,68 +224,25 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
   # V4 Format Validation (Correctness Check)
   # ========================================================================
 
-  @native @p0 @format-validation @wip
+  @native @p0 @format-validation
   Scenario: V4 output uses correct wrapper object format
-    Given I have a Classic IR file "classic-simple.json" with:
-      """
-      {
-        "formatVersion": 1,
-        "distribution": [
-          "Library",
-          "Library",
-          ["com", "example", "test"],
-          [],
-          {
-            "modules": {
-              "Main": {
-                "types": {},
-                "values": {}
-              }
-            }
-          }
-        ]
-      }
-      """
-    When I run "morphir migrate classic-simple.json output.json --target v4"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should contain:
-      """
-      {
-        "formatVersion": "4.0.0",
-        "distribution": {
-          "Library": {
-            "packageName": "com/example/test",
-            "dependencies": {},
-            "def": {
-              "modules": {
-                "main": {
-                  "types": {},
-                  "values": {}
-                }
-              }
-            }
-          }
-        }
-      }
-      """
-    # Note: V4 canonical format uses:
-    # - Wrapper objects: {"Library": {...}} not tuple arrays ["Library", ...]
-    # - Canonical strings: "com/example/test" not ["com", "example", "test"]
-    # - Kebab-case names: "main" not "Main" for module names
+    And the file "output.json" should use the canonical V4 Library wrapper
 
-  @native @p0 @format-validation @wip
+  @native @p0 @format-validation
   Scenario Outline: Verify V4 distribution variants use wrapper objects
-    Given I have a V4 IR file with <variant> distribution
-    When I parse the JSON structure
-    Then the "distribution" field should be an object
-    And the "distribution" object should have key "<wrapper>"
-    And the "<wrapper>" value should be an object (not an array)
+    Given I have a minimal V4 <variant> IR document
+    When I run "morphir migrate input.json --output output.json --target-version v4"
+    Then the command should succeed
+    And the file "output.json" should preserve the V4 <variant> wrapper
 
     Examples:
-      | variant     | wrapper      |
-      | Library     | Library      |
-      | Specs       | Specs        |
-      | Application | Application  |
+      | variant     |
+      | Library     |
+      | Specs       |
+      | Application |
 
   # ========================================================================
   # JSONL Format Tests (P1 - Fast Follower)
