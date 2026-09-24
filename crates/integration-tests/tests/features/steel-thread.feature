@@ -13,12 +13,20 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
   # ========================================================================
 
   @native @p0
-  Scenario: Migrate Classic IR to V4 format
-    Given I have a Classic IR file from fixture "greeting-example.json"
-    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
+  Scenario Outline: Migrate Classic IR fixtures to V4 format
+    Given I have a Classic IR file from fixture "<fixture>"
+    When I run "morphir migrate <fixture> --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should have V4 Library package "elm-compat"
+    And the file "output.json" should have V4 Library package "<package>"
+    And the file "output.json" should have <modules> modules, <types> types, and <values> values
     And the stderr should contain "Migration complete"
+
+    Examples:
+      | fixture                   | package        | modules | types | values |
+      | greeting-example.json     | elm-compat     | 2       | 8     | 7      |
+      | rule-set-example.json     | morphir/sample | 1       | 3     | 2      |
+      | direct-rules-example.json | morphir/sample | 1       | 6     | 2      |
+      | lcr-morphir-ir.json       | regulation     | 84      | 103   | 635    |
 
   @native @p0 @wip
   Scenario Outline: Migrate V4 IR to Classic format (native mode)
@@ -182,7 +190,14 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
     Given I have a Classic IR file from fixture "greeting-example.json"
     When I run "morphir migrate greeting-example.json --output output.json --target-version v4 --json"
     Then the command should succeed
-    And stdout should report a V3 to V4 JSON migration from "greeting-example.json" to "output.json"
+    And stdout JSON should contain:
+      | pointer  | expected JSON         |
+      | /success | true                  |
+      | /input   | "greeting-example.json" |
+      | /output  | "output.json"         |
+      | /source  | "v3/json/single-file" |
+      | /target  | "v4/json/single-file" |
+      | /error   | <absent>              |
     And the file "output.json" should have V4 Library package "elm-compat"
 
   # ========================================================================
@@ -194,21 +209,41 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
     Given I have a Classic IR file from fixture "greeting-example.json"
     When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should contain V4 modules "api" and "main"
+    And the file "output.json" should contain exactly these V4 modules:
+      | module |
+      | api    |
+      | main   |
 
   @regression @p1
   Scenario: Migrate preserves type definitions
     Given I have a Classic IR file from fixture "greeting-example.json"
     When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should contain V4 types "api/request" and "main/product"
+    And the file "output.json" should contain exactly these V4 types:
+      | module | name           |
+      | api    | api-error      |
+      | api    | request        |
+      | api    | response       |
+      | main   | customer-order |
+      | main   | order-status   |
+      | main   | product        |
+      | main   | product-id     |
+      | main   | quantity       |
 
   @regression @p1
   Scenario: Migrate preserves value definitions
     Given I have a Classic IR file from fixture "greeting-example.json"
     When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should contain V4 values "api/create-order" and "main/calculate-total"
+    And the file "output.json" should contain exactly these V4 values:
+      | module | name                   |
+      | api    | create-order           |
+      | api    | get-order-status       |
+      | api    | process-request        |
+      | main   | apply-discount         |
+      | main   | calculate-total        |
+      | main   | is-valid-order         |
+      | main   | order-status-to-string |
 
   # ========================================================================
   # V4 Format Validation (Correctness Check)
@@ -226,13 +261,13 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
     Given I have a minimal V4 <variant> IR document
     When I run "morphir migrate input.json --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should preserve the V4 <variant> wrapper
+    And the file "output.json" should preserve the V4 <wrapper> wrapper
 
     Examples:
-      | variant     |
-      | Library     |
-      | Specs       |
-      | Application |
+      | variant     | wrapper     |
+      | Library     | Library     |
+      | Specs       | Specs       |
+      | Application | Application |
 
   # ========================================================================
   # JSONL Format Tests (P1 - Fast Follower)

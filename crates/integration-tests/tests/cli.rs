@@ -5,6 +5,7 @@
 
 use cucumber::{World, given, then, when};
 use integration_tests::{CliTestContext, cli_tests_available};
+use std::collections::BTreeSet;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -259,6 +260,34 @@ fn then_file_has_v4_library_package(world: &mut CliWorld, file: String, package:
     assert_v4_library_package(&read_json_file(world, &file), &package);
 }
 
+#[then(regex = r#"the file "([^"]+)" should have (\d+) modules, (\d+) types, and (\d+) values"#)]
+fn then_file_has_v4_definition_counts(
+    world: &mut CliWorld,
+    file: String,
+    expected_modules: usize,
+    expected_types: usize,
+    expected_values: usize,
+) {
+    let document = read_json_file(world, &file);
+    let modules = v4_library_modules(&document);
+    let count = |kind: &str| {
+        modules
+            .values()
+            .map(|module| {
+                module["Public"][kind]
+                    .as_object()
+                    .unwrap_or_else(|| panic!("V4 module is missing {kind}"))
+                    .len()
+            })
+            .sum::<usize>()
+    };
+    assert_eq!(
+        (modules.len(), count("types"), count("values")),
+        (expected_modules, expected_types, expected_values),
+        "V4 Library definition counts in {file}"
+    );
+}
+
 #[then(regex = r#"the file "([^"]+)" should have V4 dependency "([^"]+)""#)]
 fn then_file_has_v4_dependency(world: &mut CliWorld, file: String, dependency: String) {
     let document = read_json_file(world, &file);
@@ -348,55 +377,94 @@ fn then_stdout_has_v4_library_package(world: &mut CliWorld, package: String) {
     assert_v4_library_package(&document, &package);
 }
 
-#[then(regex = r#"stdout should report a V3 to V4 JSON migration from "([^"]+)" to "([^"]+)""#)]
-fn then_stdout_reports_migration(world: &mut CliWorld, input: String, output: String) {
+#[then("stdout JSON should contain:")]
+fn then_stdout_json_contains(world: &mut CliWorld, step: &cucumber::gherkin::Step) {
     let stdout = &world.last_result.as_ref().expect("CLI result").stdout;
     let report: serde_json::Value = serde_json::from_str(stdout).expect("stdout must be JSON");
-    assert_eq!(report["success"], true);
-    assert_eq!(report["input"], input);
-    assert_eq!(report["output"], output);
-    assert_eq!(report["source"], "v3/json/single-file");
-    assert_eq!(report["target"], "v4/json/single-file");
-    assert!(report.get("error").is_none());
+    let mut seen = BTreeSet::new();
+    for row in data_rows(step, &["pointer", "expected JSON"]) {
+        let pointer = &row[0];
+        assert!(
+            pointer.starts_with('/'),
+            "JSON pointer must start with /: {pointer}"
+        );
+        assert!(seen.insert(pointer), "duplicate JSON pointer: {pointer}");
+        let actual = report.pointer(pointer);
+        if row[1] == "<absent>" {
+            assert!(
+                actual.is_none(),
+                "{pointer} should be absent, found {actual:?}"
+            );
+        } else {
+            let expected: serde_json::Value = serde_json::from_str(&row[1])
+                .unwrap_or_else(|error| panic!("invalid expected JSON for {pointer}: {error}"));
+            assert_eq!(actual, Some(&expected), "JSON value at {pointer}");
+        }
+    }
 }
 
-#[then(regex = r#"the file "([^"]+)" should contain V4 modules "([^"]+)" and "([^"]+)""#)]
-fn then_file_contains_v4_modules(
+#[then(regex = r#"the file "([^"]+)" should contain exactly these V4 modules:"#)]
+fn then_file_contains_exact_v4_modules(
     world: &mut CliWorld,
     file: String,
-    first: String,
-    second: String,
+    step: &cucumber::gherkin::Step,
 ) {
     let document = read_json_file(world, &file);
-    let modules = &document["distribution"]["Library"]["def"]["modules"];
-    for name in [&first, &second] {
-        assert!(
-            modules[name]["Public"].is_object(),
-            "missing V4 module {name}"
-        );
-    }
+    let modules = v4_library_modules(&document);
+    let rows = data_rows(step, &["module"]);
+    let expected: BTreeSet<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+    assert_eq!(expected.len(), rows.len(), "duplicate expected V4 module");
+    let actual: BTreeSet<&str> = modules.keys().map(String::as_str).collect();
+    assert_eq!(actual, expected, "V4 Library module names in {file}");
 }
 
-#[then(regex = r#"the file "([^"]+)" should contain V4 types "([^"]+)" and "([^"]+)""#)]
-fn then_file_contains_v4_types(world: &mut CliWorld, file: String, first: String, second: String) {
-    assert_v4_definitions(world, &file, "types", [&first, &second]);
+#[then(regex = r#"the file "([^"]+)" should contain exactly these V4 (types|values):"#)]
+fn then_file_contains_exact_v4_definitions(
+    world: &mut CliWorld,
+    file: String,
+    kind: String,
+    step: &cucumber::gherkin::Step,
+) {
+    let document = read_json_file(world, &file);
+    let modules = v4_library_modules(&document);
+    let rows = data_rows(step, &["module", "name"]);
+    let expected: BTreeSet<(&str, &str)> = rows
+        .iter()
+        .map(|row| (row[0].as_str(), row[1].as_str()))
+        .collect();
+    assert_eq!(expected.len(), rows.len(), "duplicate expected V4 {kind}");
+    let actual: BTreeSet<(&str, &str)> = modules
+        .iter()
+        .flat_map(|(module_name, module)| {
+            module["Public"][&kind]
+                .as_object()
+                .unwrap_or_else(|| panic!("V4 module {module_name} is missing {kind}"))
+                .keys()
+                .map(move |name| (module_name.as_str(), name.as_str()))
+        })
+        .collect();
+    assert_eq!(actual, expected, "V4 Library {kind} in {file}");
 }
 
-#[then(regex = r#"the file "([^"]+)" should contain V4 values "([^"]+)" and "([^"]+)""#)]
-fn then_file_contains_v4_values(world: &mut CliWorld, file: String, first: String, second: String) {
-    assert_v4_definitions(world, &file, "values", [&first, &second]);
+fn v4_library_modules(document: &serde_json::Value) -> &serde_json::Map<String, serde_json::Value> {
+    document["distribution"]["Library"]["def"]["modules"]
+        .as_object()
+        .expect("V4 Library modules object")
 }
 
-fn assert_v4_definitions(world: &CliWorld, file: &str, kind: &str, names: [&str; 2]) {
-    let document = read_json_file(world, file);
-    let modules = &document["distribution"]["Library"]["def"]["modules"];
-    for name in names {
-        let (module, definition) = name.split_once('/').expect("module/definition name");
-        assert!(
-            modules[module]["Public"][kind][definition].is_object(),
-            "missing V4 {kind} definition {name}"
-        );
-    }
+fn data_rows<'a>(step: &'a cucumber::gherkin::Step, headers: &[&str]) -> &'a [Vec<String>] {
+    let rows = &step.table().expect("data table is required").rows;
+    assert!(!rows.is_empty(), "data table must have a header");
+    assert_eq!(
+        rows[0].iter().map(String::as_str).collect::<Vec<_>>(),
+        headers,
+        "unexpected data table columns"
+    );
+    assert!(
+        rows.len() > 1,
+        "data table must have at least one value row"
+    );
+    &rows[1..]
 }
 
 #[then(regex = r#"the file "([^"]+)" should use expanded type references"#)]
