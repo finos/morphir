@@ -10,6 +10,8 @@ tracking:
 
 # Language syntaxes, IR inspection and IR comparison
 
+> **Builds on:** [A Gherkin foundation for Morphir verification](../testing/gherkin-foundation.md). The Gherkin IR steps below are a step library in `morphir-inspect` (cargo feature `steps`) that runs through `morphir-bdd`, and `@syntax:<id>` is a tag extension owned by `morphir-syntax`. This draft is revised to that shape when it is planned.
+
 This draft adds three capabilities to morphir-rust and a step vocabulary to the finos/morphir test features:
 
 - **`morphir-syntax`**: a language-neutral trait for printing Morphir IR in a source language and for parsing and normalizing snippets of that language. Elm comes first (`morphir-syntax-elm`) and Gleam second (`morphir-syntax-gleam`). The bindings use these crates for code generation.

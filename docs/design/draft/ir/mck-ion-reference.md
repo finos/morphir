@@ -10,6 +10,8 @@ tracking:
 
 # The compatibility kit with Ion as the reference encoding
 
+> **Builds on:** [A Gherkin foundation for Morphir verification](../testing/gherkin-foundation.md). The kit's cases become `.feature.md` suites that run through `morphir-bdd`: a case is a scenario, the `yaml mck` options fence is a fence extension, and data fences are free fences or doc strings. The adapter protocol, transcoding, round-trip check, diffs and HTML report below stay; this draft is revised to that shape when it is planned.
+
 This draft changes how the Morphir Compatibility Kit (MCK) states a case. Today most cases spell one document once for each profile. The change makes Ion the kit's reference encoding and adds `ion` as a profile. Each case says one of two things. A **spelling case** says how a node shape is written in each format. A **semantic case** says what a document means, and it says it once, in Ion. The runner checks every other format by a round trip. The kit also gets an HTML report for a run, and CI shows each run's results.
 
 A mismatch now reports a git-style unified diff, not only the first line that differs.
