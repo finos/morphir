@@ -471,6 +471,7 @@ mod tests {
         .initialize(InitializeParams {
             protocol_versions: vec![MEP_VERSION.into()],
             host: PeerInfo {
+                kind: Default::default(),
                 name: "test".into(),
                 version: "0".into(),
             },

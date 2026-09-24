@@ -12,7 +12,7 @@ use morphir_daemon::extensions::{
 };
 use morphir_distribution::{InstalledExtensionSnapshot, activate_installed_snapshot};
 use morphir_elm_binding::ElmExtension;
-use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo};
+use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo, PeerKind};
 use morphir_extension_sdk::{
     CompileRequest, CompileResult, GenerateRequest, GenerateResult, NativeExtension,
 };
@@ -503,13 +503,19 @@ where
     }
 }
 
+/// How this CLI identifies itself to an extension across publish, install, and use.
+pub(crate) fn host_peer() -> PeerInfo {
+    PeerInfo {
+        kind: PeerKind::Cli,
+        name: "morphir-cli".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+    }
+}
+
 fn host_initialize_params() -> InitializeParams {
     InitializeParams {
         protocol_versions: vec![MEP_VERSION.into()],
-        host: PeerInfo {
-            name: "morphir-cli".into(),
-            version: env!("CARGO_PKG_VERSION").into(),
-        },
+        host: host_peer(),
     }
 }
 
@@ -545,6 +551,16 @@ mod tests {
     use serde_json::json;
     use std::collections::HashMap;
     use std::path::Path;
+
+    #[test]
+    fn host_initialize_identifies_cli_kind() {
+        let params = super::host_initialize_params();
+        assert_eq!(
+            params.host.kind,
+            morphir_extension_sdk::protocol::PeerKind::Cli
+        );
+        assert_eq!(params.host.name, "morphir-cli");
+    }
 
     #[test]
     fn gleam_native_selectors_resolve_to_the_same_native_provider() {

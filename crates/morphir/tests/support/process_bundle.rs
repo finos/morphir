@@ -3,7 +3,7 @@ use morphir_daemon::extensions::{
     ProcessLaunch, SpawnedProcessTransport, process::DescriptionSource,
 };
 use morphir_distribution::Sha256Digest;
-use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo};
+use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo, PeerKind};
 use serde_json::{Value, json};
 use std::{
     fs,
@@ -61,6 +61,7 @@ pub fn from_executable(
             .describe(InitializeParams {
                 protocol_versions: vec![MEP_VERSION.into()],
                 host: PeerInfo {
+                    kind: PeerKind::Cli,
                     name: "morphir-cli".into(),
                     version: env!("CARGO_PKG_VERSION").into(),
                 },
