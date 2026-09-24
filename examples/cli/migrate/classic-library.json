@@ -1,0 +1,19 @@
+{
+  "formatVersion": 3,
+  "distribution": [
+    "Library",
+    [["example"], ["migration"]],
+    [],
+    {
+      "modules": [
+        [
+          [["order", "processing"]],
+          {
+            "access": "Public",
+            "value": { "types": [], "values": [] }
+          }
+        ]
+      ]
+    }
+  ]
+}
