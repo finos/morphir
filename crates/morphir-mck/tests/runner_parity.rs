@@ -1,12 +1,20 @@
-//! Parity with the first driver (`spec/mck/migration.md`, "Parity method").
+//! Parity with the first driver (`spec/mck/migration.md`, "Parity method"),
+//! and a regression freeze for the kit's later additions.
 //!
-//! The Rust runner runs the kit against a replay of a frozen protocol
-//! transcript, once per adapter the first driver was recorded against. The
-//! replay refuses any request that is not byte for byte the one the old driver
-//! sent at that point, so the runner must ask the same questions in the same
-//! order. The report it writes must then equal that adapter's frozen report in
-//! every member but the durations, with the header's timestamp and versions
-//! taken from it.
+//! The Rust runner runs the kit against a replay of a protocol transcript,
+//! once per adapter the first driver was recorded against. The replay refuses
+//! any request that is not byte for byte the recorded one at that point, so the
+//! runner must ask the same questions in the same order. The report it writes
+//! must then equal that adapter's baseline report in every member but the
+//! durations, with the header's timestamp and versions taken from it.
+//!
+//! For the exchanges and records the old driver produced, this is parity with
+//! it: the TypeScript transcript is the old driver's, and the Rust transcript
+//! holds the old driver's 714 requests unchanged apart from their ids. Both
+//! reports hold its 730 records, durations aside. The IR 3.1.0 exchanges and
+//! records were recorded with the native engine
+//! (`spec/mck/baseline/README.md`, "IR 3.1.0 update"), so for them this test
+//! is a regression freeze, not parity.
 //!
 //! The two adapters exercise different answers: the TypeScript binding skips
 //! the version 3 cases it does not support, and the Rust binding runs them.
