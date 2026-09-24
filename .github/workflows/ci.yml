@@ -361,7 +361,7 @@ jobs:
 
   library-publish-macos:
     name: Library publication (macOS)
-    runs-on: macos-15
+    runs-on: macos-26
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' }}
     steps:
