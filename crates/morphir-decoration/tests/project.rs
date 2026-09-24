@@ -57,6 +57,16 @@ fn configured_project_accepts_v3_specs_target_and_type() {
             .contains_key(&target.to_string())
     );
     assert!(project.migrate_v3().is_err());
+
+    std::fs::remove_file(&project.sidecar_path).unwrap();
+    let patch_release = serde_json::to_string(&distribution)
+        .unwrap()
+        .replace("3.1.0", "3.1.1");
+    std::fs::write(&ir, patch_release).unwrap();
+    let patched = DecorationProject::open(&config, "labels", &ir).unwrap();
+    let target =
+        NodeUri::parse("morphir://ir/pkg/acme?format=3.1.1#/module/domain/type/label").unwrap();
+    patched.set(target, serde_json::Value::Null).unwrap();
 }
 
 #[test]

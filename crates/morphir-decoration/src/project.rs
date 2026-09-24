@@ -4,8 +4,7 @@
 use crate::sidecar::{DecorationSidecar, SidecarError};
 use crate::value_type::{ValueTypeError, ValueValidator};
 use morphir_core::ir::classic;
-use morphir_core::naming::{PackageName, Path as IrPath};
-use morphir_core::node_address::{ArtifactSelector, NodeCatalog, NodeIndex, NodeUri};
+use morphir_core::node_address::{NodeCatalog, NodeIndex, NodeUri};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -52,7 +51,7 @@ pub struct DecorationProject {
     sidecar_relative: String,
     catalog: NodeCatalog,
     validator: ValueValidator,
-    v3: Option<classic::Distribution>,
+    v3: Option<(classic::Distribution, String)>,
 }
 
 impl DecorationProject {
@@ -107,23 +106,11 @@ impl DecorationProject {
                     kind: "target",
                     message: error.to_string(),
                 })?;
-            let package = match &distribution.distribution {
-                classic::DistributionBody::Library(package, _, _)
-                | classic::DistributionBody::Specs(package, _, _) => package,
-            };
-            let package_path = package
-                .segments
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join("/");
-            let package = PackageName::new(IrPath::new(&package_path));
-            let index = NodeIndex::v3(&distribution, ArtifactSelector::Package(package)).map_err(
-                |error| ProjectError::Ir {
+            let index =
+                NodeIndex::v3_json(target_text.as_bytes()).map_err(|error| ProjectError::Ir {
                     kind: "target",
                     message: error.to_string(),
-                },
-            )?;
+                })?;
             catalog.add_current(index);
             catalog
                 .add_v3_json_snapshot(target_text.as_bytes(), None)
@@ -131,7 +118,7 @@ impl DecorationProject {
                     kind: "target",
                     message: error.to_string(),
                 })?;
-            Some(distribution)
+            Some((distribution, target_text.clone()))
         };
         let type_version = morphir_core::ir::json::read(&type_text)
             .map_err(|error| ProjectError::Ir {
@@ -150,7 +137,7 @@ impl DecorationProject {
                     })?;
                 ValueValidator::v3(&distribution, &decoration.entry_point)?
             }
-            Value::String(ref version) if version == "3.0.0" || version == "3.1.0" => {
+            Value::String(ref version) if version.starts_with("3.") => {
                 let distribution: classic::Distribution = serde_json::from_str(&type_text)
                     .map_err(|error| ProjectError::Ir {
                         kind: "decoration type",
@@ -222,31 +209,22 @@ impl DecorationProject {
     }
 
     pub fn migrate_v3(&self) -> Result<(), ProjectError> {
-        let distribution = self
+        let (distribution, target_text) = self
             .v3
             .as_ref()
             .ok_or_else(|| ProjectError::Config("V3 migration requires a V3 target IR".into()))?;
         let path = self.checked_sidecar_path()?;
         let old = std::fs::read_to_string(&path).map_err(|source| io(&path, source))?;
-        let classic::DistributionBody::Library(package, _, _) = &distribution.distribution else {
+        let classic::DistributionBody::Library(..) = &distribution.distribution else {
             return Err(ProjectError::Config(
                 "V3 NodeID migration requires a Library target IR".into(),
             ));
         };
-        let package_path = package
-            .segments
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join("/");
-        let index = NodeIndex::v3(
-            distribution,
-            ArtifactSelector::Package(PackageName::new(IrPath::new(&package_path))),
-        )
-        .map_err(|error| ProjectError::Ir {
-            kind: "target",
-            message: error.to_string(),
-        })?;
+        let index =
+            NodeIndex::v3_json(target_text.as_bytes()).map_err(|error| ProjectError::Ir {
+                kind: "target",
+                message: error.to_string(),
+            })?;
         let migrated = DecorationSidecar::migrate_v3(&old, distribution, &index)?;
         let path = self.checked_sidecar_path()?;
         migrated.save_typed_with_catalog(&path, &self.catalog, &self.validator)?;
