@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- The CLI sends every frontend the current compile envelope, `sources: { root, documents }`. Process and WASM frontends no longer receive the legacy top-level `documents` with `options.sourceRootUri`, and `compile_wire_request` is gone. A process or WASM frontend released before `sources` existed no longer compiles with this CLI: that is `extension/python/v0.2.0` and earlier, `extension/rust/v0.1.0`, and `morphir-scala-elm` `v0.5.0-M08` and earlier. Use `extension/python/v0.3.0`, `extension/rust/v0.2.0`, `morphir-scala-elm` `v0.5.0-M09` and the Elm extension `v0.3.1` or later (#921).
 - The published extension pins move to frontends that accept the `sources` compile envelope as well as the legacy top-level `documents`: `extension/python/v0.3.0`, `extension/rust/v0.2.0` and `morphir-scala-elm` `v0.5.0-M09`. With the Elm extension `v0.3.1`, which already reads both, every pinned frontend can take `sources`, so the CLI can stop sending the legacy envelope (#921). `INSTALLING.md` names the Python `v0.3.0` bundle.
 
 ## [0.4.0-beta.5] - 2026-09-23

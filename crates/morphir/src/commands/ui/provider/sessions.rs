@@ -299,7 +299,7 @@ impl<O: SessionOpener> ExtensionInvoker for SessionReuseInvoker<O> {
                 &provider,
                 Resolved::Frontend(resolved),
                 methods::COMPILE,
-                &crate::extensions::compile_wire_request(&request, resolved.invocation_mode()),
+                &request,
             )
             .await?;
         match result {

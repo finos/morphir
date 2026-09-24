@@ -88,12 +88,12 @@ validated `SourceRoot` and `SourcePath` types. Keeping the root in the same
 `SourceSet` as its documents prevents document replacement or combination from
 silently changing module identities.
 
-On the wire the root still has a second spelling. A provider released before
-`SourceSet` existed receives the root as `options.sourceRootUri` alongside a
-top-level `documents` array, and the host selects that envelope for process and
-WASM providers while native providers receive `sources`. A frontend built on the
-SDK never sees the difference — the decoder normalizes both into `SourceSet` —
-so this concerns hosts and released artifacts, not frontend authors.
+On the wire the root has a legacy second spelling: `options.sourceRootUri`
+alongside a top-level `documents` array, which CLI releases up to
+`0.4.0-beta.5` sent to process and WASM providers. The CLI now sends `sources`
+to every provider. A frontend built on the SDK never sees the difference — the
+decoder normalizes both into `SourceSet` — so this concerns hosts and released
+artifacts, not frontend authors.
 
 Python derives `domain/models.py` as `domain.models`; a nested `__init__.py`
 represents its package module according to the Python frontend's documented
