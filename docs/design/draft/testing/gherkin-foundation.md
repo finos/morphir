@@ -15,10 +15,10 @@ This draft adds two crates to morphir-rust and moves Morphir's black-box tests o
 - **`morphir-gherkin`**: a model of Gherkin documents read from `.feature` and `.feature.md` (Markdown with Gherkin) files. It gives every node a source span, and offers a visitor and a cursor. It keeps prose and fenced blocks as parsed Markdown, and it has extension points for tags, fences and prose that build a typed context. It does not depend on cucumber, so the knowledge base, OKF and requirement tools can use it without running anything.
 - **`morphir-bdd`**: execution on cucumber-rs through that model. It provides one shared world type, step libraries that any crate can publish and reuse, one runner configuration with JSON and JUnit output, and base steps for CLI processes, files and output.
 
-`morphir itest` becomes the user-facing runner for `morphir-bdd` suites, and itest's notebook support is removed. Later work builds on this foundation:
+`morphir itest` becomes the user-facing runner for `morphir-bdd` suites, and itest's notebook support is removed. The compatibility kit's cases move from their custom Markdown grammar to `.feature.md` suites at the same time. Options everywhere are native Gherkin tags and step text. Later work builds on this foundation:
 
 - [Language syntaxes, IR inspection and IR comparison](../ir/syntax-and-inspect.md), whose Gherkin steps use `morphir-bdd`;
-- [The compatibility kit with Ion as the reference encoding](../ir/mck-ion-reference.md), whose cases become `.feature.md` suites;
+- [The compatibility kit with Ion as the reference encoding](../ir/mck-ion-reference.md), which builds on the kit's Gherkin form;
 - the Ion sweep of bead `morphir-vvgi.9`.
 
 ## Why
@@ -27,7 +27,7 @@ Morphir has three black-box testing systems that do not share code:
 
 - **itest** is the `morphir itest` subcommand (`crates/morphir/src/commands/itest/`). It runs `scenarios.md` and `scenario.ipynb` files from `examples/` through real CLI processes, with `Command`, Rego `Assertion` and, on the `feat/itest-golden` branch, `Golden` steps.
 - **Cucumber suites:** five feature files in finos/morphir and 21 in morphir-rust, on cucumber 0.23 and gherkin 0.16.
-- **The compatibility kit:** its own Markdown case grammar and engine (`spec/ir/mck`, `crates/morphir-mck`).
+- **The compatibility kit:** its own Markdown case grammar and engine (`spec/ir/mck`, `crates/morphir-mck`). Its options live in headings (`{node=Value}`) and fence info strings, which no other tool reads.
 
 The cucumber suites show the cost of that split:
 
@@ -79,14 +79,21 @@ flowchart TB
 
 This draft adds one rule. A fenced block that is not under a step is a **free fence**. It is passed to a fence extension by its info string. Every other Markdown block is prose. In a `.feature` file, a fenced block in any description is a free fence too.
 
+### Options are tags and step text
+
+Options use native Gherkin, so every Gherkin tool (editors, Cucumber's own tag filters, reporters) understands them without Morphir's extensions:
+
+- **An option of a feature, rule, scenario or examples block is a tag.** A namespaced tag carries a value: `@syntax:elm`, `@node:Value`, `@version:4`. A plain tag is a flag: `@wip`, `@pending`, `@spelling`.
+- **An option of one step's data is part of the step text**, for example `Given the tree file "pkg/acme/orders/domain/user.type":` or `Then stdout at "$.result" should match the golden file "out.json"`.
+
+Free fences stay an extension point for data that has no Gherkin shape, but no suite in this draft needs them for options.
+
 ````markdown
 # Feature: Migrate keeps a module's public face
 
-The order module is the reference example. It **MUST** keep every exposed signature.
+`@syntax:elm`
 
-```yaml morphir
-syntax: elm
-```
+The order module is the reference example. It **MUST** keep every exposed signature.
 
 ## Scenario: v3 to v4
 
@@ -104,12 +111,9 @@ syntax: elm
 The same data in a `.feature` file:
 
 ````gherkin
+@syntax:elm
 Feature: Migrate keeps a module's public face
   The order module is the reference example. It MUST keep every exposed signature.
-
-  ```yaml morphir
-  syntax: elm
-  ```
 
   Scenario: v3 to v4
     When I run "morphir migrate orders.json --output out.json --target-version v4"
@@ -131,12 +135,12 @@ pub struct Description { pub prose: Prose, pub fences: Vec<Fence> }   // in sour
 pub struct Scenario { /* name, keyword, tags, description, steps, examples, span */ }
 pub struct Step { pub keyword: Keyword, pub text: String, pub argument: Option<StepArgument>, pub span: Span }
 pub enum StepArgument { DocString(DocString), Table(Table) }
-pub struct Fence { pub info: FenceInfo, pub directives: Vec<Directive>, pub body: String, pub span: Span }
+pub struct Fence { pub info: FenceInfo, pub body: String, pub span: Span }
 pub struct Prose { pub blocks: Vec<ProseBlock> }                        // parsed Markdown with spans
 ```
 
 - Every node has a `Span`, which gives the byte range and the line and column in the original file.
-- **Fence info string:** `<language> [role] [key=value …]`. **Directives:** lines at the top of a fence body that start with `@` (`@path …`, `@select …`). No Ion, YAML or JSON document can start a line with `@`, so directive lines never collide with data.
+- **Fence info string:** `<language> [key=value …]`. The fence body is kept exactly as written.
 - **Prose:** paragraphs, lists, quotes and headings below the Gherkin levels. Inline content stays parsed: links, inline code, emphasis. The parser is `pulldown-cmark` 0.13, which itest and `morphir-okf` already use.
 
 ### morphir-gherkin: navigation
@@ -225,7 +229,7 @@ impl Extensions {
   // sketch
   morphir_bdd::Suite::new("cli")
       .features("tests/features")
-      .extensions(Extensions::standard().with(SyntaxTags).with(MorphirOptionsFence))
+      .extensions(Extensions::standard().with(SyntaxTags))
       .run_and_exit::<MorphirWorld>()
       .await;
   ```
@@ -244,7 +248,7 @@ itest's step kinds become step libraries:
 | --- | --- |
 | `Command` with `captures` and `stdout_json` | the base CLI steps; captures are named components |
 | Rego `Assertion` | `Then the result should satisfy the policy:` with a `rego` doc string, over `morphir-opa` |
-| `Golden` with `select` and `line_endings` (branch `feat/itest-golden`) | `Then stdout should match the golden file "…"`, or a doc string; `select` and `line_endings` become directives (`@select`, `@line-endings`) |
+| `Golden` with `select` and `line_endings` (branch `feat/itest-golden`) | `Then stdout at "<select>" should match the golden file "…" with <lf\|crlf> line endings`, or a doc string in place of the file; `select` and `line_endings` are step text |
 
 - **Existing scenarios:** a reader for itest's `scenarios.md` format lowers each `##` section into the same model. The 19 existing example scenarios therefore run unchanged. New examples are written as `.feature.md`, and old ones move over when they are next touched.
 - **Golden steps:** `feat/itest-golden` is rebased and landed first, so the golden step library starts from its `golden.rs`.
@@ -252,9 +256,69 @@ itest's step kinds become step libraries:
 
 ### Moving the existing suites
 
-1. **finos/morphir:** the `cli`, `config_acceptance` and `kb_acceptance` mains move to `Suite` and `MorphirWorld`, with the base steps. Their feature text does not change.
-2. **morphir-rust:** its 21 feature suites move crate by crate, starting with `morphir-tests`, the crate that already holds shared BDD tooling.
-3. **The kit** moves to Gherkin later, under the kit draft.
+1. **The kit and itest, together:** the kit's cases become `.feature.md` suites (see [The compatibility kit on Gherkin](#the-compatibility-kit-on-gherkin)), and itest runs on `morphir-bdd`.
+2. **finos/morphir:** the `cli`, `config_acceptance` and `kb_acceptance` mains move to `Suite` and `MorphirWorld`, with the base steps. Their feature text does not change.
+3. **morphir-rust:** its 21 feature suites move crate by crate, starting with `morphir-tests`, the crate that already holds shared BDD tooling.
+
+### The compatibility kit on Gherkin
+
+The kit's 131 cases move from its custom Markdown grammar (`spec/ir/mck/*.md`) to `.feature.md` files. `values-0003` today:
+
+````markdown
+## values-0003: Reference shorthand {node=Value}
+
+```yaml canonical
+Reference: morphir/SDK:basics#add
+```
+
+```json canonical
+{ "Reference": "morphir/SDK:basics#add" }
+```
+
+```json accepted
+"morphir/SDK:basics#add"
+```
+````
+
+The same case in `spec/ir/mck/values.feature.md` (sketch):
+
+````markdown
+# Feature: Values
+
+`@node:Value` `@version:4`
+
+## Scenario: values-0003 Reference shorthand
+
+* Given a Value
+* Then its canonical YAML spelling is:
+
+  ```yaml
+  Reference: morphir/SDK:basics#add
+  ```
+
+* And its canonical JSON spelling is:
+
+  ```json
+  { "Reference": "morphir/SDK:basics#add" }
+  ```
+
+* And a reader accepts:
+
+  ```json
+  "morphir/SDK:basics#add"
+  ```
+````
+
+- **Mapping:** a case is a scenario, and the case id starts the scenario name. A case file is a feature. Heading keys become tags: `node=` → `@node:<Kind>`, `version=` → `@version:<n>`, `status=pending` → `@pending`, `compare=attributes` → `@compare:attributes`. Fence roles become steps: canonical, accepted (with an optional warning), rejected with a diagnostic or an expected node, and document-tree file sets (`Given the tree file "<path>":`, with `set` and `mode` in the step text).
+- **Steps:** the kit's steps are a step library in `morphir-mck`. Each step sends its request to the adapter over the existing protocol, so adapters do not change.
+- **Commands:**
+  - `morphir mck run` becomes a `Suite` over `spec/ir/mck/*.feature.md`. It adds the kit step library and the adapter, as a component started from `--adapter`.
+  - It still writes the MCK report (v1 and v2) and the HTML report. Each step result maps to one report record.
+  - `morphir mck check` validates the cases with the `morphir-gherkin` model alone, without an adapter.
+- **Conversion:** a one-off converter rewrites every case file.
+  - The old and the new engines then run side by side in CI until the new engine gives the same report records as the old one for every case and both adapters.
+  - After that, the old grammar and its engine code are removed, and the frozen baselines are recorded again under the append-only rule.
+  - The later kit changes build on the Gherkin form: Ion as the reference encoding, spelling and semantic tags, and the round trip ([kit draft](../ir/mck-ion-reference.md)).
 
 ## Testing
 
@@ -273,6 +337,10 @@ itest's step kinds become step libraries:
   - The JSON and JUnit files.
   - A failing scenario that prints a unified diff.
   - The CLI base steps in an isolated environment.
+- **The kit:**
+  - The converter's output: every case of every file becomes one scenario, with the same checks.
+  - Parity: the new engine gives the same report records as the old one for every case, against the Rust and TypeScript adapters.
+  - `mck check` finds each rule violation in a `.feature.md` case file, with its span.
 - **itest:**
   - Every existing `scenarios.md` example gives the same PASS and FAIL result through `morphir-bdd` as before.
   - `--list`, `--filter` and `--tag` give the same output as before.
@@ -283,11 +351,13 @@ itest's step kinds become step libraries:
 1. Rebase and land `feat/itest-golden`.
 2. morphir-rust: `morphir-gherkin` (formats, model, navigation, extensions).
 3. morphir-rust: `morphir-bdd` (the linking spike first, then the parser, world, runner and base steps).
-4. finos/morphir: move the three cucumber mains onto `Suite`.
-5. finos/morphir: `morphir itest` on `morphir-bdd` with the `scenarios.md` reader and the step libraries, and removal of notebook support.
+4. finos/morphir, together:
+   - the kit on Gherkin: the step library, `mck run` and `mck check` on the foundation, the converter, and the parity window;
+   - `morphir itest` on `morphir-bdd`, with the `scenarios.md` reader, the step libraries, and the removal of notebook support.
+5. finos/morphir: move the three cucumber mains onto `Suite`.
 6. morphir-rust: move its feature suites, crate by crate.
 
-Then [syntax and inspect](../ir/syntax-and-inspect.md), [the kit](../ir/mck-ion-reference.md), and the Ion sweep build on top.
+Then the rest of [the kit draft](../ir/mck-ion-reference.md), [syntax and inspect](../ir/syntax-and-inspect.md), and the Ion sweep build on top.
 
 ## Alternatives considered
 

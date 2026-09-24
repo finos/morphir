@@ -10,25 +10,25 @@ tracking:
 
 # The compatibility kit with Ion as the reference encoding
 
-> **Builds on:** [A Gherkin foundation for Morphir verification](../testing/gherkin-foundation.md). The kit's cases become `.feature.md` suites that run through `morphir-bdd`: a case is a scenario, the `yaml mck` options fence is a fence extension, and data fences are free fences or doc strings. The adapter protocol, transcoding, round-trip check, diffs and HTML report below stay; this draft is revised to that shape when it is planned.
+> **Builds on:** [A Gherkin foundation for Morphir verification](../testing/gherkin-foundation.md). By the time this draft is built, the kit's cases are `.feature.md` suites that run through `morphir-bdd`. A case is a scenario, and its options are tags (`@node:Value`, `@version:4`). Its checks are steps whose doc strings hold the documents. This draft uses that form throughout.
 
 This draft changes how the Morphir Compatibility Kit (MCK) states a case. Today most cases spell one document once for each profile. The change makes Ion the kit's reference encoding and adds `ion` as a profile. Each case says one of two things. A **spelling case** says how a node shape is written in each format. A **semantic case** says what a document means, and it says it once, in Ion. The runner checks every other format by a round trip. The kit also gets an HTML report for a run, and CI shows each run's results.
 
 A mismatch now reports a git-style unified diff, not only the first line that differs.
 
-This is sub-project 1 of three. Sub-project 2 moves the existing 131 cases to the new form. Sub-project 3 is the Ion sweep of bead `morphir-vvgi.9`: Ion-only cases, the Ion diagnostics table, and removal of the hand-copied fixture in morphir-rust. Both depend on the primitives in this draft.
+This draft covers the primitives. Moving the existing cases to spelling and semantic cases, and the Ion sweep of bead `morphir-vvgi.9` (Ion-only cases, the Ion diagnostics table, and removal of the hand-copied fixture in morphir-rust), follow on top of it.
 
 ## Why
 
 Three problems come from the same cause:
 
-- **Repetition.** 105 of the 131 cases spell the same document twice, as `yaml canonical` and as `json canonical`. The runner compares strings line by line and never parses a document (`crates/morphir-mck/src/ir/compare.rs:14-46`). So every profile needs its own fence in every case.
-- **A new profile costs a copy of the kit.** Ion is not a kit profile. `Profile` is the closed set `["json", "yaml"]` (`spec/ir/mck/protocol.schema.json:7`). morphir-rust tests Ion against 84 JSON fences that were copied by hand from the kit at one commit (`crates/morphir-common/tests/fixtures/ion/mck-canonical-cases.json`). Nothing checks that copy for drift.
+- **Repetition.** 105 of the 131 cases spell the same document twice, as YAML and as JSON canonical spellings. The runner compares strings line by line and never parses a document (`crates/morphir-mck/src/ir/compare.rs:14-46`). So every profile needs its own spelling in every case.
+- **A new profile costs a copy of the kit.** Ion is not a kit profile. `Profile` is the closed set `["json", "yaml"]` (`spec/ir/mck/protocol.schema.json:7`). morphir-rust tests Ion against 84 JSON documents that were copied by hand from the kit at one commit (`crates/morphir-common/tests/fixtures/ion/mck-canonical-cases.json`). Nothing checks that copy for drift.
 - **Two jobs in one case.** A case such as `values-0003` shows the canonical spelling of a node in each format, and it also checks meaning. The deeper cases repeat the spelling but add only meaning.
 
 ## Today
 
-`values-0003` from `spec/ir/mck/values.md`:
+`values-0003` from `spec/ir/mck/values.md`, in the kit's custom grammar:
 
 ````markdown
 ## values-0003: Reference shorthand {node=Value}
@@ -46,95 +46,72 @@ Reference: morphir/SDK:basics#add
 ```
 ````
 
-The runner sends each `canonical` and `accepted` fence to the adapter in its own profile and compares the answer with the canonical fence of that profile.
+The runner sends each canonical and accepted document to the adapter in its own profile and compares the answer with the canonical document of that profile. The [foundation draft](../testing/gherkin-foundation.md#the-compatibility-kit-on-gherkin) moves this case to `.feature.md` unchanged in meaning.
 
 ## Design
 
 ### Profiles
 
-`Profile` becomes `ion | json | yaml` in the protocol schema, in the engine's `Profile` and `RecordProfile` types, and in the fence languages (`crates/morphir-mck/src/kit/syntax/info_string.rs`). An adapter declares the profiles it reads and writes in `capabilities.profiles`, as today. The Rust adapter declares `ion`. An adapter that does not declare `ion` never receives Ion input.
+`Profile` becomes `ion | json | yaml` in the protocol schema and in the engine's `Profile` and `RecordProfile` types. The kit's steps accept `ion` as a doc-string content type. An adapter declares the profiles it reads and writes in `capabilities.profiles`, as today. The Rust adapter declares `ion`. An adapter that does not declare `ion` never receives Ion input.
 
 The change is additive. The protocol `contractVersion` stays `1`.
 
 ### Two kinds of case
 
-A case's `kind` option names what it asserts. Options are set in a case options fence (see [Case options and fence directives](#case-options-and-fence-directives)).
+A tag names what a case asserts. Tags are native Gherkin, so any Gherkin tool can filter by them.
 
-| Kind | Asserts | Fences |
+| Tag | Asserts | Steps |
 | --- | --- | --- |
-| `spelling` | How one node shape is canonically written in each format | Only `canonical`, at most one per format. Each is pinned byte for byte. |
-| `semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Exactly one `ion canonical`, plus any `accepted`, `rejected` and `file` fences in any format |
+| `@spelling` | How one node shape is canonically written in each format | Only "its canonical <format> spelling is:" steps, at most one per format. Each is pinned byte for byte. |
+| `@semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Exactly one "Given a <Node> whose canonical form is:" step with an `ion` doc string, then any accept, reject and tree-file steps in any format |
 
-A spelling case may leave out a format. The runner then reports that format as `not-pinned`, not as a pass. A case without a `kind` option keeps today's behaviour, so the kit stays valid while sub-project 2 moves the cases.
+A spelling case may leave out a format. The runner then reports that format as `not-pinned`, not as a pass. A case with neither tag keeps its behaviour from the foundation's conversion, so the kit stays valid while the cases move over.
 
 `values-0003` as a spelling case, and a semantic case that uses the same shape (sketch):
 
 ````markdown
-## values-0003: Reference shorthand
+# Feature: Values
 
-```yaml mck
-node: Value
-kind: spelling
-```
+`@node:Value` `@version:4`
 
-```ion canonical
-(ref 'morphir/SDK:basics#add')
-```
+## Scenario: values-0003 Reference shorthand
 
-```yaml canonical
-Reference: morphir/SDK:basics#add
-```
+`@spelling`
 
-```json canonical
-{ "Reference": "morphir/SDK:basics#add" }
-```
+* Then its canonical Ion spelling is:
 
-## values-0031: A reference is read from its string shorthand
+  ```ion
+  (ref 'morphir/SDK:basics#add')
+  ```
 
-```yaml mck
-node: Value
-kind: semantic
-```
+* And its canonical YAML spelling is:
 
-```ion canonical
-(ref 'morphir/SDK:basics#add')
-```
+  ```yaml
+  Reference: morphir/SDK:basics#add
+  ```
 
-```json accepted
-"morphir/SDK:basics#add"
-```
+* And its canonical JSON spelling is:
+
+  ```json
+  { "Reference": "morphir/SDK:basics#add" }
+  ```
+
+## Scenario: values-0031 A reference is read from its string shorthand
+
+`@semantic`
+
+* Given a Value whose canonical form is:
+
+  ```ion
+  (ref 'morphir/SDK:basics#add')
+  ```
+
+* Then a reader accepts:
+
+  ```json
+  "morphir/SDK:basics#add"
+  ```
 ````
-
-### Case options and fence directives
-
-Today a case's options are keys in its heading (`## values-0003: Reference shorthand {node=Value}`), and a fence's options are keys in its info string (`json file path=… set=… mode=read`). Both grow long, and a heading is a poor place for data. This draft adds two forms. The old forms stay valid.
-
-**Case options fence.** A fence whose info string is `yaml mck` holds the case's options as a YAML mapping. It keeps YAML syntax highlighting in any Markdown viewer. The runner never sends it to an adapter.
-
-| Option | Meaning | Old form |
-| --- | --- | --- |
-| `node` | The node kind the case decodes | heading `node=` |
-| `version` | The IR version | heading `version=` |
-| `kind` | `spelling` or `semantic` | new |
-| `status` | `pending` | heading `status=pending` |
-| `compare` | `attributes` | heading `compare=attributes` |
-
-A case has at most one options fence, and it comes before the case's data fences. New case options go into this fence, not into the heading.
-
-**Fence directives.** A data fence may start with directive lines. Each line starts with `@`, then a name, then a value:
-
-````markdown
-```json file
-@path pkg/my-org/my-project/domain/user.type
-@set v3-library
-@mode read
-{ "formatVersion": "3.1.0", "name": "user", "def": { … } }
-```
-````
-
-The directives carry the same options the info string carries (`path`, `set`, `mode`, `diagnostic`, `expect`, `warning`). No Ion, YAML or JSON document can start a line with `@`: JSON and Ion do not allow it, and YAML reserves it. So the runner can strip the directive lines before it sends the fence, and it never takes data for a directive. Short options may stay in the info string. When a fence gives the same option in both places, that is a check error.
-
-Sub-project 2 moves the cases to the options fence and to directives where they read better. After that, heading keys become a `morphir mck check` warning.
 
 ### How the runner checks a semantic case
 
@@ -191,7 +168,7 @@ line 3 differs: expected   name: add got   name: plus
 Every canonical mismatch now carries a git-style unified diff of the expected and actual text: spelling cases, semantic round trips, `accepted` fences and document-tree files. The diff has `---`/`+++` headers that name the case, fence and profile, three lines of context, and `@@` hunk headers (sketch):
 
 ```diff
---- expected values-0003 fence 0 (yaml canonical)
+--- expected values-0003 step 2 (canonical YAML)
 +++ actual   morphir-rust (yaml)
 @@ -1 +1 @@
 -Reference: morphir/SDK:basics#add
@@ -213,12 +190,10 @@ The engine produces the diff with a line-diff library such as `similar` (none is
 
 `morphir mck check` enforces the new rules:
 
-- A spelling case has only `canonical` fences, with at most one for each format.
-- A semantic case has exactly one `ion canonical` fence.
-- A `kind` value other than `spelling` or `semantic` is an error.
-- A case has at most one `yaml mck` options fence, and it holds a YAML mapping of known options.
-- An option set both in the options fence and in the heading is an error; so is a fence option set both as a directive and in the info string.
-- A directive line with an unknown name is an error.
+- A spelling case has only canonical-spelling steps, with at most one for each format.
+- A semantic case has exactly one canonical-form step, and its doc string is `ion`.
+- A case has at most one of `@spelling` and `@semantic`.
+- A tag in the kit's namespaces (`@node:`, `@version:`, `@compare:`) with an unknown value is an error, with the tag's span.
 
 ### Report and HTML
 
@@ -241,7 +216,7 @@ The parity tests replay recorded transcripts (`crates/morphir-mck/tests/runner_p
 
 - **Engine unit tests:** the grammar rules; transcoding in both directions; each failure kind, with a fake adapter; the unified diff for a canonical, a round-trip and a tree-file mismatch, and the size cap; `--html` output; an old report without `check` or `diff` still rendering.
 - **Kit gates:** `mck:run-rust` with `ion` declared; `mck:run` for TypeScript, which runs semantic cases through transcoding.
-- **Proof of the primitives:** this sub-project converts a handful of cases, for example `values-0003` into a spelling case and one semantic case. Both paths then run end to end before sub-project 2 moves the rest.
+- **Proof of the primitives:** this work converts a handful of cases, for example `values-0003` into a spelling case and one semantic case. Both paths then run end to end before the rest of the cases move.
 
 ## Alternatives considered
 
@@ -252,5 +227,5 @@ The parity tests replay recorded transcripts (`crates/morphir-mck/tests/runner_p
 
 ## Open questions
 
-- **Which cases are spelling cases?** Sub-project 2 must list them from each profile's written rules: one case for each rule, not one for each node. That list is how the kit keeps the clarity of "this is how you encode this shape in this format".
+- **Which cases are spelling cases?** The move of the existing cases must list them from each profile's written rules: one case for each rule, not one for each node. That list is how the kit keeps the clarity of "this is how you encode this shape in this format".
 - **How are Ion fences pinned byte for byte?** They depend on a canonical Ion text writer. The Ion draft (`docs/design/draft/ir/ion.md`) must say which writer settings (spacing, symbol quoting, struct order) are canonical before the first `ion canonical` fence is frozen.

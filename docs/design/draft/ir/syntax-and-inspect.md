@@ -19,7 +19,7 @@ This draft adds three capabilities to morphir-rust and a step vocabulary to the 
 - **IR comparison**, inside `morphir-inspect`: a structural diff of two distributions, of the same version or across versions, with facets that can be ignored, node addresses for each change, and a diff rendered through any syntax.
 - **Gherkin IR steps** built on these, so a feature can say `the IR value "main#total" should have signature elm"List Order -> Decimal"`.
 
-It is sub-project 4 of the work that starts in [The compatibility kit with Ion as the reference encoding](./mck-ion-reference.md). It does not depend on the kit changes.
+It builds on the [Gherkin foundation](../testing/gherkin-foundation.md) and does not depend on the [kit changes](./mck-ion-reference.md).
 
 ## Why
 
