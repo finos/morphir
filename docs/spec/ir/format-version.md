@@ -36,7 +36,7 @@ This grammar is deliberately narrower than Semantic Versioning. In particular, `
 
 A reader MUST normalize either accepted spelling to an exact three-component release before checking compatibility. Thus integer `3` and string `"3.0.0"` both normalize to `3.0.0`; integer `4` and string `"4.0.0"` both normalize to `4.0.0`.
 
-A canonical writer MUST emit the integer `N` for the baseline release `N.0.0`. It MUST emit the exact release string for any release whose minor or patch component is nonzero. For example, the canonical spellings are `3`, `"3.2.0"`, `4`, and `"4.0.2"`. A baseline release string is valid input but is not canonical output.
+A canonical writer MUST emit the integer `N` for the baseline release `N.0.0`. It MUST emit the exact release string for any release whose minor or patch component is nonzero. For example, the canonical spellings are `3`, `"3.1.0"`, `4`, and `"4.0.2"`. A baseline release string is valid input but is not canonical output.
 
 ## Revisions
 

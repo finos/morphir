@@ -39,6 +39,11 @@ The manifest's `formatVersion` decides how a tree is read. A reader that reads b
 major 3 with the v3 rules on this page, and any other manifest with the v4 rules. A reader of v4 trees only MUST refuse
 a manifest of major 3 with `version_mismatch` at `manifest#/formatVersion`. It MUST NOT read such a tree as v4.
 
+A v3 tree of this revision says `"3.1.0"` and nothing else. A reader MUST refuse a manifest of any other 3.x release,
+such as `3`, `"3.0.0"` or `"3.2.0"`, with `version_mismatch` at `manifest#/formatVersion`. A tree does not get the
+`unsupported_format_version_minor` diagnostic that a single-file document of a later 3.x release gets (see
+[What's New](./whats-new.md#version-310)).
+
 ## Logical paths
 
 The logical paths are the v4 paths:

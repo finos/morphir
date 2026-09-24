@@ -20,6 +20,9 @@ tracking:
 > | A v3 manifest has no `entryPoints` | It has no member beyond `formatVersion`, `distribution`, `package`, `pathBudget` and `dependencies`: `entryPoints`, `version`, `created` and `layout` are `unknown_member`, and a module manifest does not accept the v4 alias `module` |
 > | Does not say what a dependency may name | A dependency naming the distribution's own package is `invalid_distribution_shape`; a repeated one is `duplicate_member` |
 > | `read_any_tree` dispatches on the manifest | Also, the v4 tree reader refuses a manifest of major 3 with `version_mismatch` at `manifest#/formatVersion` |
+> | A tree of another 3.x release fails with `unsupported_format_version_minor` | Only a single-file document gets that diagnostic. The v3 tree reader accepts a manifest of exactly `"3.1.0"` and refuses any other 3.x release with `version_mismatch` at `manifest#/formatVersion` ([finos/morphir-rust#262](https://github.com/finos/morphir-rust/issues/262) tracks whether it should answer the minor diagnostic instead) |
+> | Any v3 document tree says `"3.1.0"` | Only a JSON or YAML tree. The draft Ion tree follows the [Ion draft](./ion.md#document-tree), where a v3 `library` tree still says `"3.0.0"` |
+> | The TypeScript binding runs the kit cases as pending | It skips them ("version 3 not in capabilities") until [finos/morphir-typescript#36](https://github.com/finos/morphir-typescript/issues/36) lands |
 > | The Ion spelling writes own modules as `module::spec` | A repeated own `module::spec` is refused with `duplicate_name`; own modules do not merge |
 > | `TreeParts<P>` holds a tree's parts | The kit has a `Payload` trait and a `TreeModel` trait with associated file types; there is no `TreeParts` type |
 > | `morphir ir migrate` writes v3 JSON and YAML trees | `morphir migrate` (also `morphir ir migrate`) `--target-version v3 --output-layout vfs` writes v3 trees with `--output-format json`, `yaml` or `ion`; in every tree format the manifest decides the version on read |
@@ -34,11 +37,11 @@ A `3.0.0` document stays valid and keeps its meaning. A writer emits the lowest 
 | --- | --- |
 | Single-file v3 `Library` | `3` (the `3.0.0` release), unchanged |
 | Single-file v3 `Specs` | `"3.1.0"` |
-| Any v3 document tree | `"3.1.0"` in every tree file |
+| Any v3 JSON or YAML document tree | `"3.1.0"` in every tree file |
 
-A reader accepts the integer `3` and the release strings `"3.0.0"` and `"3.1.0"`. `3.2.0` and later fail with `unsupported_format_version_minor`, as [format-version support](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-ir/format-version-support.md) describes. The reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)`.
+In a single-file document, a reader accepts the integer `3` and the release strings `"3.0.0"` and `"3.1.0"`. `3.2.0` and later fail with `unsupported_format_version_minor`, as [format-version support](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-ir/format-version-support.md) describes. The reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)`.
 
-A binding that stays on `[3.0.0,3.1.0)` still reads every `3.0.0` document. It refuses a Specs distribution and every v3 tree with the minor-version diagnostic, which is the behaviour decision 0016 requires.
+A binding that stays on `[3.0.0,3.1.0)` still reads every `3.0.0` document. It refuses a single-file Specs distribution with the minor-version diagnostic, which is the behaviour decision 0016 requires. A v3 tree manifest of any 3.x release other than `"3.1.0"` is `version_mismatch` (see the status note).
 
 ## The Specs distribution
 
@@ -113,7 +116,7 @@ New cases, each marked `version=3`:
 - `versions`: `3.1.0` accepted, `3.2.0` rejected.
 - `distributions`: a single-file v3 `Specs` distribution.
 
-The Rust adapter declares these cases. The TypeScript binding runs them as pending until its follow-up lands.
+The Rust adapter declares these cases. The TypeScript binding skips them ("version 3 not in capabilities") until [finos/morphir-typescript#36](https://github.com/finos/morphir-typescript/issues/36) lands.
 
 ## Delivery
 

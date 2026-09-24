@@ -12,9 +12,10 @@ status: draft
 
 IR format `3.1.0` was minted as a minor revision of the classic IR. It added two things: a v3 `Specs` distribution,
 and JSON and YAML document trees that hold v3. A writer emits the lowest version that expresses its content. A
-single-file `Library` therefore stays `3`, while a single-file `Specs` and every file of a v3 tree say `"3.1.0"`. The v3
-tree reuses the v4 tree's layout without change and holds the classic v3 JSON of each entry. The reference support
-table became `[3.0.0,3.2.0),[4.0.0,4.1.0)`.
+single-file `Library` therefore stays `3`, while a single-file `Specs` and every file of a v3 JSON or YAML tree say
+`"3.1.0"`. The v3 tree reuses the v4 tree's layout without change and holds the classic v3 JSON of each entry. The
+reference support table became `[3.0.0,3.2.0),[4.0.0,4.1.0)`. This raises the reference table that
+[decision 0016](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md) set, `[3.0.0,3.1.0),[4.0.0,4.1.0)`; decision 0016 itself is unchanged.
 
 ## Summary
 
@@ -40,8 +41,8 @@ that kind is a minor revision, so this is `3.1.0` and not a patch of `3.0.0`.
 
 ### Lowest-version writers
 
-A reader that stays on `[3.0.0,3.1.0)` refuses a `3.1.0` document with `unsupported_format_version_minor`, as decision
-0016 requires. If every writer moved to `"3.1.0"`, every new `Library` file would hit that refusal in morphir-elm,
+A reader that stays on `[3.0.0,3.1.0)` refuses a single-file `3.1.0` document with `unsupported_format_version_minor`,
+as decision 0016 requires. If every writer moved to `"3.1.0"`, every new `Library` file would hit that refusal in morphir-elm,
 morphir-scala, morphir-python and morphir-ui, although the file holds nothing `3.0.0` cannot say. Emitting the lowest
 version that fits confines the refusal to content that is new: a `Specs` distribution and a v3 tree. The Rust
 codec and the kit prove the rule: kit case document-tree-0011 reads a v3 tree back as a single-file `Library` with
@@ -71,6 +72,12 @@ The Rust kit already held the tree rules once, for v4. The implementation made t
 manifest's `formatVersion`. The v4 reader refuses a manifest of major 3 with `version_mismatch` at
 `manifest#/formatVersion`, so a v3 tree never fails later on the first payload that is not v4. This is a judgement about
 maintenance, not a measured result: one implementation of the rules is less to keep in step than two.
+
+The v3 tree reader accepts a manifest of exactly `"3.1.0"`. It refuses a manifest of any other 3.x release, such as
+`"3.0.0"` or `"3.2.0"`, with `version_mismatch` at `manifest#/formatVersion`. That differs from a single-file document,
+where a later 3.x release is `unsupported_format_version_minor`.
+[finos/morphir-rust#262](https://github.com/finos/morphir-rust/issues/262) tracks whether the tree reader should
+answer the minor diagnostic instead.
 
 ## Alternatives rejected
 
@@ -106,9 +113,14 @@ draft).
 
 1. The v3 JSON Schema accepts a `Specs` distribution beside `Library`, and requires `"3.1.0"` or later for it.
 2. `docs/spec/ir/schemas/v3/document-tree-files.md` specifies the v3 tree, and the v3 `whats-new.md` records `3.1.0`.
-3. The reference support table and the morphir-rust table became `[3.0.0,3.2.0),[4.0.0,4.1.0)`. Each other binding
-   raises its own table when it implements `3.1.0`. Follow-up issues are to be filed for the TypeScript
-   binding, morphir-elm, morphir-scala and morphir-python.
+3. The reference support table and the morphir-rust table became `[3.0.0,3.2.0),[4.0.0,4.1.0)`, raising the table of
+   [decision 0016](/decisions/0016-support-tables-are-intervals-and-a-patch-changes-nothing-observable.md). Each other binding raises its own table when it implements `3.1.0`:
+   [finos/morphir-typescript#36](https://github.com/finos/morphir-typescript/issues/36),
+   [finos/morphir-elm#1312](https://github.com/finos/morphir-elm/issues/1312),
+   [finos/morphir-scala#1080](https://github.com/finos/morphir-scala/issues/1080) and
+   [finos/morphir-python#28](https://github.com/finos/morphir-python/issues/28).
+   [finos/morphir-rust#262](https://github.com/finos/morphir-rust/issues/262) covers the Gleam and Python binding
+   version parsers.
 4. morphir-ui keeps `[3.0.0,3.1.0),[4.0.0,4.1.0)` until it adopts `3.1.0`. It reads every `3.0.0` document and refuses
    a `3.1.0` document with the minor-version diagnostic.
 5. `morphir migrate --target-version v3 --output-layout vfs` writes v3 trees in the JSON, YAML and Ion profiles, and the

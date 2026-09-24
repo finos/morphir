@@ -24,12 +24,16 @@ A writer emits the lowest version that expresses its content:
 | Single-file `Specs` | `"3.1.0"` |
 | Any file of a v3 JSON or YAML document tree | `"3.1.0"` |
 
-A reader of `3.1.0` accepts the integer `3` and the strings `"3.0.0"` and `"3.1.0"`. It refuses `3.2.0` and any later
-`3.x` release with `unsupported_format_version_minor`. The reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)` (see
-[Format version](../../format-version.md)). A reader that stays on `[3.0.0,3.1.0)` still reads every `3.0.0`
-document. It refuses a `Specs` distribution and every v3 JSON or YAML tree with the same diagnostic. The draft Ion
-tree follows its own [Ion draft](../../../../design/draft/ir/ion.md#document-tree), where a v3 `library` tree still says
-`"3.0.0"`.
+A reader of `3.1.0` accepts, in a single-file document, the integer `3` and the strings `"3.0.0"` and `"3.1.0"`. It
+refuses a single-file document of `3.2.0` or any later `3.x` release with `unsupported_format_version_minor`. The
+reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)` (see [Format version](../../format-version.md)). A
+reader that stays on `[3.0.0,3.1.0)` still reads every `3.0.0` document. It refuses a single-file `Specs` distribution
+with the same diagnostic.
+
+A v3 JSON or YAML tree has a stricter rule: its manifest says `"3.1.0"`, and a reader refuses a manifest of any other
+3.x release with `version_mismatch` at `manifest#/formatVersion` (see
+[Choosing the version on read](./document-tree-files.md#choosing-the-version-on-read)). The draft Ion tree follows its
+own [Ion draft](../../../../design/draft/ir/ion.md#document-tree), where a v3 `library` tree still says `"3.0.0"`.
 
 ### The Specs distribution
 

@@ -401,7 +401,7 @@ distribution:
 
 ## document-tree-0010: v3 manifest {node=DistributionManifestFile version=3}
 
-A v3 tree's own manifest file is the same shape decision-for-decision as the v4 one (document-tree-0001), except every file says its own `formatVersion`, `"3.1.0"` (decision 0016). A v3 document tree has a YAML profile too, `manifest.yaml` alongside `manifest.json` (`docs/spec/ir/schemas/v3/document-tree-files.md`), the way every other v3 tree case in this file carries `yaml file` fences; this case pins both spellings like its v4 analogue, document-tree-0001.
+A v3 tree's own manifest file is the same shape decision-for-decision as the v4 one (document-tree-0001), except every file says its own `formatVersion`, `"3.1.0"` (decision 0018). A v3 document tree has a YAML profile too, `manifest.yaml` alongside `manifest.json` (`docs/spec/ir/schemas/v3/document-tree-files.md`), the way every other v3 tree case in this file carries `yaml file` fences; this case pins both spellings like its v4 analogue, document-tree-0001.
 
 ```yaml canonical
 formatVersion: 3.1.0
@@ -698,9 +698,9 @@ distribution:
 { "formatVersion": 3, "distribution": ["Library", [["my", "org"], ["my", "project"]], [], { "modules": [[[["domain"]], { "access": "Public", "value": { "types": [[["user"], { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } }]], "values": [], "doc": null } }]] }] }
 ```
 
-## document-tree-0016: A v4 file in a v3 tree is rejected {node=Distribution version=3}
+## document-tree-0016: A v4 document offered as a v3 Distribution is rejected {node=Distribution version=3}
 
-A file's `formatVersion` must say `"3.1.0"`, the way `layout::read_tree_v3` checks every file of a v3 tree (document-tree-0010); document-tree-0011's node file with `formatVersion: "4.0.0"` instead is refused at that file's own member. `version_mismatch` is that reader's own code for this, confirmed against `ecosystem/morphir-rust/crates/morphir-mck-adapter/tests/protocol.rs`'s `a_v3_tree_diagnostic_comes_back_with_its_code_and_cursor`.
+A document that says `formatVersion: "4.0.0"`, offered as a version 3 `Distribution`, is refused with `version_mismatch`. The kit runs this `rejected` fence as a standalone `decode`: it has no grammar for a rejected file set, so this case does not put a v4 node file inside a v3 tree. The reference implementation's transport tests cover that rejection (a v3 tree reader checks every file's `formatVersion` against `"3.1.0"`, as document-tree-0010 describes), and kit grammar for a rejected file set is tracked in [finos/morphir#987](https://github.com/finos/morphir/issues/987). `version_mismatch` is the Rust reader's own code, confirmed against `ecosystem/morphir-rust/crates/morphir-mck-adapter/tests/protocol.rs`'s `a_v3_tree_diagnostic_comes_back_with_its_code_and_cursor`.
 
 ```json rejected diagnostic=version_mismatch
 { "formatVersion": "4.0.0", "name": "user", "def": { "access": "Public", "value": { "doc": "", "value": ["TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]] } } }
