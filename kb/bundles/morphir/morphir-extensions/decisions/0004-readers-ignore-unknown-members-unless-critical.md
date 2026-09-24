@@ -38,7 +38,7 @@ One bootstrap host release comes first. These are decisions 6 to 11 of finos/mor
 | 10 | A record without a statement is converted, not refused. The host builds a statement from the old flat keys and marks it `declared` rather than `probed`. |
 | 11 | There are three release paths: host only, extension only, and both (host first, then extension). One bootstrap host release is unavoidable. |
 
-[Capability statements across the extension lifecycle](/design/capability-statements.md) is the
+[Capability statements across the extension lifecycle](/design/capability-claims.md) is the
 narrative home. Decision [0003](/decisions/0003-the-guest-authors-its-capability-statement.md) records
 the statement itself and how each phase handles it.
 

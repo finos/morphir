@@ -112,7 +112,7 @@ The host follows this sequence:
 
 Before initialization, an extension may accept only `morphir.initialize`, `morphir.extension.describe`, `morphir.ping`, and `morphir.exit`. After shutdown, it may accept only `morphir.exit`. An extension refuses any other request in those states with `-32014` (not initialized).
 
-A host may also start an extension only to read its capability statement: it sends `morphir.extension.describe` and then `morphir.exit`, with no session. See [Capability statements](#capability-statements).
+A host may also start an extension only to read its capability claims: it sends `morphir.extension.describe` and then `morphir.exit`, with no session. See [Capability claims](#capability-claims).
 
 If the process exits before responding to `morphir.shutdown`, the host reports an extension failure. If it remains alive after `morphir.exit`, the host may terminate it after a configured grace period.
 
@@ -123,7 +123,7 @@ If the process exits before responding to `morphir.shutdown`, the host reports a
 | `morphir.initialize` | request | Negotiate the protocol version, identity, permissions, and capabilities |
 | `morphir.initialized` | notification | Tell the extension that the host accepted the handshake |
 | `morphir.ping` | request | Check whether the extension process can respond |
-| `morphir.extension.describe` | request | Read the extension's capability statement, before or after initialization, with no side effects |
+| `morphir.extension.describe` | request | Read the extension's capability claim set, before or after initialization, with no side effects |
 | `morphir.extension.info` | request | Read extension identity and version after initialization |
 | `morphir.extension.capabilities` | request | Read the negotiated capabilities after initialization |
 | `morphir.shutdown` | request | Ask the extension to stop accepting work |
@@ -255,19 +255,19 @@ carry more than one source document. It is absent from the wire when false. A
 host must not send a larger source set to a frontend that does not declare it;
 it refuses before dispatch and names the frontend.
 
-## Capability statements
+## Capability claims
 
-An extension's **capability statement** is what the extension says about
+An extension's **capability claim set** is what the extension claims about
 itself: its identity, the capability kinds it implements, the members of each
-capability, and the protocol versions it speaks. The extension is the only
-author of its statement. Packaging, publication and installation copy the
-statement the extension reported; no manifest declares a capability by hand.
-The working specification is
+capability, and the protocol versions it speaks. Each entry is a **claim**. The
+extension is the only author of its claims, and the host checks them.
+Packaging, publication and installation copy the claim set the extension
+reported; no manifest declares a capability by hand. The working specification is
 [finos/morphir#921](https://github.com/finos/morphir/discussions/921).
 
 ```json
 {
-  "statementVersion": "0.1.0-draft.1",
+  "claimsVersion": "0.1.0-draft.2",
   "protocolVersions": ["0.1"],
   "extension": {
     "id": "morphir-elm",
@@ -306,60 +306,60 @@ differently. A host outside the range refuses and names the range.
 | Kind | request |
 | Allowed | before `morphir.initialize`, and in any later state before shutdown |
 | Params | `{ "protocolVersions": ["0.1"] }`, the versions the caller understands |
-| Result | the capability statement |
+| Result | the capability claim set |
 | Side effects | none: no workspace access, no network, no writes, no dependence on environment values the host did not pass |
 
 `describe` is optional for an extension. A host that receives `-32601`, or
 `-32014` because the request came before `morphir.initialize`, reads what it can
 through a session instead, following the lifecycle: `morphir.initialize`, the
 `morphir.initialized` notification, `morphir.extension.capabilities`,
-`morphir.shutdown` and `morphir.exit`. A session reports less than a statement,
-so the statement the host builds from it lists only the negotiated protocol
+`morphir.shutdown` and `morphir.exit`. A session reports less than a claim set,
+so the claim set the host builds from it lists only the negotiated protocol
 version and has no `requires` or `critical` members. An extension released before
 `-32014` was assigned may refuse with another code; a host may also recognize such
 a refusal by its message, but must not fall back on any other error.
 
-### Where the statement is read
+### Where the claims are read
 
 | Phase | Caller | Extension answers | Extension side effects |
 |---|---|---|---|
 | package | release tooling, once per platform | `describe` | none |
 | publish | `extension repository publish`, for an artifact that runs on the publishing host | `describe` | none |
 | install | `extension install`, for the selected artifact, unless `--no-probe` | `describe` | none |
-| session | host | `initialize`, whose result must agree with the statement | none until an operation is called |
+| session | host | `initialize`, whose result must agree with the claim set | none until an operation is called |
 | operate | host | operation methods | only through host functions or within its sandbox |
 | shutdown | host | `shutdown`, then `exit` | releases its resources |
 
 Publication, installation, update and removal remain host operations. The
 extension takes part in them only through `describe`, so it cannot change
-anything while it is published or installed. Reading a statement means running
+anything while it is published or installed. Reading a claim set means running
 the artifact: a `process` artifact runs as a child process under the session's
 launch rules and with the user's rights, and a `wasm` artifact runs in the WASM
 engine without direct file or network access. The
-[distribution design](./distribution-and-acquisition.md#capability-statements-in-distribution)
-describes how the statement travels between these phases.
+[distribution design](./distribution-and-acquisition.md#capability-claims-in-distribution)
+describes how the claim set travels between these phases.
 
-### When a session agrees with a statement
+### When a session agrees with a claim set
 
-An initialization result is not a capability statement. It carries one
+An initialization result is not a capability claim set. It carries one
 negotiated `protocolVersion` and the capabilities available in that session,
-while a statement lists every protocol version the extension speaks and adds
+while a claim set lists every protocol version the extension speaks and adds
 `requires` and `critical`. A host therefore does not test the two for
-equality. An initialization result **agrees with** a statement when all of the
+equality. An initialization result **agrees with** a claim set when all of the
 following hold:
 
 1. the extension's `id`, `name` and `version` are equal;
-2. the negotiated `protocolVersion` is one of the statement's `protocolVersions`;
-3. every capability kind the session reports is among the statement's `types`;
-4. every capability member the session reports has the value the statement
+2. the negotiated `protocolVersion` is one of the claim set's `protocolVersions`;
+3. every capability kind the session reports is among the claim set's `types`;
+4. every capability member the session reports has the value the claim set
    gives it.
 
-A session may offer less than its statement, because negotiation can narrow
-what one session provides. It may never offer a kind or a member the statement
+A session may offer less than its claim set, because negotiation can narrow
+what one session provides. It may never offer a kind or a member the claim set
 does not have, or a different value for one it does. A result that does not
 agree is refused, and the refusal names the first rule that failed.
 
-Comparing two statements, as publication and installation do, is a comparison
+Comparing two claim sets, as publication and installation do, is a comparison
 of equal documents.
 
 ## Capability methods
@@ -826,7 +826,7 @@ Protocol versions use `major.minor` numbers.
 - Receivers must reject unsupported methods with JSON-RPC error `-32601`.
 - A host must call only capabilities returned by initialization.
 - An extension must not change negotiated capabilities during a session.
-- An extension that needs a newer host states `requires.host` in its capability statement and lists it in `critical`.
+- An extension that needs a newer host states `requires.host` in its capability claim set and lists it in `critical`.
 - A host must not require `morphir.extension.describe`; it falls back to a session when an extension does not implement it.
 
 ### Version numbers
@@ -837,15 +837,22 @@ knowledge-base decision
 released version is compatible within its major. A prerelease such as
 `0.1.0-draft.1` matches only exactly: drafts are refined in place and promise no
 compatibility with each other. A new contract starts at `0.1.0-draft.1` and moves
-to the `1.0.0-draft` line once its shape is settled. The capability statement starts at
-`statementVersion` `0.1.0-draft.1`, and the workspace discovery protocol moves
-from the integer `1` to `0.1.0-draft.1`.
+to the `1.0.0-draft` line once its shape is settled. The workspace discovery
+protocol moves from the integer `1` to `0.1.0-draft.1`.
+
+The capability claim set is at `claimsVersion` `0.1.0-draft.2`. Its first draft,
+`0.1.0-draft.1`, called the document a capability statement and its version
+member `statementVersion`. A host still reads a draft.1 document from an older
+extension and converts it to draft.2; the extension SDK writes only draft.2. Hosts
+`0.4.0-beta.6` and earlier read only draft.1. The knowledge-base decision
+[Extensions make capability claims](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0007-extensions-make-capability-claims.md)
+records the rename.
 
 MEP itself is a recorded exception. It keeps `major.minor` protocol versions,
 currently `0.1`, until the next change to the protocol, which adopts SemVer.
 
 The same must-ignore rule applies to every document that carries a capability
-statement: the release descriptor, the repository index record and the
+claim set: the release descriptor, the repository index record and the
 installed record. The
 [distribution design](./distribution-and-acquisition.md#compatibility-and-release-paths)
 states the schema ranges those documents use and the order in which hosts and
