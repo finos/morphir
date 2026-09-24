@@ -138,7 +138,7 @@ fn the_rust_runner_reproduces_the_typescript_report_from_the_same_answers() {
         "morphir-typescript",
         705,
         "morphir-typescript supports IR format versions [4.0.0,4.1.0) (4.0.0 up to but not including 4.1.0)",
-        "722 pass, 0 fail, 0 kit-error, 8 skipped",
+        "722 pass, 0 fail, 0 kit-error, 80 skipped",
     );
 }
 

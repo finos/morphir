@@ -439,7 +439,7 @@ cmd migrate display_order=12 args_override_self=#false help="Migrate IR between 
     long_help #"""
 Migrate IR between versions
 
-Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
+Converts concrete Morphir IR V3 and V4 between native JSON, YAML and Ion storage, single files, and V3 and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
@@ -703,7 +703,7 @@ cmd ir display_order=22 subcommand_required=#true arg_required_else_help=#true a
         long_help #"""
 Migrate IR between versions
 
-Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
+Converts concrete Morphir IR V3 and V4 between native JSON, YAML and Ion storage, single files, and V3 and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 

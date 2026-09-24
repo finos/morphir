@@ -307,7 +307,7 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
         without_volatile(actual.clone())["records"],
         without_volatile(expected)["records"]
     );
-    assert_eq!(actual["records"].as_array().unwrap().len(), 730);
+    assert_eq!(actual["records"].as_array().unwrap().len(), 802);
     std::fs::write(work.path().join("allowed.json"), "{\"cases\":[]}").unwrap();
     success(&[
         "mck",
@@ -416,14 +416,14 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
         stderr(&output)
     );
     let lines: Vec<String> = stdout(&output).lines().map(str::to_owned).collect();
-    assert_eq!(lines[0], "722 pass, 0 fail, 0 kit-error, 8 skipped");
+    assert_eq!(lines[0], "722 pass, 0 fail, 0 kit-error, 80 skipped");
     assert_eq!(
         lines[1],
-        "skipped versions-0001 fence 0 [current]: version 3 not in capabilities"
+        "skipped distributions-0011 fence 0 [current]: version 3 not in capabilities"
     );
     assert_eq!(
         lines.len(),
-        9,
+        81,
         "the summary and one line per non-pass record, nothing else"
     );
 
