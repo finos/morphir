@@ -20,6 +20,10 @@ A document tree maps logical `manifest`, `module`, `NAME.type`, and `NAME.value`
 
 The extension is not part of a logical identity. A generated tree MUST use one profile for every file. If discovery finds both `manifest.json` and `manifest.yaml`, it MUST report ambiguity and MUST NOT select one implicitly. The structures documented below apply to both profiles; JSON examples use the [JSON profile](json-profile.md), and their YAML equivalents use the [YAML profile](yaml-profile.md).
 
+> An Amazon Ion tree (`manifest.ion`) is an unreleased draft and is not part of this specification. It uses these
+> logical paths, but its files hold annotated Ion elements instead of the structures below. See the
+> [Ion draft](../../../../design/draft/ir/ion.md#document-tree).
+
 ## Logical paths
 
 A document tree is addressed by **logical paths**, and a logical path carries **no extension**:

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Draft Amazon Ion IR format, `ionVersion` `0.1.0-draft.1`, for IR v3 and v4 ([#946](https://github.com/finos/morphir/issues/946)). `ir.format = "ion"` writes `morphir-ir.ion`, one datagram of annotated elements with S-expression values. With `ir.layout = "document-tree"` it writes a tree whose root is `manifest.ion`. Each tree file holds the same elements, and the path supplies the package, module and name. The draft spelling can still change before a release. The compatibility kit's profiles stay `json` and `yaml`. The design is in `docs/design/draft/ir/ion.md` and the kb note `morphir-ir/ion-ir-format.md`.
+
 ### Changed
 - The CLI sends every frontend the current compile envelope, `sources: { root, documents }`. Process and WASM frontends no longer receive the legacy top-level `documents` with `options.sourceRootUri`, and `compile_wire_request` is gone. A process or WASM frontend released before `sources` existed no longer compiles with this CLI: that is `extension/python/v0.2.0` and earlier, `extension/rust/v0.1.0`, and `morphir-scala-elm` `v0.5.0-M08` and earlier. Use `extension/python/v0.3.0`, `extension/rust/v0.2.0`, `morphir-scala-elm` `v0.5.0-M09` and the Elm extension `v0.3.1` or later (#921).
 - The published extension pins move to frontends that accept the `sources` compile envelope as well as the legacy top-level `documents`: `extension/python/v0.3.0`, `extension/rust/v0.2.0` and `morphir-scala-elm` `v0.5.0-M09`. With the Elm extension `v0.3.1`, which already reads both, every pinned frontend can take `sources`, so the CLI can stop sending the legacy envelope (#921). `INSTALLING.md` names the Python `v0.3.0` bundle.

@@ -680,10 +680,10 @@ struct MigrateArgs {
     /// Output storage layout (inferred from the output path when omitted)
     #[arg(long, value_enum)]
     output_layout: Option<OutputLayout>,
-    /// Input serialization profile (json or yaml; inferred when omitted)
+    /// Input serialization profile (json, yaml, or ion; inferred when omitted)
     #[arg(long)]
     input_format: Option<morphir_common::ir_transport::FormatId>,
-    /// Output serialization profile (json or yaml; extension then YAML default when omitted)
+    /// Output serialization profile (json, yaml, or ion; extension then YAML default when omitted)
     #[arg(long)]
     output_format: Option<morphir_common::ir_transport::FormatId>,
 }

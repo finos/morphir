@@ -284,10 +284,10 @@ against:
 ```toml
 [ir]
 layout = "single-file"   # or "document-tree"
-format = "json"          # or "yaml"
+format = "json"          # or "yaml" or "ion"
 ```
 
-Names inside `.dest`: `morphir-ir.json`, `morphir-ir.yaml`, `morphir-ir/`.
+Names inside `.dest`: `morphir-ir.json`, `morphir-ir.yaml`, `morphir-ir.ion`, `morphir-ir/`.
 
 `ir.mode` (`classic`/`vfs`) is still accepted as a deprecated alias for
 `ir.layout` for one release: `classic` maps to `single-file` and `vfs` maps to
@@ -306,10 +306,10 @@ that those settings do not apply. Its task record carries a `compileScope` of
 
 `generate -i <path>` accepts any of:
 
-- a single IR file (`morphir-ir.json` or `morphir-ir.yaml`)
-- a document-tree directory (one with `manifest.json` or `manifest.yaml` at its root)
+- a single IR file (`morphir-ir.json`, `morphir-ir.yaml`, or `morphir-ir.ion`)
+- a document-tree directory (one with `manifest.json`, `manifest.yaml`, or `manifest.ion` at its root)
 - a compile-output directory — a `.dest` directory or any directory that
-  holds `morphir-ir.json`, `morphir-ir.yaml`, or a nested `morphir-ir/`
+  holds `morphir-ir.json`, `morphir-ir.yaml`, `morphir-ir.ion`, or a nested `morphir-ir/`
   document tree, without a manifest of its own
 
 ## Configuration keys

@@ -407,7 +407,7 @@ properties:
         description: "Storage layout compile writes."
       format:
         type: string
-        enum: ["json", "yaml"]
+        enum: ["json", "yaml", "ion"]
         default: "json"
         description: "Serialization format compile writes."
       strict_mode: { type: boolean }
