@@ -456,6 +456,22 @@
       "assumedShape": "TypeAliasDefinition with Record type expression but no missing-field entry",
       "expectedError": "stale_target",
       "expectedFileUnchanged": true
+    },
+    {
+      "id": "node-legacy-0011",
+      "nodeId": "Acme.Orders:Domain:accountId.type",
+      "assumedShape": "CustomTypeDefinition with exactly one same-named constructor and exactly one argument",
+      "expectedError": "mapping_not_specified",
+      "purpose": "Elm selects the sole constructor argument type; never retarget it to type-exp while argument roles and guard encoding remain draft",
+      "expectedFileUnchanged": true
+    },
+    {
+      "id": "node-legacy-0012",
+      "nodeId": "Acme.Orders:Domain:accountId.type",
+      "assumedShape": "CustomTypeDefinition with two constructors",
+      "expectedError": "stale_target",
+      "purpose": "Elm lookup rejects custom types outside its one-constructor one-argument special case",
+      "expectedFileUnchanged": true
     }
   ],
   "resolutionCases": [
