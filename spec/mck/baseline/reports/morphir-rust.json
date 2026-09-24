@@ -2272,6 +2272,26 @@
 			"durationMs": 1.0296839999999747
 		},
 		{
+			"caseId": "distributions-0011",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "distributions-0011",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
 			"caseId": "document-tree-0001",
 			"irVersion": 4,
 			"profile": "yaml",
@@ -3030,6 +3050,680 @@
 			"path": "pinned",
 			"result": "pass",
 			"durationMs": 0.9873859999999013
+		},
+		{
+			"caseId": "document-tree-0010",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0010",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0010",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0010",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0011",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 5,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0012",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 5,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0013",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0014",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0015",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 4,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0016",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "version_mismatch",
+			"observedDiagnostic": {
+				"code": "version_mismatch",
+				"stage": "normalization",
+				"cursor": "/formatVersion",
+				"message": "formatVersion \"4.0.0\" is not a version 3 release"
+			},
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0016",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "version_mismatch",
+			"observedDiagnostic": {
+				"code": "version_mismatch",
+				"stage": "normalization",
+				"cursor": "/formatVersion",
+				"message": "formatVersion \"4.0.0\" is not a version 3 release"
+			},
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0017",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0017",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0017",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0017",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0017",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0017",
+			"irVersion": 3,
+			"profile": "tree",
+			"role": "file",
+			"fenceIndex": 1,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0017",
+			"irVersion": 3,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 2,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "document-tree-0017",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 3,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
 		},
 		{
 			"caseId": "names-0001",
@@ -7852,6 +8546,60 @@
 			"path": "pinned",
 			"result": "pass",
 			"durationMs": 0.4254959999999528
+		},
+		{
+			"caseId": "versions-0009",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "versions-0009",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"durationMs": 0
+		},
+		{
+			"caseId": "versions-0010",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_format_version_minor",
+			"observedDiagnostic": {
+				"code": "unsupported_format_version_minor",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "release 3.2.0 is a minor revision this reader does not support"
+			},
+			"durationMs": 0
+		},
+		{
+			"caseId": "versions-0010",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "pinned",
+			"result": "pass",
+			"expectedDiagnostic": "unsupported_format_version_minor",
+			"observedDiagnostic": {
+				"code": "unsupported_format_version_minor",
+				"stage": "normalization",
+				"cursor": "",
+				"message": "release 3.2.0 is a minor revision this reader does not support"
+			},
+			"durationMs": 0
 		}
 	]
 }

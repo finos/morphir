@@ -38,6 +38,25 @@ The 8 TypeScript skips are `versions-0001`, `-0006`, `-0007` and `-0008`, fence 
 each `version 3 not in capabilities`. The Rust binding declares `[3.0.0,3.2.0),[4.0.0,4.1.0)` and
 runs them. `allowed-failing.json` for the Rust adapter is empty.
 
+## IR 3.1.0 update
+
+The IR 3.1.0 cases (`document-tree-0010` to `-0017`, `versions-0009`, `versions-0010` and
+`distributions-0011`, all at version 3) change two baseline files. The table above records the
+old driver's run and stays as it was.
+
+- `reports/morphir-typescript.json`: 722 pass, 0 fail, 0 kit-error, 80 skipped. The 72 new skips
+  are the new version 3 fences, each `version 3 not in capabilities`. The TypeScript transcript
+  does not change, because a skipped fence sends no request.
+- `transcripts/morphir-rust.ndjson` and `reports/morphir-rust.json`: 802 pass, 0 fail, 0
+  kit-error, 0 skipped. The transcript was recorded again with the native engine through the
+  same proxy: `morphir mck run --kit spec/ir/mck --adapter bun --adapter-arg run --adapter-arg
+  tools/record-mck-transcript.ts --adapter-arg <transcript> --adapter-arg <mck-adapter-rust>`,
+  at the morphir-rust pin `b488805`. It holds 772 requests: 1 `capabilities`, 722 `decode`, 26
+  `readTree`, 22 `writeTree`, 1 `exit`. Its largest message is 4 607 bytes, and it contains no
+  machine-specific path. The report keeps its version 1 header. Its 730 earlier records are
+  unchanged and in the same order, and the 72 new records come from replaying the new
+  transcript (`crates/morphir-mck/tests/runner_parity.rs`).
+
 ## Files
 
 | File | Content | How it was captured |
