@@ -30,7 +30,9 @@
             "name": "customer-id"
           }
         ],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null
       },
       "profiles": [
@@ -66,7 +68,9 @@
             "kind": "apply-argument"
           }
         ],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null
       },
       "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/argument"
@@ -90,7 +94,9 @@
           }
         },
         "steps": [],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null
       },
       "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/sales%2Forders/type/order"
@@ -115,6 +121,7 @@
         },
         "steps": [],
         "revision": {
+          "kind": "pinned",
           "algorithm": "sha256",
           "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         },
@@ -141,7 +148,9 @@
           }
         },
         "steps": [],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null
       },
       "expectedCanonicalUri": "morphir://ir/workspace/orders?format=4.0.0#/module/domain/value/calculate-total"
@@ -203,7 +212,9 @@
             "index": 1
           }
         ],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": {
           "algorithm": "sha256",
           "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -245,6 +256,7 @@
           }
         ],
         "revision": {
+          "kind": "pinned",
           "algorithm": "sha256",
           "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         },
@@ -272,7 +284,9 @@
           "kind": "distribution"
         },
         "steps": [],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null
       },
       "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/distribution"
@@ -295,7 +309,9 @@
           }
         },
         "steps": [],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null
       },
       "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain"
@@ -319,7 +335,9 @@
           }
         },
         "steps": [],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null
       },
       "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/value/order"
@@ -335,7 +353,9 @@
         },
         "formatVersion": "4.0.0",
         "steps": [],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null,
         "root": {
           "kind": "package",
@@ -357,7 +377,9 @@
         },
         "formatVersion": "4.0.0",
         "steps": [],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null,
         "root": {
           "kind": "type",
@@ -382,7 +404,9 @@
         },
         "formatVersion": "4.0.0",
         "steps": [],
-        "revision": null,
+        "revision": {
+          "kind": "current"
+        },
         "guard": null,
         "root": {
           "kind": "entry-point",
@@ -390,6 +414,80 @@
         }
       },
       "expectedCanonicalUri": "morphir://ir/pkg/acme/orders?format=4.0.0#/entry-point/launch-%C3%A9"
+    },
+    {
+      "id": "node-uri-0021",
+      "purpose": "A canonical workspace alias can contain lowercase words and digits separated by hyphens",
+      "uri": "morphir://ir/workspace/team-orders-2?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedAddress": {
+        "artifact": {
+          "kind": "workspace",
+          "alias": "team-orders-2"
+        },
+        "formatVersion": "4.0.0",
+        "root": {
+          "kind": "value",
+          "module": "domain",
+          "name": "calculate-total",
+          "owner": {
+            "kind": "own-package"
+          }
+        },
+        "steps": [],
+        "revision": {
+          "kind": "current"
+        },
+        "guard": null
+      },
+      "expectedCanonicalUri": "morphir://ir/workspace/team-orders-2?format=4.0.0#/module/domain/value/calculate-total"
+    },
+    {
+      "id": "node-uri-0022",
+      "purpose": "Uppercase workspace aliases are invalid",
+      "uri": "morphir://ir/workspace/Orders?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0023",
+      "purpose": "Unicode workspace aliases are invalid even when UTF-8 encoded",
+      "uri": "morphir://ir/workspace/caf%C3%A9?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0024",
+      "purpose": "A slash cannot be hidden inside a workspace alias",
+      "uri": "morphir://ir/workspace/team%2Forders?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0025",
+      "purpose": "A percent sign is not part of the workspace alias domain",
+      "uri": "morphir://ir/workspace/a%25b?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0026",
+      "purpose": "An empty workspace alias is invalid",
+      "uri": "morphir://ir/workspace/?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0027",
+      "purpose": "A workspace alias must use its literal canonical ASCII spelling",
+      "uri": "morphir://ir/workspace/ord%65rs?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0028",
+      "purpose": "A workspace alias cannot end with a hyphen",
+      "uri": "morphir://ir/workspace/orders-?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedError": "invalid_node_uri"
+    },
+    {
+      "id": "node-uri-0029",
+      "purpose": "An unescaped slash creates an invalid extra workspace path segment",
+      "uri": "morphir://ir/workspace/team/orders?format=4.0.0#/module/domain/value/calculate-total",
+      "expectedError": "invalid_node_uri"
     }
   ],
   "legacyCases": [

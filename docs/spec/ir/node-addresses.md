@@ -18,12 +18,16 @@ A node address identifies a location in the *normalized IR model*. It is indepen
 | Format version | The exact V3 or V4 semantic contract used to interpret the path. It does not change when the same model is written as JSON, YAML, or a document tree. |
 | Root | The distribution, its own package, an embedded dependency package, an application entry point, a named module, or a type or value definition/specification within a module. The type/value distinction is part of identity. |
 | Child steps | Typed constructor and child roles from that version's semantic model. A named map entry uses a normalized Morphir name; an ordered child uses a zero-based index. |
-| Revision | Optional immutable artifact snapshot identifier. Without it, a resolver selects the current artifact in its context. |
+| Revision | A tagged choice: `current` selects the artifact in the resolver context; `pinned` selects one immutable snapshot. |
 | Positional guard | Required for an unpinned path containing an ordered child, so an insertion cannot silently retarget that path. |
 
 Conceptually, these are separate types, even though a URI has to render them as text:
 
 ```ts
+type Revision =
+  | { kind: "current" }
+  | { kind: "pinned"; algorithm: "sha256"; digest: string };
+
 const fieldAddress = {
   artifact: { kind: "package", packagePath: "acme/orders" },
   formatVersion: "4.0.0",
@@ -53,11 +57,20 @@ morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order/type-exp/rec
 
 `ir` is the authority for semantic IR addresses. It is distinct from the existing `morphir://pkg/.../*.type.json` document-tree address, which locates a logical document in one storage layout. After the authority, `pkg` selects a package path; `workspace` selects an alias supplied by the resolver context. A workspace alias is portable as an address but only resolves where that alias has been configured. The required `format` parameter uses the exact three-component IR release form; thus numeric IR `4` is written as `format=4.0.0`. `rev` and `guard` are optional query parameters whose conditions are described below. The canonical parameter order is `format`, `rev`, then `guard`.
 
+A workspace alias is a nonempty lowercase ASCII slug matching `[a-z][a-z0-9]*(?:-[a-z0-9]+)*`, such as `orders` or `team-orders-2`. Its spelling is exact: the resolver does not case-fold, apply Unicode normalization, or reinterpret it as a Morphir name. Uppercase letters, Unicode, `/`, `%`, empty aliases, leading/trailing hyphens, and redundant percent escapes are invalid. An alias occupies one literal URI path segment and is emitted without percent escapes. This deliberately narrow draft grammar avoids two resolvers treating differently normalized workspace labels as the same selector; a future grammar expansion requires a new reviewed contract.
+
+| Workspace path after `/workspace/` | Result |
+| --- | --- |
+| `team-orders-2` | Valid alias, resolved by exact spelling |
+| `Orders` or `caf%C3%A9` | Invalid uppercase or Unicode alias |
+| `team%2Forders` or `a%25b` | Invalid encoded slash or percent sign |
+| Empty segment or `orders-` | Invalid empty or trailing-hyphen alias |
+
 The fragment is a path of typed semantic steps. `distribution` selects the whole distribution; `package` selects its own package definition or specification. `dependency` plus a canonical package path selects one embedded dependency package, which can contain specifications in a Library or definitions in an Application. `entry-point` plus a name selects an Application entry point. `module` is followed by one canonical module-path component, then optionally `type` or `value` and one canonical local name. A `module` at the beginning of a fragment belongs to the artifact's own package; a dependency's module follows its `dependency` step. `type-exp` enters a type alias's expression; `body` enters a value definition's body. A constructor step such as `record`, `apply`, `tuple`, or `pattern-match` must match the current semantic variant. It is followed by a role that variant actually has, such as `field`, `function`, `argument`, `element`, or `case`, and then a canonical name or zero-based index when that role has multiple children. Generic JSON Pointer member names are not valid substitutes for semantic roles.
 
 This draft fixes only the roles exercised below. The exhaustive V3/V4 child-role grammar and reference cases for every constructor remain acceptance work in #957 before an adapter can claim the ability to address *any* node. In particular, value input/output types, let definitions, nested patterns, and general custom-type constructor arguments still need reviewed spellings. An implementation must reject an unrecognized role; it must not infer one from JSON member names.
 
-Components are UTF-8 percent encoded individually. Split fragment segments at literal `/` **before** decoding them; a slash inside one canonical package or module path is `%2F`. Use uppercase hex in percent escapes, encode reserved characters, and reject invalid UTF-8, duplicate query keys, unknown parameters, noncanonical Morphir name spellings, negative or leading-zero indices, and a URI that parses to more than one address. A canonical writer emits one spelling for each typed address. The [naming contract](../draft/names.md) decides whether a decoded package, module, type, value, or field name is valid; a URI does not admit arbitrary Unicode in those names merely because UTF-8 percent encoding can carry it. An Application entry-point key is a different domain value: preserve its exact nonempty identifier and percent encode it without Morphir-name normalization.
+Components other than workspace aliases are UTF-8 percent encoded individually. Split fragment segments at literal `/` **before** decoding them; a slash inside one canonical package or module path is `%2F`. Use uppercase hex in percent escapes, encode reserved characters, and reject invalid UTF-8, duplicate query keys, unknown parameters, noncanonical Morphir name spellings, negative or leading-zero indices, and a URI that parses to more than one address. A canonical writer emits one spelling for each typed address. The [naming contract](../draft/names.md) decides whether a decoded package, module, type, value, or field name is valid; a URI does not admit arbitrary Unicode in those names merely because UTF-8 percent encoding can carry it. An Application entry-point key is a different domain value: preserve its exact nonempty identifier and percent encode it without Morphir-name normalization.
 
 | Semantic target | Proposed fragment |
 | --- | --- |
@@ -80,7 +93,7 @@ The typed module, type and value roots carry an owner: `own-package` or `depende
 
 ## Resolution and revision behavior
 
-A resolver first parses the URI into typed parts, then selects an artifact through its caller-provided context. Without `rev`, it selects the current matching artifact; two releases with the same package path yield `ambiguous_artifact` until the caller narrows the context. With `rev`, it selects and verifies exactly the named immutable snapshot. The URI parser does not invent a revision by hashing whichever file it received: a package release or unpublished snapshot supplies a verified content digest through its artifact resolver. A missing or unverifiable snapshot yields `revision_unavailable` or `revision_mismatch`; it never falls back to current. A local working artifact needs an immutable snapshot before it can produce a pinned permalink.
+A resolver first parses the URI into typed parts, then selects an artifact through its caller-provided context. An absent `rev` decodes to `{ kind: "current" }` and the writer omits `rev` for that variant; a present `rev` decodes to `{ kind: "pinned", algorithm, digest }` and the writer emits it. A current selector chooses the matching artifact; two releases with the same package path yield `ambiguous_artifact` until the caller narrows the context. A pinned selector verifies exactly the named immutable snapshot. The URI parser does not invent a revision by hashing whichever file it received: a package release or unpublished snapshot supplies a verified content digest through its artifact resolver. A missing or unverifiable snapshot yields `revision_unavailable` or `revision_mismatch`; it never falls back to current. A local working artifact needs an immutable snapshot before it can produce a pinned permalink.
 
 Equivalent JSON, YAML, and document-tree encodings of one semantic model share an unpinned node address. A pinned link identifies an exact acquired snapshot; converting that snapshot into a new physical artifact may produce a different revision token even when the semantic model remains equal. Hosts that can acquire and verify the same snapshot can resolve its pinned URI without sharing a website URL.
 
