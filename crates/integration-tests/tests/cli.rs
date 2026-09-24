@@ -5,12 +5,505 @@
 
 use cucumber::{World, given, then, when};
 use integration_tests::{CliTestContext, cli_tests_available};
+use std::collections::BTreeSet;
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::TcpListener;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
+
+#[derive(Debug)]
+struct LocalHttpSource {
+    url: String,
+    requests: Arc<AtomicUsize>,
+    shutdown: Arc<AtomicBool>,
+    worker: Option<JoinHandle<()>>,
+}
+
+impl LocalHttpSource {
+    fn serve(bytes: Vec<u8>) -> Self {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind local HTTP source");
+        listener
+            .set_nonblocking(true)
+            .expect("configure local HTTP source");
+        let address = listener.local_addr().expect("local HTTP source address");
+        let requests = Arc::new(AtomicUsize::new(0));
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let request_count = Arc::clone(&requests);
+        let stop = Arc::clone(&shutdown);
+        let worker = thread::spawn(move || {
+            while !stop.load(Ordering::Relaxed) {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        stream
+                            .set_read_timeout(Some(Duration::from_secs(5)))
+                            .expect("set HTTP read timeout");
+                        let mut request_line = Vec::new();
+                        BufReader::new((&mut stream).take(4096))
+                            .read_until(b'\n', &mut request_line)
+                            .expect("read HTTP request line");
+                        if !request_line.ends_with(b"\r\n")
+                            || !request_line.starts_with(b"GET /greeting-example.json ")
+                        {
+                            continue;
+                        }
+                        request_count.fetch_add(1, Ordering::Relaxed);
+                        write!(
+                            stream,
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            bytes.len()
+                        )
+                        .expect("write HTTP response headers");
+                        stream.write_all(&bytes).expect("write HTTP response body");
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(error) => panic!("accept local HTTP request: {error}"),
+                }
+            }
+        });
+        Self {
+            url: format!("http://{address}/greeting-example.json"),
+            requests,
+            shutdown,
+            worker: Some(worker),
+        }
+    }
+}
+
+impl Drop for LocalHttpSource {
+    fn drop(&mut self) {
+        self.shutdown.store(true, Ordering::Relaxed);
+        if let Some(worker) = self.worker.take() {
+            worker.join().expect("stop local HTTP source");
+        }
+    }
+}
 
 /// World state for CLI cucumber tests
 #[derive(Debug, Default, World)]
 pub struct CliWorld {
     context: Option<CliTestContext>,
     last_result: Option<integration_tests::CommandResult>,
+    remote_source: Option<LocalHttpSource>,
+}
+
+#[given("the morphir CLI is built and available")]
+fn given_morphir_cli_is_available(_world: &mut CliWorld) {
+    assert!(
+        CliTestContext::get_morphir_binary().is_some(),
+        "build the morphir CLI before running integration tests"
+    );
+}
+
+#[given("I have a temporary test directory")]
+fn given_temp_directory(world: &mut CliWorld) {
+    world.context = Some(CliTestContext::new().expect("create temporary test directory"));
+}
+
+#[given(regex = r#"I have a Classic IR file from fixture "([^"]+)""#)]
+fn given_classic_ir_fixture(world: &mut CliWorld, name: String) {
+    copy_ir_fixture(world, "v3", &name);
+}
+
+#[given(regex = r#"I have a V4 IR file from fixture "([^"]+)""#)]
+fn given_v4_ir_fixture(world: &mut CliWorld, name: String) {
+    copy_ir_fixture(world, "v4", &name);
+}
+
+fn copy_ir_fixture(world: &CliWorld, version: &str, name: &str) {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples")
+        .join(version)
+        .join(name);
+    let contents = std::fs::read_to_string(&fixture)
+        .unwrap_or_else(|error| panic!("read {}: {error}", fixture.display()));
+    world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .write_source_file(name, &contents)
+        .expect("copy IR fixture");
+}
+
+#[given(regex = r#"I have a Classic IR file with dependency "([^"]+)""#)]
+fn given_classic_ir_with_dependency(world: &mut CliWorld, dependency: String) {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    let mut document: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&fixture).expect("read Classic IR greeting fixture"))
+            .expect("parse Classic IR greeting fixture");
+    let dependency_path: Vec<Vec<&str>> = dependency
+        .split('/')
+        .map(|segment| segment.split('-').collect())
+        .collect();
+    document["distribution"][2] = serde_json::json!([[dependency_path, {"modules": []}]]);
+    world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .write_source_file("input.json", &document.to_string())
+        .expect("write Classic IR with dependency");
+}
+
+#[given("a local HTTP source serves the Classic IR greeting fixture")]
+fn given_local_http_source(world: &mut CliWorld) {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    world.remote_source = Some(LocalHttpSource::serve(
+        std::fs::read(&fixture).expect("read Classic IR greeting fixture"),
+    ));
+}
+
+#[given(regex = r#"I have a file "([^"]+)" with:"#)]
+fn given_file_with_contents(world: &mut CliWorld, name: String, step: &cucumber::gherkin::Step) {
+    let contents = step.docstring().expect("file contents docstring");
+    world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .write_source_file(&name, contents)
+        .expect("write test file");
+}
+
+#[given(regex = r#"I have a minimal V4 (Library|Specs|Application) IR document"#)]
+fn given_minimal_v4_distribution(world: &mut CliWorld, variant: String) {
+    let distribution = match variant.as_str() {
+        "Library" => serde_json::json!({"Library": {
+            "packageName": "acme/shop",
+            "dependencies": {},
+            "def": {"modules": {"main": {"Public": {"types": {}, "values": {}}}}}
+        }}),
+        "Specs" => serde_json::json!({"Specs": {
+            "packageName": "acme/shop",
+            "dependencies": {},
+            "spec": {"modules": {"pricing": {"types": {}, "values": {}}}}
+        }}),
+        "Application" => serde_json::json!({"Application": {
+            "packageName": "acme/shop",
+            "dependencies": {},
+            "def": {"modules": {"main": {"Public": {"types": {}, "values": {}}}}},
+            "entryPoints": {"start": {"target": "acme/shop:main#run", "kind": "main"}}
+        }}),
+        _ => unreachable!("the step expression admits only three variants"),
+    };
+    let document = serde_json::json!({"formatVersion": 4, "distribution": distribution});
+    world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .write_source_file("input.json", &document.to_string())
+        .expect("write V4 IR document");
+}
+
+#[when(regex = r#"I run "([^"]+)""#)]
+fn when_run_morphir(world: &mut CliWorld, command: String) {
+    let args: Vec<&str> = command.split_whitespace().collect();
+    assert_eq!(args.first(), Some(&"morphir"), "expected a morphir command");
+    world.last_result = Some(
+        world
+            .context
+            .as_ref()
+            .expect("temporary test directory")
+            .execute_cli_command(&args[1..])
+            .expect("execute morphir command"),
+    );
+}
+
+#[when(regex = r#"^I migrate the HTTP fixture to "([^"]+)"$"#)]
+fn when_migrate_http_fixture(world: &mut CliWorld, output: String) {
+    run_http_migration(world, &output, None);
+}
+
+#[when(regex = r#"^I migrate the HTTP fixture to "([^"]+)" with "([^"]+)"$"#)]
+fn when_migrate_http_fixture_with_option(world: &mut CliWorld, output: String, option: String) {
+    assert!(matches!(option.as_str(), "--force-refresh" | "--no-cache"));
+    run_http_migration(world, &output, Some(&option));
+}
+
+fn run_http_migration(world: &mut CliWorld, output: &str, option: Option<&str>) {
+    let url = world
+        .remote_source
+        .as_ref()
+        .expect("local HTTP source")
+        .url
+        .clone();
+    let option = option.unwrap_or("");
+    when_run_morphir(
+        world,
+        format!("morphir migrate {url} --output {output} --target-version v4 {option}"),
+    );
+}
+
+#[then("the command should succeed")]
+fn then_command_should_succeed(world: &mut CliWorld) {
+    world
+        .last_result
+        .as_ref()
+        .expect("CLI result")
+        .assert_success();
+}
+
+#[then("the command should fail")]
+fn then_command_should_fail(world: &mut CliWorld) {
+    world
+        .last_result
+        .as_ref()
+        .expect("CLI result")
+        .assert_failure();
+}
+
+#[then(regex = r#"the file "([^"]+)" should have V4 Library package "([^"]+)""#)]
+fn then_file_has_v4_library_package(world: &mut CliWorld, file: String, package: String) {
+    assert_v4_library_package(&read_json_file(world, &file), &package);
+}
+
+#[then(regex = r#"the file "([^"]+)" should have (\d+) modules, (\d+) types, and (\d+) values"#)]
+fn then_file_has_v4_definition_counts(
+    world: &mut CliWorld,
+    file: String,
+    expected_modules: usize,
+    expected_types: usize,
+    expected_values: usize,
+) {
+    let document = read_json_file(world, &file);
+    let modules = v4_library_modules(&document);
+    let count = |kind: &str| {
+        modules
+            .values()
+            .map(|module| {
+                module["Public"][kind]
+                    .as_object()
+                    .unwrap_or_else(|| panic!("V4 module is missing {kind}"))
+                    .len()
+            })
+            .sum::<usize>()
+    };
+    assert_eq!(
+        (modules.len(), count("types"), count("values")),
+        (expected_modules, expected_types, expected_values),
+        "V4 Library definition counts in {file}"
+    );
+}
+
+#[then(regex = r#"the file "([^"]+)" should have V4 dependency "([^"]+)""#)]
+fn then_file_has_v4_dependency(world: &mut CliWorld, file: String, dependency: String) {
+    let document = read_json_file(world, &file);
+    assert!(
+        document["distribution"]["Library"]["dependencies"][&dependency]["modules"].is_object(),
+        "missing V4 dependency {dependency}"
+    );
+}
+
+#[then(regex = r#"the HTTP source should have received (\d+) requests?"#)]
+fn then_http_request_count(world: &mut CliWorld, expected: usize) {
+    let actual = world
+        .remote_source
+        .as_ref()
+        .expect("local HTTP source")
+        .requests
+        .load(Ordering::Relaxed);
+    assert_eq!(actual, expected);
+}
+
+#[then(regex = r#"the file "([^"]+)" should use the canonical V4 Library wrapper"#)]
+fn then_file_uses_v4_library_wrapper(world: &mut CliWorld, file: String) {
+    let document = read_json_file(world, &file);
+    assert_eq!(document["formatVersion"], 4);
+    let distribution = document["distribution"]
+        .as_object()
+        .expect("V4 distribution must be an object");
+    assert_eq!(distribution.len(), 1);
+    let library = distribution["Library"]
+        .as_object()
+        .expect("Library wrapper must be an object");
+    assert_eq!(library["packageName"], "elm-compat");
+    assert!(library["dependencies"].is_object());
+    assert!(library["def"]["modules"]["api"].is_object());
+    assert!(library["def"]["modules"]["main"].is_object());
+}
+
+#[then(regex = r#"the file "([^"]+)" should preserve the V4 (Library|Specs|Application) wrapper"#)]
+fn then_file_preserves_v4_wrapper(world: &mut CliWorld, file: String, variant: String) {
+    let document = read_json_file(world, &file);
+    assert_eq!(document["formatVersion"], 4);
+    let distribution = document["distribution"]
+        .as_object()
+        .expect("V4 distribution must be an object");
+    assert_eq!(distribution.len(), 1);
+    let payload = distribution[&variant]
+        .as_object()
+        .expect("variant wrapper must be an object");
+    assert_eq!(payload["packageName"], "acme/shop");
+    assert!(payload["dependencies"].is_object());
+    match variant.as_str() {
+        "Library" => assert!(payload["def"]["modules"]["main"].is_object()),
+        "Specs" => assert!(payload["spec"]["modules"]["pricing"].is_object()),
+        "Application" => {
+            assert!(payload["def"]["modules"]["main"].is_object());
+            assert_eq!(
+                payload["entryPoints"]["start"]["target"],
+                "acme/shop:main#run"
+            );
+            assert_eq!(payload["entryPoints"]["start"]["kind"], "main");
+        }
+        _ => unreachable!("the step expression admits only three variants"),
+    }
+}
+
+#[then(regex = r#"the file "([^"]+)" should have Classic Library package "([^"]+)""#)]
+fn then_file_has_classic_library_package(world: &mut CliWorld, file: String, package: String) {
+    let document = read_json_file(world, &file);
+    assert_eq!(document["formatVersion"], 3);
+    assert_eq!(document["distribution"][0], "Library");
+    assert_eq!(
+        document["distribution"][1],
+        serde_json::json!([package.split('-').collect::<Vec<_>>()])
+    );
+    assert_eq!(
+        document["distribution"][3]["modules"]
+            .as_array()
+            .map(Vec::len),
+        Some(2)
+    );
+}
+
+#[then(regex = r#"stdout should have V4 Library package "([^"]+)""#)]
+fn then_stdout_has_v4_library_package(world: &mut CliWorld, package: String) {
+    let stdout = &world.last_result.as_ref().expect("CLI result").stdout;
+    let document: serde_json::Value = serde_json::from_str(stdout).expect("stdout must be JSON IR");
+    assert_v4_library_package(&document, &package);
+}
+
+#[then("stdout JSON should contain:")]
+fn then_stdout_json_contains(world: &mut CliWorld, step: &cucumber::gherkin::Step) {
+    let stdout = &world.last_result.as_ref().expect("CLI result").stdout;
+    let report: serde_json::Value = serde_json::from_str(stdout).expect("stdout must be JSON");
+    let mut seen = BTreeSet::new();
+    for row in data_rows(step, &["pointer", "expected JSON"]) {
+        let pointer = &row[0];
+        assert!(
+            pointer.starts_with('/'),
+            "JSON pointer must start with /: {pointer}"
+        );
+        assert!(seen.insert(pointer), "duplicate JSON pointer: {pointer}");
+        let actual = report.pointer(pointer);
+        if row[1] == "<absent>" {
+            assert!(
+                actual.is_none(),
+                "{pointer} should be absent, found {actual:?}"
+            );
+        } else {
+            let expected: serde_json::Value = serde_json::from_str(&row[1])
+                .unwrap_or_else(|error| panic!("invalid expected JSON for {pointer}: {error}"));
+            assert_eq!(actual, Some(&expected), "JSON value at {pointer}");
+        }
+    }
+}
+
+#[then(regex = r#"the file "([^"]+)" should contain exactly these V4 modules:"#)]
+fn then_file_contains_exact_v4_modules(
+    world: &mut CliWorld,
+    file: String,
+    step: &cucumber::gherkin::Step,
+) {
+    let document = read_json_file(world, &file);
+    let modules = v4_library_modules(&document);
+    let rows = data_rows(step, &["module"]);
+    let expected: BTreeSet<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+    assert_eq!(expected.len(), rows.len(), "duplicate expected V4 module");
+    let actual: BTreeSet<&str> = modules.keys().map(String::as_str).collect();
+    assert_eq!(actual, expected, "V4 Library module names in {file}");
+}
+
+#[then(regex = r#"the file "([^"]+)" should contain exactly these V4 (types|values):"#)]
+fn then_file_contains_exact_v4_definitions(
+    world: &mut CliWorld,
+    file: String,
+    kind: String,
+    step: &cucumber::gherkin::Step,
+) {
+    let document = read_json_file(world, &file);
+    let modules = v4_library_modules(&document);
+    let rows = data_rows(step, &["module", "name"]);
+    let expected: BTreeSet<(&str, &str)> = rows
+        .iter()
+        .map(|row| (row[0].as_str(), row[1].as_str()))
+        .collect();
+    assert_eq!(expected.len(), rows.len(), "duplicate expected V4 {kind}");
+    let actual: BTreeSet<(&str, &str)> = modules
+        .iter()
+        .flat_map(|(module_name, module)| {
+            module["Public"][&kind]
+                .as_object()
+                .unwrap_or_else(|| panic!("V4 module {module_name} is missing {kind}"))
+                .keys()
+                .map(move |name| (module_name.as_str(), name.as_str()))
+        })
+        .collect();
+    assert_eq!(actual, expected, "V4 Library {kind} in {file}");
+}
+
+fn v4_library_modules(document: &serde_json::Value) -> &serde_json::Map<String, serde_json::Value> {
+    document["distribution"]["Library"]["def"]["modules"]
+        .as_object()
+        .expect("V4 Library modules object")
+}
+
+fn data_rows<'a>(step: &'a cucumber::gherkin::Step, headers: &[&str]) -> &'a [Vec<String>] {
+    let rows = &step.table().expect("data table is required").rows;
+    assert!(!rows.is_empty(), "data table must have a header");
+    assert_eq!(
+        rows[0].iter().map(String::as_str).collect::<Vec<_>>(),
+        headers,
+        "unexpected data table columns"
+    );
+    assert!(
+        rows.len() > 1,
+        "data table must have at least one value row"
+    );
+    &rows[1..]
+}
+
+#[then(regex = r#"the file "([^"]+)" should use expanded type references"#)]
+fn then_file_uses_expanded_type_references(world: &mut CliWorld, file: String) {
+    let document = read_json_file(world, &file);
+    assert_eq!(
+        document
+            .pointer("/distribution/Library/def/modules/api/Public/types/request/Public/TypeAliasDefinition/typeExp/Record/fields/action/Reference/fqname")
+            .and_then(serde_json::Value::as_str),
+        Some("morphir/SDK:string#string")
+    );
+}
+
+fn read_json_file(world: &CliWorld, file: &str) -> serde_json::Value {
+    let path = world
+        .context
+        .as_ref()
+        .expect("temporary test directory")
+        .project_root
+        .join(file);
+    serde_json::from_slice(
+        &std::fs::read(&path).unwrap_or_else(|error| panic!("read {}: {error}", path.display())),
+    )
+    .expect("output must be valid JSON")
+}
+
+fn assert_v4_library_package(document: &serde_json::Value, package: &str) {
+    assert_eq!(document["formatVersion"], 4);
+    assert_eq!(document["distribution"]["Library"]["packageName"], package);
+    assert!(document["distribution"]["Library"]["def"]["modules"].is_object());
+}
+
+#[then(regex = r#"the stderr should contain "([^"]+)""#)]
+fn then_stderr_contains(world: &mut CliWorld, expected: String) {
+    let stderr = &world.last_result.as_ref().expect("CLI result").stderr;
+    assert!(
+        stderr.contains(&expected),
+        "stderr did not contain {expected:?}: {stderr}"
+    );
 }
 
 // Background step
@@ -87,12 +580,12 @@ fn then_output_contains(world: &mut CliWorld, text: String) {
 
 #[tokio::main]
 async fn main() {
-    // All CLI tests are currently @wip - skip them
     CliWorld::cucumber()
-        .filter_run("tests/features", |feature, _rule, _scenario| {
-            // Skip features with @wip tag
-            let feature_has_wip = feature.tags.iter().any(|t| t == "wip");
-            !feature_has_wip
+        .fail_on_skipped()
+        .filter_run_and_exit("tests/features", |feature, rule, scenario| {
+            !feature.tags.iter().any(|tag| tag == "wip")
+                && !rule.is_some_and(|rule| rule.tags.iter().any(|tag| tag == "wip"))
+                && !scenario.tags.iter().any(|tag| tag == "wip")
         })
         .await;
 }

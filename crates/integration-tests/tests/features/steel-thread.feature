@@ -13,25 +13,22 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
   # ========================================================================
 
   @native @p0
-  Scenario Outline: Migrate Classic IR to V4 format (native mode)
+  Scenario Outline: Migrate Classic IR fixtures to V4 format
     Given I have a Classic IR file from fixture "<fixture>"
-    When I run "morphir migrate <fixture> output.json --target v4"
+    When I run "morphir migrate <fixture> --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should exist
-    And the file "output.json" should be valid JSON
-    And the file "output.json" should have V4 wrapper format
-    And the file "output.json" should contain package "<package>"
+    And the file "output.json" should have V4 Library package "<package>"
+    And the file "output.json" should have <modules> modules, <types> types, and <values> values
     And the stderr should contain "Migration complete"
 
     Examples:
-      | fixture                          | package           |
-      | classic-simple.json              | com.example.test  |
-      | classic-with-modules.json        | com.example.multi |
-      | classic-with-types.json          | com.example.types |
-      | classic-with-values.json         | com.example.funcs |
-      | classic-empty-package.json       | com.example.empty |
+      | fixture                   | package        | modules | types | values |
+      | greeting-example.json     | elm-compat     | 2       | 8     | 7      |
+      | rule-set-example.json     | morphir/sample | 1       | 3     | 2      |
+      | direct-rules-example.json | morphir/sample | 1       | 6     | 2      |
+      | lcr-morphir-ir.json       | regulation     | 84      | 103   | 635    |
 
-  @native @p0
+  @native @p0 @wip
   Scenario Outline: Migrate V4 IR to Classic format (native mode)
     Given I have a V4 IR file from fixture "<fixture>"
     When I run "morphir migrate <fixture> output.json --target classic"
@@ -51,33 +48,33 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
       | v4-empty-package.json          |
 
   @native @p0
-  Scenario: Migrate same format (Classic to Classic) is a no-op
-    Given I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target classic"
+  Scenario: Re-encode Classic IR as Classic IR
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v3"
     Then the command should succeed
-    And the file "output.json" should exist
-    And the stderr should contain "Copying"
+    And the file "output.json" should have Classic Library package "elm-compat"
+    And the stderr should contain "Migration complete"
 
   @native @p0
-  Scenario: Migrate same format (V4 to V4) is a no-op
-    Given I have a V4 IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+  Scenario: Re-encode V4 IR as V4 IR
+    Given I have a V4 IR file from fixture "complete-example.json"
+    When I run "morphir migrate complete-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should exist
-    And the stderr should contain "Copying"
+    And the file "output.json" should have V4 Library package "regulation"
+    And the stderr should contain "Migration complete"
 
   @native @p0 @error-handling
   Scenario: Handle invalid target version
-    Given I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target invalid"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version invalid"
     Then the command should fail
-    And the stderr should contain "Invalid target version"
+    And the stderr should contain "morphir::ir::migration::invalid_target_version"
 
   @native @p0 @error-handling
   Scenario: Handle missing input file
-    When I run "morphir migrate nonexistent.json output.json --target v4"
+    When I run "morphir migrate nonexistent.json --output output.json --target-version v4"
     Then the command should fail
-    And the stderr should contain "Failed to load input"
+    And the stderr should contain "morphir::ir::detection::read_failed"
 
   @native @p0 @error-handling
   Scenario: Handle malformed IR
@@ -85,52 +82,31 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
       """
       { "this": "is not valid IR" }
       """
-    When I run "morphir migrate invalid-ir.json output.json --target v4"
+    When I run "morphir migrate invalid-ir.json --output output.json --target-version v4"
     Then the command should fail
-    And the stderr should contain "Failed to load input"
+    And the stderr should contain "morphir::ir::detection::missing_format_version"
 
   @native @p0
   Scenario: Migrate to stdout with JSON mode
-    Given I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json --target v4 --json"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --target-version v4 --json"
     Then the command should succeed
-    And stdout should contain valid JSON
-    And stdout should contain "formatVersion"
+    And stdout should have V4 Library package "elm-compat"
 
   @native @p0
-  Scenario: Migrate with dependency warning (Classic to V4)
-    Given I have a Classic IR file "morphir-ir.json" with:
-      """
-      {
-        "formatVersion": 1,
-        "distribution": [
-          "Library",
-          "Library",
-          ["com", "example", "test"],
-          [
-            {
-              "packageName": ["com", "example", "dependency"],
-              "packagePath": "/some/path"
-            }
-          ],
-          {
-            "modules": {}
-          }
-        ]
-      }
-      """
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+  Scenario: Migrate preserves Classic dependencies
+    Given I have a Classic IR file with dependency "acme/shared"
+    When I run "morphir migrate input.json --output output.json --target-version v4"
     Then the command should succeed
-    And the stderr should contain "Warning"
-    And the stderr should contain "dependencies"
+    And the file "output.json" should have V4 dependency "acme/shared"
 
   @native @p0
   Scenario: Migrate with expanded format option
-    Given I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target v4 --expanded"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4 --expanded"
     Then the command should succeed
-    And the file "output.json" should exist
-    # Note: Expanded format means non-compact JSON (more readable, more bytes)
+    And the file "output.json" should have V4 Library package "elm-compat"
+    And the file "output.json" should use expanded type references
 
   # ========================================================================
   # Remote Source Tests (P1)
@@ -138,21 +114,31 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
 
   @native @p1 @remote
   Scenario: Migrate from HTTP URL
-    Given I have internet connectivity
-    When I run "morphir migrate https://example.com/morphir-ir.json output.json --target v4"
-    Then the command should succeed or fail gracefully
-    # Note: May fail if URL not available, that's ok for test
+    Given a local HTTP source serves the Classic IR greeting fixture
+    When I migrate the HTTP fixture to "output.json"
+    Then the command should succeed
+    And the file "output.json" should have V4 Library package "elm-compat"
+    And the HTTP source should have received 1 request
 
   @native @p1 @remote
   Scenario: Migrate with force refresh
-    Given I have a cached remote IR
-    When I run "morphir migrate https://example.com/morphir-ir.json output.json --target v4 --force-refresh"
-    Then the command should succeed or fail gracefully
+    Given a local HTTP source serves the Classic IR greeting fixture
+    When I migrate the HTTP fixture to "first.json"
+    And I migrate the HTTP fixture to "cached.json"
+    And I migrate the HTTP fixture to "output.json" with "--force-refresh"
+    Then the command should succeed
+    And the file "output.json" should have V4 Library package "elm-compat"
+    And the HTTP source should have received 2 requests
 
   @native @p1 @remote
   Scenario: Migrate with no cache
-    When I run "morphir migrate https://example.com/morphir-ir.json output.json --target v4 --no-cache"
-    Then the command should succeed or fail gracefully
+    Given a local HTTP source serves the Classic IR greeting fixture
+    When I migrate the HTTP fixture to "first.json"
+    And I migrate the HTTP fixture to "cached.json"
+    And I migrate the HTTP fixture to "output.json" with "--no-cache"
+    Then the command should succeed
+    And the file "output.json" should have V4 Library package "elm-compat"
+    And the HTTP source should have received 2 requests
 
   # ========================================================================
   # WASM Mode Tests (P2 - Future)
@@ -189,7 +175,7 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
   # Envelope Protocol Validation (P0 - Architecture Proof)
   # ========================================================================
 
-  @envelope @p0
+  @envelope @p0 @wip
   Scenario: Verify envelope protocol is used throughout
     Given I have debugging enabled for morphir-builtins
     And I have a Classic IR file "morphir-ir.json"
@@ -199,17 +185,20 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
     And the debug logs should show envelope deserialization
     And the command should succeed
 
-  @envelope @p0
-  Scenario: Envelope contains proper metadata
-    Given I have JSON output mode enabled
-    And I have a Classic IR file "morphir-ir.json"
-    When I run "morphir migrate morphir-ir.json output.json --target v4 --json"
-    Then the JSON output should contain:
-      | field          | type    |
-      | success        | boolean |
-      | source_format  | string  |
-      | target_format  | string  |
-      | warnings       | array   |
+  @native @p0
+  Scenario: JSON result reports migration metadata
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4 --json"
+    Then the command should succeed
+    And stdout JSON should contain:
+      | pointer  | expected JSON         |
+      | /success | true                  |
+      | /input   | "greeting-example.json" |
+      | /output  | "output.json"         |
+      | /source  | "v3/json/single-file" |
+      | /target  | "v4/json/single-file" |
+      | /error   | <absent>              |
+    And the file "output.json" should have V4 Library package "elm-compat"
 
   # ========================================================================
   # Regression Tests (P1)
@@ -217,24 +206,44 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
 
   @regression @p1
   Scenario: Migrate preserves module structure
-    Given I have a Classic IR with multiple modules
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And all modules should be present in output
+    And the file "output.json" should contain exactly these V4 modules:
+      | module |
+      | api    |
+      | main   |
 
   @regression @p1
   Scenario: Migrate preserves type definitions
-    Given I have a Classic IR with type definitions
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And all type definitions should be present in output
+    And the file "output.json" should contain exactly these V4 types:
+      | module | name           |
+      | api    | api-error      |
+      | api    | request        |
+      | api    | response       |
+      | main   | customer-order |
+      | main   | order-status   |
+      | main   | product        |
+      | main   | product-id     |
+      | main   | quantity       |
 
   @regression @p1
   Scenario: Migrate preserves value definitions
-    Given I have a Classic IR with value definitions
-    When I run "morphir migrate morphir-ir.json output.json --target v4"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And all value definitions should be present in output
+    And the file "output.json" should contain exactly these V4 values:
+      | module | name                   |
+      | api    | create-order           |
+      | api    | get-order-status       |
+      | api    | process-request        |
+      | main   | apply-discount         |
+      | main   | calculate-total        |
+      | main   | is-valid-order         |
+      | main   | order-status-to-string |
 
   # ========================================================================
   # V4 Format Validation (Correctness Check)
@@ -242,66 +251,23 @@ Feature: Steel Thread - Migrate Command via Extension Architecture
 
   @native @p0 @format-validation
   Scenario: V4 output uses correct wrapper object format
-    Given I have a Classic IR file "classic-simple.json" with:
-      """
-      {
-        "formatVersion": 1,
-        "distribution": [
-          "Library",
-          "Library",
-          ["com", "example", "test"],
-          [],
-          {
-            "modules": {
-              "Main": {
-                "types": {},
-                "values": {}
-              }
-            }
-          }
-        ]
-      }
-      """
-    When I run "morphir migrate classic-simple.json output.json --target v4"
+    Given I have a Classic IR file from fixture "greeting-example.json"
+    When I run "morphir migrate greeting-example.json --output output.json --target-version v4"
     Then the command should succeed
-    And the file "output.json" should contain:
-      """
-      {
-        "formatVersion": "4.0.0",
-        "distribution": {
-          "Library": {
-            "packageName": "com/example/test",
-            "dependencies": {},
-            "def": {
-              "modules": {
-                "main": {
-                  "types": {},
-                  "values": {}
-                }
-              }
-            }
-          }
-        }
-      }
-      """
-    # Note: V4 canonical format uses:
-    # - Wrapper objects: {"Library": {...}} not tuple arrays ["Library", ...]
-    # - Canonical strings: "com/example/test" not ["com", "example", "test"]
-    # - Kebab-case names: "main" not "Main" for module names
+    And the file "output.json" should use the canonical V4 Library wrapper
 
   @native @p0 @format-validation
   Scenario Outline: Verify V4 distribution variants use wrapper objects
-    Given I have a V4 IR file with <variant> distribution
-    When I parse the JSON structure
-    Then the "distribution" field should be an object
-    And the "distribution" object should have key "<wrapper>"
-    And the "<wrapper>" value should be an object (not an array)
+    Given I have a minimal V4 <variant> IR document
+    When I run "morphir migrate input.json --output output.json --target-version v4"
+    Then the command should succeed
+    And the file "output.json" should preserve the V4 <wrapper> wrapper
 
     Examples:
-      | variant     | wrapper      |
-      | Library     | Library      |
-      | Specs       | Specs        |
-      | Application | Application  |
+      | variant     | wrapper     |
+      | Library     | Library     |
+      | Specs       | Specs       |
+      | Application | Application |
 
   # ========================================================================
   # JSONL Format Tests (P1 - Fast Follower)

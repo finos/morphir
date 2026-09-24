@@ -48,6 +48,7 @@ provider evaluates assertions.
 | [Signed local Library scoped update](package/local-library-update/scenarios.md) | Explicit target update, movement within the old dependency closure, frozen outside pins, full-lock preservation and updated provider consumption | Offline, fresh signed fixture |
 | [Create and publish a local Library](package/local-library-publish/scenarios.md) | Compile source, create and sign a classic V4 Library, publish with distinct registry-role keys, then resolve, restore, generate and compile in an independent consumer | macOS, source-built CLI; public test-only signing seeds |
 | [CLI basics](cli/basics/scenarios.md) | Version reporting and public command help in independent Markdown scenarios | Offline |
+| [CLI migration](cli/migrate/scenarios.md) | Classic JSON to V4 YAML with a fixed whole-file golden and a command result assertion | Offline |
 | [Classic multi-file Elm](morphir-elm-compat/scenarios.md) | Config discovery and the released provider's **known rejection** of multiple source documents | Reference Elm 0.3.1 |
 
 Native Elm is types-only. Reference function lowering does not prove function
