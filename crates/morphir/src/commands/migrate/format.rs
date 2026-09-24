@@ -63,13 +63,15 @@ pub(crate) fn resolve_input(
                 "select the manifest's format or convert the complete tree first",
             ));
         }
-        // JSON and YAML trees are v4 only. An Ion tree is v3 or v4, and its manifest says which.
-        let version = if detected == FormatId::ion() {
-            let manifest = path.join("manifest.ion");
-            detect_version(&probe(&manifest)?, &detected)?
-        } else {
-            IrVersion::V4
+        // Every tree format is v3 or v4, and its manifest says which.
+        let manifest_name = match detected.as_str() {
+            "json" => "manifest.json",
+            "ion" => "manifest.ion",
+            _ if path.join("manifest.yaml").is_file() => "manifest.yaml",
+            _ => "manifest.yml",
         };
+        let manifest = path.join(manifest_name);
+        let version = detect_version(&probe(&manifest)?, &detected)?;
         return Ok(InputSelection {
             format: detected,
             version,
@@ -294,6 +296,22 @@ mod tests {
         let selection = resolve_input(temp.path(), None).unwrap();
 
         assert_eq!(selection.format, FormatId::ion());
+        assert_eq!(selection.layout, Layout::DocumentTree);
+        assert_eq!(selection.version, IrVersion::V3);
+    }
+
+    #[test]
+    fn a_v3_json_tree_reports_its_manifest_version() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            temp.path().join("manifest.json"),
+            r#"{"formatVersion":"3.1.0","distribution":"Library","package":"example","pathBudget":4000}"#,
+        )
+        .unwrap();
+
+        let selection = resolve_input(temp.path(), None).unwrap();
+
+        assert_eq!(selection.format, FormatId::json());
         assert_eq!(selection.layout, Layout::DocumentTree);
         assert_eq!(selection.version, IrVersion::V3);
     }

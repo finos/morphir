@@ -422,25 +422,30 @@ fn a_v3_ion_tree_migrates_to_v4() {
 }
 
 #[test]
-fn a_v3_json_tree_is_still_refused() {
-    let temp = TempDir::new().unwrap();
-    let tree = temp.path().join("model.morphir-dist");
-
-    let output = migrate(
-        &greeting_v3(),
-        &tree,
-        &[
-            "--target-version",
-            "v3",
-            "--output-layout",
-            "vfs",
-            "--output-format",
-            "json",
-        ],
-    );
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("version_unsupported")
-            || String::from_utf8_lossy(&output.stdout).contains("version_unsupported")
-    );
+fn a_v3_distribution_round_trips_through_v3_json_and_yaml_trees() {
+    for format in ["json", "yaml"] {
+        let temp = TempDir::new().unwrap();
+        let tree = temp.path().join("model.morphir-dist");
+        let json = temp.path().join("model.json");
+        let v3 = ["--target-version", "v3"];
+        assert_success(&migrate(
+            &greeting_v3(),
+            &tree,
+            &[
+                &v3[..],
+                &["--output-layout", "vfs", "--output-format", format],
+            ]
+            .concat(),
+        ));
+        let manifest = std::fs::read_to_string(tree.join(format!("manifest.{format}"))).unwrap();
+        assert!(manifest.contains("3.1.0"), "{manifest}");
+        assert_success(&migrate(
+            &tree,
+            &json,
+            &[&v3[..], &["--output-layout", "single-file"]].concat(),
+        ));
+        let canonical = temp.path().join("canonical.json");
+        assert_success(&migrate(&greeting_v3(), &canonical, &v3));
+        assert_eq!(sorted_v3(&json), sorted_v3(&canonical), "{format}");
+    }
 }

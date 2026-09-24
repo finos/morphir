@@ -98,18 +98,6 @@ fn migrate(
         output_layout,
         options.json,
     )?;
-    // The JSON and YAML trees are defined for v4. The Ion tree is defined for v3 and v4.
-    if target_version == IrVersion::V3
-        && output_layout == Layout::DocumentTree
-        && output_format != FormatId::ion()
-    {
-        return Err(command_error(
-            "morphir::ir::document_tree::version_unsupported",
-            Stage::Detection,
-            "the JSON and YAML document trees are defined for v4",
-            "select --output-format ion, a single-file v3 output, or migrate to v4",
-        ));
-    }
     let migration_options = MigrationOptions {
         allow_partial: options.allow_partial,
         encoding: if options.expanded {
