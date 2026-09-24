@@ -56,19 +56,24 @@ The change is additive. The protocol `contractVersion` stays `1`.
 
 ### Two kinds of case
 
-A new heading key names the kind of a case.
+A case's `kind` option names what it asserts. Options are set in a case options fence (see [Case options and fence directives](#case-options-and-fence-directives)).
 
 | Kind | Asserts | Fences |
 | --- | --- | --- |
-| `kind=spelling` | How one node shape is canonically written in each format | Only `canonical`, at most one per format. Each is pinned byte for byte. |
-| `kind=semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Exactly one `ion canonical`, plus any `accepted`, `rejected` and `file` fences in any format |
+| `spelling` | How one node shape is canonically written in each format | Only `canonical`, at most one per format. Each is pinned byte for byte. |
+| `semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Exactly one `ion canonical`, plus any `accepted`, `rejected` and `file` fences in any format |
 
-A spelling case may leave out a format. The runner then reports that format as `not-pinned`, not as a pass. A case without a `kind` key keeps today's behaviour, so the kit stays valid while sub-project 2 moves the cases.
+A spelling case may leave out a format. The runner then reports that format as `not-pinned`, not as a pass. A case without a `kind` option keeps today's behaviour, so the kit stays valid while sub-project 2 moves the cases.
 
 `values-0003` as a spelling case, and a semantic case that uses the same shape (sketch):
 
 ````markdown
-## values-0003: Reference shorthand {node=Value kind=spelling}
+## values-0003: Reference shorthand
+
+```yaml mck
+node: Value
+kind: spelling
+```
 
 ```ion canonical
 (ref 'morphir/SDK:basics#add')
@@ -82,7 +87,12 @@ Reference: morphir/SDK:basics#add
 { "Reference": "morphir/SDK:basics#add" }
 ```
 
-## values-0031: A reference is read from its string shorthand {node=Value kind=semantic}
+## values-0031: A reference is read from its string shorthand
+
+```yaml mck
+node: Value
+kind: semantic
+```
 
 ```ion canonical
 (ref 'morphir/SDK:basics#add')
@@ -92,6 +102,37 @@ Reference: morphir/SDK:basics#add
 "morphir/SDK:basics#add"
 ```
 ````
+
+### Case options and fence directives
+
+Today a case's options are keys in its heading (`## values-0003: Reference shorthand {node=Value}`), and a fence's options are keys in its info string (`json file path=… set=… mode=read`). Both grow long, and a heading is a poor place for data. This draft adds two forms. The old forms stay valid.
+
+**Case options fence.** A fence whose info string is `yaml mck` holds the case's options as a YAML mapping. It keeps YAML syntax highlighting in any Markdown viewer. The runner never sends it to an adapter.
+
+| Option | Meaning | Old form |
+| --- | --- | --- |
+| `node` | The node kind the case decodes | heading `node=` |
+| `version` | The IR version | heading `version=` |
+| `kind` | `spelling` or `semantic` | new |
+| `status` | `pending` | heading `status=pending` |
+| `compare` | `attributes` | heading `compare=attributes` |
+
+A case has at most one options fence, and it comes before the case's data fences. New case options go into this fence, not into the heading.
+
+**Fence directives.** A data fence may start with directive lines. Each line starts with `@`, then a name, then a value:
+
+````markdown
+```json file
+@path pkg/my-org/my-project/domain/user.type
+@set v3-library
+@mode read
+{ "formatVersion": "3.1.0", "name": "user", "def": { … } }
+```
+````
+
+The directives carry the same options the info string carries (`path`, `set`, `mode`, `diagnostic`, `expect`, `warning`). No Ion, YAML or JSON document can start a line with `@`: JSON and Ion do not allow it, and YAML reserves it. So the runner can strip the directive lines before it sends the fence, and it never takes data for a directive. Short options may stay in the info string. When a fence gives the same option in both places, that is a check error.
+
+Sub-project 2 moves the cases to the options fence and to directives where they read better. After that, heading keys become a `morphir mck check` warning.
 
 ### How the runner checks a semantic case
 
@@ -173,6 +214,9 @@ The engine produces the diff with a line-diff library such as `similar` (none is
 - A spelling case has only `canonical` fences, with at most one for each format.
 - A semantic case has exactly one `ion canonical` fence.
 - A `kind` value other than `spelling` or `semantic` is an error.
+- A case has at most one `yaml mck` options fence, and it holds a YAML mapping of known options.
+- An option set both in the options fence and in the heading is an error; so is a fence option set both as a directive and in the info string.
+- A directive line with an unknown name is an error.
 
 ### Report and HTML
 
