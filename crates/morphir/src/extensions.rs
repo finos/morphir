@@ -4,8 +4,8 @@ use crate::error::CliError;
 use crate::home::MorphirHome;
 use morphir_daemon::ExtensionRegistry;
 use morphir_daemon::extensions::{
-    FailedSession, InvocationMode, InvokeOutcome, Loaded, MepTransport, ResolvedBackend,
-    ResolvedFrontend, Session, SessionHandle, activate_transport, protocol::methods, spawn_session,
+    FailedSession, InvocationMode, Loaded, MepTransport, ResolvedBackend, ResolvedFrontend,
+    Session, SessionHandle, activate_transport, protocol::methods, spawn_session,
 };
 use morphir_distribution::{InstalledExtensionSnapshot, activate_installed_snapshot};
 use morphir_elm_binding::ElmExtension;
@@ -13,9 +13,12 @@ use morphir_extension_sdk::{
     CompileRequest, CompileResult, GenerateRequest, GenerateResult, NativeExtension,
 };
 use morphir_gleam_binding::GleamExtension;
+use morphir_host_native::process::ProcessLaunch;
 use morphir_workspace::{DiscoveryRequest, DiscoveryResponse};
 use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
+
+pub(crate) mod guest;
 
 /// Construct the complete provider registry used by one CLI command.
 pub fn extension_registry(
@@ -54,24 +57,8 @@ pub fn extension_registry_for(
         }
         selector => selector,
     };
-    let gleam = NativeExtension::builder(GleamExtension)
-        .with_frontend()
-        .with_backend()
-        .with_workspace()
-        .finish()
-        .map_err(|error| CliError::Extension {
-            message: format!("Failed to construct native Gleam provider: {error}"),
-        })?;
-    let elm = NativeExtension::builder(ElmExtension)
-        .with_frontend()
-        .with_backend()
-        .with_workspace()
-        .finish()
-        .map_err(|error| CliError::Extension {
-            message: format!("Failed to construct native Elm provider: {error}"),
-        })?;
     let mut registry = ExtensionRegistry::new();
-    for (language, builtin, opt_in) in [("Gleam", gleam, false), ("Elm", elm, true)] {
+    for (language, builtin, opt_in) in builtin_providers()? {
         let requested = only == Some(builtin.info().id.as_str());
         if (opt_in && !requested) || only.is_some_and(|id| id != builtin.info().id) {
             continue;
@@ -94,6 +81,41 @@ pub fn extension_registry_for(
             })?;
     }
     Ok(registry)
+}
+
+/// The built-in native providers: their language, the provider, and whether
+/// it is registered only when selected by id.
+fn builtin_providers() -> Result<[(&'static str, NativeExtension, bool); 2], CliError> {
+    let gleam = NativeExtension::builder(GleamExtension)
+        .with_frontend()
+        .with_backend()
+        .with_workspace()
+        .finish()
+        .map_err(|error| CliError::Extension {
+            message: format!("Failed to construct native Gleam provider: {error}"),
+        })?;
+    let elm = NativeExtension::builder(ElmExtension)
+        .with_frontend()
+        .with_backend()
+        .with_workspace()
+        .finish()
+        .map_err(|error| CliError::Extension {
+            message: format!("Failed to construct native Elm provider: {error}"),
+        })?;
+    Ok([("Gleam", gleam, false), ("Elm", elm, true)])
+}
+
+/// The built-in native provider a `NativeMep` resolution selected.
+///
+/// The registry lends a built-in only for direct invocation, so a protocol
+/// invocation builds the same stateless provider again by its id. A
+/// resolution the built-ins do not answer is reported by the caller as an
+/// unavailable mode.
+fn builtin_provider(id: &str) -> Result<Option<NativeExtension>, CliError> {
+    Ok(builtin_providers()?
+        .into_iter()
+        .map(|(_, builtin, _)| builtin)
+        .find(|builtin| builtin.info().id == id))
 }
 
 /// Invoke a resolved frontend through only the mode selected by the registry.
@@ -135,30 +157,31 @@ pub async fn invoke_frontend(
             .await
         }
         InvocationMode::NativeMep => {
-            let loaded = resolved.native_mep_session().ok_or_else(|| {
-                unavailable_mode(resolved.info().id.as_str(), "native MEP frontend")
-            })?;
-            invoke_loaded(
-                loaded,
-                resolved.info().id.as_str(),
-                methods::COMPILE,
-                request,
-            )
-            .await
-        }
-        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
-            let snapshot = resolved.installed_snapshot().ok_or_else(|| {
-                unavailable_mode(resolved.info().id.as_str(), "installed MEP frontend")
-            })?;
-            invoke_installed(
+            let provider = resolved.info().id.as_str();
+            let native = builtin_provider(provider)?
+                .ok_or_else(|| unavailable_mode(provider, "native MEP frontend"))?;
+            let connection = guest::resolved(
                 home,
                 workspace,
-                snapshot,
-                resolved.info().id.as_str(),
-                methods::COMPILE,
-                &request,
+                provider,
+                guest::GuestSource::Native(&native),
             )
-            .await
+            .await?;
+            guest::call_once(connection, provider, methods::COMPILE, request).await
+        }
+        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
+            let provider = resolved.info().id.as_str();
+            let snapshot = resolved
+                .installed_snapshot()
+                .ok_or_else(|| unavailable_mode(provider, "installed MEP frontend"))?;
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Installed(snapshot),
+            )
+            .await?;
+            guest::call_once(connection, provider, methods::COMPILE, &request).await
         }
     }
 }
@@ -196,24 +219,29 @@ pub async fn invoke_workspace_discovery(
             .await
         }
         InvocationMode::NativeMep => {
-            let loaded = resolved
-                .native_mep_session()
+            let native = builtin_provider(provider)?
                 .ok_or_else(|| unavailable_mode(provider, "native MEP workspace"))?;
-            invoke_loaded(loaded, provider, methods::WORKSPACE_DISCOVER, request).await
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Native(&native),
+            )
+            .await?;
+            guest::call_once(connection, provider, methods::WORKSPACE_DISCOVER, request).await
         }
         InvocationMode::ProcessMep | InvocationMode::WasmMep => {
             let snapshot = resolved
                 .installed_snapshot()
                 .ok_or_else(|| unavailable_mode(provider, "installed MEP workspace"))?;
-            invoke_installed(
+            let connection = guest::resolved(
                 home,
                 workspace,
-                snapshot,
                 provider,
-                methods::WORKSPACE_DISCOVER,
-                request,
+                guest::GuestSource::Installed(snapshot),
             )
-            .await
+            .await?;
+            guest::call_once(connection, provider, methods::WORKSPACE_DISCOVER, request).await
         }
     }
 }
@@ -234,32 +262,15 @@ pub struct NegotiatedProvider {
 /// A provider configured by `[extensions.<id>] command` has no installed
 /// record to read capabilities from, so the only way to learn them is to ask.
 pub async fn probe_process(
-    launch: morphir_daemon::extensions::ProcessLaunch,
+    launch: ProcessLaunch,
     provider: &str,
 ) -> Result<NegotiatedProvider, CliError> {
-    let loaded = morphir_daemon::extensions::SpawnedProcessSession::spawn_typestate(launch)
-        .await
-        .map_err(|error| CliError::Extension {
-            message: format!("Failed to start provider '{provider}': {error}"),
-        })?;
-    let ready = loaded
-        .initialize(crate::commands::extension::host_config().initialize_params())
-        .await
-        .map_err(|failure| session_failure(provider, "initialize", failure))?;
-    let negotiated = NegotiatedProvider {
-        info: ready.negotiated().extension().clone(),
-        capabilities: ready.negotiated().capabilities().clone(),
-    };
-    ready
-        .shutdown()
-        .await
-        .map_err(|failure| session_failure(provider, "shutdown", failure))?;
-    Ok(negotiated)
+    guest::negotiate(guest::configured(launch, provider).await?, provider).await
 }
 
 /// Start a process provider and invoke one method over a fresh session.
 pub async fn invoke_process<P, R>(
-    launch: morphir_daemon::extensions::ProcessLaunch,
+    launch: ProcessLaunch,
     provider: &str,
     method: &str,
     request: P,
@@ -268,12 +279,13 @@ where
     P: Serialize,
     R: DeserializeOwned,
 {
-    let loaded = morphir_daemon::extensions::SpawnedProcessSession::spawn_typestate(launch)
-        .await
-        .map_err(|error| CliError::Extension {
-            message: format!("Failed to start provider '{provider}': {error}"),
-        })?;
-    invoke_loaded(loaded, provider, method, request).await
+    guest::call_once(
+        guest::configured(launch, provider).await?,
+        provider,
+        method,
+        request,
+    )
+    .await
 }
 
 /// Invoke a resolved backend through only the mode selected by the registry.
@@ -303,30 +315,31 @@ pub async fn invoke_backend(
             .await
         }
         InvocationMode::NativeMep => {
-            let loaded = resolved.native_mep_session().ok_or_else(|| {
-                unavailable_mode(resolved.info().id.as_str(), "native MEP backend")
-            })?;
-            invoke_loaded(
-                loaded,
-                resolved.info().id.as_str(),
-                methods::GENERATE,
-                request,
-            )
-            .await
-        }
-        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
-            let snapshot = resolved.installed_snapshot().ok_or_else(|| {
-                unavailable_mode(resolved.info().id.as_str(), "installed MEP backend")
-            })?;
-            invoke_installed(
+            let provider = resolved.info().id.as_str();
+            let native = builtin_provider(provider)?
+                .ok_or_else(|| unavailable_mode(provider, "native MEP backend"))?;
+            let connection = guest::resolved(
                 home,
                 workspace,
-                snapshot,
-                resolved.info().id.as_str(),
-                methods::GENERATE,
-                request,
+                provider,
+                guest::GuestSource::Native(&native),
             )
-            .await
+            .await?;
+            guest::call_once(connection, provider, methods::GENERATE, request).await
+        }
+        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
+            let provider = resolved.info().id.as_str();
+            let snapshot = resolved
+                .installed_snapshot()
+                .ok_or_else(|| unavailable_mode(provider, "installed MEP backend"))?;
+            let connection = guest::resolved(
+                home,
+                workspace,
+                provider,
+                guest::GuestSource::Installed(snapshot),
+            )
+            .await?;
+            guest::call_once(connection, provider, methods::GENERATE, request).await
         }
     }
 }
@@ -428,22 +441,6 @@ fn unavailable_mode(provider: &str, mode: &str) -> CliError {
     }
 }
 
-async fn invoke_installed<P, R>(
-    home: &MorphirHome,
-    workspace: &Path,
-    snapshot: &InstalledExtensionSnapshot,
-    provider: &str,
-    method: &str,
-    request: P,
-) -> Result<R, CliError>
-where
-    P: Serialize,
-    R: DeserializeOwned,
-{
-    let loaded = installed_loaded(home, workspace, snapshot, provider).await?;
-    invoke_loaded(loaded, provider, method, request).await
-}
-
 /// Verify and activate an installed extension into a loaded session.
 async fn installed_loaded(
     home: &MorphirHome,
@@ -460,43 +457,6 @@ async fn installed_loaded(
         .map_err(|error| CliError::Extension {
             message: format!("Failed to activate installed provider '{provider}': {error}"),
         })
-}
-
-async fn invoke_loaded<T, P, R>(
-    loaded: Session<T, Loaded>,
-    provider: &str,
-    method: &str,
-    request: P,
-) -> Result<R, CliError>
-where
-    T: MepTransport,
-    P: Serialize,
-    R: DeserializeOwned,
-{
-    let ready = loaded
-        .initialize(crate::commands::extension::host_config().initialize_params())
-        .await
-        .map_err(|failure| session_failure(provider, "initialize", failure))?;
-    match ready.invoke::<R>(method, request).await {
-        InvokeOutcome::Success(ready, result) => {
-            ready
-                .shutdown()
-                .await
-                .map_err(|failure| session_failure(provider, "shutdown", failure))?;
-            Ok(result)
-        }
-        InvokeOutcome::Rejected(ready, error) => {
-            let mut message = format!("Provider '{provider}' rejected '{method}': {error}");
-            if let Err(failure) = ready.shutdown().await {
-                message.push_str(&format!(
-                    "; orderly shutdown also failed: {}",
-                    failed_session_message(&failure)
-                ));
-            }
-            Err(CliError::Extension { message })
-        }
-        InvokeOutcome::Failed(failure) => Err(session_failure(provider, method, failure)),
-    }
 }
 
 fn session_failure<T>(provider: &str, operation: &str, failure: FailedSession<T>) -> CliError {
@@ -722,6 +682,127 @@ mod tests {
 
         assert!(frontend.is_none());
         assert!(backend.is_none());
+    }
+
+    /// A configured process provider that speaks MEP over stdio and refuses
+    /// every compile with an RPC error.
+    #[cfg(unix)]
+    fn rejecting_provider(directory: &Path) -> std::path::PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        let python = std::process::Command::new("sh")
+            .args(["-c", "command -v python3"])
+            .output()
+            .unwrap();
+        assert!(python.status.success(), "python3 is required for this test");
+        let python = String::from_utf8(python.stdout).unwrap();
+        let script = format!(
+            r#"#!{python}
+import json
+import sys
+
+def receive():
+    length = None
+    while True:
+        line = sys.stdin.buffer.readline()
+        if line in (b"\n", b"\r\n"):
+            break
+        if not line:
+            raise SystemExit(0)
+        name, value = line.decode("ascii").split(":", 1)
+        if name.lower() == "content-length":
+            length = int(value.strip())
+    return json.loads(sys.stdin.buffer.read(length))
+
+def send(message):
+    message["jsonrpc"] = "2.0"
+    body = json.dumps(message, separators=(",", ":")).encode()
+    sys.stdout.buffer.write(
+        b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+    )
+    sys.stdout.buffer.flush()
+
+while True:
+    request = receive()
+    method = request["method"]
+    if "id" not in request:
+        if method == "morphir.exit":
+            raise SystemExit(0)
+        continue
+    identifier = request["id"]
+    if method == "morphir.initialize":
+        send({{"id": identifier, "result": {{
+            "protocolVersion": "0.1",
+            "extension": {{
+                "id": "fixture",
+                "name": "Rejecting fixture",
+                "version": "1.0.0",
+                "types": ["frontend"],
+            }},
+            "capabilities": {{
+                "frontend": {{
+                    "languages": [{{"id": "gleam", "fileExtensions": [".gleam"]}}],
+                    "irVersions": ["4.0.0"],
+                    "compile": True,
+                    "incremental": False,
+                    "fragments": False,
+                }}
+            }},
+        }}}})
+    elif method == "morphir.frontend.compile":
+        send({{"id": identifier, "error": {{"code": -32001, "message": "does not compile"}}}})
+    elif method == "morphir.shutdown":
+        send({{"id": identifier, "result": {{}}}})
+    else:
+        send({{"id": identifier, "error": {{"code": -32601, "message": "unknown"}}}})
+"#,
+            python = python.trim()
+        );
+        let path = directory.join("rejecting-provider");
+        std::fs::write(&path, script).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path
+    }
+
+    // The text a configured provider's rejected call produces is part of the
+    // CLI's contract: it must not change when the session machinery does.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_configured_provider_rejecting_compile_keeps_the_rejected_text() {
+        let temp = tempfile::tempdir().unwrap();
+        let program = rejecting_provider(temp.path());
+        let launch = super::ProcessLaunch::new("fixture", program, temp.path());
+
+        let error = super::invoke_process::<_, morphir_extension_sdk::CompileResult>(
+            launch,
+            "fixture",
+            morphir_extension_sdk::protocol::methods::COMPILE,
+            &compile_request(&temp.path().join("compile")),
+        )
+        .await
+        .unwrap_err();
+
+        match error {
+            crate::error::CliError::Extension { message } => assert_eq!(
+                message,
+                "Provider 'fixture' rejected 'morphir.frontend.compile': Extension error: RPC error -32001: does not compile"
+            ),
+            other => panic!("expected an extension error, got {other:?}"),
+        }
+    }
+
+    // Probing a configured provider opens a session, reads what it
+    // negotiated, and closes the session in order.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn probing_a_configured_provider_reads_what_it_negotiated() {
+        let temp = tempfile::tempdir().unwrap();
+        let program = rejecting_provider(temp.path());
+        let launch = super::ProcessLaunch::new("fixture", program, temp.path());
+
+        let negotiated = super::probe_process(launch, "fixture").await.unwrap();
+
+        assert_eq!(negotiated.info.id, "fixture");
+        assert!(negotiated.capabilities.frontend.is_some());
     }
 
     #[tokio::test]

@@ -38,7 +38,7 @@ use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
 use morphir_common::config::model::MorphirConfig;
 use morphir_common::ir_transport::IrVersion;
-use morphir_daemon::extensions::{ProcessLaunch, ResolvedFrontend, protocol::methods};
+use morphir_daemon::extensions::{ResolvedFrontend, protocol::methods};
 use morphir_devkit::{
     CapturedSelection, ConfigContext, DEFAULT_SOURCE_BYTES, SourceSelectionOptions, TaskId,
     TaskResult, capture_source_selection, discover_config, ensure_morphir_structure,
@@ -48,6 +48,7 @@ use morphir_extension_sdk::{
     CompileOptions as ExtensionCompileOptions, CompilePackage, CompileRequest, CompileResult,
     DiagnosticSeverity, ExtensionType, FrontendCapability, SourceDocument, SourceSet,
 };
+use morphir_host_native::process::ProcessLaunch;
 use morphir_workspace::{DiscoveryResponse, ProjectState};
 use std::collections::HashMap;
 use std::ffi::OsString;

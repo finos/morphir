@@ -9,11 +9,13 @@ use async_trait::async_trait;
 use cap_std::fs::Dir;
 use chrono::{SecondsFormat, Utc};
 use morphir_common::home::MorphirHome;
-use morphir_daemon::extensions::{InvokeOutcome, activate_transport, protocol::methods};
+use morphir_daemon::DaemonError;
 use morphir_devkit::{ConfigLoadOptions, build_workspace_discovery_request};
 use morphir_distribution::{
     Capability, InstalledExtensionSnapshot, activate_installed_snapshot, list_installed,
 };
+use morphir_extension_sdk::protocol::methods;
+use morphir_host::{CallError, HostError, Session};
 use morphir_workspace as portable;
 
 use crate::error::CliError;
@@ -253,6 +255,7 @@ impl WorkspaceCapability for ExtensionWorkspaceProvider {
     }
 }
 
+/// Discover the workspace with an installed provider over one MEP session.
 async fn invoke_installed(
     home: &MorphirHome,
     snapshot: &InstalledExtensionSnapshot,
@@ -265,19 +268,19 @@ async fn invoke_installed(
             snapshot.installed().extension_id()
         ))
     })?;
-    let loaded = activate_transport(artifact, workspace)
+    let guest = morphir_host_native::activate(artifact, workspace)
         .await
         .map_err(|error| {
             extension_error(format!(
-                "Failed to load installed workspace provider '{}': {error}",
-                snapshot.installed().extension_id()
+                "Failed to load installed workspace provider '{}': {}",
+                snapshot.installed().extension_id(),
+                DaemonError::from(error)
             ))
         })?;
-    let ready = loaded
-        .initialize(crate::commands::extension::host_config().initialize_params())
+    let mut session = Session::open(guest.connection, &crate::commands::extension::host_config())
         .await
-        .map_err(|failure| extension_error(failure.error().to_string()))?;
-    if !ready
+        .map_err(host_error)?;
+    if !session
         .negotiated()
         .capabilities()
         .workspace
@@ -290,31 +293,31 @@ async fn invoke_installed(
                     .any(portable::speaks_workspace_discovery_protocol)
         })
     {
-        let _ = ready.shutdown().await;
+        let _ = session.close().await;
         return Err(extension_error(format!(
             "Installed workspace provider '{}' did not negotiate discovery protocol {}",
             snapshot.installed().extension_id(),
             portable::WORKSPACE_DISCOVERY_PROTOCOL
         )));
     }
-    let (ready, response) = match ready
-        .invoke::<portable::DiscoveryResponse>(methods::WORKSPACE_DISCOVER, request)
+    let response = match session
+        .call::<_, portable::DiscoveryResponse>(methods::WORKSPACE_DISCOVER, request)
         .await
     {
-        InvokeOutcome::Success(ready, response) => (ready, response),
-        InvokeOutcome::Rejected(ready, error) => {
-            let _ = ready.shutdown().await;
-            return Err(extension_error(error.to_string()));
+        Ok(response) => response,
+        Err(CallError::Rejected(error)) => {
+            let _ = session.close().await;
+            return Err(host_error(error));
         }
-        InvokeOutcome::Failed(failure) => {
-            return Err(extension_error(failure.error().to_string()));
-        }
+        Err(CallError::Failed(error)) => return Err(host_error(error)),
     };
-    ready
-        .shutdown()
-        .await
-        .map_err(|failure| extension_error(failure.error().to_string()))?;
+    session.close().await.map_err(host_error)?;
     discovery_result(response)
+}
+
+/// A session failure, in the text the daemon's session reported it with.
+fn host_error(error: HostError) -> CliError {
+    extension_error(DaemonError::from(error).to_string())
 }
 
 fn discovery_result(

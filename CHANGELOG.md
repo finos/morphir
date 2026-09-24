@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The CLI's install probe, publish describe, and one-shot compile, generate and workspace discovery calls for configured, installed and native MEP providers now run through `morphir-host` sessions; the workbench session pool is unchanged. A provider that returns an invalid method result, such as an artifact path outside the output directory, is now shut down in order instead of being killed. Transport failures that begin as I/O or JSON decode errors now read `Extension error: IO error: ...` (or `Extension error: JSON error: ...`) instead of `IO error: ...`. The `morphir-rust` pin moves to `3b4e4fe` (finos/morphir-rust#263, which adds `morphir-host-native`; #963, #959).
+
 ## [0.4.0-beta.7] - 2026-09-24
 
 ### Fixed
