@@ -79,20 +79,20 @@ A table has one canonical spelling, which writers, adapters and reports MUST emi
 The reference table used by this specification and its conformance corpus is:
 
 ```
-[3.0.0,3.1.0),[4.0.0,4.1.0)
+[3.0.0,3.2.0),[4.0.0,4.1.0)
 ```
 
-Its ceilings sit on minor boundaries because of the patch promise above: a `4.0.0` reader accepts every `4.0.x`. An implementation MAY declare any table the grammar allows when its decoder or migration capabilities differ. A conforming reader SHOULD declare ceilings on minor boundaries: under the revision promise a later patch changes nothing a reader can observe, so a ceiling inside a minor records what the implementation has verified rather than a difference in the format. The compatibility result names the minor because that is the component that differs for the reference table and for every table whose ceilings sit on minor boundaries. It MUST NOT claim support for a release it cannot process according to that release's specification.
+Its ceilings sit on minor boundaries because of the patch promise above: a `4.0.0` reader accepts every `4.0.x`, and the V3 interval includes the `3.1.x` Specs distribution. An implementation MAY declare any table the grammar allows when its decoder or migration capabilities differ. A conforming reader SHOULD declare ceilings on minor boundaries: under the revision promise a later patch changes nothing a reader can observe, so a ceiling inside a minor records what the implementation has verified rather than a difference in the format. The compatibility result names the minor because that is the component that differs for the reference table and for every table whose ceilings sit on minor boundaries. It MUST NOT claim support for a release it cannot process according to that release's specification.
 
 A binding driven through the Morphir Compatibility Kit publishes its table in the `formatVersions` member of its adapter's capabilities reply; the driver validates that it is canonical and carries it into the run report. A binding not driven through the kit publishes the same canonical string in its README.
 
 A table may be shown to people in three other styles, none of which is accepted as input:
 
-| Style | `[3.0.0,3.1.0),[4.0.0,4.1.0)` reads as |
+| Style | `[3.0.0,3.2.0),[4.0.0,4.1.0)` reads as |
 | --- | --- |
-| Cargo comparator sets | `>=3.0.0, <3.1.0` and `>=4.0.0, <4.1.0` |
-| Elm constraints | `3.0.0 <= v < 3.1.0` and `4.0.0 <= v < 4.1.0` |
-| Prose | `3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0` |
+| Cargo comparator sets | `>=3.0.0, <3.2.0` and `>=4.0.0, <4.1.0` |
+| Elm constraints | `3.0.0 <= v < 3.2.0` and `4.0.0 <= v < 4.1.0` |
+| Prose | `3.0.0 up to but not including 3.2.0, or 4.0.0 up to but not including 4.1.0` |
 
 After successful recognition and normalization, an implementation MUST distinguish these compatibility results:
 

@@ -4,6 +4,30 @@
   "title": "Morphir IR Distribution",
   "description": "A Morphir IR distribution represents a complete, self-contained package of business logic\nwith all its dependencies. It captures the semantics of functional programs in a\nlanguage-independent, platform-agnostic format.\n",
   "type": "object",
+  "if": {
+    "required": [ "distribution" ],
+    "properties": {
+      "distribution": {
+        "type": "array",
+        "items": [
+          {
+            "const": "Specs"
+          }
+        ]
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "formatVersion": {
+        "description": "A Specs distribution needs formatVersion 3.1.0 or later; integer 3 and 3.0.x strings are refused (specs_before_3_1)",
+        "type": "string",
+        "not": {
+          "pattern": "^3\\.0\\."
+        }
+      }
+    }
+  },
   "required": [ "formatVersion", "distribution" ],
   "properties": {
     "formatVersion": {
@@ -21,24 +45,49 @@
       ]
     },
     "distribution": {
-      "description": "The distribution data, currently only Library distributions are supported.",
-      "type": "array",
-      "maxItems": 4,
-      "minItems": 4,
-      "items": [
+      "description": "The distribution data: a Library, or from 3.1.0 a Specs distribution. A Library carries its package\ndefinition. A Specs distribution carries only its package specification, and needs formatVersion\n\"3.1.0\" or later.\n",
+      "oneOf": [
         {
-          "description": "The type of distribution. Currently only Library is supported.",
-          "type": "string",
-          "const": "Library"
+          "type": "array",
+          "maxItems": 4,
+          "minItems": 4,
+          "items": [
+            {
+              "description": "A Library distribution: the package definition and its dependencies' specifications.",
+              "type": "string",
+              "const": "Library"
+            },
+            {
+              "$ref": "#/definitions/PackageName"
+            },
+            {
+              "$ref": "#/definitions/Dependencies"
+            },
+            {
+              "$ref": "#/definitions/PackageDefinition"
+            }
+          ]
         },
         {
-          "$ref": "#/definitions/PackageName"
-        },
-        {
-          "$ref": "#/definitions/Dependencies"
-        },
-        {
-          "$ref": "#/definitions/PackageDefinition"
+          "type": "array",
+          "maxItems": 4,
+          "minItems": 4,
+          "items": [
+            {
+              "description": "A Specs distribution (3.1.0 and later): the package specification and its dependencies' specifications.",
+              "type": "string",
+              "const": "Specs"
+            },
+            {
+              "$ref": "#/definitions/PackageName"
+            },
+            {
+              "$ref": "#/definitions/Dependencies"
+            },
+            {
+              "$ref": "#/definitions/PackageSpecification"
+            }
+          ]
         }
       ]
     }

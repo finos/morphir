@@ -5,7 +5,7 @@
 
 Migrate IR between versions
 
-Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
+Converts concrete Morphir IR V3 and V4 between native JSON, YAML and Ion storage, single files, and V3 and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 

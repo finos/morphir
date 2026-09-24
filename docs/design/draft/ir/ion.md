@@ -14,7 +14,7 @@ This draft specifies an Amazon Ion encoding of Morphir IR v3 and v4. JSON and YA
 
 The implementation plan is [issue 946](https://github.com/finos/morphir/issues/946). The design record is [discussion 938](https://github.com/finos/morphir/discussions/938) for v3 and [discussion 942](https://github.com/finos/morphir/discussions/942) for v4.
 
-The contract version of this spelling is `ionVersion` `0.1.0-draft.1`. A draft matches only that exact string. The IR inside the document is selected by `formatVersion`, `3.0.0` or `4.0.0`.
+The contract version of this spelling is `ionVersion` `0.1.0-draft.1`. A draft matches only that exact string. The IR inside the document is selected by `formatVersion`: `3.0.0`, `3.1.0` or `4.0.0`.
 
 Two words stay separate. An **Ion annotation** is a symbol before `::`. An **attribute** is the per-node payload, a classic list in v3 and a struct in v4. A **Morphir annotation** is the `annotations` list on a v4 specification.
 
@@ -34,7 +34,7 @@ morphir_footer::{}
 
 A missing `ionVersion` means the latest version that reader implements. Today that is `0.1.0-draft.1`. Writers still emit the field. `formatVersion` is required. A reader ignores a header member it does not understand unless `critical` names it. `ionVersion` follows SemVer. On `0.y.z` the minor acts as the major.
 
-`kind` is `library` for v3. v4 adds `specs` and `application`. A v3 reader rejects a v4-only node.
+`kind` is `library` or `specs` for v3, and `library`, `specs` or `application` for v4. A v3 `specs` distribution is IR `3.1.0` ([IR 3.1.0 draft](./v3-document-trees.md)). A writer emits `formatVersion: "3.0.0"` for a v3 `library` and `"3.1.0"` for a v3 `specs`. A reader rejects a v3 `specs` header whose `formatVersion` is below `3.1.0` with `specs_before_3_1`. A v3 reader rejects a v4-only node.
 
 ## Annotations
 
@@ -56,7 +56,7 @@ A package or module specification is a grouping header. The noun comes first: `p
 
 Package names, module names, and fully qualified names are canonical strings. A v3 path array is rebuilt from that string. A missing `package` field on a definition means the distribution package. A `package::spec` whose name equals the header package is rejected in v3, because that package is carried by `def` nodes.
 
-Several `package::spec` values with the same name are one package specification. Several `module::spec` values with the same package and name are one module specification. A `package::spec` may include `modules`. Those entries combine with top-level `module::spec` values for that package. A `module::spec` may include `types` and `values`. Those combine with top-level type and value specs that name the same module. Document order is the order of the merged lists. A repeated type or value name in the merged module is rejected.
+Several `package::spec` values with the same name are one package specification. Several `module::spec` values with the same package and name are one module specification. A `package::spec` may include `modules`. Those entries combine with top-level `module::spec` values for that package. A `module::spec` may include `types` and `values`. Those combine with top-level type and value specs that name the same module. Document order is the order of the merged lists. A repeated type or value name in the merged module is rejected. These merge rules apply to dependencies. A `specs` distribution's own modules do not merge: each is one top-level `module::spec`, and a second `module::spec` with the same name is rejected with `duplicate_name`.
 
 Empty arrays are omitted: `dependencies`, `modules`, `types`, `values`, `typeParams`, `constructors`, `args`, `arguments`, and `inputTypes` or `inputs` when empty. A reader treats a missing array as empty.
 
@@ -122,6 +122,25 @@ The body is an S-expression. The first symbol is the node. Apply is binary. A ba
 
 When a node has a non-empty attribute payload, a struct follows the head. v3 omits that struct when the payload is `[]`. v4 attributes are `source`, `constraints`, and `extensions` on a type, and `source`, `inferredType`, and `extensions` on a value or a pattern. Empty members are omitted. `constraints` and `extensions` hold JSON-compatible Ion only, spelled as a document payload is. `source` is `{ startLine, startColumn, endLine, endColumn }`. In v4 the attribute struct is an unannotated struct right after the head, so attributes force the S-expression form of every shorthand: `(variable { … } x)`, `(int { … } 1)`, `(unit { … })`, `(wildcard { … })`, `(emptyList { … })`.
 
+## v3 specs distribution
+
+A v3 `specs` datagram (IR `3.1.0`) writes each dependency as a `package::spec` and each of its own modules as a top-level `module::spec` with no `package`. A module's types and values sit inline, as specifications. A definition such as `public::def::module` is rejected with `definition_in_specs`. A v3 `specs` distribution is read from its datagram only; the collapsed record is rejected.
+
+```ion
+morphir::{
+  ionVersion: "0.1.0-draft.1",
+  formatVersion: "3.1.0",
+  kind: specs,
+  packageName: "my/pkg",
+}
+module::spec::{
+  name: "basics",
+  doc: "Basics.",
+  types: [ public::spec::opaque::type::{ name: "int" } ],
+}
+morphir_footer::{}
+```
+
 ## v4 nodes
 
 A `specs` distribution writes its own modules as `module::spec`, with no `package`. An `application` writes dependencies as `package::def::{ name, modules }`, whose modules are `public::def::module` values, and puts `entryPoints` on the header. `entryPoints` is a struct keyed by entry name. An entry point has `target` and `kind` (`main`, `command`, `handler`, `job`, or `policy`) and an optional `doc`.
@@ -173,7 +192,7 @@ The path supplies the package, the module, and a node's name, so a file may omit
 
 The header carries `ionVersion`, `formatVersion`, `kind`, `packageName`, and `pathBudget`. Each `package::spec::{ name }` in the manifest names one dependency; an application writes `package::def::{ name }`. The list keeps the dependency order and keeps a dependency that has no modules. A `package::spec` there may also carry inline `modules`, which merge with the `deps/` files. No tree file has a `morphir_footer`. The end of a file ends it.
 
-Under `pkg/`, `module.ion` holds one `public::def::module` or `private::def::module`; a `specs` distribution holds `module::spec` there instead. A second definition module is rejected. Under `deps/`, `module.ion` holds `module::spec` fragments, which may repeat and merge; an application's dependencies hold one `public::def::module` each, because an application links its dependencies' definitions. A member stated by two fragments is rejected. The JSON and YAML trees are defined for v4 only; v3 there is [issue 970](https://github.com/finos/morphir/issues/970).
+Under `pkg/`, `module.ion` holds one `public::def::module` or `private::def::module`; a `specs` distribution holds one `module::spec` there instead. A second definition module, or a second own `module::spec`, is rejected. Under `deps/`, `module.ion` holds `module::spec` fragments, which may repeat and merge; an application's dependencies hold one `public::def::module` each, because an application links its dependencies' definitions. A member stated by two fragments is rejected. The manifest's header says `formatVersion: "3.0.0"` for a v3 `library` tree and `"3.1.0"` for a v3 `specs` tree. The JSON and YAML trees hold v3 from IR `3.1.0`, with every file saying `"3.1.0"` ([v3 document tree files](../../../spec/ir/schemas/v3/document-tree-files.md)).
 
 A tree reads as the datagram that holds the same elements. The manifest's header comes first, then each dependency, then each module with its children inline, then a footer. In a module directory the module file comes first, then the type files, then the value files, each in path order. Children merge by the single-file rules. A type or value defined twice after the merge is rejected. A tree orders modules and their members by path. That order is the one thing a tree does not keep.
 

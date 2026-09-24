@@ -42,8 +42,10 @@ pub(super) async fn claims(
         .map_err(|error| DistributionError::Probe(error.to_string()))?;
     let source = match description.source {
         DescriptionSource::Describe => {
-            declared
-                .check_claims(&description.claims)
+            // Exact agreement for claims the extension supplied; session rules for claims the
+            // host converted from a version-1 record.
+            record
+                .check_described(&description.claims)
                 .map_err(|error| DistributionError::Probe(error.to_string()))?;
             ProbeSource::Describe
         }

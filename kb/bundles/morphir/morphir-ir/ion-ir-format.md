@@ -41,7 +41,8 @@ and an Ion tree for a v3 library without dependencies and a v4 library with spec
 draft-incomplete types, and float and hole expressions. Everything else on this page is unreleased:
 [finos/morphir-rust#248](https://github.com/finos/morphir-rust/pull/248) and
 [finos/morphir-rust#251](https://github.com/finos/morphir-rust/pull/251) complete the codec, and
-[finos/morphir#972](https://github.com/finos/morphir/pull/972) adds v3 Ion trees to the CLI. Issue
+[finos/morphir#972](https://github.com/finos/morphir/pull/972) adds v3 Ion trees to the CLI. The v3 `specs` datagram
+of IR `3.1.0` is also unreleased ([finos/morphir-rust#256](https://github.com/finos/morphir-rust/pull/256)). Issue
 [946](https://github.com/finos/morphir/issues/946) and beads epic `morphir-vvgi` track the plan.
 
 The spelling contract is `ionVersion` `0.1.0-draft.1` in both. A draft version matches only that exact string, so the
@@ -102,11 +103,46 @@ such as `example/finance` or `morphir/SDK:basics#int`, as
 S-expressions whose head is the IR node, and `apply` stays binary.
 
 Elements merge additively. An inline `types` list inside a module combines with top-level types that name the same
-module, in document order. A `module::spec` or `package::spec` may repeat, and its fragments merge. One
-`public::def::module` owns a definition module. A name defined twice after the merge is refused.
+module, in document order. A dependency's `package::spec` may repeat, and its fragments merge. A distribution's own
+modules do not merge. One `public::def::module` owns a definition module, and in a `specs` distribution one top-level
+`module::spec` owns each own module. A name defined twice after the merge is refused.
 
 The draft holds the full element table, the value heads, and the v4 additions: native hints, external bodies,
 incompleteness, and document literals.
+
+### The v3 specs datagram (unreleased)
+
+IR `3.1.0` added a v3 `Specs` distribution
+([decision 0018](/decisions/0018-ir-3-1-adds-specs-and-v3-document-trees.md)), and the Ion spelling follows it. The
+header says `kind: specs` and `formatVersion: "3.1.0"`. Each dependency is a `package::spec`, as in a v3 `library`.
+Each of the distribution's own modules is a top-level `module::spec` with its types and values inline:
+
+```ion
+morphir::{
+  ionVersion: "0.1.0-draft.1",
+  formatVersion: "3.1.0",
+  kind: specs,
+  packageName: "my/pkg",
+}
+module::spec::{
+  name: "basics",
+  doc: "Basics.",
+  types: [ public::spec::opaque::type::{ name: "int" } ],
+}
+morphir_footer::{}
+```
+
+A writer keeps the lowest version that fits, so a v3 `library` header still says `"3.0.0"`. The reader refuses what a
+`specs` datagram cannot hold:
+
+| Input | Refusal |
+| --- | --- |
+| `kind: specs` with `formatVersion` `"3.0.0"` | `specs_before_3_1` |
+| A definition, such as `public::def::module`, in a `specs` datagram | `definition_in_specs` |
+| A second own `module::spec` with the same name | `duplicate_name` |
+| A `specs` distribution collapsed into one `morphir::` record | `unsupported_node` |
+
+**Table 2:** What a v3 `specs` reader refuses (finos/morphir-rust#256, unreleased).
 
 ## The document tree
 
@@ -122,7 +158,7 @@ is the scope. A dependency sits under `deps/<package>/@/`, where the bare `@` is
 | `pkg/<package>/<module>/<stem>.value.ion` | One value |
 | `deps/<package>/@/<module>/...` | The same three kinds of file, holding specifications |
 
-**Table 2:** What each file of an Ion tree holds.
+**Table 3:** What each file of an Ion tree holds.
 
 The path supplies the package, the module, and a node's name, so a file may omit `package`, `module` and `name`. A name
 that is present must match the path. A type or value inside `module.ion` states its name, because no path names it.
@@ -151,7 +187,7 @@ The datagram order is the header, each dependency, each module in path order, an
 directory the module file comes first, then the type files, then the value files, each in path order. Children merge by
 the single-file rules. A type or value defined twice after the merge is refused. A dependency directory holds
 `module::spec` fragments, which may repeat. A `pkg/` directory holds exactly one `public::def::module` or
-`private::def::module`.
+`private::def::module`, or in a `specs` tree exactly one `module::spec`.
 
 On the branch, the writer runs the other way. It builds the single-file datagram and takes it apart. `module.ion`
 receives only the module header. Each type and each value gets its own file, and every name the path supplies is
@@ -173,12 +209,12 @@ A module, type or value may be named `manifest` or `module`. The distribution ma
 | Module `manifest/module` | `pkg/example/manifest/module/module.ion` |
 | Type `con` in module `module` | `pkg/example/module/con_.type.ion` |
 
-**Table 3:** Names that look like tree files, and the paths they take.
+**Table 4:** Names that look like tree files, and the paths they take.
 
 `con` is a Windows device name. Decision 0001's escape appends `_` to such a stem, and a reader removes it. A
 `module.ion` directly under the package directory is refused, because a module path has at least one name. The test
 `modules_and_types_named_like_tree_files_round_trip` in `crates/morphir-common/tests/ion_document_tree.rs`
-(finos/morphir-rust#233) writes and reads back every row of Table 3.
+(finos/morphir-rust#233) writes and reads back every row of Table 4.
 
 ## Alternatives considered
 
@@ -205,16 +241,17 @@ every kit case in `spec/ir/mck/` through a single file and through an Ion tree.
 | IR | Read and written |
 | --- | --- |
 | v3 | A library with modules, alias and custom types, values, and dependency specifications of every kind |
+| v3 | A `specs` distribution at `3.1.0`, as a datagram and as a tree (unreleased, finos/morphir-rust#256) |
 | v4 | Library, specs and application distributions, with entry points and `package::def` dependencies |
 | v4 | Every type expression, type definition and type specification |
 | v4 | Every value expression and pattern, and expression, native, external and incomplete bodies |
 | v4 | Attributes on every node, Morphir annotations on specifications, document literals whose numbers keep their lexemes |
 
-**Table 4:** What the decoder and encoder accept after finos/morphir-rust#251.
+**Table 5:** What the decoder and encoder accept after finos/morphir-rust#251, with the unreleased v3 `specs` row.
 
 The CLI writes a v3 Ion tree with `morphir ir migrate --target-version v3 --output-layout vfs --output-format ion`, and
-`generate -i` reads one as v3. The JSON and YAML trees stay v4 only, which
-[issue 970](https://github.com/finos/morphir/issues/970) tracks.
+`generate -i` reads one as v3. With `--output-format json` or `yaml` the same command writes a v3 JSON or YAML
+tree, which IR `3.1.0` added ([issue 970](https://github.com/finos/morphir/issues/970), unreleased).
 
 ## Unresolved
 

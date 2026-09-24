@@ -65,6 +65,11 @@ struct Cli {
 
 #[derive(Clone, Subcommand)]
 enum Commands {
+    /// Manage typed V3/V4 decorator sidecars (draft)
+    Decoration {
+        #[command(subcommand)]
+        action: commands::decoration::DecorationAction,
+    },
     /// Restore freshly authenticated Libraries from a local registry (MVP)
     Package {
         #[command(subcommand)]
@@ -174,7 +179,7 @@ enum Commands {
     /// Migrate IR between versions
     #[command(long_about = "Migrate IR between versions
 
-Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
+Converts concrete Morphir IR V3 and V4 between native JSON, YAML and Ion storage, single files, and V3 and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
@@ -627,7 +632,7 @@ enum IrAction {
     /// Migrate IR between versions
     #[command(long_about = "Migrate IR between versions
 
-Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
+Converts concrete Morphir IR V3 and V4 between native JSON, YAML and Ion storage, single files, and V3 and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
@@ -736,6 +741,11 @@ enum MckAction {
         #[command(subcommand)]
         action: MckPackageAction,
     },
+    /// Run the draft V3/V4 semantic node-address corpus
+    NodeAddress {
+        #[command(subcommand)]
+        action: MckNodeAddressAction,
+    },
     /// Check compatibility evidence or render a saved report as offline HTML
     Report {
         #[command(subcommand)]
@@ -752,6 +762,11 @@ enum MckAction {
 enum MckSchemaAction {
     /// Check schemas, examples, protocol pairing and accepted JSON fences
     Check(commands::mck::MckSchemaCheckArgs),
+}
+
+#[derive(Clone, Subcommand)]
+enum MckNodeAddressAction {
+    Run(commands::mck::node_address::RunArgs),
 }
 
 #[derive(Clone, Subcommand)]
@@ -1056,6 +1071,7 @@ impl AppSession for MorphirSession {
 
     async fn execute(&mut self) -> AppResult<miette::Report> {
         match &self.command {
+            Commands::Decoration { action } => commands::decoration::run(action).map(|()| None),
             Commands::Package { action } => commands::package::run(action).await,
             Commands::Eval(args) => commands::eval::run_eval(args.clone()).map(|()| None),
             Commands::Itest(args) => commands::itest::run_itest(args.clone()),
@@ -1253,6 +1269,11 @@ impl AppSession for MorphirSession {
                     }
                 },
                 MckAction::Run(args) => run_mck_run(args.clone()).await,
+                MckAction::NodeAddress { action } => match action {
+                    MckNodeAddressAction::Run(args) => {
+                        commands::mck::node_address::run(args.clone())
+                    }
+                },
                 MckAction::Package { action } => match action {
                     MckPackageAction::Inspect(args) => {
                         commands::mck::package::inspect(args.clone())

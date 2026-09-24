@@ -23,7 +23,58 @@ flag --out-dir help="Relocate the out root, which defaults to .morphir/out under
     arg <PATH>
 }
 complete path type=path
-cmd package display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Restore freshly authenticated Libraries from a local registry (MVP)" unknown_flags=error {
+cmd decoration display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage typed V3/V4 decorator sidecars (draft)" unknown_flags=error {
+    cmd set display_order=0 args_override_self=#false help="Add or replace one typed value at a semantic node URI" unknown_flags=error {
+        flag --config help="Project config containing the named decoration" default=morphir.json {
+            arg <CONFIG>
+        }
+        flag --ir help="Exact V3 or V4 target IR JSON to decorate" required=#true {
+            arg <IR>
+        }
+        flag --value help="File containing one JSON value" required=#true {
+            arg <VALUE>
+        }
+        arg <NAME> help="Decoration name from the project config"
+        arg <TARGET> help="Portable Morphir node URI"
+        complete config type=path
+        complete ir type=path
+        complete value type=path
+    }
+    cmd show display_order=1 args_override_self=#false help="Read and validate a sidecar, then print its JSON" unknown_flags=error {
+        flag --config help="Project config containing the named decoration" default=morphir.json {
+            arg <CONFIG>
+        }
+        flag --ir help="Exact V3 or V4 target IR JSON to decorate" required=#true {
+            arg <IR>
+        }
+        arg <NAME> help="Decoration name from the project config"
+        complete config type=path
+        complete ir type=path
+    }
+    cmd validate display_order=2 args_override_self=#false help="Check all configured targets and values" unknown_flags=error {
+        flag --config help="Project config containing the named decoration" default=morphir.json {
+            arg <CONFIG>
+        }
+        flag --ir help="Exact V3 or V4 target IR JSON to decorate" required=#true {
+            arg <IR>
+        }
+        arg <NAME> help="Decoration name from the project config"
+        complete config type=path
+        complete ir type=path
+    }
+    cmd migrate-v3 display_order=3 args_override_self=#false help="Replace a legacy flat V3 NodeID map with URI keys" unknown_flags=error {
+        flag --config help="Project config containing the named decoration" default=morphir.json {
+            arg <CONFIG>
+        }
+        flag --ir help="Exact V3 or V4 target IR JSON to decorate" required=#true {
+            arg <IR>
+        }
+        arg <NAME> help="Decoration name from the project config"
+        complete config type=path
+        complete ir type=path
+    }
+}
+cmd package display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Restore freshly authenticated Libraries from a local registry (MVP)" unknown_flags=error {
     cmd create display_order=0 args_override_self=#false help="Create a verified dependency-free classic V4 Library bundle" unknown_flags=error {
         flag --ir help="Already compiled classic JSON V4 Library IR" required=#true {
             arg <FILE>
@@ -276,14 +327,14 @@ cmd package display_order=4 subcommand_required=#true arg_required_else_help=#tr
         complete dir type=path
     }
 }
-cmd eval display_order=5 args_override_self=#false help="Evaluate a program through a registered native provider" unknown_flags=error {
+cmd eval display_order=6 args_override_self=#false help="Evaluate a program through a registered native provider" unknown_flags=error {
     flag --request help="Path to a version 1 or native IR draft evaluation request JSON file" required=#true {
         arg <FILE>
     }
     flag --json help="Print the versioned evaluation report as JSON"
     complete file type=path
 }
-cmd itest display_order=6 args_override_self=#false help="Run notebook or Markdown integration scenarios through real CLI processes" unknown_flags=error {
+cmd itest display_order=7 args_override_self=#false help="Run notebook or Markdown integration scenarios through real CLI processes" unknown_flags=error {
     flag --filter help="Select an example path, category or Markdown path#scenario relative to the search root" {
         arg <FILTER>
     }
@@ -295,7 +346,7 @@ cmd itest display_order=6 args_override_self=#false help="Run notebook or Markdo
     arg "[ROOT]" help="Directory to search recursively for scenario.ipynb or scenarios.md files" required=#false default=examples
     complete root type=path
 }
-cmd compile display_order=7 args_override_self=#false help="Compile source code to Morphir IR" unknown_flags=error {
+cmd compile display_order=8 args_override_self=#false help="Compile source code to Morphir IR" unknown_flags=error {
     flag "-l --language" help="Source language (e.g., gleam, elm)" {
         arg <LANGUAGE>
     }
@@ -335,7 +386,7 @@ cmd compile display_order=7 args_override_self=#false help="Compile source code 
         }
     }
 }
-cmd generate display_order=8 args_override_self=#false help="Generate code from Morphir IR" unknown_flags=error {
+cmd generate display_order=9 args_override_self=#false help="Generate code from Morphir IR" unknown_flags=error {
     flag "-t --target" help="Target language or format" {
         arg <TARGET>
     }
@@ -358,12 +409,12 @@ cmd generate display_order=8 args_override_self=#false help="Generate code from 
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
 }
-cmd validate hide=#true display_order=9 args_override_self=#false help="[Experimental] Validate Morphir IR models" unknown_flags=error {
+cmd validate hide=#true display_order=10 args_override_self=#false help="[Experimental] Validate Morphir IR models" unknown_flags=error {
     flag "-i --input" help="Path to the Morphir IR file or directory" {
         arg <INPUT>
     }
 }
-cmd transform hide=#true display_order=10 args_override_self=#false help="[Experimental] Transform Morphir IR" unknown_flags=error {
+cmd transform hide=#true display_order=11 args_override_self=#false help="[Experimental] Transform Morphir IR" unknown_flags=error {
     flag "-i --input" help="Path to the Morphir IR file or directory" {
         arg <INPUT>
     }
@@ -371,11 +422,11 @@ cmd transform hide=#true display_order=10 args_override_self=#false help="[Exper
         arg <OUTPUT>
     }
 }
-cmd migrate display_order=11 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
+cmd migrate display_order=12 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
     long_help #"""
 Migrate IR between versions
 
-Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
+Converts concrete Morphir IR V3 and V4 between native JSON, YAML and Ion storage, single files, and V3 and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
@@ -423,7 +474,7 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
     arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
     complete output type=path
 }
-cmd ui display_order=12 args_override_self=#false help="Open the Morphir development workbench in a browser" unknown_flags=error {
+cmd ui display_order=13 args_override_self=#false help="Open the Morphir development workbench in a browser" unknown_flags=error {
     flag --workspace-extension help="Use one installed workspace-capability extension by ID" {
         arg <ID>
     }
@@ -431,16 +482,16 @@ cmd ui display_order=12 args_override_self=#false help="Open the Morphir develop
     arg "[WORKSPACE]" help="Morphir development workspace to open. Defaults to the current directory" required=#false
     complete workspace type=path
 }
-cmd desktop display_order=13 args_override_self=#false help="Launch the installed Morphir Desktop application" unknown_flags=error {
+cmd desktop display_order=14 args_override_self=#false help="Launch the installed Morphir Desktop application" unknown_flags=error {
     flag --wait help="Wait for Desktop to exit and return its exit status"
     flag --offline help="Prohibit acquisition and launch only an already-installed release"
     arg "[PATH]" help="Workspace directory or Morphir artifact to open (defaults to the current directory)" required=#false
     complete path type=path
 }
-cmd playground display_order=14 args_override_self=#false help="Open a scratch Morphir Playground in a browser, with no workspace required" unknown_flags=error {
+cmd playground display_order=15 args_override_self=#false help="Open a scratch Morphir Playground in a browser, with no workspace required" unknown_flags=error {
     flag --no-open help="Print the one-time launch URL instead of opening a browser"
 }
-cmd config display_order=15 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect the effective Morphir configuration" unknown_flags=error {
+cmd config display_order=16 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect the effective Morphir configuration" unknown_flags=error {
     cmd get display_order=0 args_override_self=#false help="Get one value from the effective configuration" unknown_flags=error {
         flag --config help="Explicit project config file path" {
             arg <CONFIG>
@@ -464,7 +515,7 @@ cmd config display_order=15 subcommand_required=#true arg_required_else_help=#tr
         flag --isolated help="Ignore machine-level and user-level configuration sources" hide=#true
     }
 }
-cmd diagnostics display_order=16 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Locate Morphir logs and collect troubleshooting information" unknown_flags=error {
+cmd diagnostics display_order=17 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Locate Morphir logs and collect troubleshooting information" unknown_flags=error {
     cmd path display_order=0 args_override_self=#false help="Show the local Morphir log locations" unknown_flags=error {
         flag --json help="Output paths as JSON"
     }
@@ -484,7 +535,7 @@ cmd diagnostics display_order=16 subcommand_required=#true arg_required_else_hel
         flag --json help="Output events as JSON"
     }
 }
-cmd cache display_order=17 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect and clean disposable Morphir caches" unknown_flags=error {
+cmd cache display_order=18 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect and clean disposable Morphir caches" unknown_flags=error {
     cmd status display_order=0 args_override_self=#false help="Report owned and unclassified cache usage" unknown_flags=error {
         flag --json help="Output status as JSON"
     }
@@ -497,7 +548,7 @@ cmd cache display_order=17 subcommand_required=#true arg_required_else_help=#tru
         flag --json help="Output the plan and execution report as JSON"
     }
 }
-cmd tool display_order=18 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage CLI-installed Morphir tools" unknown_flags=error {
+cmd tool display_order=19 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage CLI-installed Morphir tools" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a local developer Morphir tool" unknown_flags=error {
         flag "-v --version" help="Exact semantic version recorded for the local package" {
             arg <VERSION>
@@ -541,7 +592,7 @@ cmd tool display_order=18 subcommand_required=#true arg_required_else_help=#true
         arg <NAME> help="Name of the tool to uninstall"
     }
 }
-cmd dist display_order=19 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir distributions" unknown_flags=error {
+cmd dist display_order=20 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir distributions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir distribution" unknown_flags=error {
         flag "-v --version" help="Version to install (defaults to latest)" {
             arg <VERSION>
@@ -559,7 +610,7 @@ cmd dist display_order=19 subcommand_required=#true arg_required_else_help=#true
         arg <NAME> help="Name of the distribution to uninstall"
     }
 }
-cmd extension display_order=20 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
+cmd extension display_order=21 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir extension" unknown_flags=error {
         flag --repository help="Named extension repository configured in Morphir Home" required=#true {
             arg <REPOSITORY>
@@ -634,12 +685,12 @@ Version-2 WASM artifacts remain declared and are not probed.
         arg <NAME> help="Name of the extension to uninstall"
     }
 }
-cmd ir display_order=21 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir IR" unknown_flags=error {
+cmd ir display_order=22 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir IR" unknown_flags=error {
     cmd migrate display_order=0 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
         long_help #"""
 Migrate IR between versions
 
-Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
+Converts concrete Morphir IR V3 and V4 between native JSON, YAML and Ion storage, single files, and V3 and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
@@ -688,7 +739,7 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         complete output type=path
     }
 }
-cmd kb display_order=22 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage the knowledge base under kb/ — OKF bundles and concept documents" unknown_flags=error {
+cmd kb display_order=23 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage the knowledge base under kb/ — OKF bundles and concept documents" unknown_flags=error {
     cmd list display_order=0 args_override_self=#false help="List bundles, or one bundle\'s concepts" unknown_flags=error {
         flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
             arg <PATH>
@@ -1166,7 +1217,7 @@ cmd kb display_order=22 subcommand_required=#true arg_required_else_help=#true a
         }
     }
 }
-cmd mck display_order=23 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Morphir Compatibility Kit: validate, vendor and run compatibility kits" unknown_flags=error {
+cmd mck display_order=24 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Morphir Compatibility Kit: validate, vendor and run compatibility kits" unknown_flags=error {
     cmd check display_order=0 args_override_self=#false help="Validate a kit directory without running an adapter" unknown_flags=error {
         flag --repo-root help="Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)" {
             arg <DIR>
@@ -1308,7 +1359,28 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             }
         }
     }
-    cmd report display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
+    cmd node-address display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run the draft V3/V4 semantic node-address corpus" unknown_flags=error {
+        cmd run display_order=0 args_override_self=#false unknown_flags=value {
+            flag --kit help="Fixed V3/V4 node-address case file" default="spec/ir/mck/node-address-draft.json" {
+                arg <KIT>
+            }
+            flag --adapter help="Adapter executable, launched without a shell" required=#true {
+                arg <ADAPTER>
+            }
+            flag --adapter-arg help="Adapter argument; repeat to pass --suite node-address" var=#true allow_hyphen_values=#true {
+                arg <ADAPTER_ARGS>… var=#true
+            }
+            flag --report help="Write the JSON report to this file" {
+                arg <REPORT>
+            }
+            flag --timeout help="Maximum milliseconds per adapter exchange" default="30000" {
+                arg <TIMEOUT>
+            }
+            complete kit type=path
+            complete report type=path
+        }
+    }
+    cmd report display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
         cmd check display_order=0 args_override_self=#false help="Verify report inventory and the binding\'s allowed-failing baseline" unknown_flags=error {
             flag --kit help="Independent kit, defaulting to the embedded kit" {
                 arg <KIT>
@@ -1340,7 +1412,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete output type=path
         }
     }
-    cmd kit display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
+    cmd kit display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
         cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {
             flag --kit help="A kit directory or a vendored snapshot\'s root; the kit embedded in this CLI when omitted" {
                 arg <DIR>
@@ -1385,7 +1457,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
         }
     }
 }
-cmd gleam display_order=24 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
+cmd gleam display_order=25 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     cmd compile display_order=0 args_override_self=#false help="Compile Gleam source to Morphir IR" unknown_flags=error {
@@ -1437,16 +1509,16 @@ cmd gleam display_order=24 subcommand_required=#true arg_required_else_help=#tru
         }
     }
 }
-cmd schema display_order=25 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
+cmd schema display_order=26 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
     flag "-o --output" help="Output file path (optional)" {
         arg <OUTPUT>
     }
     complete output type=path
 }
-cmd version display_order=26 args_override_self=#false help="Print version information" unknown_flags=error {
+cmd version display_order=27 args_override_self=#false help="Print version information" unknown_flags=error {
     flag --json help="Output version info as JSON"
 }
-cmd usage hide=#true display_order=27 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
+cmd usage hide=#true display_order=28 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
 '
 set -l spec_dir (if set -q XDG_CACHE_HOME; echo $XDG_CACHE_HOME; else; echo $HOME/.cache; end)/usage
 test -d "$spec_dir"; or mkdir -p -m 700 "$spec_dir"

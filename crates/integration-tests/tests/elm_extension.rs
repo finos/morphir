@@ -237,7 +237,9 @@ fn elm_extension_compiles_a_single_file_to_classic_ir() {
         &std::fs::read(&installed_ir).expect("read installed morphir-ir.json"),
     )
     .expect("installed file should contain classic Morphir IR");
-    let DistributionBody::Library(_, _, package) = distribution.distribution;
+    let DistributionBody::Library(_, _, package) = distribution.distribution else {
+        panic!("installed Elm IR must be a Library");
+    };
     assert!(
         package.modules.iter().any(|module| {
             module.path.segments.len() == 1

@@ -21,7 +21,7 @@ Version 3 of the Morphir IR format standardizes on capitalized tags for all cons
 
 All tags in version 3 are capitalized:
 
-- **Distribution**: `"Library"`
+- **Distribution**: `"Library"`, and from `3.1.0` also `"Specs"`
 - **Access Control**: `"Public"` and `"Private"`
 - **Type Tags**: `"Variable"`, `"Reference"`, `"Tuple"`, `"Record"`, etc.
 - **Value Tags**: `"Apply"`, `"Lambda"`, `"LetDefinition"`, etc.
@@ -113,22 +113,50 @@ AccessControlled:
 
 A **Distribution** represents a complete, self-contained package with all dependencies.
 
-- **Current type**: Library (only supported distribution type)
-- **Structure**: `["Library", packageName, dependencies, packageDefinition]`
-- **Purpose**: Output of compilation process, ready for execution or transformation
+- **Types**: `Library`, and from `3.1.0` also `Specs`
+- **Library structure**: `["Library", packageName, dependencies, packageDefinition]`
+- **Specs structure**: `["Specs", packageName, dependencies, packageSpecification]`, with `formatVersion` `"3.1.0"` or later
+- **Purpose**: A `Library` is the output of compilation, ready for execution or transformation. A `Specs` distribution publishes a package's public interface without its definitions.
 
 ```yaml
 distribution:
-  type: array
-  minItems: 4
-  maxItems: 4
-  items:
-    - type: string
-      const: "Library"
-    - $ref: "#/definitions/PackageName"
-    - $ref: "#/definitions/Dependencies"
-    - $ref: "#/definitions/PackageDefinition"
+  oneOf:
+    - type: array
+      minItems: 4
+      maxItems: 4
+      items:
+        - const: "Library"
+        - $ref: "#/definitions/PackageName"
+        - $ref: "#/definitions/Dependencies"
+        - $ref: "#/definitions/PackageDefinition"
+    - type: array
+      minItems: 4
+      maxItems: 4
+      items:
+        - const: "Specs"
+        - $ref: "#/definitions/PackageName"
+        - $ref: "#/definitions/Dependencies"
+        - $ref: "#/definitions/PackageSpecification"
+
+# At the schema root: a Specs distribution needs formatVersion "3.1.0" or later.
+if:
+  properties:
+    distribution:
+      type: array
+      items:
+        - const: "Specs"
+  required:
+    - distribution
+then:
+  properties:
+    formatVersion:
+      type: string
+      not:
+        pattern: "^3\\.0\\."
 ```
+
+A v3 distribution can also be stored as a JSON or YAML document tree, from `3.1.0`. See
+[Document Tree File Formats (Version 3)](./document-tree-files.md) and [What's New](./whats-new.md#version-310).
 
 ### Package Definition
 

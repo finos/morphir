@@ -197,6 +197,12 @@ impl IrEvaluationRequest {
                 "native evaluator requires classic IR formatVersion 3",
             ));
         }
+        if !matches!(distribution.distribution, ir::DistributionBody::Library(..)) {
+            return Err(error(
+                "INVALID_IR_PROGRAM",
+                "native evaluation requires a classic Library distribution",
+            ));
+        }
         let mut ids = HashSet::new();
         let mut calls = Vec::with_capacity(wire.calls.len());
         for call in wire.calls {
@@ -397,7 +403,9 @@ fn find_definition<'a>(
     distribution: &'a ir::Distribution,
     name: &ir::FQName,
 ) -> Option<&'a ir::ValueDefinition<ir::Attrs, ir::Type<ir::Attrs>>> {
-    let ir::DistributionBody::Library(package, _, definition) = &distribution.distribution;
+    let ir::DistributionBody::Library(package, _, definition) = &distribution.distribution else {
+        return None;
+    };
     if &name.package_path != package {
         return None;
     }
@@ -426,7 +434,9 @@ fn find_constructor<'a>(
     type_name: &ir::FQName,
     name: &ir::FQName,
 ) -> Option<(&'a [ir::Name], &'a ir::Constructor<ir::Attrs>)> {
-    let ir::DistributionBody::Library(package, _, definition) = &distribution.distribution;
+    let ir::DistributionBody::Library(package, _, definition) = &distribution.distribution else {
+        return None;
+    };
     if &name.package_path != package
         || name.package_path != type_name.package_path
         || name.module_path != type_name.module_path
@@ -491,7 +501,10 @@ fn supported_type(
             }
             let supported = (|| {
                 let ir::DistributionBody::Library(package, _, definition) =
-                    &distribution.distribution;
+                    &distribution.distribution
+                else {
+                    return false;
+                };
                 if &name.package_path != package {
                     return false;
                 }
@@ -725,7 +738,13 @@ fn canonical(name: &ir::FQName) -> String {
 
 fn validate_sdk(distribution: &ir::Distribution) -> Result<(), IrRequestError> {
     let ir::DistributionBody::Library(package_name, dependencies, package) =
-        &distribution.distribution;
+        &distribution.distribution
+    else {
+        return Err(error(
+            "INVALID_IR_PROGRAM",
+            "native evaluation requires a classic Library distribution",
+        ));
+    };
     let sdk = path("morphir/SDK");
     let mut external = Vec::new();
     for (_, value) in package

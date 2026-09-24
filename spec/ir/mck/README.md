@@ -33,13 +33,14 @@ corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabiliza
 | `allowed-failing.json` | empty parent baseline for the TypeScript adapter gate |
 | [`protocol.schema.json`](protocol.schema.json) | the JSON Schema of the adapter protocol, contract version 1 |
 
-The [draft node-address corpus](../../../docs/spec/ir/fixtures/node-addresses-draft.json)
-records independent V3/V4 URI parsing, legacy sidecar-key conversion, sidecar roundtrips,
+The [draft node-address reference corpus](../../../docs/spec/ir/fixtures/node-addresses-draft.json)
+records V3/V4 URI parsing, legacy sidecar-key conversion, sidecar roundtrips,
 layout equivalence and resolution expectations for [#957](https://github.com/finos/morphir/issues/957).
-It is reference data, not an executable IR-suite capability yet:
-the version-1 adapter protocol has no node-address operation. The existing `morphir mck` runner remains the
-sole compatibility runner; a versioned adapter operation and active kit cases are required before these
-expectations count toward a compatibility claim.
+The separate [executable node-address corpus](node-address-draft.json) runs fixed
+V3/V4 JSON artifacts through the draft `node-address` adapter suite and checks
+both outcomes and resolved semantic nodes. The version-1 IR adapter protocol is
+unchanged. The shared `morphir mck` runner remains the sole compatibility runner;
+reference-only cases do not count as executable evidence.
 
 ## A case
 
@@ -137,6 +138,22 @@ The consolidated JSON contains provenance, complete negotiated capabilities, exp
 session outcome and ordered records. It is authoritative. HTML is an optional standalone view
 that opens offline without a server or CDN. Rendering a report successfully does not establish
 passing tests or a valid compatibility claim.
+
+The draft semantic node-address contract has a separate executable suite at
+[`node-address-draft.json`](node-address-draft.json). Run it with
+`morphir mck node-address run --adapter ./mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address`.
+It uses `0.1.0-draft.1` capabilities and fixed V3/V4 resolve outcomes, leaving this IR
+decode protocol's numeric version 1 unchanged. The adapter decodes IR and builds its
+index; the shared MCK runner only reads fixture bytes and compares answers.
+Resolved cases compare the full normalized semantic node with a fixed corpus
+value, as well as its kind and canonical URI; a same-kind wrong target fails.
+The [closed wire schema](node-address-protocol.schema.json) describes its JSON-lines
+`capabilities`, `resolve`, and `exit` requests and resolved/failure responses.
+`resolve.input` is the exact UTF-8 text of one V3 or V4 single-file JSON artifact;
+`resolve.uri` is a portable Morphir node URI. A successful response contains a
+node kind, canonical URI, and normalized semantic node. A failure contains one
+specific resolver outcome. The first suite covers JSON artifact inputs; the
+core index separately tests equivalent V4 JSON, YAML, and document-tree layouts.
 
 `report check` strictly validates the draft schema without remote references, then independently
 loads the kit and verifies the snapshot digest and exact record inventory. Missing digest or a
