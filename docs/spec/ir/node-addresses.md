@@ -225,6 +225,24 @@ morphir mck node-address run \
   --report node-address-report.json
 ```
 
+The executable cases cover these boundaries with fixed V3/V4 JSON artifacts:
+
+| Boundary | Cases |
+| --- | --- |
+| V3 definitions, nested record fields, custom-constructor arguments, and absent fields | `node-address-0001`–`0002`, `0014`, `0032` |
+| V4 definitions, nested type/value roles, pinned ordered children, and wrong node kind | `node-address-0003`–`0005`, `0015`–`0021` |
+| Positional fingerprint after a changed child, later append, unrelated edit, or insertion of an identical sibling | `node-address-0010`–`0012`, `0022`–`0025` |
+| Canonical URI escaping, Unicode/name grammar, query uniqueness, index spelling, required guards, and typed roles | `node-address-0006`, `0026`–`0031`, `0033` |
+
+`node-address-0025` resolves after an identical `Unit` element is inserted before
+the selected index. The semantic node at that index is indistinguishable from
+the original; without a stable IR node ID, the guard cannot detect that swap.
+The [URI roundtrip tests](https://github.com/finos/morphir-rust/blob/main/crates/morphir-core/tests/node_address_uri.rs)
+exercise all typed child roles and the draft URI reference cases. The
+[index tests](https://github.com/finos/morphir-rust/blob/main/crates/morphir-core/tests/node_address_index.rs)
+cover duplicate semantic fields and equivalent V4 JSON, YAML, and document-tree
+addresses. These are separate from the JSON-only MCK transport cases above.
+
 For a configured decorator, `morphir decoration set` checks the target URI against the loaded target IR and the JSON value against the configured Morphir `entryPoint` type before replacing the sidecar. The draft sidecar can be V3 or V4. `show` and `validate` reject stale targets or invalid values; `migrate-v3` converts a flat V3 NodeID map at its existing `storageLocation` transactionally.
 
 ```json
