@@ -1,7 +1,7 @@
 {
   "contractVersion": "0.1.0-draft.1",
-  "status": "reference-only",
-  "description": "Independent V3/V4 semantic node-address expectations for finos/morphir#957. No released MCK adapter operation executes these cases yet.",
+  "status": "draft with executable subset",
+  "description": "Independent V3/V4 semantic node-address expectations for finos/morphir#957. URI roundtrips run in morphir-core; fixed JSON resolution cases run in the separate draft node-address MCK suite. Remaining design examples are reference-only.",
   "uriCases": [
     {
       "id": "node-uri-0001",
@@ -704,8 +704,8 @@
   ],
   "notes": [
     "Repeated a and b hexadecimal digests are illustrative tokens, not computed digests of the sample artifacts.",
-    "Guard outcomes fix resolution behavior; cross-implementation hash vectors require a separately reviewed canonical semantic digest profile.",
-    "These reference cases do not count toward an MCK compatibility claim until a versioned shared adapter operation executes them."
+    "The draft semantic digest profile has a fixed V4 cross-format vector; the MCK corpus has guarded-shift, append, unrelated-edit and identical-sibling cases.",
+    "Only cases in spec/ir/mck/node-address-draft.json count as executable MCK evidence. URI parsing cases are mirrored by morphir-core tests; remaining examples are design references."
   ],
   "sidecarCases": [
     {

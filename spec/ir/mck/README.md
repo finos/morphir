@@ -33,13 +33,14 @@ corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabiliza
 | `allowed-failing.json` | empty parent baseline for the TypeScript adapter gate |
 | [`protocol.schema.json`](protocol.schema.json) | the JSON Schema of the adapter protocol, contract version 1 |
 
-The [draft node-address corpus](../../../docs/spec/ir/fixtures/node-addresses-draft.json)
-records independent V3/V4 URI parsing, legacy sidecar-key conversion, sidecar roundtrips,
+The [draft node-address reference corpus](../../../docs/spec/ir/fixtures/node-addresses-draft.json)
+records V3/V4 URI parsing, legacy sidecar-key conversion, sidecar roundtrips,
 layout equivalence and resolution expectations for [#957](https://github.com/finos/morphir/issues/957).
-It is reference data, not an executable IR-suite capability yet:
-the version-1 adapter protocol has no node-address operation. The existing `morphir mck` runner remains the
-sole compatibility runner; a versioned adapter operation and active kit cases are required before these
-expectations count toward a compatibility claim.
+The separate [executable node-address corpus](node-address-draft.json) runs fixed
+V3/V4 JSON artifacts through the draft `node-address` adapter suite and checks
+both outcomes and resolved semantic nodes. The version-1 IR adapter protocol is
+unchanged. The shared `morphir mck` runner remains the sole compatibility runner;
+reference-only cases do not count as executable evidence.
 
 ## A case
 
