@@ -15,7 +15,7 @@ This draft adds two crates to morphir-rust and moves Morphir's black-box tests o
 - **`morphir-gherkin`**: a model of Gherkin documents read from `.feature` and `.feature.md` (Markdown with Gherkin) files. It gives every node a source span, and offers a visitor and a cursor. It keeps prose and fenced blocks as parsed Markdown, and it has extension points for tags, fences and prose that build a typed context. It does not depend on cucumber, so the knowledge base, OKF and requirement tools can use it without running anything.
 - **`morphir-bdd`**: execution on cucumber-rs through that model. It provides one shared world type, step libraries that any crate can publish and reuse, one runner configuration with JSON and JUnit output, and base steps for CLI processes, files and output.
 
-`morphir itest` becomes the user-facing runner for `morphir-bdd` suites, and itest's notebook support is removed. The compatibility kit's cases move from their custom Markdown grammar to `.feature.md` suites at the same time. Options everywhere are native Gherkin tags and step text. Later work builds on this foundation:
+`morphir itest` becomes the user-facing runner for `morphir-bdd` suites, and itest's notebook support is removed. The compatibility kit's cases move from their custom Markdown grammar to `.feature` suites at the same time. Options everywhere are native Gherkin tags and step text. Later work builds on this foundation:
 
 - [Language syntaxes, IR inspection and IR comparison](../ir/syntax-and-inspect.md), whose Gherkin steps use `morphir-bdd`;
 - [The compatibility kit with Ion as the reference encoding](../ir/mck-ion-reference.md), which builds on the kit's Gherkin form;
@@ -67,7 +67,14 @@ flowchart TB
 
 ### morphir-gherkin: formats
 
-**`.feature`** is parsed with `gherkin` 0.16 and lowered into the model. Descriptions are the exception. For every description (feature, rule, background, scenario, examples), the reader takes the raw lines from the source by span. It removes only their common indent and parses them as Markdown. A fenced block in a description keeps every line, every blank line and its span.
+**`.feature`** is parsed with `gherkin` 0.16 and lowered into the model. Two parts are read from the source instead, because `gherkin` 0.16 changes them:
+
+- **Descriptions** (feature, rule, background, scenario, examples): the reader takes the raw lines by span, removes only their common indent, and parses them as Markdown. A fenced block in a description keeps every line, every blank line and its span.
+- **Doc strings:** `gherkin` 0.16 returns the content type as the first line of the text and keeps the indent (`"ion\n      (ref 'morphir/SDK:basics#add')\n"`). The reader takes the content type from the opening delimiter (`"""ion` or ```` ```ion ````), and it takes the body lines by span, with the delimiter's indent removed, as the Gherkin reference parsers do.
+
+When the model is lowered for cucumber, each step's `docstring` is the corrected body.
+
+**Which format to use:** `.feature` is the default. It is what most platforms and tools read, and the compatibility kit uses it so that every binding's own tooling can read a case. `.feature.md` suits suites that are documentation first, such as itest examples, where prose and rendered Markdown matter more than tool reach.
 
 **`.feature.md`** follows Cucumber's official Markdown with Gherkin (MDG) rules, so other Cucumber tools can read the files:
 
@@ -256,13 +263,13 @@ itest's step kinds become step libraries:
 
 ### Moving the existing suites
 
-1. **The kit and itest, together:** the kit's cases become `.feature.md` suites (see [The compatibility kit on Gherkin](#the-compatibility-kit-on-gherkin)), and itest runs on `morphir-bdd`.
+1. **The kit and itest, together:** the kit's cases become `.feature` suites (see [The compatibility kit on Gherkin](#the-compatibility-kit-on-gherkin)), and itest runs on `morphir-bdd`.
 2. **finos/morphir:** the `cli`, `config_acceptance` and `kb_acceptance` mains move to `Suite` and `MorphirWorld`, with the base steps. Their feature text does not change.
 3. **morphir-rust:** its 21 feature suites move crate by crate, starting with `morphir-tests`, the crate that already holds shared BDD tooling.
 
 ### The compatibility kit on Gherkin
 
-The kit's 131 cases move from its custom Markdown grammar (`spec/ir/mck/*.md`) to `.feature.md` files. `values-0003` today:
+The kit's 131 cases move from its custom Markdown grammar (`spec/ir/mck/*.md`) to plain `.feature` files. Plain Gherkin is read by more platforms and tools than Markdown with Gherkin, and every binding's own test tooling can read a kit case. A doc string's content type (`"""yaml`, `"""json`, `"""ion`) names the format of the document it holds. `values-0003` today:
 
 ````markdown
 ## values-0003: Reference shorthand {node=Value}
@@ -280,39 +287,32 @@ Reference: morphir/SDK:basics#add
 ```
 ````
 
-The same case in `spec/ir/mck/values.feature.md` (sketch):
+The same case in `spec/ir/mck/values.feature` (sketch):
 
-````markdown
-# Feature: Values
+```gherkin
+@node:Value @version:4
+Feature: Values
 
-`@node:Value` `@version:4`
-
-## Scenario: values-0003 Reference shorthand
-
-* Given a Value
-* Then its canonical YAML spelling is:
-
-  ```yaml
-  Reference: morphir/SDK:basics#add
-  ```
-
-* And its canonical JSON spelling is:
-
-  ```json
-  { "Reference": "morphir/SDK:basics#add" }
-  ```
-
-* And a reader accepts:
-
-  ```json
-  "morphir/SDK:basics#add"
-  ```
-````
+  Scenario: values-0003 Reference shorthand
+    Given a Value
+    Then its canonical YAML spelling is:
+      """yaml
+      Reference: morphir/SDK:basics#add
+      """
+    And its canonical JSON spelling is:
+      """json
+      { "Reference": "morphir/SDK:basics#add" }
+      """
+    And a reader accepts:
+      """json
+      "morphir/SDK:basics#add"
+      """
+```
 
 - **Mapping:** a case is a scenario, and the case id starts the scenario name. A case file is a feature. Heading keys become tags: `node=` → `@node:<Kind>`, `version=` → `@version:<n>`, `status=pending` → `@pending`, `compare=attributes` → `@compare:attributes`. Fence roles become steps: canonical, accepted (with an optional warning), rejected with a diagnostic or an expected node, and document-tree file sets (`Given the tree file "<path>":`, with `set` and `mode` in the step text).
 - **Steps:** the kit's steps are a step library in `morphir-mck`. Each step sends its request to the adapter over the existing protocol, so adapters do not change.
 - **Commands:**
-  - `morphir mck run` becomes a `Suite` over `spec/ir/mck/*.feature.md`. It adds the kit step library and the adapter, as a component started from `--adapter`.
+  - `morphir mck run` becomes a `Suite` over `spec/ir/mck/*.feature`. It adds the kit step library and the adapter, as a component started from `--adapter`.
   - It still writes the MCK report (v1 and v2) and the HTML report. Each step result maps to one report record.
   - `morphir mck check` validates the cases with the `morphir-gherkin` model alone, without an adapter.
 - **Conversion:** a one-off converter rewrites every case file.
@@ -325,6 +325,7 @@ The same case in `spec/ir/mck/values.feature.md` (sketch):
 - **morphir-gherkin:**
   - Golden models of `.feature` and `.feature.md` files. They cover every Gherkin construct: rule, background, outline, examples, tags, doc string and table.
   - A fence with indentation-sensitive YAML in a `.feature` description keeps every line and blank line, with correct spans.
+  - A doc string with a content type (`"""ion`, ```` ```yaml ````) gives the content type separately and a body without the delimiter's indent, including indentation-sensitive YAML.
   - Spans and `Document::at` return the right node for a given position.
   - The visitor visits nodes in the right order; the cursor's moves work.
   - Converting `.feature.md` to `.feature` gives the same `gherkin::Feature`, and the line map is correct.
@@ -340,7 +341,7 @@ The same case in `spec/ir/mck/values.feature.md` (sketch):
 - **The kit:**
   - The converter's output: every case of every file becomes one scenario, with the same checks.
   - Parity: the new engine gives the same report records as the old one for every case, against the Rust and TypeScript adapters.
-  - `mck check` finds each rule violation in a `.feature.md` case file, with its span.
+  - `mck check` finds each rule violation in a `.feature` case file, with its span.
 - **itest:**
   - Every existing `scenarios.md` example gives the same PASS and FAIL result through `morphir-bdd` as before.
   - `--list`, `--filter` and `--tag` give the same output as before.

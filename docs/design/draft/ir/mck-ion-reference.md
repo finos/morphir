@@ -10,7 +10,7 @@ tracking:
 
 # The compatibility kit with Ion as the reference encoding
 
-> **Builds on:** [A Gherkin foundation for Morphir verification](../testing/gherkin-foundation.md). By the time this draft is built, the kit's cases are `.feature.md` suites that run through `morphir-bdd`. A case is a scenario, and its options are tags (`@node:Value`, `@version:4`). Its checks are steps whose doc strings hold the documents. This draft uses that form throughout.
+> **Builds on:** [A Gherkin foundation for Morphir verification](../testing/gherkin-foundation.md). By the time this draft is built, the kit's cases are plain `.feature` suites that run through `morphir-bdd`. A case is a scenario, and its options are tags (`@node:Value`, `@version:4`). Its checks are steps whose doc strings hold the documents. This draft uses that form throughout.
 
 This draft changes how the Morphir Compatibility Kit (MCK) states a case. Today most cases spell one document once for each profile. The change makes Ion the kit's reference encoding and adds `ion` as a profile. Each case says one of two things. A **spelling case** says how a node shape is written in each format. A **semantic case** says what a document means, and it says it once, in Ion. The runner checks every other format by a round trip. The kit also gets an HTML report for a run, and CI shows each run's results.
 
@@ -46,7 +46,7 @@ Reference: morphir/SDK:basics#add
 ```
 ````
 
-The runner sends each canonical and accepted document to the adapter in its own profile and compares the answer with the canonical document of that profile. The [foundation draft](../testing/gherkin-foundation.md#the-compatibility-kit-on-gherkin) moves this case to `.feature.md` unchanged in meaning.
+The runner sends each canonical and accepted document to the adapter in its own profile and compares the answer with the canonical document of that profile. The [foundation draft](../testing/gherkin-foundation.md#the-compatibility-kit-on-gherkin) moves this case to a `.feature` file unchanged in meaning.
 
 ## Design
 
@@ -69,49 +69,36 @@ A spelling case may leave out a format. The runner then reports that format as `
 
 `values-0003` as a spelling case, and a semantic case that uses the same shape (sketch):
 
-````markdown
-# Feature: Values
+```gherkin
+@node:Value @version:4
+Feature: Values
 
-`@node:Value` `@version:4`
+  @spelling
+  Scenario: values-0003 Reference shorthand
+    Then its canonical Ion spelling is:
+      """ion
+      (ref 'morphir/SDK:basics#add')
+      """
+    And its canonical YAML spelling is:
+      """yaml
+      Reference: morphir/SDK:basics#add
+      """
+    And its canonical JSON spelling is:
+      """json
+      { "Reference": "morphir/SDK:basics#add" }
+      """
 
-## Scenario: values-0003 Reference shorthand
-
-`@spelling`
-
-* Then its canonical Ion spelling is:
-
-  ```ion
-  (ref 'morphir/SDK:basics#add')
-  ```
-
-* And its canonical YAML spelling is:
-
-  ```yaml
-  Reference: morphir/SDK:basics#add
-  ```
-
-* And its canonical JSON spelling is:
-
-  ```json
-  { "Reference": "morphir/SDK:basics#add" }
-  ```
-
-## Scenario: values-0031 A reference is read from its string shorthand
-
-`@semantic`
-
-* Given a Value whose canonical form is:
-
-  ```ion
-  (ref 'morphir/SDK:basics#add')
-  ```
-
-* Then a reader accepts:
-
-  ```json
-  "morphir/SDK:basics#add"
-  ```
-````
+  @semantic
+  Scenario: values-0031 A reference is read from its string shorthand
+    Given a Value whose canonical form is:
+      """ion
+      (ref 'morphir/SDK:basics#add')
+      """
+    Then a reader accepts:
+      """json
+      "morphir/SDK:basics#add"
+      """
+```
 
 ### How the runner checks a semantic case
 
