@@ -2,6 +2,7 @@
 //! The runner treats IR bytes as opaque and never links an implementation codec.
 
 use crate::transport::{Limits, Session};
+use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use std::collections::HashSet;
@@ -13,7 +14,7 @@ pub const CONTRACT: &str = "0.1.0-draft.1";
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Corpus {
-    contract_version: String,
+    contract_version: Version,
     cases: Vec<WireCase>,
 }
 
@@ -50,7 +51,9 @@ pub fn load_kit(path: &Path) -> Result<Kit, String> {
         std::fs::read_to_string(path).map_err(|error| format!("{}: {error}", path.display()))?;
     let corpus: Corpus =
         serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))?;
-    if corpus.contract_version != CONTRACT || corpus.cases.is_empty() {
+    let supported =
+        VersionReq::parse("=0.1.0-draft.1").expect("known node-address draft requirement");
+    if !supported.matches(&corpus.contract_version) || corpus.cases.is_empty() {
         return Err(format!(
             "node-address corpus must use {CONTRACT} and contain cases"
         ));
@@ -196,7 +199,7 @@ fn validate_capabilities(body: Map<String, Value>) -> Result<(), String> {
     #[serde(rename_all = "camelCase", deny_unknown_fields)]
     struct Capabilities {
         suite: String,
-        contract_version: String,
+        contract_version: Version,
         implementation: String,
         implementation_version: String,
         operations: Vec<String>,
@@ -204,7 +207,9 @@ fn validate_capabilities(body: Map<String, Value>) -> Result<(), String> {
     let caps: Capabilities =
         serde_json::from_value(Value::Object(body)).map_err(|error| error.to_string())?;
     if caps.suite != "node-address"
-        || caps.contract_version != CONTRACT
+        || !VersionReq::parse("=0.1.0-draft.1")
+            .expect("known node-address draft requirement")
+            .matches(&caps.contract_version)
         || caps.implementation.is_empty()
         || caps.implementation_version.is_empty()
         || caps.operations != ["resolve"]
@@ -289,6 +294,17 @@ mod tests {
                 .iter()
                 .any(|case| case.expected.outcome == "stale_target")
         );
+    }
+
+    #[test]
+    fn malformed_corpus_version_is_rejected_at_the_boundary() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("node-address.json");
+        std::fs::write(&path, r#"{"contractVersion":"not-semver","cases":[]}"#).unwrap();
+        let Err(message) = load_kit(&path) else {
+            panic!("malformed contract version was accepted");
+        };
+        assert!(message.contains("version"), "{message}");
     }
 
     #[test]

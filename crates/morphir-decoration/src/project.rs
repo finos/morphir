@@ -59,11 +59,7 @@ impl DecorationProject {
     /// Load `morphir.json`, the configured decoration IR and the target IR.
     /// The target IR is explicit so no stale compile output is inferred.
     pub fn open(config_path: &Path, name: &str, target_ir: &Path) -> Result<Self, ProjectError> {
-        let root = config_path
-            .parent()
-            .unwrap_or_else(|| Path::new("."))
-            .canonicalize()
-            .map_err(|source| io(config_path, source))?;
+        let root = config_root(config_path)?;
         let config_text =
             std::fs::read_to_string(config_path).map_err(|source| io(config_path, source))?;
         let config: ProjectConfig = serde_json::from_str(&config_text)
@@ -262,6 +258,15 @@ fn io(path: &Path, source: std::io::Error) -> ProjectError {
     }
 }
 
+fn config_root(config_path: &Path) -> Result<PathBuf, ProjectError> {
+    config_path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+        .canonicalize()
+        .map_err(|source| io(config_path, source))
+}
+
 fn confined(root: &Path, relative: &str) -> Result<PathBuf, ProjectError> {
     let path = Path::new(relative);
     if path.as_os_str().is_empty()
@@ -289,4 +294,17 @@ fn confined(root: &Path, relative: &str) -> Result<PathBuf, ProjectError> {
         )));
     }
     Ok(joined)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bare_default_config_uses_the_current_directory() {
+        assert_eq!(
+            config_root(Path::new("morphir.json")).unwrap(),
+            std::env::current_dir().unwrap()
+        );
+    }
 }

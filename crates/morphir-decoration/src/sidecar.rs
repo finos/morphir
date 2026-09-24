@@ -1,13 +1,14 @@
 use crate::value_type::ValueValidator;
 use morphir_core::ir::classic;
 use morphir_core::node_address::{NodeCatalog, NodeIndex, NodeUri, convert_v3_node_id};
+use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
 
-pub const FORMAT_VERSION: &str = "1.0.0-draft.1";
+pub const FORMAT_VERSION: &str = "0.1.0-draft.1";
 
 #[derive(Debug, thiserror::Error)]
 pub enum SidecarError {
@@ -32,14 +33,14 @@ pub enum SidecarError {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct DecorationSidecar {
-    format_version: String,
+    format_version: Version,
     targets: BTreeMap<String, Value>,
 }
 
 impl DecorationSidecar {
     pub fn empty() -> Self {
         Self {
-            format_version: FORMAT_VERSION.into(),
+            format_version: Version::parse(FORMAT_VERSION).expect("known sidecar draft version"),
             targets: BTreeMap::new(),
         }
     }
@@ -49,8 +50,12 @@ impl DecorationSidecar {
             .map_err(|error| SidecarError::InvalidJson(error.message))?;
         let sidecar: Self = serde_json::from_value(value)
             .map_err(|error| SidecarError::InvalidJson(error.to_string()))?;
-        if sidecar.format_version != FORMAT_VERSION {
-            return Err(SidecarError::UnsupportedVersion(sidecar.format_version));
+        let supported =
+            VersionReq::parse("=0.1.0-draft.1").expect("known sidecar draft requirement");
+        if !supported.matches(&sidecar.format_version) {
+            return Err(SidecarError::UnsupportedVersion(
+                sidecar.format_version.to_string(),
+            ));
         }
         for target in sidecar.targets.keys() {
             let uri = NodeUri::parse(target).map_err(|error| SidecarError::InvalidTarget {

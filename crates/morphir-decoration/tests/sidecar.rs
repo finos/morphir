@@ -20,7 +20,7 @@ fn classic_index() -> (classic::Distribution, NodeIndex) {
 #[test]
 fn versioned_sidecar_round_trips_without_changing_values() {
     let source = r#"{
-      "formatVersion":"1.0.0-draft.1",
+      "formatVersion":"0.1.0-draft.1",
       "targets":{
         "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order":{"summary":"Order"}
       }
@@ -39,9 +39,13 @@ fn missing_invalid_and_duplicate_sidecars_do_not_look_empty() {
         Err(SidecarError::Io { .. })
     ));
     assert!(DecorationSidecar::parse("not JSON").is_err());
-    assert!(DecorationSidecar::parse(r#"{"formatVersion":"1.0.0-draft.9","targets":{}}"#).is_err());
+    assert!(matches!(
+        DecorationSidecar::parse(r#"{"formatVersion":"not-semver","targets":{}}"#),
+        Err(SidecarError::InvalidJson(_))
+    ));
+    assert!(DecorationSidecar::parse(r#"{"formatVersion":"0.1.0-draft.9","targets":{}}"#).is_err());
     assert!(
-        DecorationSidecar::parse(r#"{"formatVersion":"1.0.0-draft.1","targets":{"a":1,"a":2}}"#)
+        DecorationSidecar::parse(r#"{"formatVersion":"0.1.0-draft.1","targets":{"a":1,"a":2}}"#)
             .is_err()
     );
 }
@@ -82,7 +86,7 @@ fn legacy_v3_conversion_is_shape_checked_and_collision_safe() {
     migrated.save_for_index(&path, &index, |_| Ok(())).unwrap();
     assert_eq!(DecorationSidecar::load(&path).unwrap(), migrated);
     let original_bytes = std::fs::read(&path).unwrap();
-    let stale = DecorationSidecar::parse(r#"{"formatVersion":"1.0.0-draft.1","targets":{"morphir://ir/pkg/elm-compat?format=3.0.0#/module/api/type/missing":1}}"#).unwrap();
+    let stale = DecorationSidecar::parse(r#"{"formatVersion":"0.1.0-draft.1","targets":{"morphir://ir/pkg/elm-compat?format=3.0.0#/module/api/type/missing":1}}"#).unwrap();
     assert!(matches!(
         stale.save_for_index(&path, &index, |_| Ok(())),
         Err(SidecarError::InvalidTarget { .. })

@@ -10,6 +10,7 @@ description = "V3/V4 Morphir decorator sidecars and typed values"
 morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 serde.workspace = true
 serde_json.workspace = true
+semver = { workspace = true, features = ["serde"] }
 tempfile.workspace = true
 thiserror.workspace = true
 

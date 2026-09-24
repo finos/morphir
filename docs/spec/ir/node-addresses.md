@@ -178,11 +178,11 @@ The checked-in reference fixture includes `Morphir.Reference.Model:BooksAndRecor
 
 ## Sidecars and V4 layouts
 
-The decoration configuration keeps `displayName`, schema `ir`, `entryPoint`, and `storageLocation`. The first explicit sidecar envelope, `1.0.0-draft.1`, uses the **same** configured file and preserves each JSON value. It replaces bare V3 node-ID keys with validated URI keys; it does not create a companion file. The sidecar format and safe file writes are tracked by `morphir-uqub.8`, and typed value/target validation by `morphir-uqub.12`.
+The decoration configuration keeps `displayName`, schema `ir`, `entryPoint`, and `storageLocation`. The first explicit sidecar envelope, `0.1.0-draft.1`, uses the **same** configured file and preserves each JSON value. It replaces bare V3 node-ID keys with validated URI keys; it does not create a companion file. The sidecar format and safe file writes are tracked by `morphir-uqub.8`, and typed value/target validation by `morphir-uqub.12`.
 
 ```json
 {
-  "formatVersion": "1.0.0-draft.1",
+  "formatVersion": "0.1.0-draft.1",
   "targets": {
     "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/type/order/type-exp/record/field/customer-id": ["pII"],
     "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/value/calculate-total/body/apply/argument": ["nPI"]
@@ -194,7 +194,7 @@ A V4 sidecar uses the same envelope with `format=4.0.0`; its `targets` may inclu
 
 ```json
 {
-  "formatVersion": "1.0.0-draft.1",
+  "formatVersion": "0.1.0-draft.1",
   "targets": {
     "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order": {
       "summary": "An order placed by a customer"

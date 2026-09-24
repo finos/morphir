@@ -722,7 +722,7 @@
         ]
       },
       "expectedAfter": {
-        "formatVersion": "1.0.0-draft.1",
+        "formatVersion": "0.1.0-draft.1",
         "targets": {
           "morphir://ir/pkg/acme/orders?format=3.0.0#/module/domain/type/order/type-exp/record/field/customer-id": [
             "pII"
@@ -739,7 +739,7 @@
       "storageLocation": "attributes/documentation.json",
       "entryPoint": "Acme.Decorations:Documentation:Documentation",
       "before": {
-        "formatVersion": "1.0.0-draft.1",
+        "formatVersion": "0.1.0-draft.1",
         "targets": {
           "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order": {
             "summary": "An order placed by a customer"
@@ -750,7 +750,7 @@
         }
       },
       "expectedAfter": {
-        "formatVersion": "1.0.0-draft.1",
+        "formatVersion": "0.1.0-draft.1",
         "targets": {
           "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order": {
             "summary": "An order placed by a customer"

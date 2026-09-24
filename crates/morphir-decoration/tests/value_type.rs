@@ -90,3 +90,80 @@ fn distinct_sdk_package_spelling_is_not_treated_as_the_sdk() {
             .is_err()
     );
 }
+
+#[test]
+fn nested_aliases_resolve_arguments_before_shadowing_type_parameter_names() {
+    let reference = |name: &str, args| {
+        v4::Type::reference(
+            v4::TypeAttributes::default(),
+            FQName::from_canonical_string(name).unwrap(),
+            args,
+        )
+    };
+    let variable = || v4::Type::variable(v4::TypeAttributes::default(), Name::from("a"));
+    let alias = |params, body| v4::AccessControlled {
+        access: v4::Access::Public,
+        value: v4::Documented::new(
+            None,
+            v4::TypeDefinition::TypeAliasDefinition {
+                type_params: params,
+                type_expr: body,
+            },
+        ),
+    };
+    let definitions = IndexMap::from([
+        (
+            "root".into(),
+            alias(
+                vec![],
+                reference(
+                    "acme/decorations:domain#outer",
+                    vec![reference("morphir/SDK:string#string", vec![])],
+                ),
+            ),
+        ),
+        (
+            "outer".into(),
+            alias(
+                vec![Name::from("a")],
+                reference("acme/decorations:domain#inner", vec![variable()]),
+            ),
+        ),
+        (
+            "inner".into(),
+            alias(
+                vec![Name::from("a")],
+                v4::Type::record(
+                    v4::TypeAttributes::default(),
+                    vec![v4::Field::new(Name::from("value"), variable())],
+                ),
+            ),
+        ),
+    ]);
+    let distribution = v4::Distribution::Library(v4::LibraryContent {
+        package_name: PackageName::new(Path::new("acme/decorations")),
+        dependencies: IndexMap::new(),
+        def: v4::PackageDefinition {
+            modules: IndexMap::from([(
+                "domain".into(),
+                v4::AccessControlled {
+                    access: v4::Access::Public,
+                    value: v4::ModuleDefinition {
+                        types: definitions,
+                        values: IndexMap::new(),
+                        doc: None,
+                    },
+                },
+            )]),
+        },
+    });
+    let validator = ValueValidator::v4(&distribution, "acme/decorations:domain#root").unwrap();
+    validator
+        .validate(&serde_json::json!({"value":"text"}))
+        .unwrap();
+    assert!(
+        validator
+            .validate(&serde_json::json!({"value":12}))
+            .is_err()
+    );
+}

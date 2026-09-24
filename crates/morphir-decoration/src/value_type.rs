@@ -8,7 +8,7 @@
 use morphir_core::ir::{classic, v4};
 use morphir_core::naming::Name;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{message} at {path}")]
@@ -315,9 +315,57 @@ fn bind_type_args(
             format!("type expects {} arguments", params.len()),
         ));
     }
+    // Resolve arguments in the caller's environment before introducing the
+    // callee's parameters. Both scopes may use the same variable name.
+    let arguments = args
+        .iter()
+        .map(|arg| substitute_type(arg, outer, &mut HashSet::new(), path))
+        .collect::<Result<Vec<_>, _>>()?;
     let mut bound = outer.clone();
-    bound.extend(params.iter().cloned().zip(args.iter().cloned()));
+    bound.extend(params.iter().cloned().zip(arguments));
     Ok(bound)
+}
+
+fn substitute_type(
+    ty: &TypeExpr,
+    vars: &HashMap<String, TypeExpr>,
+    visiting: &mut HashSet<String>,
+    path: &str,
+) -> Result<TypeExpr, ValueTypeError> {
+    match ty {
+        TypeExpr::Variable(name) => {
+            let Some(bound) = vars.get(name) else {
+                return Ok(ty.clone());
+            };
+            if !visiting.insert(name.clone()) {
+                return Err(error(path, format!("cyclic type variable {name}")));
+            }
+            let resolved = substitute_type(bound, vars, visiting, path);
+            visiting.remove(name);
+            resolved
+        }
+        TypeExpr::Reference(name, args) => Ok(TypeExpr::Reference(
+            name.clone(),
+            args.iter()
+                .map(|arg| substitute_type(arg, vars, visiting, path))
+                .collect::<Result<_, _>>()?,
+        )),
+        TypeExpr::Record(fields) => Ok(TypeExpr::Record(
+            fields
+                .iter()
+                .map(|(name, ty)| {
+                    substitute_type(ty, vars, visiting, path).map(|ty| (name.clone(), ty))
+                })
+                .collect::<Result<_, _>>()?,
+        )),
+        TypeExpr::Tuple(elements) => Ok(TypeExpr::Tuple(
+            elements
+                .iter()
+                .map(|ty| substitute_type(ty, vars, visiting, path))
+                .collect::<Result<_, _>>()?,
+        )),
+        TypeExpr::Unit | TypeExpr::Unsupported(_) => Ok(ty.clone()),
+    }
 }
 
 fn sdk_type(name: &str) -> Option<(&str, &str)> {
