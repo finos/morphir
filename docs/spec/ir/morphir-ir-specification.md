@@ -44,6 +44,8 @@ The shared [`formatVersion` contract](format-version.md) defines version spellin
 
 Version-specific profiles define permitted vocabulary, validation, and document-tree names. See the [v4 semantic model](schemas/v4/semantic-model.md), [v4 JSON profile](schemas/v4/json-profile.md), [v4 YAML profile](schemas/v4/yaml-profile.md), and [v4 document-tree profile](schemas/v4/document-tree-files.md).
 
+The [draft semantic node-address contract](node-addresses.md) describes portable V3/V4 Morphir URIs for individual IR nodes, independent of JSON/YAML spelling and document-tree paths.
+
 ## Core Concepts
 
 ### Naming
