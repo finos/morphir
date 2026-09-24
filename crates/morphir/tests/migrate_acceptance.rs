@@ -421,26 +421,181 @@ fn a_v3_ion_tree_migrates_to_v4() {
     serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&std::fs::read(json).unwrap()).unwrap();
 }
 
-#[test]
-fn a_v3_json_tree_is_still_refused() {
-    let temp = TempDir::new().unwrap();
-    let tree = temp.path().join("model.morphir-dist");
+/// The `formatVersion` of a v3 tree's JSON or YAML manifest.
+fn v3_tree_manifest_version(tree: &Path, format: &str) -> String {
+    let manifest = std::fs::read_to_string(tree.join(format!("manifest.{format}"))).unwrap();
+    let value: serde_json::Value = if format == "json" {
+        serde_json::from_str(&manifest).unwrap()
+    } else {
+        serde_saphyr::from_str(&manifest).unwrap()
+    };
+    value["formatVersion"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{manifest}"))
+        .to_owned()
+}
 
-    let output = migrate(
+/// Write the v3 greeting example as a v3 document tree in `format`.
+fn write_v3_tree(tree: &Path, format: &str) {
+    assert_success(&migrate(
         &greeting_v3(),
-        &tree,
+        tree,
         &[
             "--target-version",
             "v3",
             "--output-layout",
             "vfs",
             "--output-format",
-            "json",
+            format,
         ],
+    ));
+}
+
+#[test]
+fn a_v3_distribution_round_trips_through_v3_json_and_yaml_trees() {
+    for format in ["json", "yaml"] {
+        let temp = TempDir::new().unwrap();
+        let tree = temp.path().join("model.morphir-dist");
+        let json = temp.path().join("model.json");
+        let v3 = ["--target-version", "v3"];
+        assert_success(&migrate(
+            &greeting_v3(),
+            &tree,
+            &[
+                &v3[..],
+                &["--output-layout", "vfs", "--output-format", format],
+            ]
+            .concat(),
+        ));
+        assert_eq!(v3_tree_manifest_version(&tree, format), "3.1.0");
+        assert_success(&migrate(
+            &tree,
+            &json,
+            &[&v3[..], &["--output-layout", "single-file"]].concat(),
+        ));
+        let canonical = temp.path().join("canonical.json");
+        assert_success(&migrate(&greeting_v3(), &canonical, &v3));
+        assert_eq!(sorted_v3(&json), sorted_v3(&canonical), "{format}");
+    }
+}
+
+/// A v4 JSON document tree whose manifest is replaced by `manifest`.
+fn v4_json_tree_with_manifest(temp: &TempDir, manifest: &str) -> PathBuf {
+    let tree = temp.path().join("model.morphir-dist");
+    assert_success(&migrate(
+        &greeting_v3(),
+        &tree,
+        &["--output-layout", "vfs", "--output-format", "json"],
+    ));
+    std::fs::write(tree.join("manifest.json"), manifest).unwrap();
+    tree
+}
+
+/// A tree manifest that is not v3 is read as v4, so the transport reports its faults.
+#[test]
+fn a_v4_tree_manifest_without_format_version_gets_the_transport_diagnostic() {
+    let temp = TempDir::new().unwrap();
+    let tree = v4_json_tree_with_manifest(
+        &temp,
+        r#"{ "distribution": "Library", "package": "elm-compat", "pathBudget": 4000 }"#,
     );
+    let output_path = temp.path().join("model.json");
+
+    let output = migrate(&tree, &output_path, &["--output-layout", "single-file"]);
+
     assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("missing_format_version"), "stderr={stderr}");
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("version_unsupported")
-            || String::from_utf8_lossy(&output.stdout).contains("version_unsupported")
+        !stderr.contains("morphir::ir::detection::"),
+        "stderr={stderr}"
     );
+    assert!(!output_path.exists());
+}
+
+#[test]
+fn a_tree_manifest_at_format_version_5_gets_the_transport_diagnostic() {
+    let temp = TempDir::new().unwrap();
+    let tree = v4_json_tree_with_manifest(
+        &temp,
+        r#"{ "formatVersion": 5, "distribution": "Library", "package": "elm-compat", "pathBudget": 4000 }"#,
+    );
+    let output_path = temp.path().join("model.json");
+
+    let output = migrate(&tree, &output_path, &["--output-layout", "single-file"]);
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("unsupported_format_version_major"),
+        "stderr={stderr}"
+    );
+    assert!(
+        !stderr.contains("morphir::ir::detection::"),
+        "stderr={stderr}"
+    );
+    assert!(!output_path.exists());
+}
+
+#[test]
+fn v3_json_and_yaml_trees_migrate_to_v4() {
+    for format in ["json", "yaml"] {
+        let temp = TempDir::new().unwrap();
+        let tree = temp.path().join("model.morphir-dist");
+        let json = temp.path().join("model.json");
+        write_v3_tree(&tree, format);
+
+        assert_success(&migrate(&tree, &json, &["--output-layout", "single-file"]));
+
+        serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&std::fs::read(json).unwrap())
+            .unwrap_or_else(|error| panic!("{format}: {error}"));
+    }
+}
+
+#[test]
+fn a_v3_tree_with_a_yml_manifest_is_read_as_v3() {
+    let temp = TempDir::new().unwrap();
+    let tree = temp.path().join("model.morphir-dist");
+    let json = temp.path().join("model.json");
+    let v3 = ["--target-version", "v3"];
+    write_v3_tree(&tree, "yaml");
+    std::fs::rename(tree.join("manifest.yaml"), tree.join("manifest.yml")).unwrap();
+
+    assert_success(&migrate(
+        &tree,
+        &json,
+        &[&v3[..], &["--output-layout", "single-file"]].concat(),
+    ));
+
+    let canonical = temp.path().join("canonical.json");
+    assert_success(&migrate(&greeting_v3(), &canonical, &v3));
+    assert_eq!(sorted_v3(&json), sorted_v3(&canonical));
+}
+
+/// The single-file v3 `Specs` example of the version 3 "What's New" page.
+fn v3_specs_example() -> String {
+    let page = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/spec/ir/schemas/v3/whats-new.md"),
+    )
+    .unwrap();
+    let section = &page[page.find("### The Specs distribution").unwrap()..];
+    let body = &section[section.find("```json\n").unwrap() + "```json\n".len()..];
+    body[..body.find("```").unwrap()].to_owned()
+}
+
+#[test]
+fn a_v3_specs_distribution_migrates_to_a_v4_specs_distribution() {
+    let temp = TempDir::new().unwrap();
+    let input = temp.path().join("specs.json");
+    let output_path = temp.path().join("model.json");
+    std::fs::write(&input, v3_specs_example()).unwrap();
+
+    assert_success(&migrate(&input, &output_path, &[]));
+
+    let output: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&output_path).unwrap()).unwrap();
+    assert_eq!(output["formatVersion"], 4, "{output}");
+    assert!(output["distribution"]["Specs"].is_object(), "{output}");
+    serde_json::from_value::<morphir_core::ir::v4::IRFile>(output).unwrap();
 }

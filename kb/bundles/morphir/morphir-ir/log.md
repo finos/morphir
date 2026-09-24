@@ -2,6 +2,9 @@
 
 ## 2026-09-24
 
+* **Creation**: Added [IR 3.1.0 adds a Specs distribution and v3 document trees](/decisions/0018-ir-3-1-adds-specs-and-v3-document-trees.md). IR `3.1.0` adds a v3 `Specs` distribution and v3 JSON and YAML document trees, writers emit the lowest version that fits, and the reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)`.
+* **Update**: [Format-version support and revisions](/format-version-support.md) and [IR v4 stabilization](/ir-v4-stabilization.md) carry the new reference table. morphir-rust declares it; morphir-ui keeps `[3.0.0,3.1.0),[4.0.0,4.1.0)` until it adopts `3.1.0`.
+* **Update**: [Amazon Ion IR format](/ion-ir-format.md) describes the unreleased v3 `specs` datagram and its refusals, and says that a distribution's own modules do not merge.
 * **Update**: [Amazon Ion IR format](/ion-ir-format.md) records that CLI prerelease `0.4.0-beta.6` ships the first draft codec, and that finos/morphir-rust#248 completes the codec for v3 dependencies and every v4 node except attributes, Morphir annotations and document literals.
 
 ## 2026-09-23

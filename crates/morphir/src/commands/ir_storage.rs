@@ -275,7 +275,7 @@ pub(crate) fn read_value_from_vfs(
                 message: format!("{} did not convert to JSON: {error}", target.as_str()),
             })
         }
-        // Only the Ion tree holds v3; its events go through the JSON encoder as a single file's do.
+        // A v3 tree streams through the JSON encoder, as a single file does.
         IrLayout::DocumentTree if version == IrVersion::V3 => {
             let registry = CodecRegistry::with_builtins();
             let json_codec = codec(&registry, &FormatId::json())?;
@@ -601,15 +601,15 @@ mod tests {
         assert_eq!(descriptor.format, "json");
     }
 
-    /// A v3 Ion tree, written from the v3 greeting example.
-    fn write_v3_ion_tree(root: &Path) {
+    /// A v3 document tree, written from the v3 greeting example, in `format`.
+    fn write_v3_tree(root: &Path, format: FormatId) {
         use morphir_common::ir_transport::DocumentTreeSink;
         let greeting =
             include_str!("../../../../website/static/ir/examples/v3/greeting-example.json");
         std::fs::create_dir_all(root).unwrap();
         let mut sink = DocumentTreeSink::new(
             physical_root(root),
-            CodecOptions::new(IrVersion::V3, Layout::DocumentTree, FormatId::ion()),
+            CodecOptions::new(IrVersion::V3, Layout::DocumentTree, format),
         )
         .unwrap();
         CodecRegistry::with_builtins()
@@ -623,6 +623,11 @@ mod tests {
             .unwrap();
     }
 
+    /// A v3 Ion tree, written from the v3 greeting example.
+    fn write_v3_ion_tree(root: &Path) {
+        write_v3_tree(root, FormatId::ion());
+    }
+
     #[test]
     fn a_v3_ion_tree_is_probed_and_read_as_v3() {
         let temp = tempfile::tempdir().unwrap();
@@ -632,6 +637,22 @@ mod tests {
         let (base, descriptor) = probe_external(&tree).unwrap();
         assert_eq!(descriptor.layout, IrLayout::DocumentTree);
         assert_eq!(descriptor.format, "ion");
+        assert_eq!(descriptor.version, "v3");
+
+        let value = read_value(&base, &descriptor).unwrap();
+        assert_eq!(value["formatVersion"], 3);
+        assert_eq!(value["distribution"][0], "Library");
+    }
+
+    #[test]
+    fn a_v3_json_tree_is_probed_and_read_as_v3() {
+        let temp = tempfile::tempdir().unwrap();
+        let tree = temp.path().join("tree");
+        write_v3_tree(&tree, FormatId::json());
+
+        let (base, descriptor) = probe_external(&tree).unwrap();
+        assert_eq!(descriptor.layout, IrLayout::DocumentTree);
+        assert_eq!(descriptor.format, "json");
         assert_eq!(descriptor.version, "v3");
 
         let value = read_value(&base, &descriptor).unwrap();

@@ -1,12 +1,20 @@
-//! Parity with the first driver (`spec/mck/migration.md`, "Parity method").
+//! Parity with the first driver (`spec/mck/migration.md`, "Parity method"),
+//! and a regression freeze for the kit's later additions.
 //!
-//! The Rust runner runs the kit against a replay of a frozen protocol
-//! transcript, once per adapter the first driver was recorded against. The
-//! replay refuses any request that is not byte for byte the one the old driver
-//! sent at that point, so the runner must ask the same questions in the same
-//! order. The report it writes must then equal that adapter's frozen report in
-//! every member but the durations, with the header's timestamp and versions
-//! taken from it.
+//! The Rust runner runs the kit against a replay of a protocol transcript,
+//! once per adapter the first driver was recorded against. The replay refuses
+//! any request that is not byte for byte the recorded one at that point, so the
+//! runner must ask the same questions in the same order. The report it writes
+//! must then equal that adapter's baseline report in every member but the
+//! durations, with the header's timestamp and versions taken from it.
+//!
+//! For the exchanges and records the old driver produced, this is parity with
+//! it: the TypeScript transcript is the old driver's, and the Rust transcript
+//! holds the old driver's 714 requests unchanged apart from their ids. Both
+//! reports hold its 730 records, durations aside. The IR 3.1.0 exchanges and
+//! records were recorded with the native engine
+//! (`spec/mck/baseline/README.md`, "IR 3.1.0 update"), so for them this test
+//! is a regression freeze, not parity.
 //!
 //! The two adapters exercise different answers: the TypeScript binding skips
 //! the version 3 cases it does not support, and the Rust binding runs them.
@@ -138,18 +146,18 @@ fn the_rust_runner_reproduces_the_typescript_report_from_the_same_answers() {
         "morphir-typescript",
         705,
         "morphir-typescript supports IR format versions [4.0.0,4.1.0) (4.0.0 up to but not including 4.1.0)",
-        "722 pass, 0 fail, 0 kit-error, 8 skipped",
+        "722 pass, 0 fail, 0 kit-error, 80 skipped",
     );
 }
 
-/// The Rust binding supports version 3 as well, so it answers the 8 exchanges
-/// the TypeScript binding declined and the run has no skips at all.
+/// The Rust binding supports version 3 as well, so it answers the exchanges the
+/// TypeScript binding declines and the run has no skips at all.
 #[test]
 fn the_rust_runner_reproduces_the_rust_bindings_report_from_the_same_answers() {
     parity(
         "morphir-rust",
-        713,
-        "morphir-rust supports IR format versions [3.0.0,3.1.0),[4.0.0,4.1.0) (3.0.0 up to but not including 3.1.0, or 4.0.0 up to but not including 4.1.0)",
-        "730 pass, 0 fail, 0 kit-error, 0 skipped",
+        771,
+        "morphir-rust supports IR format versions [3.0.0,3.2.0),[4.0.0,4.1.0) (3.0.0 up to but not including 3.2.0, or 4.0.0 up to but not including 4.1.0)",
+        "802 pass, 0 fail, 0 kit-error, 0 skipped",
     );
 }

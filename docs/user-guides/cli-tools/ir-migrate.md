@@ -7,8 +7,9 @@ sidebar_position: 10
 # IR Migrate Command
 
 `morphir migrate` converts concrete Morphir IR version 3 and version 4 between
-native JSON and YAML storage. The equivalent nested command,
-`morphir ir migrate`, has the same behavior.
+native JSON, YAML and Ion storage, as single files or as v3 and v4 document
+trees. The equivalent nested command, `morphir ir migrate`, has the same
+behavior. Ion storage is an unreleased draft.
 
 Version migration, serialization, and physical layout are independent. A
 single invocation can migrate v3 to v4, convert JSON to YAML, and split the
@@ -25,8 +26,8 @@ morphir migrate <INPUT> [--output <OUTPUT>] [OPTIONS]
 |---|---|
 | `-o, --output <PATH>` | Output file or document-tree directory. Without this option, the IR artifact is written to stdout. |
 | `--target-version <VERSION>` | `latest`, `v4`, `4`, `classic`, `v3`, or `3`. The default is `latest` (v4). |
-| `--input-format <FORMAT>` | Input serialization profile. Built-in values are `json` and `yaml`. |
-| `--output-format <FORMAT>` | Output serialization profile. Built-in values are `json` and `yaml`. |
+| `--input-format <FORMAT>` | Input serialization profile. Built-in values are `json`, `yaml` and `ion`. |
+| `--output-format <FORMAT>` | Output serialization profile. Built-in values are `json`, `yaml` and `ion`. |
 | `--output-layout <LAYOUT>` | `single-file` or `vfs`. A directory-like output path also selects `vfs`. |
 | `--expanded` | Write expanded v4 type expressions instead of the default compact encoding. |
 | `--allow-partial` | Permit only explicitly recoverable incomplete v4 nodes and report diagnostics. |
@@ -39,7 +40,7 @@ morphir migrate <INPUT> [--output <OUTPUT>] [OPTIONS]
 Single-file output uses this order:
 
 1. `--output-format`;
-2. a recognized `.json`, `.yaml`, or `.yml` destination extension;
+2. a recognized `.json`, `.yaml`, `.yml`, or `.ion` destination extension;
 3. YAML.
 
 A recognized extension that conflicts with `--output-format` is rejected
@@ -70,16 +71,25 @@ artifact.
 
 ## Document-tree (VFS) layout
 
-The v4 document-tree layout stores addressable package, module, type, and value
-documents. YAML trees are the default and use these physical names:
+The document-tree layout stores addressable package, module, type, and value
+documents. It holds v4 IR by default, and v3 IR with `--target-version v3`.
+YAML trees are the default and use these physical names:
 
 - `manifest.yaml`;
 - `module.yaml`;
 - `*.type.yaml`;
 - `*.value.yaml`.
 
-JSON trees use the corresponding `.json` names. Every generated tree is
-homogeneous. Discovery rejects a tree containing both supported manifests.
+JSON trees use the corresponding `.json` names, and Ion trees the `.ion` names.
+A YAML manifest may also be named `manifest.yml` on read. Every generated tree
+is homogeneous. Discovery rejects a tree containing more than one supported
+manifest.
+
+When a tree is the input, its manifest decides the IR version: a manifest that
+says version 3 is read as a v3 tree, and any other manifest is read as a v4
+tree. Every file of a v3 JSON or YAML tree says `formatVersion: "3.1.0"`
+([Document Tree File Formats (Version 3)](../../spec/ir/schemas/v3/document-tree-files.md)).
+A v3 Ion tree follows the Ion draft and says `"3.0.0"`.
 
 ```bash
 # V3 JSON to a V4 YAML tree
@@ -97,6 +107,24 @@ morphir migrate morphir-ir-v4.yaml \
   --output morphir-ir-v4.morphir-dist \
   --output-layout vfs \
   --output-format json
+
+# Keep v3 and write a v3 JSON tree (yaml and ion also work)
+morphir migrate morphir-ir.json \
+  --output morphir-ir-v3.morphir-dist \
+  --target-version v3 \
+  --output-layout vfs \
+  --output-format json
+
+# A v3 tree back to one v3 JSON file
+morphir migrate morphir-ir-v3.morphir-dist \
+  --output morphir-ir.json \
+  --target-version v3 \
+  --output-layout single-file
+
+# A v3 tree to one v4 file
+morphir migrate morphir-ir-v3.morphir-dist \
+  --output morphir-ir-v4.yaml \
+  --output-layout single-file
 ```
 
 The CLI builds the tree in a sibling staging directory, writes module manifests
