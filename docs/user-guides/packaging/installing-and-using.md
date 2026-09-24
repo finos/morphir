@@ -12,7 +12,7 @@ Libraries, and uses the eligibility model to generate and compile Gleam source
 in a consumer project.
 
 :::caution Early access
-These commands target **Morphir CLI v0.4.0-beta.6**. Packaging commands and formats
+These commands target **Morphir CLI v0.4.0-beta.7**. Packaging commands and formats
 may change. The supported workflow uses one caller-controlled local registry and
 fresh signed metadata. The example demonstrates generation and compilation from
 a restored Library, not cross-package linking or execution of an application.
@@ -20,7 +20,7 @@ a restored Library, not cross-package linking or execution of an application.
 
 ## 1. Get the CLI and example
 
-Install [v0.4.0-beta.6](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.6)
+Install [v0.4.0-beta.7](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.7)
 using the [CLI installation guide](../../getting-started/morphir-cli.md) and put
 `morphir` on your `PATH`. Check the version:
 
@@ -31,7 +31,7 @@ morphir --version
 The example is self-contained. Clone its matching source tag and work in a copy:
 
 ```sh
-git clone --depth 1 --branch v0.4.0-beta.6 https://github.com/finos/morphir.git morphir-package-examples
+git clone --depth 1 --branch v0.4.0-beta.7 https://github.com/finos/morphir.git morphir-package-examples
 cd morphir-package-examples
 cp -R examples/package/local-library-restore local-library-demo
 cd local-library-demo
@@ -162,7 +162,7 @@ morphir package update --lock consumer/morphir.lock --target example.com/finance
 
 This registry contains only one eligible version of each package, so the command
 does not demonstrate a version upgrade. The separate
-[scoped-update example](https://github.com/finos/morphir/tree/v0.4.0-beta.6/examples/package/local-library-update)
+[scoped-update example](https://github.com/finos/morphir/tree/v0.4.0-beta.7/examples/package/local-library-update)
 provides multiple versions and a checked upgrade. For an exact target version,
 append `@VERSION` to the package path; repeat `--target` to request several targets.
 The root and packages outside the old target dependency closure stay pinned.

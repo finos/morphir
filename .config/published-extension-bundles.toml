@@ -31,9 +31,9 @@ sha256 = "d8136a4d045ba615f6da201ad26561b14452d6cca17976e0f53b23022b4968a0"
 
 [executables.elm]
 repository = "finos/morphir-elm"
-tag = "extension/elm/v0.3.1"
-archive = "morphir-elm-extension-0.3.1-x86_64-unknown-linux-gnu.tgz"
-sha256 = "2317dbe11150af417ba3f71d7d23e2911263017762e475ef014a4c426af27518"
+tag = "extension/elm/v0.4.0"
+archive = "morphir-elm-extension-0.4.0-x86_64-unknown-linux-gnu.tgz"
+sha256 = "61ae93ea47ea56599144bfe17ebeb33fede6c957800aa82f5ccb3c8b6780837e"
 executable = "morphir-elm-extension"
 
 # finos/morphir-scala releases morphir-scala-elm with its root v* release, as the executable

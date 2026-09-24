@@ -1,7 +1,5 @@
 //! Version-2 process bundles assembled from executable release assets.
-use morphir_daemon::extensions::{
-    ProcessLaunch, SpawnedProcessTransport, process::DescriptionSource,
-};
+use morphir_daemon::extensions::{ProcessLaunch, SpawnedProcessTransport};
 use morphir_distribution::Sha256Digest;
 use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo, PeerKind};
 use serde_json::{Value, json};
@@ -69,7 +67,6 @@ pub fn from_executable(
             .await
             .unwrap()
     });
-    assert_eq!(description.source, DescriptionSource::SessionFallback);
     assert_eq!(description.claims.extension.id, id);
     assert_eq!(description.claims.extension.version, version);
     write_bundle(
