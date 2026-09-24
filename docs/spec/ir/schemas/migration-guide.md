@@ -565,7 +565,7 @@ and decision 0010 (flattened `doc`).
 ### Format-version support tables and the renamed diagnostic
 
 A reader no longer lists the exact releases it accepts. It declares a **support table**: a union of intervals
-over release strings in Maven-style notation, such as the reference table `[3.0.0,3.1.0),[4.0.0,4.1.0)`. A patch
+over release strings in Maven-style notation, such as the reference table `[3.0.0,3.2.0),[4.0.0,4.1.0)`. A patch
 revision changes nothing a reader can observe, so a `4.0.0` reader now reads every `4.0.x` document, including
 `4.0.1`, with no change to the file. A minor revision may change what a reader accepts, so `4.1.0` is still
 refused.
