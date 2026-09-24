@@ -463,6 +463,35 @@ fn make_legacy(index: &TestIndex) {
     std::fs::write(path, format!("{record}\n")).unwrap();
 }
 
+/// An extension that answers `describe` reports members a version-1 record cannot express. The
+/// host's converted claims carry defaults for those, so the answer is checked like a session, and
+/// the install keeps the version-1 catalog shape (Elm extension 0.4.0 through a version-1 index).
+#[test]
+fn legacy_record_accepts_a_describe_answer_with_members_it_cannot_express() {
+    let (temp, home, index) = setup("describe");
+    make_legacy(&index);
+    let output = run_morphir(
+        &[
+            "extension",
+            "install",
+            "morphir-test",
+            "--repository",
+            "local",
+        ],
+        &home,
+        temp.path(),
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let entry = installed(&home);
+    for member in ["claims", "claimCheck", "probeSource"] {
+        assert!(entry.get(member).is_none(), "{entry}");
+    }
+}
+
 #[test]
 fn legacy_probe_accepts_extra_session_members_and_keeps_old_catalog_shape() {
     check_legacy_catalog(false);
