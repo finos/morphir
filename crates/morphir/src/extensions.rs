@@ -9,7 +9,6 @@ use morphir_daemon::extensions::{
 };
 use morphir_distribution::{InstalledExtensionSnapshot, activate_installed_snapshot};
 use morphir_elm_binding::ElmExtension;
-use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo, PeerKind};
 use morphir_extension_sdk::{
     CompileRequest, CompileResult, GenerateRequest, GenerateResult, NativeExtension,
 };
@@ -244,7 +243,7 @@ pub async fn probe_process(
             message: format!("Failed to start provider '{provider}': {error}"),
         })?;
     let ready = loaded
-        .initialize(host_initialize_params())
+        .initialize(crate::commands::extension::host_config().initialize_params())
         .await
         .map_err(|failure| session_failure(provider, "initialize", failure))?;
     let negotiated = NegotiatedProvider {
@@ -396,7 +395,7 @@ async fn open_loaded<T: MepTransport + Send + 'static>(
     provider: &str,
 ) -> Result<SessionHandle, CliError> {
     let ready = loaded
-        .initialize(host_initialize_params())
+        .initialize(crate::commands::extension::host_config().initialize_params())
         .await
         .map_err(|failure| session_failure(provider, "initialize", failure))?;
     Ok(spawn_session(ready))
@@ -475,7 +474,7 @@ where
     R: DeserializeOwned,
 {
     let ready = loaded
-        .initialize(host_initialize_params())
+        .initialize(crate::commands::extension::host_config().initialize_params())
         .await
         .map_err(|failure| session_failure(provider, "initialize", failure))?;
     match ready.invoke::<R>(method, request).await {
@@ -497,22 +496,6 @@ where
             Err(CliError::Extension { message })
         }
         InvokeOutcome::Failed(failure) => Err(session_failure(provider, method, failure)),
-    }
-}
-
-/// How this CLI identifies itself to an extension across publish, install, and use.
-pub(crate) fn host_peer() -> PeerInfo {
-    PeerInfo {
-        kind: PeerKind::Cli,
-        name: "morphir-cli".into(),
-        version: env!("CARGO_PKG_VERSION").into(),
-    }
-}
-
-fn host_initialize_params() -> InitializeParams {
-    InitializeParams {
-        protocol_versions: vec![MEP_VERSION.into()],
-        host: host_peer(),
     }
 }
 
@@ -551,7 +534,7 @@ mod tests {
 
     #[test]
     fn host_initialize_identifies_cli_kind() {
-        let params = super::host_initialize_params();
+        let params = crate::commands::extension::host_config().initialize_params();
         assert_eq!(
             params.host.kind,
             morphir_extension_sdk::protocol::PeerKind::Cli

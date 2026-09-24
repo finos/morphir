@@ -46,6 +46,18 @@ fn host_version() -> morphir_workspace::Version {
         .expect("the CLI version is SemVer")
 }
 
+/// How this CLI introduces itself to extensions, and the MEP versions it offers.
+///
+/// Publish, install, compile, generate, and the workbench all use it, so an
+/// extension sees the same host at every step.
+pub(crate) fn host_config() -> morphir_host::HostConfig {
+    morphir_host::HostConfig::new(morphir_extension_sdk::protocol::PeerInfo {
+        kind: morphir_extension_sdk::protocol::PeerKind::Cli,
+        name: "morphir-cli".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+    })
+}
+
 fn install_selected(
     home: &MorphirHome,
     repository: &str,
@@ -368,7 +380,6 @@ async fn describe_publish_artifact(
         ProcessLaunch, SpawnedProcessTransport, process::DescriptionSource,
     };
     use morphir_distribution::PublicationDescription;
-    use morphir_extension_sdk::protocol::{InitializeParams, SUPPORTED_MEP_VERSIONS};
     let path = std::path::PathBuf::from(artifact.filename().as_str());
     let invalid = |reason: String| morphir_distribution::DistributionError::InvalidReleaseBundle {
         path: path.clone(),
@@ -412,13 +423,7 @@ async fn describe_publish_artifact(
         .await
         .map_err(|error| invalid(format!("Failed to start process for describe: {error}")))?;
     let description = transport
-        .describe(InitializeParams {
-            protocol_versions: SUPPORTED_MEP_VERSIONS
-                .iter()
-                .map(|version| (*version).into())
-                .collect(),
-            host: crate::extensions::host_peer(),
-        })
+        .describe(host_config().initialize_params())
         .await
         .map_err(|error| invalid(format!("Failed to describe process: {error}")))?;
     let claims = description.claims;
@@ -714,5 +719,21 @@ mod tests {
             selection(None, Some("2.100.0")).unwrap(),
             Selection::Exact(Version::new(2, 100, 0))
         );
+    }
+
+    #[test]
+    fn every_extension_call_offers_the_same_host_and_versions() {
+        let params = super::host_config().initialize_params();
+        assert_eq!(params.host.name, "morphir-cli");
+        assert_eq!(params.host.version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(
+            params.host.kind,
+            morphir_extension_sdk::protocol::PeerKind::Cli
+        );
+        let supported: Vec<String> = morphir_extension_sdk::protocol::SUPPORTED_MEP_VERSIONS
+            .iter()
+            .map(|version| (*version).to_owned())
+            .collect();
+        assert_eq!(params.protocol_versions, supported);
     }
 }

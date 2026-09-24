@@ -4834,6 +4834,7 @@ dependencies = [
  "morphir-evaluator",
  "morphir-extension-sdk",
  "morphir-gleam-binding",
+ "morphir-host",
  "morphir-kb",
  "morphir-mck",
  "morphir-okf",

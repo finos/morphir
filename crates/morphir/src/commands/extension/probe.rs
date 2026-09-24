@@ -5,8 +5,6 @@ use morphir_distribution::{
     ArtifactRuntime, ClaimCheck, ClaimsRecord, DistributionError, InstalledExtension, ProbeSource,
     VerifiedArtifact,
 };
-use morphir_extension_sdk::protocol::{InitializeParams, SUPPORTED_MEP_VERSIONS};
-
 pub(super) async fn claims(
     artifact: &VerifiedArtifact,
     no_probe: bool,
@@ -39,13 +37,7 @@ pub(super) async fn claims(
         .await
         .map_err(|error| DistributionError::Probe(error.to_string()))?;
     let description = transport
-        .describe(InitializeParams {
-            protocol_versions: SUPPORTED_MEP_VERSIONS
-                .iter()
-                .map(|version| (*version).into())
-                .collect(),
-            host: crate::extensions::host_peer(),
-        })
+        .describe(super::host_config().initialize_params())
         .await
         .map_err(|error| DistributionError::Probe(error.to_string()))?;
     let source = match description.source {

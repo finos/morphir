@@ -9,10 +9,7 @@ use async_trait::async_trait;
 use cap_std::fs::Dir;
 use chrono::{SecondsFormat, Utc};
 use morphir_common::home::MorphirHome;
-use morphir_daemon::extensions::{
-    InvokeOutcome, activate_transport,
-    protocol::{InitializeParams, MEP_VERSION, methods},
-};
+use morphir_daemon::extensions::{InvokeOutcome, activate_transport, protocol::methods};
 use morphir_devkit::{ConfigLoadOptions, build_workspace_discovery_request};
 use morphir_distribution::{
     Capability, InstalledExtensionSnapshot, activate_installed_snapshot, list_installed,
@@ -277,10 +274,7 @@ async fn invoke_installed(
             ))
         })?;
     let ready = loaded
-        .initialize(InitializeParams {
-            protocol_versions: vec![MEP_VERSION.into()],
-            host: crate::extensions::host_peer(),
-        })
+        .initialize(crate::commands::extension::host_config().initialize_params())
         .await
         .map_err(|failure| extension_error(failure.error().to_string()))?;
     if !ready
