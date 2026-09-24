@@ -566,6 +566,27 @@
       "subject": "Malformed normalized model contains duplicate domain type order entries",
       "uri": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order",
       "expectedOutcome": "ambiguous_target"
+    },
+    {
+      "id": "node-resolve-0014",
+      "purpose": "An unrelated artifact edit does not invalidate a node fingerprint",
+      "subject": "Current V4 artifact changed another module; type pair and its second tuple element are semantically unchanged",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedOutcome": "resolved"
+    },
+    {
+      "id": "node-resolve-0015",
+      "purpose": "A changed selected child invalidates its node fingerprint",
+      "subject": "Current V4 type pair still has an element at index 1, but that element has different semantic content",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedOutcome": "stale_target"
+    },
+    {
+      "id": "node-resolve-0016",
+      "purpose": "Appending a sibling after the selected child preserves its fingerprint",
+      "subject": "Current V4 type pair has a new tuple element at index 2; its original element at index 1 is semantically unchanged",
+      "uri": "morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expectedOutcome": "resolved"
     }
   ],
   "layoutEquivalenceCases": [

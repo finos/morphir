@@ -88,13 +88,22 @@ The resolver checks the artifact's actual format version before traversing the r
 
 A named unpinned path follows the current node with that name. An ordered child needs a guard because inserting an earlier tuple element or match case can leave the same index pointing at a different node. Identical repeated semantic subtrees cannot be assigned historical object identity without stable IDs in the IR; this contract identifies semantic positions and reports detectable retargeting. A pinned URI always uses the addressed snapshot's ordering.
 
-The draft guard fingerprints the *ordered-step lineage*: the role, index, and selected semantic child at each ordered step in the path. This lets one guard cover multiple nested positional selections. It is rendered as `guard=sha256:` followed by 64 lowercase hex digits. The URI parser checks the token's spelling; the resolver recomputes it for the selected current lineage and returns `stale_target` on a mismatch. Its canonical input encoding is **not yet fixed**, so the example token below is illustrative and this draft does not grant cross-implementation guard compatibility. A reviewed digest profile and fixed hash vectors are required before activating guarded cases in MCK.
+**Guard behavior decision:** an unpinned indexed URI uses a node fingerprint, not the revision of the whole artifact. The guard fingerprints the *ordered-step lineage*: the role, index, and selected semantic child at each ordered step in the path. This lets one guard cover multiple nested positional selections. Editing an unrelated module or adding an element after the selected position leaves the guard valid; changing the selected child or shifting its index makes it stale. An edit inside a selected child subtree may also change its fingerprint, even if the final descendant named by the URI did not change. The guard does not hash unrelated artifact content or physical JSON, YAML, and document-tree bytes.
+
+The proposed spelling is `guard=sha256:` followed by 64 lowercase hex digits. The URI parser checks the token's spelling; the resolver recomputes it for the selected current lineage and returns `stale_target` on a mismatch. Its canonical semantic input encoding is **not yet fixed**, so the example token below is illustrative and this draft does not grant cross-implementation guard compatibility. A reviewed digest profile and fixed cross-format hash vectors are required before activating guarded cases in MCK.
 
 ```text
 morphir://ir/pkg/acme/orders?format=4.0.0&guard=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#/module/domain/type/pair/type-exp/tuple/element/1
 ```
 
 An unpinned URI with an ordered child and no guard is invalid. A pinned URI does not need a guard because its `rev` fixes the artifact snapshot. Named paths need no guard and can follow the current definition across edits.
+
+| Edit after issuing an unpinned link to tuple element 1 | Fingerprint guard result |
+| --- | --- |
+| Edit another module | Resolves the same selected element |
+| Insert an element before position 1 | `stale_target` if position 1 now selects a different semantic child |
+| Change the selected element | `stale_target` |
+| Append an element after position 1 | Resolves the same selected element |
 
 | Outcome | Cause |
 | --- | --- |
