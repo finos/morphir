@@ -11,14 +11,14 @@ Morphir GitHub release for your operating system and processor.
 Install the current prerelease globally:
 
 ```shell
-mise use -g github:finos/morphir@0.4.0-beta.6
+mise use -g github:finos/morphir@0.4.0-beta.7
 ```
 
 To pin Morphir in a project's `mise.toml`, add:
 
 ```toml
 [tools]
-"github:finos/morphir" = "0.4.0-beta.6"
+"github:finos/morphir" = "0.4.0-beta.7"
 ```
 
 Run `mise install` after changing the configuration. Prereleases must be

@@ -214,7 +214,9 @@ fn wasm(short_id: &str, ir: Value, options: &[&str]) {
     host.remove(&id);
 }
 
-fn elm(short_id: &str, id: &str, override_variable: &str) {
+/// `probe_source` is how install must probe the pinned release: `describe` for an extension that
+/// answers `morphir.extension.describe`, `session-fallback` for one that does not.
+fn elm(short_id: &str, id: &str, override_variable: &str, probe_source: &str) {
     let pin = pin("executables", short_id);
     let downloaded = bundles()
         .join(short_id)
@@ -243,7 +245,7 @@ fn elm(short_id: &str, id: &str, override_variable: &str) {
         "{catalog}"
     );
     assert_eq!(
-        catalog["extensions"][0]["probeSource"], "session-fallback",
+        catalog["extensions"][0]["probeSource"], probe_source,
         "{catalog}"
     );
     let declared: Value =
@@ -324,7 +326,12 @@ fn rust() {
 #[test]
 #[ignore = "requires MORPHIR_PUBLISHED_BUNDLES; macOS can set MORPHIR_ELM_EXTENSION_BIN"]
 fn elm_reference() {
-    elm("elm", "morphir-elm", "MORPHIR_ELM_EXTENSION_BIN");
+    elm(
+        "elm",
+        "morphir-elm",
+        "MORPHIR_ELM_EXTENSION_BIN",
+        "describe",
+    );
 }
 
 #[test]
@@ -334,5 +341,6 @@ fn scala_elm() {
         "scala-elm",
         "morphir-scala-elm",
         "MORPHIR_SCALA_ELM_EXTENSION_BIN",
+        "session-fallback",
     );
 }

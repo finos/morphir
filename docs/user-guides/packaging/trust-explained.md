@@ -11,7 +11,7 @@ choice before restoring it. Here are the moving parts, without the cryptography
 lesson.
 
 :::note Early access
-The "today" column below describes **Morphir CLI v0.4.0-beta.6**. The target
+The "today" column below describes **Morphir CLI v0.4.0-beta.7**. The target
 experience is a direction for the feature, not a promise that every part is
 available yet. Commands and configuration may change.
 :::
@@ -83,5 +83,5 @@ only for the example. For your own registry, an administrator you trust must
 provision the real policy and root.
 
 You can leave the protocol details to the tooling. If you want them, the draft
-[trust profile](https://github.com/finos/morphir/blob/v0.4.0-beta.6/spec/package/package-trust-profile.md)
+[trust profile](https://github.com/finos/morphir/blob/v0.4.0-beta.7/spec/package/package-trust-profile.md)
 explains registry verification with TUF and publisher signatures with DSSE.

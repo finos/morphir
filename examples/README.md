@@ -32,8 +32,8 @@ provider evaluates assertions.
 | Example | What its scenario proves | Prerequisites |
 | --- | --- | --- |
 | [Elm single file](elm/single-file/scenario.ipynb) | Native type compilation to v3 IR, public record/custom-type structure, task result and installation | Offline |
-| [Elm single-file functions](elm/single-file-functions/scenarios.md) | Reference lowering of an annotated addition function, including SDK operator and arguments | Reference Elm 0.3.1 |
-| [Classic JSON Elm](elm/classic-json/scenarios.md) | Compilation from an on-disk `morphir.json` and source directory with explicit `--language elm` | Reference Elm 0.3.1 |
+| [Elm single-file functions](elm/single-file-functions/scenarios.md) | Reference lowering of an annotated addition function, including SDK operator and arguments | Reference Elm 0.4.0 |
+| [Classic JSON Elm](elm/classic-json/scenarios.md) | Compilation from an on-disk `morphir.json` and source directory with explicit `--language elm` | Reference Elm 0.4.0 |
 | [TOML project](simple-project/scenarios.md) | Config discovery and two public native Elm type modules in v4 IR | Offline |
 | [YAML project](elm/yaml-project/scenarios.md) | Config discovery and a public native Elm record in v4 IR | Offline |
 | [Multi-project workspace](monorepo-workspace/scenarios.md) | Default selection, selecting each member by path/name, distinct package identities, isolated task outputs and installed IR copies | Offline |
@@ -49,7 +49,7 @@ provider evaluates assertions.
 | [Create and publish a local Library](package/local-library-publish/scenarios.md) | Compile source, create and sign a classic V4 Library, publish with distinct registry-role keys, then resolve, restore, generate and compile in an independent consumer | macOS, source-built CLI; public test-only signing seeds |
 | [CLI basics](cli/basics/scenarios.md) | Version reporting and public command help in independent Markdown scenarios | Offline |
 | [CLI migration](cli/migrate/scenarios.md) | Classic JSON to V4 YAML with a fixed whole-file golden and a command result assertion | Offline |
-| [Classic multi-file Elm](morphir-elm-compat/scenarios.md) | Config discovery and the released provider's **known rejection** of multiple source documents | Reference Elm 0.3.1 |
+| [Classic multi-file Elm](morphir-elm-compat/scenarios.md) | Config discovery and the released provider's **known rejection** of multiple source documents | Reference Elm 0.4.0 |
 
 Native Elm is types-only. Reference function lowering does not prove function
 evaluation. The workspace scenarios do not yet prove cross-package dependency
@@ -58,7 +58,7 @@ resolution, and generated Gleam is inspected but not executed.
 ## Prepare the reference Elm scenarios
 
 Download the executable for your host from the
-[Elm extension 0.3.1 release](https://github.com/finos/morphir-elm/releases/tag/extension/elm/v0.3.1),
+[Elm extension 0.4.0 release](https://github.com/finos/morphir-elm/releases/tag/extension/elm/v0.4.0),
 verify the archive against its published checksum, and extract it. Then run:
 
 ```sh
@@ -67,7 +67,7 @@ mise run test:examples -- --tag suite:elm-reference
 ```
 
 The helper also accepts `MORPHIR_ELM_EXTENSION_BIN`; the optional
-`MORPHIR_ELM_EXTENSION_VERSION` must be `0.3.1`. Supply the executable for the
+`MORPHIR_ELM_EXTENSION_VERSION` must be `0.4.0`. Supply the executable for the
 machine running the examples. Preparation copies it into ignored `.itest/elm`
 fixture repositories beside the three reference examples. It does not install
 or run the provider. Each scenario registers its copied repository and installs
