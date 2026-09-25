@@ -466,6 +466,25 @@ npm start
 
 Never place working documents under `docs/`: everything in `docs/` is published to morphir.finos.org by the website build. When a design is final and meant for readers, write it up under `docs/design/` with the usual front matter.
 
+The drafts above are not the record. Specs, plans and ledgers are stored in beads, as the next section describes. Copies rendered back from beads go to `.dev/beads-specs/` and `.dev/beads-plans/`.
+
+### Superpowers artifacts live in beads
+
+The superpowers skills save specs and plans under `docs/superpowers/` and commit them, and keep the execution ledger in `.superpowers/sdd/<plan>/progress.md`, which is deleted when a run ends. In this repository the record of all three is beads. Beads data syncs only to `refs/dolt/data` and the `beads-sync` branch, never to code branches. These rules override the superpowers skill defaults for where specs, plans and ledgers go. The skills give user instructions precedence over their defaults, and these rules are such instructions.
+
+The tool is [`tools/bd-plan.ts`](tools/bd-plan.ts). Run it as `bun run tools/bd-plan.ts <command>` or `mise run beads:plan -- <command>`; `--help` describes each command. `mise run beads:plan-test` tests it against a throwaway database.
+
+- **Spec.** Draft it in `.dev/docs/superpowers/specs/`, then run `bd-plan spec <feature-epic> <file>`. The spec becomes the design of the feature epic, with the label `spec`. Do not commit specs to code branches. The bead is the record: review happens on `bd show <feature-epic>` or on the file that `bd-plan spec <feature-epic> --render` writes.
+- **Plan.** Draft it in `.dev/docs/superpowers/plans/`, then run `bd-plan import <plan.md> --parent <feature-or-phase-epic> --spec <feature-epic>`. This makes a plan epic under the parent, and each `### Task N` becomes a task bead under the plan epic. The bead tree is the plan of record. Import again after you change the draft: it updates the same beads. To use a bead that already exists for a task, add `--link N=<bead-id>`.
+- **Execution.** Run `bd-plan render <plan-epic>`. It writes `.dev/beads-plans/<plan-epic>.md` and prints the path. Use that path as PLAN_FILE for every superpowers script (`sdd-workspace`, `task-brief`, `review-package`, `task-start`, `task-done`). Never edit the rendered file: change the bead, then render again.
+- **Ledger.** Every line that goes into `progress.md` also goes to the plan epic as a comment. `bd-plan ledger <plan-epic> "<line>"` does both. Also pass on each line that `task-done` writes itself; the tool does not write it to `progress.md` twice. On resume, read `bd comments <plan-epic>` and `bd list --metadata-field plan_epic=<plan-epic> --all` first. That list is `bd list --parent <plan-epic> --all` plus any linked task beads under other parents. Close each task bead with the commit range and the test result as the reason, for example `bd close <task> --reason "abc1234..def5678, cargo test -p morphir-host: 42 passed"`.
+- **Rulings and findings.** A ruling that changes the spec or a later task becomes a decision bead linked to the plan epic: `bd create --type decision --deps related:<plan-epic> ...`. Then change the spec or task bead to match. A finding you defer becomes a new bead: `bd create --deps discovered-from:<plan-epic> ...`.
+- **Local only.** Briefs, implementer reports, test logs and review packages stay in `.superpowers/sdd/`. Do not store them in beads.
+- **Execution method.** Use subagent-driven development unless the user says otherwise.
+- **Sync.** After beads work, sync as [Keeping beads in sync](#keeping-beads-in-sync) says: `bd dolt commit` and `bd dolt push`, then `mise run beads:publish`.
+
+A task's text runs from its heading to the next task heading, as `task-brief` cuts it, so a section after the last task is part of the last task bead. The Phase A plans of `morphir-opua.1.1` (plan epics `morphir-opua.1.1.7` to `.10`) are examples.
+
 ## Questions?
 
 When in doubt:
