@@ -4,12 +4,12 @@ mod probe;
 
 use crate::home::MorphirHome;
 use crate::observability::OperationId;
-use morphir_daemon::{InvocationMode, ProviderOrigin};
 use morphir_distribution::{
     Channel, ExtensionId, ExtensionInstaller, ExtensionRepositories, ExtensionRepository,
     ExtensionSearchQuery, InstalledCatalog, LocalExtensionRepository, Platform, PublicationStatus,
     RepositoryEndpoint, RepositoryName, Selection, list_installed, uninstall_extension,
 };
+use morphir_host::{InvocationMode, ProviderOrigin};
 use semver::Version;
 use starbase::AppResult;
 
@@ -150,7 +150,7 @@ pub fn run_extension_list() -> AppResult<miette::Report> {
         .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
     let installed = list_installed(&home)
         .map_err(|error| miette::miette!("Failed to list installed extensions: {error}"))?;
-    let registry = crate::extensions::extension_registry(installed.clone())?;
+    let registry = crate::extensions::extension_registry(&home, installed.clone())?;
     let builtins = registry
         .providers()
         .into_iter()
@@ -235,6 +235,7 @@ fn invocation_mode_name(mode: InvocationMode) -> &'static str {
         InvocationMode::NativeMep => "native-mep",
         InvocationMode::ProcessMep => "process-mep",
         InvocationMode::WasmMep => "wasm-mep",
+        _ => "unknown",
     }
 }
 

@@ -38,12 +38,13 @@ use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
 use morphir_common::config::model::MorphirConfig;
 use morphir_common::ir_transport::IrVersion;
-use morphir_daemon::extensions::{ResolvedFrontend, protocol::methods};
+use morphir_daemon::DaemonError;
 use morphir_devkit::{
     CapturedSelection, ConfigContext, DEFAULT_SOURCE_BYTES, SourceSelectionOptions, TaskId,
     TaskResult, capture_source_selection, discover_config, ensure_morphir_structure,
 };
 use morphir_distribution::{ExtensionId, InstalledExtensionSnapshot};
+use morphir_extension_sdk::protocol::methods;
 use morphir_extension_sdk::{
     CompileOptions as ExtensionCompileOptions, CompilePackage, CompileRequest, CompileResult,
     DiagnosticSeverity, ExtensionType, FrontendCapability, SourceDocument, SourceSet,
@@ -70,7 +71,6 @@ pub struct PreparedCompile {
     dest: PreparedTask,
     out_module: PathBuf,
     out_root: PathBuf,
-    home: MorphirHome,
     workspace: PathBuf,
     provider: Provider,
     request: CompileRequest,
@@ -107,10 +107,25 @@ fn selects_files(inputs: &[String], start_dir: &Path) -> bool {
 /// The provider a compile runs, with what it declares.
 enum Provider {
     /// A built-in or installed provider the registry resolved.
-    Registered(ResolvedFrontend),
+    Registered(morphir_host::Resolved),
     /// A process `[extensions.<id>] command` configures, which declared its
     /// capabilities when a session was negotiated with it.
     Configured(Box<ConfiguredProvider>),
+}
+
+/// The installed extensions a compile may use, and the Morphir home their
+/// guests start below.
+struct InstalledProviders<'a> {
+    home: &'a MorphirHome,
+    snapshots: Vec<InstalledExtensionSnapshot>,
+}
+
+impl InstalledProviders<'_> {
+    /// The registry of built-in and installed providers, restricted to
+    /// `only` as `--extension` restricts it.
+    fn registry(&self, only: Option<&str>) -> Result<morphir_host::Registry, CliError> {
+        crate::extensions::extension_registry_for(self.home, self.snapshots.clone(), only)
+    }
 }
 
 /// What a configured process provider declared about itself.
@@ -131,7 +146,9 @@ impl Provider {
 
     fn capability(&self) -> &FrontendCapability {
         match self {
-            Self::Registered(resolved) => resolved.capability(),
+            Self::Registered(resolved) => resolved
+                .frontend()
+                .expect("a frontend resolution keeps its frontend capability"),
             Self::Configured(configured) => &configured.frontend,
         }
     }
@@ -145,14 +162,12 @@ impl Provider {
 
     async fn discover(
         &self,
-        home: &MorphirHome,
         workspace: &Path,
         request: morphir_workspace::DiscoveryRequest,
     ) -> Result<DiscoveryResponse, CliError> {
         match self {
             Self::Registered(resolved) => {
-                crate::extensions::invoke_workspace_discovery(home, workspace, resolved, request)
-                    .await
+                crate::extensions::invoke_workspace_discovery(workspace, resolved, request).await
             }
             Self::Configured(configured) => {
                 crate::extensions::invoke_process(
@@ -168,13 +183,12 @@ impl Provider {
 
     async fn compile(
         &self,
-        home: &MorphirHome,
         workspace: &Path,
         request: CompileRequest,
     ) -> Result<CompileResult, CliError> {
         match self {
             Self::Registered(resolved) => {
-                crate::extensions::invoke_frontend(home, workspace, resolved, request).await
+                crate::extensions::invoke_frontend(workspace, resolved, request).await
             }
             Self::Configured(configured) => {
                 crate::extensions::invoke_process(
@@ -242,10 +256,14 @@ pub async fn prepare_compile(
         None => None,
     };
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
-    let installed =
-        morphir_distribution::list_installed(&home).map_err(|error| CliError::Extension {
-            message: format!("Failed to list installed frontend providers: {error}"),
-        })?;
+    let installed = InstalledProviders {
+        home: &home,
+        snapshots: morphir_distribution::list_installed(&home).map_err(|error| {
+            CliError::Extension {
+                message: format!("Failed to list installed frontend providers: {error}"),
+            }
+        })?,
+    };
     let workspace = config
         .as_ref()
         .and_then(|context| {
@@ -297,7 +315,7 @@ pub async fn prepare_compile(
         options.ir_version,
         selection,
         config.as_ref(),
-        installed,
+        &installed,
         &workspace,
     )
     .await?;
@@ -386,14 +404,8 @@ pub async fn prepare_compile(
             .package_name
             .clone()
             .or_else(|| manifest.as_ref().map(|(_, name)| name.clone()));
-        let package = discover_identity(
-            &provider,
-            &home,
-            &workspace,
-            captured.clone(),
-            explicit_name,
-        )
-        .await?;
+        let package =
+            discover_identity(&provider, &workspace, captured.clone(), explicit_name).await?;
         let record = captured
             .sources
             .iter()
@@ -530,7 +542,6 @@ pub async fn prepare_compile(
         dest,
         out_module: out.module,
         out_root: out.root,
-        home,
         workspace,
         provider,
         request,
@@ -555,7 +566,6 @@ pub async fn execute_compile(prepared: PreparedCompile) -> starbase::AppResult<m
         dest,
         out_module,
         out_root,
-        home,
         workspace,
         provider,
         request,
@@ -566,7 +576,7 @@ pub async fn execute_compile(prepared: PreparedCompile) -> starbase::AppResult<m
         language,
         selection,
     } = prepared;
-    let result = provider.compile(&home, &workspace, request).await?;
+    let result = provider.compile(&workspace, request).await?;
     // The cache records what this run learned whether or not the run as a
     // whole succeeded; see `cache_write_is_warranted`.
     if let Some((cache, key)) = cache.as_ref()
@@ -720,7 +730,7 @@ fn configured_source_directory(config: &MorphirConfig) -> PathBuf {
 async fn infer_language(
     inputs: &[String],
     start_dir: &Path,
-    installed: &[InstalledExtensionSnapshot],
+    installed: &InstalledProviders<'_>,
     flag_extension: Option<&str>,
     config: Option<&ConfigContext>,
     workspace: &Path,
@@ -779,7 +789,7 @@ async fn infer_language(
                 None => {}
             }
         }
-        let registry = crate::extensions::extension_registry_for(installed.to_vec(), only)?;
+        let registry = installed.registry(only)?;
         if let Some(id) = flag_extension
             && registry.providers().is_empty()
         {
@@ -1036,7 +1046,7 @@ async fn select_provider(
     explicit_version: Option<IrVersion>,
     selection: bool,
     config: Option<&ConfigContext>,
-    installed: Vec<InstalledExtensionSnapshot>,
+    installed: &InstalledProviders<'_>,
     workspace: &Path,
 ) -> Result<(Provider, IrVersion), CliError> {
     let versions: Vec<IrVersion> = match (explicit_version, selection) {
@@ -1103,7 +1113,7 @@ async fn select_provider(
         ));
     }
 
-    let registry = crate::extensions::extension_registry_for(installed, requested)?;
+    let registry = installed.registry(requested)?;
     let mut last_error = None;
     for version in &versions {
         let text = match version {
@@ -1113,10 +1123,10 @@ async fn select_provider(
         match registry.resolve_frontend(
             language,
             text,
-            morphir_daemon::InvocationPolicy::PreferDirect,
+            morphir_host::InvocationPolicy::PreferDirect,
         ) {
             Ok(resolved) => return Ok((Provider::Registered(resolved), *version)),
-            Err(error) => last_error = Some(error),
+            Err(error) => last_error = Some(DaemonError::from(error)),
         }
     }
     let error = last_error.expect("at least one version was tried");
@@ -1155,7 +1165,6 @@ fn advertises(frontend: &FrontendCapability, version: IrVersion) -> bool {
 /// Ask the provider for a selection's package identity and exposure.
 async fn discover_identity(
     provider: &Provider,
-    home: &MorphirHome,
     workspace: &Path,
     captured: CapturedSelection,
     explicit_name: Option<String>,
@@ -1175,7 +1184,7 @@ async fn discover_identity(
     if let Some(name) = explicit_name {
         request.cli_overlay = serde_json::json!({ "project": { "name": name } });
     }
-    let snapshot = match provider.discover(home, workspace, request).await? {
+    let snapshot = match provider.discover(workspace, request).await? {
         DiscoveryResponse::Success { snapshot } => snapshot,
         DiscoveryResponse::Failure { error } => {
             return Err(CliError::Validation {

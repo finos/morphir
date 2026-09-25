@@ -506,7 +506,7 @@ async fn dispatch(
 /// Defined locally rather than imported, so this browser-facing protocol
 /// stays decoupled from the daemon's extension protocol (a different
 /// JSON-RPC channel with its own evolution). The value is chosen to match
-/// `morphir_daemon::extensions::protocol::error_codes::CAPABILITY_UNAVAILABLE`
+/// `morphir_extension_sdk::protocol::error_codes::CAPABILITY_UNAVAILABLE`
 /// anyway: a wire trace should not require knowing which channel produced a
 /// given error code to look it up.
 const CAPABILITY_UNAVAILABLE: i64 = -32013;

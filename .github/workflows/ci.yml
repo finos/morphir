@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - milestone/**
 
 # Cancel a pull request's in-progress run when a new push supersedes it. Pull
 # requests are keyed by number rather than by head branch: two forks can both
