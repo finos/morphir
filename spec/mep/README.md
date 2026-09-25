@@ -71,7 +71,7 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `DiagnosticSeverity` | Wire values `error`, `warning`, `info`, `hint`. |
 | `SourcePosition` | Zero-based. `character` counts UTF-16 code units, as in the Language Server Protocol. |
 
-A later codec bead generates this mapping. Until then, this table and the doc comments are the record.
+The Rust protocol types generated from this model (finos/morphir-rust#241) will carry this mapping. Until then, this table and the doc comments are the record.
 
 ## Regenerate
 
