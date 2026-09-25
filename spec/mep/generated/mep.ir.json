@@ -1,0 +1,2064 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "morphir/mep",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "mep": {
+            "Public": {
+              "types": {
+                "json": {
+                  "Public": {
+                    "doc": "Any JSON value. Used where the protocol carries data the contract does not\nconstrain, such as compiled IR or backend options.\nOn the wire it is the JSON value itself, not a tagged constructor.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "json-null": [],
+                        "json-bool": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ]
+                        ],
+                        "json-int": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ]
+                        ],
+                        "json-float": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#float"
+                              }
+                            }
+                          ]
+                        ],
+                        "json-string": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ],
+                        "json-array": [
+                          [
+                            "items",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ],
+                        "json-object": [
+                          [
+                            "members",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "peer-kind": {
+                  "Public": {
+                    "doc": "What kind of peer introduced itself. Wire values: `cli`, `unspecified`.\nA peer kind this contract does not know is read as `Unspecified`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "cli": [],
+                        "unspecified": []
+                      }
+                    }
+                  }
+                },
+                "peer-info": {
+                  "Public": {
+                    "doc": "A host or an extension, as it introduces itself. Older messages leave\n`kind` out; an absent kind is read as `Unspecified`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "peer-info": [
+                          [
+                            "kind",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#peer-kind"
+                              }
+                            }
+                          ],
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "describe-params": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.extension.describe`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "describe-params": [
+                          [
+                            "protocol-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "initialize-params": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.initialize`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "initialize-params": [
+                          [
+                            "protocol-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "host",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#peer-info"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "initialize-result": {
+                  "Public": {
+                    "doc": "Result of `morphir.initialize`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "initialize-result": [
+                          [
+                            "protocol-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "extension",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#extension-info"
+                              }
+                            }
+                          ],
+                          [
+                            "capabilities",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#extension-capabilities"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "extension-type": {
+                  "Public": {
+                    "doc": "A kind of extension. Wire values: `frontend`, `backend`, `transform`,\n`validator`, `workspace`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "frontend-extension": [],
+                        "backend-extension": [],
+                        "transform-extension": [],
+                        "validator-extension": [],
+                        "workspace-extension": []
+                      }
+                    }
+                  }
+                },
+                "extension-info": {
+                  "Public": {
+                    "doc": "Who an extension is. Wire names stay snake_case for this record, so the\nlabel `min_sdk_version` is also the wire name. Optional members are left\nout of the message when absent.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "extension-info": [
+                          [
+                            "id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "description",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "types",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#extension-type"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "author",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "homepage",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "license",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "min-sdk-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "language-capability": {
+                  "Public": {
+                    "doc": "A source language a frontend reads.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "language-capability": [
+                          [
+                            "id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "file-extensions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "frontend-capability": {
+                  "Public": {
+                    "doc": "What a frontend can compile. `multi_document` (wire `multiDocument`) is\nwritten only when it is true; an absent member is read as false. A\nfrontend without it compiles exactly one document per request.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "frontend-capability": [
+                          [
+                            "languages",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#language-capability"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "ir-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "compile",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "incremental",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "fragments",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "multi-document",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "backend-capability": {
+                  "Public": {
+                    "doc": "What a backend can generate.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "backend-capability": [
+                          [
+                            "targets",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "ir-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "generate",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "workspace-capability": {
+                  "Public": {
+                    "doc": "Workspace discovery support. Each protocol version is a full SemVer\nstring, such as `0.1.0`, for the workspace discovery protocol. These are\nnot MEP versions, which use the `MAJOR.MINOR` form.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "workspace-capability": [
+                          [
+                            "protocol-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "discover",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "extension-capabilities": {
+                  "Public": {
+                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend` and `workspace` are left out when absent.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `streaming`, `incremental`,\n`cancellation` or `progress`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "extension-capabilities": [
+                          [
+                            "frontend",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#frontend-capability"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "backend",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#backend-capability"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "workspace",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#workspace-capability"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "streaming",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "incremental",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "cancellation",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "progress",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "extra",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "claims-requirements": {
+                  "Public": {
+                    "doc": "Requirements a claim set puts on the host. Each `host` entry is one SemVer\ncomparator, such as `>=0.4.0`, not a combined range; all of them must\nhold. `host` is left out when empty, and an absent `host` is read as\nempty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "claims-requirements": [
+                          [
+                            "host",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "capability-claim-set": {
+                  "Public": {
+                    "doc": "The result of `morphir.extension.describe`: the capabilities an extension\nclaims, without starting a session.\n\nWire rules:\n- `claims_version` (wire `claimsVersion`) is a SemVer string for the\nclaims format, which is versioned apart from MEP. Writers send\n`0.1.0-draft.2`. Readers accept exactly `0.1.0-draft.1` or\n`0.1.0-draft.2` and read both as draft.2.\n- Draft.1 names the member `statementVersion` instead. The member name\nmust match the draft, and a claim set with both names is refused. In a\ndraft.1 `critical` list, `statementVersion` is read as `claimsVersion`,\nand a draft.1 `critical` list that names `claimsVersion` is refused.\n- `protocol_versions` (wire `protocolVersions`) are MEP versions in the\ncanonical `MAJOR.MINOR` form, such as `0.1`, not full SemVer.\n- Unknown top-level members are dropped when read.\n- `capabilities` is open: members this contract does not name are kept\nwhen read and written. The named members inside it, such as\n`frontend`, are not checked against `ExtensionCapabilities` when read.\n- `requires` is left out when absent.\n- `critical` lists member paths, such as `capabilities.frontend`, that a\nreader must understand. A reader refuses a claim set with a path it\ndoes not understand. `critical` is left out when empty, and an absent\n`critical` is read as empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "capability-claim-set": [
+                          [
+                            "claims-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "protocol-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "extension",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#extension-info"
+                              }
+                            }
+                          ],
+                          [
+                            "capabilities",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "requires",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#claims-requirements"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "critical",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "method": {
+                  "Public": {
+                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                       | Kind         |\n| ------------------- | -------------------------------- | ------------ |\n| `Initialize`        | `morphir.initialize`             | request      |\n| `Describe`          | `morphir.extension.describe`     | request      |\n| `Initialized`       | `morphir.initialized`            | notification |\n| `Ping`              | `morphir.ping`                   | request      |\n| `Info`              | `morphir.extension.info`         | request      |\n| `Capabilities`      | `morphir.extension.capabilities` | request      |\n| `Compile`           | `morphir.frontend.compile`       | request      |\n| `Generate`          | `morphir.backend.generate`       | request      |\n| `Validate`          | `morphir.validator.validate`     | request      |\n| `Transform`         | `morphir.transform.transform`    | request      |\n| `WorkspaceDiscover` | `morphir.workspace.discover`     | request      |\n| `Shutdown`          | `morphir.shutdown`               | request      |\n| `Exit`              | `morphir.exit`                   | notification |\n| `CancelRequest`     | `$/cancelRequest`                | notification |\n| `Progress`          | `morphir.progress`               | notification |\n\nA notification carries no request id and gets no response.\n\n`$/cancelRequest` and `morphir.progress` come from the protocol draft\n(docs/design/draft/extensions/protocol.md). A host sends\n`$/cancelRequest` only to an extension that advertises `cancellation`,\nand an extension sends `morphir.progress` only when it advertises\n`progress`. The Rust SDK does not send or handle them yet.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "initialize": [],
+                        "describe": [],
+                        "initialized": [],
+                        "ping": [],
+                        "info": [],
+                        "capabilities": [],
+                        "compile": [],
+                        "generate": [],
+                        "validate": [],
+                        "transform": [],
+                        "workspace-discover": [],
+                        "shutdown": [],
+                        "exit": [],
+                        "cancel-request": [],
+                        "progress": []
+                      }
+                    }
+                  }
+                },
+                "error-code": {
+                  "Public": {
+                    "doc": "An error code in a JSON-RPC 2.0 error object. The wire value is the\ninteger code:\n\n| Constructor               | Code   |\n| ------------------------- | ------ |\n| `ParseError`              | -32700 |\n| `InvalidRequest`          | -32600 |\n| `MethodNotFound`          | -32601 |\n| `InvalidParams`           | -32602 |\n| `InternalError`           | -32603 |\n| `ExtensionError`          | -32000 |\n| `CompilationError`        | -32001 |\n| `GenerationError`         | -32002 |\n| `ValidationError`         | -32003 |\n| `TransformationError`     | -32004 |\n| `ExtensionFailure`        | -32010 |\n| `ProtocolVersionMismatch` | -32011 |\n| `PermissionDenied`        | -32012 |\n| `CapabilityUnavailable`   | -32013 |\n| `NotInitialized`          | -32014 |\n| `RequestCancelled`        | -32800 |\n\nThe first five are the JSON-RPC 2.0 standard codes. `ExtensionError`\nthrough `NotInitialized` are MEP codes in the server-defined range, -32000\nto -32099. `RequestCancelled` is the code the protocol draft gives to a\ncancelled request, as in the Language Server Protocol; the Rust SDK does\nnot define it yet.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "parse-error": [],
+                        "invalid-request": [],
+                        "method-not-found": [],
+                        "invalid-params": [],
+                        "internal-error": [],
+                        "extension-error": [],
+                        "compilation-error": [],
+                        "generation-error": [],
+                        "validation-error": [],
+                        "transformation-error": [],
+                        "extension-failure": [],
+                        "protocol-version-mismatch": [],
+                        "permission-denied": [],
+                        "capability-unavailable": [],
+                        "not-initialized": [],
+                        "request-cancelled": []
+                      }
+                    }
+                  }
+                },
+                "rpc-error": {
+                  "Public": {
+                    "doc": "The JSON-RPC 2.0 error object. `code` is an `ErrorCode` value or a\nJSON-RPC 2.0 standard code; it is a signed 32-bit integer, i32 in the SDK.\n`data` is left out of the message when absent.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "rpc-error": [
+                          [
+                            "code",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "message",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "data",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "request-id": {
+                  "Public": {
+                    "doc": "A JSON-RPC 2.0 request id. On the wire it is the number or the string\nitself, not a tagged constructor. A numeric id is non-negative; u64 in the\nSDK, which sends numeric ids only.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "numeric-request-id": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ]
+                        ],
+                        "string-request-id": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "cancel-params": {
+                  "Public": {
+                    "doc": "Parameters of `$/cancelRequest`: the id of the request to cancel. An\nextension that advertises `cancellation` stops useful work and answers\nthe cancelled request with `RequestCancelled`. Cancellation is\ncooperative.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "cancel-params": [
+                          [
+                            "id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#request-id"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "progress-kind": {
+                  "Public": {
+                    "doc": "The stage of a progress report. Wire values: `begin`, `report`, `end`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "progress-begin": [],
+                        "progress-report": [],
+                        "progress-end": []
+                      }
+                    }
+                  }
+                },
+                "progress-params": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.progress`, for an active request.\n\nWire rules: `percentage` is left out when absent. When present, it is an\ninteger from 0 through 100.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "progress-params": [
+                          [
+                            "request-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#request-id"
+                              }
+                            }
+                          ],
+                          [
+                            "kind",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#progress-kind"
+                              }
+                            }
+                          ],
+                          [
+                            "message",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "percentage",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:basics#int"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "source-document": {
+                  "Public": {
+                    "doc": "A source document sent to a frontend. `version` goes up each time the\ndocument changes. It is non-negative; u64 in the SDK.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "source-document": [
+                          [
+                            "uri",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "language-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "text",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-package": {
+                  "Public": {
+                    "doc": "The package a compilation builds.\n\nWire rules: `exposed_modules` (wire `exposedModules`) is left out when\nabsent. An absent list exposes every module; an empty list exposes none.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-package": [
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "exposed-modules",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:list#list",
+                                      "args": [
+                                        {
+                                          "Reference": {
+                                            "fqname": "morphir/SDK:string#string"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-dependency": {
+                  "Public": {
+                    "doc": "A package distribution the compilation can use. `distribution` is a\nserialized Morphir distribution in the IR version that `ir_version` names.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-dependency": [
+                          [
+                            "package-name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "ir-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "distribution",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#json"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-options": {
+                  "Public": {
+                    "doc": "Options that control a compilation.\n\nWire rules:\n- `typesOnly` and `irVersion` are required and always written.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key named `typesOnly`, `irVersion`,\n`sourceRootUri` or `sourceRoot`.\n- A reader refuses the legacy keys `sourceRootUri` and `sourceRoot`: the\nsource root belongs in `SourceSet.root`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-options": [
+                          [
+                            "types-only",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "ir-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "extra",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "source-set": {
+                  "Public": {
+                    "doc": "The documents a compilation submits, with the root that module names are\nderived against.\n\nWire rules: `root` is left out when absent.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "source-set": [
+                          [
+                            "root",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "documents",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#source-document"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-request": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.frontend.compile`.\n\nWire rules:\n- `sources` is required. Unknown members are ignored, including a\ntop-level `documents`, which cannot replace `sources`.\n- An absent `dependencies` is read as empty.\n- `baseline` is left out when absent.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-request": [
+                          [
+                            "language-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "sources",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#source-set"
+                              }
+                            }
+                          ],
+                          [
+                            "package",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#compile-package"
+                              }
+                            }
+                          ],
+                          [
+                            "dependencies",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#compile-dependency"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "options",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#compile-options"
+                              }
+                            }
+                          ],
+                          [
+                            "baseline",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#compile-baseline"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-result": {
+                  "Public": {
+                    "doc": "Result of `morphir.frontend.compile`.\n\nWire rules:\n- `irVersion`, `ir` and `contextDigest` are left out when absent.\n- An absent `diagnostics` or `modules` is read as empty.\n- `moduleResults` is left out when empty, and an absent `moduleResults`\nis read as empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-result": [
+                          [
+                            "success",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "ir-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "ir",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "modules",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "module-results",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#module-result"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "context-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "baseline-module": {
+                  "Public": {
+                    "doc": "A module from a prior compilation, sent back for incremental compilation.\n\nWire rules: an absent `dependsOn` is read as empty. `frontendState` is\nleft out when absent.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "baseline-module": [
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "uri",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "source-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "interface-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "depends-on",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "ir",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#json"
+                              }
+                            }
+                          ],
+                          [
+                            "frontend-state",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-baseline": {
+                  "Public": {
+                    "doc": "The baseline a host sends for incremental compilation.\n\nWire rules: an absent `modules` is read as empty. `contextDigest` is left\nout when absent, and a baseline without it cannot be reused.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-baseline": [
+                          [
+                            "modules",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#baseline-module"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "context-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "module-status": {
+                  "Public": {
+                    "doc": "The outcome for one module in an incremental compilation. Wire values are\nlowercase: `compiled`, `unchanged`, `failed`, `blocked`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compiled": [],
+                        "unchanged": [],
+                        "failed": [],
+                        "blocked": []
+                      }
+                    }
+                  }
+                },
+                "module-result": {
+                  "Public": {
+                    "doc": "The result for one module in an incremental compilation.\n\nWire rules: `sourceDigest`, `interfaceDigest`, `ir` and `frontendState`\nare left out when absent. An absent `dependsOn` or `diagnostics` is read\nas empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "module-result": [
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "uri",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "status",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#module-status"
+                              }
+                            }
+                          ],
+                          [
+                            "source-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "interface-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "depends-on",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "ir",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "frontend-state",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "generate-request": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.backend.generate`. `target` is the exact target id\nthe host selected; a backend does not guess a default.\n\nWire rules: an absent `options` is read as empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "generate-request": [
+                          [
+                            "ir",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#json"
+                              }
+                            }
+                          ],
+                          [
+                            "target",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "options",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "generate-result": {
+                  "Public": {
+                    "doc": "Result of `morphir.backend.generate`.\n\nWire rules: an absent `artifacts` or `diagnostics` is read as empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "generate-result": [
+                          [
+                            "success",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ],
+                          [
+                            "artifacts",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#artifact"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "artifact": {
+                  "Public": {
+                    "doc": "A generated file. `path` is relative to the output directory.\n\nWire rules: when `binary` is true, `content` is base64; otherwise it is\ntext. An absent `binary` is read as false.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "artifact": [
+                          [
+                            "path",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "content",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "binary",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "diagnostic": {
+                  "Public": {
+                    "doc": "A diagnostic message.\n\nWire rules: `code` and `location` are left out when absent. `related` is\nleft out when empty, and an absent `related` is read as empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "diagnostic": [
+                          [
+                            "severity",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#diagnostic-severity"
+                              }
+                            }
+                          ],
+                          [
+                            "code",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "message",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "location",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#source-location"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "related",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#related-information"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "diagnostic-severity": {
+                  "Public": {
+                    "doc": "How serious a diagnostic is. Wire values are lowercase: `error`,\n`warning`, `info`, `hint`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "error-severity": [],
+                        "warning-severity": [],
+                        "info-severity": [],
+                        "hint-severity": []
+                      }
+                    }
+                  }
+                },
+                "source-location": {
+                  "Public": {
+                    "doc": "A range in a source document, identified by URI.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "source-location": [
+                          [
+                            "uri",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "range",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#source-range"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "source-range": {
+                  "Public": {
+                    "doc": "A half-open range: `start` is inclusive and `end` is exclusive.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "source-range": [
+                          [
+                            "start",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#source-position"
+                              }
+                            }
+                          ],
+                          [
+                            "end",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#source-position"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "source-position": {
+                  "Public": {
+                    "doc": "A zero-based position in a source document. `line` counts lines.\n`character` counts UTF-16 code units from the start of the line, as in\nthe Language Server Protocol. Both are non-negative; u32 in the SDK.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "source-position": [
+                          [
+                            "line",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "character",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "related-information": {
+                  "Public": {
+                    "doc": "More information about a diagnostic, at another location.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "related-information": [
+                          [
+                            "location",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#source-location"
+                              }
+                            }
+                          ],
+                          [
+                            "message",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {},
+              "doc": "The Morphir Extension Protocol (MEP) contract.\n\nThis module is the source of truth for the messages a Morphir host and an\nextension exchange. Labels are snake_case here and lowerCamelCase on the\nwire, except where a type's documentation says otherwise. See\nspec/mep/README.md for the versioning rule and the full wire mapping."
+            }
+          }
+        }
+      }
+    }
+  }
+}

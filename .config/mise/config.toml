@@ -169,6 +169,17 @@ run = [
     "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck",
 ]
 
+[tasks."spec:mep"]
+description = "Compile spec/mep/contract and refresh spec/mep/generated/mep.ir.json"
+# The script compiles in an isolated environment, like the mep_contract test,
+# so a developer's config cannot change the committed bytes. It is Bun, not
+# shell, so the task also runs on Windows.
+run = "bun run tools/spec-mep.ts"
+
+[tasks."spec:mep-check"]
+description = "Check the MEP contract: coverage, documented wire rules, and no drift in spec/mep/generated/mep.ir.json"
+run = "cargo test --locked -p morphir --test mep_contract"
+
 [tasks."mck:vocabulary-check"]
 description = "Check vocabulary generation against the pinned TypeScript IR model"
 # Keep the semantic vocabulary authoring check; compatibility validation is native.
@@ -394,6 +405,7 @@ depends = [
     "check:config-schema-sync",
     "mck:check",
     "package:schema-check",
+    "spec:mep-check",
     "tools:test",
 ]
 

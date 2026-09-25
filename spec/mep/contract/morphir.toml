@@ -1,0 +1,6 @@
+[project]
+name = "morphir/mep"
+source_directory = "src"
+
+[frontend]
+language = "gleam"
