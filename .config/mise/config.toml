@@ -308,6 +308,16 @@ run = "bun run tools/publish-beads.ts"
 description = "Verify the beads database and the published export agree"
 run = "bun run tools/check-beads-drift.ts"
 
+# Superpowers specs, plans and ledgers live in beads (see AGENTS.md).
+# Pass the command after --, for example: mise run beads:plan -- render <plan-epic>
+[tasks."beads:plan"]
+description = "Store superpowers specs, plans and ledgers in beads, and render them back"
+run = "bun run tools/bd-plan.ts"
+
+[tasks."beads:plan-test"]
+description = "Round-trip a fixture plan through bd-plan in a throwaway beads database"
+run = "bun test tools/bd-plan.test.ts"
+
 # The generator imports only node: builtins, so bun runs it without an install.
 # Only `tools:typecheck` needs tools/node_modules.
 [tasks."fixtures:naming-corpus"]
