@@ -360,14 +360,6 @@ impl Found {
             _ => None,
         }
     }
-
-    /// Whether `filter` selects anything in this document.
-    fn matches_filter(&self, filter: &str) -> bool {
-        match &self.scenarios {
-            Ok(scenarios) => scenarios.iter().any(|s| matches_filter(&s.id, filter)),
-            Err(_) => directory_matches_filter(&self.directory, filter),
-        }
-    }
 }
 
 /// Every scenario document under `root`, sorted by directory id. A directory holds at most one
@@ -609,15 +601,10 @@ fn run_suite(args: ItestArgs) -> Result<()> {
     if let Some(filter) = filter {
         validate_filter(filter)?;
     }
+    // Validated up front, like `filter`, so an invalid `--tag` (such as one already carrying
+    // `@`) is reported as that, not folded into an "empty selection" below.
+    let expression = tag_expression(&args.tags)?;
     let documents = find_documents(&args.root)?;
-    if let Some(filter) = filter {
-        ensure!(
-            documents
-                .iter()
-                .any(|document| document.matches_filter(filter)),
-            "no scenarios match path {filter:?}"
-        );
-    }
     let mut selected: Vec<&Listed> = documents
         .iter()
         .filter_map(|document| document.scenarios.as_ref().ok())
@@ -629,6 +616,30 @@ fn run_suite(args: ItestArgs) -> Result<()> {
         .iter()
         .filter_map(|document| Some((document, document.refusal(filter)?)))
         .collect();
+    // An empty selection is an error, as it always was, not a silently empty run: `--tag` or
+    // `--filter` (or both) selecting nothing fails with the same text legacy itest gave. A
+    // document `refused` still has something to report (its own `FAIL` line, below or in
+    // `--list`'s own error), so these checks fire only when there is truly nothing to run or
+    // list: no selected scenario and no refused document either.
+    if !args.tags.is_empty() {
+        let matches_tags = documents
+            .iter()
+            .filter_map(|document| document.scenarios.as_ref().ok())
+            .flatten()
+            .any(|scenario| scenario.selected(&args.tags, None));
+        ensure!(
+            matches_tags || !refused.is_empty(),
+            "no scenarios match tags {:?}",
+            args.tags
+        );
+    }
+    if let Some(filter) = filter {
+        ensure!(
+            !selected.is_empty() || !refused.is_empty(),
+            "no scenarios match path {filter:?} and tags {:?}",
+            args.tags
+        );
+    }
     if args.list {
         for scenario in &selected {
             println!("{}", scenario.list_entry());
@@ -646,7 +657,6 @@ fn run_suite(args: ItestArgs) -> Result<()> {
         );
     }
     check_host()?;
-    let expression = tag_expression(&args.tags)?;
     let discovered: usize = documents.iter().map(Found::discovered).sum();
     let mut tally = Tally::default();
     let mut missing = 0;

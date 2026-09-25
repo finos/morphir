@@ -230,17 +230,17 @@ fn itest_lists_filters_and_drives_real_cli_commands() {
         );
         assert!(String::from_utf8_lossy(&output.stdout).contains("cli/errors"));
     }
-    // A tag no scenario has selects nothing; it does not fail the run.
+    // A tag no scenario has is an empty selection, which fails the run.
     let output = run(temp.path(), &["--tag", "missing"]);
     assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stdout).contains("0 passed; 0 failed; 1 not selected"),
+        !output.status.success(),
         "{}",
         String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("no scenarios match tags [\"missing\"]"),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
     );
     assert!(!example.join(".morphir").exists());
 }
@@ -986,13 +986,17 @@ fn itest_refuses_a_notebook_scenario_and_names_the_conversion() {
 }
 
 #[test]
-fn itest_tag_that_selects_nothing_is_not_an_error() {
+fn itest_tag_that_selects_nothing_is_an_error() {
     let temp = tempfile::tempdir().unwrap();
     fs::write(temp.path().join("scenarios.md"), VERSION_MD).unwrap();
     let output = run(temp.path(), &["--tag", "suite:none"]);
     let (stdout, stderr) = text(&output);
-    assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
-    assert_eq!(stdout, "0 passed; 0 failed; 2 not selected\n", "{stderr}");
+    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(stdout.is_empty(), "stdout={stdout}");
+    assert!(
+        stderr.contains("no scenarios match tags [\"suite:none\"]"),
+        "{stderr}"
+    );
 }
 
 #[test]
