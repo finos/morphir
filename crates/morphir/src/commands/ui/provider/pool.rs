@@ -70,6 +70,11 @@ fn spawn_idle_sweep(pool: Weak<Pool<String>>) {
     };
     runtime.spawn(async move {
         let mut interval = tokio::time::interval(SWEEP_INTERVAL);
+        // A late sweep must not replay the ticks it missed back to back: calls
+        // made while it was late are stamped with the old count, so a burst of
+        // catch-up ticks would make them look idle at once. Delay undercounts
+        // instead, which only lets a guest live a little longer.
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         // The first tick completes at once; the sweep starts one interval on.
         interval.tick().await;
         loop {
