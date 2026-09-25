@@ -9,13 +9,12 @@
 //! generate` call.
 //!
 //! The pool owns reuse, replacement on a changed fingerprint, the single
-//! retry after a lost guest, and abandon. This module chooses the path,
-//! words the outcome in the CLI's texts, and stops guests nobody has used for
-//! [`IDLE_LIMIT`]: the portable pool keeps no timers, so the CLI does it.
+//! retry after a lost guest, abandon, and idle eviction. This module chooses
+//! the path, words the outcome in the CLI's texts, and drives the pool's idle
+//! count: the portable pool keeps no clock, so the CLI ticks it.
 
-use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex, PoisonError, Weak};
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -23,7 +22,6 @@ use morphir_extension_sdk::protocol::methods;
 use morphir_extension_sdk::{CompileRequest, CompileResult, GenerateRequest, GenerateResult};
 use morphir_host::{CallError, HostConfig, InvocationMode, Pool, Resolved};
 use serde::{Serialize, de::DeserializeOwned};
-use tokio::time::{Instant, MissedTickBehavior};
 
 use super::playground::ExtensionInvoker;
 use crate::error::CliError;
@@ -38,124 +36,54 @@ use crate::extensions::guest;
 /// [`Resolved::fingerprint`] still names the same build.
 ///
 /// A guest nobody has called for [`IDLE_LIMIT`] is stopped in order, as the
-/// daemon's session actor stopped an idle session. A background task checks
-/// every [`SWEEP_INTERVAL`], so an idle guest stops between the limit and the
-/// limit plus one interval after its last call ended. A guest with a call in
-/// flight is never stopped, however long the call runs. A call that starts
-/// while the sweep is stopping its guest may instead finish on the detached
-/// guest, which is then dropped without an orderly close, or open a fresh one.
+/// daemon's session actor stopped an idle session. A background task ticks
+/// the pool every [`SWEEP_INTERVAL`] and evicts its idle guests, so an idle
+/// guest stops between the limit and the limit plus one interval after its
+/// last call ended. A guest with a call in flight is never stopped, however
+/// long the call runs, and every guest the sweep stops is closed in order.
 pub(super) struct PooledInvoker {
-    shared: Arc<Shared>,
+    pool: Arc<Pool<String>>,
 }
 
 /// How long a guest may go without a call before it is stopped. The daemon's
 /// session actor used the same five minutes.
 pub(super) const IDLE_LIMIT: Duration = Duration::from_secs(300);
 
-/// How often the invoker looks for idle guests.
+/// How often the invoker ticks the pool and looks for idle guests.
 const SWEEP_INTERVAL: Duration = Duration::from_secs(30);
 
-/// What the invoker and its idle sweep share.
-struct Shared {
-    pool: Pool<String>,
-    activity: Mutex<HashMap<String, Activity>>,
-}
-
-/// How a provider's guest has been used.
-struct Activity {
-    /// Calls that have started and not yet ended.
-    in_flight: usize,
-    /// When a call last started or ended.
-    last_used: Instant,
-}
-
-impl Shared {
-    fn activity(&self) -> std::sync::MutexGuard<'_, HashMap<String, Activity>> {
-        self.activity.lock().unwrap_or_else(PoisonError::into_inner)
-    }
-
-    /// Record that a call for `provider` started. The call counts as in
-    /// flight until the returned value is dropped, which also happens when
-    /// the caller drops the call's future, such as on a timeout.
-    fn begin(&self, provider: &str) -> InUse<'_> {
-        let mut activity = self.activity();
-        let entry = activity
-            .entry(provider.to_owned())
-            .or_insert_with(|| Activity {
-                in_flight: 0,
-                last_used: Instant::now(),
-            });
-        entry.in_flight += 1;
-        entry.last_used = Instant::now();
-        InUse {
-            shared: self,
-            provider: provider.to_owned(),
-        }
-    }
-
-    /// Forget and return the providers with no call in flight whose last
-    /// call ended at least `limit` ago.
-    fn take_idle(&self, limit: Duration) -> Vec<String> {
-        let now = Instant::now();
-        let mut activity = self.activity();
-        let idle: Vec<String> = activity
-            .iter()
-            .filter(|(_, use_)| use_.in_flight == 0 && now - use_.last_used >= limit)
-            .map(|(provider, _)| provider.clone())
-            .collect();
-        for provider in &idle {
-            activity.remove(provider);
-        }
-        idle
-    }
-
-    fn is_busy(&self, provider: &str) -> bool {
-        self.activity()
-            .get(provider)
-            .is_some_and(|use_| use_.in_flight > 0)
-    }
-}
-
-/// A call in flight; see [`Shared::begin`].
-struct InUse<'a> {
-    shared: &'a Shared,
-    provider: String,
-}
-
-impl Drop for InUse<'_> {
-    fn drop(&mut self) {
-        let mut activity = self.shared.activity();
-        if let Some(entry) = activity.get_mut(&self.provider) {
-            entry.in_flight = entry.in_flight.saturating_sub(1);
-            entry.last_used = Instant::now();
-        }
-    }
-}
-
-/// Stop the guests of providers idle for `limit`, checking every `interval`,
-/// for as long as the invoker lives.
+/// How many pool ticks without a call make a guest idle.
 ///
-/// The task holds the invoker's state weakly, so it ends once the invoker is
-/// dropped. A call that starts between the check and the stop still
-/// completes: the pool detaches a guest in use instead of closing it.
-fn spawn_idle_sweep(shared: Weak<Shared>, limit: Duration, interval: Duration) {
+/// The pool stamps a use with the tick count at that moment, so a guest used
+/// just before a tick is evicted `n - 1` to `n` intervals later. The extra
+/// tick keeps the idle time at least [`IDLE_LIMIT`].
+const IDLE_TICKS: u64 = IDLE_LIMIT.as_secs() / SWEEP_INTERVAL.as_secs() + 1;
+
+/// Tick `pool` and stop its idle guests every [`SWEEP_INTERVAL`], for as long
+/// as the invoker lives.
+///
+/// The task holds the pool weakly, so it ends once the invoker is dropped.
+fn spawn_idle_sweep(pool: Weak<Pool<String>>) {
     let Ok(runtime) = tokio::runtime::Handle::try_current() else {
         tracing::warn!("no async runtime: idle playground guests will not be stopped");
         return;
     };
     runtime.spawn(async move {
-        let mut ticks = tokio::time::interval_at(Instant::now() + interval, interval);
-        ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        let mut interval = tokio::time::interval(SWEEP_INTERVAL);
+        // A late sweep must not replay the ticks it missed back to back: calls
+        // made while it was late are stamped with the old count, so a burst of
+        // catch-up ticks would make them look idle at once. Delay undercounts
+        // instead, which only lets a guest live a little longer.
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        // The first tick completes at once; the sweep starts one interval on.
+        interval.tick().await;
         loop {
-            ticks.tick().await;
-            let Some(shared) = shared.upgrade() else {
+            interval.tick().await;
+            let Some(pool) = pool.upgrade() else {
                 return;
             };
-            for provider in shared.take_idle(limit) {
-                if !shared.is_busy(&provider) {
-                    shared.pool.abandon(&provider).await;
-                }
-            }
+            pool.tick();
+            pool.evict_idle(IDLE_TICKS).await;
         }
     });
 }
@@ -164,18 +92,9 @@ impl PooledInvoker {
     /// An invoker that introduces the CLI to every guest with `config`, and
     /// stops a guest after [`IDLE_LIMIT`] without a call.
     pub(super) fn new(config: HostConfig) -> Self {
-        Self::with_idle_limit(config, IDLE_LIMIT, SWEEP_INTERVAL)
-    }
-
-    /// As [`PooledInvoker::new`], stopping a guest idle for `limit` and
-    /// checking every `interval`.
-    fn with_idle_limit(config: HostConfig, limit: Duration, interval: Duration) -> Self {
-        let shared = Arc::new(Shared {
-            pool: Pool::new(config),
-            activity: Mutex::new(HashMap::new()),
-        });
-        spawn_idle_sweep(Arc::downgrade(&shared), limit, interval);
-        Self { shared }
+        let pool = Arc::new(Pool::new(config));
+        spawn_idle_sweep(Arc::downgrade(&pool));
+        Self { pool }
     }
 
     /// Answer one call over the provider's pooled guest.
@@ -191,59 +110,38 @@ impl PooledInvoker {
         R: DeserializeOwned,
     {
         let provider = resolved.info().id.clone();
-        // A guest that does not start fails with the CLI's whole message (see
-        // `guest::connect`), while a failed handshake is worded here. The pool
-        // reports both as `CallError::Open`, so the open records the first.
-        let start_failure = Arc::new(Mutex::new(None::<String>));
         let open = {
             let resolved = resolved.clone();
             let workspace = workspace.to_path_buf();
-            let start_failure = Arc::clone(&start_failure);
             move || {
                 let resolved = resolved.clone();
                 let workspace = workspace.clone();
-                let start_failure = Arc::clone(&start_failure);
-                async move {
-                    let connection = resolved.connect(&workspace).await;
-                    if let Err(error) = &connection {
-                        *start_failure.lock().unwrap_or_else(PoisonError::into_inner) =
-                            Some(error.to_string());
-                    }
-                    connection
-                }
+                async move { resolved.connect(&workspace).await }
             }
         };
-        let in_use = self.shared.begin(&provider);
-        let outcome = self
-            .shared
-            .pool
+        self.pool
             .call(&provider, &resolved.fingerprint(), open, method, request)
-            .await;
-        drop(in_use);
-        outcome.map_err(|error| match error {
-            CallError::Rejected(error) => CliError::Extension {
-                message: guest::rejected_text(&provider, method, error),
-            },
-            CallError::Failed(error) => CliError::Extension {
-                message: format!(
-                    "Provider '{provider}' failed during '{method}': {}",
-                    guest::failure_text(error)
-                ),
-            },
-            CallError::Open(error) => {
-                match start_failure
-                    .lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .take()
-                {
-                    Some(message) => CliError::Extension { message },
-                    None => guest::failure(&provider, "initialize", error),
-                }
-            }
-            other => CliError::Extension {
-                message: format!("Provider '{provider}' failed during '{method}': {other}"),
-            },
-        })
+            .await
+            .map_err(|error| match error {
+                CallError::Rejected(error) => CliError::Extension {
+                    message: guest::rejected_text(&provider, method, error),
+                },
+                CallError::Failed(error) | CallError::Invalid(error) => CliError::Extension {
+                    message: format!(
+                        "Provider '{provider}' failed during '{method}': {}",
+                        guest::failure_text(error)
+                    ),
+                },
+                // A guest that does not start already carries the CLI's whole
+                // message (see `guest::connect`).
+                CallError::Connect(error) => CliError::Extension {
+                    message: error.to_string(),
+                },
+                CallError::Handshake(error) => guest::failure(&provider, "initialize", error),
+                other => CliError::Extension {
+                    message: format!("Provider '{provider}' failed during '{method}': {other}"),
+                },
+            })
     }
 }
 
@@ -286,7 +184,7 @@ impl ExtensionInvoker for PooledInvoker {
     /// A timed-out call may have left its guest wedged on the hung exchange.
     /// The pool forgets the guest, so the next request opens a fresh one.
     async fn abandon(&self, provider: &str) {
-        self.shared.pool.abandon(&provider.to_owned()).await;
+        self.pool.abandon(&provider.to_owned()).await;
     }
 }
 
@@ -314,6 +212,7 @@ mod tests {
     use morphir_host_native::NativeSource;
     use serde_json::json;
     use std::collections::{HashMap, VecDeque};
+    use std::sync::Mutex;
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::time::Duration;
 
@@ -327,6 +226,8 @@ mod tests {
         Hang,
         /// The call answers after this long.
         Delay(Duration),
+        /// The guest answers with a result that does not decode.
+        Garble,
         /// The session breaks under the call, and from then on no guest
         /// starts: every later start fails with this text.
         LoseForGood(&'static str),
@@ -338,7 +239,7 @@ mod tests {
         opens: AtomicUsize,
         closes: AtomicUsize,
         faults: Mutex<VecDeque<Fault>>,
-        start_failure: Mutex<Option<String>>,
+        refuse_start: Mutex<Option<String>>,
         refuse_handshake: AtomicBool,
     }
 
@@ -399,7 +300,7 @@ mod tests {
 
         async fn connect(&self, workspace: &Path) -> Result<Box<dyn GuestConnection>, HostError> {
             self.script.opens.fetch_add(1, Ordering::SeqCst);
-            if let Some(message) = self.script.start_failure.lock().unwrap().clone() {
+            if let Some(message) = self.script.refuse_start.lock().unwrap().clone() {
                 return Err(HostError::Invalid(message));
             }
             Ok(Box::new(ScriptedConnection {
@@ -445,8 +346,9 @@ mod tests {
                     tokio::time::sleep(delay).await;
                     self.inner.call(method, params).await
                 }
+                Some(Fault::Garble) => Ok(json!("not a compile result")),
                 Some(Fault::LoseForGood(message)) => {
-                    *self.script.start_failure.lock().unwrap() = Some(message.into());
+                    *self.script.refuse_start.lock().unwrap() = Some(message.into());
                     Err(CallError::Failed(HostError::Channel {
                         message: "guest went away".into(),
                         state: ChannelState::Stopped,
@@ -705,6 +607,43 @@ mod tests {
         assert_eq!(script.opens(), 1);
     }
 
+    // A result that does not decode is the guest's answer, not a lost guest:
+    // the same build would answer the same way, so the call is not retried.
+    // The guest is stopped in order and the next call opens a fresh one.
+    #[tokio::test]
+    async fn a_result_that_does_not_decode_is_not_retried() {
+        let temp = tempfile::tempdir().unwrap();
+        let script = Script::with_faults([Fault::Garble]);
+        let registry = registry(&script, None);
+        let resolved = frontend(&registry, InvocationPolicy::ProtocolOnly);
+        let invoker = invoker();
+
+        let error = invoker
+            .compile(
+                temp.path(),
+                &resolved,
+                compile_request(&temp.path().join("compile")),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(
+            message(error),
+            "Provider 'morphir-gleam' failed during 'morphir.frontend.compile': JSON error: invalid type: string \"not a compile result\", expected struct CompileResult"
+        );
+        assert_eq!(script.opens(), 1);
+        assert_eq!(script.closes(), 1);
+
+        invoker
+            .compile(
+                temp.path(),
+                &resolved,
+                compile_request(&temp.path().join("compile")),
+            )
+            .await
+            .unwrap();
+        assert_eq!(script.opens(), 2);
+    }
+
     #[tokio::test]
     async fn abandoning_a_provider_forgets_its_guest() {
         let temp = tempfile::tempdir().unwrap();
@@ -803,6 +742,41 @@ mod tests {
         assert_eq!(script.opens(), 2);
     }
 
+    // The pool counts idle time in whole sweep intervals. A call made just
+    // before a sweep is stamped with the count before that sweep, so without
+    // the extra tick in `IDLE_TICKS` its guest would stop one interval short
+    // of the idle limit. The guest lives at least the idle limit.
+    #[tokio::test(start_paused = true)]
+    async fn a_guest_used_just_before_a_sweep_lives_at_least_the_idle_limit() {
+        let temp = tempfile::tempdir().unwrap();
+        let script = Arc::new(Script::default());
+        let registry = registry(&script, None);
+        let resolved = frontend(&registry, InvocationPolicy::ProtocolOnly);
+        let start = tokio::time::Instant::now();
+        let invoker = invoker();
+
+        let called_at = start + SWEEP_INTERVAL - Duration::from_secs(1);
+        tokio::time::sleep_until(called_at).await;
+        invoker
+            .compile(
+                temp.path(),
+                &resolved,
+                compile_request(&temp.path().join("compile")),
+            )
+            .await
+            .unwrap();
+        assert!(
+            tokio::time::Instant::now() < start + SWEEP_INTERVAL,
+            "the call ends before the first sweep"
+        );
+
+        tokio::time::sleep_until(called_at + IDLE_LIMIT - Duration::from_secs(10)).await;
+        assert_eq!(script.closes(), 0, "the guest is kept for the idle limit");
+
+        tokio::time::sleep_until(called_at + IDLE_LIMIT + 2 * SWEEP_INTERVAL).await;
+        assert_eq!(script.closes(), 1, "the idle guest is shut down in order");
+    }
+
     // The idle limit runs from the last call, not from when the guest
     // started: a guest called within the limit each time is kept.
     #[tokio::test(start_paused = true)]
@@ -891,7 +865,7 @@ mod tests {
     async fn a_guest_that_does_not_start_reports_its_own_text() {
         let temp = tempfile::tempdir().unwrap();
         let script = Arc::new(Script::default());
-        *script.start_failure.lock().unwrap() =
+        *script.refuse_start.lock().unwrap() =
             Some("Failed to verify installed provider 'morphir-gleam': digest mismatch".into());
         let registry = registry(&script, None);
 

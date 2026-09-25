@@ -9,11 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The `morphir-rust` pin moves to `8c10fe6` (finos/morphir-rust#271). `compile`, `generate`, `extension list` and the playground catalog resolve providers through the `morphir-host` registry, over `NativeSource` built-ins and `InstalledSource` installed extensions. The UI workspace provider starts its installed guest through `InstalledSource` (#963, #959).
-- The workbench reuses guests through a `morphir-host` `Pool` instead of the daemon session actor. As before, a guest is normally stopped in order after five minutes without a call. A guest is now replaced when an installed extension is reinstalled at the same version, and a result that fails to decode is retried once on a fresh guest (#963, #959).
+- The workbench reuses guests through a `morphir-host` `Pool` instead of the daemon session actor. As before, a guest is stopped in order after five minutes without a call. A guest is now replaced when an installed extension is reinstalled at the same version. A result that does not decode or fails the host's checks is reported at once and its guest is stopped in order, without a retry on a fresh guest (#963, #959).
 - Transport failures that begin as I/O or JSON errors read `IO error: ...` or `JSON error: ...` again, not the `Extension error: IO error: ...` wording noted under 0.4.0-beta.8 (#963).
 - Playground error texts: a rejected call now reads `Provider '<provider>' rejected '<method>': ...`, the same text as `morphir compile`, instead of `failed during '<method>'`. A lost guest's message no longer includes `Extension session is no longer available: ` and can end with `; transport state is indeterminate` (#963).
 - The published `morphir-scala-elm` pin moves to `v0.5.0-M10`. That release answers `morphir.extension.describe` and ships a version-2 bundle descriptor, `morphir-scala-elm-0.5.0-M10.bundle.release.json` (finos/morphir-scala#1081). `extension install` now probes it by `describe`, where earlier releases fell back to a session, and the host compatibility suite expects that. A version such as `0.5.0-M10` is a prerelease, so install it with `--version`; channel `stable` does not select it (#921).
 - The `morphir-rust` pin moves to `58c2bc4` (finos/morphir-rust#267 and #273). It adds `morphir-bdd`, one cucumber-rs runner for Morphir's Gherkin suites, beside `morphir-gherkin`, the Gherkin document model the pin already holds (finos/morphir-rust#270, #946).
+- The `morphir-rust` pin moves to `8858332` (finos/morphir-rust#275). `morphir-daemon` is now a client of `morphir-host`, and the `morphir-host` `Pool` stops idle guests and reports each failure kind on its own (#959).
 
 ## [0.4.0-beta.8] - 2026-09-24
 
