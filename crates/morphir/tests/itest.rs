@@ -910,6 +910,46 @@ mod itest_runner {
         );
     }
 
+    #[tokio::test]
+    async fn itest_runner_records_the_command_number_and_timeout() {
+        let temp = tempfile::tempdir().unwrap();
+        let context = context(temp.path());
+        let dirs = context.get::<ItestDirs>().unwrap().clone();
+        let program = CliProgram {
+            name: "morphir".into(),
+            path: env!("CARGO_BIN_EXE_morphir").into(),
+        };
+        let args = vec!["--version".to_owned()];
+
+        ItestRunner
+            .run(CliRequest {
+                program: &program,
+                args: &args,
+                timeout: None,
+                context: &context,
+            })
+            .await
+            .unwrap();
+        assert_eq!(dirs.command.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(*dirs.last_timeout.lock().unwrap(), None);
+
+        // A timed `When I run` records its own timeout for the policy step to reuse.
+        ItestRunner
+            .run(CliRequest {
+                program: &program,
+                args: &args,
+                timeout: Some(Duration::from_secs(42)),
+                context: &context,
+            })
+            .await
+            .unwrap();
+        assert_eq!(dirs.command.load(std::sync::atomic::Ordering::SeqCst), 2);
+        assert_eq!(
+            *dirs.last_timeout.lock().unwrap(),
+            Some(Duration::from_secs(42))
+        );
+    }
+
     #[cfg(unix)]
     #[tokio::test]
     async fn itest_runner_times_out() {

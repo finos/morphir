@@ -18,7 +18,8 @@ pub use workspace::{
 
 use std::{
     path::PathBuf,
-    sync::{Arc, atomic::AtomicUsize},
+    sync::{Arc, Mutex, atomic::AtomicUsize},
+    time::Duration,
 };
 use tempfile::TempDir;
 
@@ -26,12 +27,28 @@ use tempfile::TempDir;
 /// directories (`root/project`, `root/home`, `root/config`, `root/user`, `root/local`).
 #[derive(Debug, Clone)]
 pub struct ItestDirs {
-    /// The scenario's temporary root. Each command's logs go to `root/step-N/`.
+    /// The scenario's temporary root. Each isolated subprocess's logs go to `root/step-N/`.
     pub root: PathBuf,
     /// The materialized project, `root/project`: every command's working directory.
     pub project: PathBuf,
-    /// How many commands the scenario has run so far. The runner increments it before each one.
+    /// How many isolated subprocesses `steps::runner::run_isolated` has spawned for this scenario
+    /// so far: one per `When I run`, plus one more for each of the policy step's own internal
+    /// `morphir eval` calls. Used only to number `root/step-N/` log directories.
+    ///
+    /// This is *not* which `When I run` a capture or `stdout is JSON` step belongs to: an internal
+    /// `morphir eval` call advances it too, so a policy check on a command that has more than one
+    /// assertion would otherwise see its own captures reset partway through. [`ItestDirs::command`]
+    /// is the counter the step library keys that on.
     pub step: Arc<AtomicUsize>,
+    /// How many `When I run` commands the scenario has run so far. Unlike [`ItestDirs::step`],
+    /// only `ItestRunner::run` advances this (once per `When I run`), so the step library keys a
+    /// command's captures and `stdout is JSON` flag on this instead.
+    pub command: Arc<AtomicUsize>,
+    /// The timeout the scenario's most recent `When I run` named, or `None` if it named none (or
+    /// no command has run yet). The policy step's own `morphir eval` call reuses it, the same way
+    /// `commands::itest::runner::run_in_temporary` reuses the triggering command's own
+    /// `timeout_seconds` today.
+    pub last_timeout: Arc<Mutex<Option<Duration>>>,
     /// Deletes `root` when the last copy of these directories drops; `None` when the root is
     /// kept or was not created by this crate.
     _guard: Option<Arc<TempDir>>,
@@ -49,6 +66,8 @@ impl ItestDirs {
             project: root.join("project"),
             root,
             step: Arc::new(AtomicUsize::new(0)),
+            command: Arc::new(AtomicUsize::new(0)),
+            last_timeout: Arc::new(Mutex::new(None)),
             _guard: temp.map(Arc::new),
         }
     }

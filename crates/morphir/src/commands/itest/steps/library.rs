@@ -3,7 +3,7 @@
 //!
 //! Every step here reads or extends the scenario's most recent command. `When I run {string}`
 //! itself lives in `morphir_bdd::steps::cli`, so this module cannot hook into it directly; instead
-//! each step compares the scenario's current command number ([`ItestDirs::step`]) against the
+//! each step compares the scenario's current command number ([`ItestDirs::command`]) against the
 //! command number a [`LastCommand`] was last recorded under, and starts a fresh one whenever they
 //! differ. That keeps a capture or `stdout is JSON` from an earlier command out of a later one's
 //! observation, even though nothing runs between commands to reset them explicitly.
@@ -11,16 +11,21 @@
 //! The policy step (`Then the result should satisfy the policy rules {string}:`) builds the same
 //! observation JSON `runner::observation` has always built, writes it as an evaluation request the
 //! same way `commands::itest::runner::prepare_assertion` does today, and runs `morphir eval
-//! --request <path> --json` through [`ItestRunner`]. The golden steps apply a `Selection` and a
-//! `LineEndings` normalization to a file relative to [`ItestDirs::project`], then compare it to an
-//! inline doc string or a golden file relative to [`ExampleWorkspace::example_dir`].
+//! --request <path> --json` through `steps::runner::run_isolated`, in its own `policy-N` harness
+//! directory and with the timeout [`ItestDirs::last_timeout`] recorded for the scenario's most
+//! recent `When I run` — the same working directory and timeout
+//! `commands::itest::runner::run_in_temporary` uses for an assertion today. The golden steps apply
+//! a `Selection` and a `LineEndings` normalization to a file relative to [`ItestDirs::project`],
+//! then compare it to an inline doc string or a golden file relative to
+//! [`ExampleWorkspace::example_dir`].
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 
 use cucumber::gherkin::Step;
 use cucumber::{then, when};
-use morphir_bdd::steps::cli::{CliProgram, CliRequest, CliRunner};
+use morphir_bdd::steps::cli::CliProgram;
 use morphir_bdd::steps::output::LastOutput;
 use morphir_bdd::world::MorphirWorld;
 use morphir_evaluator::{EvaluationRequest, ProviderId};
@@ -31,7 +36,8 @@ use crate::commands::itest::model;
 use crate::commands::itest::reader;
 use crate::commands::itest::runner::{ProcessOutput, check_report, observation};
 
-use super::{DEFAULT_TIMEOUT, ExampleSpec, ExampleWorkspace, ItestDirs, ItestRunner};
+use super::runner::run_isolated;
+use super::{DEFAULT_TIMEOUT, ExampleSpec, ExampleWorkspace, ItestDirs};
 
 /// The message every step here panics with when it needs [`LastOutput`] but no command has run
 /// yet, in the same style as `morphir_bdd::steps::cli`'s own message.
@@ -39,15 +45,15 @@ const NO_COMMAND: &str = "no command has run: add `When I run \"…\"` first";
 
 /// Which captures and whether `stdout is JSON` belong to the scenario's most recent command.
 ///
-/// Keyed by `seq`, the command number [`ItestDirs::step`] held when this was last written: a step
-/// that reads or extends it first compares `seq` against the scenario's *current* command number,
-/// and starts over empty whenever they differ. That is how a capture or `stdout is JSON` step,
-/// which cannot hook into `When I run {string}` directly, still ends up describing only the last
-/// command's output.
+/// Keyed by `seq`, the command number [`ItestDirs::command`] held when this was last written: a
+/// step that reads or extends it first compares `seq` against the scenario's *current* command
+/// number, and starts over empty whenever they differ. That is how a capture or `stdout is JSON`
+/// step, which cannot hook into `When I run {string}` directly, still ends up describing only the
+/// last command's output.
 #[derive(Debug, Clone, Default)]
 struct LastCommand {
-    /// The command number ([`ItestDirs::step`]) this capture set and `stdout is JSON` flag belong
-    /// to.
+    /// The command number ([`ItestDirs::command`]) this capture set and `stdout is JSON` flag
+    /// belong to.
     seq: u64,
     /// The captures recorded for the command numbered `seq`, in the order they were requested.
     captures: Vec<model::Capture>,
@@ -64,12 +70,13 @@ fn dirs(world: &MorphirWorld) -> &ItestDirs {
     )
 }
 
-/// The scenario's current command number: how many commands [`ItestRunner`] has run so far. Every
-/// step in this module keys its own state off this number instead of the identity of a specific
-/// [`LastOutput`], since a fresh command overwrites [`LastOutput`] in place rather than replacing
-/// it with a distinguishable value.
+/// The scenario's current command number: how many `When I run` commands have run so far
+/// ([`ItestDirs::command`], not [`ItestDirs::step`] — the policy step's own internal `morphir eval`
+/// call must not look like a new command). Every step in this module keys its own state off this
+/// number instead of the identity of a specific [`LastOutput`], since a fresh command overwrites
+/// [`LastOutput`] in place rather than replacing it with a distinguishable value.
 fn current_seq(world: &MorphirWorld) -> u64 {
-    dirs(world).step.load(Ordering::SeqCst) as u64
+    dirs(world).command.load(Ordering::SeqCst) as u64
 }
 
 /// The scenario's [`LastCommand`], reset to empty first if it was last written for a different
@@ -138,9 +145,29 @@ fn stdout_is_json(world: &mut MorphirWorld) {
     last_command(world, seq).stdout_json = true;
 }
 
-/// Runs `morphir eval --request <path> --json` through [`ItestRunner`], the same program and the
-/// same per-scenario isolation as `When I run {string}` uses for every other command.
-async fn run_eval(world: &MorphirWorld, request_path: &Path) -> LastOutput {
+/// The timeout the policy step's own `morphir eval` call uses: the scenario's most recently
+/// recorded [`ItestDirs::last_timeout`] (the timeout its triggering `When I run` named), or
+/// [`DEFAULT_TIMEOUT`] if it named none — the same timeout
+/// `commands::itest::runner::run_in_temporary` uses for an assertion today.
+fn eval_timeout(world: &MorphirWorld) -> Duration {
+    dirs(world)
+        .last_timeout
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .unwrap_or(DEFAULT_TIMEOUT)
+}
+
+/// Runs `morphir eval --request <path> --json` through `steps::runner::run_isolated`, the same
+/// per-scenario isolation `When I run {string}` uses for every other command, but in `cwd` (the
+/// policy check's own harness directory, not the project) and with `timeout` (see
+/// [`eval_timeout`]) — the same working directory and timeout
+/// `commands::itest::runner::run_in_temporary` uses for an assertion today.
+async fn run_eval(
+    world: &MorphirWorld,
+    cwd: &Path,
+    request_path: &Path,
+    timeout: Duration,
+) -> LastOutput {
     let program = world.context.get::<CliProgram>().cloned().expect(
         "no CLI program: the suite must call `Suite::cli(path)` before the policy step can run \
          `morphir eval`",
@@ -151,13 +178,7 @@ async fn run_eval(world: &MorphirWorld, request_path: &Path) -> LastOutput {
         request_path.display().to_string(),
         "--json".to_owned(),
     ];
-    ItestRunner
-        .run(CliRequest {
-            program: &program,
-            args: &args,
-            timeout: Some(DEFAULT_TIMEOUT),
-            context: &world.context,
-        })
+    run_isolated(&program, &args, dirs(world), cwd, timeout)
         .await
         .unwrap_or_else(|error| panic!("{error}"))
 }
@@ -181,6 +202,7 @@ async fn satisfies_the_policy_rules(world: &mut MorphirWorld, entrypoints: Strin
     let project = dirs(world).project.clone();
     let root = dirs(world).root.clone();
     let provider = provider(world);
+    let timeout = eval_timeout(world);
 
     let step_model = model::Step {
         id: String::new(),
@@ -209,12 +231,15 @@ async fn satisfies_the_policy_rules(world: &mut MorphirWorld, entrypoints: Strin
         },
         "entrypoints": entrypoints,
         "input": input,
-        "timeout_ms": u64::try_from(DEFAULT_TIMEOUT.as_millis()).unwrap_or(u64::MAX),
+        "timeout_ms": u64::try_from(timeout.as_millis()).unwrap_or(u64::MAX),
     });
     let request: EvaluationRequest = serde_json::from_value(request_value)
         .unwrap_or_else(|error| panic!("invalid evaluation request: {error:#}"));
 
-    let harness = root.join(format!("policy-{seq}"));
+    // Named from a fresh `ItestDirs::step` id, not `seq` (the command number): a command can
+    // carry more than one policy check, and `seq` alone would collide between them.
+    let harness_id = dirs(world).step.fetch_add(1, Ordering::SeqCst) + 1;
+    let harness = root.join(format!("policy-{harness_id}"));
     std::fs::create_dir_all(&harness).unwrap_or_else(|error| {
         panic!(
             "create policy harness directory {}: {error}",
@@ -233,7 +258,7 @@ async fn satisfies_the_policy_rules(world: &mut MorphirWorld, entrypoints: Strin
         )
     });
 
-    let evaluated = run_eval(world, &request_path).await;
+    let evaluated = run_eval(world, &harness, &request_path, timeout).await;
     assert_eq!(
         evaluated.status,
         Some(0),
@@ -543,5 +568,36 @@ mod tests {
     #[should_panic(expected = "unknown line endings")]
     fn parse_line_endings_rejects_anything_else() {
         parse_line_endings("lf");
+    }
+
+    #[test]
+    fn eval_timeout_uses_the_recorded_timeout_or_falls_back_to_default() {
+        let mut world = MorphirWorld::new();
+        let dirs = ItestDirs::new(std::env::temp_dir());
+        world.context.insert(dirs.clone());
+
+        assert_eq!(eval_timeout(&world), DEFAULT_TIMEOUT);
+
+        *dirs.last_timeout.lock().unwrap() = Some(Duration::from_secs(7));
+        // `ItestDirs` shares `last_timeout` through an `Arc`, so mutating this clone is visible
+        // through the one already inserted into `world`, the same way `ItestRunner::run` records a
+        // real `When I run`'s timeout for a later policy step to read back.
+        assert_eq!(eval_timeout(&world), Duration::from_secs(7));
+    }
+
+    #[test]
+    fn current_seq_reads_command_not_the_shared_step_counter() {
+        let mut world = MorphirWorld::new();
+        let dirs = ItestDirs::new(std::env::temp_dir());
+        world.context.insert(dirs.clone());
+
+        // `step` also advances for the policy step's own internal `morphir eval` calls (see
+        // `run_isolated`); `current_seq` must not follow it, or a second policy check on one
+        // command would see its captures reset partway through.
+        dirs.step.fetch_add(3, Ordering::SeqCst);
+        assert_eq!(current_seq(&world), 0);
+
+        dirs.command.fetch_add(1, Ordering::SeqCst);
+        assert_eq!(current_seq(&world), 1);
     }
 }
