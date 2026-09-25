@@ -76,6 +76,19 @@ Each exception below is also written in the doc comment of its type. The test `e
 
 The Rust protocol types generated from this model (finos/morphir-rust#241) will carry this mapping. Until then, this table and the doc comments are the record.
 
+### Integer widths
+
+Gleam has one integer type, `Int`, with no unsigned or fixed-width forms, so the model cannot state these domains in its types. Each field's doc comment states its domain, and bindings generated from the IR (finos/morphir-rust#241, finos/morphir-rust#243) should use these widths:
+
+| Field | Domain | Width in the Rust SDK |
+| --- | --- | --- |
+| `SourceDocument.version` | non-negative | `u64` |
+| `SourcePosition.line` | non-negative | `u32` |
+| `SourcePosition.character` | non-negative | `u32` |
+| `RpcError.code` | signed 32-bit | `i32` |
+| `RequestId.NumericRequestId` | non-negative | `u64` (the JSON-RPC request `id`) |
+| `ProgressParams.percentage` | 0 through 100 | none yet; from the protocol draft |
+
 ## Regenerate
 
 After you change `contract/src/mep.gleam`:

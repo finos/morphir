@@ -879,7 +879,7 @@
                 },
                 "rpc-error": {
                   "Public": {
-                    "doc": "The JSON-RPC 2.0 error object. `code` is an `ErrorCode` value or a\nJSON-RPC 2.0 standard code. `data` is left out of the message when absent.",
+                    "doc": "The JSON-RPC 2.0 error object. `code` is an `ErrorCode` value or a\nJSON-RPC 2.0 standard code; it is a signed 32-bit integer, i32 in the SDK.\n`data` is left out of the message when absent.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -923,7 +923,7 @@
                 },
                 "request-id": {
                   "Public": {
-                    "doc": "A JSON-RPC 2.0 request id. On the wire it is the number or the string\nitself, not a tagged constructor.",
+                    "doc": "A JSON-RPC 2.0 request id. On the wire it is the number or the string\nitself, not a tagged constructor. A numeric id is non-negative; u64 in the\nSDK, which sends numeric ids only.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -1041,7 +1041,7 @@
                 },
                 "source-document": {
                   "Public": {
-                    "doc": "A source document sent to a frontend. `version` is a non-negative integer\nthat goes up each time the document changes.",
+                    "doc": "A source document sent to a frontend. `version` goes up each time the\ndocument changes. It is non-negative; u64 in the SDK.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -1996,7 +1996,7 @@
                 },
                 "source-position": {
                   "Public": {
-                    "doc": "A zero-based position in a source document. `line` counts lines.\n`character` counts UTF-16 code units from the start of the line, as in\nthe Language Server Protocol. Both are non-negative.",
+                    "doc": "A zero-based position in a source document. `line` counts lines.\n`character` counts UTF-16 code units from the start of the line, as in\nthe Language Server Protocol. Both are non-negative; u32 in the SDK.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",

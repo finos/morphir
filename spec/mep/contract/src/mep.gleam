@@ -285,7 +285,8 @@ pub type ErrorCode {
 }
 
 /// The JSON-RPC 2.0 error object. `code` is an `ErrorCode` value or a
-/// JSON-RPC 2.0 standard code. `data` is left out of the message when absent.
+/// JSON-RPC 2.0 standard code; it is a signed 32-bit integer, i32 in the SDK.
+/// `data` is left out of the message when absent.
 pub type RpcError {
   RpcError(code: Int, message: String, data: Option(Json))
 }
@@ -293,7 +294,8 @@ pub type RpcError {
 // -- Cancellation and progress ---------------------------------------------
 
 /// A JSON-RPC 2.0 request id. On the wire it is the number or the string
-/// itself, not a tagged constructor.
+/// itself, not a tagged constructor. A numeric id is non-negative; u64 in the
+/// SDK, which sends numeric ids only.
 pub type RequestId {
   NumericRequestId(value: Int)
   StringRequestId(value: String)
@@ -329,8 +331,8 @@ pub type ProgressParams {
 
 // -- Compile ----------------------------------------------------------------
 
-/// A source document sent to a frontend. `version` is a non-negative integer
-/// that goes up each time the document changes.
+/// A source document sent to a frontend. `version` goes up each time the
+/// document changes. It is non-negative; u64 in the SDK.
 pub type SourceDocument {
   SourceDocument(uri: String, language_id: String, version: Int, text: String)
 }
@@ -534,7 +536,7 @@ pub type SourceRange {
 
 /// A zero-based position in a source document. `line` counts lines.
 /// `character` counts UTF-16 code units from the start of the line, as in
-/// the Language Server Protocol. Both are non-negative.
+/// the Language Server Protocol. Both are non-negative; u32 in the SDK.
 pub type SourcePosition {
   SourcePosition(line: Int, character: Int)
 }

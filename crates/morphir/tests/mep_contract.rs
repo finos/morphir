@@ -525,7 +525,9 @@ fn doc_comment_before(source: &str, declaration: &str) -> String {
 
 /// Every type whose wire form differs from the default rule (snake_case
 /// labels become lowerCamelCase members, every member required and always
-/// written) says so in its doc comment. Each phrase names the rule.
+/// written) says so in its doc comment, and so does every type with an
+/// integer field whose domain is narrower than Gleam's `Int`, naming the SDK
+/// width. Each phrase names the rule.
 #[test]
 fn every_wire_exception_is_documented() {
     let source = fs::read_to_string(contract_dir().join("src/mep.gleam")).unwrap();
@@ -545,10 +547,19 @@ fn every_wire_exception_is_documented() {
         ),
         ("ErrorCode", &["integer code"]),
         // Cancellation and progress
-        ("RequestId", &["the number or the string itself"]),
+        (
+            "RequestId",
+            &[
+                "the number or the string itself",
+                "non-negative; u64 in the SDK",
+            ],
+        ),
         ("ProgressKind", &["Wire values"]),
         ("ProgressParams", &["left out when absent", "0 through 100"]),
-        ("RpcError", &["left out of the message when absent"]),
+        (
+            "RpcError",
+            &["left out of the message when absent", "i32 in the SDK"],
+        ),
         // Capabilities and claims
         ("FrontendCapability", &["only when it is true"]),
         ("WorkspaceCapability", &["full SemVer"]),
@@ -570,6 +581,7 @@ fn every_wire_exception_is_documented() {
             ],
         ),
         // Compile
+        ("SourceDocument", &["non-negative; u64 in the SDK"]),
         ("CompilePackage", &["absent", "empty list exposes none"]),
         (
             "CompileOptions",
@@ -599,7 +611,10 @@ fn every_wire_exception_is_documented() {
             &["left out when absent", "left out when empty"],
         ),
         ("DiagnosticSeverity", &["Wire values"]),
-        ("SourcePosition", &["zero-based", "UTF-16"]),
+        (
+            "SourcePosition",
+            &["zero-based", "UTF-16", "non-negative; u32 in the SDK"],
+        ),
     ];
     for (type_name, phrases) in rules {
         let doc = doc_comment_before(&source, &format!("pub type {type_name} "));
