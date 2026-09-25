@@ -901,7 +901,7 @@ fn itest_runs_scenarios_md_sections_and_counts_the_ones_it_skips() {
     let (stdout, stderr) = text(&output);
     assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
     assert_eq!(
-        stdout, "PASS .#second: Second (2 steps)\n1 passed; 0 failed; 1 not selected\n",
+        stdout, "PASS .#second: Second (1 steps)\n1 passed; 0 failed; 1 not selected\n",
         "{stderr}"
     );
 }
@@ -970,7 +970,7 @@ fn itest_fails_a_scenarios_md_the_reader_refuses_and_runs_the_rest() {
     assert!(stderr.contains("FAIL cli/refused\n"), "{stderr}");
     assert!(stderr.contains("which is not the last command"), "{stderr}");
     assert!(
-        stdout.contains("PASS cli/good#first: First (2 steps)\n"),
+        stdout.contains("PASS cli/good#first: First (1 steps)\n"),
         "{stdout}"
     );
     assert!(
@@ -1036,7 +1036,7 @@ fn itest_filter_runs_one_example_section() {
     assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
     assert_eq!(
         stdout,
-        "PASS cli/migrate#classic-to-v4: Convert Classic JSON to V4 YAML (3 steps)\n\
+        "PASS cli/migrate#classic-to-v4: Convert Classic JSON to V4 YAML (1 steps)\n\
          1 passed; 0 failed; 25 not selected\n",
         "{stderr}"
     );

@@ -179,11 +179,8 @@ fn feature_text(
     write_itest_fence(&mut out, metadata);
     out.push('\n');
     for ((section, steps), files) in scenarios.iter().zip(files) {
-        let step_count: usize = steps.len()
-            + steps
-                .iter()
-                .map(|step| step.assertions.len())
-                .sum::<usize>();
+        // The `(n steps)` of itest's PASS line counts the section's commands, as it always has.
+        let step_count = steps.len();
         writeln!(out, "  @section:{} @steps:{step_count}", section.id)
             .expect("write to String cannot fail");
         writeln!(out, "  Scenario: {}", section.title).expect("write to String cannot fail");
@@ -530,7 +527,7 @@ mod tests {
         );
         let tags: Vec<_> = scenario.tags.iter().map(|tag| tag.name.as_str()).collect();
         assert!(tags.contains(&"section:classic-to-v4"), "{tags:?}");
-        assert!(tags.contains(&"steps:3"), "{tags:?}");
+        assert!(tags.contains(&"steps:1"), "{tags:?}");
 
         let policy = &scenario.steps[2];
         let Some(StepArgument::DocString(doc_string)) = &policy.argument else {
@@ -589,11 +586,8 @@ mod tests {
                         entry.path().display()
                     )
                 });
-                let expected_steps: usize = steps.len()
-                    + steps
-                        .iter()
-                        .map(|step| step.assertions.len())
-                        .sum::<usize>();
+                // Legacy `(n steps)` counts `model::Step`s: the section's commands only.
+                let expected_steps = steps.len();
                 let tagged_steps: usize = scenario
                     .tags
                     .iter()
