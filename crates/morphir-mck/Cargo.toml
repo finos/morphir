@@ -22,6 +22,8 @@ url.workspace = true
 chrono = "0.4"
 semver = { workspace = true, features = ["serde"] }
 base64.workspace = true
+# The kit's `.feature` case files are read through the Morphir Gherkin model.
+morphir-gherkin = { path = "../../ecosystem/morphir-rust/crates/morphir-gherkin" }
 
 # Adapter sessions terminate the adapter's whole process tree: a process group
 # on Unix, a Job Object on Windows.

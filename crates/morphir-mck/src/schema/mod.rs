@@ -7,6 +7,12 @@ use crate::kit::Kit;
 use catalog::{Catalog, EXAMPLES, Schema, read_json};
 use std::fmt;
 
+/// Whether `node` names a node kind the schema catalog knows. The `.feature`
+/// lowering refuses a `@node:` tag whose kind is not one of these.
+pub fn is_node_kind(node: &str) -> bool {
+    catalog::node_target(node).is_some()
+}
+
 #[derive(Debug)]
 pub struct SchemaError(pub String);
 impl fmt::Display for SchemaError {

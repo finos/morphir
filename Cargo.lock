@@ -5015,6 +5015,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "morphir-gherkin"
+version = "0.4.0-beta.9"
+dependencies = [
+ "gherkin",
+ "pulldown-cmark",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "morphir-gleam-binding"
 version = "0.3.0"
 dependencies = [
@@ -5120,6 +5129,7 @@ dependencies = [
  "futures-executor",
  "futures-util",
  "jsonschema 0.26.2",
+ "morphir-gherkin",
  "regex",
  "ring",
  "rustix 1.1.5",
