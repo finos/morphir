@@ -36,6 +36,18 @@ Check all configured targets and values
 \fBdecoration migrate\-v3\fR
 Replace a legacy flat V3 NodeID map with URI keys
 .TP
+\fBmetadata\fR
+Inspect and export proposed V4 linked metadata
+.TP
+\fBmetadata validate\fR
+Parse metadata carriers and report the semantic\-validation boundary
+.TP
+\fBmetadata query\fR
+Query expanded facts and their assertion locations
+.TP
+\fBmetadata export\fR
+Export JSON with inline contexts or an inventory\-ready directory
+.TP
 \fBpackage\fR
 Restore freshly authenticated Libraries from a local registry (MVP)
 .TP
@@ -499,6 +511,58 @@ Exact V3 or V4 target IR JSON to decorate
 .TP
 \fB<NAME>\fR
 Decoration name from the project config
+.SH "MORPHIR METADATA VALIDATE"
+Parse metadata carriers and report the semantic\-validation boundary
+.PP
+\fBUsage:\fR morphir metadata validate [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+A V4.1 single\-file JSON, YAML, or Ion document
+.TP
+\fB\-\-schema\-closure\fR \fI<SCHEMA_CLOSURE>\fR
+Optional local predicate closure for typed @json expansion
+.SH "MORPHIR METADATA QUERY"
+Query expanded facts and their assertion locations
+.PP
+\fBUsage:\fR morphir metadata query [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+A V4.1 single\-file JSON, YAML, or Ion document
+.TP
+\fB\-\-schema\-closure\fR \fI<SCHEMA_CLOSURE>\fR
+Optional local predicate closure for typed @json expansion
+.TP
+\fB\-\-subject\fR \fI<SUBJECT>\fR
+.TP
+\fB\-\-object\fR \fI<OBJECT>\fR
+.TP
+\fB\-\-predicate\fR \fI<PREDICATE>\fR
+.SH "MORPHIR METADATA EXPORT"
+Export JSON with inline contexts or an inventory\-ready directory
+.PP
+\fBUsage:\fR morphir metadata export [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+A V4.1 single\-file JSON, YAML, or Ion document
+.TP
+\fB\-\-schema\-closure\fR \fI<SCHEMA_CLOSURE>\fR
+Optional local predicate closure for typed @json expansion
+.TP
+\fB\-\-output\fR \fI<OUTPUT>\fR
+.TP
+\fB\-\-context\-storage\fR \fI<CONTEXT_STORAGE>\fR
+.RS
+\fIDefault: \fRauto
+.RE
 .SH "MORPHIR PACKAGE CREATE"
 Create a verified dependency\-free classic V4 Library bundle
 .PP
@@ -2348,6 +2412,12 @@ Run the kit against an implementation's adapter and report the results
 .PP
 \fBOptions:\fR
 .PP
+.TP
+\fB\-\-suite\fR \fI<SUITE>\fR
+Compatibility suite to execute
+.RS
+\fIDefault: \fRir
+.RE
 .TP
 \fB\-\-adapter\fR \fI<EXE>\fR
 The implementation's adapter executable. Required: there is no built\-in binding and no discovery

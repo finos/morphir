@@ -6,6 +6,11 @@
 Run the kit against an implementation's adapter and report the results
 
 ## Flags
+- **`--suite <SUITE>`** — Compatibility suite to execute
+
+  **Choices:** `ir`, `metadata`
+
+  **Default:** `ir`
 - **`--adapter <EXE>`** — The implementation's adapter executable. Required: there is no built-in binding and no discovery
 - **`--adapter-arg <ARG>…`** — An argument for the adapter; repeat for more
 - **`--kit <DIR>`** — A kit directory or vendored snapshot; the kit embedded in this CLI when omitted

@@ -447,6 +447,7 @@ mod tests {
     fn sample_ir() -> IRFile {
         IRFile {
             format_version: FormatVersion::Integer(4),
+            metadata: None,
             distribution: Distribution::Library(LibraryContent {
                 package_name: PackageName::parse("acme/app"),
                 dependencies: IndexMap::new(),

@@ -45,13 +45,13 @@ fn semantics_fixture() -> PathBuf {
 
 fn sdk_module(name: &str, type_parameters: &[&str]) -> v4::ModuleSpecification {
     v4::ModuleSpecification {
-        annotations: vec![],
+        annotations: vec![].into(),
         types: [(
             name.into(),
             v4::Documented::new(
                 None,
                 v4::TypeSpecification::OpaqueTypeSpecification {
-                    annotations: vec![],
+                    annotations: vec![].into(),
                     type_params: type_parameters
                         .iter()
                         .map(|name| morphir_core::naming::Name::from(name))
@@ -81,7 +81,7 @@ fn sdk_basics_module() -> v4::ModuleSpecification {
         v4::Documented::new(
             None,
             v4::ValueSpecification {
-                annotations: vec![],
+                annotations: vec![].into(),
                 inputs: [
                     ("left".into(), primitive("int")),
                     ("right".into(), primitive("int")),
@@ -92,7 +92,7 @@ fn sdk_basics_module() -> v4::ModuleSpecification {
         )
     };
     v4::ModuleSpecification {
-        annotations: vec![],
+        annotations: vec![].into(),
         types: ["int", "bool"]
             .into_iter()
             .map(|name| {
@@ -101,7 +101,7 @@ fn sdk_basics_module() -> v4::ModuleSpecification {
                     v4::Documented::new(
                         None,
                         v4::TypeSpecification::OpaqueTypeSpecification {
-                            annotations: vec![],
+                            annotations: vec![].into(),
                             type_params: vec![],
                         },
                     ),
@@ -150,6 +150,7 @@ fn compile_arity_rule() -> serde_json::Value {
         ir_version: "4".into(),
         distribution: serde_json::to_value(v4::IRFile {
             format_version: Default::default(),
+            metadata: None,
             distribution: v4::Distribution::Specs(v4::SpecsContent {
                 package_name: morphir_core::naming::PackageName::parse("morphir/SDK"),
                 dependencies: Default::default(),
