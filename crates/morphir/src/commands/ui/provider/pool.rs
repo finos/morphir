@@ -740,35 +740,30 @@ mod tests {
         let registry = registry(&script, None);
         let resolved = frontend(&registry, InvocationPolicy::ProtocolOnly);
         let invoker = invoker();
-
-        let timed_out = tokio::time::timeout(
-            Duration::from_millis(200),
+        // Long enough that the guest opens and takes the `Hang` fault even
+        // on a loaded machine; the call never answers, so the bound is what
+        // ends it. The later calls are bounded too, so a failure here fails
+        // the test instead of hanging it.
+        let bound = Duration::from_secs(5);
+        let compile = || {
             invoker.compile(
                 temp.path(),
                 &resolved,
                 compile_request(&temp.path().join("compile")),
-            ),
-        )
-        .await;
+            )
+        };
+
+        let timed_out = tokio::time::timeout(bound, compile()).await;
         assert!(timed_out.is_err(), "the scripted guest never answers");
 
-        let compiled = invoker
-            .compile(
-                temp.path(),
-                &resolved,
-                compile_request(&temp.path().join("compile")),
-            )
+        let compiled = tokio::time::timeout(bound, compile())
             .await
+            .expect("a fresh guest answers")
             .unwrap();
-
         assert!(compiled.success);
-        invoker
-            .compile(
-                temp.path(),
-                &resolved,
-                compile_request(&temp.path().join("compile")),
-            )
+        tokio::time::timeout(bound, compile())
             .await
+            .expect("the fresh guest answers again")
             .unwrap();
         assert_eq!(script.opens(), 2);
     }

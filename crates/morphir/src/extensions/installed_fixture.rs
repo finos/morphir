@@ -190,6 +190,7 @@ pub(crate) fn rejecting_frontend() -> (Vec<u8>, Value) {
 
 /// Overwrite an installed artifact in the store, so that it no longer
 /// matches the digest its lock recorded.
+#[cfg(unix)]
 pub(crate) fn tamper(home: &MorphirHome, snapshot: &InstalledExtensionSnapshot) {
     std::fs::write(
         home.root().join(snapshot.installed().store_path()),
