@@ -731,7 +731,9 @@ fn reconcile_paths(by_path: &mut [(PathMode, Vec<Record>)], case: &KitCase) {
 /// The state one run carries from case to case: the adapter's answer to
 /// `capabilities`, and whether the conversation has ended.
 pub struct RunState {
+    /// The adapter's declared capabilities, or `None` if it never answered.
     pub caps: Option<Capabilities>,
+    /// Why the adapter can no longer be used, once it has failed.
     pub dead: Option<String>,
 }
 
