@@ -12,6 +12,8 @@ use std::process::Output;
 
 use serde_json::Value;
 
+#[path = "support/metadata_acceptance.rs"]
+mod metadata_acceptance;
 #[path = "support/mvp_acceptance.rs"]
 mod mvp_acceptance;
 #[path = "support/package_acceptance.rs"]
@@ -502,6 +504,7 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     if std::env::var_os("MORPHIR_MCK_MVP_REQUIRED").is_some_and(|value| !value.is_empty()) {
         mvp_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
     }
+    metadata_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
 
     if let Some(directory) = std::env::var_os("MORPHIR_MCK_ACCEPTANCE_EVIDENCE") {
         let directory = Path::new(&directory);
@@ -518,6 +521,7 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
             "package-mvp-runtime.json",
             "package-mvp-negative.log",
             "package-examples.log",
+            "metadata-preview.json",
         ] {
             if work.path().join(name).exists() {
                 std::fs::copy(work.path().join(name), directory.join(name)).unwrap();
