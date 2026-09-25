@@ -169,6 +169,18 @@ run = [
     "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck",
 ]
 
+[tasks."spec:mep"]
+description = "Compile spec/mep/contract and refresh spec/mep/generated/mep.ir.json"
+# The CLI writes the IR under the project directory named by --config, unless
+# MORPHIR_OUT_DIR moves the out root, so the task clears it.
+run = """
+set -e
+unset MORPHIR_OUT_DIR
+cargo run --locked -p morphir -- compile --config spec/mep/contract/morphir.toml --ir-version 4 --types-only
+mkdir -p spec/mep/generated
+cp spec/mep/contract/.morphir/out/compile.dest/morphir-ir.json spec/mep/generated/mep.ir.json
+"""
+
 [tasks."mck:vocabulary-check"]
 description = "Check vocabulary generation against the pinned TypeScript IR model"
 # Keep the semantic vocabulary authoring check; compatibility validation is native.

@@ -1,0 +1,533 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "morphir/mep",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "mep": {
+            "Public": {
+              "types": {
+                "json": {
+                  "Public": {
+                    "doc": "Any JSON value. Used where the protocol carries data the contract does not\nconstrain, such as compiled IR or backend options.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "json-null": [],
+                        "json-bool": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ]
+                        ],
+                        "json-int": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ]
+                        ],
+                        "json-float": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#float"
+                              }
+                            }
+                          ]
+                        ],
+                        "json-string": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ],
+                        "json-array": [
+                          [
+                            "items",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ],
+                        "json-object": [
+                          [
+                            "members",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "peer-kind": {
+                  "Public": {
+                    "doc": "What kind of peer introduced itself. Wire values: `cli`, `unspecified`.\nA peer kind this contract does not know is read as `Unspecified`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "cli": [],
+                        "unspecified": []
+                      }
+                    }
+                  }
+                },
+                "peer-info": {
+                  "Public": {
+                    "doc": "A host or an extension, as it introduces itself.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "peer-info": [
+                          [
+                            "kind",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#peer-kind"
+                              }
+                            }
+                          ],
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "describe-params": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.extension.describe`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "describe-params": [
+                          [
+                            "protocol-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "initialize-params": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.initialize`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "initialize-params": [
+                          [
+                            "protocol-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "host",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#peer-info"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "initialize-result": {
+                  "Public": {
+                    "doc": "Result of `morphir.initialize`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "initialize-result": [
+                          [
+                            "protocol-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "extension",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#extension-info"
+                              }
+                            }
+                          ],
+                          [
+                            "capabilities",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#extension-capabilities"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "extension-type": {
+                  "Public": {
+                    "doc": "A kind of extension. Wire values: `frontend`, `backend`, `transform`,\n`validator`, `workspace`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "frontend-extension": [],
+                        "backend-extension": [],
+                        "transform-extension": [],
+                        "validator-extension": [],
+                        "workspace-extension": []
+                      }
+                    }
+                  }
+                },
+                "extension-info": {
+                  "Public": {
+                    "doc": "Who an extension is. Wire names stay snake_case for this record, so the\nlabel `min_sdk_version` is also the wire name. Optional members are left\nout of the message when absent.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "extension-info": [
+                          [
+                            "id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "types",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#extension-type"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "description",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "author",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "homepage",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "license",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "min-sdk-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "extension-capabilities": {
+                  "Public": {
+                    "doc": "What an extension can do. Completed in the capabilities section.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "extension-capabilities": [
+                          [
+                            "extra",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "method": {
+                  "Public": {
+                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                       |\n| ------------------- | -------------------------------- |\n| `Initialize`        | `morphir.initialize`             |\n| `Describe`          | `morphir.extension.describe`     |\n| `Initialized`       | `morphir.initialized`            |\n| `Ping`              | `morphir.ping`                   |\n| `Info`              | `morphir.extension.info`         |\n| `Capabilities`      | `morphir.extension.capabilities` |\n| `Compile`           | `morphir.frontend.compile`       |\n| `Generate`          | `morphir.backend.generate`       |\n| `Validate`          | `morphir.validator.validate`     |\n| `Transform`         | `morphir.transform.transform`    |\n| `WorkspaceDiscover` | `morphir.workspace.discover`     |\n| `Shutdown`          | `morphir.shutdown`               |\n| `Exit`              | `morphir.exit`                   |\n\n`morphir.initialized` and `morphir.exit` are notifications: they carry no\nrequest id and get no response. All other methods are requests.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "initialize": [],
+                        "describe": [],
+                        "initialized": [],
+                        "ping": [],
+                        "info": [],
+                        "capabilities": [],
+                        "compile": [],
+                        "generate": [],
+                        "validate": [],
+                        "transform": [],
+                        "workspace-discover": [],
+                        "shutdown": [],
+                        "exit": []
+                      }
+                    }
+                  }
+                },
+                "error-code": {
+                  "Public": {
+                    "doc": "An error code in a JSON-RPC 2.0 error object. The wire value is the\ninteger code:\n\n| Constructor               | Code   |\n| ------------------------- | ------ |\n| `ParseError`              | -32700 |\n| `InvalidRequest`          | -32600 |\n| `MethodNotFound`          | -32601 |\n| `InvalidParams`           | -32602 |\n| `InternalError`           | -32603 |\n| `ExtensionError`          | -32000 |\n| `CompilationError`        | -32001 |\n| `GenerationError`         | -32002 |\n| `ValidationError`         | -32003 |\n| `TransformationError`     | -32004 |\n| `ExtensionFailure`        | -32010 |\n| `ProtocolVersionMismatch` | -32011 |\n| `PermissionDenied`        | -32012 |\n| `CapabilityUnavailable`   | -32013 |\n| `NotInitialized`          | -32014 |\n\nThe first five are the JSON-RPC 2.0 standard codes. The others are MEP\ncodes in the server-defined range, -32000 to -32099.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "parse-error": [],
+                        "invalid-request": [],
+                        "method-not-found": [],
+                        "invalid-params": [],
+                        "internal-error": [],
+                        "extension-error": [],
+                        "compilation-error": [],
+                        "generation-error": [],
+                        "validation-error": [],
+                        "transformation-error": [],
+                        "extension-failure": [],
+                        "protocol-version-mismatch": [],
+                        "permission-denied": [],
+                        "capability-unavailable": [],
+                        "not-initialized": []
+                      }
+                    }
+                  }
+                },
+                "rpc-error": {
+                  "Public": {
+                    "doc": "The JSON-RPC 2.0 error object. `code` is an `ErrorCode` value or a\nJSON-RPC 2.0 standard code. `data` is left out of the message when absent.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "rpc-error": [
+                          [
+                            "code",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "message",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "data",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {},
+              "doc": "The Morphir Extension Protocol (MEP) contract.\n\nThis module is the source of truth for the messages a Morphir host and an\nextension exchange. Labels are snake_case here and lowerCamelCase on the\nwire, except where a type's documentation says otherwise. See\nspec/mep/README.md for the versioning rule and the full wire mapping."
+            }
+          }
+        }
+      }
+    }
+  }
+}

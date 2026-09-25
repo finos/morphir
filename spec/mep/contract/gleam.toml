@@ -1,0 +1,7 @@
+name = "mep"
+version = "0.1.0"
+description = "The Morphir Extension Protocol contract, as a Morphir model."
+licences = ["Apache-2.0"]
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
