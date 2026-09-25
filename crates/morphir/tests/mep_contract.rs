@@ -178,13 +178,86 @@ fn the_contract_covers_the_handshake() {
         ),
         ("rpc-error", &["code", "message", "data"]),
     ];
+    assert_records(&ir, records);
+}
+
+/// Check that each record's field labels match the SDK struct, in order.
+fn assert_records(ir: &Value, records: &[(&str, &[&str])]) {
     for (type_name, labels) in records {
         assert_eq!(
-            field_labels(&ir, type_name),
+            field_labels(ir, type_name),
             *labels,
             "fields of {type_name}"
         );
     }
+}
+
+const CAPABILITY_TYPES: &[&str] = &[
+    "language-capability",
+    "frontend-capability",
+    "backend-capability",
+    "workspace-capability",
+    "extension-capabilities",
+    "capability-claim-set",
+    "claims-requirements",
+];
+
+#[test]
+fn the_contract_covers_capabilities_and_claims() {
+    let ir = compile_contract();
+    let names = type_names(&ir);
+    for expected in CAPABILITY_TYPES {
+        assert!(
+            names.contains(*expected),
+            "mep.gleam is missing {expected}; has {names:?}"
+        );
+    }
+    // Fields follow the SDK struct declaration order (types.rs and claims/mod.rs).
+    let records: &[(&str, &[&str])] = &[
+        ("language-capability", &["id", "file-extensions"]),
+        (
+            "frontend-capability",
+            &[
+                "languages",
+                "ir-versions",
+                "compile",
+                "incremental",
+                "fragments",
+                "multi-document",
+            ],
+        ),
+        (
+            "backend-capability",
+            &["targets", "ir-versions", "generate"],
+        ),
+        ("workspace-capability", &["protocol-versions", "discover"]),
+        (
+            "extension-capabilities",
+            &[
+                "frontend",
+                "backend",
+                "workspace",
+                "streaming",
+                "incremental",
+                "cancellation",
+                "progress",
+                "extra",
+            ],
+        ),
+        ("claims-requirements", &["host"]),
+        (
+            "capability-claim-set",
+            &[
+                "claims-version",
+                "protocol-versions",
+                "extension",
+                "capabilities",
+                "requires",
+                "critical",
+            ],
+        ),
+    ];
+    assert_records(&ir, records);
 }
 
 /// Gleam prelude constructors, plus `Some` and `None` from `gleam/option`,

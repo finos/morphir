@@ -85,9 +85,101 @@ pub type ExtensionInfo {
 
 // -- Capabilities -----------------------------------------------------------
 
-/// What an extension can do. Completed in the capabilities section.
+/// A source language a frontend reads.
+pub type LanguageCapability {
+  LanguageCapability(id: String, file_extensions: List(String))
+}
+
+/// What a frontend can compile. `multi_document` (wire `multiDocument`) is
+/// written only when it is true; an absent member is read as false. A
+/// frontend without it compiles exactly one document per request.
+pub type FrontendCapability {
+  FrontendCapability(
+    languages: List(LanguageCapability),
+    ir_versions: List(String),
+    compile: Bool,
+    incremental: Bool,
+    fragments: Bool,
+    multi_document: Bool,
+  )
+}
+
+/// What a backend can generate.
+pub type BackendCapability {
+  BackendCapability(
+    targets: List(String),
+    ir_versions: List(String),
+    generate: Bool,
+  )
+}
+
+/// Workspace discovery support. Each protocol version is a full SemVer
+/// string, such as `0.1.0`.
+pub type WorkspaceCapability {
+  WorkspaceCapability(protocol_versions: List(String), discover: Bool)
+}
+
+/// What an extension can do.
+///
+/// Wire rules:
+/// - `frontend`, `backend` and `workspace` are left out when absent.
+/// - The four flags `streaming`, `incremental`, `cancellation` and
+///   `progress` are always written. An absent flag is read as false.
+/// - Members of `extra` sit beside the named members on the wire, not under
+///   an `extra` key. Unknown members are read into `extra`.
+/// - A writer refuses an `extra` key that is one of the reserved names
+///   `frontend`, `backend`, `workspace`, `streaming`, `incremental`,
+///   `cancellation` or `progress`.
 pub type ExtensionCapabilities {
-  ExtensionCapabilities(extra: Dict(String, Json))
+  ExtensionCapabilities(
+    frontend: Option(FrontendCapability),
+    backend: Option(BackendCapability),
+    workspace: Option(WorkspaceCapability),
+    streaming: Bool,
+    incremental: Bool,
+    cancellation: Bool,
+    progress: Bool,
+    extra: Dict(String, Json),
+  )
+}
+
+// -- Claims -----------------------------------------------------------------
+
+/// Requirements a claim set puts on the host. Each `host` entry is one SemVer
+/// comparator, such as `>=0.4.0`, not a combined range; all of them must
+/// hold. `host` is left out when empty, and an absent `host` is read as
+/// empty.
+pub type ClaimsRequirements {
+  ClaimsRequirements(host: List(String))
+}
+
+/// The result of `morphir.extension.describe`: the capabilities an extension
+/// claims, without starting a session.
+///
+/// Wire rules:
+/// - `claims_version` (wire `claimsVersion`) is a SemVer string for the
+///   claims format, which is versioned apart from MEP. Writers send
+///   `0.1.0-draft.2`. Readers accept exactly `0.1.0-draft.1` or
+///   `0.1.0-draft.2` and read both as draft.2.
+/// - Draft.1 names the member `statementVersion` instead. The member name
+///   must match the draft, and a claim set with both names is refused. In a
+///   draft.1 `critical` list, `statementVersion` is read as `claimsVersion`.
+/// - `capabilities` is open: members this contract does not name are kept
+///   when read and written.
+/// - `requires` is left out when absent.
+/// - `critical` lists member paths, such as `capabilities.frontend`, that a
+///   reader must understand. A reader refuses a claim set with a path it
+///   does not understand. `critical` is left out when empty, and an absent
+///   `critical` is read as empty.
+pub type CapabilityClaimSet {
+  CapabilityClaimSet(
+    claims_version: String,
+    protocol_versions: List(String),
+    extension: ExtensionInfo,
+    capabilities: Dict(String, Json),
+    requires: Option(ClaimsRequirements),
+    critical: List(String),
+  )
 }
 
 // -- Methods ----------------------------------------------------------------
