@@ -133,7 +133,6 @@ pub struct Golden {
 #[derive(Debug)]
 pub struct Step {
     pub id: String,
-    pub name: String,
     pub args: Vec<String>,
     pub timeout_seconds: u64,
     pub stdout_json: bool,
@@ -216,7 +215,6 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
                 }
                 steps.push(Step {
                     id: cell.id().to_owned(),
-                    name,
                     args: arguments[1..].to_vec(),
                     timeout_seconds,
                     stdout_json,

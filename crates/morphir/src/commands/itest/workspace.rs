@@ -1,5 +1,7 @@
 //! Copy project inputs before running commands; never execute in the author's tree.
-use super::{Scenario, model::Workspace};
+#[cfg(test)]
+use super::Scenario;
+use super::model::Workspace;
 use crate::notebook::{relative_path, validate_workspace_paths, write_workspace_files};
 use anyhow::{Context, Result, ensure};
 use std::{
@@ -112,6 +114,7 @@ fn copy_inputs((files, directories): Inputs, destination: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
 pub(super) fn materialize(scenario: &Scenario, destination: &Path) -> Result<()> {
     let Workspace::Directory { path, exclude } = &scenario.metadata.workspace else {
         return scenario.notebook.materialize(destination);

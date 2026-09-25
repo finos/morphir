@@ -39,11 +39,11 @@ fn read(path: &Path) -> Result<Document> {
         .with_context(|| format!("scenario document {}", path.display()))?;
     let parsed = markdown::parse_sections(&text)
         .with_context(|| format!("scenario document {}", path.display()))?;
-    let mut files = Vec::new();
     let mut scenarios = Vec::new();
+    let mut files = Vec::new();
     for section in &parsed.sections {
         check_command_order(&section.notebook, path, section)?;
-        files.extend(overlay_files(&section.notebook)?);
+        files.push(overlay_files(&section.notebook)?);
         let (_, steps) = model::parse(&section.notebook)
             .with_context(|| format!("{}: scenario {}", path.display(), section.id))?;
         scenarios.push((section, steps));
@@ -163,11 +163,12 @@ fn overlay_files(notebook: &Notebook) -> Result<Vec<(String, String)>> {
     Ok(files)
 }
 
-/// Builds the synthetic `.feature` text for the whole document: one `Feature` from `metadata` and
-/// the aggregated overlay `files`, then one `Scenario` per section of `scenarios`.
+/// Builds the synthetic `.feature` text for the whole document: one `Feature` from `metadata`,
+/// then one `Scenario` per section of `scenarios`, each with its own overlay files from `files`
+/// (one list per section, in the same order).
 fn feature_text(
     metadata: &Metadata,
-    files: &[(String, String)],
+    files: &[Vec<(String, String)>],
     scenarios: &[(&ParsedSection, Vec<Step>)],
 ) -> Result<String> {
     let mut out = String::new();
@@ -175,9 +176,9 @@ fn feature_text(
     writeln!(out, "Feature: {}", metadata.title).expect("write to String cannot fail");
     writeln!(out, "  {}", metadata.description).expect("write to String cannot fail");
     out.push('\n');
-    write_itest_fence(&mut out, metadata, files);
+    write_itest_fence(&mut out, metadata);
     out.push('\n');
-    for (section, steps) in scenarios {
+    for ((section, steps), files) in scenarios.iter().zip(files) {
         let step_count: usize = steps.len()
             + steps
                 .iter()
@@ -186,6 +187,7 @@ fn feature_text(
         writeln!(out, "  @section:{} @steps:{step_count}", section.id)
             .expect("write to String cannot fail");
         writeln!(out, "  Scenario: {}", section.title).expect("write to String cannot fail");
+        write_scenario_files(&mut out, files);
         for step in steps {
             write_command_step(&mut out, step)?;
         }
@@ -194,12 +196,9 @@ fn feature_text(
     Ok(out)
 }
 
-/// The Feature's `yaml itest` fence: `provider`, `workspace` (only when it differs from the
-/// default `Workspace`, since an omitted `workspace` fence field already means the default), and
-/// `files` (only when there are overlay files). Every string value is written as a JSON-quoted
-/// scalar, never a bare or block-scalar one, so a value such as `y` cannot be misread as a
-/// boolean and a multi-line file `content` still fits on one line.
-fn write_itest_fence(out: &mut String, metadata: &Metadata, files: &[(String, String)]) {
+/// The Feature's `yaml itest` fence: `provider`, and `workspace` only when it differs from the
+/// default `Workspace`, since an omitted `workspace` fence field already means the default.
+fn write_itest_fence(out: &mut String, metadata: &Metadata) {
     writeln!(out, "  ```yaml itest").expect("write to String cannot fail");
     writeln!(out, "  provider: {}", provider_token(metadata.provider))
         .expect("write to String cannot fail");
@@ -207,19 +206,30 @@ fn write_itest_fence(out: &mut String, metadata: &Metadata, files: &[(String, St
         writeln!(out, "  workspace: {}", workspace_yaml(&metadata.workspace))
             .expect("write to String cannot fail");
     }
-    if !files.is_empty() {
-        writeln!(out, "  files:").expect("write to String cannot fail");
-        for (path, content) in files {
-            writeln!(
-                out,
-                "    - {{path: {}, content: {}}}",
-                yaml_string(path),
-                yaml_string(content)
-            )
-            .expect("write to String cannot fail");
-        }
-    }
     writeln!(out, "  ```").expect("write to String cannot fail");
+}
+
+/// A section's own overlay `files` as a `yaml itest` fence in its Scenario description, or
+/// nothing when it has none. Every string value is written as a JSON-quoted scalar, never a bare
+/// or block-scalar one, so a value such as `y` cannot be misread as a boolean and a multi-line
+/// file `content` still fits on one line.
+fn write_scenario_files(out: &mut String, files: &[(String, String)]) {
+    if files.is_empty() {
+        return;
+    }
+    writeln!(out, "    ```yaml itest").expect("write to String cannot fail");
+    writeln!(out, "    files:").expect("write to String cannot fail");
+    for (path, content) in files {
+        writeln!(
+            out,
+            "      - {{path: {}, content: {}}}",
+            yaml_string(path),
+            yaml_string(content)
+        )
+        .expect("write to String cannot fail");
+    }
+    writeln!(out, "    ```").expect("write to String cannot fail");
+    out.push('\n');
 }
 
 fn write_tags(out: &mut String, tags: &[String]) {
@@ -744,9 +754,53 @@ ok if { true }\n\
             model::Workspace::Directory { path, exclude }
                 if path == "." && exclude == &["installed"]
         ));
+        // Overlay files belong to their own section: the Scenario's fence carries them.
+        assert!(spec.files.is_empty());
+        let spec = scenario_spec(&document, 0);
         assert_eq!(spec.files.len(), 1);
         assert_eq!(spec.files[0].path, "src/Example.txt");
         assert_eq!(spec.files[0].content, "hello \"world\"\nline two\n");
+    }
+
+    /// The [`ExampleSpec`] that the Feature's and scenario `index`'s `yaml itest` fences give.
+    fn scenario_spec(document: &morphir_gherkin::Document, index: usize) -> ExampleSpec {
+        use crate::commands::itest::steps::ItestFence;
+        use morphir_gherkin::{NodePath, Segment, extension::Extensions};
+        let (context, _) = Extensions::new()
+            .with_fences(ItestFence)
+            .context_for(
+                document,
+                &NodePath::feature().push(Segment::Scenario(index)),
+            )
+            .unwrap();
+        context.get::<ExampleSpec>().unwrap().clone()
+    }
+
+    #[test]
+    fn each_section_keeps_its_own_overlay_files() {
+        let section = |title: &str, content: &str| {
+            format!(
+                "## {title}\n\n```yaml morphir:file\nid: extra\npath: extra.txt\n```\n\n```text\n{content}\n```\n\n```yaml morphir:command\nid: c1\nname: Cmd\ntimeout_seconds: 5\n```\n\n```sh\nmorphir foo\n```\n\n```yaml morphir:assertion\nid: a1\ncommand: c1\nentrypoints: [data.t.ok]\n```\n\n```rego\npackage t\nimport rego.v1\nok if {{ true }}\n```\n\n"
+            )
+        };
+        let text = format!(
+            "---\nversion: 1\ntitle: Files\ndescription: Has files.\ntags: [area:files]\nprovider: rego\n---\n\n{}{}## No files\n\n```yaml morphir:command\nid: c1\nname: Cmd\ntimeout_seconds: 5\n```\n\n```sh\nmorphir foo\n```\n\n```yaml morphir:assertion\nid: a1\ncommand: c1\nentrypoints: [data.t.ok]\n```\n\n```rego\npackage t\nimport rego.v1\nok if {{ true }}\n```\n",
+            section("First", "one"),
+            section("Second", "two")
+        );
+        let (_dir, path) = write_scenarios_md(&text);
+        let document = read_scenarios_md(&path).unwrap();
+        for (index, expected) in [(0, vec!["one\n"]), (1, vec!["two\n"]), (2, vec![])] {
+            let spec = scenario_spec(&document, index);
+            assert_eq!(
+                spec.files
+                    .iter()
+                    .map(|file| file.content.as_str())
+                    .collect::<Vec<_>>(),
+                expected
+            );
+            assert!(spec.files.iter().all(|file| file.path == "extra.txt"));
+        }
     }
 
     #[test]
@@ -803,7 +857,6 @@ middle\n\
     fn command_argument_with_a_literal_quote_is_reported() {
         let step = Step {
             id: "c1".to_owned(),
-            name: "n".to_owned(),
             args: vec!["a\"b".to_owned()],
             timeout_seconds: 5,
             stdout_json: false,
@@ -818,7 +871,6 @@ middle\n\
     fn whitespace_bearing_arguments_round_trip_through_split_command_line() {
         let step = Step {
             id: "c1".to_owned(),
-            name: "n".to_owned(),
             args: vec![
                 "--message".to_owned(),
                 "a b".to_owned(),
@@ -842,7 +894,6 @@ middle\n\
     fn empty_arguments_round_trip_through_split_command_line() {
         let step = Step {
             id: "c1".to_owned(),
-            name: "n".to_owned(),
             args: vec!["--input".to_owned(), String::new()],
             timeout_seconds: 5,
             stdout_json: false,

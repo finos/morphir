@@ -1,0 +1,52 @@
+backends/avro#compile-generate: Compile and generate [language:elm, frontend:elm-native, backend:avro, config:toml, area:compile, area:generate, area:extension, ir:v4, kind:positive, suite:wasm-backends, workspace:directory]
+  Publish and install a pinned WASM backend, compile an on-disk Elm record, and verify generated schemas and task provenance through real CLI commands.
+backends/openapi#compile-generate: Compile and generate [language:elm, frontend:elm-native, backend:openapi, backend:json-schema, config:toml, area:compile, area:generate, area:extension, ir:v4, kind:positive, suite:wasm-backends, workspace:directory]
+  Publish and install a pinned WASM backend, compile an on-disk Elm record, and verify generated schemas and task provenance through real CLI commands.
+backends/v3-compatibility/avro#avro: Avro from v3 IR [language:elm, frontend:elm-native, backend:avro, config:toml, area:compile, area:generate, area:extension, ir:v3, kind:positive, suite:wasm-backends, workspace:directory]
+  Publish and install the pinned Avro backend, compile a customer record as v3 IR, and assert generated schemas and task provenance.
+backends/v3-compatibility/openapi#openapi: OpenAPI and JSON Schema from v3 IR [language:elm, frontend:elm-native, backend:openapi, backend:json-schema, config:toml, area:compile, area:generate, area:extension, ir:v3, kind:positive, suite:wasm-backends, workspace:directory]
+  Publish and install the pinned OpenAPI and JSON Schema backend, compile a customer record as v3 IR, and assert generated schemas and task provenance.
+cli/basics#command-help: Command help [area:cli, kind:positive, suite:offline, workspace:directory]
+  Verify the public CLI reports its version and documents its commands.
+cli/basics#version: Report version [area:cli, kind:positive, suite:offline, workspace:directory]
+  Verify the public CLI reports its version and documents its commands.
+cli/migrate#classic-to-v4: Convert Classic JSON to V4 YAML [area:cli, feature:migrate, kind:positive, suite:offline, workspace:directory]
+  Convert a Classic Library into canonical V4 YAML using the public CLI.
+elm/classic-json#compile-functions: Compile functions [language:elm, frontend:morphir-elm, config:json, area:compile, ir:v3, kind:positive, suite:elm-reference, workspace:directory]
+  Discover a classic morphir.json project and compile an arithmetic function with the reference Elm frontend.
+elm/single-file: Compile and install types from one Elm file [language:elm, frontend:elm-native, config:none, area:compile, area:install, ir:v3, kind:positive, suite:offline, workspace:directory]
+  The native Elm frontend compiles a single file without project configuration, writes classic v3 IR and a task result, and installs a copy when requested. Rego checks the outputs; this proves type compilation, not native Elm function lowering.
+elm/single-file-functions#compile-functions: Compile functions [language:elm, frontend:morphir-elm, config:none, area:compile, ir:v3, kind:positive, suite:elm-reference, workspace:directory]
+  Compile an annotated arithmetic function without project configuration using the reference Elm frontend.
+elm/yaml-project#compile-types: Compile types [language:elm, frontend:elm-native, config:yaml, area:compile, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Discover YAML project configuration and compile a public record type with the native Elm types-only frontend.
+gleam/compile-generate#compile-and-generate: Compile and generate [language:gleam, frontend:gleam, backend:gleam, config:toml, area:compile, area:generate, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Compile a public Gleam function to Morphir IR and generate Gleam source with the built-in backend. The scenario checks generated text and task provenance; it does not execute the generated program.
+gleam/ir-v3#dogfood: Compile and regenerate the V3 model [language:gleam, frontend:gleam, backend:gleam, area:compile, area:generate, ir:v3, kind:positive, suite:offline, workspace:directory]
+  Compile the complete V3 data model into V3 IR and regenerate all twelve modules against fixed golden files.
+gleam/structural-values#compile-and-generate: Compile and generate [language:gleam, frontend:gleam, backend:gleam, area:compile, area:generate, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Preserve local bindings, tuple destructuring, list tails and list patterns in v4 IR and generated Gleam, with exact scalar spelling.
+gleam/type-compatibility#compile-and-generate-v3: Compile and generate v3 [language:gleam, frontend:gleam, backend:gleam, area:compile, area:generate, kind:positive, suite:offline, workspace:directory]
+  Compile labelled records, discriminated unions, aliases, opaque types and imported generic references to IR v3 and v4, then generate Gleam source.
+gleam/type-compatibility#compile-and-generate-v4: Compile and generate v4 [language:gleam, frontend:gleam, backend:gleam, area:compile, area:generate, kind:positive, suite:offline, workspace:directory]
+  Compile labelled records, discriminated unions, aliases, opaque types and imported generic references to IR v3 and v4, then generate Gleam source.
+monorepo-workspace#compile-core-by-name: Compile core by name [language:elm, frontend:elm-native, config:toml, area:workspace, area:compile, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Select each declared member by path and name, compile its types, and keep package identity and task outputs separate. This does not test cross-package dependency resolution.
+monorepo-workspace#compile-core-by-path: Compile core by path [language:elm, frontend:elm-native, config:toml, area:workspace, area:compile, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Select each declared member by path and name, compile its types, and keep package identity and task outputs separate. This does not test cross-package dependency resolution.
+monorepo-workspace#compile-default-member: Compile default member [language:elm, frontend:elm-native, config:toml, area:workspace, area:compile, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Select each declared member by path and name, compile its types, and keep package identity and task outputs separate. This does not test cross-package dependency resolution.
+monorepo-workspace#compile-utils-by-name: Compile utils by name [language:elm, frontend:elm-native, config:toml, area:workspace, area:compile, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Select each declared member by path and name, compile its types, and keep package identity and task outputs separate. This does not test cross-package dependency resolution.
+monorepo-workspace#compile-utils-by-path: Compile utils by path [language:elm, frontend:elm-native, config:toml, area:workspace, area:compile, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Select each declared member by path and name, compile its types, and keep package identity and task outputs separate. This does not test cross-package dependency resolution.
+morphir-elm-compat#multi-source-limitation: Multi-source limitation [language:elm, frontend:morphir-elm, config:json, area:compile, ir:v3, kind:negative, coverage:known-limitation, suite:elm-reference, workspace:directory]
+  Discover a classic project and expose the released reference frontend limitation on multiple source files.
+package/local-library-publish#publish-and-consume: Publish and consume from source [area:package, area:compile, area:generate, language:gleam, ir:v4, kind:positive, suite:macos-publisher, workspace:directory]
+  Compile a Gleam model, create and sign a classic V4 Library, publish it into an absent local registry, then independently resolve, restore, generate and compile it in a consumer project.
+package/local-library-restore#restore-and-consume: Restore into a consumer project [area:package, area:generate, language:gleam, backend:gleam, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Provision explicit package trust, refresh authenticated metadata, resolve a published root into a verified full lock, restore its graph, and generate and compile a restored Library in a consumer project.
+package/local-library-update#update-and-consume: Update a provider and consume it [area:package, area:generate, language:gleam, backend:gleam, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Update an explicit dependency closure against fresh signed metadata, preserve outside pins and the previous lock, then restore and consume the updated provider.
+simple-project#compile-types: Compile types [language:elm, frontend:elm-native, config:toml, area:compile, ir:v4, kind:positive, suite:offline, workspace:directory]
+  Discover a TOML project and compile two public modules with the native Elm types-only frontend. This does not test function lowering.

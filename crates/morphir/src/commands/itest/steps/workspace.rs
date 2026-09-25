@@ -2,10 +2,10 @@
 //! copies it into a new temporary root before a scenario's first step.
 use super::{ItestDirs, ItestRoot, KeepTemp};
 use crate::commands::itest::{
-    directory_id,
-    markdown::section_id,
+    document_dir,
     model::{self, Workspace},
     runner::{prepare_root, temporary_root},
+    scenario_id_of,
     workspace::materialize_example,
 };
 use crate::notebook::validate_workspace_paths;
@@ -96,6 +96,35 @@ impl ExampleSpec {
         Ok(spec)
     }
 
+    /// Adds the overlay files of a scenario's own `yaml itest` fence, `{ files?: [{path,
+    /// content}] }`, and checks every overlay path again. `workspace` and `provider` belong only
+    /// in the Feature's fence.
+    fn add_scenario_files(&mut self, body: &str) -> Result<()> {
+        let value: serde_json::Value = if body.trim().is_empty() {
+            serde_json::Value::Null
+        } else {
+            serde_saphyr::from_str(body).context("invalid YAML metadata")?
+        };
+        if let Some(fields) = value.as_object() {
+            anyhow::ensure!(
+                !fields.contains_key("workspace") && !fields.contains_key("provider"),
+                "the `workspace` and `provider` of a `yaml itest` fence belong in the Feature description"
+            );
+        }
+        let value = if value.is_null() {
+            serde_json::json!({})
+        } else {
+            value
+        };
+        let files: ScenarioFiles =
+            serde_json::from_value(value).context("invalid `yaml itest` fence")?;
+        self.files.extend(files.files);
+        validate_workspace_paths(
+            self.files.iter().map(|file| file.path.as_str()),
+            std::iter::empty(),
+        )
+    }
+
     fn overlay(&self) -> impl Iterator<Item = (&str, &str)> + Clone {
         self.files
             .iter()
@@ -103,13 +132,27 @@ impl ExampleSpec {
     }
 }
 
-/// A `FenceExtension` for the `yaml itest` fence in a feature description. It holds the
+/// The body of a `yaml itest` fence in a Scenario description: `{ files?: [{path, content}] }`.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScenarioFiles {
+    #[serde(default)]
+    files: Vec<ExampleFile>,
+}
+
+/// Marks a scenario whose own `yaml itest` fence has been applied.
+#[derive(Debug)]
+struct ScenarioFence;
+
+/// A `FenceExtension` for the `yaml itest` fence. In the Feature description it holds the
 /// frontmatter fields `workspace` and `provider`, and the overlay `files`, and inserts them as an
-/// [`ExampleSpec`]. [`MaterializeExample`] turns that into the [`ExampleWorkspace`], since only a
+/// [`ExampleSpec`]. In a Scenario description it holds only `files`: overlay files of that
+/// scenario alone, added to the Feature's (a `scenarios.md` section's `morphir:file` fences become
+/// these). [`MaterializeExample`] turns the spec into the [`ExampleWorkspace`], since only a
 /// processor sees the document's path.
 ///
 /// It matches a fence whose language is `yaml` and whose info string has the word `itest`. The
-/// fence belongs in the Feature description, and a Feature has at most one.
+/// Feature description and each Scenario description hold at most one.
 pub struct ItestFence;
 
 impl FenceExtension for ItestFence {
@@ -118,13 +161,33 @@ impl FenceExtension for ItestFence {
     }
 
     fn apply(&self, fence: &Fence, scope: Scope, ctx: &mut Context) -> Result<(), String> {
-        if scope != Scope::Feature {
-            return Err("the `yaml itest` fence belongs in the Feature description".into());
+        match scope {
+            Scope::Feature => {
+                if ctx.get::<ExampleSpec>().is_some() {
+                    return Err("a Feature description holds at most one `yaml itest` fence".into());
+                }
+                ctx.insert(ExampleSpec::parse(&fence.body).map_err(|error| format!("{error:#}"))?);
+            }
+            Scope::Scenario => {
+                if ctx.get::<ScenarioFence>().is_some() {
+                    return Err(
+                        "a Scenario description holds at most one `yaml itest` fence".into(),
+                    );
+                }
+                let mut spec = ctx.get::<ExampleSpec>().cloned().unwrap_or_default();
+                spec.add_scenario_files(&fence.body)
+                    .map_err(|error| format!("{error:#}"))?;
+                ctx.insert(spec);
+                ctx.insert(ScenarioFence);
+            }
+            Scope::Rule | Scope::Examples => {
+                return Err(
+                    "the `yaml itest` fence belongs in the Feature description, or a Scenario \
+                     description for that scenario's own files"
+                        .into(),
+                );
+            }
         }
-        if ctx.get::<ExampleSpec>().is_some() {
-            return Err("a Feature description holds at most one `yaml itest` fence".into());
-        }
-        ctx.insert(ExampleSpec::parse(&fence.body).map_err(|error| format!("{error:#}"))?);
         Ok(())
     }
 }
@@ -171,10 +234,7 @@ fn materialize(doc: &Document, at: &NodePath, ctx: &mut Context) -> Result<()> {
 
 /// The directory that holds `doc`.
 fn example_dir(doc: &Document) -> PathBuf {
-    match doc.path.parent() {
-        Some(parent) if !parent.as_os_str().is_empty() => parent.to_owned(),
-        _ => PathBuf::from("."),
-    }
+    document_dir(&doc.path)
 }
 
 /// The scenario at `at`, or the outline that owns the examples block at `at`.
@@ -194,14 +254,11 @@ fn scenario_at<'d>(doc: &'d Document, at: &NodePath) -> Option<&'d Scenario> {
 /// The section is the scenario's `@section:<id>` tag, or else today's section id of its name.
 pub fn scenario_id(root: &Path, doc: &Document, at: &NodePath) -> Result<String> {
     let scenario = scenario_at(doc, at).with_context(|| format!("{at} is not a scenario"))?;
-    let context = || format!("scenario document {}", doc.path.display());
-    let directory = directory_id(root, &example_dir(doc)).with_context(context)?;
     let section = scenario.tags.iter().find_map(|tag| match tag.namespaced() {
-        Some(("section", id)) => Some(id.to_owned()),
+        Some(("section", id)) => Some(id),
         _ => None,
     });
-    let section = section_id(&scenario.name, section).with_context(context)?;
-    Ok(format!("{directory}#{section}"))
+    scenario_id_of(root, &doc.path, &scenario.name, section)
 }
 
 #[cfg(test)]
@@ -414,6 +471,73 @@ Feature: Compile a directory example
         ] {
             let error = fence(body).unwrap_err();
             assert!(error.contains(message), "{body}: {error}");
+        }
+    }
+
+    /// The context of scenario `index` of the `.feature` document `text`, with only
+    /// [`ItestFence`], or the first error message.
+    fn scenario_context(text: &str, index: usize) -> Result<Context, String> {
+        let (doc, _) = morphir_gherkin::read_str("f.feature", text).unwrap();
+        Extensions::new()
+            .with_fences(ItestFence)
+            .context_for(&doc, &NodePath::feature().push(Segment::Scenario(index)))
+            .map(|(context, _)| context)
+            .map_err(|errors| errors[0].message.clone())
+    }
+
+    #[test]
+    fn itest_fence_in_a_scenario_adds_that_scenarios_own_files() {
+        let text = "Feature: F\n  ```yaml itest\n  provider: rego\n  files:\n    - {path: shared.txt, content: s}\n  ```\n\n  Scenario: A\n    ```yaml itest\n    files:\n      - {path: extra.txt, content: a}\n    ```\n\n    When I run \"morphir x\"\n\n  Scenario: B\n    ```yaml itest\n    files:\n      - {path: extra.txt, content: b}\n    ```\n\n    When I run \"morphir x\"\n\n  Scenario: C\n    When I run \"morphir x\"\n";
+        for (index, expected) in [
+            (0, vec![("shared.txt", "s"), ("extra.txt", "a")]),
+            (1, vec![("shared.txt", "s"), ("extra.txt", "b")]),
+            (2, vec![("shared.txt", "s")]),
+        ] {
+            let context = scenario_context(text, index).unwrap();
+            let spec = context.get::<ExampleSpec>().unwrap();
+            assert_eq!(spec.provider, ProviderId::Rego);
+            assert_eq!(spec.overlay().collect::<Vec<_>>(), expected);
+        }
+        // Without a Feature fence, a scenario's files join the default workspace.
+        let text = "Feature: F\n  Scenario: A\n    ```yaml itest\n    files:\n      - {path: extra.txt, content: a}\n    ```\n\n    When I run \"morphir x\"\n";
+        let context = scenario_context(text, 0).unwrap();
+        let spec = context.get::<ExampleSpec>().unwrap();
+        assert!(matches!(
+            &spec.workspace,
+            model::Workspace::Directory { path, exclude } if path == "." && exclude.is_empty()
+        ));
+        assert_eq!(spec.overlay().collect::<Vec<_>>(), [("extra.txt", "a")]);
+    }
+
+    #[test]
+    fn itest_fence_in_a_scenario_holds_only_non_conflicting_files() {
+        let scenario = |fences: &str| {
+            format!(
+                "Feature: F\n  ```yaml itest\n  files:\n    - {{path: shared.txt, content: s}}\n  ```\n\n  Scenario: A\n{fences}\n    When I run \"morphir x\"\n"
+            )
+        };
+        let fence = |body: &str| format!("    ```yaml itest\n{body}    ```\n");
+        for (fences, message) in [
+            (
+                fence("    workspace: {kind: inline}\n"),
+                "belong in the Feature description",
+            ),
+            (fence("    unknown: 1\n"), "unknown field"),
+            (
+                fence("    files:\n      - {path: shared.txt, content: t}\n"),
+                "duplicate or conflicting workspace path",
+            ),
+            (
+                fence("    files:\n      - {path: ../up, content: t}\n"),
+                "path escapes the workspace",
+            ),
+            (
+                fence("    files: []\n") + "\n" + &fence("    files: []\n"),
+                "at most one",
+            ),
+        ] {
+            let error = scenario_context(&scenario(&fences), 0).unwrap_err();
+            assert!(error.contains(message), "{fences}: {error}");
         }
     }
 

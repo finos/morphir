@@ -206,7 +206,6 @@ async fn satisfies_the_policy_rules(world: &mut MorphirWorld, entrypoints: Strin
 
     let step_model = model::Step {
         id: String::new(),
-        name: String::new(),
         args: Vec::new(),
         timeout_seconds: 0,
         stdout_json: command.stdout_json,

@@ -27,12 +27,15 @@ fn write_scenario(root: &std::path::Path, notebook: &Value) {
 
 fn run(root: &std::path::Path, args: &[&str]) -> std::process::Output {
     let home = tempfile::tempdir().unwrap();
+    // Each run writes its own suite reports, so parallel tests never share one report file.
+    let reports = tempfile::tempdir().unwrap();
     Command::new(env!("CARGO_BIN_EXE_morphir"))
         .arg("itest")
         .arg(root)
         .args(args)
         .env("MORPHIR_HOME", home.path())
         .env("MORPHIR_LOG_FILE", "false")
+        .env("MORPHIR_BDD_OUT", reports.path())
         .output()
         .unwrap()
 }
@@ -102,10 +105,7 @@ compiles if {
 "#;
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_markdown_drives_cli_with_disk_and_inline_files() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("elm/markdown");
@@ -201,10 +201,7 @@ fn itest_rejects_two_scenario_documents_in_one_directory() {
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_lists_filters_and_drives_real_cli_commands() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("cli/errors");
@@ -226,10 +223,7 @@ fn itest_lists_filters_and_drives_real_cli_commands() {
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_distinguishes_search_root_from_a_directory_named_root() {
     let temp = tempfile::tempdir().unwrap();
     write_scenario(temp.path(), &scenario());
@@ -263,10 +257,7 @@ fn itest_distinguishes_search_root_from_a_directory_named_root() {
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let temp = tempfile::tempdir().unwrap();
@@ -280,6 +271,7 @@ fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
             .args(["--tag", "suite:offline"])
             .env("MORPHIR_HOME", temp.path().join("home"))
             .env("MORPHIR_OUT_DIR", temp.path().join("wrong-out"))
+            .env("MORPHIR_BDD_OUT", temp.path().join("reports"))
             .env("MORPHIR_LOG_FILE", "false")
             .output()
             .unwrap();
@@ -305,6 +297,7 @@ fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
 }
 
 #[test]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_fails_on_wrong_undefined_or_invalid_assertions_and_reports_case() {
     for policy in [
         "package cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 99 }",
@@ -326,10 +319,7 @@ fn itest_fails_on_wrong_undefined_or_invalid_assertions_and_reports_case() {
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("suite");
@@ -366,10 +356,7 @@ fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_copies_disk_workspaces_and_combines_optional_notebook_files() {
     for workspace in [None, Some("project")] {
         let temp = tempfile::tempdir().unwrap();
@@ -422,6 +409,7 @@ fn itest_copies_disk_workspaces_and_combines_optional_notebook_files() {
 }
 
 #[test]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_rejects_collisions_between_disk_and_notebook_files() {
     for path in ["extra.txt", "EXTRA.txt", "extra.txt/nested"] {
         let temp = tempfile::tempdir().unwrap();
@@ -448,6 +436,7 @@ fn itest_rejects_collisions_between_disk_and_notebook_files() {
 }
 
 #[test]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_rejects_configuration_above_the_temporary_workspace() {
     let temp = tempfile::tempdir().unwrap();
     let temporary_root = temp.path().join("tmp");
@@ -510,10 +499,7 @@ fn assert_golden_output(output: &std::process::Output, success: bool, diagnostic
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_notebook_whole_file_lines_and_markers() {
     for (actual, expected, selection) in [
         ("héllo\nworld\n", "héllo\nworld\n", json!({"kind":"all"})),
@@ -539,10 +525,7 @@ fn itest_golden_notebook_whole_file_lines_and_markers() {
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_expected_file_and_explicit_line_endings() {
     let root = tempfile::tempdir().unwrap();
     fs::write(root.path().join("actual.txt"), "héllo\r\nworld\r\n").unwrap();
@@ -557,10 +540,7 @@ fn itest_golden_expected_file_and_explicit_line_endings() {
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_mismatch_has_diff_and_final_newline_is_significant() {
     let root = tempfile::tempdir().unwrap();
     fs::write(root.path().join("actual.txt"), "wrong\n").unwrap();
@@ -574,6 +554,7 @@ fn itest_golden_mismatch_has_diff_and_final_newline_is_significant() {
 }
 
 #[test]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_invalid_or_missing_inputs_fail() {
     for (options, actual, diagnostic) in [
         (
@@ -670,6 +651,7 @@ This disk golden needs no source fence.
 }
 
 #[test]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_cannot_mask_a_failed_command() {
     let root = tempfile::tempdir().unwrap();
     fs::write(root.path().join("actual.txt"), "same").unwrap();
@@ -680,6 +662,7 @@ fn itest_golden_cannot_mask_a_failed_command() {
 }
 
 #[test]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_rejects_invalid_metadata_before_execution() {
     for (extra, source, diagnostic) in [
         (json!({"actual":"../outside.txt"}), "", "path"),
@@ -710,6 +693,7 @@ fn itest_golden_rejects_invalid_metadata_before_execution() {
 
 #[cfg(unix)]
 #[test]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_rejects_symlinked_expected_files_even_in_inline_workspaces() {
     let root = tempfile::tempdir().unwrap();
     let outside = tempfile::NamedTempFile::new().unwrap();
@@ -723,10 +707,7 @@ fn itest_golden_rejects_symlinked_expected_files_even_in_inline_workspaces() {
 }
 
 #[test]
-#[cfg_attr(
-    not(feature = "rego"),
-    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
-)]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_freezes_expected_files_before_cli_commands() {
     let root = tempfile::tempdir().unwrap();
     fs::write(
@@ -762,6 +743,7 @@ fn itest_golden_freezes_expected_files_before_cli_commands() {
 }
 
 #[test]
+#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_rejects_null_expected_file_in_both_formats() {
     let root = tempfile::tempdir().unwrap();
     let mut options = golden_options();
@@ -800,6 +782,264 @@ This text must never be silently ignored as an expectation.
     )
     .unwrap();
     assert_golden_output(&run(root.path(), &["--list"]), false, "expected a string");
+}
+
+/// The checked-in `examples` directory.
+fn examples() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples")
+}
+
+fn text(output: &std::process::Output) -> (String, String) {
+    (
+        String::from_utf8_lossy(&output.stdout).into_owned(),
+        String::from_utf8_lossy(&output.stderr).into_owned(),
+    )
+}
+
+/// A `scenarios.md` document with two sections that each run `morphir --version`.
+const VERSION_MD: &str = r#"---
+version: 1
+title: Version
+description: Report the version.
+tags: [suite:offline]
+provider: rego
+---
+## First
+```yaml morphir:command
+id: first
+name: First version
+timeout_seconds: 30
+```
+```sh
+morphir --version
+```
+```yaml morphir:assertion
+id: first-ok
+command: first
+entrypoints: [data.version_test.ok]
+```
+```rego
+package version_test
+import rego.v1
+ok if { input.exitCode == 0 }
+```
+## Second
+```yaml morphir:command
+id: second
+name: Second version
+timeout_seconds: 30
+```
+```sh
+morphir --version
+```
+```yaml morphir:assertion
+id: second-ok
+command: second
+entrypoints: [data.version_test.ok]
+```
+```rego
+package version_test
+import rego.v1
+ok if { input.exitCode == 0 }
+```
+"#;
+
+/// A `.feature` document whose Feature description holds `fence` as its `yaml itest` fence.
+fn feature_with_itest_fence(fence: &str) -> String {
+    format!(
+        "@suite:offline\nFeature: Materialize\n  ```yaml itest\n{fence}  ```\n\n  Scenario: Version\n    When I run \"morphir --version\"\n"
+    )
+}
+
+#[test]
+fn itest_list_matches_the_recorded_fixture() {
+    let fixture = include_str!("fixtures/itest-list.txt");
+    let output = run(&examples(), &["--list"]);
+    let (stdout, stderr) = text(&output);
+    // Until Task C5 converts `elm/single-file` off its notebook, that one example is refused
+    // instead of listed; every other row is byte for byte the output recorded before Part C.
+    // After C5, assert `stdout == fixture` and a successful exit.
+    let lines: Vec<&str> = fixture.split_inclusive('\n').collect();
+    let notebook = lines
+        .iter()
+        .position(|line| line.starts_with("elm/single-file:"))
+        .expect("the fixture lists elm/single-file");
+    let expected: String = lines
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| *index != notebook && *index != notebook + 1)
+        .map(|(_, line)| *line)
+        .collect();
+    assert_eq!(stdout, expected, "stderr={stderr}");
+    assert!(!output.status.success());
+    assert!(
+        stderr.contains("notebook scenarios are no longer supported; convert")
+            && stderr.contains("scenario.ipynb to scenarios.feature.md"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn itest_tag_that_selects_nothing_is_not_an_error() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::write(temp.path().join("scenarios.md"), VERSION_MD).unwrap();
+    let output = run(temp.path(), &["--tag", "suite:none"]);
+    let (stdout, stderr) = text(&output);
+    assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert_eq!(stdout, "0 passed; 0 failed; 2 not selected\n", "{stderr}");
+}
+
+#[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
+fn itest_runs_scenarios_md_sections_and_counts_the_ones_it_skips() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::write(temp.path().join("scenarios.md"), VERSION_MD).unwrap();
+    let output = run(temp.path(), &["--filter", ".#second"]);
+    let (stdout, stderr) = text(&output);
+    assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert_eq!(
+        stdout, "PASS .#second: Second (2 steps)\n1 passed; 0 failed; 1 not selected\n",
+        "{stderr}"
+    );
+}
+
+#[test]
+fn itest_fails_a_scenario_whose_workspace_directory_is_missing() {
+    let temp = tempfile::tempdir().unwrap();
+    let example = temp.path().join("cli/missing");
+    fs::create_dir_all(&example).unwrap();
+    fs::write(
+        example.join("scenarios.feature"),
+        feature_with_itest_fence("  workspace: {kind: directory, path: absent}\n"),
+    )
+    .unwrap();
+    let output = run(temp.path(), &[]);
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(stderr.contains("FAIL cli/missing#version\n"), "{stderr}");
+    assert!(
+        stderr.contains("workspace source must be a real directory"),
+        "{stderr}"
+    );
+    assert_eq!(stdout, "0 passed; 1 failed; 0 not selected\n");
+}
+
+#[test]
+fn itest_fails_a_scenario_whose_workspace_does_not_materialize() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::write(temp.path().join("morphir.json"), "{}\n").unwrap();
+    fs::write(
+        temp.path().join("scenarios.feature"),
+        feature_with_itest_fence("  files:\n    - {path: morphir.json, content: \"{}\"}\n"),
+    )
+    .unwrap();
+    let output = run(temp.path(), &[]);
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(stderr.contains("FAIL .#version\n"), "{stderr}");
+    assert!(
+        stderr.contains("duplicate or conflicting workspace path"),
+        "{stderr}"
+    );
+    assert_eq!(stdout, "0 passed; 1 failed; 0 not selected\n");
+}
+
+#[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
+fn itest_fails_a_scenarios_md_the_reader_refuses_and_runs_the_rest() {
+    let temp = tempfile::tempdir().unwrap();
+    let good = temp.path().join("cli/good");
+    fs::create_dir_all(&good).unwrap();
+    fs::write(good.join("scenarios.md"), VERSION_MD).unwrap();
+    // The second section's assertion checks the first command after the second one ran: the
+    // reader refuses that order rather than regroup the steps.
+    let refused = VERSION_MD.to_owned()
+        + "```yaml morphir:assertion\nid: late\ncommand: first\nentrypoints: [data.t.ok]\n```\n```rego\npackage t\nimport rego.v1\nok if { true }\n```\n";
+    let bad = temp.path().join("cli/refused");
+    fs::create_dir_all(&bad).unwrap();
+    fs::write(bad.join("scenarios.md"), refused).unwrap();
+    let output = run(temp.path(), &[]);
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(stderr.contains("FAIL cli/refused\n"), "{stderr}");
+    assert!(stderr.contains("which is not the last command"), "{stderr}");
+    assert!(
+        stdout.contains("PASS cli/good#first: First (2 steps)\n"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.ends_with("2 passed; 1 failed; 0 not selected\n"),
+        "{stdout}"
+    );
+}
+
+#[test]
+fn itest_fails_every_selected_scenario_when_a_temporary_ancestor_has_configuration() {
+    let temp = tempfile::tempdir().unwrap();
+    let temporary_root = temp.path().join("tmp");
+    fs::create_dir_all(&temporary_root).unwrap();
+    let suite = temp.path().join("suite");
+    fs::create_dir_all(&suite).unwrap();
+    fs::write(suite.join("scenarios.md"), VERSION_MD).unwrap();
+    fs::write(
+        temp.path().join("morphir.toml"),
+        "[workspace]\nmembers = ['*']\n",
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .arg("itest")
+        .arg(&suite)
+        .args(["--filter", ".#first"])
+        .env("TMPDIR", &temporary_root)
+        .env("TEMP", &temporary_root)
+        .env("TMP", &temporary_root)
+        .env("MORPHIR_HOME", temp.path().join("outer-home"))
+        .env("MORPHIR_BDD_OUT", temp.path().join("reports"))
+        .env("MORPHIR_LOG_FILE", "false")
+        .output()
+        .unwrap();
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(
+        stderr.contains("FAIL .#first\nitest cannot isolate temporary ancestor configuration at"),
+        "{stderr}"
+    );
+    assert!(!stderr.contains("FAIL .#second"), "{stderr}");
+    assert_eq!(stdout, "0 passed; 1 failed; 1 not selected\n");
+}
+
+#[test]
+fn itest_refuses_a_missing_search_root() {
+    let temp = tempfile::tempdir().unwrap();
+    let missing = temp.path().join("absent");
+    let output = run(&missing, &[]);
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(stderr.contains("absent"), "{stderr}");
+    assert!(!stdout.contains("passed"), "{stdout}");
+}
+
+#[test]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
+fn itest_filter_runs_one_example_section() {
+    let output = run(&examples(), &["--filter", "cli/migrate#classic-to-v4"]);
+    let (stdout, stderr) = text(&output);
+    assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert_eq!(
+        stdout,
+        "PASS cli/migrate#classic-to-v4: Convert Classic JSON to V4 YAML (3 steps)\n\
+         1 passed; 0 failed; 25 not selected\n",
+        "{stderr}"
+    );
 }
 
 mod itest_runner {

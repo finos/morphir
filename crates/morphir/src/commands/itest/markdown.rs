@@ -377,7 +377,9 @@ pub(super) fn parse_sections(text: &str) -> Result<ParsedDocument> {
 
 /// Reads every `##` section of a `scenarios.md` file into a synthetic notebook, keyed by its
 /// section id. [`super::reader::read_scenarios_md`] lowers the same sections into Gherkin
-/// scenarios by calling [`parse_sections`] directly, so this file is parsed only once.
+/// scenarios by calling [`parse_sections`] directly, so this file is parsed only once. Only the
+/// legacy loader of the unit tests uses this.
+#[cfg(test)]
 pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
     Ok(parse_sections(text)?
         .sections
