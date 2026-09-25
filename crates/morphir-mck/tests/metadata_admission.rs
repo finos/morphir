@@ -188,6 +188,63 @@ fn targets_require_exact_revisions_and_profile_layouts() {
 }
 
 #[test]
+fn current_orders_identity_must_match_its_target_revision() {
+    for (case_index, pointer) in [
+        (0, "/given/owner"),
+        (0, "/expected/facts/0/subject"),
+        (4, "/given/ownerDocument"),
+        (4, "/given/valueSpecification/@id"),
+        (4, "/given/$meta/@graph/0/@id"),
+        (14, "/given/$meta/assertionSources/0/selector/subject"),
+        (18, "/given/fact/subject"),
+        (60, "/given/left/owner"),
+        (60, "/given/right/owner"),
+    ] {
+        let message = error(changed(files(), CORPUS, |value| {
+            let case = &mut value["cases"][case_index];
+            let uri = case.pointer_mut(pointer).unwrap();
+            *uri = json!(
+                uri.as_str()
+                    .unwrap()
+                    .replace("format=4.1.0", "format=4.0.0")
+            );
+        }));
+        assert!(message.contains("owner revision"), "{pointer}: {message}");
+    }
+}
+
+#[test]
+fn independent_references_and_typed_json_text_keep_their_own_versions() {
+    let corpus: Value = serde_json::from_slice(&files()[CORPUS]).unwrap();
+    let cases = corpus["cases"].as_array().unwrap();
+    assert_eq!(
+        cases[0]["given"]["context"]["deprecated"],
+        "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+    );
+    assert_eq!(
+        cases[6]["given"]["context"]["publicApi"],
+        "morphir://ir/pkg/acme/annotation-vocab?format=4.0.0#/module/annotations/value/public-api"
+    );
+    assert_eq!(
+        cases[2]["given"]["facts"]["replacement"],
+        "morphir://ir/pkg/acme/orders-next?format=4.0.0#/module/api/value/submit-order-v2"
+    );
+    assert_eq!(
+        cases[47]["given"]["facts"]["targetNames"]["frontend"]["rescript"],
+        "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/submit-order-v2"
+    );
+    assert_eq!(
+        cases[47]["expected"]["facts"][0]["object"]["@value"]["frontend"]["rescript"],
+        cases[47]["given"]["facts"]["targetNames"]["frontend"]["rescript"]
+    );
+    assert_eq!(cases[21]["given"]["irVersion"], 3);
+    assert_eq!(
+        cases[21]["expected"]["facts"][0]["subject"],
+        "morphir://ir/pkg/acme/orders?format=3.1.0#/module/api/value/legacy-submit-order"
+    );
+}
+
+#[test]
 fn duplicate_profile_targets_cannot_reuse_one_fixture() {
     let message = error(changed(files(), CORPUS, |value| {
         value["cases"][17]["targets"]

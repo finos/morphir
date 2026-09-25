@@ -418,6 +418,60 @@ fn check_targets(source: &KitSource, case: &Value, id: &str) -> Result<(), Strin
     Ok(())
 }
 
+fn check_current_orders_uri(uri: &Value, targets: &[Value], id: &str) -> Result<(), String> {
+    const CURRENT_ORDERS: &str = "morphir://ir/pkg/acme/orders?format=";
+    let Some(format) = uri
+        .as_str()
+        .and_then(|uri| uri.strip_prefix(CURRENT_ORDERS))
+        .map(|suffix| suffix.split(['&', '#']).next().unwrap_or(suffix))
+    else {
+        return Ok(());
+    };
+    if targets
+        .iter()
+        .all(|target| target["irRevision"].as_str() == Some(format))
+    {
+        Ok(())
+    } else {
+        Err(format!(
+            "{id}: current acme/orders owner revision {format} does not match target IR revision"
+        ))
+    }
+}
+
+fn check_current_orders_identity(case: &Value, id: &str) -> Result<(), String> {
+    if case["operation"] == "projectSidecar" && case["given"]["irVersion"] == 3 {
+        return Ok(());
+    }
+    let targets = case["targets"]
+        .as_array()
+        .expect("schema validated targets");
+    let given = &case["given"];
+    for input in [given, &given["left"], &given["right"]] {
+        for key in ["owner", "ownerDocument"] {
+            check_current_orders_uri(&input[key], targets, id)?;
+        }
+    }
+    check_current_orders_uri(&given["valueSpecification"]["@id"], targets, id)?;
+    check_current_orders_uri(&given["fact"]["subject"], targets, id)?;
+    if let Some(graph) = given["$meta"]["@graph"].as_array() {
+        for node in graph {
+            check_current_orders_uri(&node["@id"], targets, id)?;
+        }
+    }
+    if let Some(sources) = given["$meta"]["assertionSources"].as_array() {
+        for source in sources {
+            check_current_orders_uri(&source["selector"]["subject"], targets, id)?;
+        }
+    }
+    if let Some(facts) = case["expected"]["facts"].as_array() {
+        for fact in facts {
+            check_current_orders_uri(&fact["subject"], targets, id)?;
+        }
+    }
+    Ok(())
+}
+
 /// `None` means an older/ad-hoc kit has no metadata reference corpus.
 /// A present corpus must be completely admitted before any kit command succeeds.
 pub(crate) fn admit(source: &KitSource) -> Result<Option<usize>, String> {
@@ -458,6 +512,7 @@ pub(crate) fn admit(source: &KitSource) -> Result<Option<usize>, String> {
             return Err(format!("{CORPUS}: duplicate metadata case id {id}"));
         }
         check_targets(source, case, id)?;
+        check_current_orders_identity(case, id)?;
         check_fixture_references(source, case, id)?;
         if case["expected"]["outcome"] == "accepted"
             && let Some(facts) = case["expected"]["facts"].as_array()
