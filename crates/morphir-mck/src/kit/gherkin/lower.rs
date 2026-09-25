@@ -6,9 +6,11 @@
 //!   that case, and consecutive scenarios with the same id form one case. The
 //!   first scenario's name gives the title, and its description gives the
 //!   prose.
-//! - **Tags:** feature and scenario tags merge, and a scenario tag wins.
-//!   `@node:<Kind>`, `@version:<n>`, `@compare:attributes` and `@pending` set
-//!   the case's heading keys.
+//! - **Tags:** feature, rule and scenario tags merge, and the more specific
+//!   tag wins. `@node:<Kind>`, `@version:<n>`, `@compare:attributes` and
+//!   `@pending` set the case's heading keys. On an Examples block they are an
+//!   error.
+//! - **Description:** the feature's description is the file's introduction.
 //! - **Fences:** each data step gives one fence, in step order, with an
 //!   outline's rows expanded block by block and row by row. A tree check step
 //!   gives no fence.
@@ -49,6 +51,9 @@ pub struct LoweredFile {
     /// outline row, `None` for a plain scenario; the step's source line). The key matches
     /// morphir-bdd's `ScenarioRef` fields and `gherkin::Step::position.line`.
     pub fences: HashMap<(NodePath, Option<usize>, usize), FenceRef>,
+    /// The feature's description: the file's introduction, its paragraphs joined by a blank
+    /// line, as the converter's `feature_description` gives it for a Markdown file.
+    pub description: String,
 }
 
 /// Lowers one `.feature` case file. `file` is its repository-relative path, as `KitCase.file`.
@@ -62,7 +67,9 @@ pub fn lower(file: &str, doc: &Document) -> LoweredFile {
         errors: Vec::new(),
         fences: HashMap::new(),
     };
+    let mut description = String::new();
     if let Some(feature) = &doc.feature {
+        description = prose(&feature.description).join("\n\n");
         let feature_tags = lowering.tags(&feature.tags);
         if let Some(background) = &feature.background {
             lowering.fail(
@@ -71,11 +78,15 @@ pub fn lower(file: &str, doc: &Document) -> LoweredFile {
             );
         }
         let feature_path = NodePath::feature();
-        let mut scenarios: Vec<(NodePath, &Scenario)> = feature
+        // Each scenario with the tags around it: the feature's, then its rule's over them.
+        let mut scenarios: Vec<(NodePath, &Scenario, CaseTags)> = feature
             .scenarios
             .iter()
             .enumerate()
-            .map(|(i, s)| (feature_path.push(Segment::Scenario(i)), s))
+            .map(|(i, s)| {
+                let path = feature_path.push(Segment::Scenario(i));
+                (path, s, feature_tags.clone())
+            })
             .collect();
         for (r, rule) in feature.rules.iter().enumerate() {
             if let Some(background) = &rule.background {
@@ -84,16 +95,15 @@ pub fn lower(file: &str, doc: &Document) -> LoweredFile {
                     "a kit case file may not have a background".to_owned(),
                 );
             }
+            let rule_tags = lowering.tags(&rule.tags).over(&feature_tags);
             let rule_path = feature_path.push(Segment::Rule(r));
-            scenarios.extend(
-                rule.scenarios
-                    .iter()
-                    .enumerate()
-                    .map(|(i, s)| (rule_path.push(Segment::Scenario(i)), s)),
-            );
+            scenarios.extend(rule.scenarios.iter().enumerate().map(|(i, s)| {
+                let path = rule_path.push(Segment::Scenario(i));
+                (path, s, rule_tags.clone())
+            }));
         }
-        for (path, scenario) in scenarios {
-            lowering.scenario(&feature_tags, &path, scenario);
+        for (path, scenario, outer_tags) in scenarios {
+            lowering.scenario(&outer_tags, &path, scenario);
         }
     }
     lowering.finish();
@@ -109,6 +119,7 @@ pub fn lower(file: &str, doc: &Document) -> LoweredFile {
             errors,
         },
         fences: lowering.fences,
+        description,
     }
 }
 
@@ -139,6 +150,12 @@ impl CaseTags {
             pending: self.pending || outer.pending,
         }
     }
+}
+
+/// Whether `tag` is one of the kit's own: `@pending`, or a tag in the `node`, `version` or
+/// `compare` namespace.
+fn is_kit_tag(tag: &Tag) -> bool {
+    tag.name == "pending" || matches!(tag.namespaced(), Some(("node" | "version" | "compare", _)))
 }
 
 /// A scenario name's case id and title: `<topic>-<NNNN> <title>`.
@@ -226,7 +243,8 @@ impl Lowering<'_> {
         self.cases.push(case);
     }
 
-    fn scenario(&mut self, feature_tags: &CaseTags, path: &NodePath, scenario: &Scenario) {
+    /// Lowers one scenario. `outer_tags` are the merged tags of its feature and rule.
+    fn scenario(&mut self, outer_tags: &CaseTags, path: &NodePath, scenario: &Scenario) {
         let line = scenario.position.line;
         let Some(name) = case_name(&scenario.name) else {
             self.fail(
@@ -238,7 +256,7 @@ impl Lowering<'_> {
             );
             return;
         };
-        let tags = self.tags(&scenario.tags).over(feature_tags);
+        let tags = self.tags(&scenario.tags).over(outer_tags);
         let id = format!("{}-{}", name.topic, name.digits);
         match &self.draft {
             Some((case, first)) if case.id.as_str() == id => {
@@ -257,6 +275,10 @@ impl Lowering<'_> {
             return;
         }
         for (e, examples) in scenario.examples.iter().enumerate() {
+            for tag in examples.tags.iter().filter(|tag| is_kit_tag(tag)) {
+                let message = format!("the kit tag @{} may not sit on an Examples block", tag.name);
+                self.fail(tag.position.line, message);
+            }
             let Some((header, rows)) = examples
                 .table
                 .as_ref()
@@ -557,7 +579,7 @@ mod tests {
     use morphir_gherkin::{Segment, read_str};
 
     use super::*;
-    use crate::kit::syntax::case::Status;
+    use crate::kit::syntax::case::{Compare, Status};
     use crate::kit::{Language, Role};
 
     const FILE: &str = "spec/ir/mck/values.feature";
@@ -589,12 +611,8 @@ Feature: Values
       | YAML   | Reference: morphir/SDK:basics#add         |
       | JSON   | { "Reference": "morphir/SDK:basics#add" } |
 
-  Scenario Outline: values-0003 Reference shorthand
-    Then a reader of <format> accepts <input>
-
-    Examples:
-      | format | input                    |
-      | JSON   | "morphir/SDK:basics#add" |
+  Scenario: values-0003 Reference shorthand
+    Then a reader of JSON accepts "morphir/SDK:basics#add"
 "#;
 
     #[test]
@@ -656,7 +674,14 @@ Feature: Values
         let expected = HashMap::from([
             ((examples(0), Some(0), 5), FenceRef { case: 0, fence: 0 }),
             ((examples(0), Some(1), 5), FenceRef { case: 0, fence: 1 }),
-            ((examples(1), Some(0), 13), FenceRef { case: 0, fence: 2 }),
+            (
+                (
+                    NodePath::from_segments(&[Segment::Feature, Segment::Scenario(1)]),
+                    None,
+                    13,
+                ),
+                FenceRef { case: 0, fence: 2 },
+            ),
         ]);
         assert_eq!(file.fences, expected);
     }
@@ -756,6 +781,72 @@ Feature: Values
             (case.node.as_deref(), case.version, case.status),
             (Some("Value"), Some(3), Status::Pending)
         );
+    }
+
+    #[test]
+    fn rule_tags_sit_between_feature_and_scenario_tags() {
+        let text = r#"@node:Value @version:4
+Feature: Values
+
+  @version:3 @compare:attributes
+  Rule: Version 3
+
+    @compare:attributes
+    Scenario: values-0001 From the rule
+      Then its canonical YAML spelling is a: 1
+
+    @version:2
+    Scenario: values-0002 From the scenario
+      Then its canonical YAML spelling is a: 1
+"#;
+        let file = lowered(text);
+        assert_eq!(errors(&file), vec![]);
+        let keys: Vec<_> = file
+            .parsed
+            .cases
+            .iter()
+            .map(|c| (c.node.as_deref(), c.version, c.compare))
+            .collect();
+        assert_eq!(
+            keys,
+            vec![
+                (Some("Value"), Some(3), Compare::Attributes),
+                (Some("Value"), Some(2), Compare::Attributes),
+            ]
+        );
+        let rule_scenario =
+            NodePath::from_segments(&[Segment::Feature, Segment::Rule(0), Segment::Scenario(0)]);
+        assert_eq!(
+            file.fences.get(&(rule_scenario, None, 9)),
+            Some(&FenceRef { case: 0, fence: 0 })
+        );
+    }
+
+    #[test]
+    fn a_kit_tag_on_an_examples_block_is_an_error() {
+        let text = r#"Feature: Values
+
+  Scenario Outline: values-0001 Outline
+    Then its canonical <format> spelling is <spelling>
+
+    @pending @spelling
+    Examples:
+      | format | spelling |
+      | YAML   | a: 1     |
+"#;
+        assert_eq!(
+            errors(&lowered(text)),
+            vec![(
+                6,
+                "the kit tag @pending may not sit on an Examples block".to_owned()
+            )]
+        );
+    }
+
+    #[test]
+    fn the_feature_description_is_kept() {
+        let text = "Feature: Values\n  First,\n  two lines.\n\n  Second.\n\n  Scenario: values-0001 x\n    Then its canonical YAML spelling is a: 1\n";
+        assert_eq!(lowered(text).description, "First,\ntwo lines.\n\nSecond.");
     }
 
     #[test]

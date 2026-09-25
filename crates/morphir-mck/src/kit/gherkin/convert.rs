@@ -1,15 +1,17 @@
 //! Writes `.feature` text for one Markdown case file's cases: the one-off
 //! converter from the kit's Markdown grammar to plain Gherkin.
 //!
-//! - **Feature:** the Markdown file's `# ` heading names the feature. A
-//!   `@node:`, `@version:` or `@compare:` tag that every case shares goes on
-//!   the feature, and only there.
+//! - **Feature:** the Markdown file's `# ` heading names the feature, and its
+//!   introduction is the feature's description. A `@node:`, `@version:` or
+//!   `@compare:` tag that every case shares goes on the feature, and only
+//!   there.
 //! - **Scenarios:** each case gives one or more scenarios named
-//!   `<id> <title>`, in fence order. Consecutive one-line fences of one step
-//!   shape form a scenario outline with a row per fence. A run of other
-//!   fences forms a plain scenario, one doc-string step per fence.
-//! - **Tree files:** the files of a set are `Given the tree file …:` steps,
-//!   and a tree check step follows the set's last file.
+//!   `<id> <title>`, in fence order. A run of at least two consecutive
+//!   one-line fences of one step shape forms a scenario outline with a row per
+//!   fence. The fences between such runs form a plain scenario: one step per
+//!   fence, inline when the document fits, with a doc string otherwise.
+//! - **Tree files:** the files of a set are `Given the tree file …:` steps in
+//!   one plain scenario, and a tree check step follows the set's last file.
 //! - **Prose:** the case's prose is its first scenario's description.
 //!
 //! [`super::lower`] reads the result back into the same cases.
@@ -33,9 +35,24 @@ pub fn feature_title(topic: &str, markdown: &str) -> String {
         .unwrap_or_else(|| topic.to_owned())
 }
 
+/// The feature description for a Markdown case file: its introduction, the prose paragraphs
+/// before the first case heading, joined by a blank line. It is empty when there are none.
+pub fn feature_description(markdown: &str) -> String {
+    tokenize(markdown)
+        .into_iter()
+        .take_while(|block| !matches!(block, Block::Heading { level: 2, .. }))
+        .filter_map(|block| match block {
+            Block::Prose { text, .. } => Some(text),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
 /// Writes the `.feature` text for one Markdown case file's cases (`ParsedFile.cases`), under the
-/// feature title `title` (see [`feature_title`]).
-pub fn convert(title: &str, cases: &[KitCase]) -> String {
+/// feature title `title` (see [`feature_title`]) and with the feature description `description`
+/// (see [`feature_description`]).
+pub fn convert(title: &str, description: &str, cases: &[KitCase]) -> String {
     let hoisted = Hoisted::of(cases);
     let mut out = String::new();
     let feature_tags = hoisted.tags();
@@ -43,6 +60,13 @@ pub fn convert(title: &str, cases: &[KitCase]) -> String {
         let _ = writeln!(out, "{}", feature_tags.join(" "));
     }
     let _ = writeln!(out, "Feature: {title}");
+    for line in description.lines() {
+        if line.is_empty() {
+            out.push('\n');
+        } else {
+            let _ = writeln!(out, "  {line}");
+        }
+    }
     for case in cases {
         write_case(&mut out, case, &hoisted);
     }
@@ -157,10 +181,26 @@ impl Shape {
     }
 }
 
-/// One scenario of a case: an outline of one-line fences, or a run of doc-string fences.
+/// One scenario of a case: an outline of a run of at least two one-line fences, or a plain
+/// scenario of the fences between those runs.
 enum Part<'a> {
     Outline(Shape, Vec<Vec<String>>),
-    Plain(Vec<&'a KitFence>),
+    Plain(Vec<PlainStep<'a>>),
+}
+
+/// One step of a plain scenario: a fence with its document inline in the step text, or with a
+/// doc string.
+enum PlainStep<'a> {
+    Inline(&'a KitFence, String),
+    DocString(&'a KitFence),
+}
+
+impl<'a> PlainStep<'a> {
+    fn fence(&self) -> &'a KitFence {
+        match self {
+            Self::Inline(fence, _) | Self::DocString(fence) => fence,
+        }
+    }
 }
 
 fn format_of(language: Language) -> Format {
@@ -250,18 +290,66 @@ fn inline_row(fence: &KitFence) -> Option<(Shape, Vec<String>)> {
     reads_back.then_some((shape, cells))
 }
 
+/// The step text of a fence written inline in a plain scenario, when it reads back as the
+/// fence.
+fn inline_text(fence: &KitFence) -> Option<String> {
+    let line = fence.body.strip_suffix('\n')?;
+    let step = kit_step(fence, Body::Inline(line.to_owned()));
+    let text = step_text(&step);
+    (parse_step(&text, None) == Some(Ok(step))).then_some(text)
+}
+
 /// A case's scenarios, in fence order.
+///
+/// A run of at least two consecutive one-line fences of one shape is an outline. Every other
+/// fence is a step of the plain scenario around it: inline when it fits, with a doc string
+/// otherwise. A set's files stay in one plain scenario with its tree check, so every fence
+/// from a set's first file to its last is a plain step, whatever its shape.
 fn plan(case: &KitCase) -> Vec<Part<'_>> {
+    let mut spans: HashMap<Option<&str>, (usize, usize)> = HashMap::new();
+    for fence in case.fences.iter().filter(|f| f.info.role == Role::File) {
+        spans
+            .entry(fence.info.key("set"))
+            .and_modify(|span| span.1 = fence.index)
+            .or_insert((fence.index, fence.index));
+    }
+    let in_a_set = |index: usize| spans.values().any(|&(a, b)| a <= index && index <= b);
+    let rows: Vec<_> = case
+        .fences
+        .iter()
+        .map(|fence| inline_row(fence).filter(|_| !in_a_set(fence.index)))
+        .collect();
+
     let mut parts: Vec<Part<'_>> = Vec::new();
-    for fence in &case.fences {
-        match (inline_row(fence), parts.last_mut()) {
-            (Some((shape, cells)), Some(Part::Outline(last, rows))) if *last == shape => {
-                rows.push(cells)
-            }
-            (Some((shape, cells)), _) => parts.push(Part::Outline(shape, vec![cells])),
-            (None, Some(Part::Plain(fences))) => fences.push(fence),
-            (None, _) => parts.push(Part::Plain(vec![fence])),
+    let mut at = 0;
+    while at < case.fences.len() {
+        let run = match &rows[at] {
+            Some((shape, _)) => rows[at..]
+                .iter()
+                .take_while(|row| row.as_ref().is_some_and(|(s, _)| s == shape))
+                .count(),
+            None => 0,
+        };
+        if run >= 2 {
+            let shape = rows[at].as_ref().map(|(shape, _)| *shape);
+            let cells = rows[at..at + run]
+                .iter()
+                .filter_map(|row| row.as_ref().map(|(_, cells)| cells.clone()))
+                .collect();
+            parts.extend(shape.map(|shape| Part::Outline(shape, cells)));
+            at += run;
+            continue;
         }
+        let fence = &case.fences[at];
+        let step = match inline_row(fence).and_then(|_| inline_text(fence)) {
+            Some(text) => PlainStep::Inline(fence, text),
+            None => PlainStep::DocString(fence),
+        };
+        match parts.last_mut() {
+            Some(Part::Plain(steps)) => steps.push(step),
+            _ => parts.push(Part::Plain(vec![step])),
+        }
+        at += 1;
     }
     parts
 }
@@ -286,25 +374,31 @@ fn write_case(out: &mut String, case: &KitCase, hoisted: &Hoisted) {
                 let _ = writeln!(out, "\n    Examples:");
                 write_table(out, shape.columns(), rows);
             }
-            Part::Plain(fences) => {
+            Part::Plain(steps) => {
                 write_header(out, &tags, "Scenario", case, index == 0);
                 let mut previous = None;
-                for fence in fences {
-                    let language = fence.info.language.as_str();
-                    let step = kit_step(
-                        fence,
-                        Body::DocString {
-                            content_type: Some(language.to_owned()),
-                            text: fence.body.clone(),
-                        },
-                    );
+                for step in steps {
+                    let fence = step.fence();
                     let kind = if fence.info.role == Role::File {
                         "Given"
                     } else {
                         "Then"
                     };
-                    write_step(out, &mut previous, kind, &step_text(&step));
-                    write_doc_string(out, language, &fence.body);
+                    match step {
+                        PlainStep::Inline(_, text) => write_step(out, &mut previous, kind, text),
+                        PlainStep::DocString(_) => {
+                            let language = fence.info.language.as_str();
+                            let step = kit_step(
+                                fence,
+                                Body::DocString {
+                                    content_type: Some(language.to_owned()),
+                                    text: fence.body.clone(),
+                                },
+                            );
+                            write_step(out, &mut previous, kind, &step_text(&step));
+                            write_doc_string(out, language, &fence.body);
+                        }
+                    }
                     if fence.info.role == Role::File
                         && last_file.get(&fence.info.key("set")) == Some(&fence.index)
                     {
@@ -432,19 +526,15 @@ Feature: Values
       | YAML   | Reference: morphir/SDK:basics#add         |
       | JSON   | { "Reference": "morphir/SDK:basics#add" } |
 
-  Scenario Outline: values-0003 Reference shorthand
-    Then a reader of <format> accepts <input>
-
-    Examples:
-      | format | input                    |
-      | JSON   | "morphir/SDK:basics#add" |
+  Scenario: values-0003 Reference shorthand
+    Then a reader of JSON accepts "morphir/SDK:basics#add"
 "#;
 
     #[test]
-    fn values_0003_converts_to_one_outline_per_step_shape() {
+    fn values_0003_converts_to_an_outline_and_a_single_inline_step() {
         let parsed = parse_kit_file("spec/ir/mck/values.md", VALUES_0003);
         assert_eq!(parsed.errors, vec![]);
-        assert_eq!(convert("Values", &parsed.cases), VALUES_0003_FEATURE);
+        assert_eq!(convert("Values", "", &parsed.cases), VALUES_0003_FEATURE);
     }
 
     #[test]
@@ -486,15 +576,85 @@ Feature: Document tree
       a: 1
       """
     Then the "s" tree reads back as the canonical form
+    And its canonical YAML spelling is a: 1
+"#;
+        assert_eq!(convert("Document tree", "", &parsed.cases), expected);
+    }
 
-  Scenario Outline: document-tree-0001 Doc strings
-    Then its canonical <format> spelling is <spelling>
+    #[test]
+    fn one_line_fences_inside_a_set_stay_in_the_set_scenario() {
+        let markdown = r#"## document-tree-0001: A set around one-line fences {node=Distribution}
+
+```yaml file path=manifest set=s
+a: 1
+```
+
+```yaml canonical
+a: 1
+```
+
+```json canonical
+{ "a": 1 }
+```
+
+```yaml file path=module set=s
+b: 2
+```
+
+```json accepted
+{ "a": 1.0 }
+```
+
+```json accepted
+{ "a": 1e0 }
+```
+"#;
+        let parsed = parse_kit_file("spec/ir/mck/document-tree.md", markdown);
+        assert_eq!(parsed.errors, vec![]);
+        let expected = r#"@node:Distribution
+Feature: Document tree
+
+  Scenario: document-tree-0001 A set around one-line fences
+    Given the tree file "manifest" in set "s":
+      """yaml
+      a: 1
+      """
+    Then its canonical YAML spelling is a: 1
+    And its canonical JSON spelling is { "a": 1 }
+    Given the tree file "module" in set "s":
+      """yaml
+      b: 2
+      """
+    Then the "s" tree reads back as the canonical form
+
+  Scenario Outline: document-tree-0001 A set around one-line fences
+    Then a reader of <format> accepts <input>
 
     Examples:
-      | format | spelling |
-      | YAML   | a: 1     |
+      | format | input        |
+      | JSON   | { "a": 1.0 } |
+      | JSON   | { "a": 1e0 } |
 "#;
-        assert_eq!(convert("Document tree", &parsed.cases), expected);
+        assert_eq!(convert("Document tree", "", &parsed.cases), expected);
+    }
+
+    #[test]
+    fn the_file_introduction_is_the_feature_description() {
+        let markdown = "# Values\n\nFirst paragraph,\ntwo lines.\n\nSecond.\n\n## values-0001: x {node=Value}\n\n```yaml canonical\na: 1\n```\n";
+        let description = feature_description(markdown);
+        assert_eq!(description, "First paragraph,\ntwo lines.\n\nSecond.");
+        let parsed = parse_kit_file("spec/ir/mck/values.md", markdown);
+        let text = convert("Values", &description, &parsed.cases);
+        assert!(
+            text.starts_with(
+                "@node:Value\nFeature: Values\n  First paragraph,\n  two lines.\n\n  Second.\n\n  Scenario:"
+            ),
+            "{text}"
+        );
+        assert_eq!(
+            feature_description("# Versions\n\n## versions-0001: x\n"),
+            ""
+        );
     }
 
     #[test]
