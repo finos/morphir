@@ -235,6 +235,9 @@ A milestone branch opened before the release is ready stays a draft pull
 request. Rebase it on `main` before the release, move the `[Unreleased]`
 CHANGELOG entries into the version section, and rerun every gate.
 
+Work for the release can target the milestone branch with its own pull
+request. CI runs on pull requests into `milestone/**` as it does for `main`.
+
 ### 2. Merge and tag
 
 Wait for CI on the pull request to pass, then merge. Merge on green CI.

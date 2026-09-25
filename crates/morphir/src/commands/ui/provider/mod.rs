@@ -3,8 +3,8 @@
 pub mod extension;
 pub mod native;
 pub mod playground;
+mod pool;
 mod project_model;
-mod sessions;
 
 #[cfg(test)]
 mod conformance;

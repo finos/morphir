@@ -100,7 +100,7 @@ reachable rather than assuming a CLI is present.
 ## Provider catalog
 
 The Playground does not decide which provider serves a language or a target.
-`crates/morphir/src/extensions.rs` builds an `ExtensionRegistry` carrying the
+`crates/morphir/src/extensions.rs` builds a `morphir_host::Registry` carrying the
 built-in providers plus everything `list_installed` reports, and that
 registry resolves a language and IR release to one provider — preferring an
 installed provider over a built-in offering the same thing, and refusing an
@@ -109,7 +109,7 @@ and so does the Playground, so a language the CLI can compile is a language
 the Playground can compile.
 
 `morphir.playground.catalog` is therefore a projection, not a second source
-of truth. It walks `ExtensionRegistry::providers()` and reports, per
+of truth. It walks `Registry::providers()` and reports, per
 language and per target, what that provider advertises: the language id and
 its file extensions, the IR versions, the `compile`, `incremental`, and
 `fragments` flags for a frontend, the `generate` flag for a backend, and the
@@ -144,21 +144,20 @@ resolves.
 
 ## Invocation
 
-Compile and generate go through `crate::extensions::invoke_frontend` and
-`invoke_backend` — the same functions `morphir compile` and `morphir
-generate` call. The registry decides the invocation mode: a built-in runs
-its typed native handle in process, an installed provider is activated and
-driven over MEP. The Playground adds no invocation path of its own, which is
-what keeps "the Playground can run it" equal to "the CLI can run it".
+Compile and generate go through the boundary `morphir compile` and `morphir
+generate` use. The registry resolution decides the invocation mode: a
+built-in runs its typed native handle in process, through
+`crate::extensions::invoke_frontend` and `invoke_backend`, and an installed
+provider is started with `Resolved::connect` and driven over MEP. The
+Playground adds no invocation path of its own, which is what keeps "the
+Playground can run it" equal to "the CLI can run it".
 
-One extension instance per invocation, for now. Reusing a negotiated session
-across requests needs a session actor in `morphir-daemon`, because
-`Session::invoke` consumes the session and returns it inside `InvokeOutcome`,
-so a pool built on a mutex and an `Option` has an empty-slot failure mode on
-every error path. That actor is a separate change in `ecosystem/morphir-rust`
-and the Playground picks it up when it lands; until then a browser pays
-extension startup per compile, which is acceptable for a scratch surface and
-free for the in-process built-ins.
+Guests stay warm across requests. The CLI's `PooledInvoker` holds one guest
+per provider id in a `morphir_host::Pool`, and reuses it while the
+resolution's fingerprint is unchanged, so a reinstalled extension gets a
+fresh guest. A guest that breaks under a call is reopened and the call is
+retried once. A guest with no call for five minutes is stopped in order. The
+in-process built-ins have no guest to keep and are called directly.
 
 Every invocation carries a wall-clock timeout. WASM extensions have
 `ResourceLimits` covering memory, time, and fuel, but a process-backed
@@ -307,7 +306,7 @@ the reason rather than hiding the option.
 Compiling is an explicit action. try-morphir recompiled on every keystroke
 because it compiled in process and returned immediately. Here a compile may
 start a process backed extension. Debounced automatic compilation becomes
-reasonable once the session actor is in place and its effect on latency is
+reasonable now that guests stay warm, once its effect on latency is
 measured.
 
 The editor holds a list of documents from the start. The provider places that
@@ -399,12 +398,13 @@ come back in the response.
 
 `ecosystem/morphir-rust` carries the `FrontendRecord` in
 `morphir-distribution`, which lands there first because the catalog cannot
-report an installed frontend's languages without it. The session actor is a
-later, independent change; nothing here waits on it.
+report an installed frontend's languages without it. Warm guests through
+`morphir_host::Pool` came later, as an independent change; nothing here
+waited on them.
 
 Development does not have to wait on a pin. `crates/morphir/Cargo.toml`
 declares the morphir-rust crates as path dependencies into the submodule, so
-a change in `morphir-daemon` is visible to the CLI build immediately and both
+a change in `morphir-host` is visible to the CLI build immediately and both
 sides can be written in one worktree. Sequencing applies to merging: the
 morphir-rust pull request merges, the pin here advances, then the CLI change
 merges against the advanced pin.
