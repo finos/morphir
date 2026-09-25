@@ -728,31 +728,57 @@ fn reconcile_paths(by_path: &mut [(PathMode, Vec<Record>)], case: &KitCase) {
     }
 }
 
-/// Runs every selected case of `kit` against `testee`.
-pub fn run_kit(kit: &Kit, testee: &mut dyn Testee, options: &RunOptions) -> Run {
-    let clock = options.clock;
-    let mut dead: Option<String> = None;
+/// The state one run carries from case to case: the adapter's answer to
+/// `capabilities`, and whether the conversation has ended.
+pub struct RunState {
+    pub caps: Option<Capabilities>,
+    pub dead: Option<String>,
+}
+
+impl RunState {
+    /// Asks the testee for its capabilities, as the first request of a run.
+    pub fn open(testee: &mut dyn Testee) -> Self {
+        let mut dead: Option<String> = None;
+        let caps = match testee
+            .exchange(&Request::Capabilities)
+            .and_then(|body| parse_capabilities(&Value::Object(body)).map_err(|error| error.0))
+        {
+            Ok(caps) => Some(caps),
+            Err(error) => {
+                dead = Some(error);
+                None
+            }
+        };
+        RunState { caps, dead }
+    }
+
+    /// `<binding> supports IR format versions <table> (<prose>)`, or `None`.
+    pub fn header(&self) -> Option<String> {
+        self.caps.as_ref().map(|c| {
+            format!(
+                "{} supports IR format versions {} ({})",
+                c.binding,
+                c.format_versions,
+                c.table.prose()
+            )
+        })
+    }
+
+    /// How the conversation failed, if it did.
+    pub fn failure(&self) -> Option<RunFailure> {
+        self.dead.clone().map(|message| {
+            if self.caps.is_some() {
+                RunFailure::Exchange(message)
+            } else {
+                RunFailure::Capabilities(message)
+            }
+        })
+    }
+}
+
+/// The kit-error records for `kit.errors`, in legacy order.
+pub fn kit_error_records(kit: &Kit) -> Vec<Record> {
     let mut records: Vec<Record> = Vec::new();
-
-    let caps = match testee
-        .exchange(&Request::Capabilities)
-        .and_then(|body| parse_capabilities(&Value::Object(body)).map_err(|error| error.0))
-    {
-        Ok(caps) => Some(caps),
-        Err(error) => {
-            dead = Some(error);
-            None
-        }
-    };
-    let header = caps.as_ref().map(|c| {
-        format!(
-            "{} supports IR format versions {} ({})",
-            c.binding,
-            c.format_versions,
-            c.table.prose()
-        )
-    });
-
     for error in &kit.errors {
         let owner = owner_of(&kit.cases, error);
         records.push(Record {
@@ -769,6 +795,184 @@ pub fn run_kit(kit: &Kit, testee: &mut dyn Testee, options: &RunOptions) -> Run 
             duration_ms: Millis(0.0),
         });
     }
+    records
+}
+
+/// Every record of one case, exactly as `run_kit` writes them.
+pub fn run_case(
+    kit: &Kit,
+    case: &KitCase,
+    state: &mut RunState,
+    testee: &mut dyn Testee,
+    clock: &dyn Fn() -> f64,
+) -> Vec<Record> {
+    let version = case.version.unwrap_or(CURRENT_VERSION);
+    let targets: Vec<Target> = case.fences.iter().map(|f| target_of(kit, f)).collect();
+    // The expectation every accepted fence and file set is held to,
+    // normalized, with the unnormalized body a tree write is fed.
+    let mut canonicals: Vec<(RecordProfile, String)> = Vec::new();
+    let mut canonical_bodies: Vec<(RecordProfile, String)> = Vec::new();
+    for t in targets.iter().filter(|t| t.role == Role::Canonical) {
+        if let Ok(body) = &t.body {
+            canonicals.retain(|(p, _)| *p != t.profile);
+            canonicals.push((t.profile, normalize_canonical(body).to_owned()));
+            canonical_bodies.retain(|(p, _)| *p != t.profile);
+            canonical_bodies.push((t.profile, body.clone()));
+        }
+    }
+    let paths: Vec<PathMode> = state
+        .caps
+        .as_ref()
+        .map_or_else(|| vec![PathMode::Current], |c| c.paths.clone());
+    let sets = file_sets(&targets);
+    let mut by_path: Vec<(PathMode, Vec<Record>)> = Vec::new();
+
+    for &path in &paths {
+        let mut per_path: Vec<Record> = Vec::new();
+        for target in targets.iter().filter(|t| t.role != Role::File) {
+            let started = clock();
+            let verdict = 'verdict: {
+                // After an adapter failure a pending fence is a kit error
+                // like any other, so a dead adapter never passes a run
+                // (departure 14).
+                if case.status == Status::Pending && state.dead.is_none() {
+                    break 'verdict Verdict::skipped("pending".to_owned());
+                }
+                let body = match &target.body {
+                    Ok(body) => body,
+                    Err(message) => break 'verdict Verdict::kit_error(message.clone()),
+                };
+                let caps = match (&state.caps, &state.dead) {
+                    (Some(caps), None) => caps,
+                    (None, Some(dead)) => break 'verdict Verdict::kit_error(dead.clone()),
+                    (_, Some(dead)) => {
+                        break 'verdict Verdict::kit_error(format!("adapter unavailable: {dead}"));
+                    }
+                    (None, None) => {
+                        unreachable!("capabilities either succeeded or recorded why not")
+                    }
+                };
+                if let Some(skip) =
+                    unsupported(caps, version, target.profile, path, case.node.as_deref())
+                {
+                    break 'verdict Verdict::skipped(skip);
+                }
+                let request = Request::Decode {
+                    version: u32::try_from(version).unwrap_or(u32::MAX),
+                    profile: target.language,
+                    path,
+                    strip: case.compare != Compare::Attributes,
+                    node: case.node.clone().unwrap_or_default(),
+                    input: body.clone(),
+                };
+                match decode(testee, &request) {
+                    Err(error) => {
+                        state.dead = Some(error.clone());
+                        Verdict::kit_error(error)
+                    }
+                    Ok(response) if target.role == Role::Rejected => {
+                        let check = check_rejected(
+                            target.fence.info.key("diagnostic"),
+                            target.fence.info.key("expect"),
+                            &response,
+                        );
+                        Verdict {
+                            result: check.result,
+                            expected_diagnostic: check.expected_diagnostic,
+                            observed_diagnostic: check.observed_diagnostic,
+                            message: check.message,
+                        }
+                    }
+                    Ok(response) => {
+                        let expected = canonicals
+                            .iter()
+                            .find(|(p, _)| *p == target.profile)
+                            .map(|(_, s)| s.as_str());
+                        judge_accepted(target, &response, expected, case.id.as_str())
+                    }
+                }
+            };
+            per_path.push(record(
+                case,
+                version,
+                target,
+                path,
+                verdict,
+                clock() - started,
+            ));
+        }
+
+        for (name, members) in &sets {
+            let started = clock();
+            let set_run = SetRun {
+                name,
+                members,
+                case,
+                version,
+                path,
+                caps: state.caps.as_ref(),
+                dead: state.dead.as_deref(),
+                canonicals: &canonicals,
+                canonical_bodies: &canonical_bodies,
+            };
+            let verdicts = match run_file_set(&set_run, testee) {
+                Ok(verdicts) => verdicts,
+                Err(error) => {
+                    state.dead = Some(error.clone());
+                    members
+                        .iter()
+                        .map(|t| (t.fence.index, Verdict::kit_error(error.clone())))
+                        .collect()
+                }
+            };
+            let duration = clock() - started;
+            for target in members {
+                let verdict = verdicts
+                    .iter()
+                    .find(|(index, _)| *index == target.fence.index)
+                    .map(|(_, v)| v.clone())
+                    .unwrap_or_else(|| {
+                        Verdict::kit_error(format!("set {} produced no verdict", set_label(name)))
+                    });
+                per_path.push(record(case, version, target, path, verdict, duration));
+            }
+        }
+        // Sets are judged after the single-document fences; report in fence order.
+        per_path.sort_by_key(|r| r.fence_index);
+        by_path.push((path, per_path));
+    }
+    reconcile_paths(&mut by_path, case);
+    by_path.into_iter().flat_map(|(_, r)| r).collect()
+}
+
+/// The v1 report around `records`.
+pub fn report_of(state: &RunState, options: &RunOptions, records: Vec<Record>) -> Report {
+    Report {
+        contract_version: crate::report::CONTRACT_VERSION,
+        binding: state
+            .caps
+            .as_ref()
+            .map_or_else(|| "unknown".to_owned(), |c| c.binding.clone()),
+        language: state
+            .caps
+            .as_ref()
+            .map_or_else(|| "unknown".to_owned(), |c| c.language.clone()),
+        format_versions: state
+            .caps
+            .as_ref()
+            .map_or_else(|| "unknown".to_owned(), |c| c.format_versions.clone()),
+        driver_version: options.driver_version.clone(),
+        kit_version: options.kit_version.clone(),
+        started_at: options.started_at.clone(),
+        records,
+    }
+}
+
+/// Runs every selected case of `kit` against `testee`.
+pub fn run_kit(kit: &Kit, testee: &mut dyn Testee, options: &RunOptions) -> Run {
+    let mut state = RunState::open(testee);
+    let header = state.header();
+    let mut records = kit_error_records(kit);
 
     for case in &kit.cases {
         if options
@@ -777,176 +981,16 @@ pub fn run_kit(kit: &Kit, testee: &mut dyn Testee, options: &RunOptions) -> Run 
         {
             continue;
         }
-        let version = case.version.unwrap_or(CURRENT_VERSION);
-        let targets: Vec<Target> = case.fences.iter().map(|f| target_of(kit, f)).collect();
-        // The expectation every accepted fence and file set is held to,
-        // normalized, with the unnormalized body a tree write is fed.
-        let mut canonicals: Vec<(RecordProfile, String)> = Vec::new();
-        let mut canonical_bodies: Vec<(RecordProfile, String)> = Vec::new();
-        for t in targets.iter().filter(|t| t.role == Role::Canonical) {
-            if let Ok(body) = &t.body {
-                canonicals.retain(|(p, _)| *p != t.profile);
-                canonicals.push((t.profile, normalize_canonical(body).to_owned()));
-                canonical_bodies.retain(|(p, _)| *p != t.profile);
-                canonical_bodies.push((t.profile, body.clone()));
-            }
-        }
-        let paths: Vec<PathMode> = caps
-            .as_ref()
-            .map_or_else(|| vec![PathMode::Current], |c| c.paths.clone());
-        let sets = file_sets(&targets);
-        let mut by_path: Vec<(PathMode, Vec<Record>)> = Vec::new();
-
-        for &path in &paths {
-            let mut per_path: Vec<Record> = Vec::new();
-            for target in targets.iter().filter(|t| t.role != Role::File) {
-                let started = clock();
-                let verdict = 'verdict: {
-                    // After an adapter failure a pending fence is a kit error
-                    // like any other, so a dead adapter never passes a run
-                    // (departure 14).
-                    if case.status == Status::Pending && dead.is_none() {
-                        break 'verdict Verdict::skipped("pending".to_owned());
-                    }
-                    let body = match &target.body {
-                        Ok(body) => body,
-                        Err(message) => break 'verdict Verdict::kit_error(message.clone()),
-                    };
-                    let caps = match (&caps, &dead) {
-                        (Some(caps), None) => caps,
-                        (None, Some(dead)) => break 'verdict Verdict::kit_error(dead.clone()),
-                        (_, Some(dead)) => {
-                            break 'verdict Verdict::kit_error(format!(
-                                "adapter unavailable: {dead}"
-                            ));
-                        }
-                        (None, None) => {
-                            unreachable!("capabilities either succeeded or recorded why not")
-                        }
-                    };
-                    if let Some(skip) =
-                        unsupported(caps, version, target.profile, path, case.node.as_deref())
-                    {
-                        break 'verdict Verdict::skipped(skip);
-                    }
-                    let request = Request::Decode {
-                        version: u32::try_from(version).unwrap_or(u32::MAX),
-                        profile: target.language,
-                        path,
-                        strip: case.compare != Compare::Attributes,
-                        node: case.node.clone().unwrap_or_default(),
-                        input: body.clone(),
-                    };
-                    match decode(testee, &request) {
-                        Err(error) => {
-                            dead = Some(error.clone());
-                            Verdict::kit_error(error)
-                        }
-                        Ok(response) if target.role == Role::Rejected => {
-                            let check = check_rejected(
-                                target.fence.info.key("diagnostic"),
-                                target.fence.info.key("expect"),
-                                &response,
-                            );
-                            Verdict {
-                                result: check.result,
-                                expected_diagnostic: check.expected_diagnostic,
-                                observed_diagnostic: check.observed_diagnostic,
-                                message: check.message,
-                            }
-                        }
-                        Ok(response) => {
-                            let expected = canonicals
-                                .iter()
-                                .find(|(p, _)| *p == target.profile)
-                                .map(|(_, s)| s.as_str());
-                            judge_accepted(target, &response, expected, case.id.as_str())
-                        }
-                    }
-                };
-                per_path.push(record(
-                    case,
-                    version,
-                    target,
-                    path,
-                    verdict,
-                    clock() - started,
-                ));
-            }
-
-            for (name, members) in &sets {
-                let started = clock();
-                let set_run = SetRun {
-                    name,
-                    members,
-                    case,
-                    version,
-                    path,
-                    caps: caps.as_ref(),
-                    dead: dead.as_deref(),
-                    canonicals: &canonicals,
-                    canonical_bodies: &canonical_bodies,
-                };
-                let verdicts = match run_file_set(&set_run, testee) {
-                    Ok(verdicts) => verdicts,
-                    Err(error) => {
-                        dead = Some(error.clone());
-                        members
-                            .iter()
-                            .map(|t| (t.fence.index, Verdict::kit_error(error.clone())))
-                            .collect()
-                    }
-                };
-                let duration = clock() - started;
-                for target in members {
-                    let verdict = verdicts
-                        .iter()
-                        .find(|(index, _)| *index == target.fence.index)
-                        .map(|(_, v)| v.clone())
-                        .unwrap_or_else(|| {
-                            Verdict::kit_error(format!(
-                                "set {} produced no verdict",
-                                set_label(name)
-                            ))
-                        });
-                    per_path.push(record(case, version, target, path, verdict, duration));
-                }
-            }
-            // Sets are judged after the single-document fences; report in fence order.
-            per_path.sort_by_key(|r| r.fence_index);
-            by_path.push((path, per_path));
-        }
-        reconcile_paths(&mut by_path, case);
-        records.extend(by_path.into_iter().flat_map(|(_, r)| r));
+        records.extend(run_case(kit, case, &mut state, testee, options.clock));
     }
 
-    let report = Report {
-        contract_version: crate::report::CONTRACT_VERSION,
-        binding: caps
-            .as_ref()
-            .map_or_else(|| "unknown".to_owned(), |c| c.binding.clone()),
-        language: caps
-            .as_ref()
-            .map_or_else(|| "unknown".to_owned(), |c| c.language.clone()),
-        format_versions: caps
-            .as_ref()
-            .map_or_else(|| "unknown".to_owned(), |c| c.format_versions.clone()),
-        driver_version: options.driver_version.clone(),
-        kit_version: options.kit_version.clone(),
-        started_at: options.started_at.clone(),
-        records,
-    };
+    let report = report_of(&state, options, records);
+    let failure = state.failure();
     Run {
         report,
         header,
-        failure: dead.map(|message| {
-            if caps.is_some() {
-                RunFailure::Exchange(message)
-            } else {
-                RunFailure::Capabilities(message)
-            }
-        }),
-        capabilities: caps,
+        failure,
+        capabilities: state.caps,
     }
 }
 
@@ -1387,5 +1431,43 @@ mod tests {
         skipped.records[0].result = Outcome::Skipped;
         assert_eq!(verdict(&skipped, false), RunVerdict::Passed);
         assert_eq!(verdict(&skipped, true), RunVerdict::Failed);
+    }
+
+    #[test]
+    fn kit_error_records_then_run_case_then_report_of_reproduce_run_kit() {
+        let kit = kit_of(&[
+            ("spec/ir/mck/types.md", UNIT),
+            (
+                "spec/ir/mck/values.md",
+                "## values-0001: literal {node=Type}\n```yaml canonical\nLiteral: {}\n```\n",
+            ),
+        ]);
+        let answer = |r: &Request| {
+            Ok(if *r == Request::Capabilities {
+                caps(&["current"])
+            } else {
+                decoded("Unit: {}\n")
+            })
+        };
+
+        let expected = run_with(&kit, None, &mut Scripted(answer));
+
+        let clock = || 0.0;
+        let options = RunOptions {
+            filter: None,
+            driver_version: "test".into(),
+            kit_version: "test".into(),
+            started_at: "1970-01-01T00:00:00.000Z".into(),
+            clock: &clock,
+        };
+        let mut testee = Scripted(answer);
+        let mut state = RunState::open(&mut testee);
+        let mut records = kit_error_records(&kit);
+        for case in &kit.cases {
+            records.extend(run_case(&kit, case, &mut state, &mut testee, options.clock));
+        }
+        let report = report_of(&state, &options, records);
+
+        assert_eq!(report, expected.report);
     }
 }
