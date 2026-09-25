@@ -117,9 +117,14 @@ morphir metadata query --ir consumer/libraries/example.com/greeting/1.0.0/ir.jso
 ```
 
 The CLI resolves those contexts from the installed Library directory, without
-the author's source tree. The current draft labels those facts `unvalidated`
-until a verified predicate declaration closure is connected. This metadata
-command and V4.1 bundle path are not in the beta.8 binary.
+the author's source tree. Query labels these facts `unvalidated` because it
+does not select a predicate provider. For a consumer IR and a provider release
+already present in its full lock, use
+[`morphir metadata validate-trusted`](../../cli/metadata/validate-trusted.md).
+That command freshly authenticates the provider Library and derives predicate
+declarations from its native V4 facts before validating the consumer. These
+metadata commands and the V4.1 bundle path are still source-built drafts and
+are not in the beta.9 binary.
 
 ## 5. Use the restored model
 

@@ -77,7 +77,7 @@ For a source-built [linked metadata bundle](creating-a-library.md#linked-metadat
 the same `sign`, `registry prepare`, and `publish` commands verify and carry its
 declared context files. `restore` supplies those files beside `ir.json`; changing
 one after publication invalidates the signed bundle. This V4.1 path remains a
-draft and is not in the beta.8 binary.
+draft and is not in the beta.9 binary.
 
 ## What publication needs
 

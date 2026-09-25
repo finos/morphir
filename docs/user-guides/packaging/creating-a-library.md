@@ -66,7 +66,7 @@ The draft CLI inventories the exact `contexts/*.jsonld` bytes in `manifest.json`
 and signs them with the Library. It rejects missing, changed, linked, or undeclared
 bundle files. A consumer restores the context files with `ir.json`, so reading
 the facts does not require the author's workspace. This source-built path is
-under development and is not a capability of the beta.8 binary.
+under development and is not a capability of the beta.9 binary.
 
 ## 1. Choose the release identity
 
