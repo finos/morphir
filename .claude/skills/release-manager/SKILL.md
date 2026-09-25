@@ -23,8 +23,10 @@ scope here.
   prerelease of the same stage and target version. Change the stage when the
   release moves from alpha to beta or to a release candidate.
 - Tags point at a commit on `main`. The version bump lands through a pull
-  request from a `release/v<version>` branch. Tag the merge commit, not the
-  branch tip.
+  request from a `milestone/v<version>` branch. Tag the merge commit, not the
+  branch tip. The branch can be opened early, as a draft pull request, to
+  queue pin moves and other release-only changes until the release is cut.
+  Releases up to `v0.4.0-beta.8` used `release/v<version>` branches.
 - Any tag with a `-` in it publishes as a GitHub prerelease. The workflow sets
   this flag itself.
 - Do not add AI co-authors or AI attribution to the release commit, pull
@@ -211,12 +213,12 @@ and `--ir-version 4` must both write `morphir-ir.json` with that `formatVersion`
 
 ## Release workflow
 
-### 1. Prepare the release branch
+### 1. Prepare the milestone branch
 
 ```bash
 git switch main && git pull --ff-only
 git submodule update --init --recursive
-git switch -c release/v<version>
+git switch -c milestone/v<version>
 ```
 
 Update every file in the version table. Then:
@@ -225,9 +227,13 @@ Update every file in the version table. Then:
 cargo update --workspace --offline
 # run every gate from "Automated checks" and "Extension verification"
 git commit -am "chore: prepare v<version> release"
-git push -u origin release/v<version>
+git push -u origin milestone/v<version>
 gh pr create --title "chore: prepare v<version> release" --body "<summary and verification>"
 ```
+
+A milestone branch opened before the release is ready stays a draft pull
+request. Rebase it on `main` before the release, move the `[Unreleased]`
+CHANGELOG entries into the version section, and rerun every gate.
 
 ### 2. Merge and tag
 
