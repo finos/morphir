@@ -124,6 +124,7 @@
 - [`morphir kb decision show [FLAGS] [ID]`](kb/decision/show.md)
 - [`morphir mck <SUBCOMMAND>`](mck.md)
 - [`morphir mck check [--repo-root <DIR>] [--json] <DIR>`](mck/check.md)
+- [`morphir mck convert [--kit <DIR>] [--check]`](mck/convert.md)
 - [`morphir mck coverage [--kit <DIR>] [--repo-root <DIR>]`](mck/coverage.md)
 - [`morphir mck schema <SUBCOMMAND>`](mck/schema.md)
 - [`morphir mck schema check [--kit <DIR>] [--repo-root <DIR>]`](mck/schema/check.md)
