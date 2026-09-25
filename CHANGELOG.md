@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compiled to committed Morphir IR (`spec/mep/generated/mep.ir.json`) with a
   drift check in CI (`mise run spec:mep`, `mise run spec:mep-check`). It
   covers the handshake, capabilities and claims, compile, diagnostics and
-  generate messages, and documents the pre-1.0 versioning rule and the wire
+  generate messages, and the cancellation and progress notifications from the
+  protocol draft, and documents the pre-1.0 versioning rule and the wire
   mapping (#964, #960).
 
 ## [0.4.0-beta.9] - 2026-09-25

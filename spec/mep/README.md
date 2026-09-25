@@ -47,9 +47,12 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `PeerInfo` | `kind` can be absent; an absent kind is read as `Unspecified`. |
 | `ExtensionType` | Wire values `frontend`, `backend`, `transform`, `validator`, `workspace`. |
 | `ExtensionInfo` | Members stay snake_case (`min_sdk_version`). `description`, `author`, `homepage`, `license` and `min_sdk_version` are left out when absent. |
-| `Method` | Written as the JSON-RPC `method` string, for example `morphir.initialize`. `morphir.initialized` and `morphir.exit` are notifications. |
-| `ErrorCode` | Written as the integer code, for example `-32011`. |
+| `Method` | Written as the JSON-RPC `method` string, for example `morphir.initialize`. `morphir.initialized`, `morphir.exit`, `$/cancelRequest` and `morphir.progress` are notifications. The Rust SDK does not send or handle `$/cancelRequest` or `morphir.progress` yet. |
+| `ErrorCode` | Written as the integer code, for example `-32011`. `RequestCancelled` (`-32800`) comes from the protocol draft; the Rust SDK does not define it yet. |
 | `RpcError` | `data` is left out when absent. |
+| `RequestId` | Written as the number or the string itself, not as a tagged constructor. |
+| `ProgressKind` | Wire values `begin`, `report`, `end`. |
+| `ProgressParams` | `percentage` is left out when absent; when present it is an integer from 0 through 100. |
 | `FrontendCapability` | `multiDocument` is written only when true; absent means false. |
 | `WorkspaceCapability` | `protocolVersions` are full SemVer strings (`0.1.0`), not MEP versions. |
 | `ExtensionCapabilities` | `frontend`, `backend` and `workspace` are left out when absent. The four flags are always written; an absent flag is read as false. `extra` members sit beside the named members, and a writer refuses an `extra` key that reuses a named member's name. |
@@ -95,6 +98,7 @@ The contract covers the types that `morphir-extension-sdk` defines today:
 - compile requests and results, including incremental baselines
 - generate requests and results, and diagnostics
 - method names and error codes
+- the `$/cancelRequest` and `morphir.progress` notifications from the [protocol draft](../../docs/design/draft/extensions/protocol.md), which the Rust SDK does not handle yet
 
 Not covered yet:
 

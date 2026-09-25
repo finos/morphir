@@ -188,6 +188,86 @@ fn the_contract_covers_the_handshake() {
     assert_records(&ir, records);
 }
 
+/// The constructor names of a custom type, in declaration order.
+fn constructor_names(ir: &Value, type_name: &str) -> Vec<String> {
+    let definition = mep_types(ir)
+        .get(type_name)
+        .unwrap_or_else(|| panic!("module mep has no type {type_name}"));
+    unwrap_access(definition)["CustomTypeDefinition"]["constructors"]
+        .as_object()
+        .unwrap_or_else(|| panic!("{type_name} is not a custom type: {definition}"))
+        .keys()
+        .cloned()
+        .collect()
+}
+
+/// Every method in `protocol.rs` plus the two notifications that the
+/// protocol draft (docs/design/draft/extensions/protocol.md) defines and the
+/// SDK does not handle yet, and every error code likewise.
+#[test]
+fn the_contract_covers_every_method_and_error_code() {
+    let ir = compile_contract();
+    assert_eq!(
+        constructor_names(&ir, "method"),
+        [
+            "initialize",
+            "describe",
+            "initialized",
+            "ping",
+            "info",
+            "capabilities",
+            "compile",
+            "generate",
+            "validate",
+            "transform",
+            "workspace-discover",
+            "shutdown",
+            "exit",
+            "cancel-request",
+            "progress",
+        ]
+    );
+    assert_eq!(
+        constructor_names(&ir, "error-code"),
+        [
+            "parse-error",
+            "invalid-request",
+            "method-not-found",
+            "invalid-params",
+            "internal-error",
+            "extension-error",
+            "compilation-error",
+            "generation-error",
+            "validation-error",
+            "transformation-error",
+            "extension-failure",
+            "protocol-version-mismatch",
+            "permission-denied",
+            "capability-unavailable",
+            "not-initialized",
+            "request-cancelled",
+        ]
+    );
+    assert_eq!(
+        constructor_names(&ir, "request-id"),
+        ["numeric-request-id", "string-request-id"]
+    );
+    assert_eq!(
+        constructor_names(&ir, "progress-kind"),
+        ["progress-begin", "progress-report", "progress-end"]
+    );
+    assert_records(
+        &ir,
+        &[
+            ("cancel-params", &["id"]),
+            (
+                "progress-params",
+                &["request-id", "kind", "message", "percentage"],
+            ),
+        ],
+    );
+}
+
 /// Check that each record's field labels match the SDK struct, in order.
 fn assert_records(ir: &Value, records: &[(&str, &[&str])]) {
     for (type_name, labels) in records {
@@ -459,8 +539,15 @@ fn every_wire_exception_is_documented() {
             "ExtensionInfo",
             &["snake_case", "left out of the message when absent"],
         ),
-        ("Method", &["wire value", "notifications"]),
+        (
+            "Method",
+            &["wire value", "notification", "`$/cancelRequest`"],
+        ),
         ("ErrorCode", &["integer code"]),
+        // Cancellation and progress
+        ("RequestId", &["the number or the string itself"]),
+        ("ProgressKind", &["Wire values"]),
+        ("ProgressParams", &["left out when absent", "0 through 100"]),
         ("RpcError", &["left out of the message when absent"]),
         // Capabilities and claims
         ("FrontendCapability", &["only when it is true"]),

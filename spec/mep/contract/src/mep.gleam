@@ -193,24 +193,31 @@ pub type CapabilityClaimSet {
 
 /// A MEP method. The wire value is the JSON-RPC 2.0 `method` string:
 ///
-/// | Constructor         | Wire value                       |
-/// | ------------------- | -------------------------------- |
-/// | `Initialize`        | `morphir.initialize`             |
-/// | `Describe`          | `morphir.extension.describe`     |
-/// | `Initialized`       | `morphir.initialized`            |
-/// | `Ping`              | `morphir.ping`                   |
-/// | `Info`              | `morphir.extension.info`         |
-/// | `Capabilities`      | `morphir.extension.capabilities` |
-/// | `Compile`           | `morphir.frontend.compile`       |
-/// | `Generate`          | `morphir.backend.generate`       |
-/// | `Validate`          | `morphir.validator.validate`     |
-/// | `Transform`         | `morphir.transform.transform`    |
-/// | `WorkspaceDiscover` | `morphir.workspace.discover`     |
-/// | `Shutdown`          | `morphir.shutdown`               |
-/// | `Exit`              | `morphir.exit`                   |
+/// | Constructor         | Wire value                       | Kind         |
+/// | ------------------- | -------------------------------- | ------------ |
+/// | `Initialize`        | `morphir.initialize`             | request      |
+/// | `Describe`          | `morphir.extension.describe`     | request      |
+/// | `Initialized`       | `morphir.initialized`            | notification |
+/// | `Ping`              | `morphir.ping`                   | request      |
+/// | `Info`              | `morphir.extension.info`         | request      |
+/// | `Capabilities`      | `morphir.extension.capabilities` | request      |
+/// | `Compile`           | `morphir.frontend.compile`       | request      |
+/// | `Generate`          | `morphir.backend.generate`       | request      |
+/// | `Validate`          | `morphir.validator.validate`     | request      |
+/// | `Transform`         | `morphir.transform.transform`    | request      |
+/// | `WorkspaceDiscover` | `morphir.workspace.discover`     | request      |
+/// | `Shutdown`          | `morphir.shutdown`               | request      |
+/// | `Exit`              | `morphir.exit`                   | notification |
+/// | `CancelRequest`     | `$/cancelRequest`                | notification |
+/// | `Progress`          | `morphir.progress`               | notification |
 ///
-/// `morphir.initialized` and `morphir.exit` are notifications: they carry no
-/// request id and get no response. All other methods are requests.
+/// A notification carries no request id and gets no response.
+///
+/// `$/cancelRequest` and `morphir.progress` come from the protocol draft
+/// (docs/design/draft/extensions/protocol.md). A host sends
+/// `$/cancelRequest` only to an extension that advertises `cancellation`,
+/// and an extension sends `morphir.progress` only when it advertises
+/// `progress`. The Rust SDK does not send or handle them yet.
 pub type Method {
   Initialize
   Describe
@@ -225,6 +232,8 @@ pub type Method {
   WorkspaceDiscover
   Shutdown
   Exit
+  CancelRequest
+  Progress
 }
 
 // -- Errors -----------------------------------------------------------------
@@ -249,9 +258,13 @@ pub type Method {
 /// | `PermissionDenied`        | -32012 |
 /// | `CapabilityUnavailable`   | -32013 |
 /// | `NotInitialized`          | -32014 |
+/// | `RequestCancelled`        | -32800 |
 ///
-/// The first five are the JSON-RPC 2.0 standard codes. The others are MEP
-/// codes in the server-defined range, -32000 to -32099.
+/// The first five are the JSON-RPC 2.0 standard codes. `ExtensionError`
+/// through `NotInitialized` are MEP codes in the server-defined range, -32000
+/// to -32099. `RequestCancelled` is the code the protocol draft gives to a
+/// cancelled request, as in the Language Server Protocol; the Rust SDK does
+/// not define it yet.
 pub type ErrorCode {
   ParseError
   InvalidRequest
@@ -268,12 +281,50 @@ pub type ErrorCode {
   PermissionDenied
   CapabilityUnavailable
   NotInitialized
+  RequestCancelled
 }
 
 /// The JSON-RPC 2.0 error object. `code` is an `ErrorCode` value or a
 /// JSON-RPC 2.0 standard code. `data` is left out of the message when absent.
 pub type RpcError {
   RpcError(code: Int, message: String, data: Option(Json))
+}
+
+// -- Cancellation and progress ---------------------------------------------
+
+/// A JSON-RPC 2.0 request id. On the wire it is the number or the string
+/// itself, not a tagged constructor.
+pub type RequestId {
+  NumericRequestId(value: Int)
+  StringRequestId(value: String)
+}
+
+/// Parameters of `$/cancelRequest`: the id of the request to cancel. An
+/// extension that advertises `cancellation` stops useful work and answers
+/// the cancelled request with `RequestCancelled`. Cancellation is
+/// cooperative.
+pub type CancelParams {
+  CancelParams(id: RequestId)
+}
+
+/// The stage of a progress report. Wire values: `begin`, `report`, `end`.
+pub type ProgressKind {
+  ProgressBegin
+  ProgressReport
+  ProgressEnd
+}
+
+/// Parameters of `morphir.progress`, for an active request.
+///
+/// Wire rules: `percentage` is left out when absent. When present, it is an
+/// integer from 0 through 100.
+pub type ProgressParams {
+  ProgressParams(
+    request_id: RequestId,
+    kind: ProgressKind,
+    message: String,
+    percentage: Option(Int),
+  )
 }
 
 // -- Compile ----------------------------------------------------------------

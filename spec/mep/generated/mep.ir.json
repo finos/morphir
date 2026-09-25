@@ -826,7 +826,7 @@
                 },
                 "method": {
                   "Public": {
-                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                       |\n| ------------------- | -------------------------------- |\n| `Initialize`        | `morphir.initialize`             |\n| `Describe`          | `morphir.extension.describe`     |\n| `Initialized`       | `morphir.initialized`            |\n| `Ping`              | `morphir.ping`                   |\n| `Info`              | `morphir.extension.info`         |\n| `Capabilities`      | `morphir.extension.capabilities` |\n| `Compile`           | `morphir.frontend.compile`       |\n| `Generate`          | `morphir.backend.generate`       |\n| `Validate`          | `morphir.validator.validate`     |\n| `Transform`         | `morphir.transform.transform`    |\n| `WorkspaceDiscover` | `morphir.workspace.discover`     |\n| `Shutdown`          | `morphir.shutdown`               |\n| `Exit`              | `morphir.exit`                   |\n\n`morphir.initialized` and `morphir.exit` are notifications: they carry no\nrequest id and get no response. All other methods are requests.",
+                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                       | Kind         |\n| ------------------- | -------------------------------- | ------------ |\n| `Initialize`        | `morphir.initialize`             | request      |\n| `Describe`          | `morphir.extension.describe`     | request      |\n| `Initialized`       | `morphir.initialized`            | notification |\n| `Ping`              | `morphir.ping`                   | request      |\n| `Info`              | `morphir.extension.info`         | request      |\n| `Capabilities`      | `morphir.extension.capabilities` | request      |\n| `Compile`           | `morphir.frontend.compile`       | request      |\n| `Generate`          | `morphir.backend.generate`       | request      |\n| `Validate`          | `morphir.validator.validate`     | request      |\n| `Transform`         | `morphir.transform.transform`    | request      |\n| `WorkspaceDiscover` | `morphir.workspace.discover`     | request      |\n| `Shutdown`          | `morphir.shutdown`               | request      |\n| `Exit`              | `morphir.exit`                   | notification |\n| `CancelRequest`     | `$/cancelRequest`                | notification |\n| `Progress`          | `morphir.progress`               | notification |\n\nA notification carries no request id and gets no response.\n\n`$/cancelRequest` and `morphir.progress` come from the protocol draft\n(docs/design/draft/extensions/protocol.md). A host sends\n`$/cancelRequest` only to an extension that advertises `cancellation`,\nand an extension sends `morphir.progress` only when it advertises\n`progress`. The Rust SDK does not send or handle them yet.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -843,14 +843,16 @@
                         "transform": [],
                         "workspace-discover": [],
                         "shutdown": [],
-                        "exit": []
+                        "exit": [],
+                        "cancel-request": [],
+                        "progress": []
                       }
                     }
                   }
                 },
                 "error-code": {
                   "Public": {
-                    "doc": "An error code in a JSON-RPC 2.0 error object. The wire value is the\ninteger code:\n\n| Constructor               | Code   |\n| ------------------------- | ------ |\n| `ParseError`              | -32700 |\n| `InvalidRequest`          | -32600 |\n| `MethodNotFound`          | -32601 |\n| `InvalidParams`           | -32602 |\n| `InternalError`           | -32603 |\n| `ExtensionError`          | -32000 |\n| `CompilationError`        | -32001 |\n| `GenerationError`         | -32002 |\n| `ValidationError`         | -32003 |\n| `TransformationError`     | -32004 |\n| `ExtensionFailure`        | -32010 |\n| `ProtocolVersionMismatch` | -32011 |\n| `PermissionDenied`        | -32012 |\n| `CapabilityUnavailable`   | -32013 |\n| `NotInitialized`          | -32014 |\n\nThe first five are the JSON-RPC 2.0 standard codes. The others are MEP\ncodes in the server-defined range, -32000 to -32099.",
+                    "doc": "An error code in a JSON-RPC 2.0 error object. The wire value is the\ninteger code:\n\n| Constructor               | Code   |\n| ------------------------- | ------ |\n| `ParseError`              | -32700 |\n| `InvalidRequest`          | -32600 |\n| `MethodNotFound`          | -32601 |\n| `InvalidParams`           | -32602 |\n| `InternalError`           | -32603 |\n| `ExtensionError`          | -32000 |\n| `CompilationError`        | -32001 |\n| `GenerationError`         | -32002 |\n| `ValidationError`         | -32003 |\n| `TransformationError`     | -32004 |\n| `ExtensionFailure`        | -32010 |\n| `ProtocolVersionMismatch` | -32011 |\n| `PermissionDenied`        | -32012 |\n| `CapabilityUnavailable`   | -32013 |\n| `NotInitialized`          | -32014 |\n| `RequestCancelled`        | -32800 |\n\nThe first five are the JSON-RPC 2.0 standard codes. `ExtensionError`\nthrough `NotInitialized` are MEP codes in the server-defined range, -32000\nto -32099. `RequestCancelled` is the code the protocol draft gives to a\ncancelled request, as in the Language Server Protocol; the Rust SDK does\nnot define it yet.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -869,7 +871,8 @@
                         "protocol-version-mismatch": [],
                         "permission-denied": [],
                         "capability-unavailable": [],
-                        "not-initialized": []
+                        "not-initialized": [],
+                        "request-cancelled": []
                       }
                     }
                   }
@@ -907,6 +910,124 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "request-id": {
+                  "Public": {
+                    "doc": "A JSON-RPC 2.0 request id. On the wire it is the number or the string\nitself, not a tagged constructor.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "numeric-request-id": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ]
+                        ],
+                        "string-request-id": [
+                          [
+                            "value",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "cancel-params": {
+                  "Public": {
+                    "doc": "Parameters of `$/cancelRequest`: the id of the request to cancel. An\nextension that advertises `cancellation` stops useful work and answers\nthe cancelled request with `RequestCancelled`. Cancellation is\ncooperative.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "cancel-params": [
+                          [
+                            "id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#request-id"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "progress-kind": {
+                  "Public": {
+                    "doc": "The stage of a progress report. Wire values: `begin`, `report`, `end`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "progress-begin": [],
+                        "progress-report": [],
+                        "progress-end": []
+                      }
+                    }
+                  }
+                },
+                "progress-params": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.progress`, for an active request.\n\nWire rules: `percentage` is left out when absent. When present, it is an\ninteger from 0 through 100.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "progress-params": [
+                          [
+                            "request-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#request-id"
+                              }
+                            }
+                          ],
+                          [
+                            "kind",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#progress-kind"
+                              }
+                            }
+                          ],
+                          [
+                            "message",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "percentage",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:basics#int"
                                     }
                                   }
                                 ]
