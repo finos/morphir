@@ -737,6 +737,41 @@ mod tests {
         assert_eq!(script.opens(), 2);
     }
 
+    // The pool counts idle time in whole sweep intervals. A call made just
+    // before a sweep is stamped with the count before that sweep, so without
+    // the extra tick in `IDLE_TICKS` its guest would stop one interval short
+    // of the idle limit. The guest lives at least the idle limit.
+    #[tokio::test(start_paused = true)]
+    async fn a_guest_used_just_before_a_sweep_lives_at_least_the_idle_limit() {
+        let temp = tempfile::tempdir().unwrap();
+        let script = Arc::new(Script::default());
+        let registry = registry(&script, None);
+        let resolved = frontend(&registry, InvocationPolicy::ProtocolOnly);
+        let start = tokio::time::Instant::now();
+        let invoker = invoker();
+
+        let called_at = start + SWEEP_INTERVAL - Duration::from_secs(1);
+        tokio::time::sleep_until(called_at).await;
+        invoker
+            .compile(
+                temp.path(),
+                &resolved,
+                compile_request(&temp.path().join("compile")),
+            )
+            .await
+            .unwrap();
+        assert!(
+            tokio::time::Instant::now() < start + SWEEP_INTERVAL,
+            "the call ends before the first sweep"
+        );
+
+        tokio::time::sleep_until(called_at + IDLE_LIMIT - Duration::from_secs(10)).await;
+        assert_eq!(script.closes(), 0, "the guest is kept for the idle limit");
+
+        tokio::time::sleep_until(called_at + IDLE_LIMIT + 2 * SWEEP_INTERVAL).await;
+        assert_eq!(script.closes(), 1, "the idle guest is shut down in order");
+    }
+
     // The idle limit runs from the last call, not from when the guest
     // started: a guest called within the limit each time is kept.
     #[tokio::test(start_paused = true)]
