@@ -31,6 +31,7 @@ corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabiliza
 | `report-draft.schema.json`, `report-draft.example.json` | production consolidated report `2.0.0-draft.1` and example |
 | `report.schema.json`, `report.example.json` | historical version 1 evidence for parity only |
 | `allowed-failing.json` | empty parent baseline for the TypeScript adapter gate |
+| [`metadata-contract-draft.json`](metadata-contract-draft.json) | fixed reference expectations for future linked metadata; not yet executable support |
 | [`protocol.schema.json`](protocol.schema.json) | the JSON Schema of the adapter protocol, contract version 1 |
 
 The [draft node-address reference corpus](../../../docs/spec/ir/fixtures/node-addresses-draft.json)

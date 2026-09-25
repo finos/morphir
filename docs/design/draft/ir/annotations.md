@@ -9,6 +9,8 @@ status: draft
 
 Annotations provide a way to attach structured metadata to IR specification types. Unlike attributes, which are used for implementation-level metadata (like source locations or inferred types), annotations are used for higher-level semantic labeling of signatures, similar to annotations in Java or Scala.
 
+The [linked-metadata draft](./linked-metadata.md) proposes an additive `annotations` envelope with its own `@context` and `facts`. Existing annotation entries and arguments keep their `4.0.0` meaning.
+
 ## Annotation Structure
 
 An annotation consists of a fully qualified name (the annotation type) and a set of arguments. Arguments can be positional (a list of values) or named (a mapping from names to values).

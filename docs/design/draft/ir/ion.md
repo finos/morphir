@@ -16,6 +16,8 @@ The implementation plan is [issue 946](https://github.com/finos/morphir/issues/9
 
 The contract version of this spelling is `ionVersion` `0.1.0-draft.1`. A draft matches only that exact string. The IR inside the document is selected by `formatVersion`: `3.0.0`, `3.1.0` or `4.0.0`.
 
+The [linked-metadata draft](./linked-metadata.md) sketches future Ion metadata with `morphir::$meta::{}` and facts in existing attribute structures. It requires a new exact Ion draft and does not extend `0.1.0-draft.1` implicitly.
+
 Two words stay separate. An **Ion annotation** is a symbol before `::`. An **attribute** is the per-node payload, a classic list in v3 and a struct in v4. A **Morphir annotation** is the `annotations` list on a v4 specification.
 
 ## Document

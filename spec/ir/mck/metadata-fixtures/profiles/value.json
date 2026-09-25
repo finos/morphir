@@ -1,0 +1,12 @@
+{
+  "attributes": {
+    "@context": {
+      "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+      "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+    },
+    "facts": {
+      "deprecated": true,
+      "aliases": ["legacySubmitOrder", "submitOrderOld"]
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/ir/mck/metadata-contract-draft.schema.json",
+  "title": "Draft fixed linked-metadata reference corpus",
+  "description": "Reference-only 0.1.0-draft.1 corpus. The shared MCK runner has not adopted a metadata operation yet.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "status", "schemaClosure", "cases"],
+  "properties": {
+    "contractVersion": {"const": "0.1.0-draft.1"},
+    "status": {"const": "reference"},
+    "schemaClosure": {"$ref": "#/$defs/relativePath"},
+    "cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/case"}}
+  },
+  "$defs": {
+    "relativePath": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"},
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "operation", "given", "expected"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^metadata-[0-9]{4}$"},
+        "operation": {"enum": ["normalize", "compareFacts", "resolveAnnotation", "resolveContext", "resolveSources", "profileEquivalence", "publish", "projectSidecar", "sourceEdit"]},
+        "given": {"type": "object"},
+        "expected": {"$ref": "#/$defs/expected"}
+      },
+      "allOf": [
+        {"if": {"properties": {"operation": {"const": "compareFacts"}}}, "then": {"properties": {"given": {"required": ["left", "right"]}, "expected": {"required": ["equal", "distinctFacts", "facts"]}}}}
+      ]
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome"],
+      "properties": {
+        "outcome": {"enum": ["accepted", "rejected", "preserved_unvalidated"]},
+        "facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}},
+        "assertionCarriers": {"type": "array", "items": {"enum": ["attributesFacts", "annotationsFacts", "documentGraph", "sidecar"]}},
+        "sources": {"type": "array", "items": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["kind"]}}},
+        "terms": {"type": "object"},
+        "effectiveVocab": {"type": "string", "pattern": "^morphir://ir/"},
+        "keyword": {"type": "string", "pattern": "^@"},
+        "annotationNames": {"type": "array", "items": {"type": "string"}},
+        "distinctFacts": {"type": "integer", "minimum": 0},
+        "equal": {"type": "boolean"},
+        "sourceState": {"type": "object", "additionalProperties": false, "required": ["facts"], "properties": {"facts": {"type": "object"}}},
+        "diagnosticPath": {"type": "string", "minLength": 1},
+        "inventory": {"type": "array", "items": {"type": "object", "required": ["path", "sha256"]}},
+        "predicate": {"type": "string"},
+        "diagnostic": {"type": "string", "minLength": 1},
+        "usablePublicationChanged": {"type": "boolean"},
+        "factsChanged": {"type": "boolean"}
+      },
+      "allOf": [
+        {"if": {"properties": {"outcome": {"const": "rejected"}}}, "then": {"required": ["diagnostic"]}},
+        {"if": {"properties": {"outcome": {"const": "preserved_unvalidated"}}}, "then": {"required": ["diagnostic", "facts"]}}
+      ]
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "predicate", "object", "graph"],
+      "properties": {
+        "subject": {"type": "string", "pattern": "^morphir://ir/"},
+        "predicate": {"type": "string", "pattern": "^morphir://ir/"},
+        "object": {"type": "object", "minProperties": 1},
+        "graph": {"const": "default"}
+      }
+    }
+  }
+}
