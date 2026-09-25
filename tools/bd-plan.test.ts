@@ -193,7 +193,7 @@ describe.skipIf(bdPath === null)("bd-plan against a throwaway beads database", (
 			const [bead] = bdJson("show", existing);
 			expect(bead.title).toBe("Existing work");
 			expect(bead.status).toBe("closed");
-			expect(bead.metadata).toEqual({ plan_epic: epic, plan_task: 2 });
+			expect(bead.metadata).toEqual({ plan_epic: epic, plan_task: 2, plan_link: true });
 			expect(bead.description).toBe(parsePlan(PLAN).tasks[1]?.text);
 			const comments = bdJson("comments", existing);
 			expect(comments[0].text).toContain("old summary");
@@ -203,6 +203,65 @@ describe.skipIf(bdPath === null)("bd-plan against a throwaway beads database", (
 			const refused = run(["bun", TOOL, "import", "linked.md", "--parent", phase, "--link", "7=tp-x"]);
 			expect(refused.code).toBe(2);
 			expect(refused.err).toContain("Task 7");
+
+			// A later import without --link still treats the bead as linked.
+			tool("import", "linked.md", "--parent", phase);
+			const [again] = bdJson("show", existing);
+			expect(again.title).toBe("Existing work");
+			expect(again.metadata).toEqual({ plan_epic: epic, plan_task: 2, plan_link: true });
+			expect(bdJson("comments", existing)).toHaveLength(1);
+		},
+		120_000,
+	);
+
+	test(
+		"one bead cannot hold two tasks, and nothing changes when a link is refused",
+		() => {
+			const phase = ok(["bd", "create", "--type", "epic", "--title", "Phase 4", "-d", "p4", "--silent"]).trim();
+			const shared = ok(["bd", "create", "--title", "Shared", "-d", "s", "--silent"]).trim();
+			writeFileSync(path.join(work, "twice.md"), PLAN);
+			const twice = run(["bun", TOOL, "import", "twice.md", "--parent", phase, "--link", `1=${shared}`, "--link", `2=${shared}`]);
+			expect(twice.code).toBe(2);
+			expect(twice.err).toContain(`${shared} is linked to Task 1 and Task 2`);
+			expect(bdJson("list", "--parent", phase, "--all")).toHaveLength(0);
+			expect(bdJson("show", shared)[0].metadata ?? {}).toEqual({});
+
+			// A bead that already holds another task of the plan.
+			const epic = lastLine(tool("import", "twice.md", "--parent", phase, "--link", `2=${shared}`));
+			const taken = run(["bun", TOOL, "import", "twice.md", "--parent", phase, "--link", `1=${shared}`]);
+			expect(taken.code).toBe(2);
+			expect(taken.err).toContain(`${shared} already holds Task 2 of ${epic}`);
+			expect(bdJson("show", shared)[0].metadata).toEqual({ plan_epic: epic, plan_task: 2, plan_link: true });
+		},
+		120_000,
+	);
+
+	test(
+		"tasks that leave the plan are detached from it",
+		() => {
+			const phase = ok(["bd", "create", "--type", "epic", "--title", "Phase 5", "-d", "p5", "--silent"]).trim();
+			const linked = ok(["bd", "create", "--title", "Linked work", "-d", "l", "--silent"]).trim();
+			writeFileSync(path.join(work, "shrink.md"), PLAN);
+			const epic = lastLine(tool("import", "shrink.md", "--parent", phase, "--link", `2=${linked}`));
+			const child = bdJson("list", "--metadata-field", `plan_epic=${epic}`, "--metadata-field", "plan_task=3", "--all")[0].id;
+
+			const plan = parsePlan(PLAN);
+			const smaller = plan.preamble + (plan.tasks[0]?.text ?? "");
+			writeFileSync(path.join(work, "shrink.md"), smaller);
+			tool("import", "shrink.md", "--parent", phase);
+
+			const [left] = bdJson("show", linked);
+			expect(left.status).toBe("open");
+			expect(left.metadata ?? {}).toEqual({});
+			expect(left.dependencies ?? []).toEqual([]);
+
+			const [removed] = bdJson("show", child);
+			expect(removed.status).toBe("closed");
+			expect(removed.close_reason).toMatch(new RegExp(`^Removed from plan ${epic.replace(".", "\\.")} on \\d{4}-\\d{2}-\\d{2}$`));
+			expect(removed.labels).toContain("plan-removed");
+			expect(removed.metadata ?? {}).toEqual({});
+			expect(bdJson("list", "--parent", epic, "--all", "--exclude-label", "plan-removed")).toHaveLength(1);
+			expect(readFileSync(lastLine(tool("render", epic)), "utf8")).toBe(smaller);
 		},
 		120_000,
 	);

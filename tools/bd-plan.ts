@@ -105,6 +105,7 @@ export type Bead = {
 	design?: string;
 	status: string;
 	issue_type: string;
+	parent?: string | null;
 	labels?: string[] | null;
 	metadata?: Record<string, unknown> | null;
 	dependencies?: { id: string; dependency_type?: string }[] | null;
@@ -282,10 +283,15 @@ function importPlan(context: Context, args: string[]) {
 			`more than one plan epic under ${parent} records plan_file=${planPath}: ${existing.map((b) => b.id).join(", ")}`,
 		);
 	}
+	const found = existing[0]?.id;
+	const current = found === undefined ? new Map<number, Bead>() : currentTasks(context, found);
+	// Every check on --link runs before anything is written.
+	const linkedBeads = checkLinks(context, links, current, found);
+
 	const specArgs = spec === undefined ? [] : ["--spec-id", spec];
 	let epic: string;
-	if (existing[0] !== undefined) {
-		epic = existing[0].id;
+	if (found !== undefined) {
+		epic = found;
 		withTextFile(plan.preamble, (file) =>
 			bd(context, [
 				"update",
@@ -326,28 +332,11 @@ function importPlan(context: Context, args: string[]) {
 		console.log(`created plan epic ${epic}`);
 	}
 
-	// Task beads from an earlier import: children of the epic plus linked beads.
-	const current = new Map<number, Bead>();
-	for (const bead of list(context, ["--metadata-field", `plan_epic=${epic}`])) {
-		const number = planTaskOf(bead);
-		if (number === undefined) continue;
-		if (current.has(number)) {
-			throw new BdError(`Task ${number} of ${epic} has two beads: ${current.get(number)?.id} and ${bead.id}`);
-		}
-		current.set(number, bead);
-	}
-
 	for (const task of plan.tasks) {
-		const linked = links.get(task.number);
 		const previous = current.get(task.number);
 		current.delete(task.number);
-		if (previous !== undefined && linked !== undefined && previous.id !== linked) {
-			throw new BdError(
-				`Task ${task.number} is already ${previous.id}; --link ${task.number}=${linked} would give it two beads`,
-			);
-		}
-		const target = linked ?? previous?.id;
-		if (target === undefined) {
+		const bead = linkedBeads.get(task.number) ?? previous;
+		if (bead === undefined) {
 			const id = withTextFile(task.text, (file) =>
 				bd(context, [
 					"create",
@@ -368,40 +357,116 @@ function importPlan(context: Context, args: string[]) {
 			console.log(`  Task ${task.number}: created ${id}`);
 			continue;
 		}
-		const bead = show(context, target);
+		// Whether a bead is linked comes from the bead, not from this run's
+		// --link options, so a later import without them keeps it linked.
+		const linked = isLinked(bead, epic);
 		// A linked bead keeps its title, and its old description is kept as a
 		// comment the first time the plan text replaces it.
-		const firstLink = linked !== undefined && planTaskOf(bead) === undefined;
 		const oldText = bead.description ?? "";
-		if (firstLink && oldText.trim() !== "" && oldText !== task.text) {
-			comment(context, target, `Description before bd-plan linked this bead to ${epic} as Task ${task.number}:\n\n${oldText}`);
+		if (previous === undefined && oldText.trim() !== "" && oldText !== task.text) {
+			comment(context, bead.id, `Description before bd-plan linked this bead to ${epic} as Task ${task.number}:\n\n${oldText}`);
 		}
 		withTextFile(task.text, (file) =>
 			bd(context, [
 				"update",
-				target,
-				...(linked === undefined ? ["--title", task.title] : []),
+				bead.id,
+				...(linked ? [] : ["--title", task.title]),
 				"--body-file",
 				file,
 				"--set-metadata",
 				`plan_epic=${epic}`,
 				"--set-metadata",
 				`plan_task=${task.number}`,
+				...(linked ? ["--set-metadata", "plan_link=true"] : []),
 				"--quiet",
 			]),
 		);
-		if (linked !== undefined) bd(context, ["dep", "add", target, epic, "--type", "related", "--quiet"]);
-		console.log(`  Task ${task.number}: updated ${target}${linked === undefined ? "" : " (linked)"}`);
+		if (linked) bd(context, ["dep", "add", bead.id, epic, "--type", "related", "--quiet"]);
+		console.log(`  Task ${task.number}: updated ${bead.id}${linked ? " (linked)" : ""}`);
 	}
 
-	// Beads for tasks the plan no longer has leave the plan but stay open or
-	// closed as they were; a person decides what happens to them.
+	// Beads for tasks the plan no longer has leave the plan. A linked bead loses
+	// its plan metadata and its link to the plan epic and keeps its status. A
+	// child bead cannot leave the epic's listing, because bd lists children by
+	// their dotted id, so it is closed and labelled plan-removed instead.
+	const today = new Date().toISOString().slice(0, 10);
 	for (const [number, bead] of current) {
-		bd(context, ["update", bead.id, "--unset-metadata", "plan_task", "--unset-metadata", "plan_epic", "--quiet"]);
-		comment(context, bead.id, `bd-plan import: Task ${number} is no longer in ${planPath}; this bead left plan ${epic}.`);
-		console.error(`warning: Task ${number} (${bead.id}) is no longer in the plan; it left plan ${epic}`);
+		const linked = isLinked(bead, epic);
+		const reason = `Removed from plan ${epic} on ${today}`;
+		bd(context, [
+			"update",
+			bead.id,
+			"--unset-metadata",
+			"plan_task",
+			"--unset-metadata",
+			"plan_epic",
+			"--unset-metadata",
+			"plan_link",
+			...(linked ? [] : ["--add-label", "plan-removed"]),
+			"--quiet",
+		]);
+		if (linked) {
+			bd(context, ["dep", "remove", bead.id, epic, "--quiet"]);
+		} else if (bead.status !== "closed") {
+			bd(context, ["close", bead.id, "--reason", reason, "--quiet"]);
+		}
+		comment(context, bead.id, `bd-plan import: Task ${number} is no longer in ${planPath}. ${reason}.`);
+		console.error(
+			`warning: Task ${number} (${bead.id}) is no longer in the plan; ${linked ? "unlinked from" : "closed and labelled plan-removed in"} ${epic}`,
+		);
 	}
 	console.log(epic);
+}
+
+// A linked bead was given to the plan with --link: it lives under another
+// parent, or none. Beads linked before plan_link existed are told apart by
+// their parent.
+function isLinked(bead: Bead, epic: string): boolean {
+	const flag = bead.metadata?.plan_link;
+	return flag === true || flag === "true" || bead.parent !== epic;
+}
+
+function currentTasks(context: Context, epic: string): Map<number, Bead> {
+	const current = new Map<number, Bead>();
+	for (const bead of list(context, ["--metadata-field", `plan_epic=${epic}`])) {
+		const number = planTaskOf(bead);
+		if (number === undefined) continue;
+		const other = current.get(number);
+		if (other !== undefined) throw new BdError(`Task ${number} of ${epic} has two beads: ${other.id} and ${bead.id}`);
+		current.set(number, bead);
+	}
+	return current;
+}
+
+function checkLinks(
+	context: Context,
+	links: Map<number, string>,
+	current: Map<number, Bead>,
+	epic: string | undefined,
+): Map<number, Bead> {
+	const byTarget = new Map<string, number>();
+	for (const [number, id] of links) {
+		const other = byTarget.get(id);
+		if (other !== undefined) {
+			throw new UsageError(`${id} is linked to Task ${other} and Task ${number}; a bead can hold one task`);
+		}
+		byTarget.set(id, number);
+	}
+	const beads = new Map<number, Bead>();
+	for (const [number, id] of links) {
+		const bead = show(context, id);
+		const heldEpic = bead.metadata?.plan_epic;
+		const heldTask = planTaskOf(bead);
+		if (heldEpic !== undefined && heldTask !== undefined && (heldEpic !== epic || heldTask !== number)) {
+			throw new UsageError(`${id} already holds Task ${heldTask} of ${String(heldEpic)}`);
+		}
+		const previous = current.get(number);
+		if (previous !== undefined && previous.id !== id) {
+			throw new UsageError(`Task ${number} is already ${previous.id}; --link ${number}=${id} would give it two beads`);
+		}
+		beads.set(number, bead);
+	}
+	return beads;
 }
 
 function planBeads(context: Context, epic: string): { epic: Bead; tasks: Bead[] } {
@@ -564,9 +629,16 @@ A task's text runs to the next task heading or the end of the file, as the
 superpowers task-brief script cuts it.
 
 Running it again for the same plan file updates the same beads in place.
---link N=<bead-id> uses an existing bead for Task N: it gets the task text and
-metadata and a 'related' link to the plan epic, keeps its title and parent, and
-its old description is kept as a comment. Prints the plan epic id last.`,
+--link N=<bead-id> uses an existing bead for Task N: it gets the task text,
+metadata plan_link=true and a 'related' link to the plan epic, keeps its title
+and parent, and its old description is kept as a comment. It stays linked on
+later imports without --link. A bead can hold one task: --link refuses a bead
+named twice or one that already holds another task, before anything changes.
+
+When a task leaves the plan, its bead leaves too: a linked bead loses its plan
+metadata and its 'related' link and keeps its status; a child bead is closed
+with reason 'Removed from plan <epic> on <date>' and labelled 'plan-removed'
+(bd still lists it under the epic by its dotted id). Prints the plan epic id last.`,
 	render: `bd-plan render <plan-epic-id> [--out <path>]
 
 Write the plan epic's description followed by each task bead's description,
