@@ -1,0 +1,22 @@
+{
+  "formatVersion": "4.0.0",
+  "distribution": {
+    "Specs": {
+      "packageName": "acme/metadata",
+      "dependencies": {},
+      "spec": {
+        "modules": {
+          "lifecycle": {
+            "types": {},
+            "values": {
+              "deprecated": {
+                "inputs": {},
+                "output": "morphir/SDK:basics#bool"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

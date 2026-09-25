@@ -768,7 +768,9 @@
         "contextFile": "metadata-fixtures/contexts/lifecycle.jsonld",
         "contextDigest": "sha256:22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
         "archiveOwnsPredicate": false,
-        "externalPredicateRevision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "externalPredicateRevision": "sha256:d38de93027cc08dcb97469f274cf27ea17ba1e3c433b4e9c95f8247f7a5f6266",
+        "providerFile": "metadata-fixtures/providers/metadata-specs.json",
+        "providerTrusted": true,
         "publishedContextFile": "metadata-fixtures/contexts/lifecycle-published.jsonld"
       },
       "expected": {
@@ -776,10 +778,10 @@
         "inventory": [
           {
             "path": "contexts/lifecycle.jsonld",
-            "sha256": "15327f6749e08f6c8dbfe157edcb42044d53023c6d144712e7537932a5f00a10"
+            "sha256": "6392c505ee8764e7edb335b06488d3427e51a555157fadb877b38e8977d446c1"
           }
         ],
-        "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/lifecycle/value/deprecated"
+        "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0&rev=sha256:d38de93027cc08dcb97469f274cf27ea17ba1e3c433b4e9c95f8247f7a5f6266#/module/lifecycle/value/deprecated"
       }
     },
     {

@@ -352,6 +352,58 @@ fn recursive_local_context_imports_are_sent_as_exact_fixture_bytes() {
 }
 
 #[test]
+fn publication_receives_verified_provider_bytes_but_not_expected_output() {
+    let corpus: Value = serde_json::from_str(include_str!(
+        "../../../spec/ir/mck/metadata-contract-draft.json"
+    ))
+    .unwrap();
+    let case = corpus["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["id"] == "metadata-0020")
+        .unwrap();
+    let mut adapter = Replying {
+        replies: vec![
+            caps(
+                json!([{"operation":"publish","profile":"json","layout":"single","irRevision":"4.1.0"}]),
+            ),
+            json!({"ok":true,"observation":case["expected"]}),
+        ],
+        requests: vec![],
+    };
+    let run = run_kit(
+        &kit(),
+        &mut adapter,
+        Some(&Regex::new("^metadata-0020$").unwrap()),
+    );
+    assert_eq!(run.records[0].result, "pass", "{:?}", run.records);
+    let paths = adapter.requests[1]["fixtures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|fixture| fixture["path"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        paths,
+        vec![
+            "metadata-fixtures/contexts/lifecycle.jsonld",
+            "metadata-fixtures/providers/metadata-specs.json",
+            "metadata-fixtures/schema-closure.json",
+        ]
+    );
+    let provider = &adapter.requests[1]["fixtures"][1];
+    assert_eq!(
+        provider["sha256"],
+        case["given"]["externalPredicateRevision"]
+            .as_str()
+            .unwrap()
+            .strip_prefix("sha256:")
+            .unwrap()
+    );
+}
+
+#[test]
 fn fact_order_is_set_valued_but_duplicate_observation_fails() {
     let corpus: Value = serde_json::from_str(include_str!(
         "../../../spec/ir/mck/metadata-contract-draft.json"

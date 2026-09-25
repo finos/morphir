@@ -12,6 +12,7 @@ const SCHEMA: &str = "spec/ir/mck/metadata-contract-draft.schema.json";
 const CLOSURE: &str = "spec/ir/mck/metadata-fixtures/schema-closure.json";
 const PUBLISHED_LIFECYCLE: &str =
     "spec/ir/mck/metadata-fixtures/contexts/lifecycle-published.jsonld";
+const METADATA_PROVIDER: &str = "spec/ir/mck/metadata-fixtures/providers/metadata-specs.json";
 
 fn files() -> BTreeMap<String, Cow<'static, [u8]>> {
     collect(&load_kit(embedded_source()).unwrap())
@@ -327,6 +328,30 @@ fn published_context_digest_must_match_fixture_bytes() {
     let message = error(changed);
     assert!(message.contains("metadata-0020"), "{message}");
     assert!(message.contains("digest"), "{message}");
+}
+
+#[test]
+fn external_provider_revision_must_match_exact_fixture_bytes() {
+    let mut changed = files();
+    changed.insert(METADATA_PROVIDER.into(), Cow::Owned(b"{}\n".to_vec()));
+    let message = error(changed);
+    assert!(message.contains("metadata-0020"), "{message}");
+    assert!(message.contains("provider digest"), "{message}");
+}
+
+#[test]
+fn accepted_external_publication_requires_provider_trust() {
+    let message = error(changed(files(), CORPUS, |value| {
+        let case = value["cases"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|case| case["id"] == "metadata-0020")
+            .unwrap();
+        case["given"]["providerTrusted"] = json!(false);
+    }));
+    assert!(message.contains("metadata-0020"), "{message}");
+    assert!(message.contains("trusted provider"), "{message}");
 }
 
 #[test]

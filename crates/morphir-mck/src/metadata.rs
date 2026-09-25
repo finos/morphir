@@ -321,6 +321,7 @@ fn check_fixture_references(source: &KitSource, case: &Value, id: &str) -> Resul
         }
         "publish" => {
             fixture(source, &given["contextFile"], false)?;
+            fixture(source, &given["providerFile"], false)?;
             fixture(source, &given["publishedContextFile"], false)?;
         }
         _ => {}
@@ -531,6 +532,25 @@ pub(crate) fn admit(source: &KitSource) -> Result<Option<usize>, String> {
         }
         if case["operation"] == "publish" && case["expected"]["outcome"] == "accepted" {
             let given = &case["given"];
+            let provider_file = given["providerFile"]
+                .as_str()
+                .ok_or_else(|| format!("{id}: accepted external publication needs providerFile"))?;
+            if given["providerTrusted"] != true {
+                return Err(format!(
+                    "{id}: accepted external publication needs trusted provider"
+                ));
+            }
+            let provider_digest = given["externalPredicateRevision"]
+                .as_str()
+                .and_then(|text| text.strip_prefix("sha256:"))
+                .ok_or_else(|| {
+                    format!("{id}: accepted external publication needs provider revision")
+                })?;
+            if sha256_hex(&read(source, &fixture_path(provider_file)?)?) != provider_digest {
+                return Err(format!(
+                    "{id}: external provider digest does not match {provider_file}"
+                ));
+            }
             let context_file = given["contextFile"]
                 .as_str()
                 .ok_or_else(|| format!("{id}: accepted publication needs contextFile"))?;
