@@ -152,10 +152,7 @@ where
             Ok(result)
         }
         Err(CallError::Rejected(error)) => {
-            let mut message = format!(
-                "Provider '{provider}' rejected '{method}': {}",
-                DaemonError::from(error)
-            );
+            let mut message = rejected_text(provider, method, error);
             if let Err(close) = session.close().await {
                 message.push_str(&format!(
                     "; orderly shutdown also failed: {}",
@@ -210,7 +207,16 @@ async fn close(session: Session, provider: &str) -> Result<(), CliError> {
         .map_err(|error| failure(provider, "shutdown", error))
 }
 
-fn failure(provider: &str, operation: &str, error: HostError) -> CliError {
+/// The text of a call the provider or the host refused. The session is
+/// still usable.
+pub(crate) fn rejected_text(provider: &str, method: &str, error: HostError) -> String {
+    format!(
+        "Provider '{provider}' rejected '{method}': {}",
+        DaemonError::from(error)
+    )
+}
+
+pub(crate) fn failure(provider: &str, operation: &str, error: HostError) -> CliError {
     CliError::Extension {
         message: format!(
             "Provider '{provider}' failed during {operation}: {}",
@@ -223,7 +229,7 @@ fn failure(provider: &str, operation: &str, error: HostError) -> CliError {
 ///
 /// A transport that cannot prove the provider stopped says so, as the
 /// daemon's indeterminate session state did.
-fn failure_text(error: HostError) -> String {
+pub(crate) fn failure_text(error: HostError) -> String {
     let indeterminate = matches!(
         error,
         HostError::Channel {

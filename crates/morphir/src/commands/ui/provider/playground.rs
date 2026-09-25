@@ -56,7 +56,7 @@ use crate::home::MorphirHome;
 
 use super::PlaygroundCapability;
 use super::native::capability;
-use super::sessions::{RegistryOpener, SessionReuseInvoker};
+use super::pool::PooledInvoker;
 
 /// How long the playground waits for one extension invocation.
 ///
@@ -80,20 +80,16 @@ type RegistrySource = Arc<dyn Fn(Option<&str>) -> Result<Registry, CliError> + S
 
 /// How the playground reaches a resolved provider.
 ///
-/// Production is [`SessionReuseInvoker`] over [`RegistryOpener`], which
-/// delegates to the CLI's own extension boundary — the same functions
-/// `morphir compile` and `morphir generate` call — so the playground cannot
-/// acquire a private invocation path. Injectable so a test can drive an
-/// invocation that never answers and observe the timeout without waiting two
-/// real minutes.
-///
-/// [`SessionReuseInvoker`]: super::sessions::SessionReuseInvoker
-/// [`RegistryOpener`]: super::sessions::RegistryOpener
+/// Production is [`PooledInvoker`], which keeps one warm guest per provider
+/// and otherwise delegates to the CLI's own extension boundary, the same
+/// functions `morphir compile` and `morphir generate` call, so the playground
+/// cannot acquire a private invocation path. Injectable so a test can drive
+/// an invocation that never answers and observe the timeout without waiting
+/// two real minutes.
 #[async_trait]
 pub(super) trait ExtensionInvoker: Send + Sync {
     async fn compile(
         &self,
-        home: &MorphirHome,
         working_directory: &Path,
         resolved: &Resolved,
         request: CompileRequest,
@@ -101,7 +97,6 @@ pub(super) trait ExtensionInvoker: Send + Sync {
 
     async fn generate(
         &self,
-        home: &MorphirHome,
         working_directory: &Path,
         resolved: &Resolved,
         request: GenerateRequest,
@@ -111,8 +106,8 @@ pub(super) trait ExtensionInvoker: Send + Sync {
     /// playground's patience.
     ///
     /// A timeout drops the invocation future before any of the invoker's own
-    /// error handling can run, so an invoker that caches per-provider state —
-    /// a session whose actor may still be wedged on the hung exchange — must
+    /// error handling can run, so an invoker that caches per-provider state,
+    /// such as a guest that may still be wedged on the hung exchange, must
     /// be told out-of-band, or every later request for that provider queues
     /// behind the same hang and times out too. A no-op for invokers that hold
     /// nothing.
@@ -126,7 +121,6 @@ enum Invocation<R> {
 }
 
 pub struct NativePlaygroundProvider {
-    home: MorphirHome,
     registry: RegistrySource,
     /// The workspace's `[frontend]` section, when one was found and loaded, so
     /// a compile can read the provider the project asked for. `None` when the
@@ -156,24 +150,20 @@ impl NativePlaygroundProvider {
 
     /// As [`new`](Self::new), for a session that knows its workspace.
     pub fn in_workspace(home: MorphirHome, workspace: &Path) -> Self {
-        let registry_home = home.clone();
         let working_directory = extension_working_directory(&home);
         Self::with_parts(
-            home,
-            Arc::new(move |only| installed_registry(&registry_home, only)),
+            Arc::new(move |only| installed_registry(&home, only)),
             workspace_frontend(workspace),
-            // Session-reusing on purpose: a provider with a session mode pays
-            // activation and the MEP handshake once per session instead of
-            // once per click. See the sessions module for the reuse and
-            // eviction rules.
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            // Pooled on purpose: a provider with a guest pays activation and
+            // the MEP handshake once per guest instead of once per click. See
+            // the pool module for the reuse and eviction rules.
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
             working_directory,
             INVOCATION_TIMEOUT,
         )
     }
 
     fn with_parts(
-        home: MorphirHome,
         registry: RegistrySource,
         frontend: Option<FrontendSection>,
         invoker: Arc<dyn ExtensionInvoker>,
@@ -181,7 +171,6 @@ impl NativePlaygroundProvider {
         timeout: Duration,
     ) -> Self {
         Self {
-            home,
             registry,
             frontend,
             invoker,
@@ -256,9 +245,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
             .map_err(|error| CliError::Validation {
                 message: error.to_string(),
             })?;
-        let invocation =
-            self.invoker
-                .compile(&self.home, &self.working_directory, &resolved, request);
+        let invocation = self
+            .invoker
+            .compile(&self.working_directory, &resolved, request);
         match bounded(invocation, self.timeout).await? {
             Invocation::Answered(result) => Ok(PlaygroundCompileResult {
                 success: result.success,
@@ -313,9 +302,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         // Artifacts stay in the response. Unlike `morphir generate`, nothing
         // is published to an output directory; the web app offers each
         // artifact as a download.
-        let invocation =
-            self.invoker
-                .generate(&self.home, &self.working_directory, &resolved, request);
+        let invocation = self
+            .invoker
+            .generate(&self.working_directory, &resolved, request);
         match bounded(invocation, self.timeout).await? {
             Invocation::Answered(result) => Ok(PlaygroundGenerateResult {
                 success: result.success,
@@ -643,10 +632,7 @@ fn playground_location(location: &SourceLocation) -> PlaygroundLocation {
 mod tests {
     use super::*;
     use crate::commands::ui::protocol::{PlaygroundPackage, PlaygroundSourceDocument};
-    use morphir_distribution::{
-        Channel, ExtensionId, ExtensionInstaller, InstalledExtensionSnapshot, LocalIndex, Platform,
-        Selection, Sha256Digest,
-    };
+    use morphir_distribution::InstalledExtensionSnapshot;
     use morphir_extension_sdk::{
         Backend, BackendCapability, Extension, ExtensionCapabilities, ExtensionInfo, Frontend,
         FrontendCapability, LanguageCapability, NativeExtension,
@@ -863,7 +849,6 @@ mod tests {
     impl ExtensionInvoker for RecordingInvoker {
         async fn compile(
             &self,
-            _home: &MorphirHome,
             working_directory: &Path,
             resolved: &Resolved,
             request: CompileRequest,
@@ -877,7 +862,6 @@ mod tests {
 
         async fn generate(
             &self,
-            _home: &MorphirHome,
             working_directory: &Path,
             resolved: &Resolved,
             request: GenerateRequest,
@@ -910,7 +894,6 @@ mod tests {
     impl ExtensionInvoker for SleepingInvoker {
         async fn compile(
             &self,
-            _home: &MorphirHome,
             _working_directory: &Path,
             _resolved: &Resolved,
             _request: CompileRequest,
@@ -921,7 +904,6 @@ mod tests {
 
         async fn generate(
             &self,
-            _home: &MorphirHome,
             _working_directory: &Path,
             _resolved: &Resolved,
             _request: GenerateRequest,
@@ -946,7 +928,6 @@ mod tests {
     impl ExtensionInvoker for UnreachableInvoker {
         async fn compile(
             &self,
-            _home: &MorphirHome,
             _working_directory: &Path,
             resolved: &Resolved,
             _request: CompileRequest,
@@ -956,7 +937,6 @@ mod tests {
 
         async fn generate(
             &self,
-            _home: &MorphirHome,
             _working_directory: &Path,
             resolved: &Resolved,
             _request: GenerateRequest,
@@ -981,14 +961,13 @@ mod tests {
         (root, home)
     }
 
-    /// Install a real extension into a scratch Morphir home and return its
-    /// snapshot.
+    /// Install a real extension into a scratch Morphir home and return the
+    /// home and its snapshot.
     ///
     /// Registering a fabricated snapshot would not answer the question these
     /// tests ask: an installed provider's capability metadata is rebuilt from
     /// what the install actually persisted, so the snapshot has to come from
-    /// a real index and a real install. This mirrors the `installed` helper in
-    /// morphir-daemon's `provider_registry` integration test.
+    /// a real index and a real install.
     ///
     /// The returned directory owns the home the snapshot points into and must
     /// outlive it.
@@ -998,70 +977,32 @@ mod tests {
         target: &str,
     ) -> (tempfile::TempDir, MorphirHome, InstalledExtensionSnapshot) {
         let root = tempfile::tempdir().expect("a temporary install root");
-        let index = root.path().join("index");
-        let artifact = index.join("artifacts").join(extension_id);
-        std::fs::create_dir_all(artifact.parent().expect("the artifact has a parent"))
-            .expect("the artifact directory is created");
-        std::fs::create_dir_all(index.join("extensions")).expect("the index directory is created");
-        let bytes = b"#!/bin/sh\nexit 0\n".as_slice();
-        std::fs::write(&artifact, bytes).expect("the artifact is written");
-        let platform = Platform::current();
-        let record = serde_json::json!({
-            "schemaVersion": "1.0",
-            "id": extension_id,
-            "name": format!("Installed {extension_id}"),
-            "version": "2.0.0",
-            "channels": ["stable"],
-            "mepVersions": ["0.1"],
-            "capabilities": ["frontend", "backend"],
-            "frontend": {
-                "languages": [{
-                    "id": language,
-                    "fileExtensions": [format!(".{language}")]
-                }],
-                "irVersions": [IR_VERSION],
-                "compile": true
-            },
-            "backend": {
-                "targets": [target],
-                "irVersions": [IR_VERSION],
-                "generate": true
-            },
-            "artifacts": [{
-                "runtime": "process",
-                "platform": {"os": platform.os(), "arch": platform.arch()},
-                "source": {"kind": "local-file", "path": format!("artifacts/{extension_id}")},
-                "sha256": Sha256Digest::of_bytes(bytes),
-                "filename": extension_id,
-                "args": [],
-                "executable": true
-            }]
-        });
-        std::fs::write(
-            index
-                .join("extensions")
-                .join(format!("{extension_id}.jsonl")),
-            format!("{record}\n"),
-        )
-        .expect("the index record is written");
-
-        let home = MorphirHome::resolve_from(Some(root.path().join("home").as_os_str()), None)
-            .expect("an explicit Morphir home resolves");
-        let id = ExtensionId::parse(extension_id).expect("the extension ID parses");
-        let host: morphir_workspace::Version = env!("CARGO_PKG_VERSION")
-            .parse()
-            .expect("the CLI version is SemVer");
-        let selected = LocalIndex::open(&index)
-            .expect("the local index opens")
-            .resolve(&id, Selection::Channel(Channel::Stable), &platform, &host)
-            .expect("the index resolves the extension");
-        ExtensionInstaller::new(&home)
-            .install(selected, &host)
-            .expect("the extension installs");
-        let snapshot = list_installed(&home)
-            .expect("the installed catalog is readable")
-            .pop()
-            .expect("exactly one extension was installed");
+        let (home, snapshot) = crate::extensions::installed_fixture::install_process(
+            root.path(),
+            serde_json::json!({
+                "schemaVersion": "1.0",
+                "id": extension_id,
+                "name": format!("Installed {extension_id}"),
+                "version": "2.0.0",
+                "channels": ["stable"],
+                "mepVersions": ["0.1"],
+                "capabilities": ["frontend", "backend"],
+                "frontend": {
+                    "languages": [{
+                        "id": language,
+                        "fileExtensions": [format!(".{language}")]
+                    }],
+                    "irVersions": [IR_VERSION],
+                    "compile": true
+                },
+                "backend": {
+                    "targets": [target],
+                    "irVersions": [IR_VERSION],
+                    "generate": true
+                }
+            }),
+            b"#!/bin/sh\nexit 0\n",
+        );
         (root, home, snapshot)
     }
 
@@ -1080,11 +1021,10 @@ mod tests {
         invoker: Arc<dyn ExtensionInvoker>,
         timeout: Duration,
     ) -> Fixture {
-        let (home_root, home) = scratch_home();
+        let (home_root, _home) = scratch_home();
         let working = tempfile::tempdir().expect("a scratch working directory");
         let root_path = home_root.path().to_path_buf();
         let provider = NativePlaygroundProvider::with_parts(
-            home,
             Arc::new(move |_only| {
                 let mut registry = Registry::new();
                 register(&mut registry);
@@ -1228,7 +1168,7 @@ mod tests {
                 module_results: Vec::new(),
                 context_digest: None,
             }),
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
         );
 
         let result = fixture
@@ -1264,7 +1204,7 @@ mod tests {
                 }],
                 diagnostics: vec![],
             }),
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
         );
         let cwd = std::env::current_dir().unwrap();
         let watched = [
@@ -1398,7 +1338,7 @@ mod tests {
                     )))
                     .expect("the blocking frontend double registers");
             },
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
             // Real time, not the paused clock the sleeping-invoker test uses:
             // an outstanding blocking task inhibits tokio's auto-advance, so
             // a paused clock would never reach the deadline.
@@ -1763,10 +1703,9 @@ mod tests {
         let working = tempfile::tempdir().expect("a scratch working directory");
         let cwd = std::env::current_dir().unwrap();
         let provider = NativePlaygroundProvider::with_parts(
-            home.clone(),
             Arc::new(move |only| installed_registry(&home, only)),
             None,
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
             working.path().to_path_buf(),
             INVOCATION_TIMEOUT,
         );

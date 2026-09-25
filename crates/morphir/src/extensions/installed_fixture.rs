@@ -20,6 +20,7 @@ use std::path::Path;
 /// name to the members of its reply, `{"result": ...}` or `{"error": ...}`.
 /// `morphir.shutdown` answers with an empty result, and any other method
 /// with a method-not-found error.
+#[cfg(unix)]
 pub(crate) fn mep_guest(initialize: &Value, answers: &Value) -> Vec<u8> {
     let python = std::process::Command::new("sh")
         .args(["-c", "command -v python3"])
@@ -139,4 +140,60 @@ pub(crate) fn install_process(
         .pop()
         .expect("exactly one extension was installed");
     (home, snapshot)
+}
+
+/// A `gleam` frontend at IR `4.0.0`, id `fixture`, that refuses every
+/// compile with RPC error -32001 `does not compile`: the guest program and
+/// its index record.
+#[cfg(unix)]
+pub(crate) fn rejecting_frontend() -> (Vec<u8>, Value) {
+    let language = serde_json::json!([{"id": "gleam", "fileExtensions": [".gleam"]}]);
+    let guest = mep_guest(
+        &serde_json::json!({
+            "protocolVersion": "0.1",
+            "extension": {
+                "id": "fixture",
+                "name": "Rejecting fixture",
+                "version": "1.0.0",
+                "types": ["frontend"],
+            },
+            "capabilities": {"frontend": {
+                "languages": language,
+                "irVersions": ["4.0.0"],
+                "compile": true,
+                "incremental": false,
+                "fragments": false,
+            }},
+        }),
+        &serde_json::json!({
+            morphir_extension_sdk::protocol::methods::COMPILE: {
+                "error": {"code": -32001, "message": "does not compile"}
+            }
+        }),
+    );
+    let record = serde_json::json!({
+        "schemaVersion": "1.0",
+        "id": "fixture",
+        "name": "Rejecting fixture",
+        "version": "1.0.0",
+        "channels": ["stable"],
+        "mepVersions": ["0.1"],
+        "capabilities": ["frontend"],
+        "frontend": {
+            "languages": language,
+            "irVersions": ["4.0.0"],
+            "compile": true,
+        },
+    });
+    (guest, record)
+}
+
+/// Overwrite an installed artifact in the store, so that it no longer
+/// matches the digest its lock recorded.
+pub(crate) fn tamper(home: &MorphirHome, snapshot: &InstalledExtensionSnapshot) {
+    std::fs::write(
+        home.root().join(snapshot.installed().store_path()),
+        b"corrupted after installation",
+    )
+    .expect("the installed artifact is overwritten");
 }

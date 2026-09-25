@@ -425,16 +425,16 @@ mod tests {
         assert!(native.manifest().provenance.is_none());
     }
 
-    // The installed workspace provider reaches its guest through the host:
-    // it activates the installed artifact, negotiates discovery, and returns
-    // the snapshot the guest answered with.
+    /// Install a workspace provider, id `workspace-fixture`, that answers
+    /// discovery with `snapshot`.
     #[cfg(unix)]
-    #[tokio::test]
-    async fn the_installed_workspace_provider_discovers_through_the_host() {
-        let temp = tempfile::tempdir().unwrap();
-        let expected = discover_workspace_detailed(&fixture(), &ConfigLoadOptions::default())
-            .unwrap()
-            .snapshot;
+    fn install_workspace_fixture(
+        root: &Path,
+        snapshot: &portable::WorkspaceSnapshot,
+    ) -> (
+        MorphirHome,
+        morphir_distribution::InstalledExtensionSnapshot,
+    ) {
         let guest = crate::extensions::installed_fixture::mep_guest(
             &serde_json::json!({
                 "protocolVersion": "0.1",
@@ -454,13 +454,13 @@ mod tests {
             &serde_json::json!({
                 methods::WORKSPACE_DISCOVER: {
                     "result": portable::DiscoveryResponse::Success {
-                        snapshot: expected.clone(),
+                        snapshot: snapshot.clone(),
                     }
                 }
             }),
         );
-        let (home, _snapshot) = crate::extensions::installed_fixture::install_process(
-            temp.path(),
+        crate::extensions::installed_fixture::install_process(
+            root,
             serde_json::json!({
                 "schemaVersion": "1.0",
                 "id": "workspace-fixture",
@@ -471,11 +471,52 @@ mod tests {
                 "capabilities": ["workspace"],
             }),
             &guest,
-        );
+        )
+    }
+
+    // The installed workspace provider reaches its guest through the host:
+    // it activates the installed artifact, negotiates discovery, and returns
+    // the snapshot the guest answered with.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_installed_workspace_provider_discovers_through_the_host() {
+        let temp = tempfile::tempdir().unwrap();
+        let expected = discover_workspace_detailed(&fixture(), &ConfigLoadOptions::default())
+            .unwrap()
+            .snapshot;
+        let (home, _snapshot) = install_workspace_fixture(temp.path(), &expected);
         let provider =
             ExtensionWorkspaceProvider::select(home, &fixture(), "session-1", None).unwrap();
 
         assert_eq!(provider.discover().await.unwrap(), expected);
+    }
+
+    // An installed workspace provider whose artifact changed after
+    // installation fails verification, in this provider's own words.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_changed_installed_workspace_provider_fails_to_activate() {
+        let temp = tempfile::tempdir().unwrap();
+        let expected = discover_workspace_detailed(&fixture(), &ConfigLoadOptions::default())
+            .unwrap()
+            .snapshot;
+        let (home, snapshot) = install_workspace_fixture(temp.path(), &expected);
+        crate::extensions::installed_fixture::tamper(&home, &snapshot);
+        let provider =
+            ExtensionWorkspaceProvider::select(home, &fixture(), "session-1", None).unwrap();
+
+        match provider.discover().await.unwrap_err() {
+            CliError::Extension { message } => {
+                assert!(
+                    message.starts_with(
+                        "Failed to activate installed workspace provider 'workspace-fixture': "
+                    ),
+                    "{message}"
+                );
+                assert!(message.contains("digest mismatch"), "{message}");
+            }
+            other => panic!("expected an extension error, got {other:?}"),
+        }
     }
 
     #[test]
