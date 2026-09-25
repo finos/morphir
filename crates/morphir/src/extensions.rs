@@ -2,29 +2,39 @@
 
 use crate::error::CliError;
 use crate::home::MorphirHome;
-use morphir_daemon::ExtensionRegistry;
+use morphir_daemon::DaemonError;
 use morphir_daemon::extensions::{
-    FailedSession, InvocationMode, Loaded, MepTransport, ResolvedBackend, ResolvedFrontend,
-    Session, SessionHandle, activate_transport, protocol::methods, spawn_session,
+    FailedSession, Loaded, MepTransport, Session, SessionHandle, activate_transport,
+    protocol::methods, spawn_session,
 };
-use morphir_distribution::{InstalledExtensionSnapshot, activate_installed_snapshot};
+use morphir_distribution::{
+    InstalledExtensionSnapshot, activate_installed_snapshot, list_installed,
+};
 use morphir_elm_binding::ElmExtension;
 use morphir_extension_sdk::{
     CompileRequest, CompileResult, GenerateRequest, GenerateResult, NativeExtension,
 };
 use morphir_gleam_binding::GleamExtension;
+use morphir_host::{InvocationMode, Registry, Resolved};
 use morphir_host_native::process::ProcessLaunch;
+use morphir_host_native::{InstalledSource, NativeSource};
 use morphir_workspace::{DiscoveryRequest, DiscoveryResponse};
 use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
+use std::sync::Arc;
 
 pub(crate) mod guest;
+#[cfg(all(test, unix))]
+pub(crate) mod installed_fixture;
 
 /// Construct the complete provider registry used by one CLI command.
+///
+/// Installed providers start below `home` when they are invoked.
 pub fn extension_registry(
+    home: &MorphirHome,
     installed: impl IntoIterator<Item = InstalledExtensionSnapshot>,
-) -> Result<ExtensionRegistry, CliError> {
-    extension_registry_for(installed, None)
+) -> Result<Registry, CliError> {
+    extension_registry_for(home, installed, None)
 }
 
 /// Construct the provider registry, optionally restricted to one provider id.
@@ -43,9 +53,10 @@ pub fn extension_registry(
 /// The former Gleam id is an alias for its native provider, unless an installed
 /// extension still uses that id. An exact installed selection remains binding.
 pub fn extension_registry_for(
+    home: &MorphirHome,
     installed: impl IntoIterator<Item = InstalledExtensionSnapshot>,
     only: Option<&str>,
-) -> Result<ExtensionRegistry, CliError> {
+) -> Result<Registry, CliError> {
     let installed: Vec<_> = installed.into_iter().collect();
     let only = match only {
         Some("morphir-gleam-binding")
@@ -57,16 +68,19 @@ pub fn extension_registry_for(
         }
         selector => selector,
     };
-    let mut registry = ExtensionRegistry::new();
+    let mut registry = Registry::new();
     for (language, builtin, opt_in) in builtin_providers()? {
         let requested = only == Some(builtin.info().id.as_str());
         if (opt_in && !requested) || only.is_some_and(|id| id != builtin.info().id) {
             continue;
         }
         registry
-            .register_builtin(builtin)
+            .register(Arc::new(NativeSource::new(builtin)))
             .map_err(|error| CliError::Extension {
-                message: format!("Failed to register native {language} provider: {error}"),
+                message: format!(
+                    "Failed to register native {language} provider: {}",
+                    DaemonError::from(error)
+                ),
             })?;
     }
     for snapshot in installed {
@@ -74,10 +88,14 @@ pub fn extension_registry_for(
         if only.is_some_and(|only| only != id) {
             continue;
         }
+        let source = InstalledSource::new(home.clone(), snapshot);
         registry
-            .register_installed(snapshot)
+            .register(Arc::new(guest::InstalledProvider::new(source)))
             .map_err(|error| CliError::Extension {
-                message: format!("Failed to register installed provider '{id}': {error}"),
+                message: format!(
+                    "Failed to register installed provider '{id}': {}",
+                    DaemonError::from(error)
+                ),
             })?;
     }
     Ok(registry)
@@ -105,24 +123,13 @@ fn builtin_providers() -> Result<[(&'static str, NativeExtension, bool); 2], Cli
     Ok([("Gleam", gleam, false), ("Elm", elm, true)])
 }
 
-/// The built-in native provider a `NativeMep` resolution selected.
-///
-/// The registry lends a built-in only for direct invocation, so a protocol
-/// invocation builds the same stateless provider again by its id. A
-/// resolution the built-ins do not answer is reported by the caller as an
-/// unavailable mode.
-fn builtin_provider(id: &str) -> Result<Option<NativeExtension>, CliError> {
-    Ok(builtin_providers()?
-        .into_iter()
-        .map(|(_, builtin, _)| builtin)
-        .find(|builtin| builtin.info().id == id))
-}
-
 /// Invoke a resolved frontend through only the mode selected by the registry.
+///
+/// `NativeDirect` calls the built-in's typed handle. Every other mode opens
+/// the guest [`Resolved::connect`] starts, for one call.
 pub async fn invoke_frontend(
-    home: &MorphirHome,
     workspace: &Path,
-    resolved: &ResolvedFrontend,
+    resolved: &Resolved,
     request: CompileRequest,
 ) -> Result<CompileResult, CliError> {
     request
@@ -142,7 +149,8 @@ pub async fn invoke_frontend(
             let resolved = resolved.clone();
             blocking(resolved.info().id.clone(), move || {
                 resolved
-                    .native_frontend()
+                    .native()
+                    .and_then(NativeExtension::frontend)
                     .ok_or_else(|| {
                         unavailable_mode(resolved.info().id.as_str(), "native frontend")
                     })?
@@ -156,31 +164,9 @@ pub async fn invoke_frontend(
             })
             .await
         }
-        InvocationMode::NativeMep => {
+        _ => {
             let provider = resolved.info().id.as_str();
-            let native = builtin_provider(provider)?
-                .ok_or_else(|| unavailable_mode(provider, "native MEP frontend"))?;
-            let connection = guest::resolved(
-                home,
-                workspace,
-                provider,
-                guest::GuestSource::Native(&native),
-            )
-            .await?;
-            guest::call_once(connection, provider, methods::COMPILE, request).await
-        }
-        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
-            let provider = resolved.info().id.as_str();
-            let snapshot = resolved
-                .installed_snapshot()
-                .ok_or_else(|| unavailable_mode(provider, "installed MEP frontend"))?;
-            let connection = guest::resolved(
-                home,
-                workspace,
-                provider,
-                guest::GuestSource::Installed(snapshot),
-            )
-            .await?;
+            let connection = guest::connect(resolved, workspace).await?;
             guest::call_once(connection, provider, methods::COMPILE, &request).await
         }
     }
@@ -193,18 +179,17 @@ pub async fn invoke_frontend(
 /// [`DiscoveryResponse::Failure`]; only a provider that could not answer at
 /// all is an error here.
 pub async fn invoke_workspace_discovery(
-    home: &MorphirHome,
     workspace: &Path,
-    resolved: &ResolvedFrontend,
+    resolved: &Resolved,
     request: DiscoveryRequest,
 ) -> Result<DiscoveryResponse, CliError> {
-    let provider = resolved.info().id.as_str();
     match resolved.invocation_mode() {
         InvocationMode::NativeDirect => {
             let resolved = resolved.clone();
             blocking(resolved.info().id.clone(), move || {
                 resolved
-                    .native_workspace()
+                    .native()
+                    .and_then(NativeExtension::workspace)
                     .ok_or_else(|| {
                         unavailable_mode(resolved.info().id.as_str(), "native workspace")
                     })?
@@ -218,29 +203,9 @@ pub async fn invoke_workspace_discovery(
             })
             .await
         }
-        InvocationMode::NativeMep => {
-            let native = builtin_provider(provider)?
-                .ok_or_else(|| unavailable_mode(provider, "native MEP workspace"))?;
-            let connection = guest::resolved(
-                home,
-                workspace,
-                provider,
-                guest::GuestSource::Native(&native),
-            )
-            .await?;
-            guest::call_once(connection, provider, methods::WORKSPACE_DISCOVER, request).await
-        }
-        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
-            let snapshot = resolved
-                .installed_snapshot()
-                .ok_or_else(|| unavailable_mode(provider, "installed MEP workspace"))?;
-            let connection = guest::resolved(
-                home,
-                workspace,
-                provider,
-                guest::GuestSource::Installed(snapshot),
-            )
-            .await?;
+        _ => {
+            let provider = resolved.info().id.as_str();
+            let connection = guest::connect(resolved, workspace).await?;
             guest::call_once(connection, provider, methods::WORKSPACE_DISCOVER, request).await
         }
     }
@@ -289,10 +254,11 @@ where
 }
 
 /// Invoke a resolved backend through only the mode selected by the registry.
+///
+/// See [`invoke_frontend`] for how the mode selects the call.
 pub async fn invoke_backend(
-    home: &MorphirHome,
     workspace: &Path,
-    resolved: &ResolvedBackend,
+    resolved: &Resolved,
     request: GenerateRequest,
 ) -> Result<GenerateResult, CliError> {
     match resolved.invocation_mode() {
@@ -302,7 +268,8 @@ pub async fn invoke_backend(
             let resolved = resolved.clone();
             blocking(resolved.info().id.clone(), move || {
                 resolved
-                    .native_backend()
+                    .native()
+                    .and_then(NativeExtension::backend)
                     .ok_or_else(|| unavailable_mode(resolved.info().id.as_str(), "native backend"))?
                     .generate(request)
                     .map_err(|error| CliError::Extension {
@@ -314,31 +281,9 @@ pub async fn invoke_backend(
             })
             .await
         }
-        InvocationMode::NativeMep => {
+        _ => {
             let provider = resolved.info().id.as_str();
-            let native = builtin_provider(provider)?
-                .ok_or_else(|| unavailable_mode(provider, "native MEP backend"))?;
-            let connection = guest::resolved(
-                home,
-                workspace,
-                provider,
-                guest::GuestSource::Native(&native),
-            )
-            .await?;
-            guest::call_once(connection, provider, methods::GENERATE, request).await
-        }
-        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
-            let provider = resolved.info().id.as_str();
-            let snapshot = resolved
-                .installed_snapshot()
-                .ok_or_else(|| unavailable_mode(provider, "installed MEP backend"))?;
-            let connection = guest::resolved(
-                home,
-                workspace,
-                provider,
-                guest::GuestSource::Installed(snapshot),
-            )
-            .await?;
+            let connection = guest::connect(resolved, workspace).await?;
             guest::call_once(connection, provider, methods::GENERATE, request).await
         }
     }
@@ -355,25 +300,9 @@ pub async fn invoke_backend(
 pub async fn open_frontend_session(
     home: &MorphirHome,
     workspace: &Path,
-    resolved: &ResolvedFrontend,
+    resolved: &Resolved,
 ) -> Result<Option<SessionHandle>, CliError> {
-    let provider = resolved.info().id.as_str();
-    match resolved.invocation_mode() {
-        InvocationMode::NativeDirect => Ok(None),
-        InvocationMode::NativeMep => {
-            let loaded = resolved
-                .native_mep_session()
-                .ok_or_else(|| unavailable_mode(provider, "native MEP frontend"))?;
-            Ok(Some(open_loaded(loaded, provider).await?))
-        }
-        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
-            let snapshot = resolved
-                .installed_snapshot()
-                .ok_or_else(|| unavailable_mode(provider, "installed MEP frontend"))?;
-            let loaded = installed_loaded(home, workspace, snapshot, provider).await?;
-            Ok(Some(open_loaded(loaded, provider).await?))
-        }
-    }
+    open_session(home, workspace, resolved, "frontend").await
 }
 
 /// Open a long-lived session to a resolved backend, or `None` when its
@@ -381,22 +310,45 @@ pub async fn open_frontend_session(
 pub async fn open_backend_session(
     home: &MorphirHome,
     workspace: &Path,
-    resolved: &ResolvedBackend,
+    resolved: &Resolved,
+) -> Result<Option<SessionHandle>, CliError> {
+    open_session(home, workspace, resolved, "backend").await
+}
+
+/// Open a daemon session for a provider the host registry resolved.
+///
+/// A temporary bridge for the workbench's session reuse, which still holds
+/// daemon sessions: a [`Resolved`] does not lend its source back, so a
+/// `NativeMep` built-in is built again by id, and an installed provider's
+/// snapshot is read again from `home` by id.
+async fn open_session(
+    home: &MorphirHome,
+    workspace: &Path,
+    resolved: &Resolved,
+    role: &str,
 ) -> Result<Option<SessionHandle>, CliError> {
     let provider = resolved.info().id.as_str();
     match resolved.invocation_mode() {
         InvocationMode::NativeDirect => Ok(None),
         InvocationMode::NativeMep => {
-            let loaded = resolved
-                .native_mep_session()
-                .ok_or_else(|| unavailable_mode(provider, "native MEP backend"))?;
+            let native = builtin_providers()?
+                .into_iter()
+                .map(|(_, builtin, _)| builtin)
+                .find(|builtin| builtin.info().id == provider)
+                .ok_or_else(|| unavailable_mode(provider, &format!("native MEP {role}")))?;
+            let loaded =
+                Session::loaded(morphir_daemon::extensions::NativeMepTransport::new(native));
             Ok(Some(open_loaded(loaded, provider).await?))
         }
-        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
-            let snapshot = resolved
-                .installed_snapshot()
-                .ok_or_else(|| unavailable_mode(provider, "installed MEP backend"))?;
-            let loaded = installed_loaded(home, workspace, snapshot, provider).await?;
+        _ => {
+            let snapshot = list_installed(home)
+                .map_err(|error| CliError::Extension {
+                    message: format!("Failed to list installed extensions: {error}"),
+                })?
+                .into_iter()
+                .find(|snapshot| snapshot.installed().extension_id().as_str() == provider)
+                .ok_or_else(|| unavailable_mode(provider, &format!("installed MEP {role}")))?;
+            let loaded = installed_loaded(home, workspace, &snapshot, provider).await?;
             Ok(Some(open_loaded(loaded, provider).await?))
         }
     }
@@ -484,10 +436,10 @@ mod tests {
         open_frontend_session,
     };
     use crate::home::MorphirHome;
-    use morphir_daemon::{InvocationPolicy, ResolvedBackend, ResolvedFrontend};
     use morphir_extension_sdk::{
         CompileOptions, CompilePackage, CompileRequest, GenerateRequest, SourceDocument, SourceSet,
     };
+    use morphir_host::{InvocationPolicy, Registry, Resolved};
     use serde_json::json;
     use std::collections::HashMap;
     use std::path::Path;
@@ -504,8 +456,10 @@ mod tests {
 
     #[test]
     fn gleam_native_selectors_resolve_to_the_same_native_provider() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = MorphirHome::resolve_from(Some(temp.path().as_os_str()), None).unwrap();
         for selector in [None, Some("morphir-gleam"), Some("morphir-gleam-binding")] {
-            let registry = super::extension_registry_for([], selector).unwrap();
+            let registry = super::extension_registry_for(&home, [], selector).unwrap();
             for policy in [
                 InvocationPolicy::PreferDirect,
                 InvocationPolicy::ProtocolOnly,
@@ -522,7 +476,7 @@ mod tests {
                 assert_eq!(backend.invocation_mode(), expected);
                 assert!(frontend.capabilities().workspace.is_some());
                 if policy == InvocationPolicy::PreferDirect {
-                    assert!(frontend.native_extension().unwrap().workspace().is_some());
+                    assert!(frontend.native().unwrap().workspace().is_some());
                 }
             }
         }
@@ -558,17 +512,11 @@ mod tests {
         }
     }
 
-    fn resolve_frontend(
-        registry: &morphir_daemon::ExtensionRegistry,
-        policy: InvocationPolicy,
-    ) -> ResolvedFrontend {
+    fn resolve_frontend(registry: &Registry, policy: InvocationPolicy) -> Resolved {
         registry.resolve_frontend("gleam", "4.0.0", policy).unwrap()
     }
 
-    fn resolve_backend(
-        registry: &morphir_daemon::ExtensionRegistry,
-        policy: InvocationPolicy,
-    ) -> ResolvedBackend {
+    fn resolve_backend(registry: &Registry, policy: InvocationPolicy) -> Resolved {
         registry.resolve_backend("gleam", "4.0.0", policy).unwrap()
     }
 
@@ -581,7 +529,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let home =
             MorphirHome::resolve_from(Some(temp.path().join("home").as_os_str()), None).unwrap();
-        let registry = extension_registry([]).unwrap();
+        let registry = extension_registry(&home, []).unwrap();
         let resolved = resolve_frontend(&registry, InvocationPolicy::ProtocolOnly);
         let request = compile_request(&temp.path().join("compile"));
 
@@ -603,7 +551,7 @@ mod tests {
             )
             .await
             .unwrap();
-        let one_shot = invoke_frontend(&home, temp.path(), &resolved, request)
+        let one_shot = invoke_frontend(temp.path(), &resolved, request)
             .await
             .unwrap();
         handle.shutdown().await.unwrap();
@@ -623,9 +571,8 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let home =
             MorphirHome::resolve_from(Some(temp.path().join("home").as_os_str()), None).unwrap();
-        let registry = extension_registry([]).unwrap();
+        let registry = extension_registry(&home, []).unwrap();
         let compiled = invoke_frontend(
-            &home,
             temp.path(),
             &resolve_frontend(&registry, InvocationPolicy::PreferDirect),
             compile_request(&temp.path().join("compile")),
@@ -663,7 +610,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let home =
             MorphirHome::resolve_from(Some(temp.path().join("home").as_os_str()), None).unwrap();
-        let registry = extension_registry([]).unwrap();
+        let registry = extension_registry(&home, []).unwrap();
 
         let frontend = open_frontend_session(
             &home,
@@ -805,15 +752,84 @@ while True:
         assert!(negotiated.capabilities.frontend.is_some());
     }
 
+    // An installed provider's rejected call reads exactly like a configured
+    // provider's: the session machinery under it must not change the text.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_installed_provider_rejecting_compile_keeps_the_rejected_text() {
+        let temp = tempfile::tempdir().unwrap();
+        let frontend = json!({
+            "languages": [{"id": "gleam", "fileExtensions": [".gleam"]}],
+            "irVersions": ["4.0.0"],
+            "compile": true,
+        });
+        let guest = super::installed_fixture::mep_guest(
+            &json!({
+                "protocolVersion": "0.1",
+                "extension": {
+                    "id": "fixture",
+                    "name": "Rejecting fixture",
+                    "version": "1.0.0",
+                    "types": ["frontend"],
+                },
+                "capabilities": {"frontend": {
+                    "languages": [{"id": "gleam", "fileExtensions": [".gleam"]}],
+                    "irVersions": ["4.0.0"],
+                    "compile": true,
+                    "incremental": false,
+                    "fragments": false,
+                }},
+            }),
+            &json!({
+                morphir_extension_sdk::protocol::methods::COMPILE: {
+                    "error": {"code": -32001, "message": "does not compile"}
+                }
+            }),
+        );
+        let (home, snapshot) = super::installed_fixture::install_process(
+            temp.path(),
+            json!({
+                "schemaVersion": "1.0",
+                "id": "fixture",
+                "name": "Rejecting fixture",
+                "version": "1.0.0",
+                "channels": ["stable"],
+                "mepVersions": ["0.1"],
+                "capabilities": ["frontend"],
+                "frontend": frontend,
+            }),
+            &guest,
+        );
+        let registry = super::extension_registry_for(&home, [snapshot], Some("fixture")).unwrap();
+        let resolved = resolve_frontend(&registry, InvocationPolicy::PreferDirect);
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir(&workspace).unwrap();
+
+        let error = invoke_frontend(
+            &workspace,
+            &resolved,
+            compile_request(&temp.path().join("compile")),
+        )
+        .await
+        .unwrap_err();
+
+        match error {
+            crate::error::CliError::Extension { message } => assert_eq!(
+                message,
+                "Provider 'fixture' rejected 'morphir.frontend.compile': Extension error: RPC error -32001: does not compile"
+            ),
+            other => panic!("expected an extension error, got {other:?}"),
+        }
+    }
+
     #[tokio::test]
     async fn real_gleam_direct_and_native_mep_results_are_identical() {
         let temp = tempfile::tempdir().unwrap();
         let home =
             MorphirHome::resolve_from(Some(temp.path().join("home").as_os_str()), None).unwrap();
-        let registry = extension_registry([]).unwrap();
+        let registry = extension_registry(&home, []).unwrap();
         let compile_request = compile_request(&temp.path().join("compile"));
         let direct_compile = invoke_frontend(
-            &home,
             temp.path(),
             &resolve_frontend(&registry, InvocationPolicy::PreferDirect),
             compile_request.clone(),
@@ -821,7 +837,6 @@ while True:
         .await
         .unwrap();
         let protocol_compile = invoke_frontend(
-            &home,
             temp.path(),
             &resolve_frontend(&registry, InvocationPolicy::ProtocolOnly),
             compile_request,
@@ -840,7 +855,6 @@ while True:
             options: HashMap::new(),
         };
         let direct_generate = invoke_backend(
-            &home,
             temp.path(),
             &resolve_backend(&registry, InvocationPolicy::PreferDirect),
             generate_request.clone(),
@@ -848,7 +862,6 @@ while True:
         .await
         .unwrap();
         let protocol_generate = invoke_backend(
-            &home,
             temp.path(),
             &resolve_backend(&registry, InvocationPolicy::ProtocolOnly),
             generate_request,

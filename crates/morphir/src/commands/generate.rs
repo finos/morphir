@@ -207,15 +207,18 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     let installed = list_installed(&home).map_err(|error| CliError::Extension {
         message: format!("Failed to list installed backend providers: {error}"),
     })?;
-    let registry = crate::extensions::extension_registry(installed)?;
+    let registry = crate::extensions::extension_registry(&home, installed)?;
     let resolved = registry
         .resolve_backend(
             &target_lang,
             &ir_version,
-            morphir_daemon::InvocationPolicy::PreferDirect,
+            morphir_host::InvocationPolicy::PreferDirect,
         )
         .map_err(|error| CliError::Extension {
-            message: format!("Failed to resolve backend for '{target_lang}': {error}"),
+            message: format!(
+                "Failed to resolve backend for '{target_lang}': {}",
+                morphir_daemon::DaemonError::from(error)
+            ),
         })?;
     let workspace = ctx
         .project_root
@@ -228,7 +231,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
             error: error.into(),
         })?,
     };
-    let result = crate::extensions::invoke_backend(&home, &workspace, &resolved, request).await?;
+    let result = crate::extensions::invoke_backend(&workspace, &resolved, request).await?;
 
     let format = OutputFormat::from_flags(json, json_lines);
 

@@ -249,8 +249,10 @@ fn write_compile_output(
 /// once a session exists.
 ///
 /// [`NativeExtension`]: morphir_extension_sdk::NativeExtension
-fn provider_supports_incremental(resolved: &morphir_daemon::ResolvedFrontend) -> bool {
-    resolved.capability().incremental
+fn provider_supports_incremental(resolved: &morphir_host::Resolved) -> bool {
+    resolved
+        .frontend()
+        .is_some_and(|frontend| frontend.incremental)
 }
 
 /// The key this run's results are cached under.
@@ -263,7 +265,7 @@ fn provider_supports_incremental(resolved: &morphir_daemon::ResolvedFrontend) ->
 /// whether a baseline's context digest still matches, so the key here only
 /// needs to name the provider and the shape of what it was asked for.
 fn cache_key(
-    resolved: &morphir_daemon::ResolvedFrontend,
+    resolved: &morphir_host::Resolved,
     options: &ExtensionCompileOptions,
 ) -> cache::CacheKey {
     cache::CacheKey {
@@ -403,13 +405,16 @@ mod incremental_tests {
     use super::{cache_key, cache_write_is_warranted, provider_supports_incremental};
     use morphir_extension_sdk::{CompileOptions as ExtensionCompileOptions, CompileResult};
 
-    fn resolve(language: &str, extension: &str) -> morphir_daemon::ResolvedFrontend {
-        crate::extensions::extension_registry_for([], Some(extension))
+    fn resolve(language: &str, extension: &str) -> morphir_host::Resolved {
+        let temp = tempfile::tempdir().unwrap();
+        let home =
+            crate::home::MorphirHome::resolve_from(Some(temp.path().as_os_str()), None).unwrap();
+        crate::extensions::extension_registry_for(&home, [], Some(extension))
             .unwrap()
             .resolve_frontend(
                 language,
                 "4.0.0",
-                morphir_daemon::InvocationPolicy::PreferDirect,
+                morphir_host::InvocationPolicy::PreferDirect,
             )
             .unwrap()
     }

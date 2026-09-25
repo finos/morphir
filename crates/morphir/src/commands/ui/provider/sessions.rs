@@ -11,9 +11,10 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use morphir_daemon::DaemonError;
+use morphir_daemon::extensions::SessionHandle;
 use morphir_daemon::extensions::protocol::methods;
-use morphir_daemon::extensions::{ResolvedBackend, ResolvedFrontend, SessionHandle};
 use morphir_extension_sdk::{CompileRequest, CompileResult, GenerateRequest, GenerateResult};
+use morphir_host::Resolved as HostResolved;
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::sync::Mutex;
 
@@ -34,21 +35,21 @@ pub(super) trait SessionOpener: Send + Sync {
         &self,
         home: &MorphirHome,
         workspace: &Path,
-        resolved: &ResolvedFrontend,
+        resolved: &HostResolved,
     ) -> Result<Option<SessionHandle>, CliError>;
 
     async fn open_backend(
         &self,
         home: &MorphirHome,
         workspace: &Path,
-        resolved: &ResolvedBackend,
+        resolved: &HostResolved,
     ) -> Result<Option<SessionHandle>, CliError>;
 
     async fn compile_without_session(
         &self,
         home: &MorphirHome,
         workspace: &Path,
-        resolved: &ResolvedFrontend,
+        resolved: &HostResolved,
         request: CompileRequest,
     ) -> Result<CompileResult, CliError>;
 
@@ -56,7 +57,7 @@ pub(super) trait SessionOpener: Send + Sync {
         &self,
         home: &MorphirHome,
         workspace: &Path,
-        resolved: &ResolvedBackend,
+        resolved: &HostResolved,
         request: GenerateRequest,
     ) -> Result<GenerateResult, CliError>;
 }
@@ -70,7 +71,7 @@ impl SessionOpener for RegistryOpener {
         &self,
         home: &MorphirHome,
         workspace: &Path,
-        resolved: &ResolvedFrontend,
+        resolved: &HostResolved,
     ) -> Result<Option<SessionHandle>, CliError> {
         crate::extensions::open_frontend_session(home, workspace, resolved).await
     }
@@ -79,29 +80,29 @@ impl SessionOpener for RegistryOpener {
         &self,
         home: &MorphirHome,
         workspace: &Path,
-        resolved: &ResolvedBackend,
+        resolved: &HostResolved,
     ) -> Result<Option<SessionHandle>, CliError> {
         crate::extensions::open_backend_session(home, workspace, resolved).await
     }
 
     async fn compile_without_session(
         &self,
-        home: &MorphirHome,
+        _home: &MorphirHome,
         workspace: &Path,
-        resolved: &ResolvedFrontend,
+        resolved: &HostResolved,
         request: CompileRequest,
     ) -> Result<CompileResult, CliError> {
-        crate::extensions::invoke_frontend(home, workspace, resolved, request).await
+        crate::extensions::invoke_frontend(workspace, resolved, request).await
     }
 
     async fn generate_without_session(
         &self,
-        home: &MorphirHome,
+        _home: &MorphirHome,
         workspace: &Path,
-        resolved: &ResolvedBackend,
+        resolved: &HostResolved,
         request: GenerateRequest,
     ) -> Result<GenerateResult, CliError> {
-        crate::extensions::invoke_backend(home, workspace, resolved, request).await
+        crate::extensions::invoke_backend(workspace, resolved, request).await
     }
 }
 
@@ -111,8 +112,8 @@ impl SessionOpener for RegistryOpener {
 /// second time after the first open consumed it.
 #[derive(Clone, Copy)]
 enum Resolved<'a> {
-    Frontend(&'a ResolvedFrontend),
-    Backend(&'a ResolvedBackend),
+    Frontend(&'a HostResolved),
+    Backend(&'a HostResolved),
 }
 
 impl Resolved<'_> {
@@ -288,7 +289,7 @@ impl<O: SessionOpener> ExtensionInvoker for SessionReuseInvoker<O> {
         &self,
         home: &MorphirHome,
         working_directory: &Path,
-        resolved: &ResolvedFrontend,
+        resolved: &HostResolved,
         request: CompileRequest,
     ) -> Result<CompileResult, CliError> {
         let provider = resolved.info().id.clone();
@@ -316,7 +317,7 @@ impl<O: SessionOpener> ExtensionInvoker for SessionReuseInvoker<O> {
         &self,
         home: &MorphirHome,
         working_directory: &Path,
-        resolved: &ResolvedBackend,
+        resolved: &HostResolved,
         request: GenerateRequest,
     ) -> Result<GenerateResult, CliError> {
         let provider = resolved.info().id.clone();
@@ -356,8 +357,7 @@ mod tests {
     use crate::home::MorphirHome;
     use morphir_daemon::extensions::protocol::{ExtensionRequest, ExtensionResponse};
     use morphir_daemon::extensions::{
-        ExpectedExtension, InvocationPolicy, MepTransport, Session, TransportError, TransportState,
-        spawn_session,
+        ExpectedExtension, MepTransport, Session, TransportError, TransportState, spawn_session,
     };
     use morphir_extension_sdk::protocol::{
         InitializeParams, InitializeResult, MEP_VERSION, PeerInfo, RpcError,
@@ -366,6 +366,7 @@ mod tests {
         BackendCapability, CompileOptions, CompilePackage, ExtensionCapabilities, ExtensionInfo,
         ExtensionType, FrontendCapability, LanguageCapability,
     };
+    use morphir_host::InvocationPolicy;
     use serde_json::json;
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -534,7 +535,7 @@ mod tests {
             &self,
             _home: &MorphirHome,
             _workspace: &Path,
-            _resolved: &ResolvedFrontend,
+            _resolved: &HostResolved,
         ) -> Result<Option<SessionHandle>, CliError> {
             self.frontend_opens.fetch_add(1, Ordering::SeqCst);
             Ok(self.handle().await)
@@ -544,7 +545,7 @@ mod tests {
             &self,
             _home: &MorphirHome,
             _workspace: &Path,
-            _resolved: &ResolvedBackend,
+            _resolved: &HostResolved,
         ) -> Result<Option<SessionHandle>, CliError> {
             self.backend_opens.fetch_add(1, Ordering::SeqCst);
             Ok(self.handle().await)
@@ -554,7 +555,7 @@ mod tests {
             &self,
             _home: &MorphirHome,
             _workspace: &Path,
-            _resolved: &ResolvedFrontend,
+            _resolved: &HostResolved,
             _request: CompileRequest,
         ) -> Result<CompileResult, CliError> {
             self.cold_compiles.fetch_add(1, Ordering::SeqCst);
@@ -573,7 +574,7 @@ mod tests {
             &self,
             _home: &MorphirHome,
             _workspace: &Path,
-            _resolved: &ResolvedBackend,
+            _resolved: &HostResolved,
             _request: GenerateRequest,
         ) -> Result<GenerateResult, CliError> {
             self.cold_generates.fetch_add(1, Ordering::SeqCst);
@@ -588,15 +589,15 @@ mod tests {
     struct Fixture {
         home: MorphirHome,
         workspace: tempfile::TempDir,
-        frontend: ResolvedFrontend,
-        backend: ResolvedBackend,
+        frontend: HostResolved,
+        backend: HostResolved,
     }
 
     fn fixture() -> Fixture {
         let workspace = tempfile::tempdir().unwrap();
         let home = MorphirHome::resolve_from(Some(workspace.path().join("home").as_os_str()), None)
             .unwrap();
-        let registry = extension_registry([]).unwrap();
+        let registry = extension_registry(&home, []).unwrap();
         let frontend = registry
             .resolve_frontend("gleam", "4.0.0", InvocationPolicy::ProtocolOnly)
             .unwrap();

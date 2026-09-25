@@ -15,16 +15,16 @@
 
 use super::NegotiatedProvider;
 use crate::error::CliError;
-use crate::home::MorphirHome;
+use async_trait::async_trait;
 use morphir_daemon::DaemonError;
-use morphir_distribution::{InstalledExtensionSnapshot, activate_installed_snapshot};
-use morphir_extension_sdk::NativeExtension;
+use morphir_extension_sdk::{ExtensionCapabilities, ExtensionInfo};
 use morphir_host::{
-    CallError, Channel, ChannelState, ExpectedChecks, ExpectedExtension, HostError,
-    JsonRpcConnection, Session,
+    CallError, CapabilityMetadataScope, Channel, ChannelState, ExpectedChecks, ExpectedExtension,
+    GuestConnection, GuestSource, HostError, InvocationMode, InvocationPolicy, JsonRpcConnection,
+    ProviderOrigin, Resolved, Session,
 };
 use morphir_host_native::process::{ProcessChannel, ProcessLaunch};
-use morphir_host_native::{CheckedConnection, NativeChannel};
+use morphir_host_native::{CheckedConnection, InstalledSource, InstalledSourceError};
 use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
 
@@ -32,20 +32,71 @@ use std::path::Path;
 pub(crate) type ProviderConnection =
     CheckedConnection<JsonRpcConnection<Box<dyn Channel>, ExpectedChecks>>;
 
-/// The provider a caller already resolved and checked is present for its
-/// selected invocation mode.
+/// An installed provider whose failure to start reads as the CLI reported it.
 ///
-/// Callers of [`resolved`] have already matched on
-/// [`InvocationMode`](morphir_daemon::extensions::InvocationMode) and
-/// reported their own "unavailable mode" text when the mode they need is
-/// missing, so `resolved` itself never needs to re-check the mode or hold an
-/// unreachable branch for it.
-pub(crate) enum GuestSource<'a> {
-    /// A `NativeMep` resolution: the built-in provider runs in this process.
-    Native(&'a NativeExtension),
-    /// A `ProcessMep` or `WasmMep` resolution: an installed provider is
-    /// activated as a separate guest.
-    Installed(&'a InstalledExtensionSnapshot),
+/// It is an [`InstalledSource`] in every respect but one. The host's own
+/// [`GuestSource::connect`] for an installed source prints an activation
+/// failure as the bare `HostError`. The CLI has always printed it through
+/// `DaemonError`, so a provider message keeps its `Extension error: `
+/// prefix. This source starts the guest with [`InstalledSource::activate`]
+/// and words the typed failure itself.
+///
+/// The registry resolves to a [`Resolved`] that does not lend its source
+/// back, so the texts have to be settled here, when the guest starts, and
+/// not by the caller afterwards. A failure is a [`HostError::Invalid`]
+/// holding the whole CLI message; [`connect`] reports it unchanged.
+pub(crate) struct InstalledProvider(InstalledSource);
+
+impl InstalledProvider {
+    pub(crate) fn new(source: InstalledSource) -> Self {
+        Self(source)
+    }
+}
+
+#[async_trait]
+impl GuestSource for InstalledProvider {
+    fn info(&self) -> &ExtensionInfo {
+        self.0.info()
+    }
+
+    fn capabilities(&self) -> &ExtensionCapabilities {
+        self.0.capabilities()
+    }
+
+    fn origin(&self) -> ProviderOrigin {
+        self.0.origin()
+    }
+
+    fn capability_metadata_scope(&self) -> CapabilityMetadataScope {
+        self.0.capability_metadata_scope()
+    }
+
+    fn invocation_mode(&self, policy: InvocationPolicy) -> InvocationMode {
+        self.0.invocation_mode(policy)
+    }
+
+    fn incarnation(&self) -> Option<&str> {
+        self.0.incarnation()
+    }
+
+    async fn connect(&self, workspace: &Path) -> Result<Box<dyn GuestConnection>, HostError> {
+        match self.0.activate(workspace).await {
+            Ok(guest) => Ok(Box::new(guest.connection)),
+            Err(error) => Err(HostError::Invalid(installed_failure_text(error))),
+        }
+    }
+}
+
+/// The text the CLI reports when an installed provider does not start.
+fn installed_failure_text(error: InstalledSourceError) -> String {
+    match error {
+        InstalledSourceError::Activate { id, error } => format!(
+            "Failed to activate installed provider '{id}': {}",
+            DaemonError::from(*error)
+        ),
+        // Verification texts are already the CLI's.
+        other => other.to_string(),
+    }
 }
 
 /// Open a connection to a configured process provider.
@@ -65,49 +116,35 @@ pub(crate) async fn configured(
     Ok(checked(Box::new(channel), expectation))
 }
 
-/// Open a connection to a resolved provider that speaks MEP
-/// (`NativeMep`, `ProcessMep` or `WasmMep`).
+/// Start the guest a registry resolved, ready to open.
 ///
-/// The caller passes exactly the source its resolved invocation mode
-/// selected; see [`GuestSource`].
-pub(crate) async fn resolved(
-    home: &MorphirHome,
+/// A built-in connects in process and cannot fail here. An installed
+/// provider is an [`InstalledProvider`], whose failure already holds the
+/// CLI's whole message.
+pub(crate) async fn connect(
+    resolved: &Resolved,
     workspace: &Path,
-    provider: &str,
-    source: GuestSource<'_>,
-) -> Result<ProviderConnection, CliError> {
-    match source {
-        GuestSource::Native(native) => {
-            let channel = NativeChannel::new(native);
-            let expectation = channel.expectation();
-            Ok(checked(Box::new(channel), expectation))
-        }
-        GuestSource::Installed(snapshot) => {
-            let artifact = activate_installed_snapshot(home, snapshot).map_err(|error| {
-                CliError::Extension {
-                    message: format!("Failed to verify installed provider '{provider}': {error}"),
-                }
-            })?;
-            let guest = morphir_host_native::activate(artifact, workspace)
-                .await
-                .map_err(|error| CliError::Extension {
-                    message: format!(
-                        "Failed to activate installed provider '{provider}': {}",
-                        DaemonError::from(error)
-                    ),
-                })?;
-            Ok(guest.connection)
-        }
-    }
+) -> Result<Box<dyn GuestConnection>, CliError> {
+    resolved
+        .connect(workspace)
+        .await
+        .map_err(|error| CliError::Extension {
+            message: error.to_string(),
+        })
 }
 
 /// Open, make one call, close. Errors keep the CLI's texts.
-pub(crate) async fn call_once<P: Serialize, R: DeserializeOwned>(
-    connection: ProviderConnection,
+pub(crate) async fn call_once<G, P, R>(
+    connection: G,
     provider: &str,
     method: &str,
     request: P,
-) -> Result<R, CliError> {
+) -> Result<R, CliError>
+where
+    G: GuestConnection + 'static,
+    P: Serialize,
+    R: DeserializeOwned,
+{
     let mut session = open(connection, provider).await?;
     match session.call::<P, R>(method, request).await {
         Ok(result) => {
@@ -127,13 +164,18 @@ pub(crate) async fn call_once<P: Serialize, R: DeserializeOwned>(
             }
             Err(CliError::Extension { message })
         }
-        Err(CallError::Failed(error)) => Err(failure(provider, method, error)),
+        Err(CallError::Failed(error) | CallError::Open(error)) => {
+            Err(failure(provider, method, error))
+        }
+        Err(other) => Err(CliError::Extension {
+            message: format!("Provider '{provider}' failed during {method}: {other}"),
+        }),
     }
 }
 
 /// Open and read what the provider negotiated, then close.
-pub(crate) async fn negotiate(
-    connection: ProviderConnection,
+pub(crate) async fn negotiate<G: GuestConnection + 'static>(
+    connection: G,
     provider: &str,
 ) -> Result<NegotiatedProvider, CliError> {
     let session = open(connection, provider).await?;
@@ -152,7 +194,10 @@ fn checked(channel: Box<dyn Channel>, expectation: ExpectedExtension) -> Provide
     ))
 }
 
-async fn open(connection: ProviderConnection, provider: &str) -> Result<Session, CliError> {
+async fn open<G: GuestConnection + 'static>(
+    connection: G,
+    provider: &str,
+) -> Result<Session, CliError> {
     Session::open(connection, &crate::commands::extension::host_config())
         .await
         .map_err(|error| failure(provider, "initialize", error))
