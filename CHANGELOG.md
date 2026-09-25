@@ -528,7 +528,9 @@ alpha, 0.4.0-alpha.5, only moved the release pipeline to the Rust binary.
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.7...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.9...HEAD
+[0.4.0-beta.9]: https://github.com/finos/morphir/compare/v0.4.0-beta.8...v0.4.0-beta.9
+[0.4.0-beta.8]: https://github.com/finos/morphir/compare/v0.4.0-beta.7...v0.4.0-beta.8
 [0.4.0-beta.7]: https://github.com/finos/morphir/compare/v0.4.0-beta.6...v0.4.0-beta.7
 [0.4.0-beta.6]: https://github.com/finos/morphir/compare/v0.4.0-beta.5...v0.4.0-beta.6
 [0.4.0-beta.5]: https://github.com/finos/morphir/compare/v0.4.0-beta.4...v0.4.0-beta.5
