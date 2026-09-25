@@ -17,8 +17,8 @@ This draft adds two crates to morphir-rust and moves Morphir's black-box tests o
 
 `morphir itest` becomes the user-facing runner for `morphir-bdd` suites, and itest's notebook support is removed. The compatibility kit's cases move from their custom Markdown grammar to `.feature` suites at the same time. Options everywhere are native Gherkin tags and step text. Later work builds on this foundation:
 
-- [Language syntaxes, IR inspection and IR comparison](../ir/syntax-and-inspect.md), whose Gherkin steps use `morphir-bdd`;
-- [The compatibility kit with Ion as the reference encoding](../ir/mck-ion-reference.md), which builds on the kit's Gherkin form;
+- [Language syntaxes, IR inspection and IR comparison](./syntax-and-inspect.md), whose Gherkin steps use `morphir-bdd`;
+- [The compatibility kit with Ion as the reference encoding](./mck-ion-reference.md), which builds on the kit's Gherkin form;
 - the Ion sweep of bead `morphir-vvgi.9`.
 
 ## Why
@@ -310,7 +310,7 @@ Feature: Values
       | JSON   | { "Reference": "morphir/SDK:basics#add", "x": 1 } | unknown_member |
 ```
 
-Accepted and rejected inputs are separate outlines, because their steps differ. The full step vocabulary, including warnings, a different node kind and document-tree sets, is in the [kit draft](../ir/mck-ion-reference.md#two-kinds-of-case).
+Accepted and rejected inputs are separate outlines, because their steps differ. The full step vocabulary, including warnings, a different node kind and document-tree sets, is in the [kit draft](./mck-ion-reference.md#two-kinds-of-case).
 
 - **Mapping:** a case is a scenario, and the case id starts the scenario name. A case file is a feature. Heading keys become tags: `node=` → `@node:<Kind>`, `version=` → `@version:<n>`, `status=pending` → `@pending`, `compare=attributes` → `@compare:attributes`. Fence roles become steps: canonical, accepted (with an optional warning), rejected with a diagnostic or an expected node, and document-tree file sets (`Given the tree file "<path>":`, with `set` and `mode` in the step text). The converter writes a scenario outline where a case has one-line documents, with a row per format or per input, and a plain scenario with doc strings where a document spans several lines.
 - **Steps:** the kit's steps are a step library in `morphir-mck`. Each step sends its request to the adapter over the existing protocol, so adapters do not change.
@@ -320,8 +320,9 @@ Accepted and rejected inputs are separate outlines, because their steps differ. 
   - `morphir mck check` validates the cases with the `morphir-gherkin` model alone, without an adapter.
 - **Conversion:** a one-off converter rewrites every case file.
   - The old and the new engines then run side by side in CI until the new engine gives the same report records as the old one for every case and both adapters.
-  - After that, the old grammar and its engine code are removed, and the frozen baselines are recorded again under the append-only rule.
-  - The later kit changes build on the Gherkin form: Ion as the reference encoding, spelling and semantic tags, and the round trip ([kit draft](../ir/mck-ion-reference.md)).
+  - During the window the kit holds both the Markdown files and their `.feature` twins, so a CLI that reads only Markdown still reads the kit. The kit manifest's `driverContract` stays `1` ([kit manifest](https://github.com/finos/morphir/blob/main/spec/mck/kit-manifest.md)).
+  - After that, the old grammar and its engine code are removed, and the frozen baselines are recorded again under the append-only rule. That removal changes how a runner reads a kit incompatibly: a kit of `.feature` files only has no case a Markdown-only CLI can find. So the same change moves the CLI's driver contract to `2`, and the kit manifest's `driverContract` range to `[2]`. An older CLI then refuses the kit before it starts an adapter, instead of finding no cases.
+  - The later kit changes build on the Gherkin form: Ion as the reference encoding, spelling and semantic tags, and the round trip ([kit draft](./mck-ion-reference.md)).
 
 ## Testing
 
@@ -361,7 +362,7 @@ Accepted and rejected inputs are separate outlines, because their steps differ. 
 5. finos/morphir: move the three cucumber mains onto `Suite`.
 6. morphir-rust: move its feature suites, crate by crate.
 
-Then the rest of [the kit draft](../ir/mck-ion-reference.md), [syntax and inspect](../ir/syntax-and-inspect.md), and the Ion sweep build on top.
+Then the rest of [the kit draft](./mck-ion-reference.md), [syntax and inspect](./syntax-and-inspect.md), and the Ion sweep build on top.
 
 ## Alternatives considered
 

@@ -1,7 +1,7 @@
 ---
 title: The compatibility kit with Ion as the reference encoding
 sidebar_label: MCK Ion reference
-sidebar_position: 14
+sidebar_position: 2
 status: draft
 tracking:
   github_issues: [946]
@@ -10,7 +10,7 @@ tracking:
 
 # The compatibility kit with Ion as the reference encoding
 
-> **Builds on:** [A Gherkin foundation for Morphir verification](../testing/gherkin-foundation.md). By the time this draft is built, the kit's cases are plain `.feature` suites that run through `morphir-bdd`. A case is a scenario, and its options are tags (`@node:Value`, `@version:4`). Its checks are steps whose doc strings hold the documents. This draft uses that form throughout.
+> **Builds on:** [A Gherkin foundation for Morphir verification](./gherkin-foundation.md). By the time this draft is built, the kit's cases are plain `.feature` suites that run through `morphir-bdd`. A case is a scenario, and its options are tags (`@node:Value`, `@version:4`). Its checks are steps whose doc strings hold the documents. This draft uses that form throughout.
 
 This draft changes how the Morphir Compatibility Kit (MCK) states a case. Today most cases spell one document once for each profile. The change makes Ion the kit's reference encoding and adds `ion` as a profile. Each case says one of two things. A **spelling case** says how a node shape is written in each format. A **semantic case** says what a document means, and it says it once, in Ion. The runner checks every other format by a round trip. The kit also gets an HTML report for a run, and CI shows each run's results.
 
@@ -46,7 +46,7 @@ Reference: morphir/SDK:basics#add
 ```
 ````
 
-The runner sends each canonical and accepted document to the adapter in its own profile and compares the answer with the canonical document of that profile. The [foundation draft](../testing/gherkin-foundation.md#the-compatibility-kit-on-gherkin) moves this case to a `.feature` file unchanged in meaning.
+The runner sends each canonical and accepted document to the adapter in its own profile and compares the answer with the canonical document of that profile. The [foundation draft](./gherkin-foundation.md#the-compatibility-kit-on-gherkin) moves this case to a `.feature` file unchanged in meaning.
 
 ## Design
 
@@ -54,7 +54,13 @@ The runner sends each canonical and accepted document to the adapter in its own 
 
 `Profile` becomes `ion | json | yaml` in the protocol schema and in the engine's `Profile` and `RecordProfile` types. The kit's steps accept `ion` as a doc-string content type. An adapter declares the profiles it reads and writes in `capabilities.profiles`, as today. The Rust adapter declares `ion`. An adapter that does not declare `ion` never receives Ion input.
 
-The change is additive. The protocol `contractVersion` stays `1`.
+The change is not additive for a published driver. A v1 driver reads `Profile` as the closed set `json | yaml` (`crates/morphir-mck/src/transport/protocol.rs`), so a capabilities answer that lists `ion` fails its negotiation. So the protocol moves to `contractVersion` `2`:
+
+- **The capabilities request** carries the driver's `contractVersion`. A v1 driver sends none.
+- **An adapter** lists `ion` in `capabilities.profiles` only when the request carries `contractVersion` `2` or later. For a v1 driver it answers exactly as today.
+- **A v2 driver** accepts an adapter that answers with `contractVersion` `1`, and never sends that adapter Ion.
+
+No published driver or adapter breaks. An old driver sees no `ion`, and an old adapter never receives Ion.
 
 ### Two kinds of case
 
@@ -63,7 +69,7 @@ A tag names what a case asserts. Tags are native Gherkin, so any Gherkin tool ca
 | Tag | Asserts | Steps |
 | --- | --- | --- |
 | `@spelling` | How one node shape is canonically written in each format | Only canonical-spelling steps, usually one outline with a row per format, at most one per format. Each is pinned byte for byte. |
-| `@semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Exactly one "Given a <Node> whose canonical form is:" step with an `ion` doc string, then accept, reject and tree-file steps in any format, usually as outline rows |
+| `@semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Accept, reject and tree-file steps in any format, usually as outline rows. A case that has an accept step or a tree read-back step has exactly one "Given a <Node> whose canonical form is:" step with an `ion` doc string, because those steps compare with it. A case with only reject or reads-as steps has none |
 
 A spelling case may leave out a format. The runner then reports that format as `not-pinned`, not as a pass. A case with neither tag keeps its behaviour from the foundation's conversion, so the kit stays valid while the cases move over.
 
@@ -231,7 +237,7 @@ The engine produces the diff with a line-diff library such as `similar` (none is
 `morphir mck check` enforces the new rules:
 
 - A spelling case has only canonical-spelling steps, with at most one for each format.
-- A semantic case has exactly one canonical-form step, and its doc string is `ion`.
+- A semantic case with an accept step or a tree read-back step has exactly one canonical-form step, and its doc string is `ion`. A semantic case with only reject and reads-as steps has no canonical-form step. No semantic case has more than one.
 - A case has at most one of `@spelling` and `@semantic`.
 - A tag in the kit's namespaces (`@node:`, `@version:`, `@compare:`) with an unknown value is an error, with the tag's span.
 

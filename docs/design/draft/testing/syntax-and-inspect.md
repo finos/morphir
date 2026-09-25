@@ -1,7 +1,7 @@
 ---
 title: Language syntaxes, IR inspection and IR comparison
 sidebar_label: Syntax and inspect
-sidebar_position: 15
+sidebar_position: 3
 status: draft
 tracking:
   github_issues: [946]
@@ -10,7 +10,7 @@ tracking:
 
 # Language syntaxes, IR inspection and IR comparison
 
-> **Builds on:** [A Gherkin foundation for Morphir verification](../testing/gherkin-foundation.md). The Gherkin IR steps below are a step library in `morphir-inspect` (cargo feature `steps`) that runs through `morphir-bdd`, and `@syntax:<id>` is a tag extension owned by `morphir-syntax`. This draft is revised to that shape when it is planned.
+> **Builds on:** [A Gherkin foundation for Morphir verification](./gherkin-foundation.md). The Gherkin IR steps below are a step library in `morphir-inspect` (cargo feature `steps`) that runs through `morphir-bdd`, and `@syntax:<id>` is a tag extension owned by `morphir-syntax`. This draft is revised to that shape when it is planned.
 
 This draft adds three capabilities to morphir-rust and a step vocabulary to the finos/morphir test features:
 
@@ -19,7 +19,7 @@ This draft adds three capabilities to morphir-rust and a step vocabulary to the 
 - **IR comparison**, inside `morphir-inspect`: a structural diff of two distributions, of the same version or across versions, with facets that can be ignored, node addresses for each change, and a diff rendered through any syntax.
 - **Gherkin IR steps** built on these, so a feature can say `the IR value "main#total" should have signature elm"List Order -> Decimal"`.
 
-It builds on the [Gherkin foundation](../testing/gherkin-foundation.md) and does not depend on the [kit changes](./mck-ion-reference.md).
+It builds on the [Gherkin foundation](./gherkin-foundation.md) and does not depend on the [kit changes](./mck-ion-reference.md).
 
 ## Why
 
