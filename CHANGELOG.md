@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Transport failures that begin as I/O or JSON errors read `IO error: ...` or `JSON error: ...` again, not the `Extension error: IO error: ...` wording noted under 0.4.0-beta.8 (#963).
 - Playground error texts: a rejected call now reads `Provider '<provider>' rejected '<method>': ...`, the same text as `morphir compile`, instead of `failed during '<method>'`. A lost guest's message no longer includes `Extension session is no longer available: ` and can end with `; transport state is indeterminate` (#963).
 - The published `morphir-scala-elm` pin moves to `v0.5.0-M10`. That release answers `morphir.extension.describe` and ships a version-2 bundle descriptor, `morphir-scala-elm-0.5.0-M10.bundle.release.json` (finos/morphir-scala#1081). `extension install` now probes it by `describe`, where earlier releases fell back to a session, and the host compatibility suite expects that. A version such as `0.5.0-M10` is a prerelease, so install it with `--version`; channel `stable` does not select it (#921).
+- The `morphir-rust` pin moves to `58c2bc4` (finos/morphir-rust#267 and #273). It adds `morphir-bdd`, one cucumber-rs runner for Morphir's Gherkin suites, beside `morphir-gherkin`, the Gherkin document model the pin already holds (finos/morphir-rust#270, #946).
 
 ## [0.4.0-beta.8] - 2026-09-24
 
