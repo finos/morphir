@@ -6,9 +6,11 @@
 //! through morphir-bdd's `CustomCliRunner`. Before a scenario's first step, the processor copies
 //! the example into a new temporary root and inserts [`ItestDirs`]; each `When I run` then runs
 //! in that root's project with itest's own isolation.
+mod library;
 mod runner;
 mod workspace;
 
+pub use library::parse_selection;
 pub use runner::{DEFAULT_TIMEOUT, ItestRunner};
 pub use workspace::{
     ExampleFile, ExampleSpec, ExampleWorkspace, ItestFence, MaterializeExample, scenario_id,
@@ -59,3 +61,10 @@ pub struct KeepTemp(pub bool);
 /// The directory `morphir itest` searches for examples. Scenario ids are relative to it.
 #[derive(Debug, Clone)]
 pub struct ItestRoot(pub PathBuf);
+
+/// Keeps the itest step library ([`library`]'s capture, `stdout is JSON`, policy and golden
+/// steps) in a binary that links this module. Call this once from `main`, alongside
+/// `morphir_bdd::link()`, the way `morphir_bdd::steps::link` keeps its own base steps.
+pub fn link() {
+    library::link();
+}

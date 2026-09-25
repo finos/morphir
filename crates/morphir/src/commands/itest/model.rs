@@ -53,7 +53,7 @@ impl Workspace {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Capture {
     pub name: String,

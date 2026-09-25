@@ -392,12 +392,9 @@ pub(super) fn escape_marker(value: &str) -> String {
 /// character each stands for. `Err` for a backslash followed by anything else, including none (an
 /// unfinished escape at the end of the string).
 ///
-/// Not yet called from this crate: Task C3's step definition is its caller. Kept here, next to
-/// `escape_marker`, so the escaping rule has one owner instead of being copied into C3.
-#[allow(
-    dead_code,
-    reason = "Task C3's `between` step definition is the caller; exercised by this module's own round-trip test until then"
-)]
+/// Called from `steps::library::parse_selection`, which reverses a `between` selection's own
+/// escaping back into a `Selection::Between`'s markers. Kept here, next to `escape_marker`, so the
+/// escaping rule has one owner instead of being copied into that step definition.
 pub(super) fn unescape_marker(value: &str) -> Result<String, String> {
     let mut unescaped = String::with_capacity(value.len());
     let mut chars = value.chars();
