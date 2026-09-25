@@ -35,7 +35,7 @@
 		"@mdx-js/react": "^3.0.0",
 		"clsx": "^2.1.0",
 		"@monaco-editor/react": "^4.6.0",
-		"jsonpath-plus": "^10.2.0",
+		"jsonpath-plus": "^11.0.0",
 		"@uiw/react-json-view": "^2.0.0-alpha.27",
 		"docusaurus-json-schema-plugin": "^1.13.3",
 		"prism-react-renderer": "^2.3.0",
