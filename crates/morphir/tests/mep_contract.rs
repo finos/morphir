@@ -153,10 +153,38 @@ fn the_contract_covers_the_handshake() {
             "mep.gleam is missing {expected}; has {names:?}"
         );
     }
-    assert_eq!(
-        field_labels(&ir, "initialize-result"),
-        ["protocol-version", "extension", "capabilities"]
-    );
+    // Fields follow the SDK struct declaration order.
+    let records: &[(&str, &[&str])] = &[
+        ("peer-info", &["kind", "name", "version"]),
+        ("describe-params", &["protocol-versions"]),
+        ("initialize-params", &["protocol-versions", "host"]),
+        (
+            "initialize-result",
+            &["protocol-version", "extension", "capabilities"],
+        ),
+        (
+            "extension-info",
+            &[
+                "id",
+                "name",
+                "version",
+                "description",
+                "types",
+                "author",
+                "homepage",
+                "license",
+                "min-sdk-version",
+            ],
+        ),
+        ("rpc-error", &["code", "message", "data"]),
+    ];
+    for (type_name, labels) in records {
+        assert_eq!(
+            field_labels(&ir, type_name),
+            *labels,
+            "fields of {type_name}"
+        );
+    }
 }
 
 /// Gleam prelude constructors, plus `Some` and `None` from `gleam/option`,

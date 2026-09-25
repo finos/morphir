@@ -31,7 +31,8 @@ pub type PeerKind {
   Unspecified
 }
 
-/// A host or an extension, as it introduces itself.
+/// A host or an extension, as it introduces itself. Older messages leave
+/// `kind` out; an absent kind is read as `Unspecified`.
 pub type PeerInfo {
   PeerInfo(kind: PeerKind, name: String, version: String)
 }
@@ -73,8 +74,8 @@ pub type ExtensionInfo {
     id: String,
     name: String,
     version: String,
-    types: List(ExtensionType),
     description: Option(String),
+    types: List(ExtensionType),
     author: Option(String),
     homepage: Option(String),
     license: Option(String),

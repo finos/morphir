@@ -115,7 +115,7 @@
                 },
                 "peer-info": {
                   "Public": {
-                    "doc": "A host or an extension, as it introduces itself.",
+                    "doc": "A host or an extension, as it introduces itself. Older messages leave\n`kind` out; an absent kind is read as `Unspecified`.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -300,21 +300,6 @@
                             }
                           ],
                           [
-                            "types",
-                            {
-                              "Reference": {
-                                "fqname": "morphir/SDK:list#list",
-                                "args": [
-                                  {
-                                    "Reference": {
-                                      "fqname": "morphir/mep:mep#extension-type"
-                                    }
-                                  }
-                                ]
-                              }
-                            }
-                          ],
-                          [
                             "description",
                             {
                               "Reference": {
@@ -323,6 +308,21 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "types",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#extension-type"
                                     }
                                   }
                                 ]
