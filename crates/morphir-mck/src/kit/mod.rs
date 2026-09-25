@@ -3,6 +3,7 @@
 pub mod archive;
 pub mod closure;
 pub mod embedded;
+pub mod gherkin;
 pub mod hash;
 pub mod load;
 pub mod manifest;
