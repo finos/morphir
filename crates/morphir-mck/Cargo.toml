@@ -60,3 +60,10 @@ harness = false
 name = "bdd_link"
 path = "tests/bdd_link.rs"
 harness = false
+
+# The kit step library runs a `.feature` kit through a `Suite` with a fake adapter, and must give
+# the legacy engine's records. See tests/kit_steps.rs.
+[[test]]
+name = "kit_steps"
+path = "tests/kit_steps.rs"
+harness = false
