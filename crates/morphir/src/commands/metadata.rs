@@ -214,8 +214,13 @@ fn subject_role(
         morphir_core::ir::v4::Distribution::Specs(_) => true,
         morphir_core::ir::v4::Distribution::Library(_) => matches!(
             uri.root(),
-            NodeRoot::Type { owner: morphir_core::node_address::NodeOwner::Dependency(_), .. }
-                | NodeRoot::Value { owner: morphir_core::node_address::NodeOwner::Dependency(_), .. }
+            NodeRoot::Type {
+                owner: morphir_core::node_address::NodeOwner::Dependency(_),
+                ..
+            } | NodeRoot::Value {
+                owner: morphir_core::node_address::NodeOwner::Dependency(_),
+                ..
+            }
         ),
         morphir_core::ir::v4::Distribution::Application(_) => false,
     };

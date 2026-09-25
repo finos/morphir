@@ -351,14 +351,12 @@ fn create_and_sign_library_with_inventoried_metadata_context() {
         std::fs::write(&consumer, &consumer_bytes).unwrap();
 
         let mut wrong_role: serde_json::Value = serde_json::from_slice(&consumer_bytes).unwrap();
-        wrong_role["distribution"]["Library"]["def"]["modules"]["app"]["Public"]["values"]
-            ["owned"] = json!({"Public":{"ExpressionBody":{
-                "inputTypes":{},"outputType":"morphir/SDK:string#string",
-                "body":{"Literal":{"StringLiteral":"sayHello"}}
-            }}});
-        wrong_role["$meta"]["@graph"][0]["@id"] = json!(
-            "morphir://ir/pkg/example/consumer?format=4.1.0#/module/app/value/owned"
-        );
+        wrong_role["distribution"]["Library"]["def"]["modules"]["app"]["Public"]["values"]["owned"] = json!({"Public":{"ExpressionBody":{
+            "inputTypes":{},"outputType":"morphir/SDK:string#string",
+            "body":{"Literal":{"StringLiteral":"sayHello"}}
+        }}});
+        wrong_role["$meta"]["@graph"][0]["@id"] =
+            json!("morphir://ir/pkg/example/consumer?format=4.1.0#/module/app/value/owned");
         std::fs::write(&consumer, serde_json::to_vec(&wrong_role).unwrap()).unwrap();
         let rejected_role = morphir(workspace.path(), &trusted_args);
         assert!(!rejected_role.status.success());
