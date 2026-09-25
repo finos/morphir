@@ -11,11 +11,10 @@ use chrono::{SecondsFormat, Utc};
 use morphir_common::home::MorphirHome;
 use morphir_daemon::DaemonError;
 use morphir_devkit::{ConfigLoadOptions, build_workspace_discovery_request};
-use morphir_distribution::{
-    Capability, InstalledExtensionSnapshot, activate_installed_snapshot, list_installed,
-};
+use morphir_distribution::{Capability, list_installed};
 use morphir_extension_sdk::protocol::methods;
 use morphir_host::{CallError, HostError, Session};
+use morphir_host_native::{InstalledSource, InstalledSourceError};
 use morphir_workspace as portable;
 
 use crate::error::CliError;
@@ -43,10 +42,7 @@ pub struct ExtensionWorkspaceProvider {
 }
 
 enum ExtensionImplementation {
-    Installed {
-        home: MorphirHome,
-        snapshot: Box<InstalledExtensionSnapshot>,
-    },
+    Installed(Box<InstalledSource>),
     #[cfg(test)]
     Fixture {
         expected_request: Arc<portable::DiscoveryRequest>,
@@ -117,10 +113,9 @@ impl ExtensionWorkspaceProvider {
             workspace_dir,
             out: Default::default(),
             config_options: ConfigLoadOptions::default(),
-            implementation: ExtensionImplementation::Installed {
-                home,
-                snapshot: Box::new(snapshot),
-            },
+            implementation: ExtensionImplementation::Installed(Box::new(InstalledSource::new(
+                home, snapshot,
+            ))),
         })
     }
 
@@ -179,8 +174,8 @@ impl ExtensionWorkspaceProvider {
         let request = build_workspace_discovery_request(&self.workspace, &self.config_options)
             .map_err(CliError::from)?;
         match &self.implementation {
-            ExtensionImplementation::Installed { home, snapshot } => {
-                invoke_installed(home, snapshot, &self.workspace, request).await
+            ExtensionImplementation::Installed(source) => {
+                invoke_installed(source, &self.workspace, request).await
             }
             #[cfg(test)]
             ExtensionImplementation::Fixture {
@@ -257,26 +252,15 @@ impl WorkspaceCapability for ExtensionWorkspaceProvider {
 
 /// Discover the workspace with an installed provider over one MEP session.
 async fn invoke_installed(
-    home: &MorphirHome,
-    snapshot: &InstalledExtensionSnapshot,
+    source: &InstalledSource,
     workspace: &Path,
     request: portable::DiscoveryRequest,
 ) -> Result<portable::WorkspaceSnapshot, CliError> {
-    let artifact = activate_installed_snapshot(home, snapshot).map_err(|error| {
-        extension_error(format!(
-            "Failed to activate installed workspace provider '{}': {error}",
-            snapshot.installed().extension_id()
-        ))
-    })?;
-    let guest = morphir_host_native::activate(artifact, workspace)
+    let snapshot = source.snapshot();
+    let guest = source
+        .activate(workspace)
         .await
-        .map_err(|error| {
-            extension_error(format!(
-                "Failed to load installed workspace provider '{}': {}",
-                snapshot.installed().extension_id(),
-                DaemonError::from(error)
-            ))
-        })?;
+        .map_err(|error| activation_error(snapshot.installed().extension_id(), error))?;
     let mut session = Session::open(guest.connection, &crate::commands::extension::host_config())
         .await
         .map_err(host_error)?;
@@ -309,10 +293,30 @@ async fn invoke_installed(
             let _ = session.close().await;
             return Err(host_error(error));
         }
-        Err(CallError::Failed(error)) => return Err(host_error(error)),
+        Err(CallError::Failed(error) | CallError::Open(error)) => return Err(host_error(error)),
+        Err(other) => return Err(extension_error(other.to_string())),
     };
     session.close().await.map_err(host_error)?;
     discovery_result(response)
+}
+
+/// Why the installed workspace provider did not start, in the words this
+/// provider has always used: a verification failure fails to activate it, a
+/// guest that does not start fails to load it.
+fn activation_error(id: impl std::fmt::Display, error: InstalledSourceError) -> CliError {
+    extension_error(match error {
+        InstalledSourceError::Verify { error, .. } => {
+            format!("Failed to activate installed workspace provider '{id}': {error}")
+        }
+        InstalledSourceError::VerifyWorker { message, .. } => format!(
+            "Failed to activate installed workspace provider '{id}': verification worker failed: {message}"
+        ),
+        InstalledSourceError::Activate { error, .. } => format!(
+            "Failed to load installed workspace provider '{id}': {}",
+            DaemonError::from(*error)
+        ),
+        other => other.to_string(),
+    })
 }
 
 /// A session failure, in the text the daemon's session reported it with.
@@ -419,6 +423,100 @@ mod tests {
             "fixture-workspace"
         );
         assert!(native.manifest().provenance.is_none());
+    }
+
+    /// Install a workspace provider, id `workspace-fixture`, that answers
+    /// discovery with `snapshot`.
+    #[cfg(unix)]
+    fn install_workspace_fixture(
+        root: &Path,
+        snapshot: &portable::WorkspaceSnapshot,
+    ) -> (
+        MorphirHome,
+        morphir_distribution::InstalledExtensionSnapshot,
+    ) {
+        let guest = crate::extensions::installed_fixture::mep_guest(
+            &serde_json::json!({
+                "protocolVersion": "0.1",
+                "extension": {
+                    "id": "workspace-fixture",
+                    "name": "Workspace fixture",
+                    "version": "1.0.0",
+                    "types": ["workspace"],
+                },
+                "capabilities": {
+                    "workspace": {
+                        "discover": true,
+                        "protocolVersions": [portable::WORKSPACE_DISCOVERY_PROTOCOL],
+                    }
+                },
+            }),
+            &serde_json::json!({
+                methods::WORKSPACE_DISCOVER: {
+                    "result": portable::DiscoveryResponse::Success {
+                        snapshot: snapshot.clone(),
+                    }
+                }
+            }),
+        );
+        crate::extensions::installed_fixture::install_process(
+            root,
+            serde_json::json!({
+                "schemaVersion": "1.0",
+                "id": "workspace-fixture",
+                "name": "Workspace fixture",
+                "version": "1.0.0",
+                "channels": ["stable"],
+                "mepVersions": ["0.1"],
+                "capabilities": ["workspace"],
+            }),
+            &guest,
+        )
+    }
+
+    // The installed workspace provider reaches its guest through the host:
+    // it activates the installed artifact, negotiates discovery, and returns
+    // the snapshot the guest answered with.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_installed_workspace_provider_discovers_through_the_host() {
+        let temp = tempfile::tempdir().unwrap();
+        let expected = discover_workspace_detailed(&fixture(), &ConfigLoadOptions::default())
+            .unwrap()
+            .snapshot;
+        let (home, _snapshot) = install_workspace_fixture(temp.path(), &expected);
+        let provider =
+            ExtensionWorkspaceProvider::select(home, &fixture(), "session-1", None).unwrap();
+
+        assert_eq!(provider.discover().await.unwrap(), expected);
+    }
+
+    // An installed workspace provider whose artifact changed after
+    // installation fails verification, in this provider's own words.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_changed_installed_workspace_provider_fails_to_activate() {
+        let temp = tempfile::tempdir().unwrap();
+        let expected = discover_workspace_detailed(&fixture(), &ConfigLoadOptions::default())
+            .unwrap()
+            .snapshot;
+        let (home, snapshot) = install_workspace_fixture(temp.path(), &expected);
+        crate::extensions::installed_fixture::tamper(&home, &snapshot);
+        let provider =
+            ExtensionWorkspaceProvider::select(home, &fixture(), "session-1", None).unwrap();
+
+        match provider.discover().await.unwrap_err() {
+            CliError::Extension { message } => {
+                assert!(
+                    message.starts_with(
+                        "Failed to activate installed workspace provider 'workspace-fixture': "
+                    ),
+                    "{message}"
+                );
+                assert!(message.contains("digest mismatch"), "{message}");
+            }
+            other => panic!("expected an extension error, got {other:?}"),
+        }
     }
 
     #[test]

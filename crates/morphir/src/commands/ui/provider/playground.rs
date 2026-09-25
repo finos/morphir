@@ -10,7 +10,7 @@
 //! implementation behave identically.
 //!
 //! Provider selection is not this module's business. It builds the same
-//! [`ExtensionRegistry`] `morphir compile` and `morphir generate` build, and
+//! [`Registry`] `morphir compile` and `morphir generate` build, and
 //! asks it to resolve a language or a target, so the playground offers
 //! exactly what the rest of the CLI offers — built-ins included — and cannot
 //! drift onto a private notion of which provider serves what.
@@ -30,16 +30,16 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use morphir_common::config::model::FrontendSection;
-use morphir_daemon::ExtensionRegistry;
-use morphir_daemon::extensions::{
-    CapabilityMetadataScope, InvocationMode, InvocationPolicy, ProviderMetadata, ProviderOrigin,
-    ResolvedBackend, ResolvedFrontend,
-};
+use morphir_daemon::DaemonError;
 use morphir_devkit::{ConfigLoadOptions, discover_config, load_config_context_with};
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::{
     Artifact, CompileRequest, CompileResult, Diagnostic, DiagnosticSeverity, GenerateRequest,
     GenerateResult, SourceLocation,
+};
+use morphir_host::{
+    CapabilityMetadataScope, InvocationMode, InvocationPolicy, ProviderMetadata, ProviderOrigin,
+    Registry, Resolved,
 };
 use serde_json::Value;
 
@@ -56,7 +56,7 @@ use crate::home::MorphirHome;
 
 use super::PlaygroundCapability;
 use super::native::capability;
-use super::sessions::{RegistryOpener, SessionReuseInvoker};
+use super::pool::PooledInvoker;
 
 /// How long the playground waits for one extension invocation.
 ///
@@ -76,35 +76,29 @@ const INVOCATION_TIMEOUT: Duration = Duration::from_secs(120);
 ///
 /// Injectable so a test can register its own providers without installing an
 /// extension into a Morphir home.
-type RegistrySource =
-    Arc<dyn Fn(Option<&str>) -> Result<ExtensionRegistry, CliError> + Send + Sync>;
+type RegistrySource = Arc<dyn Fn(Option<&str>) -> Result<Registry, CliError> + Send + Sync>;
 
 /// How the playground reaches a resolved provider.
 ///
-/// Production is [`SessionReuseInvoker`] over [`RegistryOpener`], which
-/// delegates to the CLI's own extension boundary — the same functions
-/// `morphir compile` and `morphir generate` call — so the playground cannot
-/// acquire a private invocation path. Injectable so a test can drive an
-/// invocation that never answers and observe the timeout without waiting two
-/// real minutes.
-///
-/// [`SessionReuseInvoker`]: super::sessions::SessionReuseInvoker
-/// [`RegistryOpener`]: super::sessions::RegistryOpener
+/// Production is [`PooledInvoker`], which keeps one warm guest per provider
+/// and otherwise delegates to the CLI's own extension boundary, the same
+/// functions `morphir compile` and `morphir generate` call, so the playground
+/// cannot acquire a private invocation path. Injectable so a test can drive
+/// an invocation that never answers and observe the timeout without waiting
+/// two real minutes.
 #[async_trait]
 pub(super) trait ExtensionInvoker: Send + Sync {
     async fn compile(
         &self,
-        home: &MorphirHome,
         working_directory: &Path,
-        resolved: &ResolvedFrontend,
+        resolved: &Resolved,
         request: CompileRequest,
     ) -> Result<CompileResult, CliError>;
 
     async fn generate(
         &self,
-        home: &MorphirHome,
         working_directory: &Path,
-        resolved: &ResolvedBackend,
+        resolved: &Resolved,
         request: GenerateRequest,
     ) -> Result<GenerateResult, CliError>;
 
@@ -112,8 +106,8 @@ pub(super) trait ExtensionInvoker: Send + Sync {
     /// playground's patience.
     ///
     /// A timeout drops the invocation future before any of the invoker's own
-    /// error handling can run, so an invoker that caches per-provider state —
-    /// a session whose actor may still be wedged on the hung exchange — must
+    /// error handling can run, so an invoker that caches per-provider state,
+    /// such as a guest that may still be wedged on the hung exchange, must
     /// be told out-of-band, or every later request for that provider queues
     /// behind the same hang and times out too. A no-op for invokers that hold
     /// nothing.
@@ -127,7 +121,6 @@ enum Invocation<R> {
 }
 
 pub struct NativePlaygroundProvider {
-    home: MorphirHome,
     registry: RegistrySource,
     /// The workspace's `[frontend]` section, when one was found and loaded, so
     /// a compile can read the provider the project asked for. `None` when the
@@ -157,24 +150,20 @@ impl NativePlaygroundProvider {
 
     /// As [`new`](Self::new), for a session that knows its workspace.
     pub fn in_workspace(home: MorphirHome, workspace: &Path) -> Self {
-        let registry_home = home.clone();
         let working_directory = extension_working_directory(&home);
         Self::with_parts(
-            home,
-            Arc::new(move |only| installed_registry(&registry_home, only)),
+            Arc::new(move |only| installed_registry(&home, only)),
             workspace_frontend(workspace),
-            // Session-reusing on purpose: a provider with a session mode pays
-            // activation and the MEP handshake once per session instead of
-            // once per click. See the sessions module for the reuse and
-            // eviction rules.
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            // Pooled on purpose: a provider with a guest pays activation and
+            // the MEP handshake once per guest instead of once per click. See
+            // the pool module for the reuse and eviction rules.
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
             working_directory,
             INVOCATION_TIMEOUT,
         )
     }
 
     fn with_parts(
-        home: MorphirHome,
         registry: RegistrySource,
         frontend: Option<FrontendSection>,
         invoker: Arc<dyn ExtensionInvoker>,
@@ -182,7 +171,6 @@ impl NativePlaygroundProvider {
         timeout: Duration,
     ) -> Self {
         Self {
-            home,
             registry,
             frontend,
             invoker,
@@ -235,6 +223,7 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                 &params.ir_version,
                 InvocationPolicy::PreferDirect,
             )
+            .map_err(DaemonError::from)
             .map_err(|error| match configured.as_deref() {
                 Some(id) => CliError::Validation {
                     message: format!(
@@ -256,9 +245,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
             .map_err(|error| CliError::Validation {
                 message: error.to_string(),
             })?;
-        let invocation =
-            self.invoker
-                .compile(&self.home, &self.working_directory, &resolved, request);
+        let invocation = self
+            .invoker
+            .compile(&self.working_directory, &resolved, request);
         match bounded(invocation, self.timeout).await? {
             Invocation::Answered(result) => Ok(PlaygroundCompileResult {
                 success: result.success,
@@ -297,6 +286,7 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                 &params.ir_version,
                 InvocationPolicy::PreferDirect,
             )
+            .map_err(DaemonError::from)
             .map_err(|error| CliError::Validation {
                 message: format!(
                     "No extension generates target '{}' at Morphir IR version '{}': {error}",
@@ -312,9 +302,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         // Artifacts stay in the response. Unlike `morphir generate`, nothing
         // is published to an output directory; the web app offers each
         // artifact as a download.
-        let invocation =
-            self.invoker
-                .generate(&self.home, &self.working_directory, &resolved, request);
+        let invocation = self
+            .invoker
+            .generate(&self.working_directory, &resolved, request);
         match bounded(invocation, self.timeout).await? {
             Invocation::Answered(result) => Ok(PlaygroundGenerateResult {
                 success: result.success,
@@ -353,14 +343,11 @@ async fn bounded<R>(
     }
 }
 
-fn installed_registry(
-    home: &MorphirHome,
-    only: Option<&str>,
-) -> Result<ExtensionRegistry, CliError> {
+fn installed_registry(home: &MorphirHome, only: Option<&str>) -> Result<Registry, CliError> {
     let installed = list_installed(home).map_err(|error| CliError::Extension {
         message: format!("Failed to list installed extensions: {error}"),
     })?;
-    extension_registry_for(installed, only)
+    extension_registry_for(home, installed, only)
 }
 
 /// The `[frontend]` section of the workspace's configuration, if it has one.
@@ -399,11 +386,11 @@ fn workspace_frontend(workspace: &Path) -> Option<FrontendSection> {
 ///
 /// Built-ins are listed alongside installed providers, because the registry
 /// resolves and invokes both the same way. They are listed *after* them:
-/// [`ExtensionRegistry::resolve_frontend`] prefers an installed provider when
+/// [`Registry::resolve_frontend`] prefers an installed provider when
 /// two offer the same language, and the catalog's first-match-wins lookups
 /// have to agree with that or the picker would name a provider the compile
 /// would not use.
-fn project_catalog(registry: &ExtensionRegistry) -> PlaygroundCatalog {
+fn project_catalog(registry: &Registry) -> PlaygroundCatalog {
     let mut providers = registry.providers();
     providers.sort_by_key(|provider| std::cmp::Reverse(provider.origin()));
     let mut frontends = Vec::new();
@@ -451,7 +438,8 @@ fn project_catalog(registry: &ExtensionRegistry) -> PlaygroundCatalog {
 fn capability_metadata_is_complete(provider: &ProviderMetadata) -> bool {
     match provider.capability_metadata_scope() {
         CapabilityMetadataScope::Complete => true,
-        CapabilityMetadataScope::PersistedFrontendBackend => false,
+        // A scope this CLI does not know makes no promise about the flags.
+        _ => false,
     }
 }
 
@@ -462,7 +450,8 @@ fn provider_ref(provider: &ProviderMetadata) -> PlaygroundProviderRef {
         version: provider.info().version.clone(),
         origin: match provider.origin() {
             ProviderOrigin::Builtin => PlaygroundProviderOrigin::Builtin,
-            ProviderOrigin::Installed => PlaygroundProviderOrigin::Installed,
+            // Anything not built into this CLI came from outside it.
+            _ => PlaygroundProviderOrigin::Installed,
         },
         invocation_mode: invocation_mode_name(provider.preferred_invocation_mode()).to_owned(),
     }
@@ -474,6 +463,7 @@ fn invocation_mode_name(mode: InvocationMode) -> &'static str {
         InvocationMode::NativeMep => "native-mep",
         InvocationMode::ProcessMep => "process-mep",
         InvocationMode::WasmMep => "wasm-mep",
+        _ => "unknown",
     }
 }
 
@@ -642,14 +632,12 @@ fn playground_location(location: &SourceLocation) -> PlaygroundLocation {
 mod tests {
     use super::*;
     use crate::commands::ui::protocol::{PlaygroundPackage, PlaygroundSourceDocument};
-    use morphir_distribution::{
-        Channel, ExtensionId, ExtensionInstaller, InstalledExtensionSnapshot, LocalIndex, Platform,
-        Selection, Sha256Digest,
-    };
+    use morphir_distribution::InstalledExtensionSnapshot;
     use morphir_extension_sdk::{
         Backend, BackendCapability, Extension, ExtensionCapabilities, ExtensionInfo, Frontend,
         FrontendCapability, LanguageCapability, NativeExtension,
     };
+    use morphir_host_native::NativeSource;
     use std::sync::{Condvar, Mutex, Mutex as StdMutex};
 
     /// The one IR release every double in this module speaks. Gleam, the only
@@ -861,30 +849,28 @@ mod tests {
     impl ExtensionInvoker for RecordingInvoker {
         async fn compile(
             &self,
-            home: &MorphirHome,
             working_directory: &Path,
-            resolved: &ResolvedFrontend,
+            resolved: &Resolved,
             request: CompileRequest,
         ) -> Result<CompileResult, CliError> {
             self.compiles
                 .lock()
                 .expect("the log is never poisoned")
                 .push(request.clone());
-            crate::extensions::invoke_frontend(home, working_directory, resolved, request).await
+            crate::extensions::invoke_frontend(working_directory, resolved, request).await
         }
 
         async fn generate(
             &self,
-            home: &MorphirHome,
             working_directory: &Path,
-            resolved: &ResolvedBackend,
+            resolved: &Resolved,
             request: GenerateRequest,
         ) -> Result<GenerateResult, CliError> {
             self.generates
                 .lock()
                 .expect("the log is never poisoned")
                 .push(request.clone());
-            crate::extensions::invoke_backend(home, working_directory, resolved, request).await
+            crate::extensions::invoke_backend(working_directory, resolved, request).await
         }
     }
 
@@ -908,9 +894,8 @@ mod tests {
     impl ExtensionInvoker for SleepingInvoker {
         async fn compile(
             &self,
-            _home: &MorphirHome,
             _working_directory: &Path,
-            _resolved: &ResolvedFrontend,
+            _resolved: &Resolved,
             _request: CompileRequest,
         ) -> Result<CompileResult, CliError> {
             tokio::time::sleep(self.delay).await;
@@ -919,9 +904,8 @@ mod tests {
 
         async fn generate(
             &self,
-            _home: &MorphirHome,
             _working_directory: &Path,
-            _resolved: &ResolvedBackend,
+            _resolved: &Resolved,
             _request: GenerateRequest,
         ) -> Result<GenerateResult, CliError> {
             tokio::time::sleep(self.delay).await;
@@ -944,9 +928,8 @@ mod tests {
     impl ExtensionInvoker for UnreachableInvoker {
         async fn compile(
             &self,
-            _home: &MorphirHome,
             _working_directory: &Path,
-            resolved: &ResolvedFrontend,
+            resolved: &Resolved,
             _request: CompileRequest,
         ) -> Result<CompileResult, CliError> {
             panic!("invoked frontend '{}' unexpectedly", resolved.info().id)
@@ -954,9 +937,8 @@ mod tests {
 
         async fn generate(
             &self,
-            _home: &MorphirHome,
             _working_directory: &Path,
-            resolved: &ResolvedBackend,
+            resolved: &Resolved,
             _request: GenerateRequest,
         ) -> Result<GenerateResult, CliError> {
             panic!("invoked backend '{}' unexpectedly", resolved.info().id)
@@ -979,14 +961,13 @@ mod tests {
         (root, home)
     }
 
-    /// Install a real extension into a scratch Morphir home and return its
-    /// snapshot.
+    /// Install a real extension into a scratch Morphir home and return the
+    /// home and its snapshot.
     ///
     /// Registering a fabricated snapshot would not answer the question these
     /// tests ask: an installed provider's capability metadata is rebuilt from
     /// what the install actually persisted, so the snapshot has to come from
-    /// a real index and a real install. This mirrors the `installed` helper in
-    /// morphir-daemon's `provider_registry` integration test.
+    /// a real index and a real install.
     ///
     /// The returned directory owns the home the snapshot points into and must
     /// outlive it.
@@ -994,79 +975,41 @@ mod tests {
         extension_id: &str,
         language: &str,
         target: &str,
-    ) -> (tempfile::TempDir, InstalledExtensionSnapshot) {
+    ) -> (tempfile::TempDir, MorphirHome, InstalledExtensionSnapshot) {
         let root = tempfile::tempdir().expect("a temporary install root");
-        let index = root.path().join("index");
-        let artifact = index.join("artifacts").join(extension_id);
-        std::fs::create_dir_all(artifact.parent().expect("the artifact has a parent"))
-            .expect("the artifact directory is created");
-        std::fs::create_dir_all(index.join("extensions")).expect("the index directory is created");
-        let bytes = b"#!/bin/sh\nexit 0\n".as_slice();
-        std::fs::write(&artifact, bytes).expect("the artifact is written");
-        let platform = Platform::current();
-        let record = serde_json::json!({
-            "schemaVersion": "1.0",
-            "id": extension_id,
-            "name": format!("Installed {extension_id}"),
-            "version": "2.0.0",
-            "channels": ["stable"],
-            "mepVersions": ["0.1"],
-            "capabilities": ["frontend", "backend"],
-            "frontend": {
-                "languages": [{
-                    "id": language,
-                    "fileExtensions": [format!(".{language}")]
-                }],
-                "irVersions": [IR_VERSION],
-                "compile": true
-            },
-            "backend": {
-                "targets": [target],
-                "irVersions": [IR_VERSION],
-                "generate": true
-            },
-            "artifacts": [{
-                "runtime": "process",
-                "platform": {"os": platform.os(), "arch": platform.arch()},
-                "source": {"kind": "local-file", "path": format!("artifacts/{extension_id}")},
-                "sha256": Sha256Digest::of_bytes(bytes),
-                "filename": extension_id,
-                "args": [],
-                "executable": true
-            }]
-        });
-        std::fs::write(
-            index
-                .join("extensions")
-                .join(format!("{extension_id}.jsonl")),
-            format!("{record}\n"),
-        )
-        .expect("the index record is written");
-
-        let home = MorphirHome::resolve_from(Some(root.path().join("home").as_os_str()), None)
-            .expect("an explicit Morphir home resolves");
-        let id = ExtensionId::parse(extension_id).expect("the extension ID parses");
-        let host: morphir_workspace::Version = env!("CARGO_PKG_VERSION")
-            .parse()
-            .expect("the CLI version is SemVer");
-        let selected = LocalIndex::open(&index)
-            .expect("the local index opens")
-            .resolve(&id, Selection::Channel(Channel::Stable), &platform, &host)
-            .expect("the index resolves the extension");
-        ExtensionInstaller::new(&home)
-            .install(selected, &host)
-            .expect("the extension installs");
-        let snapshot = list_installed(&home)
-            .expect("the installed catalog is readable")
-            .pop()
-            .expect("exactly one extension was installed");
-        (root, snapshot)
+        let (home, snapshot) = crate::extensions::installed_fixture::install_process(
+            root.path(),
+            serde_json::json!({
+                "schemaVersion": "1.0",
+                "id": extension_id,
+                "name": format!("Installed {extension_id}"),
+                "version": "2.0.0",
+                "channels": ["stable"],
+                "mepVersions": ["0.1"],
+                "capabilities": ["frontend", "backend"],
+                "frontend": {
+                    "languages": [{
+                        "id": language,
+                        "fileExtensions": [format!(".{language}")]
+                    }],
+                    "irVersions": [IR_VERSION],
+                    "compile": true
+                },
+                "backend": {
+                    "targets": [target],
+                    "irVersions": [IR_VERSION],
+                    "generate": true
+                }
+            }),
+            b"#!/bin/sh\nexit 0\n",
+        );
+        (root, home, snapshot)
     }
 
     /// Build a provider over a registry assembled by `register`, invoking
     /// through `invoker`.
     fn fixture(
-        register: impl Fn(&mut ExtensionRegistry) + Send + Sync + 'static,
+        register: impl Fn(&mut Registry) + Send + Sync + 'static,
         invoker: Arc<dyn ExtensionInvoker>,
     ) -> Fixture {
         fixture_bounded_by(register, invoker, INVOCATION_TIMEOUT)
@@ -1074,17 +1017,16 @@ mod tests {
 
     /// As [`fixture`], with the invocation bound the caller names.
     fn fixture_bounded_by(
-        register: impl Fn(&mut ExtensionRegistry) + Send + Sync + 'static,
+        register: impl Fn(&mut Registry) + Send + Sync + 'static,
         invoker: Arc<dyn ExtensionInvoker>,
         timeout: Duration,
     ) -> Fixture {
-        let (home_root, home) = scratch_home();
+        let (home_root, _home) = scratch_home();
         let working = tempfile::tempdir().expect("a scratch working directory");
         let root_path = home_root.path().to_path_buf();
         let provider = NativePlaygroundProvider::with_parts(
-            home,
             Arc::new(move |_only| {
-                let mut registry = ExtensionRegistry::new();
+                let mut registry = Registry::new();
                 register(&mut registry);
                 Ok(registry)
             }),
@@ -1101,28 +1043,28 @@ mod tests {
         }
     }
 
-    fn with_frontend(response: CompileResult) -> impl Fn(&mut ExtensionRegistry) + Send + Sync {
-        move |registry: &mut ExtensionRegistry| {
+    fn with_frontend(response: CompileResult) -> impl Fn(&mut Registry) + Send + Sync {
+        move |registry: &mut Registry| {
             registry
-                .register_builtin(
+                .register(Arc::new(NativeSource::new(
                     NativeExtension::frontend_only(FixedFrontend {
                         response: response.clone(),
                     })
                     .expect("the frontend double is well formed"),
-                )
+                )))
                 .expect("the frontend double registers");
         }
     }
 
-    fn with_backend(response: GenerateResult) -> impl Fn(&mut ExtensionRegistry) + Send + Sync {
-        move |registry: &mut ExtensionRegistry| {
+    fn with_backend(response: GenerateResult) -> impl Fn(&mut Registry) + Send + Sync {
+        move |registry: &mut Registry| {
             registry
-                .register_builtin(
+                .register(Arc::new(NativeSource::new(
                     NativeExtension::backend_only(FixedBackend {
                         response: response.clone(),
                     })
                     .expect("the backend double is well formed"),
-                )
+                )))
                 .expect("the backend double registers");
         }
     }
@@ -1226,7 +1168,7 @@ mod tests {
                 module_results: Vec::new(),
                 context_digest: None,
             }),
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
         );
 
         let result = fixture
@@ -1262,7 +1204,7 @@ mod tests {
                 }],
                 diagnostics: vec![],
             }),
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
         );
         let cwd = std::env::current_dir().unwrap();
         let watched = [
@@ -1386,17 +1328,17 @@ mod tests {
         let gate = Arc::new(Gate::default());
         let registered = Arc::clone(&gate);
         let fixture = fixture_bounded_by(
-            move |registry: &mut ExtensionRegistry| {
+            move |registry: &mut Registry| {
                 registry
-                    .register_builtin(
+                    .register(Arc::new(NativeSource::new(
                         NativeExtension::frontend_only(BlockingFrontend {
                             gate: Arc::clone(&registered),
                         })
                         .expect("the blocking frontend double is well formed"),
-                    )
+                    )))
                     .expect("the blocking frontend double registers");
             },
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
             // Real time, not the paused clock the sleeping-invoker test uses:
             // an outstanding blocking task inhibits tokio's auto-advance, so
             // a paused clock would never reach the deadline.
@@ -1556,7 +1498,7 @@ mod tests {
 
     /// Ordering is load-bearing, not cosmetic.
     ///
-    /// [`ExtensionRegistry::resolve_frontend`] prefers an installed provider
+    /// [`Registry::resolve_frontend`] prefers an installed provider
     /// over a built-in offering the same language, and the catalog's lookups
     /// take the first match. If the projection listed built-ins first, the
     /// picker would name Gleam's built-in while a compile ran the installed
@@ -1565,9 +1507,9 @@ mod tests {
     /// ships, at the same IR release, so the two orderings really disagree.
     #[tokio::test]
     async fn an_installed_provider_shadows_the_built_in_it_replaces() {
-        let (_root, snapshot) = installed_snapshot("installed-gleam", "gleam", "gleam");
+        let (_root, home, snapshot) = installed_snapshot("installed-gleam", "gleam", "gleam");
         let registry =
-            extension_registry_for(vec![snapshot], None).expect("the registry assembles");
+            extension_registry_for(&home, vec![snapshot], None).expect("the registry assembles");
         let resolved = registry
             .resolve_frontend("gleam", IR_VERSION, InvocationPolicy::PreferDirect)
             .expect("the registry resolves Gleam");
@@ -1761,10 +1703,9 @@ mod tests {
         let working = tempfile::tempdir().expect("a scratch working directory");
         let cwd = std::env::current_dir().unwrap();
         let provider = NativePlaygroundProvider::with_parts(
-            home.clone(),
             Arc::new(move |only| installed_registry(&home, only)),
             None,
-            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
+            Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
             working.path().to_path_buf(),
             INVOCATION_TIMEOUT,
         );
@@ -1824,9 +1765,10 @@ mod tests {
     /// nobody asked; they go over the wire as `null`.
     #[tokio::test]
     async fn capabilities_the_catalog_cannot_know_are_reported_as_unknown() {
-        let (_root, snapshot) = installed_snapshot("installed-elm", "elm", "installed-target");
+        let (_root, home, snapshot) =
+            installed_snapshot("installed-elm", "elm", "installed-target");
         let registry =
-            extension_registry_for(vec![snapshot], None).expect("the registry assembles");
+            extension_registry_for(&home, vec![snapshot], None).expect("the registry assembles");
 
         let catalog = project_catalog(&registry);
 
