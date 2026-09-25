@@ -499,3 +499,25 @@ fn node_object_targets_must_name_supported_node_kinds() {
     }));
     assert!(message.contains("targetKind"), "{message}");
 }
+
+#[test]
+fn node_object_targets_admit_modules_and_packages() {
+    for kind in ["Module", "Package"] {
+        let kit = load_kit(KitSource::map(
+            "node target kind",
+            changed(files(), CLOSURE, |value| {
+                value["predicates"][2]["object"]["targetKind"] = json!(kind);
+            }),
+        ))
+        .unwrap();
+        assert!(kit.errors.is_empty(), "{kind}: {:?}", kit.errors);
+    }
+}
+
+#[test]
+fn json_predicate_root_must_not_have_type_parameters() {
+    let message = error(changed(files(), CLOSURE, |value| {
+        value["dataTypes"][0]["shape"]["typeParams"] = json!(["a"]);
+    }));
+    assert!(message.contains("typeParams"), "{message}");
+}

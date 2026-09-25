@@ -114,6 +114,30 @@ fn projects_v4_sidecar_and_rejects_stale_target_without_partial_graph() {
 }
 
 #[test]
+fn application_owned_type_entry_point_projects_with_package_selector() {
+    let mut application: serde_json::Value = serde_json::from_str(V4).unwrap();
+    let library = application["distribution"]["Library"].take();
+    application["distribution"] = serde_json::json!({"Application": {
+        "packageName": library["packageName"],
+        "dependencies": library["dependencies"],
+        "def": library["def"],
+        "entryPoints": {}
+    }});
+    let (_root, project) =
+        project_with_ir(&application.to_string(), "example/v4-test:domain#user-id");
+    let target =
+        NodeUri::parse("morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/user-id")
+            .unwrap();
+    let mut sidecar = DecorationSidecar::empty();
+    sidecar.insert(target.clone(), serde_json::json!("customer-1"));
+
+    let graph = project
+        .project_sidecar(&sidecar, DocumentId::new("attributes/labels.json").unwrap())
+        .unwrap();
+    assert_eq!(graph.facts()[0].predicate(), &target);
+}
+
+#[test]
 fn separately_expanded_typed_fact_coalesces_without_losing_ownership() {
     let (_root, project) = project_with_ir(V4, "example/v4-test:domain#user-id");
     let target =

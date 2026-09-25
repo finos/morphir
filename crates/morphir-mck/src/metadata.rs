@@ -192,10 +192,17 @@ fn declared_closure(source: &KitSource, relative: &str) -> Result<Declarations, 
         groups.push(uris.into_iter().map(str::to_owned).collect::<BTreeSet<_>>());
     }
     let data_types = &groups[1];
+    let mut parameterized_data_types = BTreeSet::new();
     for data_type in object["dataTypes"].as_array().expect("checked above") {
         check_role(data_type, "TypeSpecification", &path, "dataTypes")?;
         let uri = data_type["uri"].as_str().expect("checked above");
         check_shape(&data_type["shape"], data_types, &format!("{path}: {uri}"))?;
+        if data_type["shape"]["typeParams"]
+            .as_array()
+            .is_some_and(|params| !params.is_empty())
+        {
+            parameterized_data_types.insert(uri);
+        }
     }
     for predicate in object["predicates"].as_array().expect("checked above") {
         check_role(predicate, "ValueSpecification", &path, "predicates")?;
@@ -216,11 +223,16 @@ fn declared_closure(source: &KitSource, relative: &str) -> Result<Declarations, 
                 if !declared {
                     return Err(format!("{path}: {uri} has undeclared data type {type_uri}"));
                 }
+                if kind == "json" && parameterized_data_types.contains(type_uri) {
+                    return Err(format!(
+                        "{path}: {uri} JSON object type {type_uri} must have no typeParams"
+                    ));
+                }
             }
             "node" => {
                 if !matches!(
                     predicate["object"]["targetKind"].as_str(),
-                    Some("Type" | "Value")
+                    Some("Type" | "Value" | "Module" | "Package")
                 ) {
                     return Err(format!("{path}: {uri} has unsupported node targetKind"));
                 }
