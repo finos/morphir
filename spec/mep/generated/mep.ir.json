@@ -11,7 +11,7 @@
               "types": {
                 "json": {
                   "Public": {
-                    "doc": "Any JSON value. Used where the protocol carries data the contract does not\nconstrain, such as compiled IR or backend options.",
+                    "doc": "Any JSON value. Used where the protocol carries data the contract does not\nconstrain, such as compiled IR or backend options.\nOn the wire it is the JSON value itself, not a tagged constructor.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -558,7 +558,7 @@
                 },
                 "workspace-capability": {
                   "Public": {
-                    "doc": "Workspace discovery support. Each protocol version is a full SemVer\nstring, such as `0.1.0`.",
+                    "doc": "Workspace discovery support. Each protocol version is a full SemVer\nstring, such as `0.1.0`, for the workspace discovery protocol. These are\nnot MEP versions, which use the `MAJOR.MINOR` form.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -732,7 +732,7 @@
                 },
                 "capability-claim-set": {
                   "Public": {
-                    "doc": "The result of `morphir.extension.describe`: the capabilities an extension\nclaims, without starting a session.\n\nWire rules:\n- `claims_version` (wire `claimsVersion`) is a SemVer string for the\nclaims format, which is versioned apart from MEP. Writers send\n`0.1.0-draft.2`. Readers accept exactly `0.1.0-draft.1` or\n`0.1.0-draft.2` and read both as draft.2.\n- Draft.1 names the member `statementVersion` instead. The member name\nmust match the draft, and a claim set with both names is refused. In a\ndraft.1 `critical` list, `statementVersion` is read as `claimsVersion`.\n- `capabilities` is open: members this contract does not name are kept\nwhen read and written.\n- `requires` is left out when absent.\n- `critical` lists member paths, such as `capabilities.frontend`, that a\nreader must understand. A reader refuses a claim set with a path it\ndoes not understand. `critical` is left out when empty, and an absent\n`critical` is read as empty.",
+                    "doc": "The result of `morphir.extension.describe`: the capabilities an extension\nclaims, without starting a session.\n\nWire rules:\n- `claims_version` (wire `claimsVersion`) is a SemVer string for the\nclaims format, which is versioned apart from MEP. Writers send\n`0.1.0-draft.2`. Readers accept exactly `0.1.0-draft.1` or\n`0.1.0-draft.2` and read both as draft.2.\n- Draft.1 names the member `statementVersion` instead. The member name\nmust match the draft, and a claim set with both names is refused. In a\ndraft.1 `critical` list, `statementVersion` is read as `claimsVersion`,\nand a draft.1 `critical` list that names `claimsVersion` is refused.\n- `protocol_versions` (wire `protocolVersions`) are MEP versions in the\ncanonical `MAJOR.MINOR` form, such as `0.1`, not full SemVer.\n- Unknown top-level members are dropped when read.\n- `capabilities` is open: members this contract does not name are kept\nwhen read and written. The named members inside it, such as\n`frontend`, are not checked against `ExtensionCapabilities` when read.\n- `requires` is left out when absent.\n- `critical` lists member paths, such as `capabilities.frontend`, that a\nreader must understand. A reader refuses a claim set with a path it\ndoes not understand. `critical` is left out when empty, and an absent\n`critical` is read as empty.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",

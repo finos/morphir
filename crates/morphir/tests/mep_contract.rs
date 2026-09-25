@@ -29,9 +29,14 @@ fn copy_dir(from: &Path, to: &Path) {
     }
 }
 
+fn committed_ir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../spec/mep/generated/mep.ir.json")
+}
+
 /// Compile a copy of the contract in a temporary directory, so the test never
-/// writes into the repository and ignores the user's Morphir config.
-fn compile_contract() -> Value {
+/// writes into the repository and ignores the user's Morphir config, and
+/// return the IR file exactly as the CLI wrote it.
+fn compile_contract_bytes() -> Vec<u8> {
     let work = tempfile::tempdir().unwrap();
     let project = work.path().join("contract");
     copy_dir(&contract_dir(), &project);
@@ -72,10 +77,12 @@ fn compile_contract() -> Value {
         String::from_utf8_lossy(&output.stderr)
     );
     let ir = project.join(".morphir/out/compile.dest/morphir-ir.json");
-    serde_json::from_slice(
-        &fs::read(&ir).unwrap_or_else(|error| panic!("{}: {error}", ir.display())),
-    )
-    .unwrap()
+    fs::read(&ir).unwrap_or_else(|error| panic!("{}: {error}", ir.display()))
+}
+
+/// The compiled contract IR, parsed.
+fn compile_contract() -> Value {
+    serde_json::from_slice(&compile_contract_bytes()).unwrap()
 }
 
 /// The value inside an access wrapper such as `{"Public": ...}`.
@@ -389,6 +396,121 @@ fn no_constructor_shadows_the_prelude() {
             assert!(
                 !RESERVED_CONSTRUCTORS.contains(&constructor.as_str()),
                 "{type_name} declares {constructor}, which shadows a prelude constructor"
+            );
+        }
+    }
+}
+
+/// The committed IR is byte for byte what the CLI writes for the contract
+/// today. The bytes are compared as written, not re-serialized.
+#[test]
+fn the_committed_ir_matches_a_fresh_compile() {
+    let fresh = compile_contract_bytes();
+    let committed = fs::read(committed_ir()).unwrap();
+    assert!(
+        fresh == committed,
+        "spec/mep/generated/mep.ir.json is out of date; run `mise run spec:mep` and commit it"
+    );
+}
+
+/// The `///` lines directly above `declaration`, without the markers, joined
+/// into one line so a phrase can span a line break.
+fn doc_comment_before(source: &str, declaration: &str) -> String {
+    let lines: Vec<&str> = source.lines().collect();
+    let index = lines
+        .iter()
+        .position(|line| {
+            line.starts_with(declaration)
+                && !line[declaration.len()..].starts_with(|c: char| c.is_alphanumeric())
+        })
+        .unwrap_or_else(|| panic!("mep.gleam has no `{declaration}`"));
+    let mut doc: Vec<&str> = lines[..index]
+        .iter()
+        .rev()
+        .take_while(|line| line.starts_with("///") && !line.starts_with("////"))
+        .map(|line| line.trim_start_matches("///").trim_start())
+        .collect();
+    doc.reverse();
+    doc.join(" ")
+}
+
+/// Every type whose wire form differs from the default rule (snake_case
+/// labels become lowerCamelCase members, every member required and always
+/// written) says so in its doc comment. Each phrase names the rule.
+#[test]
+fn every_wire_exception_is_documented() {
+    let source = fs::read_to_string(contract_dir().join("src/mep.gleam")).unwrap();
+    let rules: &[(&str, &[&str])] = &[
+        ("Json", &["the JSON value itself"]),
+        // Handshake
+        ("PeerKind", &["Wire values", "read as `Unspecified`"]),
+        ("PeerInfo", &["absent kind is read as `Unspecified`"]),
+        ("ExtensionType", &["Wire values"]),
+        (
+            "ExtensionInfo",
+            &["snake_case", "left out of the message when absent"],
+        ),
+        ("Method", &["wire value", "notifications"]),
+        ("ErrorCode", &["integer code"]),
+        ("RpcError", &["left out of the message when absent"]),
+        // Capabilities and claims
+        ("FrontendCapability", &["only when it is true"]),
+        ("WorkspaceCapability", &["full SemVer"]),
+        (
+            "ExtensionCapabilities",
+            &["beside the named members", "always written", "refuses"],
+        ),
+        ("ClaimsRequirements", &["comparator", "left out when empty"]),
+        (
+            "CapabilityClaimSet",
+            &[
+                "statementVersion",
+                "`MAJOR.MINOR`",
+                "`capabilities` is open",
+                "names `claimsVersion`",
+                "dropped",
+                "not checked",
+                "left out when empty",
+            ],
+        ),
+        // Compile
+        ("CompilePackage", &["absent", "empty list exposes none"]),
+        (
+            "CompileOptions",
+            &[
+                "beside the named members",
+                "`sourceRootUri`",
+                "always written",
+            ],
+        ),
+        ("SourceSet", &["left out when absent"]),
+        ("CompileRequest", &["read as empty", "left out when absent"]),
+        ("CompileResult", &["left out when empty", "read as empty"]),
+        ("BaselineModule", &["read as empty", "left out when absent"]),
+        (
+            "CompileBaseline",
+            &["read as empty", "left out when absent"],
+        ),
+        ("ModuleStatus", &["Wire values"]),
+        ("ModuleResult", &["left out when absent", "read as empty"]),
+        // Generate
+        ("GenerateRequest", &["read as empty"]),
+        ("GenerateResult", &["read as empty"]),
+        ("Artifact", &["base64", "read as false"]),
+        // Diagnostics
+        (
+            "Diagnostic",
+            &["left out when absent", "left out when empty"],
+        ),
+        ("DiagnosticSeverity", &["Wire values"]),
+        ("SourcePosition", &["zero-based", "UTF-16"]),
+    ];
+    for (type_name, phrases) in rules {
+        let doc = doc_comment_before(&source, &format!("pub type {type_name} "));
+        for phrase in *phrases {
+            assert!(
+                doc.contains(phrase),
+                "{type_name}'s doc comment must mention `{phrase}`; it reads:\n{doc}"
             );
         }
     }

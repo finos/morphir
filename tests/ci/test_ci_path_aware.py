@@ -70,6 +70,8 @@ class PathAwareCiTests(unittest.TestCase):
             "- 'ecosystem/morphir-rust'",
             "- 'website/static/ir/examples/**'",
             "- '.github/actions/setup-rust-ci/**'",
+            # mep_contract compiles spec/mep/contract and checks the committed IR
+            "- 'spec/mep/**'",
         ]:
             self.assertIn(entry, rust_filter)
 

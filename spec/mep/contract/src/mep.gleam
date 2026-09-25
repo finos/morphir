@@ -12,6 +12,7 @@ import gleam/option.{type Option}
 
 /// Any JSON value. Used where the protocol carries data the contract does not
 /// constrain, such as compiled IR or backend options.
+/// On the wire it is the JSON value itself, not a tagged constructor.
 pub type Json {
   JsonNull
   JsonBool(value: Bool)
@@ -114,7 +115,8 @@ pub type BackendCapability {
 }
 
 /// Workspace discovery support. Each protocol version is a full SemVer
-/// string, such as `0.1.0`.
+/// string, such as `0.1.0`, for the workspace discovery protocol. These are
+/// not MEP versions, which use the `MAJOR.MINOR` form.
 pub type WorkspaceCapability {
   WorkspaceCapability(protocol_versions: List(String), discover: Bool)
 }
@@ -163,9 +165,14 @@ pub type ClaimsRequirements {
 ///   `0.1.0-draft.2` and read both as draft.2.
 /// - Draft.1 names the member `statementVersion` instead. The member name
 ///   must match the draft, and a claim set with both names is refused. In a
-///   draft.1 `critical` list, `statementVersion` is read as `claimsVersion`.
+///   draft.1 `critical` list, `statementVersion` is read as `claimsVersion`,
+///   and a draft.1 `critical` list that names `claimsVersion` is refused.
+/// - `protocol_versions` (wire `protocolVersions`) are MEP versions in the
+///   canonical `MAJOR.MINOR` form, such as `0.1`, not full SemVer.
+/// - Unknown top-level members are dropped when read.
 /// - `capabilities` is open: members this contract does not name are kept
-///   when read and written.
+///   when read and written. The named members inside it, such as
+///   `frontend`, are not checked against `ExtensionCapabilities` when read.
 /// - `requires` is left out when absent.
 /// - `critical` lists member paths, such as `capabilities.frontend`, that a
 ///   reader must understand. A reader refuses a claim set with a path it
