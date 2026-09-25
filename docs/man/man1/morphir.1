@@ -42,6 +42,9 @@ Inspect and export proposed V4 linked metadata
 \fBmetadata validate\fR
 Parse metadata carriers and report the semantic\-validation boundary
 .TP
+\fBmetadata validate\-trusted\fR
+Validate with declarations from a freshly authenticated Library restore
+.TP
 \fBmetadata query\fR
 Query expanded facts and their assertion locations
 .TP
@@ -524,6 +527,34 @@ A V4.1 single\-file JSON, YAML, or Ion document
 .TP
 \fB\-\-schema\-closure\fR \fI<SCHEMA_CLOSURE>\fR
 Optional local predicate closure for typed @json expansion
+.SH "MORPHIR METADATA VALIDATE-TRUSTED"
+Validate with declarations from a freshly authenticated Library restore
+.PP
+\fBUsage:\fR morphir metadata validate\-trusted [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+Consumer V4.1 single\-file IR to validate
+.TP
+\fB\-\-provider\-release\fR \fI<PACKAGE@VERSION>\fR
+Exact provider Library release in the full lock
+.TP
+\fB\-\-policy\fR \fI<POLICY>\fR
+Explicit trusted\-host policy file
+.TP
+\fB\-\-lock\fR \fI<LOCK>\fR
+Full package lock; replay never rewrites it
+.TP
+\fB\-\-registry\fR \fI<REGISTRY>\fR
+Caller\-controlled local registry
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Existing initialized trust\-state directory
+.TP
+\fB\-\-assurance\fR \fI<ASSURANCE>\fR
+Accept the local MVP's caller\-controlled filesystem roots
 .SH "MORPHIR METADATA QUERY"
 Query expanded facts and their assertion locations
 .PP

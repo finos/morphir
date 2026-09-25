@@ -22,6 +22,7 @@
 - [`morphir decoration migrate-v3 [--config <CONFIG>] <--ir <IR>> <NAME>`](decoration/migrate-v3.md)
 - [`morphir metadata <SUBCOMMAND>`](metadata.md)
 - [`morphir metadata validate <--ir <IR>> [--schema-closure <SCHEMA_CLOSURE>]`](metadata/validate.md)
+- [`morphir metadata validate-trusted <FLAGS>`](metadata/validate-trusted.md)
 - [`morphir metadata query <FLAGS>`](metadata/query.md)
 - [`morphir metadata export <FLAGS>`](metadata/export.md)
 - [`morphir package <SUBCOMMAND>`](package.md)

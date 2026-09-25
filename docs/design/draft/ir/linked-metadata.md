@@ -300,6 +300,66 @@ morphir::$meta::{
 
 Predicates come from an explicit Morphir declaration closure. Its contract determines allowed subject kinds, node-reference versus typed data object, and whether interpretation beyond storage is required. An undeclared predicate remains readable for roundtrips but cannot count as validated semantics. The `targetNames` declaration requires an interpreter for its language-ID rule; if that interpreter is unavailable, a type-valid fact is retained but reported as unvalidated. A bare array at a fact property means repeated objects; `@json` wraps one structured data object. The shared validator supports string-keyed `morphir/SDK:dict#dict` data for both native facts and decorators; language-ID policy is a separate semantic check.
 
+### Declarations live in the provider IR
+
+The declaration closure is derived from the provider's own V4 facts, not from a separate closure file. A publishable `Library` has public value **definitions**; its `$meta.@graph` can describe each definition, whose public output signature supplies the declared data type. A `Specs` document can write the same facts directly in a value specification's `annotations.facts`. Both carriers expand through the ordinary context grammar and identify the predicate with a Node URI. The finite `morphir/metadata` schema vocabulary is built into this proposed revision so interpreting a declaration does not depend on recursively loading a declaration for `subject-role` itself.
+
+These equivalent fragments say that `deprecated` is boolean data usable on value specifications and definitions. The surrounding Library defines a public `lifecycle/deprecated` value whose `outputType` is `morphir/SDK:basics#bool`.
+
+```json
+"$meta": {
+  "@context": { "@vocab": "morphir://ir/pkg/morphir/metadata?format=4.1.0#/module/schema/value/" },
+  "@graph": [{
+    "@id": "morphir://ir/pkg/acme/metadata?format=4.1.0#/module/lifecycle/value/deprecated",
+    "subject-role": ["ValueSpecification", "ValueDefinition"],
+    "object-form": "data",
+    "interpreter": "descriptive"
+  }]
+}
+```
+
+```yaml
+$meta:
+  "@context":
+    "@vocab": "morphir://ir/pkg/morphir/metadata?format=4.1.0#/module/schema/value/"
+  "@graph":
+    - "@id": "morphir://ir/pkg/acme/metadata?format=4.1.0#/module/lifecycle/value/deprecated"
+      subject-role: [ValueSpecification, ValueDefinition]
+      object-form: data
+      interpreter: descriptive
+```
+
+```ion
+morphir::$meta::{
+  '@context': { '@vocab': "morphir://ir/pkg/morphir/metadata?format=4.1.0#/module/schema/value/" },
+  '@graph': [{
+    '@id': "morphir://ir/pkg/acme/metadata?format=4.1.0#/module/lifecycle/value/deprecated",
+    'subject-role': ["ValueSpecification", "ValueDefinition"],
+    'object-form': "data",
+    interpreter: "descriptive",
+  }],
+}
+```
+
+`object-form` is `data`, `json`, or `node`. `json` requires an unparameterized public Type declaration named by the value's output signature; `node` requires `node-target-kind` (`Type`, `Value`, `Module`, or `Package`) and a String output signature. `interpreter` is `descriptive` or a specifically supported required interpreter such as `target-name-language-ids`. A declaration with missing or contradictory fields is rejected. A syntactically valid fact with no trusted declaration remains readable but unvalidated.
+
+Trust comes from a fresh authenticated Library restore: verify the publisher, lock, manifest and exact inventoried IR/context bytes, then index the public declaration nodes and derive the closure. A matching hash alone establishes byte identity, not publisher authority. A missing provider never falls back to an ambient local file or network lookup. The current `schema-closure.json` in the MCK corpus is an independent expected-results fixture; it is not a production file format or package member.
+
+The first consumer pilot uses an exact provider release from a full lock. A second project's V4.1 document can refer to the Library's predicate through its own context; the command restores the provider afresh before validating those facts:
+
+```sh
+morphir metadata validate-trusted \
+  --ir consumer/ir.json \
+  --provider-release example.com/greeting@1.0.0 \
+  --policy consumer/trust-policy.json \
+  --lock consumer/morphir.lock \
+  --registry local-registry \
+  --state consumer/trust-state \
+  --assurance portable
+```
+
+The result distinguishes validated and preserved-unvalidated assertions. A declared wrong-typed fact fails; a missing release or changed published IR fails before semantic validation. This bounded pilot validates facts in a single-file consumer against one trusted Library's native declarations. `morphir metadata validate --ir` remains a parsing-only inspection command and reports `semanticStatus: "unvalidated"`.
+
 ## Context resources and publication
 
 Context imports are explicit, confined, and finite. A writer can use local relative files or an accepted `morphir://context/sha256/<digest>` resource. It checks the raw byte digest before parsing. The digest proves byte identity, not trust; a resolver must still admit the resource. An unpinned remote URL is not fetched implicitly. Context expansion and its error cases belong to the fixed contract, rather than to generic JSON-LD library behavior.

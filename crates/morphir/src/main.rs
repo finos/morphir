@@ -1077,7 +1077,7 @@ impl AppSession for MorphirSession {
     async fn execute(&mut self) -> AppResult<miette::Report> {
         match &self.command {
             Commands::Decoration { action } => commands::decoration::run(action).map(|()| None),
-            Commands::Metadata { action } => commands::metadata::run(action).map(|()| None),
+            Commands::Metadata { action } => commands::metadata::run(action).await.map(|()| None),
             Commands::Package { action } => commands::package::run(action).await,
             Commands::Eval(args) => commands::eval::run_eval(args.clone()).map(|()| None),
             Commands::Itest(args) => commands::itest::run_itest(args.clone()),

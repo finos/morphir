@@ -75,7 +75,37 @@ cmd metadata display_order=5 subcommand_required=#true arg_required_else_help=#t
         complete ir type=path
         complete schema_closure type=path
     }
-    cmd query display_order=1 args_override_self=#false help="Query expanded facts and their assertion locations" unknown_flags=error {
+    cmd validate-trusted display_order=1 args_override_self=#false help="Validate with declarations from a freshly authenticated Library restore" unknown_flags=error {
+        flag --ir help="Consumer V4.1 single-file IR to validate" required=#true {
+            arg <IR>
+        }
+        flag --provider-release help="Exact provider Library release in the full lock" required=#true {
+            arg <PACKAGE@VERSION>
+        }
+        flag --policy help="Explicit trusted-host policy file" required=#true {
+            arg <POLICY>
+        }
+        flag --lock help="Full package lock; replay never rewrites it" required=#true {
+            arg <LOCK>
+        }
+        flag --registry help="Caller-controlled local registry" required=#true {
+            arg <REGISTRY>
+        }
+        flag --state help="Existing initialized trust-state directory" required=#true {
+            arg <STATE>
+        }
+        flag --assurance help="Accept the local MVP's caller-controlled filesystem roots" required=#true {
+            arg <ASSURANCE> {
+                choices portable
+            }
+        }
+        complete ir type=path
+        complete policy type=path
+        complete lock type=path
+        complete registry type=path
+        complete state type=path
+    }
+    cmd query display_order=2 args_override_self=#false help="Query expanded facts and their assertion locations" unknown_flags=error {
         flag --ir help="A V4.1 single-file JSON, YAML, or Ion document" required=#true {
             arg <IR>
         }
@@ -94,7 +124,7 @@ cmd metadata display_order=5 subcommand_required=#true arg_required_else_help=#t
         complete ir type=path
         complete schema_closure type=path
     }
-    cmd export display_order=2 args_override_self=#false help="Export JSON with inline contexts or an inventory-ready directory" unknown_flags=error {
+    cmd export display_order=3 args_override_self=#false help="Export JSON with inline contexts or an inventory-ready directory" unknown_flags=error {
         flag --ir help="A V4.1 single-file JSON, YAML, or Ion document" required=#true {
             arg <IR>
         }

@@ -7,9 +7,13 @@ use morphir_common::ir_transport::metadata::{
 use morphir_common::ir_transport::{
     CodecOptions, FormatId, IonCodec, IrCodec, IrVersion, JsonCodec, Layout,
 };
+use morphir_core::data_value::DataValueValidator;
 use morphir_core::ir::v4::expand_v4_single_file_graph;
+use morphir_core::metadata::admission::{Admission, NodeTargetKind, PredicateClosure, SubjectRole};
 use morphir_core::metadata::{Carrier, ContextResources, DocumentId, Fact, GraphIndex, ObjectTerm};
-use morphir_core::node_address::{NodeIndex, NodeRoot, NodeUri};
+use morphir_core::node_address::{IndexedNodeKind, NodeIndex, NodeRoot, NodeUri};
+use morphir_package::local_registry::mvp::{self, RestoreRequest};
+use morphir_package::resolution::{PackagePath, ReleaseId, StableVersion};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -32,6 +36,8 @@ pub enum MetadataAction {
         #[command(flatten)]
         input: MetadataInput,
     },
+    /// Validate with declarations from a freshly authenticated Library restore
+    ValidateTrusted(TrustedValidationInput),
     /// Query expanded facts and their assertion locations
     Query {
         #[command(flatten)]
@@ -54,6 +60,31 @@ pub enum MetadataAction {
     },
 }
 
+#[derive(Clone, Args)]
+pub struct TrustedValidationInput {
+    /// Consumer V4.1 single-file IR to validate
+    #[arg(long)]
+    ir: PathBuf,
+    /// Exact provider Library release in the full lock
+    #[arg(long, value_name = "PACKAGE@VERSION", value_parser = parse_release)]
+    provider_release: ReleaseId,
+    /// Explicit trusted-host policy file
+    #[arg(long)]
+    policy: PathBuf,
+    /// Full package lock; replay never rewrites it
+    #[arg(long)]
+    lock: PathBuf,
+    /// Caller-controlled local registry
+    #[arg(long)]
+    registry: PathBuf,
+    /// Existing initialized trust-state directory
+    #[arg(long)]
+    state: PathBuf,
+    /// Accept the local MVP's caller-controlled filesystem roots
+    #[arg(long, value_enum)]
+    assurance: super::package::Assurance,
+}
+
 #[derive(Clone, Copy, ValueEnum)]
 pub enum ContextStorageArg {
     Auto,
@@ -71,7 +102,7 @@ impl From<ContextStorageArg> for ContextStorage {
     }
 }
 
-pub fn run(action: &MetadataAction) -> miette::Result<()> {
+pub async fn run(action: &MetadataAction) -> miette::Result<()> {
     match action {
         MetadataAction::Validate { input } => {
             let graph = load_graph(input)?;
@@ -81,6 +112,7 @@ pub fn run(action: &MetadataAction) -> miette::Result<()> {
                 "assertionCount":graph.assertions().len(),"semanticStatus":"unvalidated"})
             );
         }
+        MetadataAction::ValidateTrusted(input) => validate_trusted(input).await?,
         MetadataAction::Query {
             input,
             subject,
@@ -140,9 +172,171 @@ fn parse_filter(value: &Option<String>) -> miette::Result<Option<NodeUri>> {
         .transpose()
 }
 
+fn parse_release(input: &str) -> Result<ReleaseId, String> {
+    let (package, version) = input
+        .split_once('@')
+        .ok_or_else(|| "expected PACKAGE@VERSION".to_owned())?;
+    Ok(ReleaseId::new(
+        PackagePath::parse(package).map_err(|error| error.to_string())?,
+        StableVersion::parse(version).map_err(|error| error.to_string())?,
+    ))
+}
+
+fn bounded_file(path: &Path, limit: u64) -> miette::Result<Vec<u8>> {
+    let metadata =
+        std::fs::metadata(path).map_err(|error| miette::miette!("{}: {error}", path.display()))?;
+    if !metadata.is_file() || metadata.len() > limit {
+        return Err(miette::miette!(
+            "invalid or oversized input: {}",
+            path.display()
+        ));
+    }
+    std::fs::read(path).map_err(|error| miette::miette!("{}: {error}", path.display()))
+}
+
+fn loaded_file(path: &Path) -> miette::Result<morphir_core::ir::v4::IRFile> {
+    let input = MetadataInput {
+        ir: path.to_path_buf(),
+        schema_closure: None,
+    };
+    let value = inline_input(&input)?;
+    morphir_core::ir::json::read_ir_file(&value.to_string())
+        .map(|(file, _)| file)
+        .map_err(|error| miette::miette!("invalid V4 metadata document: {error}"))
+}
+
+fn subject_role(
+    kind: IndexedNodeKind,
+    uri: &NodeUri,
+    distribution: &morphir_core::ir::v4::Distribution,
+) -> Option<SubjectRole> {
+    let specification = match distribution {
+        morphir_core::ir::v4::Distribution::Specs(_) => true,
+        morphir_core::ir::v4::Distribution::Library(_) => matches!(
+            uri.root(),
+            NodeRoot::Type { owner: morphir_core::node_address::NodeOwner::Dependency(_), .. }
+                | NodeRoot::Value { owner: morphir_core::node_address::NodeOwner::Dependency(_), .. }
+        ),
+        morphir_core::ir::v4::Distribution::Application(_) => false,
+    };
+    match kind {
+        IndexedNodeKind::Package => Some(SubjectRole::Package),
+        IndexedNodeKind::Module => Some(SubjectRole::Module),
+        IndexedNodeKind::TypeDefinition => Some(if specification {
+            SubjectRole::TypeSpecification
+        } else {
+            SubjectRole::TypeDefinition
+        }),
+        IndexedNodeKind::ValueDefinition => Some(if specification {
+            SubjectRole::ValueSpecification
+        } else {
+            SubjectRole::ValueDefinition
+        }),
+        IndexedNodeKind::TypeExpression => Some(SubjectRole::TypeExpression),
+        IndexedNodeKind::ValueExpression => Some(SubjectRole::ValueExpression),
+        IndexedNodeKind::Pattern => Some(SubjectRole::Pattern),
+        _ => None,
+    }
+}
+
+fn target_kind(kind: IndexedNodeKind) -> Option<NodeTargetKind> {
+    match kind {
+        IndexedNodeKind::Package => Some(NodeTargetKind::Package),
+        IndexedNodeKind::Module => Some(NodeTargetKind::Module),
+        IndexedNodeKind::TypeDefinition => Some(NodeTargetKind::Type),
+        IndexedNodeKind::ValueDefinition => Some(NodeTargetKind::Value),
+        _ => None,
+    }
+}
+
+async fn validate_trusted(input: &TrustedValidationInput) -> miette::Result<()> {
+    let super::package::Assurance::Portable = input.assurance;
+    let policy = bounded_file(&input.policy, 1_048_576)?;
+    let lock = bounded_file(&input.lock, 16 * 1_048_576)?;
+    let temporary = tempfile::tempdir().map_err(|error| miette::miette!("{error}"))?;
+    let output = temporary.path().join("libraries");
+    let report = mvp::restore(RestoreRequest {
+        policy: &policy,
+        lock: &lock,
+        registry: &input.registry,
+        state: &input.state,
+        output: &output,
+    })
+    .await
+    .map_err(|error| miette::miette!("provider restore: {error}"))?;
+    let package = report
+        .packages
+        .iter()
+        .find(|package| package.release == input.provider_release)
+        .ok_or_else(|| miette::miette!("provider release is absent from the verified lock"))?;
+    let provider = loaded_file(&output.join(&package.directory).join("ir.json"))?;
+    let closure = PredicateClosure::from_v4_provider(&provider, &ContextResources::new("contexts"))
+        .map_err(|error| miette::miette!("provider declarations: {error}"))?;
+    let validator = DataValueValidator::v4(&provider.distribution)
+        .map_err(|error| miette::miette!("provider data types: {error}"))?;
+    let provider_index =
+        NodeIndex::v4_file(&provider).map_err(|error| miette::miette!("{error}"))?;
+    let consumer = loaded_file(&input.ir)?;
+    let consumer_index =
+        NodeIndex::v4_file(&consumer).map_err(|error| miette::miette!("{error}"))?;
+    let owner = consumer_index
+        .address_for(&NodeRoot::Distribution, &[])
+        .map_err(|error| miette::miette!("{error}"))?;
+    let graph = expand_v4_single_file_graph(
+        &consumer,
+        &DocumentId::new(owner.to_string()).map_err(|error| miette::miette!("{error}"))?,
+        &ContextResources::new("contexts"),
+        |predicate| closure.json_datatype(predicate),
+    )
+    .map_err(|error| miette::miette!("consumer facts: {error}"))?;
+    let mut validated = 0usize;
+    let mut unvalidated = 0usize;
+    for assertion in graph.assertions() {
+        let fact = assertion.key().fact();
+        let Some(role) = consumer_index
+            .resolve(fact.subject())
+            .ok()
+            .and_then(|kind| subject_role(kind, fact.subject(), &consumer.distribution))
+        else {
+            unvalidated += 1;
+            continue;
+        };
+        let target = match fact.object() {
+            ObjectTerm::NodeRef(uri) => consumer_index
+                .resolve(uri)
+                .or_else(|_| provider_index.resolve(uri))
+                .ok()
+                .and_then(target_kind),
+            ObjectTerm::Value(_) => None,
+        };
+        match closure
+            .admit(
+                fact,
+                role,
+                assertion.key().carrier(),
+                &validator,
+                &[],
+                target,
+            )
+            .map_err(|error| miette::miette!("fact {}: {error}", fact.predicate()))?
+        {
+            Admission::Validated => validated += 1,
+            Admission::PreservedUnvalidated(_) => unvalidated += 1,
+        }
+    }
+    println!(
+        "{}",
+        json!({"status":"parsed","factCount":graph.facts().len(),
+            "assertionCount":graph.assertions().len(),"validatedAssertionCount":validated,
+            "unvalidatedAssertionCount":unvalidated,
+            "semanticStatus": if validated > 0 && unvalidated == 0 {"validated"}
+                else if validated > 0 {"partiallyValidated"} else {"unvalidated"}})
+    );
+    Ok(())
+}
+
 fn read_value(path: &Path) -> miette::Result<Value> {
-    let bytes =
-        std::fs::read(path).map_err(|error| miette::miette!("{}: {error}", path.display()))?;
+    let bytes = bounded_file(path, 64 * 1_048_576)?;
     let text = std::str::from_utf8(&bytes)
         .map_err(|error| miette::miette!("{}: {error}", path.display()))?;
     match path.extension().and_then(|value| value.to_str()) {

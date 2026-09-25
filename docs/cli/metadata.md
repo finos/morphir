@@ -10,3 +10,4 @@ Inspect and export proposed V4 linked metadata
 - [`morphir metadata export <FLAGS>`](metadata/export.md)
 - [`morphir metadata query <FLAGS>`](metadata/query.md)
 - [`morphir metadata validate <--ir <IR>> [--schema-closure <SCHEMA_CLOSURE>]`](metadata/validate.md)
+- [`morphir metadata validate-trusted <FLAGS>`](metadata/validate-trusted.md)

@@ -73,10 +73,16 @@ fn create_and_sign_library_with_inventoried_metadata_context() {
     std::fs::create_dir_all(source.join("contexts")).unwrap();
     let context = br#"{"@context":{"operationalName":"morphir://ir/pkg/example/greeting?format=4.1.0#/module/greeting/value/operational-name"}}"#;
     std::fs::write(source.join("contexts/names.jsonld"), context).unwrap();
-    let ir = json!({"formatVersion":"4.1.0","distribution":{"Library":{"packageName":"example/greeting","dependencies":{},"def":{"modules":{"greeting":{"Public":{"types":{},"values":{}}}}}}},
-    "$meta":{"@context":"./contexts/names.jsonld","@graph":[{
-        "@id":"morphir://ir/pkg/example/greeting?format=4.1.0#/module/greeting",
-        "operationalName":"sayHello"
+    let predicate =
+        "morphir://ir/pkg/example/greeting?format=4.1.0#/module/greeting/value/operational-name";
+    let ir = json!({"formatVersion":"4.1.0","distribution":{"Library":{"packageName":"example/greeting","dependencies":{},"def":{"modules":{"greeting":{"Public":{"types":{},"values":{
+        "operational-name":{"Public":{"ExpressionBody":{"inputTypes":{},
+            "outputType":"morphir/SDK:string#string",
+            "body":{"Literal":{"StringLiteral":"sayHello"}}}}}
+    }}}}}}},
+    "$meta":{"@context":["./contexts/names.jsonld", {"@vocab":"morphir://ir/pkg/morphir/metadata?format=4.1.0#/module/schema/value/"}],"@graph":[{
+        "@id":predicate,
+        "subject-role":"ValueSpecification","object-form":"data","interpreter":"descriptive"
     }]}});
     std::fs::write(source.join("ir.json"), serde_json::to_vec(&ir).unwrap()).unwrap();
     let input = workspace.path().join("authoring.json");
@@ -292,15 +298,92 @@ fn create_and_sign_library_with_inventoried_metadata_context() {
             std::fs::read(installed.join("contexts/names.jsonld")).unwrap(),
             context
         );
-        let queried = run(&[
+        let consumer = workspace.path().join("consumer-ir.json");
+        let dependency_value = "morphir://ir/pkg/example/consumer?format=4.1.0#/dependency/example%2Fdependency/module/api/value/read";
+        let consumer_bytes = serde_json::to_vec(&json!({
+            "formatVersion":"4.1.0",
+            "distribution":{"Library":{"packageName":"example/consumer","dependencies":{
+                "example/dependency":{"modules":{"api":{"types":{},"values":{"read":{
+                    "annotations":{"facts":{"operationalName":"sayHello"}},
+                    "output":"morphir/SDK:string#string"
+                }}}}}
+            },
+                "def":{"modules":{"app":{"Public":{"types":{},"values":{}}}}}}},
+            "$meta":{"@context":{"operationalName":predicate},"@graph":[{
+                "@id":dependency_value,
+                "operationalName":"sayHello"
+            }]}
+        }))
+        .unwrap();
+        std::fs::write(&consumer, &consumer_bytes).unwrap();
+        let trusted_args = [
             "metadata",
-            "query",
+            "validate-trusted",
             "--ir",
-            installed.join("ir.json").to_str().unwrap(),
-        ]);
-        let result: serde_json::Value = serde_json::from_slice(&queried.stdout).unwrap();
-        assert_eq!(result["facts"][0]["object"]["@value"], "sayHello");
-        assert_eq!(result["semanticStatus"], "unvalidated");
+            consumer.to_str().unwrap(),
+            "--provider-release",
+            "example.com/greeting@1.0.0",
+            "--policy",
+            policy_file.to_str().unwrap(),
+            "--lock",
+            lock.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--state",
+            consumer_state.to_str().unwrap(),
+            "--assurance",
+            "portable",
+        ];
+        let validated = run(&trusted_args);
+        let result: serde_json::Value = serde_json::from_slice(&validated.stdout).unwrap();
+        assert_eq!(result["semanticStatus"], "validated");
+        assert_eq!(result["factCount"], 1);
+        assert_eq!(result["assertionCount"], 2);
+        assert_eq!(result["validatedAssertionCount"], 2);
+        assert_eq!(result["unvalidatedAssertionCount"], 0);
+
+        let mut wrong_type: serde_json::Value = serde_json::from_slice(&consumer_bytes).unwrap();
+        wrong_type["$meta"]["@graph"][0]["operationalName"] = json!(42);
+        std::fs::write(&consumer, serde_json::to_vec(&wrong_type).unwrap()).unwrap();
+        let rejected_fact = morphir(workspace.path(), &trusted_args);
+        assert!(!rejected_fact.status.success());
+        assert!(!String::from_utf8_lossy(&rejected_fact.stdout).contains("validated"));
+        std::fs::write(&consumer, &consumer_bytes).unwrap();
+
+        let mut wrong_role: serde_json::Value = serde_json::from_slice(&consumer_bytes).unwrap();
+        wrong_role["distribution"]["Library"]["def"]["modules"]["app"]["Public"]["values"]
+            ["owned"] = json!({"Public":{"ExpressionBody":{
+                "inputTypes":{},"outputType":"morphir/SDK:string#string",
+                "body":{"Literal":{"StringLiteral":"sayHello"}}
+            }}});
+        wrong_role["$meta"]["@graph"][0]["@id"] = json!(
+            "morphir://ir/pkg/example/consumer?format=4.1.0#/module/app/value/owned"
+        );
+        std::fs::write(&consumer, serde_json::to_vec(&wrong_role).unwrap()).unwrap();
+        let rejected_role = morphir(workspace.path(), &trusted_args);
+        assert!(!rejected_role.status.success());
+        assert!(String::from_utf8_lossy(&rejected_role.stderr).contains("subject role"));
+        std::fs::write(&consumer, &consumer_bytes).unwrap();
+
+        let mut missing_provider = trusted_args;
+        missing_provider[5] = "example.com/missing@1.0.0";
+        let rejected_release = morphir(workspace.path(), &missing_provider);
+        assert!(!rejected_release.status.success());
+        assert!(
+            String::from_utf8_lossy(&rejected_release.stderr)
+                .contains("absent from the verified lock")
+        );
+
+        let published_bundle = std::fs::read_dir(registry.join("bundles"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        std::fs::write(published_bundle.join("ir.json"), b"{}").unwrap();
+        let rejected_provider = morphir(workspace.path(), &trusted_args);
+        assert!(!rejected_provider.status.success());
+        assert!(!String::from_utf8_lossy(&rejected_provider.stdout).contains("validated"));
     }
 
     std::fs::write(bundle.join("contexts/names.jsonld"), b"changed").unwrap();
