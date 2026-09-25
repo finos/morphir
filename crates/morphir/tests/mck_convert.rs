@@ -120,6 +120,37 @@ fn check_exits_1_and_names_the_feature_file_after_its_markdown_twins_fence_body_
 }
 
 #[test]
+fn check_exits_1_and_reports_a_missing_twin_when_another_feature_file_still_exists() {
+    let (_work, kit) = temp_checkout();
+    std::fs::remove_file(kit.join("values.feature")).unwrap();
+
+    let output = morphir(&["mck", "convert", "--check", "--kit", kit.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
+    let report = stdout(&output);
+    assert!(
+        report.contains("values.feature: missing; run morphir mck convert"),
+        "{report}"
+    );
+    // Only the missing file is reported; the other seven twins are untouched.
+    assert_eq!(report.lines().count(), 1, "{report}");
+}
+
+/// A Markdown-only kit (no `.feature` files at all) carries no twins yet during the parity
+/// window: a missing twin is drift only once the kit directory already has at least one other
+/// `.feature` file, so this is not drift.
+#[test]
+fn check_exits_0_when_the_kit_carries_no_feature_files_at_all() {
+    let (_work, kit) = temp_checkout();
+    for topic in TOPICS {
+        std::fs::remove_file(kit.join(format!("{topic}.feature"))).unwrap();
+    }
+
+    let output = morphir(&["mck", "convert", "--check", "--kit", kit.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!(stdout(&output), "");
+}
+
+#[test]
 fn convert_without_check_regenerates_the_committed_text_byte_for_byte() {
     let (_work, kit) = temp_checkout();
     for topic in TOPICS {

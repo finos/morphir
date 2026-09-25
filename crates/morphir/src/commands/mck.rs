@@ -315,24 +315,53 @@ fn converted_feature_text(kit: &Kit, md_file: &str) -> Result<String, String> {
     Ok(text)
 }
 
-/// The `.md` files of `kit` whose committed `.feature` twin no longer matches converting their
-/// current cases, as `(feature file, topic)` pairs, in `kit.files` order. A `.feature` file that
-/// is not committed yet is not drift: during the parity window a kit directory need not carry
-/// every twin, and `load_feature_kit` treats an empty set of `.feature` files the same way.
-fn drifted_feature_files(kit: &Kit) -> Result<Vec<(String, String)>, String> {
+/// One `.feature` file that no longer matches converting its `.md` twin's current cases: its
+/// committed text differs (`Changed`, carrying the `.feature` file's repository-relative path),
+/// or it is not committed at all (`Missing`).
+enum Drift {
+    Changed(String),
+    Missing,
+}
+
+/// The drift-check line for one `.feature` file, as both `mck check` and `mck convert --check`
+/// print it.
+fn drift_message(kit: &Kit, drift: &Drift, topic: &str) -> String {
+    match drift {
+        Drift::Changed(file) => {
+            let target = kit.source.display(file);
+            format!("{target}: out of date with {topic}.md; run morphir mck convert")
+        }
+        Drift::Missing => format!("{topic}.feature: missing; run morphir mck convert"),
+    }
+}
+
+/// The `.md` files of `kit` whose `.feature` twin no longer matches converting their current
+/// cases, as `(drift, topic)` pairs, in `kit.files` order. A `.feature` file that is not
+/// committed yet is drift only when `feature_files_present` — the kit directory already carries
+/// at least one other `.feature` file (`!FeatureKit.kit.files.is_empty()`); a Markdown-only kit,
+/// with none at all, carries no twins yet during the parity window and is not drift, so ad hoc
+/// `.md`-only fixture kits stay unaffected.
+fn drifted_feature_files(
+    kit: &Kit,
+    feature_files_present: bool,
+) -> Result<Vec<(Drift, String)>, String> {
     let mut drifted = Vec::new();
     for md_file in &kit.files {
         let feature_file = feature_sibling(md_file);
+        let topic = topic_of(md_file).to_owned();
         let Some(committed) = kit
             .source
             .read(&feature_file)
             .map_err(|error| format!("cannot read {feature_file}: {error}"))?
         else {
+            if feature_files_present {
+                drifted.push((Drift::Missing, topic));
+            }
             continue;
         };
         let expected = converted_feature_text(kit, md_file)?;
         if committed.as_ref() as &[u8] != expected.as_bytes() {
-            drifted.push((feature_file, topic_of(md_file).to_owned()));
+            drifted.push((Drift::Changed(feature_file), topic));
         }
     }
     Ok(drifted)
@@ -352,7 +381,7 @@ pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
                     )));
                 }
             };
-            let drifted = match drifted_feature_files(kit) {
+            let drifted = match drifted_feature_files(kit, !feature.kit.files.is_empty()) {
                 Ok(drifted) => drifted,
                 Err(message) => return finish(Outcome::Error(message)),
             };
@@ -368,7 +397,13 @@ pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
                 let cases: Vec<_> = kit.cases.iter().map(|c| c.id.as_str()).collect();
                 let feature_cases: Vec<_> =
                     feature.kit.cases.iter().map(|c| c.id.as_str()).collect();
-                let drifted_json: Vec<_> = drifted.iter().map(|(file, _)| json!(file)).collect();
+                let drifted_json: Vec<_> = drifted
+                    .iter()
+                    .map(|(drift, topic)| match drift {
+                        Drift::Changed(file) => json!(file),
+                        Drift::Missing => json!(format!("{topic}.feature")),
+                    })
+                    .collect();
                 println!(
                     "{}",
                     to_tab_json(&json!({
@@ -385,9 +420,8 @@ pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
                 for error in kit.errors.iter().chain(&feature.kit.errors) {
                     eprintln!("{}:{}: {}", error.file, error.line, error.message);
                 }
-                for (file, topic) in &drifted {
-                    let target = kit.source.display(file);
-                    eprintln!("{target}: out of date with {topic}.md; run morphir mck convert");
+                for (drift, topic) in &drifted {
+                    eprintln!("{}", drift_message(kit, drift, topic));
                 }
                 if kit.metadata_reference_cases > 0 {
                     print!(
@@ -434,12 +468,20 @@ pub fn run_mck_convert(args: MckConvertArgs) -> AppResult<miette::Report> {
         )));
     }
     let outcome = if args.check {
-        match drifted_feature_files(&kit) {
+        let feature = match load_feature_kit(kit.source.clone()) {
+            Ok(feature) => feature,
+            Err(error) => {
+                return finish(Outcome::Error(format!(
+                    "cannot read kit {}: {error}",
+                    args.kit.display()
+                )));
+            }
+        };
+        match drifted_feature_files(&kit, !feature.kit.files.is_empty()) {
             Ok(drifted) if drifted.is_empty() => Outcome::Passed,
             Ok(drifted) => {
-                for (file, topic) in &drifted {
-                    let target = kit.source.display(file);
-                    println!("{target}: out of date with {topic}.md; run morphir mck convert");
+                for (drift, topic) in &drifted {
+                    println!("{}", drift_message(&kit, drift, topic));
                 }
                 Outcome::Failed
             }

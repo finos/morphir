@@ -166,7 +166,6 @@ description = "Check MCK cases, schemas, protocol examples and IR fences with th
 depends = ["mck:vocabulary-check"]
 run = [
     "cargo run --locked -p morphir -- mck check spec/ir/mck",
-    "cargo run --locked -p morphir -- mck convert --check --kit spec/ir/mck",
     "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck",
 ]
 
