@@ -130,18 +130,20 @@ fn process_bundle_refuses_describe_disagreement() {
 }
 
 #[test]
-#[ignore = "requires MORPHIR_SCALA_ELM_EXTENSION_BIN pointing at the real 0.5.0-M09 executable"]
+#[ignore = "requires MORPHIR_SCALA_ELM_EXTENSION_BIN and MORPHIR_SCALA_ELM_EXTENSION_VERSION for a real executable"]
 fn real_published_morphir_scala_elm_resolves_host() {
     let executable = std::env::var_os("MORPHIR_SCALA_ELM_EXTENSION_BIN")
         .map(PathBuf::from)
         .expect("set MORPHIR_SCALA_ELM_EXTENSION_BIN");
+    let version = std::env::var("MORPHIR_SCALA_ELM_EXTENSION_VERSION")
+        .expect("set MORPHIR_SCALA_ELM_EXTENSION_VERSION to the executable's version");
     let temp = TempDir::new().unwrap();
     let bundle = process_bundle::from_executable(
         &temp.path().join("scratch"),
         &executable,
         "morphir-scala-elm",
         "scala-elm",
-        "0.5.0-M09",
+        &version,
     );
     let descriptor: Value =
         serde_json::from_slice(&std::fs::read(bundle.join("release.json")).unwrap()).unwrap();
@@ -152,7 +154,7 @@ fn real_published_morphir_scala_elm_resolves_host() {
     let selected = index
         .resolve(
             &ExtensionId::parse("morphir-scala-elm").unwrap(),
-            Selection::Exact("0.5.0-M09".parse().unwrap()),
+            Selection::Exact(version.parse().unwrap()),
             &Platform::current(),
             &env!("CARGO_PKG_VERSION").parse().unwrap(),
         )

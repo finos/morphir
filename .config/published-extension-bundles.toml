@@ -42,7 +42,7 @@ executable = "morphir-elm-extension"
 
 [executables.scala-elm]
 repository = "finos/morphir-scala"
-tag = "v0.5.0-M09"
-asset = "morphir-scala-elm-linux-amd64-0.5.0-M09"
-sha256 = "bada31034ee96602505eca7390bfbf3cd92759391e7cdb16c2e860dcb9758ecc"
+tag = "v0.5.0-M10"
+asset = "morphir-scala-elm-linux-amd64-0.5.0-M10"
+sha256 = "66b53047e7eecab07a8c6999b25e4913032f99a10ecad0c6b762a18e5a98764f"
 executable = "morphir-scala-elm"
