@@ -204,12 +204,20 @@ fn itest_rejects_two_scenario_documents_in_one_directory() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("multiple scenario documents"));
 }
 
+/// A `scenarios.md` document with one section whose Rego policy rejects an unknown CLI option
+/// with exit code 2, tagged `area:cli` and `kind:negative` as the removed notebook fixture was.
+const REJECT_UNKNOWN_OPTION: &str = "---\nversion: 1\ntitle: Invalid CLI option\ndescription: The actual CLI rejects an unknown option with exit code 2.\ntags: [area:cli, kind:negative]\nprovider: rego\n---\n## Reject\n```yaml morphir:command\nid: command\nname: Reject unknown option\ntimeout_seconds: 10\n```\n```sh\nmorphir --not-a-real-option\n```\n```yaml morphir:assertion\nid: assert\ncommand: command\nentrypoints: [data.cli_test.test_exit]\n```\n```rego\npackage cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 2 }\n```\n";
+
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_lists_filters_and_drives_real_cli_commands() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("cli/errors");
-    write_scenario(&example, &scenario());
+    fs::create_dir_all(&example).unwrap();
+    fs::write(example.join("scenarios.md"), REJECT_UNKNOWN_OPTION).unwrap();
     for args in [
         vec!["--list", "--tag", "area:cli"],
         vec!["--filter", "cli", "--tag", "kind:negative"],
@@ -222,7 +230,18 @@ fn itest_lists_filters_and_drives_real_cli_commands() {
         );
         assert!(String::from_utf8_lossy(&output.stdout).contains("cli/errors"));
     }
-    assert!(!run(temp.path(), &["--tag", "missing"]).status.success());
+    // A tag no scenario has selects nothing; it does not fail the run.
+    let output = run(temp.path(), &["--tag", "missing"]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stdout).contains("0 passed; 0 failed; 1 not selected"),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
     assert!(!example.join(".morphir").exists());
 }
 
@@ -349,26 +368,25 @@ fn itest_fails_on_wrong_undefined_or_invalid_assertions_and_reports_case() {
     }
 }
 
+/// A `scenarios.md` document with an inline workspace: its only input is the overlay
+/// `.morphir/morphir.toml` file, so neither the example directory's own `morphir.toml` nor the
+/// caller's configuration can reach the command it runs.
+const INLINE_CONFIG: &str = "---\nversion: 1\ntitle: Isolated config\ndescription: An inline workspace ignores neighboring disk files and the caller's configuration.\ntags: [area:cli]\nprovider: rego\nworkspace: {kind: inline}\n---\n## Show config\n```yaml morphir:file\nid: config\npath: .morphir/morphir.toml\n```\n```toml\n[project]\nname = 'isolated'\nversion = '1.0.0'\nsource_directory = 'src'\n```\n```yaml morphir:command\nid: command\nname: Show config\ntimeout_seconds: 10\n```\n```sh\nmorphir config show --json\n```\n```yaml morphir:assertion\nid: assert\ncommand: command\nentrypoints: [data.cli_test.test_exit]\n```\n```rego\npackage cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 0 }\n```\n";
+
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
-fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
+fn itest_ignores_callers_configuration_with_an_inline_workspace() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("suite");
     let config = temp.path().join("user-config/morphir");
     fs::create_dir_all(&config).unwrap();
     fs::write(config.join("morphir.toml"), "invalid TOML {{{").unwrap();
-    let mut notebook = scenario();
-    notebook["metadata"]["morphir"]["itest"]["workspace"] = json!({"kind":"notebook"});
-    notebook["cells"][1]["source"] = json!("morphir config show --json");
-    notebook["cells"][2]["source"] =
-        json!("package cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 0 }");
-    notebook["cells"].as_array_mut().unwrap().push(code(
-        "config",
-        "[project]\nname = 'isolated'\nversion = '1.0.0'\nsource_directory = 'src'\n",
-        json!({"file":{"path":".morphir/morphir.toml","language":"toml"}}),
-    ));
-    write_scenario(&example, &notebook);
-    // Notebook-only mode deliberately excludes neighboring project files.
+    fs::create_dir_all(&example).unwrap();
+    fs::write(example.join("scenarios.md"), INLINE_CONFIG).unwrap();
+    // An inline workspace deliberately excludes neighboring project files.
     fs::write(example.join("morphir.toml"), "invalid TOML {{{").unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
         .arg("itest")
@@ -386,9 +404,17 @@ fn itest_ignores_callers_configuration_and_materializes_notebook_files() {
     );
 }
 
+/// A `scenarios.md` document that compiles a disk Elm file and combines it with the section's own
+/// `morphir:file` overlay, with `__WORKSPACE__` standing for an optional `workspace:` frontmatter
+/// line.
+const DISK_WORKSPACE_WITH_OVERLAY: &str = "---\nversion: 1\ntitle: Compile disk source with an overlay file\ndescription: A disk workspace combines with its section's own overlay file.\ntags: [suite:offline]\nprovider: rego\n__WORKSPACE__---\n## Compile\n```yaml morphir:file\nid: extra\npath: extra.txt\n```\n```text\nnotebook addition\n```\n```yaml morphir:command\nid: compile\nname: Compile disk source with an overlay file\ntimeout_seconds: 30\ncaptures:\n  - {name: ir, path: installed/morphir-ir.json, format: json}\n  - {name: extra, path: extra.txt, format: text}\n  - {name: binary, path: binary.dat, format: exists}\n```\n```sh\nmorphir compile --input Example.elm --extension morphir-elm-native --package-name examples/disk --output installed --json\n```\n```yaml morphir:assertion\nid: compiled\ncommand: compile\nentrypoints: [data.disk_test.ok]\n```\n```rego\npackage disk_test\nimport rego.v1\nok if {\n    input.exitCode == 0\n    input.artifacts.ir.value.formatVersion == 3\n    input.artifacts.extra.value == \"notebook addition\\n\"\n    input.artifacts.binary.kind == \"file\"\n}\n```\n";
+
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
-fn itest_copies_disk_workspaces_and_combines_optional_notebook_files() {
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
+fn itest_copies_disk_workspaces_and_combines_overlay_files() {
     for workspace in [None, Some("project")] {
         let temp = tempfile::tempdir().unwrap();
         let project = workspace.map_or_else(|| temp.path().to_owned(), |p| temp.path().join(p));
@@ -396,32 +422,16 @@ fn itest_copies_disk_workspaces_and_combines_optional_notebook_files() {
         let source = "module Example exposing (Amount)\n\ntype alias Amount = Int\n";
         fs::write(project.join("Example.elm"), source).unwrap();
         fs::write(project.join("binary.dat"), [0, 255, 1]).unwrap();
-        let mut notebook = scenario();
-        if let Some(path) = workspace {
-            notebook["metadata"]["morphir"]["itest"]["workspace"] =
-                json!({"kind":"directory","path":path});
-            // Only the selected directory is a workspace input.
-            fs::write(temp.path().join("morphir.toml"), "invalid TOML {{{").unwrap();
-        }
-        notebook["cells"][1]["source"] = json!(
-            "morphir compile --input Example.elm --extension morphir-elm-native --package-name examples/disk --output installed --json"
-        );
-        notebook["cells"][1]["metadata"]["morphir"]["itest"]["name"] =
-            json!("Compile disk source with notebook additions");
-        notebook["cells"][1]["metadata"]["morphir"]["itest"]["captures"] = json!([
-            {"name":"ir","path":"installed/morphir-ir.json","format":"json"},
-            {"name":"extra","path":"extra.txt","format":"text"},
-            {"name":"binary","path":"binary.dat","format":"exists"}
-        ]);
-        notebook["cells"][2]["source"] = json!(
-            "package cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 0; input.artifacts.ir.value.formatVersion == 3; input.artifacts.extra.value == \"notebook addition\"; input.artifacts.binary.kind == \"file\" }"
-        );
-        notebook["cells"].as_array_mut().unwrap().push(code(
-            "extra",
-            "notebook addition",
-            json!({"file":{"path":"extra.txt","language":"text"}}),
-        ));
-        write_scenario(temp.path(), &notebook);
+        let workspace_line = match workspace {
+            Some(path) => {
+                // Only the selected directory is a workspace input.
+                fs::write(temp.path().join("morphir.toml"), "invalid TOML {{{").unwrap();
+                format!("workspace: {{kind: directory, path: {path}}}\n")
+            }
+            None => String::new(),
+        };
+        let text = DISK_WORKSPACE_WITH_OVERLAY.replace("__WORKSPACE__", &workspace_line);
+        fs::write(temp.path().join("scenarios.md"), text).unwrap();
         let output = run(temp.path(), &[]);
         assert!(
             output.status.success(),
@@ -439,18 +449,17 @@ fn itest_copies_disk_workspaces_and_combines_optional_notebook_files() {
     }
 }
 
+/// A `scenarios.md` document with a `morphir:file` overlay at `__PATH__`, in a directory
+/// workspace (the default), that never runs its command: materialization fails first whenever the
+/// overlay path collides with a disk file.
+const OVERLAY_AT_PATH: &str = "---\nversion: 1\ntitle: Overlay collision\ndescription: An overlay file must not collide with a disk file.\ntags: [area:files]\nprovider: rego\n---\n## Reject\n```yaml morphir:file\nid: extra\npath: __PATH__\n```\n```text\nnotebook contents\n```\n```yaml morphir:command\nid: command\nname: Reject unknown option\ntimeout_seconds: 10\n```\n```sh\nmorphir --not-a-real-option\n```\n```yaml morphir:assertion\nid: assert\ncommand: command\nentrypoints: [data.cli_test.test_exit]\n```\n```rego\npackage cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 2 }\n```\n";
+
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
-fn itest_rejects_collisions_between_disk_and_notebook_files() {
+fn itest_rejects_collisions_between_disk_and_overlay_files() {
     for path in ["extra.txt", "EXTRA.txt", "extra.txt/nested"] {
         let temp = tempfile::tempdir().unwrap();
-        let mut notebook = scenario();
-        notebook["cells"].as_array_mut().unwrap().push(code(
-            "extra",
-            "notebook contents",
-            json!({"file":{"path":path,"language":"text"}}),
-        ));
-        write_scenario(temp.path(), &notebook);
+        let text = OVERLAY_AT_PATH.replace("__PATH__", path);
+        fs::write(temp.path().join("scenarios.md"), text).unwrap();
         fs::write(temp.path().join("extra.txt"), "disk contents").unwrap();
         let output = run(temp.path(), &[]);
         assert!(!output.status.success(), "accepted conflicting {path}");
@@ -467,13 +476,13 @@ fn itest_rejects_collisions_between_disk_and_notebook_files() {
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_rejects_configuration_above_the_temporary_workspace() {
     let temp = tempfile::tempdir().unwrap();
     let temporary_root = temp.path().join("tmp");
     fs::create_dir_all(&temporary_root).unwrap();
     let suite = temp.path().join("suite");
-    write_scenario(&suite, &scenario());
+    fs::create_dir_all(&suite).unwrap();
+    fs::write(suite.join("scenarios.md"), VERSION_MD).unwrap();
     // An ancestor can supply a project or enclosing workspace even though the
     // scenario's own home and output directory have been isolated.
     fs::write(
@@ -488,6 +497,7 @@ fn itest_rejects_configuration_above_the_temporary_workspace() {
         .env("TEMP", &temporary_root)
         .env("TMP", &temporary_root)
         .env("MORPHIR_HOME", temp.path().join("outer-home"))
+        .env("MORPHIR_BDD_OUT", temp.path().join("reports"))
         .env("MORPHIR_LOG_FILE", "false")
         .output()
         .unwrap();
@@ -502,23 +512,6 @@ fn itest_rejects_configuration_above_the_temporary_workspace() {
     );
 }
 
-fn golden_notebook(source: &str, options: Value) -> Value {
-    let mut notebook = scenario();
-    notebook["cells"] = json!([
-        code(
-            "run",
-            "morphir --version",
-            json!({"itest": {"kind":"command", "name":"Observe files", "timeout_seconds":10}})
-        ),
-        code("golden", source, json!({"itest":options}))
-    ]);
-    notebook
-}
-
-fn golden_options() -> Value {
-    json!({"kind":"golden", "command":"run", "actual":"actual.txt"})
-}
-
 fn assert_golden_output(output: &std::process::Output, success: bool, diagnostic: &str) {
     let text = format!(
         "{}\n{}",
@@ -530,52 +523,66 @@ fn assert_golden_output(output: &std::process::Output, success: bool, diagnostic
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
-fn itest_golden_notebook_whole_file_lines_and_markers() {
-    for (actual, expected, selection) in [
-        ("héllo\nworld\n", "héllo\nworld\n", json!({"kind":"all"})),
+fn itest_golden_whole_file_lines_and_markers() {
+    for (actual, expected, select) in [
+        ("héllo\nworld\n", "héllo\nworld\n", "select: {kind: all}\n"),
         (
             "ignored\nhéllo\nworld",
             "héllo\nworld",
-            json!({"kind":"lines","start":2,"end":3}),
+            "select: {kind: lines, start: 2, end: 3}\n",
         ),
         (
             "ignored<start>héllo\nworld<end>ignored",
             "héllo\nworld",
-            json!({"kind":"between","start":"<start>","end":"<end>"}),
+            "select: {kind: between, start: \"<start>\", end: \"<end>\"}\n",
         ),
-        ("", "", json!({"kind":"all"})),
+        ("", "", "select: {kind: all}\n"),
     ] {
         let root = tempfile::tempdir().unwrap();
-        let mut options = golden_options();
-        options["select"] = selection;
-        write_scenario(root.path(), &golden_notebook(expected, options));
         fs::write(root.path().join("actual.txt"), actual).unwrap();
+        // `expected.txt` on disk, not an inline fence, so a selection with no trailing newline
+        // (the `lines` and `between` cases above) is exact.
+        fs::write(root.path().join("expected.txt"), expected).unwrap();
+        let golden = format!("actual: actual.txt\nexpected_file: expected.txt\n{select}");
+        fs::write(
+            root.path().join("scenarios.md"),
+            golden_md("morphir --version", &golden, None),
+        )
+        .unwrap();
         assert_golden_output(&run(root.path(), &[]), true, "1 passed");
     }
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_expected_file_and_explicit_line_endings() {
     let root = tempfile::tempdir().unwrap();
     fs::write(root.path().join("actual.txt"), "héllo\r\nworld\r\n").unwrap();
     fs::write(root.path().join("expected.txt"), "héllo\nworld\n").unwrap();
-    let mut options = golden_options();
-    options["expected_file"] = json!("expected.txt");
-    write_scenario(root.path(), &golden_notebook("", options.clone()));
+    let golden = "actual: actual.txt\nexpected_file: expected.txt\n";
+    fs::write(
+        root.path().join("scenarios.md"),
+        golden_md("morphir --version", golden, None),
+    )
+    .unwrap();
     assert_golden_output(&run(root.path(), &[]), false, "golden mismatch");
-    options["line_endings"] = json!("lf");
-    write_scenario(root.path(), &golden_notebook("", options));
+    let golden = "actual: actual.txt\nexpected_file: expected.txt\nline_endings: lf\n";
+    fs::write(
+        root.path().join("scenarios.md"),
+        golden_md("morphir --version", golden, None),
+    )
+    .unwrap();
     assert_golden_output(&run(root.path(), &[]), true, "1 passed");
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_mismatch_has_diff_and_final_newline_is_significant() {
     let root = tempfile::tempdir().unwrap();
     fs::write(root.path().join("actual.txt"), "wrong\n").unwrap();
-    write_scenario(root.path(), &golden_notebook("right\n", golden_options()));
+    fs::write(
+        root.path().join("scenarios.md"),
+        golden_md("morphir --version", "actual: actual.txt\n", Some("right\n")),
+    )
+    .unwrap();
     let output = run(root.path(), &[]);
     for diagnostic in ["golden mismatch", "actual.txt", "-right", "+wrong"] {
         assert_golden_output(&output, false, diagnostic);
@@ -585,38 +592,42 @@ fn itest_golden_mismatch_has_diff_and_final_newline_is_significant() {
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_invalid_or_missing_inputs_fail() {
-    for (options, actual, diagnostic) in [
+    // Every golden metadata fence needs a following source fence, so a case with no
+    // `expected_file` supplies an empty inline one.
+    for (golden, body, actual, diagnostic) in [
         (
-            json!({"select":{"kind":"lines","start":0,"end":1}}),
+            "actual: actual.txt\nselect: {kind: lines, start: 0, end: 1}\n",
+            Some(""),
             Some("a\n"),
             "line",
         ),
         (
-            json!({"select":{"kind":"lines","start":2,"end":3}}),
+            "actual: actual.txt\nselect: {kind: lines, start: 2, end: 3}\n",
+            Some(""),
             Some("a\n"),
             "line",
         ),
         (
-            json!({"select":{"kind":"between","start":"[","end":"]"}}),
+            "actual: actual.txt\nselect: {kind: between, start: \"[\", end: \"]\"}\n",
+            Some(""),
             Some("[a][b]"),
             "marker",
         ),
         (
-            json!({"expected_file":"missing.txt"}),
+            "actual: actual.txt\nexpected_file: missing.txt\n",
+            None,
             Some("a"),
             "missing.txt",
         ),
-        (json!({}), None, "actual.txt"),
+        ("actual: actual.txt\n", Some(""), None, "actual.txt"),
     ] {
         let root = tempfile::tempdir().unwrap();
-        let mut metadata = golden_options();
-        metadata
-            .as_object_mut()
-            .unwrap()
-            .extend(options.as_object().unwrap().clone());
-        write_scenario(root.path(), &golden_notebook("", metadata));
+        fs::write(
+            root.path().join("scenarios.md"),
+            golden_md("morphir --version", golden, body),
+        )
+        .unwrap();
         if let Some(actual) = actual {
             fs::write(root.path().join("actual.txt"), actual).unwrap();
         }
@@ -721,32 +732,40 @@ fn itest_golden_cannot_mask_a_failed_command() {
     );
 }
 
+/// A `scenarios.md` document with one golden check whose metadata is `__GOLDEN__` (after `id`) and
+/// whose inline source fence is `__SOURCE__`, checked with `--list` alone, before any command
+/// would run.
+const GOLDEN_METADATA: &str = "---\nversion: 1\ntitle: Golden metadata\ndescription: Golden metadata is checked before any command runs.\ntags: [suite:offline]\nprovider: rego\n---\n## Check\n```yaml morphir:command\nid: run\nname: Observe files\ntimeout_seconds: 10\n```\n```sh\nmorphir --version\n```\n```yaml morphir:golden\nid: golden\n__GOLDEN__```\n```text\n__SOURCE__```\n";
+
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_rejects_invalid_metadata_before_execution() {
-    for (extra, source, diagnostic) in [
-        (json!({"actual":"../outside.txt"}), "", "path"),
-        (json!({"expected_file":"../outside.txt"}), "", "path"),
+    for (golden, source, diagnostic) in [
+        ("command: run\nactual: ../outside.txt\n", "", "path"),
         (
-            json!({"expected_file":"expected.txt"}),
-            "inline",
-            "cannot combine",
-        ),
-        (json!({"command":"later"}), "", "forward command"),
-        (
-            json!({"select":{"kind":"all","unexpected":true}}),
+            "command: run\nactual: actual.txt\nexpected_file: ../outside.txt\n",
             "",
-            "unknown field",
+            "path",
         ),
-        (json!({"line_endings":"trim"}), "", "unknown variant"),
+        // The CLI's error report can wrap a long line, so the diagnostic is the referenced
+        // command id, not the surrounding prose (`itest_refuses_a_notebook_scenario_and_names_the_conversion`
+        // below strips that wrapping the same way for a longer message).
+        ("command: later\nactual: actual.txt\n", "", "\"later\""),
+        (
+            "command: run\nactual: actual.txt\nselect: {kind: all, unexpected: true}\n",
+            "",
+            "`unexpected`",
+        ),
+        (
+            "command: run\nactual: actual.txt\nline_endings: trim\n",
+            "",
+            "`trim`",
+        ),
     ] {
         let root = tempfile::tempdir().unwrap();
-        let mut options = golden_options();
-        options
-            .as_object_mut()
-            .unwrap()
-            .extend(extra.as_object().unwrap().clone());
-        write_scenario(root.path(), &golden_notebook(source, options));
+        let text = GOLDEN_METADATA
+            .replace("__GOLDEN__", golden)
+            .replace("__SOURCE__", source);
+        fs::write(root.path().join("scenarios.md"), text).unwrap();
         assert_golden_output(&run(root.path(), &["--list"]), false, diagnostic);
     }
 }
@@ -821,14 +840,8 @@ fn itest_golden_freezes_expected_files_before_cli_commands() {
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
-fn itest_golden_rejects_null_expected_file_in_both_formats() {
+fn itest_golden_rejects_a_null_expected_file() {
     let root = tempfile::tempdir().unwrap();
-    let mut options = golden_options();
-    options["expected_file"] = Value::Null;
-    write_scenario(root.path(), &golden_notebook("", options));
-    assert_golden_output(&run(root.path(), &["--list"]), false, "expected a string");
-    fs::remove_file(root.path().join("scenario.ipynb")).unwrap();
     fs::write(
         root.path().join("scenarios.md"),
         r#"---

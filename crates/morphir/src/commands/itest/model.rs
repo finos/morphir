@@ -345,3 +345,100 @@ pub fn relative_path(value: &str) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::markdown::Cell;
+    use super::*;
+
+    /// A Windows-reserved device name, in any component, is refused whatever its case or a
+    /// following extension.
+    #[test]
+    fn relative_path_rejects_windows_reserved_device_names() {
+        for path in [
+            "CON",
+            "con.txt",
+            "src/CONIN$",
+            "conout$",
+            "aux",
+            "PRN.log",
+            "nul",
+            "src/Lpt9.txt",
+            "COM1",
+            "com9.txt",
+        ] {
+            assert!(relative_path(path).is_err(), "accepted {path:?}");
+        }
+        // A prefix match alone is not a device name.
+        assert!(relative_path("LPT10").is_ok());
+        assert!(relative_path("console").is_ok());
+    }
+
+    /// A component that ends with `.` or a space, or holds a control character, is not portable
+    /// to Windows.
+    #[test]
+    fn relative_path_rejects_trailing_dot_or_space_and_control_characters() {
+        for path in ["src/name.", "src/name ", "src/a\nb", "src/a\tb", "a\u{7}b"] {
+            assert!(relative_path(path).is_err(), "accepted {path:?}");
+        }
+    }
+
+    /// `expected_file` and a non-empty inline source cannot both hold a golden check's
+    /// expectation. Neither `scenarios.md` (whose reader drops any source fence once
+    /// `expected_file` is set) nor a `.feature` step (whose two golden step texts are mutually
+    /// exclusive) can author this combination, so this constructs the section directly.
+    #[test]
+    fn golden_role_rejects_combining_expected_file_and_inline_source() {
+        let metadata = serde_json::json!({
+            "title": "Golden metadata",
+            "description": "Golden metadata is checked before any command runs.",
+            "tags": ["suite:offline"],
+            "provider": "rego",
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+        let section = ParsedSection {
+            id: "check".into(),
+            title: "Check".into(),
+            line: 1,
+            metadata,
+            cells: vec![
+                Cell {
+                    id: "run".into(),
+                    role: CellRole::Command,
+                    metadata: serde_json::json!({
+                        "kind": "command",
+                        "name": "Observe files",
+                        "timeout_seconds": 10,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+                    source: "morphir --version".into(),
+                    line: 2,
+                },
+                Cell {
+                    id: "golden".into(),
+                    role: CellRole::Golden,
+                    metadata: serde_json::json!({
+                        "kind": "golden",
+                        "command": "run",
+                        "actual": "actual.txt",
+                        "expected_file": "expected.txt",
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+                    source: "inline\n".into(),
+                    line: 3,
+                },
+            ],
+        };
+        let error = parse(&section).unwrap_err();
+        assert!(
+            format!("{error:#}").contains("cannot combine expected_file and inline source"),
+            "{error:#}"
+        );
+    }
+}

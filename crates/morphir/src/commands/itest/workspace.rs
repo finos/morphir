@@ -112,6 +112,66 @@ fn copy_inputs((files, directories): Inputs, destination: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
+mod overlay_tests {
+    use super::{Workspace, materialize_example};
+    use std::fs;
+
+    /// An inline `morphir:file` overlay never replaces a file the destination already has, even
+    /// when a directory workspace contributed nothing (an inline workspace copies no disk
+    /// inputs).
+    #[test]
+    fn refuses_to_overwrite_an_existing_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().join("example");
+        fs::create_dir_all(&directory).unwrap();
+        let destination = temp.path().join("workspace");
+        fs::create_dir_all(&destination).unwrap();
+        fs::write(destination.join("extra.txt"), "already here").unwrap();
+        let error = materialize_example(
+            &directory,
+            &Workspace::Inline {},
+            [("extra.txt", "overlay contents")],
+            &destination,
+        )
+        .unwrap_err();
+        assert!(
+            format!("{error:#}").contains("materialize extra.txt"),
+            "{error:#}"
+        );
+        assert_eq!(
+            fs::read_to_string(destination.join("extra.txt")).unwrap(),
+            "already here"
+        );
+    }
+
+    /// An inline `morphir:file` overlay whose path has a symlinked ancestor is refused before any
+    /// write follows the link outside the workspace.
+    #[cfg(unix)]
+    #[test]
+    fn refuses_a_symlinked_ancestor() {
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().join("example");
+        fs::create_dir_all(&directory).unwrap();
+        let destination = temp.path().join("workspace");
+        fs::create_dir_all(&destination).unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        std::os::unix::fs::symlink(outside.path(), destination.join("src")).unwrap();
+        let error = materialize_example(
+            &directory,
+            &Workspace::Inline {},
+            [("src/inside.txt", "overlay contents")],
+            &destination,
+        )
+        .unwrap_err();
+        assert!(
+            format!("{error:#}").contains("workspace ancestor is not a real directory"),
+            "{error:#}"
+        );
+        assert!(!outside.path().join("inside.txt").exists());
+    }
+}
+
 /// Materializes a scenario of the legacy loader the unit tests use, the same way
 /// [`materialize_example`] does, with the section's `morphir:file` blocks as the overlay files.
 #[cfg(test)]
