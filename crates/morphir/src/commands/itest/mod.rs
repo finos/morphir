@@ -94,10 +94,22 @@ fn included(entry: &walkdir::DirEntry) -> bool {
         .is_none_or(|name| !EXCLUDED_DIRS.contains(&name))
 }
 
-/// Whether the suite's file error `message`, which starts with the path of the file it names,
-/// names a file under one of the [`EXCLUDED_DIRS`] below `root`.
+/// How a morphir-bdd discovery error ends its path: `the directory {dir} cannot be read: {e}`,
+/// `an entry in {dir} cannot be read: {e}` and `{path} cannot be read: {e}`.
+const CANNOT_BE_READ: &str = " cannot be read: ";
+
+/// Whether the suite's error `message` names a path under one of the [`EXCLUDED_DIRS`] below
+/// `root` (or one of those directories itself). It reads the path from each form the suite writes:
+/// a file error, which starts with the file's path and puts a `:` after it, and the three
+/// discovery errors, which may start with `the directory ` or `an entry in ` and end the path at
+/// ` cannot be read: `.
 fn under_excluded_dir(root: &Path, message: &str) -> bool {
-    let Some(rest) = message.strip_prefix(&root.display().to_string()) else {
+    let text = message
+        .strip_prefix("the directory ")
+        .or_else(|| message.strip_prefix("an entry in "))
+        .unwrap_or(message);
+    let path = text.find(CANNOT_BE_READ).map_or(text, |end| &text[..end]);
+    let Some(rest) = path.strip_prefix(&root.display().to_string()) else {
         return false;
     };
     rest.split(['/', '\\'])

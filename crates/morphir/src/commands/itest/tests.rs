@@ -428,8 +428,30 @@ fn suite_file_errors_under_excluded_directories_are_recognized() {
         ("/r/examples/elm/out/a.feature: no Feature heading", true),
         ("/r/examples/elm/a.feature:1:1: bad", false),
         ("/r/examples/elm/scenarios.md: out of order", false),
+        // The three discovery-error forms morphir-bdd writes, under an excluded directory…
         (
             "the directory /r/examples/target cannot be read: denied",
+            true,
+        ),
+        (
+            "an entry in /r/examples/elm/node_modules/pkg cannot be read: denied",
+            true,
+        ),
+        ("/r/examples/elm/out/a.feature cannot be read: denied", true),
+        ("/r/examples/.git cannot be read: denied", true),
+        // …and under a directory that is not excluded.
+        (
+            "the directory /r/examples/elm cannot be read: denied",
+            false,
+        ),
+        (
+            "an entry in /r/examples/elm/pkg cannot be read: denied",
+            false,
+        ),
+        ("/r/examples/elm/a.feature cannot be read: denied", false),
+        // A message about a path outside the root.
+        (
+            "the directory /elsewhere/target cannot be read: denied",
             false,
         ),
     ] {
