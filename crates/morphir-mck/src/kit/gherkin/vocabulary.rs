@@ -429,6 +429,34 @@ pub fn step_text(step: &KitStep) -> String {
     }
 }
 
+/// Whether `body` can be written inline, in step text or a table cell, and
+/// still parse back to itself unchanged. `step_text` does not call this; the
+/// converter calls it to choose between an inline body and a doc string.
+///
+/// `body` is unsafe to inline when it is empty; contains `\n`, `\r` or `|`;
+/// contains one of the separators an inline matcher looks for (` with
+/// warning `, ` with `, ` as a ` or ` as an `); or starts or ends with
+/// whitespace.
+pub fn inline_safe(body: &str) -> bool {
+    if body.is_empty() {
+        return false;
+    }
+    if body.contains(['\n', '\r', '|']) {
+        return false;
+    }
+    if body.contains(" with warning ")
+        || body.contains(" with ")
+        || body.contains(" as a ")
+        || body.contains(" as an ")
+    {
+        return false;
+    }
+    if body.trim() != body {
+        return false;
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -487,5 +515,78 @@ mod tests {
     #[test]
     fn text_that_is_not_a_kit_step_is_none() {
         assert!(parse_step("I run \"morphir x\"", None).is_none());
+    }
+
+    #[test]
+    fn reads_as_an_int_round_trips() {
+        let text = "a reader of JSON reads 42 as an Int";
+        let step = parse_step(text, None).expect("a kit step").expect("valid");
+        assert_eq!(
+            step,
+            KitStep::ReadsAs {
+                format: Format::Json,
+                body: Body::Inline("42".to_owned()),
+                node: "Int".to_owned(),
+            }
+        );
+        assert_eq!(step_text(&step), text);
+    }
+
+    #[test]
+    fn inline_safe_refuses_each_forbidden_case() {
+        assert!(!inline_safe(""));
+        assert!(!inline_safe("line one\nline two"));
+        assert!(!inline_safe("carriage\rreturn"));
+        assert!(!inline_safe("a | b"));
+        assert!(!inline_safe("accepts x with warning legacy_spelling"));
+        assert!(!inline_safe("rejects x with unknown_member"));
+        assert!(!inline_safe("reads x as a Tuple"));
+        assert!(!inline_safe("reads x as an Int"));
+        assert!(!inline_safe(" leading space"));
+        assert!(!inline_safe("trailing space "));
+    }
+
+    #[test]
+    fn inline_safe_bodies_round_trip_through_every_inline_step_form() {
+        let bodies = [
+            "{ \"Reference\": \"morphir/SDK:basics#add\" }",
+            "Reference: morphir/SDK:basics#add",
+            "\"morphir/SDK:basics#add\"",
+        ];
+        for body in bodies {
+            assert!(inline_safe(body), "expected {body:?} to be inline-safe");
+
+            let steps = [
+                KitStep::Canonical {
+                    format: Format::Yaml,
+                    body: Body::Inline(body.to_owned()),
+                },
+                KitStep::Accepted {
+                    format: Format::Json,
+                    body: Body::Inline(body.to_owned()),
+                    warning: None,
+                },
+                KitStep::Accepted {
+                    format: Format::Json,
+                    body: Body::Inline(body.to_owned()),
+                    warning: Some("legacy_spelling".to_owned()),
+                },
+                KitStep::Rejected {
+                    format: Format::Json,
+                    body: Body::Inline(body.to_owned()),
+                    diagnostic: "unknown_member".to_owned(),
+                },
+                KitStep::ReadsAs {
+                    format: Format::Yaml,
+                    body: Body::Inline(body.to_owned()),
+                    node: "Tuple".to_owned(),
+                },
+            ];
+            for step in steps {
+                let text = step_text(&step);
+                let parsed = parse_step(&text, None).expect("a kit step").expect("valid");
+                assert_eq!(parsed, step, "round trip through {text:?}");
+            }
+        }
     }
 }
