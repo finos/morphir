@@ -98,6 +98,8 @@ mise run spec:mep        # compile the contract and refresh generated/mep.ir.jso
 mise run spec:mep-check  # run the contract tests, including the drift check
 ```
 
+`spec:mep` runs [`tools/spec-mep.ts`](../../tools/spec-mep.ts) with Bun, so it works on Linux, macOS and Windows. The script builds the CLI with cargo, then compiles the contract with every `MORPHIR_*` variable removed and temporary home and config directories, as the drift test does, so your own Morphir config cannot change the output.
+
 Commit `generated/mep.ir.json` with the change. The CLI compiles the contract with its built-in Gleam frontend (`--ir-version 4 --types-only`), so you do not need a Gleam toolchain. The `morphir CLI (test + integration)` CI job runs the same tests when `spec/mep/**` changes.
 
 CI does not run `gleam format`, because CI has no Gleam toolchain. If you have Gleam installed, run `gleam format` in `spec/mep/contract` before you commit.

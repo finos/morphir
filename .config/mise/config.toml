@@ -171,31 +171,10 @@ run = [
 
 [tasks."spec:mep"]
 description = "Compile spec/mep/contract and refresh spec/mep/generated/mep.ir.json"
-# The compile runs like the mep_contract test: every MORPHIR_* variable unset
-# and a temporary HOME, XDG_CONFIG_HOME and MORPHIR_HOME, so a developer's
-# config cannot change the committed bytes. The CLI writes the IR under the
-# project directory that --config names; the task clears it first so no
-# cached state carries over. Cargo builds first, with the real HOME, so it
-# still finds the toolchain.
-run = """
-set -e
-# Ask cargo where it put the binary, so a custom target directory works.
-morphir=$(cargo build --locked -p morphir --bin morphir --message-format=json-render-diagnostics \
-  | awk -F'"executable":"' 'NF > 1 { sub(/".*/, "", $2); path = $2 } END { print path }')
-test -x "$morphir"
-for name in $(env | awk -F= 'toupper(substr($1, 1, 8)) == "MORPHIR_" { print $1 }'); do
-  unset "$name"
-done
-isolated=$(mktemp -d)
-trap 'rm -rf "$isolated"' EXIT
-mkdir -p "$isolated/home"
-rm -rf spec/mep/contract/.morphir
-HOME="$isolated/home" USERPROFILE="$isolated/home" XDG_CONFIG_HOME="$isolated/home/.config" \
-  MORPHIR_HOME="$isolated/morphir-home" MORPHIR_LOG_FILE=false \
-  "$morphir" compile --config spec/mep/contract/morphir.toml --ir-version 4 --types-only
-mkdir -p spec/mep/generated
-cp spec/mep/contract/.morphir/out/compile.dest/morphir-ir.json spec/mep/generated/mep.ir.json
-"""
+# The script compiles in an isolated environment, like the mep_contract test,
+# so a developer's config cannot change the committed bytes. It is Bun, not
+# shell, so the task also runs on Windows.
+run = "bun run tools/spec-mep.ts"
 
 [tasks."spec:mep-check"]
 description = "Check the MEP contract: coverage, documented wire rules, and no drift in spec/mep/generated/mep.ir.json"
