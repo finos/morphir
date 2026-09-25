@@ -16,13 +16,17 @@ fn v3_custom_type_values_follow_the_configured_entry_point() {
     validator
         .validate(&serde_json::json!(["invalidRequest", "bad request"]))
         .unwrap();
-    assert!(
-        validator
-            .validate(&serde_json::json!(["invalidRequest", 42]))
-            .is_err()
-    );
-    assert!(validator.validate(&serde_json::json!(["unknown"])).is_err());
+    let error = validator
+        .validate(&serde_json::json!(["invalidRequest", 42]))
+        .unwrap_err();
+    assert_eq!(error.path, "$[1]");
+    assert!(error.message.contains("String"));
     assert!(ValueValidator::v3(&distribution, "ElmCompat:Api:missing").is_err());
+    let error = validator
+        .validate(&serde_json::json!(["unknown"]))
+        .unwrap_err();
+    assert_eq!(error.path, "$");
+    assert!(error.message.contains("unknown constructor"));
 }
 
 #[test]
@@ -67,12 +71,13 @@ fn v4_record_values_use_the_same_declared_morphir_type() {
     validator
         .validate(&serde_json::json!({"summary":"Order"}))
         .unwrap();
-    assert!(
-        validator
-            .validate(&serde_json::json!({"summary":42}))
-            .is_err()
-    );
+    let error = validator
+        .validate(&serde_json::json!({"summary":42}))
+        .unwrap_err();
+    assert_eq!(error.path, "$.summary");
+    assert!(error.message.contains("String"));
     assert!(validator.validate(&serde_json::json!({})).is_err());
+    assert!(ValueValidator::v4(&distribution, "Acme.Decorations:Domain:Missing").is_err());
 }
 
 #[test]
@@ -166,4 +171,86 @@ fn nested_aliases_resolve_arguments_before_shadowing_type_parameter_names() {
             .validate(&serde_json::json!({"value":12}))
             .is_err()
     );
+}
+
+fn target_names_validator(key_name: &str) -> ValueValidator {
+    let reference = |name: &str, args| {
+        v4::Type::reference(
+            v4::TypeAttributes::default(),
+            FQName::from_canonical_string(name).unwrap(),
+            args,
+        )
+    };
+    let names = || {
+        reference(
+            "morphir/SDK:dict#dict",
+            vec![
+                reference(key_name, vec![]),
+                reference("morphir/SDK:string#string", vec![]),
+            ],
+        )
+    };
+    let definition = v4::TypeDefinition::TypeAliasDefinition {
+        type_params: vec![],
+        type_expr: v4::Type::record(
+            v4::TypeAttributes::default(),
+            vec![
+                v4::Field::new(Name::from("frontend"), names()),
+                v4::Field::new(Name::from("backend"), names()),
+            ],
+        ),
+    };
+    let distribution = v4::Distribution::Library(v4::LibraryContent {
+        package_name: PackageName::new(Path::new("acme/decorations")),
+        dependencies: IndexMap::new(),
+        def: v4::PackageDefinition {
+            modules: IndexMap::from([(
+                "domain".into(),
+                v4::AccessControlled {
+                    access: v4::Access::Public,
+                    value: v4::ModuleDefinition {
+                        types: IndexMap::from([(
+                            "target-names".into(),
+                            v4::AccessControlled {
+                                access: v4::Access::Public,
+                                value: v4::Documented::new(None, definition),
+                            },
+                        )]),
+                        values: IndexMap::new(),
+                        doc: None,
+                    },
+                },
+            )]),
+        },
+    });
+    ValueValidator::v4(&distribution, "acme/decorations:domain#target-names").unwrap()
+}
+
+#[test]
+fn target_names_accepts_arbitrary_language_keys_and_rejects_non_string_names() {
+    let validator = target_names_validator("morphir/SDK:string#string");
+    validator
+        .validate(&serde_json::json!({
+            "frontend": {"en-US": "Customer", "zh-Hant-TW": "客戶"},
+            "backend": {"x-custom": "customer_record"}
+        }))
+        .unwrap();
+    let error = validator
+        .validate(&serde_json::json!({
+            "frontend": {"en-US": 42},
+            "backend": {}
+        }))
+        .unwrap_err();
+    assert_eq!(error.path, "$.frontend[\"en-US\"]");
+    assert!(error.message.contains("String"));
+}
+
+#[test]
+fn target_names_rejects_dict_key_types_without_json_member_spelling() {
+    let validator = target_names_validator("morphir/SDK:basics#int");
+    let error = validator
+        .validate(&serde_json::json!({"frontend": {}, "backend": {}}))
+        .unwrap_err();
+    assert_eq!(error.path, "$.frontend");
+    assert!(error.message.contains("Dict keys other than String"));
 }

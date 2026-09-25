@@ -296,7 +296,7 @@ morphir::$meta::{
 }
 ```
 
-Predicates come from an explicit Morphir declaration closure. Its contract determines allowed subject kinds, node-reference versus typed data object, and whether interpretation beyond storage is required. An undeclared predicate remains readable for roundtrips but cannot count as validated semantics. The `targetNames` declaration requires an interpreter for its language-ID rule; if that interpreter is unavailable, a type-valid fact is retained but reported as unvalidated. A bare array at a fact property means repeated objects; `@json` wraps one structured data object. The `targetNames` data type requires string-keyed `morphir/SDK:dict#dict` support in the shared validator. Current decorator validation does not have that support yet.
+Predicates come from an explicit Morphir declaration closure. Its contract determines allowed subject kinds, node-reference versus typed data object, and whether interpretation beyond storage is required. An undeclared predicate remains readable for roundtrips but cannot count as validated semantics. The `targetNames` declaration requires an interpreter for its language-ID rule; if that interpreter is unavailable, a type-valid fact is retained but reported as unvalidated. A bare array at a fact property means repeated objects; `@json` wraps one structured data object. The shared validator supports string-keyed `morphir/SDK:dict#dict` data for both native facts and decorators; language-ID policy is a separate semantic check.
 
 ## Context resources and publication
 
