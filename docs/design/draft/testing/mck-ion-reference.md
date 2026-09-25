@@ -69,7 +69,7 @@ A tag names what a case asserts. Tags are native Gherkin, so any Gherkin tool ca
 | Tag | Asserts | Steps |
 | --- | --- | --- |
 | `@spelling` | How one node shape is canonically written in each format | Only canonical-spelling steps, usually one outline with a row per format, at most one per format. Each is pinned byte for byte. |
-| `@semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Accept, reject and tree-file steps in any format, usually as outline rows. A case that has an accept step or a tree read-back step has exactly one "Given a <Node> whose canonical form is:" step with an `ion` doc string, because those steps compare with it. A case with only reject or reads-as steps has none |
+| `@semantic` | What a document means: its canonical form, the spellings a reader accepts, and the diagnostic that refuses the rest | Accept, reject and tree-file steps in any format, usually as outline rows. A case that has an accept step or a tree read-back step has exactly one "Given a &lt;Node> whose canonical form is:" step with an `ion` doc string, because those steps compare with it. A case with only reject or reads-as steps has none |
 
 A spelling case may leave out a format. The runner then reports that format as `not-pinned`, not as a pass. A case with neither tag keeps its behaviour from the foundation's conversion, so the kit stays valid while the cases move over.
 
