@@ -13,7 +13,7 @@ Morphir needs to say more about an IR node than its type and body: whether an AP
 
 The common form is short. A Type or Value node writes properties in `attributes.facts`; the enclosing node is the subject. `attributes.@context` maps readable keys such as `operationalName` to declared Morphir predicates. A specification can independently scope `annotations.entries` and `annotations.facts`. A document's `$meta.@graph` can assert facts about explicitly addressed nodes, even in another supplied artifact. These locations normalize to the same default-graph facts while retaining separate assertion ownership.
 
-The examples below are **format sketches**, not valid `4.0.0` documents or a released Ion revision. Their surrounding document headers and future versions are omitted deliberately. [The fixed reference corpus](https://github.com/finos/morphir/blob/main/spec/ir/mck/metadata-contract-draft.md) records literal expected results; executable MCK and codec support are still planned.
+The examples below are **format sketches**, not valid `4.0.0` documents or a released Ion revision. Their surrounding document headers and future versions are omitted deliberately. The current `acme/orders` node identities use the proposed `4.1.0` revision; separate vocabulary and replacement artifacts retain their own `4.0.0` identities. [The fixed reference corpus](https://github.com/finos/morphir/blob/main/spec/ir/mck/metadata-contract-draft.md) records literal expected results; executable MCK and codec support are still planned.
 
 ## A specification in three profiles
 
@@ -29,7 +29,7 @@ This `legacy-submit-order` Value specification has a document vocabulary, a loca
     },
     "@graph": [
       {
-        "@id": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/submit-order-v2",
+        "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/submit-order-v2",
         "aliases": ["placeOrder", "createOrder"]
       }
     ]
@@ -82,7 +82,7 @@ $meta:
   "@context":
     "@vocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/"
   "@graph":
-    - "@id": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/submit-order-v2"
+    - "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/submit-order-v2"
       aliases: [placeOrder, createOrder]
 spec:
   attributes:
@@ -123,7 +123,7 @@ morphir::$meta::{
   },
   '@graph': [
     {
-      '@id': "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/submit-order-v2",
+      '@id': "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/submit-order-v2",
       aliases: ["placeOrder", "createOrder"],
     },
   ],
@@ -220,7 +220,7 @@ attributes:
 }
 ```
 
-An inferred type is a distinct case. V4 already stores a Value node's `inferredType` in its core attributes. If that expression names a Type node, a graph reader can **derive a view** such as `legacy-submit-order --inferred-type--> morphir://ir/pkg/acme/orders?format=4.0.0#/module/domain/type/order`. The view points back to the core attribute as its source; an author does not write a second `attributes.facts.inferredType` that could disagree with it. An anonymous type expression needs a separately specified data mapping and is outside the first executable increment.
+An inferred type is a distinct case. V4 already stores a Value node's `inferredType` in its core attributes. If that expression names a Type node, a graph reader can **derive a view** such as `legacy-submit-order --inferred-type--> morphir://ir/pkg/acme/orders?format=4.1.0#/module/domain/type/order`. The view points back to the core attribute as its source; an author does not write a second `attributes.facts.inferredType` that could disagree with it. An anonymous type expression needs a separately specified data mapping and is outside the first executable increment.
 
 ## Facts, assertions, and sources
 
@@ -235,13 +235,13 @@ For example, the document-level `deprecated: true` assertion can retain both com
   "$meta": {
     "@context": { "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated" },
     "@graph": [{
-      "@id": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+      "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
       "deprecated": true
     }],
     "assertionSources": [{
       "selector": {
         "carrier": "documentGraph",
-        "subject": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+        "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
         "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
         "object": { "@value": true }
       },
@@ -259,12 +259,12 @@ $meta:
   "@context":
     deprecated: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
   "@graph":
-    - "@id": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order"
+    - "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order"
       deprecated: true
   assertionSources:
     - selector:
         carrier: documentGraph
-        subject: "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order"
+        subject: "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order"
         predicate: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
         object: { "@value": true }
       sources:
@@ -278,13 +278,13 @@ morphir::$meta::{
     deprecated: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
   },
   '@graph': [{
-    '@id': "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+    '@id': "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
     deprecated: true,
   }],
   assertionSources: [{
     selector: {
       carrier: "documentGraph",
-      subject: "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+      subject: "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
       predicate: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
       object: { '@value': true },
     },
