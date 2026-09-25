@@ -348,6 +348,6 @@ fn scala_elm() {
         "scala-elm",
         "morphir-scala-elm",
         "MORPHIR_SCALA_ELM_EXTENSION_BIN",
-        "session-fallback",
+        "describe",
     );
 }
