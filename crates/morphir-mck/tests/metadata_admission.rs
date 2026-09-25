@@ -13,6 +13,7 @@ const CLOSURE: &str = "spec/ir/mck/metadata-fixtures/schema-closure.json";
 const PUBLISHED_LIFECYCLE: &str =
     "spec/ir/mck/metadata-fixtures/contexts/lifecycle-published.jsonld";
 const METADATA_PROVIDER: &str = "spec/ir/mck/metadata-fixtures/providers/metadata-specs.json";
+const ORDERS_ARCHIVE: &str = "spec/ir/mck/metadata-fixtures/archives/orders.json";
 
 fn files() -> BTreeMap<String, Cow<'static, [u8]>> {
     collect(&load_kit(embedded_source()).unwrap())
@@ -352,6 +353,20 @@ fn accepted_external_publication_requires_provider_trust() {
     }));
     assert!(message.contains("metadata-0020"), "{message}");
     assert!(message.contains("trusted provider"), "{message}");
+}
+
+#[test]
+fn accepted_publication_requires_matching_authored_archive() {
+    let mut missing = files();
+    missing.remove(ORDERS_ARCHIVE);
+    let message = error(missing);
+    assert!(message.contains("orders.json"), "{message}");
+
+    let message = error(changed(files(), ORDERS_ARCHIVE, |archive| {
+        archive["distribution"]["Library"]["packageName"] = json!("acme/other");
+    }));
+    assert!(message.contains("metadata-0020"), "{message}");
+    assert!(message.contains("archive fixture identity"), "{message}");
 }
 
 #[test]

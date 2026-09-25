@@ -387,12 +387,13 @@ fn publication_receives_verified_provider_bytes_but_not_expected_output() {
     assert_eq!(
         paths,
         vec![
+            "metadata-fixtures/archives/orders.json",
             "metadata-fixtures/contexts/lifecycle.jsonld",
             "metadata-fixtures/providers/metadata-specs.json",
             "metadata-fixtures/schema-closure.json",
         ]
     );
-    let provider = &adapter.requests[1]["fixtures"][1];
+    let provider = &adapter.requests[1]["fixtures"][2];
     assert_eq!(
         provider["sha256"],
         case["given"]["externalPredicateRevision"]

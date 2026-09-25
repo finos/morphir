@@ -322,6 +322,7 @@ fn check_fixture_references(source: &KitSource, case: &Value, id: &str) -> Resul
         "publish" => {
             fixture(source, &given["contextFile"], false)?;
             fixture(source, &given["providerFile"], false)?;
+            fixture(source, &given["archiveFile"], false)?;
             fixture(source, &given["publishedContextFile"], false)?;
         }
         _ => {}
@@ -535,6 +536,20 @@ pub(crate) fn admit(source: &KitSource) -> Result<Option<usize>, String> {
             let provider_file = given["providerFile"]
                 .as_str()
                 .ok_or_else(|| format!("{id}: accepted external publication needs providerFile"))?;
+            let archive_file = given["archiveFile"]
+                .as_str()
+                .ok_or_else(|| format!("{id}: accepted publication needs archiveFile"))?;
+            let archive = json(source, &fixture_path(archive_file)?)?;
+            if archive["formatVersion"] != case["targets"][0]["irRevision"]
+                || archive["distribution"]["Library"]["packageName"] != "acme/orders"
+            {
+                return Err(format!(
+                    "{id}: archive fixture identity does not match its target"
+                ));
+            }
+            if !given["authoring"].is_object() {
+                return Err(format!("{id}: accepted publication needs authoring input"));
+            }
             if given["providerTrusted"] != true {
                 return Err(format!(
                     "{id}: accepted external publication needs trusted provider"

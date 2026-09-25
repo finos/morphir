@@ -767,6 +767,13 @@
         "contextStorage": "external",
         "contextFile": "metadata-fixtures/contexts/lifecycle.jsonld",
         "contextDigest": "sha256:22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
+        "archiveFile": "metadata-fixtures/archives/orders.json",
+        "authoring": {
+          "packagePath": "example.com/orders",
+          "version": "1.0.0",
+          "dependencies": {},
+          "exports": {}
+        },
         "archiveOwnsPredicate": false,
         "externalPredicateRevision": "sha256:d38de93027cc08dcb97469f274cf27ea17ba1e3c433b4e9c95f8247f7a5f6266",
         "providerFile": "metadata-fixtures/providers/metadata-specs.json",

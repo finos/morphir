@@ -217,6 +217,7 @@ fn selected_fixtures(kit: &Kit, case: &Value, closure: &str) -> Result<Vec<Value
         "resourceFile",
         "contextFile",
         "providerFile",
+        "archiveFile",
         "baseFile",
         "import",
     ] {
