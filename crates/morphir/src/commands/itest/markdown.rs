@@ -3,7 +3,10 @@ use crate::notebook::Notebook;
 use anyhow::{Context, Result, bail, ensure};
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use serde_json::{Map, Value, json};
-use std::{collections::HashSet, ops::Range};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Range,
+};
 
 enum Block {
     Scenario {
@@ -52,12 +55,14 @@ struct Section {
     title: String,
     /// The heading's 1-based line in the source document (including its frontmatter).
     line: usize,
+    /// Each cell's own `yaml morphir:<role>` metadata fence line, keyed by the cell's id.
+    fence_lines: HashMap<String, usize>,
     cells: Vec<Value>,
 }
 
 /// One `##` section of a `scenarios.md` file, lowered to a synthetic notebook: its resolved id,
-/// its heading title, the heading's 1-based line in the source file, and the notebook
-/// `model::parse` reads.
+/// its heading title, the heading's 1-based line in the source file, each cell's own metadata
+/// fence line, and the notebook `model::parse` reads.
 pub(super) struct ParsedSection {
     /// The section's id: explicit (`{#id}`) or derived from its title.
     pub(super) id: String,
@@ -65,6 +70,10 @@ pub(super) struct ParsedSection {
     pub(super) title: String,
     /// The section heading's 1-based line in the source `scenarios.md` file.
     pub(super) line: usize,
+    /// Each cell's own `yaml morphir:<role>` metadata fence line, keyed by the cell's id. A
+    /// command, assertion or golden fence's line, for a reader that wants to point a failure at
+    /// its own fence rather than at the section heading.
+    pub(super) fence_lines: HashMap<String, usize>,
     /// The section's synthetic notebook, as `model::parse` expects it.
     pub(super) notebook: Notebook,
 }
@@ -281,6 +290,7 @@ pub(super) fn parse_sections(text: &str) -> Result<ParsedDocument> {
                     id,
                     title,
                     line,
+                    fence_lines: HashMap::new(),
                     cells: Vec::new(),
                 });
             }
@@ -290,6 +300,7 @@ pub(super) fn parse_sections(text: &str) -> Result<ParsedDocument> {
                 top_level,
             } => {
                 let line = body[..range.start].bytes().filter(|c| *c == b'\n').count() + 1;
+                let absolute_line = prefix_lines + line;
                 let role =
                     Role::from_info(&info).with_context(|| format!("Markdown body line {line}"))?;
                 if role.is_none() && pending.is_none() {
@@ -312,6 +323,13 @@ pub(super) fn parse_sections(text: &str) -> Result<ParsedDocument> {
                     );
                     let metadata =
                         yaml(source).with_context(|| format!("Markdown body line {line}"))?;
+                    if let Some(id) = metadata.get("id").and_then(Value::as_str) {
+                        sections
+                            .last_mut()
+                            .unwrap()
+                            .fence_lines
+                            .insert(id.to_owned(), absolute_line);
+                    }
                     if matches!(role, Role::Golden) && metadata.contains_key("expected_file") {
                         // A disk expectation has no inline source fence.
                         let cell = cell(role, metadata, "text", "")
@@ -346,6 +364,7 @@ pub(super) fn parse_sections(text: &str) -> Result<ParsedDocument> {
                 id: section.id,
                 title: section.title,
                 line: section.line,
+                fence_lines: section.fence_lines,
                 notebook,
             })
         })

@@ -4,16 +4,16 @@
 //! [`model::parse`] already gives for every notebook `markdown::parse_sections` produces from the
 //! file. The lowering writes synthetic `.feature` text and hands it to
 //! [`morphir_gherkin::read_str`], the simplest way to get a well-formed `Document`; positions in
-//! that synthetic text are then rewritten so a scenario's and a step's `position` point at the
-//! section heading's line in the real `scenarios.md` file, since `read_str` has no way to carry a
-//! foreign file's line numbers through its own parse.
+//! that synthetic text are then rewritten so a step's `position` points at its own fence's line in
+//! the real `scenarios.md` file (a scenario's own `position` stays at its section heading's line),
+//! since `read_str` has no way to carry a foreign file's line numbers through its own parse.
 //!
-//! The reader is built on [`model::Step`] and [`model::Metadata`], plus each section's title, id
-//! and line from [`markdown::parse_sections`]. Two things fall outside that typed surface, and
-//! the reader reads them directly off the section's [`Notebook`] instead: overlay files
-//! (`morphir:file` cells, which `model::parse` does not surface at all) and the command-order
-//! check below (which needs the cells' own file order, lost once they are grouped into
-//! [`model::Step::assertions`]).
+//! The reader is built on [`model::Step`] and [`model::Metadata`], plus each section's title, id,
+//! heading line and per-cell fence lines from [`markdown::parse_sections`]. Two things fall
+//! outside that typed surface, and the reader reads them directly off the section's [`Notebook`]
+//! instead: overlay files (`morphir:file` cells, which `model::parse` does not surface at all) and
+//! the command-order check below (which needs the cells' own file order, lost once they are
+//! grouped into [`model::Step::assertions`]).
 
 use super::golden::{LineEndings, Selection};
 use super::markdown::{self, ParsedSection};
@@ -42,7 +42,7 @@ fn read(path: &Path) -> Result<Document> {
     let mut files = Vec::new();
     let mut scenarios = Vec::new();
     for section in &parsed.sections {
-        check_command_order(&section.notebook, path, section.line)?;
+        check_command_order(&section.notebook, path, section)?;
         files.extend(overlay_files(&section.notebook)?);
         let (_, steps) = model::parse(&section.notebook)
             .with_context(|| format!("{}: scenario {}", path.display(), section.id))?;
@@ -60,32 +60,65 @@ fn read(path: &Path) -> Result<Document> {
     Ok(document)
 }
 
-/// Rewrites every scenario's and step's `position` from the synthetic `.feature` text's own
-/// coordinates to the section heading's line in the real `scenarios.md` file. Fence-level
-/// precision is not available: `model::Step` does not carry a source line for each command,
-/// assertion or golden fence, so every step of a scenario shares its section's heading line.
+/// Rewrites every scenario's own `position` and every step's `position` from the synthetic
+/// `.feature` text's own coordinates to the real `scenarios.md` file: a scenario's `position`
+/// stays at its section heading's line, and each of its steps' `position` moves to that step's own
+/// fence's line, from [`step_lines`].
 fn apply_source_positions(document: &mut Document, scenarios: &[(&ParsedSection, Vec<Step>)]) {
     let Some(feature) = document.feature.as_mut() else {
         return;
     };
-    for (scenario, (section, _)) in feature.scenarios.iter_mut().zip(scenarios) {
-        let position = LineCol {
+    for (scenario, (section, steps)) in feature.scenarios.iter_mut().zip(scenarios) {
+        scenario.position = LineCol {
             line: section.line,
             col: 1,
         };
-        scenario.position = position;
-        for step in &mut scenario.steps {
-            step.position = position;
+        let lines = step_lines(section, steps);
+        for (step, line) in scenario.steps.iter_mut().zip(&lines) {
+            step.position = LineCol {
+                line: *line,
+                col: 1,
+            };
         }
     }
+}
+
+/// The real `scenarios.md` line of each physical Gherkin step [`write_command_step`] emits for
+/// `steps`, in the same order it emits them: a command's `When`, then one line per capture and,
+/// when present, `stdout is JSON` — all at the command's own metadata fence line — then one line
+/// per assertion or golden, each at its own fence line.
+fn step_lines(section: &ParsedSection, steps: &[Step]) -> Vec<usize> {
+    let mut lines = Vec::new();
+    for step in steps {
+        let command_line = fence_line(section, &step.id);
+        lines.push(command_line);
+        for _ in &step.captures {
+            lines.push(command_line);
+        }
+        if step.stdout_json {
+            lines.push(command_line);
+        }
+        for assertion in &step.assertions {
+            lines.push(fence_line(section, &assertion.id));
+        }
+    }
+    lines
+}
+
+/// The line of the cell `id`'s own `yaml morphir:<role>` metadata fence, or the section heading's
+/// line when the id has none recorded. The fallback should not be reachable for a well-formed
+/// document (every command, assertion and golden cell is recorded), but keeps this infallible.
+fn fence_line(section: &ParsedSection, id: &str) -> usize {
+    section.fence_lines.get(id).copied().unwrap_or(section.line)
 }
 
 /// Fails when an assertion or golden fence's `command` is not the most recently issued command at
 /// that point in the file. Grouping a step's assertions right after its own `When` (as
 /// [`feature_text`] does) is only faithful to the source when this holds, so a violation is
 /// reported rather than silently reordered. `model::Step::assertions` does not carry the cells'
-/// own file order, so this walks the notebook's cells directly instead.
-fn check_command_order(notebook: &Notebook, path: &Path, line: usize) -> Result<()> {
+/// own file order, so this walks the notebook's cells directly instead. The reported line is the
+/// failing assertion's or golden's own fence line, not the section heading's.
+fn check_command_order(notebook: &Notebook, path: &Path, section: &ParsedSection) -> Result<()> {
     let mut last_command: Option<&str> = None;
     for cell in notebook.cells() {
         let Some(role) = cell.morphir().get("itest") else {
@@ -99,6 +132,7 @@ fn check_command_order(notebook: &Notebook, path: &Path, line: usize) -> Result<
                     .and_then(Value::as_str)
                     .unwrap_or_default();
                 if last_command != Some(command) {
+                    let line = fence_line(section, cell.id());
                     bail!(
                         "{}:{line}: {kind} {} checks command {command:?}, which is not the last command",
                         path.display(),
@@ -203,13 +237,16 @@ fn write_tags(out: &mut String, tags: &[String]) {
 /// assertions and golden checks, each as a `Then` step.
 fn write_command_step(out: &mut String, step: &Step) -> Result<()> {
     let line = command_line(step)?;
+    // `command_line` already guarantees `line` holds no literal `"`, and its own whitespace
+    // grouping already uses `\"…\"`, so it is wrapped in a plain pair of quotes here rather than
+    // through `quote`, which would double-escape those `\"` markers.
+    //
     // `Role::Command::timeout_seconds` is a required field of the `yaml morphir:command` fence,
     // so a scenarios.md-derived command always has a timeout; `When I run "<cmd>"` with no
     // timeout is not reachable from this reader.
     writeln!(
         out,
-        "    When I run {} with a {} second timeout",
-        quote(&line),
+        "    When I run \"{line}\" with a {} second timeout",
         step.timeout_seconds
     )
     .expect("write to String cannot fail");
@@ -232,12 +269,18 @@ fn write_command_step(out: &mut String, step: &Step) -> Result<()> {
     Ok(())
 }
 
-/// The command line `morphir <args…>`, joined with single spaces. A `"` in an argument cannot be
-/// represented: `split_command_line` groups a `\"` written inside the step's outer `"…"` the same
-/// way it groups a bare `"`, so there is no encoding that both closes the reader's own quoting and
-/// still delivers a literal `"` to the program. None of today's examples need one, so this is
-/// reported rather than guessed at.
+/// The command line `morphir <args…>`, joined with single spaces. Joining alone would lose an
+/// argument's own grouping wherever it holds whitespace (`--message "a b"` would silently become
+/// two arguments), so such an argument — and an empty one, which would otherwise vanish between
+/// two spaces — is wrapped as `\"…\"`: `morphir-bdd`'s `split_command_line` groups a `\"` the same
+/// way it groups a bare `"`. A `"` *inside* an argument cannot be represented at all:
+/// `split_command_line` groups a `\"` written inside the step's outer `"…"` the same way it groups
+/// a bare `"`, so there is no encoding that both closes the reader's own quoting and still
+/// delivers a literal `"` to the program. None of today's examples need one, so this is reported
+/// rather than guessed at.
 fn command_line(step: &Step) -> Result<String> {
+    let mut words = Vec::with_capacity(step.args.len() + 1);
+    words.push("morphir".to_owned());
     for arg in &step.args {
         ensure!(
             !arg.contains('"'),
@@ -245,11 +288,13 @@ fn command_line(step: &Step) -> Result<String> {
              a scenarios.md-derived `When I run` step",
             step.id
         );
+        if arg.is_empty() || arg.chars().any(char::is_whitespace) {
+            words.push(format!("\\\"{arg}\\\""));
+        } else {
+            words.push(arg.clone());
+        }
     }
-    Ok(std::iter::once("morphir")
-        .chain(step.args.iter().map(String::as_str))
-        .collect::<Vec<_>>()
-        .join(" "))
+    Ok(words.join(" "))
 }
 
 fn capture_format_token(format: model::CaptureFormat) -> &'static str {
@@ -324,7 +369,11 @@ fn format_select(select: &Selection) -> String {
     }
 }
 
-fn escape_marker(value: &str) -> String {
+/// Escapes `\`, `'`, a newline, a carriage return and a tab in a `between` marker, so the whole
+/// `<select>` fits on the step text's one physical line. `pub(super)` because Task C3's step
+/// definition needs [`unescape_marker`], this escape's inverse, to recover the original marker;
+/// this module is the one owner of the rule, so C3 calls it instead of copying it.
+pub(super) fn escape_marker(value: &str) -> String {
     let mut escaped = String::with_capacity(value.len());
     for c in value.chars() {
         match c {
@@ -337,6 +386,37 @@ fn escape_marker(value: &str) -> String {
         }
     }
     escaped
+}
+
+/// The inverse of [`escape_marker`]: turns `\\`, `\'`, `\n`, `\r` and `\t` back into the literal
+/// character each stands for. `Err` for a backslash followed by anything else, including none (an
+/// unfinished escape at the end of the string).
+///
+/// Not yet called from this crate: Task C3's step definition is its caller. Kept here, next to
+/// `escape_marker`, so the escaping rule has one owner instead of being copied into C3.
+#[allow(
+    dead_code,
+    reason = "Task C3's `between` step definition is the caller; exercised by this module's own round-trip test until then"
+)]
+pub(super) fn unescape_marker(value: &str) -> Result<String, String> {
+    let mut unescaped = String::with_capacity(value.len());
+    let mut chars = value.chars();
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            unescaped.push(c);
+            continue;
+        }
+        match chars.next() {
+            Some('\\') => unescaped.push('\\'),
+            Some('\'') => unescaped.push('\''),
+            Some('n') => unescaped.push('\n'),
+            Some('r') => unescaped.push('\r'),
+            Some('t') => unescaped.push('\t'),
+            Some(other) => return Err(format!("invalid marker escape '\\{other}'")),
+            None => return Err("marker ends with an unfinished '\\' escape".to_owned()),
+        }
+    }
+    Ok(unescaped)
 }
 
 /// Writes a `"""[content_type]` doc string holding `body` verbatim. The delimiter is written with
@@ -460,11 +540,18 @@ mod tests {
         assert_eq!(doc_string.body.trim_end(), expected_rego);
 
         // The heading `## Convert Classic JSON to V4 YAML {#classic-to-v4}` is on line 14 of the
-        // real file; every step in the scenario shares that line.
+        // real file; the scenario's own position stays there.
         assert_eq!(scenario.position.line, 14);
-        for step in &scenario.steps {
-            assert_eq!(step.position.line, 14);
-        }
+        // Each step's position is its own fence's line: the `yaml morphir:command` fence is on
+        // line 16 (the command's `When` and its capture both take that line), the
+        // `yaml morphir:assertion` fence is on line 28, and the `yaml morphir:golden` fence is on
+        // line 45.
+        let lines: Vec<usize> = scenario
+            .steps
+            .iter()
+            .map(|step| step.position.line)
+            .collect();
+        assert_eq!(lines, [16, 16, 28, 45]);
     }
 
     #[test]
@@ -488,6 +575,38 @@ mod tests {
                 "{}: scenario count",
                 entry.path().display()
             );
+            for (scenario, (section_id, notebook)) in scenarios.iter().zip(&expected) {
+                let (_, steps) = model::parse(notebook).unwrap_or_else(|error| {
+                    panic!(
+                        "{}: scenario {section_id}: {error:#}",
+                        entry.path().display()
+                    )
+                });
+                let expected_steps: usize = steps.len()
+                    + steps
+                        .iter()
+                        .map(|step| step.assertions.len())
+                        .sum::<usize>();
+                let tagged_steps: usize = scenario
+                    .tags
+                    .iter()
+                    .find_map(|tag| match tag.namespaced() {
+                        Some(("steps", n)) => n.parse::<usize>().ok(),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "{}: scenario {section_id} has no @steps:<n> tag",
+                            entry.path().display()
+                        )
+                    });
+                assert_eq!(
+                    tagged_steps,
+                    expected_steps,
+                    "{}: scenario {section_id}: @steps:<n>",
+                    entry.path().display()
+                );
+            }
             checked += 1;
         }
         assert_eq!(checked, 19, "expected 19 examples/**/scenarios.md files");
@@ -557,8 +676,13 @@ ok2 if { true }\n\
 ```\n";
         let (_dir, path) = write_scenarios_md(text);
         let error = read_scenarios_md(&path).unwrap_err();
+        // Line 31 of `text` is `a1`'s own `yaml morphir:assertion` fence, not the section
+        // heading's line (9) or `c1`'s command fence's line (11).
         assert!(
-            error.contains("assertion a1 checks command \"c1\", which is not the last command"),
+            error.contains(&format!(
+                "{}:31: assertion a1 checks command \"c1\", which is not the last command",
+                path.display()
+            )),
             "{error}"
         );
     }
@@ -691,5 +815,56 @@ middle\n\
         };
         let error = command_line(&step).unwrap_err();
         assert!(format!("{error:#}").contains("literal"), "{error:#}");
+    }
+
+    #[test]
+    fn whitespace_bearing_arguments_round_trip_through_split_command_line() {
+        let step = Step {
+            id: "c1".to_owned(),
+            name: "n".to_owned(),
+            args: vec![
+                "--message".to_owned(),
+                "a b".to_owned(),
+                "--flag".to_owned(),
+            ],
+            timeout_seconds: 5,
+            stdout_json: false,
+            captures: Vec::new(),
+            assertions: Vec::new(),
+        };
+        let line = command_line(&step).unwrap();
+        // `line` is exactly what `morphir_bdd`'s cucumber `{string}` capture would hand to
+        // `split_command_line`: the text between the step's own outer quotes, with any `\"`
+        // marker left intact (that capture is not itself unescaped).
+        let words = morphir_bdd::steps::cli::split_command_line(&line).unwrap();
+        assert_eq!(words[0], "morphir");
+        assert_eq!(&words[1..], step.args.as_slice());
+    }
+
+    #[test]
+    fn empty_arguments_round_trip_through_split_command_line() {
+        let step = Step {
+            id: "c1".to_owned(),
+            name: "n".to_owned(),
+            args: vec!["--input".to_owned(), String::new()],
+            timeout_seconds: 5,
+            stdout_json: false,
+            captures: Vec::new(),
+            assertions: Vec::new(),
+        };
+        let line = command_line(&step).unwrap();
+        let words = morphir_bdd::steps::cli::split_command_line(&line).unwrap();
+        assert_eq!(words, ["morphir", "--input", ""]);
+    }
+
+    #[test]
+    fn marker_escape_round_trips_and_rejects_a_bad_escape() {
+        let original = "back\\slash quote' newline\ncarriage\rtab\t.";
+        let escaped = escape_marker(original);
+        assert!(!escaped.contains('\n') && !escaped.contains('\r') && !escaped.contains('\t'));
+        assert_eq!(unescape_marker(&escaped).unwrap(), original);
+
+        assert!(unescape_marker("bad \\x escape").is_err());
+        assert!(unescape_marker("trailing backslash \\").is_err());
     }
 }
