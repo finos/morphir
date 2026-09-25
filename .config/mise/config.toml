@@ -162,10 +162,11 @@ description = "Check morphir-rust embeds the generated configuration schema byte
 run = "node website/scripts/check-config-schema-sync.js"
 
 [tasks."mck:check"]
-description = "Check MCK cases, schemas, protocol examples and IR fences with the native engine"
+description = "Check MCK cases, schemas, protocol examples and IR fences with the native engine, including that the kit's .feature twins are up to date"
 depends = ["mck:vocabulary-check"]
 run = [
     "cargo run --locked -p morphir -- mck check spec/ir/mck",
+    "cargo run --locked -p morphir -- mck convert --check --kit spec/ir/mck",
     "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck",
 ]
 

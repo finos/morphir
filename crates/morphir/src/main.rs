@@ -31,9 +31,9 @@ use commands::{
     run_kb_intent_show, run_kb_intent_start, run_kb_intent_supersede, run_kb_list,
     run_kb_new_bundle, run_kb_query, run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown,
     run_kb_search, run_kb_show, run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push,
-    run_kb_sync_status, run_mck_check, run_mck_kit_status, run_mck_kit_update, run_mck_kit_vendor,
-    run_mck_run, run_migrate, run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update,
-    run_transform, run_validate, run_version,
+    run_kb_sync_status, run_mck_check, run_mck_convert, run_mck_kit_status, run_mck_kit_update,
+    run_mck_kit_vendor, run_mck_run, run_migrate, run_tool_install, run_tool_list,
+    run_tool_uninstall, run_tool_update, run_transform, run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -727,6 +727,8 @@ impl MigrateArgs {
 enum MckAction {
     /// Validate a kit directory without running an adapter
     Check(commands::mck::MckCheckArgs),
+    /// Write, or check, the kit's generated `.feature` twins of its Markdown case files
+    Convert(commands::mck::MckConvertArgs),
     /// Check that every IR vocabulary variant and member has a kit case
     ///
     /// Pending cases count through title and prose mentions. This JSON-key
@@ -1268,6 +1270,7 @@ impl AppSession for MorphirSession {
             },
             Commands::Mck { action } => match action {
                 MckAction::Check(args) => run_mck_check(args.clone()),
+                MckAction::Convert(args) => run_mck_convert(args.clone()),
                 MckAction::Coverage(args) => commands::mck::run_mck_coverage(args.clone()),
                 MckAction::Schema { action } => match action {
                     MckSchemaAction::Check(args) => {

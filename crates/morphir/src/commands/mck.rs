@@ -13,17 +13,20 @@ use clap::Args;
 use morphir_mck::ir::{RunOptions, RunVerdict, Testee, run_kit, verdict};
 use morphir_mck::json::to_tab_json;
 use morphir_mck::kit::embedded::{PROVENANCE, embedded_source};
+use morphir_mck::kit::gherkin::convert::{convert, feature_description, feature_title};
 use morphir_mck::kit::hash::ContentDigest;
+use morphir_mck::kit::load::load_feature_kit;
 use morphir_mck::kit::manifest::{CommitId, Lock, LockSource, UPSTREAM_REPOSITORY};
 use morphir_mck::kit::snapshot::collect;
 use morphir_mck::kit::status::{
     KitMode, KitStatus, MANIFEST_NAME, embedded_status, local_status, vendored_status,
 };
+use morphir_mck::kit::syntax::case::topic_of;
 use morphir_mck::kit::vendor::{
     Change, Managed, UpdateOutcome, VendorOutcome, VendorSource, check_updatable,
     default_update_source, describe, open_managed, update, vendor,
 };
-use morphir_mck::kit::{Kit, KitSource, load_kit};
+use morphir_mck::kit::{Kit, KitCase, KitError, KitSource, load_kit};
 use morphir_mck::provenance::{KitProvenance, KitSourceKind};
 use morphir_mck::report::iso_timestamp;
 use morphir_mck::transport::{Limits, Session};
@@ -128,6 +131,18 @@ pub struct MckCheckArgs {
     /// Print the files, case ids and errors as JSON on stdout
     #[arg(long)]
     pub json: bool,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct MckConvertArgs {
+    /// The kit directory whose Markdown case files to convert, for example spec/ir/mck
+    #[arg(long, value_name = "DIR", default_value = "spec/ir/mck")]
+    pub kit: PathBuf,
+
+    /// Check that every committed `.feature` file matches its `.md` twin's conversion, writing
+    /// nothing, instead of writing the files
+    #[arg(long)]
+    pub check: bool,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -263,27 +278,116 @@ fn load_directory(dir: &Path, repo_root: Option<&Path>) -> Result<Loaded, String
     }
 }
 
+/// The `.feature` file beside `md_file`: its repository-relative path with `.md` replaced by
+/// `.feature`.
+fn feature_sibling(md_file: &str) -> String {
+    format!("{}.feature", md_file.strip_suffix(".md").unwrap_or(md_file))
+}
+
+/// The `.feature` text `md_file`'s current cases convert to (`feature_title`, `feature_description`
+/// and `convert`), with its trailing newlines collapsed to exactly one, as the generated files
+/// carry.
+fn converted_feature_text(kit: &Kit, md_file: &str) -> Result<String, String> {
+    let bytes = kit
+        .source
+        .read(md_file)
+        .map_err(|error| format!("cannot read {md_file}: {error}"))?
+        .ok_or_else(|| format!("{md_file} disappeared while converting the kit"))?;
+    let markdown =
+        std::str::from_utf8(&bytes).map_err(|_| format!("{md_file} is not valid UTF-8"))?;
+    let display = kit.source.display(md_file);
+    let cases: Vec<KitCase> = kit
+        .cases
+        .iter()
+        .filter(|c| c.file == display)
+        .cloned()
+        .collect();
+    let topic = topic_of(md_file);
+    let mut text = convert(
+        &feature_title(topic, markdown),
+        &feature_description(markdown),
+        &cases,
+    );
+    while text.ends_with('\n') {
+        text.pop();
+    }
+    text.push('\n');
+    Ok(text)
+}
+
+/// The `.md` files of `kit` whose committed `.feature` twin no longer matches converting their
+/// current cases, as `(feature file, topic)` pairs, in `kit.files` order. A `.feature` file that
+/// is not committed yet is not drift: during the parity window a kit directory need not carry
+/// every twin, and `load_feature_kit` treats an empty set of `.feature` files the same way.
+fn drifted_feature_files(kit: &Kit) -> Result<Vec<(String, String)>, String> {
+    let mut drifted = Vec::new();
+    for md_file in &kit.files {
+        let feature_file = feature_sibling(md_file);
+        let Some(committed) = kit
+            .source
+            .read(&feature_file)
+            .map_err(|error| format!("cannot read {feature_file}: {error}"))?
+        else {
+            continue;
+        };
+        let expected = converted_feature_text(kit, md_file)?;
+        if committed.as_ref() as &[u8] != expected.as_bytes() {
+            drifted.push((feature_file, topic_of(md_file).to_owned()));
+        }
+    }
+    Ok(drifted)
+}
+
 pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
     let outcome = match load_directory(&args.dir, args.repo_root.as_deref()) {
         Err(message) => Outcome::Error(message),
         Ok(loaded) => {
             let kit = loaded.kit();
+            let feature = match load_feature_kit(kit.source.clone()) {
+                Ok(feature) => feature,
+                Err(error) => {
+                    return finish(Outcome::Error(format!(
+                        "cannot read kit {}: {error}",
+                        args.dir.display()
+                    )));
+                }
+            };
+            let drifted = match drifted_feature_files(kit) {
+                Ok(drifted) => drifted,
+                Err(message) => return finish(Outcome::Error(message)),
+            };
             if args.json {
+                let error_json =
+                    |e: &KitError| json!({ "file": e.file, "line": e.line, "message": e.message });
                 let errors: Vec<_> = kit
                     .errors
                     .iter()
-                    .map(|e| json!({ "file": e.file, "line": e.line, "message": e.message }))
+                    .chain(&feature.kit.errors)
+                    .map(error_json)
                     .collect();
                 let cases: Vec<_> = kit.cases.iter().map(|c| c.id.as_str()).collect();
+                let feature_cases: Vec<_> =
+                    feature.kit.cases.iter().map(|c| c.id.as_str()).collect();
+                let drifted_json: Vec<_> = drifted.iter().map(|(file, _)| json!(file)).collect();
                 println!(
                     "{}",
-                    to_tab_json(
-                        &json!({ "files": kit.files, "cases": cases, "metadataReferenceCases": kit.metadata_reference_cases, "errors": errors })
-                    )
+                    to_tab_json(&json!({
+                        "files": kit.files,
+                        "cases": cases,
+                        "metadataReferenceCases": kit.metadata_reference_cases,
+                        "errors": errors,
+                        "featureFiles": feature.kit.files,
+                        "featureCases": feature_cases,
+                        "drifted": drifted_json,
+                    }))
                 );
             } else {
-                for error in &kit.errors {
+                for error in kit.errors.iter().chain(&feature.kit.errors) {
                     eprintln!("{}:{}: {}", error.file, error.line, error.message);
+                }
+                for (file, topic) in &drifted {
+                    let target = kit.source.display(file);
+                    eprintln!("{target}: out of date with {topic}.md; run morphir mck convert");
                 }
                 if kit.metadata_reference_cases > 0 {
                     print!(
@@ -295,14 +399,72 @@ pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
                     "{} case(s) in {} file(s), {} error(s)",
                     kit.cases.len(),
                     kit.files.len(),
-                    kit.errors.len()
+                    kit.errors.len() + feature.kit.errors.len() + drifted.len()
                 );
             }
-            if kit.errors.is_empty() {
+            if kit.errors.is_empty() && feature.kit.errors.is_empty() && drifted.is_empty() {
                 Outcome::Passed
             } else {
                 Outcome::Failed
             }
+        }
+    };
+    finish(outcome)
+}
+
+/// `morphir mck convert`: write, or with `--check` verify, the `.feature` twin of every `.md`
+/// case file under `args.kit`.
+pub fn run_mck_convert(args: MckConvertArgs) -> AppResult<miette::Report> {
+    let kit = match load_kit(KitSource::directory(&args.kit, None)) {
+        Ok(kit) => kit,
+        Err(error) => {
+            return finish(Outcome::Error(format!(
+                "cannot read kit {}: {error}",
+                args.kit.display()
+            )));
+        }
+    };
+    if !kit.errors.is_empty() {
+        for error in &kit.errors {
+            eprintln!("{}:{}: {}", error.file, error.line, error.message);
+        }
+        return finish(Outcome::Error(format!(
+            "kit {} has errors; run morphir mck check first",
+            args.kit.display()
+        )));
+    }
+    let outcome = if args.check {
+        match drifted_feature_files(&kit) {
+            Ok(drifted) if drifted.is_empty() => Outcome::Passed,
+            Ok(drifted) => {
+                for (file, topic) in &drifted {
+                    let target = kit.source.display(file);
+                    println!("{target}: out of date with {topic}.md; run morphir mck convert");
+                }
+                Outcome::Failed
+            }
+            Err(message) => Outcome::Error(message),
+        }
+    } else {
+        let mut error = None;
+        for md_file in &kit.files {
+            let text = match converted_feature_text(&kit, md_file) {
+                Ok(text) => text,
+                Err(message) => {
+                    error = Some(message);
+                    break;
+                }
+            };
+            let target = kit.source.display(&feature_sibling(md_file));
+            if let Err(write_error) = std::fs::write(&target, text.as_bytes()) {
+                error = Some(format!("cannot write {target}: {write_error}"));
+                break;
+            }
+            println!("wrote {target}");
+        }
+        match error {
+            Some(message) => Outcome::Error(message),
+            None => Outcome::Passed,
         }
     };
     finish(outcome)
