@@ -9,17 +9,21 @@
 //! generate` call.
 //!
 //! The pool owns reuse, replacement on a changed fingerprint, the single
-//! retry after a lost guest, and abandon. This module only chooses the path
-//! and words the outcome in the CLI's texts.
+//! retry after a lost guest, and abandon. This module chooses the path,
+//! words the outcome in the CLI's texts, and stops guests nobody has used for
+//! [`IDLE_LIMIT`]: the portable pool keeps no timers, so the CLI does it.
 
+use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError, Weak};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use morphir_extension_sdk::protocol::methods;
 use morphir_extension_sdk::{CompileRequest, CompileResult, GenerateRequest, GenerateResult};
 use morphir_host::{CallError, HostConfig, InvocationMode, Pool, Resolved};
 use serde::{Serialize, de::DeserializeOwned};
+use tokio::time::{Instant, MissedTickBehavior};
 
 use super::playground::ExtensionInvoker;
 use crate::error::CliError;
@@ -32,16 +36,144 @@ use crate::extensions::guest;
 /// or both compile and generate, serves all of them over the same session.
 /// Within that key a guest is reused only while the resolution's
 /// [`Resolved::fingerprint`] still names the same build.
+///
+/// A guest nobody has called for [`IDLE_LIMIT`] is stopped in order, as the
+/// daemon's session actor stopped an idle session. A background task checks
+/// every [`SWEEP_INTERVAL`], so an idle guest stops between the limit and the
+/// limit plus one interval after its last call ended. A guest with a call in
+/// flight is never stopped, however long the call runs.
 pub(super) struct PooledInvoker {
+    shared: Arc<Shared>,
+}
+
+/// How long a guest may go without a call before it is stopped. The daemon's
+/// session actor used the same five minutes.
+pub(super) const IDLE_LIMIT: Duration = Duration::from_secs(300);
+
+/// How often the invoker looks for idle guests.
+const SWEEP_INTERVAL: Duration = Duration::from_secs(30);
+
+/// What the invoker and its idle sweep share.
+struct Shared {
     pool: Pool<String>,
+    activity: Mutex<HashMap<String, Activity>>,
+}
+
+/// How a provider's guest has been used.
+struct Activity {
+    /// Calls that have started and not yet ended.
+    in_flight: usize,
+    /// When a call last started or ended.
+    last_used: Instant,
+}
+
+impl Shared {
+    fn activity(&self) -> std::sync::MutexGuard<'_, HashMap<String, Activity>> {
+        self.activity.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Record that a call for `provider` started. The call counts as in
+    /// flight until the returned value is dropped, which also happens when
+    /// the caller drops the call's future, such as on a timeout.
+    fn begin(&self, provider: &str) -> InUse<'_> {
+        let mut activity = self.activity();
+        let entry = activity
+            .entry(provider.to_owned())
+            .or_insert_with(|| Activity {
+                in_flight: 0,
+                last_used: Instant::now(),
+            });
+        entry.in_flight += 1;
+        entry.last_used = Instant::now();
+        InUse {
+            shared: self,
+            provider: provider.to_owned(),
+        }
+    }
+
+    /// Forget and return the providers with no call in flight whose last
+    /// call ended at least `limit` ago.
+    fn take_idle(&self, limit: Duration) -> Vec<String> {
+        let now = Instant::now();
+        let mut activity = self.activity();
+        let idle: Vec<String> = activity
+            .iter()
+            .filter(|(_, use_)| use_.in_flight == 0 && now - use_.last_used >= limit)
+            .map(|(provider, _)| provider.clone())
+            .collect();
+        for provider in &idle {
+            activity.remove(provider);
+        }
+        idle
+    }
+
+    fn is_busy(&self, provider: &str) -> bool {
+        self.activity()
+            .get(provider)
+            .is_some_and(|use_| use_.in_flight > 0)
+    }
+}
+
+/// A call in flight; see [`Shared::begin`].
+struct InUse<'a> {
+    shared: &'a Shared,
+    provider: String,
+}
+
+impl Drop for InUse<'_> {
+    fn drop(&mut self) {
+        let mut activity = self.shared.activity();
+        if let Some(entry) = activity.get_mut(&self.provider) {
+            entry.in_flight = entry.in_flight.saturating_sub(1);
+            entry.last_used = Instant::now();
+        }
+    }
+}
+
+/// Stop the guests of providers idle for `limit`, checking every `interval`,
+/// for as long as the invoker lives.
+///
+/// The task holds the invoker's state weakly, so it ends once the invoker is
+/// dropped. A call that starts between the check and the stop still
+/// completes: the pool detaches a guest in use instead of closing it.
+fn spawn_idle_sweep(shared: Weak<Shared>, limit: Duration, interval: Duration) {
+    let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+        tracing::warn!("no async runtime: idle playground guests will not be stopped");
+        return;
+    };
+    runtime.spawn(async move {
+        let mut ticks = tokio::time::interval_at(Instant::now() + interval, interval);
+        ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        loop {
+            ticks.tick().await;
+            let Some(shared) = shared.upgrade() else {
+                return;
+            };
+            for provider in shared.take_idle(limit) {
+                if !shared.is_busy(&provider) {
+                    shared.pool.abandon(&provider).await;
+                }
+            }
+        }
+    });
 }
 
 impl PooledInvoker {
-    /// An invoker that introduces the CLI to every guest with `config`.
+    /// An invoker that introduces the CLI to every guest with `config`, and
+    /// stops a guest after [`IDLE_LIMIT`] without a call.
     pub(super) fn new(config: HostConfig) -> Self {
-        Self {
+        Self::with_idle_limit(config, IDLE_LIMIT, SWEEP_INTERVAL)
+    }
+
+    /// As [`PooledInvoker::new`], stopping a guest idle for `limit` and
+    /// checking every `interval`.
+    fn with_idle_limit(config: HostConfig, limit: Duration, interval: Duration) -> Self {
+        let shared = Arc::new(Shared {
             pool: Pool::new(config),
-        }
+            activity: Mutex::new(HashMap::new()),
+        });
+        spawn_idle_sweep(Arc::downgrade(&shared), limit, interval);
+        Self { shared }
     }
 
     /// Answer one call over the provider's pooled guest.
@@ -79,10 +211,13 @@ impl PooledInvoker {
                 }
             }
         };
+        let in_use = self.shared.begin(&provider);
         let outcome = self
+            .shared
             .pool
             .call(&provider, &resolved.fingerprint(), open, method, request)
             .await;
+        drop(in_use);
         outcome.map_err(|error| match error {
             CallError::Rejected(error) => CliError::Extension {
                 message: guest::rejected_text(&provider, method, error),
@@ -149,7 +284,7 @@ impl ExtensionInvoker for PooledInvoker {
     /// A timed-out call may have left its guest wedged on the hung exchange.
     /// The pool forgets the guest, so the next request opens a fresh one.
     async fn abandon(&self, provider: &str) {
-        self.pool.abandon(&provider.to_owned()).await;
+        self.shared.pool.abandon(&provider.to_owned()).await;
     }
 }
 
@@ -188,6 +323,8 @@ mod tests {
         Reject,
         /// The call never answers.
         Hang,
+        /// The call answers after this long.
+        Delay(Duration),
         /// The session breaks under the call, and from then on no guest
         /// starts: every later start fails with this text.
         LoseForGood(&'static str),
@@ -197,6 +334,7 @@ mod tests {
     #[derive(Default)]
     struct Script {
         opens: AtomicUsize,
+        closes: AtomicUsize,
         faults: Mutex<VecDeque<Fault>>,
         start_failure: Mutex<Option<String>>,
         refuse_handshake: AtomicBool,
@@ -211,6 +349,10 @@ mod tests {
 
         fn opens(&self) -> usize {
             self.opens.load(Ordering::SeqCst)
+        }
+
+        fn closes(&self) -> usize {
+            self.closes.load(Ordering::SeqCst)
         }
     }
 
@@ -297,6 +439,10 @@ mod tests {
                     data: None,
                 }))),
                 Some(Fault::Hang) => std::future::pending().await,
+                Some(Fault::Delay(delay)) => {
+                    tokio::time::sleep(delay).await;
+                    self.inner.call(method, params).await
+                }
                 Some(Fault::LoseForGood(message)) => {
                     *self.script.start_failure.lock().unwrap() = Some(message.into());
                     Err(CallError::Failed(HostError::Channel {
@@ -310,6 +456,7 @@ mod tests {
         }
 
         async fn close(&mut self) -> Result<(), HostError> {
+            self.script.closes.fetch_add(1, Ordering::SeqCst);
             self.inner.close().await
         }
     }
@@ -624,6 +771,90 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(script.opens(), 2);
+    }
+
+    // A guest nobody calls for the idle limit is stopped in order, as the
+    // daemon's session actor stopped an idle session, and the next call opens
+    // a fresh one.
+    #[tokio::test(start_paused = true)]
+    async fn an_idle_guest_is_stopped_and_the_next_call_opens_a_fresh_one() {
+        let temp = tempfile::tempdir().unwrap();
+        let script = Arc::new(Script::default());
+        let registry = registry(&script, None);
+        let resolved = frontend(&registry, InvocationPolicy::ProtocolOnly);
+        let invoker = invoker();
+
+        invoker
+            .compile(
+                temp.path(),
+                &resolved,
+                compile_request(&temp.path().join("compile")),
+            )
+            .await
+            .unwrap();
+        tokio::time::sleep(IDLE_LIMIT + 2 * SWEEP_INTERVAL).await;
+        assert_eq!(script.closes(), 1, "the idle guest is shut down in order");
+
+        invoker
+            .compile(
+                temp.path(),
+                &resolved,
+                compile_request(&temp.path().join("compile")),
+            )
+            .await
+            .unwrap();
+        assert_eq!(script.opens(), 2);
+    }
+
+    // The idle limit runs from the last call, not from when the guest
+    // started: a guest called within the limit each time is kept.
+    #[tokio::test(start_paused = true)]
+    async fn a_guest_used_within_the_idle_limit_is_kept() {
+        let temp = tempfile::tempdir().unwrap();
+        let script = Arc::new(Script::default());
+        let registry = registry(&script, None);
+        let resolved = frontend(&registry, InvocationPolicy::ProtocolOnly);
+        let invoker = invoker();
+
+        for _ in 0..3 {
+            invoker
+                .compile(
+                    temp.path(),
+                    &resolved,
+                    compile_request(&temp.path().join("compile")),
+                )
+                .await
+                .unwrap();
+            tokio::time::sleep(IDLE_LIMIT - SWEEP_INTERVAL).await;
+        }
+
+        assert_eq!(script.closes(), 0);
+        assert_eq!(script.opens(), 1);
+    }
+
+    // A call that runs longer than the idle limit is working, not idle: its
+    // guest is not stopped under it, and it stays warm afterwards.
+    #[tokio::test(start_paused = true)]
+    async fn a_call_longer_than_the_idle_limit_keeps_its_guest() {
+        let temp = tempfile::tempdir().unwrap();
+        let script = Script::with_faults([Fault::Delay(2 * IDLE_LIMIT)]);
+        let registry = registry(&script, None);
+        let resolved = frontend(&registry, InvocationPolicy::ProtocolOnly);
+        let invoker = invoker();
+
+        for _ in 0..2 {
+            invoker
+                .compile(
+                    temp.path(),
+                    &resolved,
+                    compile_request(&temp.path().join("compile")),
+                )
+                .await
+                .unwrap();
+        }
+
+        assert_eq!(script.closes(), 0);
+        assert_eq!(script.opens(), 1);
     }
 
     // A reinstall under the same id resolves to another build. The guest the
