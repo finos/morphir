@@ -24,6 +24,11 @@ semver = { workspace = true, features = ["serde"] }
 base64.workspace = true
 # The kit's `.feature` case files are read through the Morphir Gherkin model.
 morphir-gherkin = { path = "../../ecosystem/morphir-rust/crates/morphir-gherkin" }
+# The Gherkin engine runs the kit's `.feature` cases through the shared Morphir Gherkin suite
+# runner and its `MorphirWorld`.
+morphir-bdd = { path = "../../ecosystem/morphir-rust/crates/morphir-bdd" }
+# The kit's own Gherkin step definitions use cucumber's step macros directly.
+cucumber = { workspace = true }
 
 # Adapter sessions terminate the adapter's whole process tree: a process group
 # on Unix, a Job Object on Windows.
@@ -40,9 +45,18 @@ futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["io"] }
 tuf = { version = "=0.3.0-beta14", default-features = false }
 ring = "0.17"
+# The BDD link test's `main` runs a `Suite` in a Tokio runtime.
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 # Adapter sessions against real processes; the test binary plays each adapter.
 [[test]]
 name = "transport"
 path = "tests/transport.rs"
+harness = false
+
+# Proves cucumber-rs's `inventory` step collection links across the finos/morphir and
+# morphir-rust workspace boundary (Task B0's spike). See tests/bdd_link.rs.
+[[test]]
+name = "bdd_link"
+path = "tests/bdd_link.rs"
 harness = false
