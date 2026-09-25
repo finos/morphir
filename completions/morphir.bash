@@ -23,7 +23,7 @@ _morphir() {
     cat >| "$spec_file" <<'__USAGE_EOF__'
 name morphir
 bin morphir
-version "0.4.0-beta.7"
+version "0.4.0-beta.8"
 about "CLI for working with Morphir IR - functional domain modeling and business logic"
 unknown_flags error
 disable_version_flag #true

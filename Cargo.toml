@@ -21,7 +21,7 @@ resolver = "3"
 tuf = { path = "third_party/rust-tuf" }
 
 [workspace.package]
-version = "0.4.0-beta.7"
+version = "0.4.0-beta.8"
 edition = "2024"
 rust-version = "1.98"
 authors = [

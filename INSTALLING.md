@@ -11,14 +11,14 @@ Morphir GitHub release for your operating system and processor.
 Install the current prerelease globally:
 
 ```shell
-mise use -g github:finos/morphir@0.4.0-beta.7
+mise use -g github:finos/morphir@0.4.0-beta.8
 ```
 
 To pin Morphir in a project's `mise.toml`, add:
 
 ```toml
 [tools]
-"github:finos/morphir" = "0.4.0-beta.7"
+"github:finos/morphir" = "0.4.0-beta.8"
 ```
 
 Run `mise install` after changing the configuration. Prereleases must be
@@ -81,11 +81,12 @@ if ($actual -ne $expected) { throw "Checksum verification failed" }
 
 ## Install the Python extension
 
-The CLI ships separately from language extensions. With CLI `0.4.0-beta.1` or
-later, install the `morphir-python` WASM bundle `extension/python/v0.3.0` to compile
+The CLI ships separately from language extensions. With CLI `0.4.0-beta.7` or
+later, install the `morphir-python` WASM bundle `extension/python/v0.4.0` to compile
 supported Python ADTs, fixed tuples, conditional functions, typed calls and unary
-lambdas to Morphir IR v3 or v4 and generate Python. The earlier `v0.1.0` bundle does
-not compile with this CLI.
+lambdas to Morphir IR v3 or v4 and generate Python. Its version-2 descriptor needs
+CLI `0.4.0-beta.7` to publish; with CLI `0.4.0-beta.1` to `0.4.0-beta.6`, use
+`extension/python/v0.3.0`. The earlier `v0.1.0` bundle does not compile with this CLI.
 See the [Python extension installation guide](https://github.com/finos/morphir-rust/blob/main/docs/tutorials/python-extension.md)
 for download, repository publication and installation commands, and the
 [binding README](https://github.com/finos/morphir-rust/blob/main/crates/morphir-python-binding/README.md)

@@ -12,7 +12,7 @@ workspace: {kind: directory, path: '.', exclude: [installed, repository]}
 Prepare the pinned bundles with `mise run ci:fetch-published-bundles` and
 `mise run examples:prepare-backends`. Missing prerequisites fail. The driver
 copies this on-disk project into a temporary workspace with a fresh Morphir home.
-The commands below publish and install morphir-avro 0.1.2; they do not download it.
+The commands below publish and install morphir-avro 0.2.0; they do not download it.
 Native Elm supplies types only. These assertions cover schemas, not function
 evaluation.
 
@@ -102,16 +102,16 @@ passes if {
 }
 ```
 
-### Install the pinned provider 0.1.2
+### Install the pinned provider 0.2.0
 
 ```yaml morphir:command
 id: install
-name: Install the pinned provider 0.1.2
+name: Install the pinned provider 0.2.0
 timeout_seconds: 180
 ```
 
 ```sh
-morphir extension install morphir-avro --repository fixture --version 0.1.2
+morphir extension install morphir-avro --repository fixture --version 0.2.0
 ```
 
 ```yaml morphir:assertion
