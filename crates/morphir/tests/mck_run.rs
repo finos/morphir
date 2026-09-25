@@ -631,6 +631,123 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
     assert!(checked.status.success(), "{}", stderr(&checked));
 }
 
+/// The frozen transcript for `binding`, replayed by this test binary itself
+/// (`ADAPTER_FLAG replay <transcript>`).
+fn transcript_for(binding: &str) -> PathBuf {
+    repo().join(format!("spec/mck/baseline/transcripts/{binding}.ndjson"))
+}
+
+/// The frozen consolidated-v1-shaped report `binding` recorded.
+fn baseline_report(binding: &str) -> Value {
+    read_json(&repo().join(format!("spec/mck/baseline/reports/{binding}.json")))
+}
+
+/// `--engine gherkin` replays each frozen transcript and must match its
+/// frozen report exactly, the same way the legacy engine does above (Task
+/// B6: the kit's `.feature` files, run through a `morphir_bdd::Suite`, must
+/// give the same records the legacy per-fence loop gives for the same
+/// adapter answers).
+fn a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report() {
+    for binding in ["morphir-typescript", "morphir-rust"] {
+        let work = tempfile::tempdir().unwrap();
+        let report = work.path().join("report.json");
+        let exe = std::env::current_exe().unwrap();
+        let transcript = transcript_for(binding);
+        let output = morphir(&[
+            "mck",
+            "run",
+            "--engine",
+            "gherkin",
+            "--adapter",
+            exe.to_str().unwrap(),
+            "--adapter-arg",
+            ADAPTER_FLAG,
+            "--adapter-arg",
+            "replay",
+            "--adapter-arg",
+            transcript.to_str().unwrap(),
+            "--kit",
+            repo().join("spec/ir/mck").to_str().unwrap(),
+            "--report",
+            report.to_str().unwrap(),
+        ]);
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "{binding}: {}",
+            stderr(&output)
+        );
+
+        let produced = read_json(&report);
+        assert_eq!(produced["execution"]["session"]["status"], "finished");
+        let mut expected = baseline_report(binding);
+        // A --kit checkout reports its own revision, as the legacy engine does.
+        expected["kitVersion"] = produced["kit"]["version"].clone();
+        let caps = &produced["adapter"]["negotiation"]["capabilities"];
+        assert_eq!(caps["binding"], binding);
+        let projected = serde_json::json!({
+            "contractVersion":1, "binding":caps["binding"], "language":caps["language"],
+            "formatVersions":caps["formatVersions"], "kitVersion":produced["kit"]["version"],
+            "records":produced["records"]
+        });
+        assert_eq!(
+            without_volatile(projected),
+            without_volatile(expected),
+            "{binding}: the gherkin engine's report does not match its frozen baseline"
+        );
+    }
+}
+
+/// `stderr`, without its final `Operation ID: <uuid>` line: that id is fresh
+/// every run and carries no engine-specific meaning.
+fn without_operation_id(text: &str) -> String {
+    text.lines()
+        .filter(|line| !line.starts_with("Operation ID: "))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// `--filter` matching no case gives the legacy `NothingSelected` verdict,
+/// not a `Suite` "empty run" error (Task B6, global constraint "Filters and
+/// tags that select nothing"): the exit code and stderr must be identical
+/// between `--engine legacy` and `--engine gherkin`.
+fn a_filter_matching_nothing_is_identical_between_engines() {
+    let run = |engine: &str| {
+        morphir(&[
+            "mck",
+            "run",
+            "--engine",
+            engine,
+            "--adapter",
+            "definitely-not-an-mck-adapter",
+            "--filter",
+            "^nothing-0000$",
+        ])
+    };
+    let legacy = run("legacy");
+    let gherkin = run("gherkin");
+    assert_eq!(legacy.status.code(), Some(1), "{}", stderr(&legacy));
+    assert_eq!(
+        legacy.status.code(),
+        gherkin.status.code(),
+        "legacy: {} {}\ngherkin: {} {}",
+        legacy.status,
+        stderr(&legacy),
+        gherkin.status,
+        stderr(&gherkin)
+    );
+    assert_eq!(
+        without_operation_id(&stderr(&legacy)),
+        without_operation_id(&stderr(&gherkin)),
+        "stderr must be identical between engines"
+    );
+    assert_eq!(
+        stdout(&legacy),
+        stdout(&gherkin),
+        "stdout must be identical between engines"
+    );
+}
+
 fn a_run_without_an_adapter_is_a_usage_error_that_writes_nothing() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
@@ -856,6 +973,14 @@ fn main() {
         (
             "a_full_run_against_recorded_answers_reproduces_the_typescript_report",
             a_full_run_against_recorded_answers_reproduces_the_typescript_report,
+        ),
+        (
+            "a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report",
+            a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report,
+        ),
+        (
+            "a_filter_matching_nothing_is_identical_between_engines",
+            a_filter_matching_nothing_is_identical_between_engines,
         ),
         (
             "a_run_without_an_adapter_is_a_usage_error_that_writes_nothing",

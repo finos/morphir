@@ -8,9 +8,12 @@
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, PoisonError};
 
-use clap::Args;
-use morphir_mck::ir::{RunOptions, RunVerdict, Testee, run_kit, verdict};
+use clap::{Args, ValueEnum};
+use morphir_bdd::{Console, Suite, SuiteResult};
+use morphir_mck::ir::run::{RunState, report_of};
+use morphir_mck::ir::{Run, RunOptions, RunVerdict, Testee, run_kit, verdict};
 use morphir_mck::json::to_tab_json;
 use morphir_mck::kit::embedded::{PROVENANCE, embedded_source};
 use morphir_mck::kit::gherkin::convert::{convert, feature_description, feature_title};
@@ -26,10 +29,11 @@ use morphir_mck::kit::vendor::{
     Change, Managed, UpdateOutcome, VendorOutcome, VendorSource, check_updatable,
     default_update_source, describe, open_managed, update, vendor,
 };
-use morphir_mck::kit::{Kit, KitCase, KitError, KitSource, load_kit};
+use morphir_mck::kit::{KIT_PATH, Kit, KitCase, KitError, KitSource, load_kit};
 use morphir_mck::provenance::{KitProvenance, KitSourceKind};
 use morphir_mck::report::iso_timestamp;
-use morphir_mck::transport::{Limits, Session};
+use morphir_mck::steps::{KitRun, link};
+use morphir_mck::transport::{Limits, Session, TransportError};
 use serde_json::json;
 use starbase::AppResult;
 
@@ -839,6 +843,17 @@ pub async fn run_mck_kit_update(args: MckKitUpdateArgs) -> AppResult<miette::Rep
     finish(outcome)
 }
 
+/// Which engine `mck run` runs the kit through. Both give the same report,
+/// terminal output and exit code for the same inputs; `legacy` is the
+/// default.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum Engine {
+    /// The kit's Markdown case files, through the legacy per-fence run loop
+    Legacy,
+    /// The kit's `.feature` case files, through a `morphir_bdd::Suite`
+    Gherkin,
+}
+
 #[derive(Args, Clone, Debug)]
 pub struct MckRunArgs {
     /// Compatibility suite to execute
@@ -883,6 +898,13 @@ pub struct MckRunArgs {
     /// How long the whole adapter session may last, in milliseconds
     #[arg(long, value_name = "MS", default_value_t = 1_800_000, value_parser = clap::value_parser!(u64).range(1..))]
     pub session_timeout: u64,
+
+    /// Which engine runs the kit: `legacy` runs its Markdown case files
+    /// through the per-fence run loop; `gherkin` runs its `.feature` case
+    /// files through a `morphir_bdd::Suite`. Both give the same report,
+    /// terminal output and exit code for the same inputs
+    #[arg(long, value_enum, default_value = "legacy")]
+    pub engine: Engine,
 }
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -911,6 +933,58 @@ impl morphir_mck::metadata::run::MetadataTestee for Unstarted {
     ) -> Result<serde_json::Map<String, serde_json::Value>, String> {
         Err(self.0.clone())
     }
+}
+
+/// A `Testee` that exchanges through a `Session` kept behind a shared lock.
+/// `KitRun` owns its testee as a `Box<dyn Testee + Send>`, which erases
+/// `Session`'s concrete type; wrapping it this way keeps a second handle to
+/// the same session outside the `KitRun`, so the gherkin engine can reclaim
+/// it once the `Suite` that runs the kit has finished with it, and close it
+/// exactly as the legacy engine does.
+struct SharedSession(Arc<Mutex<Session>>);
+
+impl Testee for SharedSession {
+    fn exchange(
+        &mut self,
+        request: &morphir_mck::transport::protocol::Request,
+    ) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .exchange(request)
+            .map_err(|error| error.to_string())
+    }
+}
+
+/// The text of a `.feature` scenario's name before its first space: `<id>
+/// <title>` gives `<id>`, the case id the legacy engine's `--filter` matches.
+fn case_id_of(name: &str) -> &str {
+    name.split(' ').next().unwrap_or(name)
+}
+
+/// Writes `source`'s top-level `.feature` case files into `dir`, flat, so a
+/// `morphir_bdd::Suite` can discover them without a real kit directory on
+/// disk. Used only for a `KitSource::Map` (the embedded kit): a
+/// `KitSource::Directory` is already a real directory a `Suite` can scan
+/// directly.
+fn write_feature_files(source: &KitSource, dir: &Path) -> Result<(), String> {
+    let prefix = format!("{KIT_PATH}/");
+    for path in source.list().map_err(|error| error.to_string())? {
+        let Some(name) = path.strip_prefix(&prefix) else {
+            continue;
+        };
+        if name.contains('/') || !name.ends_with(".feature") {
+            continue;
+        }
+        let bytes = source
+            .read(&path)
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| format!("{path} disappeared while materializing the kit"))?;
+        let target = dir.join(name);
+        std::fs::write(&target, &bytes)
+            .map_err(|error| format!("cannot write {}: {error}", target.display()))?;
+    }
+    Ok(())
 }
 
 /// `git rev-parse HEAD` in a raw checkout, which is what the first driver
@@ -1018,6 +1092,12 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
         Err(error) => return finish(Outcome::Usage(format!("invalid --filter regex: {error}"))),
     };
     if args.suite == MckSuite::Metadata {
+        if args.engine == Engine::Gherkin {
+            return finish(Outcome::Usage(
+                "--engine gherkin runs the IR suite only; drop --engine or use --suite ir"
+                    .to_owned(),
+            ));
+        }
         return run_mck_metadata(args, filter).await;
     }
     let (kit, kit_version, kit_provenance) = match kit_for_run(&args) {
@@ -1036,38 +1116,56 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
 
     let started_at = iso_timestamp(std::time::SystemTime::now());
     let origin = std::time::Instant::now();
-    let clock = move || origin.elapsed().as_secs_f64() * 1000.0;
-    let options = RunOptions {
-        filter: filter.as_ref(),
-        driver_version: env!("CARGO_PKG_VERSION").to_owned(),
-        kit_version,
-        started_at,
-        clock: &clock,
-    };
 
-    let (run, shutdown, spawn_error) =
-        match Session::spawn(&args.adapter, &args.adapter_args, limits) {
-            Err(error) => (
-                run_kit(&kit, &mut Unstarted(error.to_string()), &options),
-                Ok(()),
-                Some(error.to_string()),
-            ),
-            Ok(mut session) => {
-                // Ctrl-C takes the adapter's whole tree down with the CLI.
-                let terminator = session.terminator();
-                let interrupt = tokio::spawn(async move {
-                    if tokio::signal::ctrl_c().await.is_ok() {
-                        terminator.kill();
-                        eprintln!("error: interrupted; the adapter was terminated");
-                        std::process::exit(130);
-                    }
-                });
-                let run = tokio::task::block_in_place(|| run_kit(&kit, &mut session, &options));
-                let shutdown = tokio::task::block_in_place(|| session.close());
-                interrupt.abort();
-                (run, shutdown, None)
+    // `RunOptions` carries a bare `&dyn Fn`, so it is not `Sync`, and a reference to it cannot
+    // be held across an await. It stays scoped to the legacy arm below, which awaits nothing;
+    // the gherkin arm (`run_gherkin`, which does await) takes owned copies of the three fields
+    // it needs instead of a `RunOptions`.
+    let (run, shutdown, spawn_error) = match args.engine {
+        Engine::Legacy => {
+            let clock = move || origin.elapsed().as_secs_f64() * 1000.0;
+            let options = RunOptions {
+                filter: filter.as_ref(),
+                driver_version: env!("CARGO_PKG_VERSION").to_owned(),
+                kit_version,
+                started_at,
+                clock: &clock,
+            };
+            match Session::spawn(&args.adapter, &args.adapter_args, limits) {
+                Err(error) => (
+                    run_kit(&kit, &mut Unstarted(error.to_string()), &options),
+                    Ok(()),
+                    Some(error.to_string()),
+                ),
+                Ok(mut session) => {
+                    // Ctrl-C takes the adapter's whole tree down with the CLI.
+                    let terminator = session.terminator();
+                    let interrupt = tokio::spawn(async move {
+                        if tokio::signal::ctrl_c().await.is_ok() {
+                            terminator.kill();
+                            eprintln!("error: interrupted; the adapter was terminated");
+                            std::process::exit(130);
+                        }
+                    });
+                    let run = tokio::task::block_in_place(|| run_kit(&kit, &mut session, &options));
+                    let shutdown = tokio::task::block_in_place(|| session.close());
+                    interrupt.abort();
+                    (run, shutdown, None)
+                }
             }
-        };
+        }
+        Engine::Gherkin => {
+            let meta = ReportMeta {
+                driver_version: env!("CARGO_PKG_VERSION").to_owned(),
+                kit_version,
+                started_at,
+            };
+            match run_gherkin(&args, &kit, limits, meta, origin, filter.as_ref()).await {
+                Ok(triple) => triple,
+                Err(outcome) => return finish(outcome),
+            }
+        }
+    };
 
     if let Some(header) = &run.header {
         eprintln!("{header}");
@@ -1228,4 +1326,223 @@ async fn run_mck_metadata(
     } else {
         finish(Outcome::Passed)
     }
+}
+
+/// The report fields `run_gherkin` needs from `RunOptions`. It cannot take a
+/// borrowed `RunOptions` itself: that type carries a bare `&dyn Fn`, so it is
+/// not `Sync`, and a reference to it cannot be held across `run_gherkin`'s
+/// internal await.
+struct ReportMeta {
+    driver_version: String,
+    kit_version: String,
+    started_at: String,
+}
+
+/// Runs `kit`'s `.feature` files through a `morphir_bdd::Suite`, one scenario
+/// at a time, over the same adapter session the legacy engine would build
+/// (same spawn, same timeouts, same shutdown). Returns exactly what
+/// `run_mck_run`'s legacy match arm returns, so the rest of that function
+/// treats both engines alike; the only new failure mode, which the legacy
+/// arm cannot hit, is reported as an `Err(Outcome)` the caller turns into a
+/// finished command instead of a triple.
+async fn run_gherkin(
+    args: &MckRunArgs,
+    kit: &Kit,
+    limits: Limits,
+    meta: ReportMeta,
+    origin: std::time::Instant,
+    filter: Option<&regex::Regex>,
+) -> Result<(Run, Result<(), TransportError>, Option<String>), Outcome> {
+    let feature_kit = load_feature_kit(kit.source.clone()).map_err(|error| {
+        Outcome::Error(format!("cannot read the kit's .feature files: {error}"))
+    })?;
+
+    // A directory-backed kit source is already a real directory the `Suite` can scan; the
+    // embedded kit (a `KitSource::Map`) has no filesystem home, so its top-level `.feature`
+    // files are written flat into a temp dir kept alive until the `Suite` has run.
+    let mut features_temp = None;
+    let features_dir: PathBuf = match &kit.source {
+        KitSource::Directory { kit_root, .. } => kit_root.clone(),
+        KitSource::Map { .. } => {
+            let dir = tempfile::tempdir().map_err(|error| {
+                Outcome::Error(format!("cannot create a temporary directory: {error}"))
+            })?;
+            write_feature_files(&kit.source, dir.path()).map_err(Outcome::Error)?;
+            let path = dir.path().to_path_buf();
+            features_temp = Some(dir);
+            path
+        }
+    };
+
+    // cucumber-rs collects steps through link-time registration: a step defined in
+    // `morphir_mck::steps` reaches this binary only if it is asked for explicitly.
+    link();
+
+    let (kit_run, session, spawn_error) =
+        match Session::spawn(&args.adapter, &args.adapter_args, limits) {
+            Err(error) => {
+                let kit_run = KitRun::new(
+                    feature_kit,
+                    Box::new(Unstarted(error.to_string())),
+                    Box::new(move || origin.elapsed().as_secs_f64() * 1000.0),
+                );
+                (kit_run, None, Some(error.to_string()))
+            }
+            Ok(session) => {
+                let session = Arc::new(Mutex::new(session));
+                let kit_run = KitRun::new(
+                    feature_kit,
+                    Box::new(SharedSession(session.clone())),
+                    Box::new(move || origin.elapsed().as_secs_f64() * 1000.0),
+                );
+                (kit_run, Some(session), None)
+            }
+        };
+
+    // Ctrl-C takes the adapter's whole tree down with the CLI, as the legacy engine does.
+    let interrupt = session.as_ref().map(|session| {
+        let terminator = session
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .terminator();
+        tokio::spawn(async move {
+            if tokio::signal::ctrl_c().await.is_ok() {
+                terminator.kill();
+                eprintln!("error: interrupted; the adapter was terminated");
+                std::process::exit(130);
+            }
+        })
+    });
+
+    // `Suite::run` drives cucumber-rs, whose own event stream is not `Send`; awaiting it in
+    // place would make this whole function's future non-`Send`, which the CLI's boxed command
+    // future cannot accept. So it runs to completion on a plain OS thread, under a runtime of
+    // its own, and hands its `SuiteResult` back over a channel a `Send` future can await.
+    let filter = filter.cloned();
+    let out_dir = tempfile::tempdir()
+        .map_err(|error| Outcome::Error(format!("cannot create a temporary directory: {error}")))?;
+    let suite_kit_run = kit_run.clone();
+    let (result_tx, result_rx) = tokio::sync::oneshot::channel::<Result<SuiteResult, String>>();
+    let suite_thread = std::thread::Builder::new()
+        .name("mck-gherkin-suite".to_owned())
+        .spawn(move || {
+            let runtime = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    let _ = result_tx.send(Err(format!(
+                        "cannot create a runtime for the kit suite: {error}"
+                    )));
+                    return;
+                }
+            };
+            let result = runtime.block_on(
+                Suite::new("mck")
+                    .features(&features_dir)
+                    .tags("@nothing or not @nothing")
+                    .filter(move |_, _, scenario| {
+                        filter
+                            .as_ref()
+                            .is_none_or(|re| re.is_match(case_id_of(&scenario.name)))
+                    })
+                    .max_concurrent_scenarios(1)
+                    .with_component(suite_kit_run)
+                    .console(Console::Off)
+                    .out_dir(out_dir.path())
+                    .run(),
+            );
+            let _ = result_tx.send(Ok(result));
+        });
+    let suite_thread = match suite_thread {
+        Ok(handle) => handle,
+        Err(error) => {
+            return Err(Outcome::Error(format!(
+                "cannot start the kit suite thread: {error}"
+            )));
+        }
+    };
+    let suite_result = match result_rx.await {
+        Ok(Ok(result)) => result,
+        Ok(Err(message)) => {
+            let _ = suite_thread.join();
+            return Err(Outcome::Error(message));
+        }
+        Err(_) => {
+            let _ = suite_thread.join();
+            return Err(Outcome::Error(
+                "the kit suite thread ended without a result".to_owned(),
+            ));
+        }
+    };
+    if suite_thread.join().is_err() {
+        return Err(Outcome::Error("the kit suite thread panicked".to_owned()));
+    }
+    drop(features_temp);
+
+    if let Some(interrupt) = interrupt {
+        interrupt.abort();
+    }
+    // Parse-level errors that `mck check` should already have caught; a kit error inside a
+    // case's own fences still reaches the report as a kit-error record, as the legacy engine
+    // does. The verdict comes from the report, not from this count.
+    for message in &suite_result.error_messages {
+        eprintln!("{message}");
+    }
+
+    let records = kit_run.report_records();
+    let (header, capabilities, failure) = {
+        let locked = kit_run.0.lock().unwrap_or_else(PoisonError::into_inner);
+        (
+            locked.state.header(),
+            locked.state.caps.clone(),
+            locked.state.failure(),
+        )
+    };
+    drop(kit_run);
+
+    // `report_of` reads only `driver_version`, `kit_version` and `started_at`; the filter and
+    // clock are irrelevant here, so this `RunOptions` is built fresh from owned strings instead
+    // of borrowing the caller's, which is not `Sync` (its clock is a bare `dyn Fn`) and so
+    // cannot be held across this function's earlier await.
+    let no_clock: &dyn Fn() -> f64 = &|| 0.0;
+    let report = report_of(
+        &RunState {
+            caps: capabilities.clone(),
+            dead: None,
+        },
+        &RunOptions {
+            filter: None,
+            driver_version: meta.driver_version,
+            kit_version: meta.kit_version,
+            started_at: meta.started_at,
+            clock: no_clock,
+        },
+        records,
+    );
+    let run = Run {
+        report,
+        header,
+        capabilities,
+        failure,
+    };
+
+    let shutdown = match session {
+        None => Ok(()),
+        Some(session) => match Arc::try_unwrap(session) {
+            Ok(mutex) => mutex
+                .into_inner()
+                .unwrap_or_else(PoisonError::into_inner)
+                .close(),
+            Err(_) => {
+                return Err(Outcome::Error(
+                    "internal error: the adapter session was still shared after the suite \
+                     finished"
+                        .to_owned(),
+                ));
+            }
+        },
+    };
+    Ok((run, shutdown, spawn_error))
 }

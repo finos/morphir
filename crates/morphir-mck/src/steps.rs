@@ -364,10 +364,17 @@ fn tree_check(world: &mut MorphirWorld, step: &Step) {
 /// steps only if the binary uses something from the same object. Call this from the `main` of
 /// every binary that runs the kit through a `Suite`.
 pub fn link() {
-    std::hint::black_box(check_fence as fn(&mut MorphirWorld, &Step));
-    std::hint::black_box(check_tree as fn(&mut MorphirWorld, &Step));
     std::hint::black_box(tree_file as fn(&mut MorphirWorld, &Step));
     std::hint::black_box(canonical_doc as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(canonical_inline as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(accepted_doc as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(accepted as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(rejected_doc as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(rejected_inline as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(reads_as_doc as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(reads_as_inline as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(tree_check_set as fn(&mut MorphirWorld, &Step));
+    std::hint::black_box(tree_check as fn(&mut MorphirWorld, &Step));
 }
 
 #[cfg(test)]
