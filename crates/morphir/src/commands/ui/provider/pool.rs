@@ -188,6 +188,9 @@ mod tests {
         Reject,
         /// The call never answers.
         Hang,
+        /// The session breaks under the call, and from then on no guest
+        /// starts: every later start fails with this text.
+        LoseForGood(&'static str),
     }
 
     /// What a test tells the scripted guests to do, and what it observes.
@@ -294,6 +297,14 @@ mod tests {
                     data: None,
                 }))),
                 Some(Fault::Hang) => std::future::pending().await,
+                Some(Fault::LoseForGood(message)) => {
+                    *self.script.start_failure.lock().unwrap() = Some(message.into());
+                    Err(CallError::Failed(HostError::Channel {
+                        message: "guest went away".into(),
+                        state: ChannelState::Stopped,
+                        cause: ChannelCause::Transport,
+                    }))
+                }
                 None => self.inner.call(method, params).await,
             }
         }
@@ -570,11 +581,13 @@ mod tests {
         assert_eq!(script.opens(), 2);
     }
 
-    // What the playground does when its patience runs out: it drops the call
-    // and abandons the provider. The hung guest must not serve the next
-    // request.
+    // When the playground's patience runs out it drops the call. The hung
+    // guest goes with it: a timed-out call leaves no cached guest, so the
+    // next request opens a fresh one and keeps it. (That the playground also
+    // abandons the provider is pinned by
+    // `abandoning_a_provider_forgets_its_guest`.)
     #[tokio::test]
-    async fn a_timed_out_call_then_abandon_opens_a_fresh_guest() {
+    async fn a_timed_out_call_leaves_no_cached_guest() {
         let temp = tempfile::tempdir().unwrap();
         let script = Script::with_faults([Fault::Hang]);
         let registry = registry(&script, None);
@@ -591,7 +604,6 @@ mod tests {
         )
         .await;
         assert!(timed_out.is_err(), "the scripted guest never answers");
-        invoker.abandon("morphir-gleam").await;
 
         let compiled = invoker
             .compile(
@@ -668,6 +680,32 @@ mod tests {
             message(error),
             "Failed to verify installed provider 'morphir-gleam': digest mismatch"
         );
+    }
+
+    // A lost guest whose replacement does not start: the caller gets the
+    // start failure's own text, not a handshake or "failed during" text.
+    #[tokio::test]
+    async fn a_replacement_that_does_not_start_reports_its_own_text() {
+        let temp = tempfile::tempdir().unwrap();
+        let script = Script::with_faults([Fault::LoseForGood(
+            "Failed to verify installed provider 'morphir-gleam': digest mismatch",
+        )]);
+        let registry = registry(&script, None);
+
+        let error = invoker()
+            .compile(
+                temp.path(),
+                &frontend(&registry, InvocationPolicy::ProtocolOnly),
+                compile_request(&temp.path().join("compile")),
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(
+            message(error),
+            "Failed to verify installed provider 'morphir-gleam': digest mismatch"
+        );
+        assert_eq!(script.opens(), 2);
     }
 
     #[tokio::test]
