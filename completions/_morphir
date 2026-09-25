@@ -165,8 +165,8 @@ cmd metadata display_order=5 subcommand_required=#true arg_required_else_help=#t
     }
 }
 cmd package display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Restore freshly authenticated Libraries from a local registry (MVP)" unknown_flags=error {
-    cmd create display_order=0 args_override_self=#false help="Create a verified dependency-free classic V4 Library bundle" unknown_flags=error {
-        flag --ir help="Already compiled classic JSON V4 Library IR" required=#true {
+    cmd create display_order=0 args_override_self=#false help="Create a verified dependency-free V4 or V4.1 Library bundle" unknown_flags=error {
+        flag --ir help="Already compiled classic V4 or metadata-enabled V4.1 Library JSON IR" required=#true {
             arg <FILE>
         }
         flag --context-root help="Root of an exported document tree containing contexts/*.jsonld" {

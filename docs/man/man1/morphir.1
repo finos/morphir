@@ -55,7 +55,7 @@ Export JSON with inline contexts or an inventory\-ready directory
 Restore freshly authenticated Libraries from a local registry (MVP)
 .TP
 \fBpackage create\fR
-Create a verified dependency\-free classic V4 Library bundle
+Create a verified dependency\-free V4 or V4.1 Library bundle
 .TP
 \fBpackage sign\fR
 Sign a verified Library with an explicitly supplied local key
@@ -595,7 +595,7 @@ Optional local predicate closure for typed @json expansion
 \fIDefault: \fRauto
 .RE
 .SH "MORPHIR PACKAGE CREATE"
-Create a verified dependency\-free classic V4 Library bundle
+Create a verified dependency\-free V4 or V4.1 Library bundle
 .PP
 \fBUsage:\fR morphir package create [OPTIONS]
 .PP
@@ -603,7 +603,7 @@ Create a verified dependency\-free classic V4 Library bundle
 .PP
 .TP
 \fB\-\-ir\fR \fI<FILE>\fR
-Already compiled classic JSON V4 Library IR
+Already compiled classic V4 or metadata\-enabled V4.1 Library JSON IR
 .TP
 \fB\-\-context\-root\fR \fI<DIR>\fR
 Root of an exported document tree containing contexts/*.jsonld

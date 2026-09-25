@@ -3,10 +3,10 @@
 
 - **Usage:** `morphir package create <FLAGS>`
 
-Create a verified dependency-free classic V4 Library bundle
+Create a verified dependency-free V4 or V4.1 Library bundle
 
 ## Flags
-- **`--ir <FILE>`** — Already compiled classic JSON V4 Library IR
+- **`--ir <FILE>`** — Already compiled classic V4 or metadata-enabled V4.1 Library JSON IR
 - **`--context-root <DIR>`** — Root of an exported document tree containing contexts/*.jsonld
 - **`--manifest-input <FILE>`** — Authoring fields: packagePath, version, dependencies and exports
 - **`--output <DIR>`** — New bundle directory; existing paths are never replaced

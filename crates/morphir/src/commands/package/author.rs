@@ -11,7 +11,7 @@ use super::{emit, read_bounded};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateArgs {
-    /// Already compiled classic JSON V4 Library IR
+    /// Already compiled classic V4 or metadata-enabled V4.1 Library JSON IR
     #[arg(long, value_name = "FILE")]
     ir: PathBuf,
     /// Root of an exported document tree containing contexts/*.jsonld
