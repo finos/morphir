@@ -247,15 +247,17 @@ impl Extensions {
 
 ### morphir itest
 
-`morphir itest` becomes the user-facing runner for `morphir-bdd`. It runs `.feature` and `.feature.md` files under `examples/` through `Suite`, and it keeps today's options (`--tag`, `--filter`, `--list`, `--keep-temp`), its PASS and FAIL lines, and its exit code.
+`morphir itest` is the user-facing runner for `morphir-bdd`. It reads `scenarios.md`, `.feature` and `.feature.md` files under `examples/` through `Suite`, and it keeps today's options (`--tag`, `--filter`, `--list`, `--keep-temp`), its PASS and FAIL lines, and its exit code.
 
-itest's step kinds become step libraries:
+A scenario's workspace, evaluator provider and overlay files are one `yaml itest` fence, `{workspace?, provider?, files?}`. In the Feature description it sets the whole document's workspace and provider; in a Scenario description it adds that scenario's own `files`, on top of the Feature's. A `scenarios.md` section's frontmatter and its `morphir:file` fences lower into this same fence.
 
-| itest today | Step library |
+itest's step kinds are step libraries with fixed step text:
+
+| itest today | Step text |
 | --- | --- |
-| `Command` with `captures` and `stdout_json` | the base CLI steps; captures are named components |
-| Rego `Assertion` | `Then the result should satisfy the policy:` with a `rego` doc string, over `morphir-opa` |
-| `Golden` with `select` and `line_endings` (branch `feat/itest-golden`) | `Then stdout at "<select>" should match the golden file "…" with <lf\|crlf> line endings`, or a doc string in place of the file; `select` and `line_endings` are step text |
+| `Command` with `captures` and `stdout_json` | `When I run "<command>" with a <n> second timeout`, then `And I capture "<path>" as <json\|text\|exists> named "<name>"` per capture, and `And stdout is JSON` when set |
+| Rego `Assertion` | `Then the result should satisfy the policy rules "<entrypoints>":` with a `rego` doc string, over `morphir-opa` |
+| `Golden` with `select` and `line_endings` | `Then the file "<actual>" at "<select>" should match the golden file "<file>" with <exact\|LF> line endings`, or the same step ending `:` with a doc string in place of the file |
 
 - **Existing scenarios:** a reader for itest's `scenarios.md` format lowers each `##` section into the same model. The 19 existing example scenarios therefore run unchanged. New examples are written as `.feature.md`, and old ones move over when they are next touched.
 - **Golden steps:** `feat/itest-golden` is rebased and landed first, so the golden step library starts from its `golden.rs`.
