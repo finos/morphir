@@ -934,8 +934,9 @@ fn itest_list_matches_the_recorded_fixture() {
     let fixture = include_str!("fixtures/itest-list.txt");
     let output = run(&examples(), &["--list"]);
     let (stdout, stderr) = text(&output);
-    // Byte for byte the output recorded before Part C, `elm/single-file` included: its
-    // `.feature.md` scenario keeps the id, title, tags and description it had before.
+    // Byte for byte the output recorded before Part C, with one intended change: the notebook
+    // `elm/single-file` had no section, and its `.feature.md` scenario is
+    // `elm/single-file#compile-and-install`, with the same title, tags and description.
     assert_eq!(stdout, fixture, "stderr={stderr}");
     assert!(output.status.success(), "stderr={stderr}");
 }

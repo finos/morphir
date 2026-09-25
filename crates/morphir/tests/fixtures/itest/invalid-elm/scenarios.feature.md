@@ -18,7 +18,7 @@ files:
 
 ## Scenario: Reject malformed single-file Elm
 
-`@section:.` `@steps:1`
+`@steps:1`
 
 Malformed Elm fails compilation without publishing usable IR. Rego verifies the diagnostics and
 absent artifacts.

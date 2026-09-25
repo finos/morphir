@@ -14,7 +14,7 @@ cli/migrate#classic-to-v4: Convert Classic JSON to V4 YAML [area:cli, feature:mi
   Convert a Classic Library into canonical V4 YAML using the public CLI.
 elm/classic-json#compile-functions: Compile functions [language:elm, frontend:morphir-elm, config:json, area:compile, ir:v3, kind:positive, suite:elm-reference, workspace:directory]
   Discover a classic morphir.json project and compile an arithmetic function with the reference Elm frontend.
-elm/single-file: Compile and install types from one Elm file [language:elm, frontend:elm-native, config:none, area:compile, area:install, ir:v3, kind:positive, suite:offline, workspace:directory]
+elm/single-file#compile-and-install: Compile and install types from one Elm file [language:elm, frontend:elm-native, config:none, area:compile, area:install, ir:v3, kind:positive, suite:offline, workspace:directory]
   The native Elm frontend compiles a single file without project configuration, writes classic v3 IR and a task result, and installs a copy when requested. Rego checks the outputs; this proves type compilation, not native Elm function lowering.
 elm/single-file-functions#compile-functions: Compile functions [language:elm, frontend:morphir-elm, config:none, area:compile, ir:v3, kind:positive, suite:elm-reference, workspace:directory]
   Compile an annotated arithmetic function without project configuration using the reference Elm frontend.

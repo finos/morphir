@@ -527,20 +527,3 @@ fn listed_scenarios_count_outline_rows_and_wip_skips() {
         [(".#plain", 1, 1), (".#skipped", 1, 0), (".#rows-n", 3, 2)]
     );
 }
-
-#[test]
-fn a_dot_section_tag_gives_the_directory_id_alone() {
-    assert_eq!(
-        support::scenario_id("elm/single-file", "Any name", Some(".")).unwrap(),
-        "elm/single-file"
-    );
-    assert_eq!(
-        support::scenario_id("elm/single-file", "Any name", Some("types")).unwrap(),
-        "elm/single-file#types"
-    );
-    assert_eq!(
-        support::scenario_id("elm/single-file", "Any name", None).unwrap(),
-        "elm/single-file#any-name"
-    );
-    assert!(support::scenario_id("elm/single-file", "Any name", Some("..")).is_err());
-}

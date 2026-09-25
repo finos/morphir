@@ -4,9 +4,9 @@
 //! Discovery finds one scenario document per example directory under the search root: a
 //! `scenarios.md` file (read by [`read_scenarios_md`]), or a `*.feature` or `*.feature.md` file
 //! (read by `morphir_gherkin`). A scenario's id is `<directory id>#<section>`, where the section is
-//! its `@section:` tag or else the id of its name; a `@section:.` tag gives the directory id alone.
-//! The suite then runs the selected scenarios one at a time with the [`steps`] building blocks,
-//! and prints one `PASS` or `FAIL` line for each scenario and a summary line.
+//! its `@section:` tag or else the id of its name. The suite then runs the selected scenarios one
+//! at a time with the [`steps`] building blocks, and prints one `PASS` or `FAIL` line for each
+//! scenario and a summary line.
 //!
 //! Scenarios run, and their lines print as they finish, in document order: documents in path
 //! order, and each document's scenarios in the order they are written. (Before the suite, itest
@@ -227,9 +227,9 @@ fn document_dir(document: &Path) -> PathBuf {
     }
 }
 
-/// The itest id of the scenario named `name` in the document at `document` under `root`, as
-/// [`scenario_id`] gives it for the document's directory. `root` and `document` must use the same
-/// path form.
+/// The itest id of the scenario named `name` in the document at `document` under `root`:
+/// `<directory id>#<section>`. The section is `section` (the scenario's `@section:` tag) when
+/// given, or else the section id of `name`. `root` and `document` must use the same path form.
 fn scenario_id_of(
     root: &Path,
     document: &Path,
@@ -238,22 +238,7 @@ fn scenario_id_of(
 ) -> Result<String> {
     let context = || format!("scenario document {}", document.display());
     let directory = directory_id(root, &document_dir(document)).with_context(context)?;
-    scenario_id(&directory, name, section).with_context(context)
-}
-
-/// The `@section:` value that gives a scenario the id of its directory alone, with no
-/// `#<section>`. It lets the one scenario of `examples/elm/single-file` keep the id
-/// `elm/single-file`.
-const DIRECTORY_SECTION: &str = ".";
-
-/// The itest id of the scenario named `name` in the directory whose id is `directory`:
-/// `<directory>#<section>`, where the section is `section` (the scenario's `@section:` tag) when
-/// given, or else the section id of `name`. A `@section:.` tag gives `<directory>` alone.
-fn scenario_id(directory: &str, name: &str, section: Option<&str>) -> Result<String> {
-    if section == Some(DIRECTORY_SECTION) {
-        return Ok(directory.to_owned());
-    }
-    let section = markdown::section_id(name, section.map(str::to_owned))?;
+    let section = markdown::section_id(name, section.map(str::to_owned)).with_context(context)?;
     Ok(format!("{directory}#{section}"))
 }
 
@@ -476,8 +461,9 @@ fn read_listed(path: &Path, directory: &str) -> std::result::Result<Vec<Listed>,
             Some(("section", id)) => Some(id.to_owned()),
             _ => None,
         });
-        let id = scenario_id(directory, &scenario.name, section.as_deref())
+        let section = markdown::section_id(&scenario.name, section)
             .map_err(|error| format!("{}: {error:#}", path.display()))?;
+        let id = format!("{directory}#{section}");
         if !ids.insert(id.clone()) {
             return Err(format!(
                 "{}: more than one scenario has the id {id}",

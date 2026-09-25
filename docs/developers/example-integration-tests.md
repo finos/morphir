@@ -60,8 +60,7 @@ search root, or `.` for the search root itself, followed by `#` and the scenario
 section ID, such as `cli/basics#version` or `.#version` at the search root. In a
 `scenarios.md` file, the section ID comes from the `##` heading. In a `.feature` or
 `.feature.md` file, it is the value of the scenario's `@section:<id>` tag, or else
-the ID of the scenario name. The tag `@section:.` gives the directory ID alone, as
-`elm/single-file` shows. Quote filters containing `#` in the shell.
+the ID of the scenario name. Quote filters containing `#` in the shell.
 `--filter .` selects scenarios directly in the search root; `--filter root` selects a
 directory named `root` and its descendants. Other filters select an exact ID
 or directory category. Repeated `--tag` options
@@ -247,7 +246,7 @@ workspace: {kind: directory, path: ".", exclude: [installed]}
 
 ## Scenario: Compile and install types from one Elm file
 
-`@section:.` `@steps:2`
+`@section:compile-and-install` `@steps:2`
 
 The native Elm frontend compiles a single file without project configuration.
 
@@ -287,8 +286,7 @@ The feature name and description, and the tags of the feature, rule and scenario
 are what `--list` shows. `--tag` selects on the same tags. Two tags are for the
 runner and `--list` does not show them:
 
-- `@section:<id>` sets the scenario's section ID. `@section:.` gives the directory ID
-  alone.
+- `@section:<id>` sets the scenario's section ID.
 - `@steps:<n>` sets the step count of the `PASS` line. Without it, the count is the
   number of steps that ran.
 

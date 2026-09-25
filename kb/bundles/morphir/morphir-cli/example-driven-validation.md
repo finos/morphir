@@ -57,8 +57,7 @@ checks version reporting and command help in two independent scenarios.
 A `.feature.md` or `.feature` file writes the same scenario as Gherkin steps, such as
 `When I run "morphir …"` and `Then the result should satisfy the policy rules "…":`. A
 `yaml itest` fence in the feature description holds the provider, the workspace and optional
-files. A `@section:<id>` tag sets the scenario's ID, and `@section:.` gives the directory ID
-alone.
+files. A `@section:<id>` tag sets the scenario's section ID.
 
 On-disk workspaces are the default. The optional `workspace` setting selects a relative project
 directory and exclusions with `kind: directory`, or uses only the declared files with

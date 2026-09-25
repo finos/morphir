@@ -14,7 +14,7 @@ workspace: {kind: directory, path: ".", exclude: [installed]}
 
 ## Scenario: Compile and install types from one Elm file
 
-`@section:.` `@steps:2`
+`@section:compile-and-install` `@steps:2`
 
 The native Elm frontend compiles a single file without project configuration, writes classic v3 IR
 and a task result, and installs a copy when requested. Rego checks the outputs; this proves type
