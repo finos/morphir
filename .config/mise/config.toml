@@ -179,8 +179,10 @@ description = "Compile spec/mep/contract and refresh spec/mep/generated/mep.ir.j
 # still finds the toolchain.
 run = """
 set -e
-cargo build --locked -p morphir --bin morphir
-morphir="${CARGO_TARGET_DIR:-target}/debug/morphir"
+# Ask cargo where it put the binary, so a custom target directory works.
+morphir=$(cargo build --locked -p morphir --bin morphir --message-format=json-render-diagnostics \
+  | awk -F'"executable":"' 'NF > 1 { sub(/".*/, "", $2); path = $2 } END { print path }')
+test -x "$morphir"
 for name in $(env | awk -F= 'toupper(substr($1, 1, 8)) == "MORPHIR_" { print $1 }'); do
   unset "$name"
 done

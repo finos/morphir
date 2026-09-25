@@ -14,7 +14,7 @@ Before 1.0.0:
 - An additive or backward-compatible change bumps the patch version.
 - Published contracts carry no prerelease tags.
 
-The handshake sends the canonical `MAJOR.MINOR` form of the version. `SUPPORTED_MEP_VERSIONS` in `morphir-extension-sdk` lists canonical versions; today it holds `0.1`. After 1.0.0, MEP follows standard SemVer.
+The contract's full version is `version` in `contract/gleam.toml` (today `0.1.0`); bump it by these rules. The handshake sends the canonical `MAJOR.MINOR` form of that version. `SUPPORTED_MEP_VERSIONS` in `morphir-extension-sdk` lists canonical versions; today it holds `0.1`. After 1.0.0, MEP follows standard SemVer.
 
 The capability claims format has its own version, separate from MEP. Writers send `claimsVersion` `0.1.0-draft.2`, and readers also accept `0.1.0-draft.1`.
 

@@ -407,10 +407,19 @@ fn no_constructor_shadows_the_prelude() {
 fn the_committed_ir_matches_a_fresh_compile() {
     let fresh = compile_contract_bytes();
     let committed = fs::read(committed_ir()).unwrap();
-    assert!(
-        fresh == committed,
-        "spec/mep/generated/mep.ir.json is out of date; run `mise run spec:mep` and commit it"
-    );
+    if fresh != committed {
+        let first_difference = fresh
+            .iter()
+            .zip(&committed)
+            .position(|(a, b)| a != b)
+            .unwrap_or(fresh.len().min(committed.len()));
+        panic!(
+            "spec/mep/generated/mep.ir.json is out of date (first difference at byte {first_difference}; \
+             fresh {} bytes, committed {} bytes); run `mise run spec:mep` and commit it",
+            fresh.len(),
+            committed.len()
+        );
+    }
 }
 
 /// The `///` lines directly above `declaration`, without the markers, joined
