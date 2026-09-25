@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-25
+
+* **Update**: [Example-driven CLI validation](/example-driven-validation.md) describes `.feature` and `.feature.md` scenarios on the `morphir-bdd` suite. `morphir itest` no longer runs notebooks, and the single-file Elm example is a `.feature.md` file (finos/morphir#946).
+
 ## 2026-09-22
 
 * **Creation**: Added [SemVer is the default contract versioning scheme](/decisions/0003-semver-is-the-default-contract-versioning-scheme.md).

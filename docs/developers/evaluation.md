@@ -6,7 +6,7 @@ sidebar_label: Evaluation architecture
 # Evaluation architecture and milestones
 
 Milestone 0 provides a portable evaluation contract, an embedded Rego provider,
-and a CLI host. Notebook integration scenarios use that public CLI boundary for
+and a CLI host. The `morphir itest` example scenarios use that public CLI boundary for
 assertions. The target is a native Morphir IR evaluator available through the
 same contract from the CLI, WASM, UI and policy hosts.
 
@@ -117,7 +117,7 @@ that arbitrary classic V3 programs are evaluable.
 ```mermaid
 flowchart LR
     CLI[CLI host] --> Contract[Versioned evaluation request/report]
-    Notebook[Notebook itest] --> CLI
+    Itest[Example itest] --> CLI
     UI[UI worker] --> WASM[WASM host]
     Policy[Policy host] --> WASM
     WASM --> Contract
@@ -128,7 +128,7 @@ flowchart LR
 The CLI, Rego, and first classic V3 native pilot paths are implemented. The
 WASM host and broader native Morphir IR support are follow-up work. Hosts load inputs, enforce permissions and budgets,
 and present diagnostics. Providers evaluate already-loaded programs. Neither
-notebook metadata nor UI code should encode another evaluator's semantics.
+scenario metadata nor UI code should encode another evaluator's semantics.
 
 Future native provider work can expand the IR program and value ADTs after
 review. Morphir runtime values require an explicit versioned wire
@@ -150,7 +150,7 @@ Beads epic **morphir-o6vm.9** tracks the target state:
 | Task | Deliverable and acceptance |
 | --- | --- |
 | `morphir-o6vm.9.1` | Native Morphir IR semantic core, fixed independent value/error vectors, supported SDK operations and deterministic limits |
-| `morphir-o6vm.9.2` | Native provider in `morphir eval` and notebook assertions; compile assertion source through real frontends and verify evaluation |
+| `morphir-o6vm.9.2` | Native provider in `morphir eval` and itest assertions; compile assertion source through real frontends and verify evaluation |
 | `morphir-o6vm.9.3` | Versioned WASM ABI with ownership, cancellation and budgets; identical fixed vectors on native and WASM hosts |
 | `morphir-o6vm.9.4` | UI worker and policy adapters using that API, with cancellation and decision/error integration coverage |
 | `morphir-o6vm.9.5` | Extension SDK/manifest/registry negotiation for installed evaluators and supported program kinds |
@@ -165,5 +165,5 @@ same requests through CLI and WASM hosts. Keep false decisions, undefined
 results and runtime failures distinct. Use the shared compatibility machinery
 for cross-implementation claims rather than creating a second MCK runner.
 
-See [notebook authoring](example-integration-tests.md) and the
+See [scenario authoring](example-integration-tests.md) and the
 [Regorus engine API](https://docs.rs/regorus/0.11.0/regorus/struct.Engine.html).

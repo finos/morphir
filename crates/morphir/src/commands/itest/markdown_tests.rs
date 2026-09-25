@@ -93,7 +93,7 @@ fn markdown_rejects_invalid_metadata_pairs_and_scenario_boundaries() {
         (EXAMPLE.replacen("```rego", "```sh", 1), "rego"),
         (
             EXAMPLE.replacen("id: check", "id: run", 1),
-            "duplicate notebook cell id",
+            "duplicate Morphir block id",
         ),
         (
             EXAMPLE.replacen("command: run", "command: future", 1),

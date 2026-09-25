@@ -6,9 +6,8 @@ use crate::commands::itest::{
     model::{self, Workspace},
     runner::{prepare_root, read_text, temporary_root},
     scenario_id_of,
-    workspace::materialize_example,
+    workspace::{materialize_example, validate_workspace_paths},
 };
-use crate::notebook::validate_workspace_paths;
 use anyhow::{Context as _, Result};
 use morphir_evaluator::ProviderId;
 use morphir_gherkin::{
@@ -30,7 +29,7 @@ pub struct ExampleWorkspace {
 }
 
 /// One overlay file of a `yaml itest` fence, written into the project after the directory's
-/// inputs. Today's Markdown writes these as `morphir:file` fences.
+/// inputs. `scenarios.md` writes these as `morphir:file` fences.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExampleFile {
@@ -529,7 +528,7 @@ Feature: Compile a directory example
         .unwrap();
         let spec = context.get::<ExampleSpec>().unwrap();
         assert_eq!(spec.provider, morphir_evaluator::ProviderId::Rego);
-        assert!(matches!(spec.workspace, model::Workspace::Notebook {}));
+        assert!(matches!(spec.workspace, model::Workspace::Inline {}));
         assert_eq!(spec.files.len(), 1);
         assert_eq!(spec.files[0].path, "a/b.txt");
         assert_eq!(spec.files[0].content, "x");

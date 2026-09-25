@@ -272,7 +272,10 @@ fn itest_distinguishes_search_root_from_a_directory_named_root() {
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let temp = tempfile::tempdir().unwrap();
@@ -931,27 +934,41 @@ fn itest_list_matches_the_recorded_fixture() {
     let fixture = include_str!("fixtures/itest-list.txt");
     let output = run(&examples(), &["--list"]);
     let (stdout, stderr) = text(&output);
-    // Until Task C5 converts `elm/single-file` off its notebook, that one example is refused
-    // instead of listed; every other row is byte for byte the output recorded before Part C.
-    // After C5, assert `stdout == fixture` and a successful exit.
-    let lines: Vec<&str> = fixture.split_inclusive('\n').collect();
-    let notebook = lines
-        .iter()
-        .position(|line| line.starts_with("elm/single-file:"))
-        .expect("the fixture lists elm/single-file");
-    let expected: String = lines
-        .iter()
-        .enumerate()
-        .filter(|(index, _)| *index != notebook && *index != notebook + 1)
-        .map(|(_, line)| *line)
-        .collect();
-    assert_eq!(stdout, expected, "stderr={stderr}");
-    assert!(!output.status.success());
+    // Byte for byte the output recorded before Part C, `elm/single-file` included: its
+    // `.feature.md` scenario keeps the id, title, tags and description it had before.
+    assert_eq!(stdout, fixture, "stderr={stderr}");
+    assert!(output.status.success(), "stderr={stderr}");
+}
+
+#[test]
+fn itest_refuses_a_notebook_scenario_and_names_the_conversion() {
+    let temp = tempfile::tempdir().unwrap();
+    write_scenario(&temp.path().join("cli/old"), &scenario());
+    fs::write(temp.path().join("scenarios.md"), VERSION_MD).unwrap();
+    let notebook = temp.path().join("cli/old/scenario.ipynb");
+    let reason = format!(
+        "notebook scenarios are no longer supported; convert {} to scenarios.feature.md",
+        notebook.display()
+    );
+    // `--list` gives the reason as the command's error, which the error report may wrap.
+    let output = run(temp.path(), &["--list"]);
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout}");
+    let unwrapped = |text: &str| -> String {
+        text.chars()
+            .filter(|c| !c.is_whitespace() && *c != '│')
+            .collect()
+    };
+    assert!(unwrapped(&stderr).contains(&unwrapped(&reason)), "{stderr}");
+    // A run gives a FAIL line for the notebook's directory, whatever the tags select.
+    let output = run(temp.path(), &["--tag", "suite:none"]);
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout}");
     assert!(
-        stderr.contains("notebook scenarios are no longer supported; convert")
-            && stderr.contains("scenario.ipynb to scenarios.feature.md"),
+        stderr.contains(&format!("FAIL cli/old\n{reason}")),
         "{stderr}"
     );
+    assert_eq!(stdout, "0 passed; 1 failed; 2 not selected\n", "{stderr}");
 }
 
 #[test]

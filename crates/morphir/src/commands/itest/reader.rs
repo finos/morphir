@@ -1,7 +1,7 @@
 //! Reads an itest `scenarios.md` file into a `morphir_gherkin::Document`.
 //!
 //! Each `##` section becomes a Gherkin `Scenario`, built from the typed steps
-//! [`model::parse`] already gives for every notebook `markdown::parse_sections` produces from the
+//! [`model::parse`] already gives for every section `markdown::parse_sections` produces from the
 //! file. The lowering writes synthetic `.feature` text and hands it to
 //! [`morphir_gherkin::read_str`], the simplest way to get a well-formed `Document`; positions in
 //! that synthetic text are then rewritten so a step's `position` points at its own fence's line in
@@ -9,16 +9,15 @@
 //! since `read_str` has no way to carry a foreign file's line numbers through its own parse.
 //!
 //! The reader is built on [`model::Step`] and [`model::Metadata`], plus each section's title, id,
-//! heading line and per-cell fence lines from [`markdown::parse_sections`]. Two things fall
-//! outside that typed surface, and the reader reads them directly off the section's [`Notebook`]
-//! instead: overlay files (`morphir:file` cells, which `model::parse` does not surface at all) and
-//! the command-order check below (which needs the cells' own file order, lost once they are
-//! grouped into [`model::Step::assertions`]).
+//! heading line and per-block fence lines from [`markdown::parse_sections`]. Two things fall
+//! outside that typed surface, and the reader reads them directly off the section's
+//! [`markdown::Cell`]s instead: overlay files (`morphir:file` blocks, which `model::parse` does
+//! not surface at all) and the command-order check below (which needs the blocks' own file order,
+//! lost once they are grouped into [`model::Step::assertions`]).
 
 use super::golden::{LineEndings, Selection};
-use super::markdown::{self, ParsedSection};
+use super::markdown::{self, CellRole, ParsedSection};
 use super::model::{self, AssertionKind, ExpectedText, Metadata, Step};
-use crate::notebook::Notebook;
 use anyhow::{Context, Result, bail, ensure};
 use morphir_gherkin::Document;
 use morphir_gherkin::LineCol;
@@ -42,9 +41,9 @@ fn read(path: &Path) -> Result<Document> {
     let mut scenarios = Vec::new();
     let mut files = Vec::new();
     for section in &parsed.sections {
-        check_command_order(&section.notebook, path, section)?;
-        files.push(overlay_files(&section.notebook)?);
-        let (_, steps) = model::parse(&section.notebook)
+        check_command_order(path, section)?;
+        files.push(overlay_files(section)?);
+        let (_, steps) = model::parse(section)
             .with_context(|| format!("{}: scenario {}", path.display(), section.id))?;
         scenarios.push((section, steps));
     }
@@ -105,59 +104,61 @@ fn step_lines(section: &ParsedSection, steps: &[Step]) -> Vec<usize> {
     lines
 }
 
-/// The line of the cell `id`'s own `yaml morphir:<role>` metadata fence, or the section heading's
-/// line when the id has none recorded. The fallback should not be reachable for a well-formed
-/// document (every command, assertion and golden cell is recorded), but keeps this infallible.
+/// The line of the block `id`'s own `yaml morphir:<role>` metadata fence, or the section
+/// heading's line when the section has no such block. The fallback should not be reachable (every
+/// step comes from a block of the section), but keeps this infallible.
 fn fence_line(section: &ParsedSection, id: &str) -> usize {
-    section.fence_lines.get(id).copied().unwrap_or(section.line)
+    section.cell(id).map_or(section.line, |cell| cell.line)
 }
 
 /// Fails when an assertion or golden fence's `command` is not the most recently issued command at
 /// that point in the file. Grouping a step's assertions right after its own `When` (as
 /// [`feature_text`] does) is only faithful to the source when this holds, so a violation is
-/// reported rather than silently reordered. `model::Step::assertions` does not carry the cells'
-/// own file order, so this walks the notebook's cells directly instead. The reported line is the
+/// reported rather than silently reordered. `model::Step::assertions` does not carry the blocks'
+/// own file order, so this walks the section's blocks directly instead. The reported line is the
 /// failing assertion's or golden's own fence line, not the section heading's.
-fn check_command_order(notebook: &Notebook, path: &Path, section: &ParsedSection) -> Result<()> {
+fn check_command_order(path: &Path, section: &ParsedSection) -> Result<()> {
     let mut last_command: Option<&str> = None;
-    for cell in notebook.cells() {
-        let Some(role) = cell.morphir().get("itest") else {
-            continue;
-        };
-        match role.get("kind").and_then(Value::as_str) {
-            Some("command") => last_command = Some(cell.id()),
-            Some(kind @ ("assertion" | "golden")) => {
-                let command = role
-                    .get("command")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                if last_command != Some(command) {
-                    let line = fence_line(section, cell.id());
-                    bail!(
-                        "{}:{line}: {kind} {} checks command {command:?}, which is not the last command",
-                        path.display(),
-                        cell.id()
-                    );
-                }
+    for cell in &section.cells {
+        let kind = match cell.role {
+            CellRole::Command => {
+                last_command = Some(&cell.id);
+                continue;
             }
-            _ => {}
+            CellRole::Assertion => "assertion",
+            CellRole::Golden => "golden",
+            CellRole::File => continue,
+        };
+        let command = cell
+            .metadata
+            .get("command")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if last_command != Some(command) {
+            bail!(
+                "{}:{}: {kind} {} checks command {command:?}, which is not the last command",
+                path.display(),
+                cell.line,
+                cell.id
+            );
         }
     }
     Ok(())
 }
 
-/// The `path` and `content` of every `morphir:file` cell of `notebook`, in file order.
-/// `model::parse` does not surface these cells at all (they hold no `itest` role), so they are
-/// read directly off the notebook.
-fn overlay_files(notebook: &Notebook) -> Result<Vec<(String, String)>> {
+/// The `path` and `content` of every `morphir:file` block of `section`, in file order.
+/// `model::parse` does not surface these blocks at all (they hold no step), so they are read
+/// directly off the section.
+fn overlay_files(section: &ParsedSection) -> Result<Vec<(String, String)>> {
     let mut files = Vec::new();
-    for cell in notebook.cells() {
-        if let Some(file) = cell.morphir().get("file") {
-            let path = file
+    for cell in &section.cells {
+        if cell.role == CellRole::File {
+            let path = cell
+                .metadata
                 .get("path")
                 .and_then(Value::as_str)
-                .with_context(|| format!("cell {}: file fence needs a path", cell.id()))?;
-            files.push((path.to_owned(), cell.source().to_owned()));
+                .with_context(|| format!("cell {}: file fence needs a path", cell.id))?;
+            files.push((path.to_owned(), cell.source.clone()));
         }
     }
     Ok(files)
@@ -476,7 +477,7 @@ fn workspace_yaml(workspace: &model::Workspace) -> String {
                 yaml_string(path)
             )
         }
-        model::Workspace::Notebook {} => "{kind: notebook}".to_owned(),
+        model::Workspace::Inline {} => "{kind: inline}".to_owned(),
     }
 }
 
@@ -568,8 +569,9 @@ mod tests {
                 continue;
             }
             let text = fs::read_to_string(entry.path()).unwrap();
-            let expected = markdown::parse(&text)
-                .unwrap_or_else(|error| panic!("{}: {error:#}", entry.path().display()));
+            let expected = markdown::parse_sections(&text)
+                .unwrap_or_else(|error| panic!("{}: {error:#}", entry.path().display()))
+                .sections;
             let document = read_scenarios_md(entry.path())
                 .unwrap_or_else(|error| panic!("{}: {error}", entry.path().display()));
             let scenarios = document.feature.unwrap().scenarios;
@@ -579,8 +581,9 @@ mod tests {
                 "{}: scenario count",
                 entry.path().display()
             );
-            for (scenario, (section_id, notebook)) in scenarios.iter().zip(&expected) {
-                let (_, steps) = model::parse(notebook).unwrap_or_else(|error| {
+            for (scenario, section) in scenarios.iter().zip(&expected) {
+                let section_id = &section.id;
+                let (_, steps) = model::parse(section).unwrap_or_else(|error| {
                     panic!(
                         "{}: scenario {section_id}: {error:#}",
                         entry.path().display()

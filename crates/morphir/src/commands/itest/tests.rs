@@ -1,17 +1,57 @@
 use super as support;
-use crate::notebook::Notebook;
-use serde_json::{Value, json};
+use serde_json::json;
 use std::{fs, process::Command, time::Duration};
 
-fn notebook() -> Value {
-    json!({"nbformat":4,"nbformat_minor":5,"metadata":{"morphir":{"version":1,"itest":{"title":"CLI help","description":"Help exposes supported options","tags":["area:help","kind:positive"],"provider":"rego"}}},"cells":[
-        {"id":"help","cell_type":"code","source":"morphir --help","metadata":{"morphir":{"itest":{"kind":"command","name":"Help","timeout_seconds":10,"captures":[]}}},"execution_count":null,"outputs":[]},
-        {"id":"check","cell_type":"code","source":"package example\ntest_ok := true","metadata":{"morphir":{"itest":{"kind":"assertion","command":"help","entrypoints":["data.example.test_ok"]}}},"execution_count":null,"outputs":[]}
-    ]})
+/// A `scenarios.md` document with one section: a `morphir --help` command and a Rego assertion.
+const SCENARIO: &str = r#"---
+version: 1
+title: CLI help
+description: Help exposes supported options
+tags: [area:help, kind:positive]
+provider: rego
+---
+
+## Help
+
+```yaml morphir:command
+id: help
+name: Help
+timeout_seconds: 10
+captures: []
+```
+
+```sh
+morphir --help
+```
+
+```yaml morphir:assertion
+id: check
+command: help
+entrypoints: [data.example.test_ok]
+```
+
+```rego
+package example
+test_ok := true
+```
+"#;
+
+/// The command block of [`SCENARIO`], from its metadata fence to its source fence.
+const COMMAND: &str = "```yaml morphir:command\nid: help\nname: Help\ntimeout_seconds: 10\ncaptures: []\n```\n\n```sh\nmorphir --help\n```\n";
+
+/// The assertion block of [`SCENARIO`], from its metadata fence to its source fence.
+const ASSERTION: &str = "```yaml morphir:assertion\nid: check\ncommand: help\nentrypoints: [data.example.test_ok]\n```\n\n```rego\npackage example\ntest_ok := true\n```\n";
+
+/// [`SCENARIO`] with `from` replaced by `to` once. Panics when `from` is not in it, so that a
+/// test never checks an unchanged document by mistake.
+fn with(from: &str, to: &str) -> String {
+    assert!(SCENARIO.contains(from), "{from:?} is not in the scenario");
+    SCENARIO.replacen(from, to, 1)
 }
 
-fn parse(value: &Value) -> anyhow::Result<(super::model::Metadata, Vec<super::model::Step>)> {
-    super::model::parse(&Notebook::parse(&value.to_string())?)
+fn parse(text: &str) -> anyhow::Result<(super::model::Metadata, Vec<super::model::Step>)> {
+    let document = super::markdown::parse_sections(text)?;
+    super::model::parse(&document.sections[0])
 }
 
 #[test]
@@ -20,12 +60,12 @@ fn discovers_nested_examples_and_selects_whole_categories_and_all_tags() {
     for name in ["elm/z", "elm/nested/a", "gleam/a", "node_modules/hidden"] {
         let dir = temp.path().join(name);
         fs::create_dir_all(&dir).unwrap();
-        fs::write(dir.join("scenario.ipynb"), notebook().to_string()).unwrap();
+        fs::write(dir.join("scenarios.md"), SCENARIO).unwrap();
     }
     let found = support::discover(temp.path(), Some("elm")).unwrap();
     assert_eq!(
         found.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
-        ["elm/nested/a", "elm/z"]
+        ["elm/nested/a#help", "elm/z#help"]
     );
     for filter in ["el", "missing", ""] {
         assert!(support::discover(temp.path(), Some(filter)).is_err());
@@ -57,7 +97,7 @@ fn discovery_rejects_ambiguous_and_nonportable_directory_names() {
         let temp = tempfile::tempdir().unwrap();
         for directory in [temp.path().join(&name), temp.path().join("a/b")] {
             fs::create_dir_all(&directory).unwrap();
-            fs::write(directory.join("scenario.ipynb"), notebook().to_string()).unwrap();
+            fs::write(directory.join("scenarios.md"), SCENARIO).unwrap();
         }
         assert!(
             support::discover(temp.path(), None).is_err(),
@@ -68,51 +108,51 @@ fn discovery_rejects_ambiguous_and_nonportable_directory_names() {
 
 #[test]
 fn validates_every_executable_cell_before_running() {
-    assert!(parse(&notebook()).is_ok());
-    for (pointer, bad) in [
-        ("/metadata/morphir/itest/provider", json!("unknown")),
-        ("/metadata/morphir/itest/tags", json!([])),
-        ("/metadata/morphir/itest/title", json!("")),
-        ("/cells/0/metadata/morphir/itest/timeout_seconds", json!(0)),
-        ("/cells/0/metadata/morphir/itest/kind", json!("typo")),
-        ("/cells/0/source", json!("sh -c 'morphir --help'")),
-        ("/cells/0/source", json!("morphir 'unterminated")),
+    assert!(parse(SCENARIO).is_ok());
+    for (from, to) in [
+        ("provider: rego", "provider: unknown"),
+        ("tags: [area:help, kind:positive]", "tags: []"),
+        ("title: CLI help", "title: ''"),
+        ("timeout_seconds: 10", "timeout_seconds: 0"),
+        ("yaml morphir:command", "yaml morphir:typo"),
+        ("morphir --help", "sh -c 'morphir --help'"),
+        ("morphir --help", "morphir 'unterminated"),
         (
-            "/cells/0/metadata/morphir/itest/captures",
-            json!([{"name":"escape","path":"../outside","format":"json"}]),
+            "captures: []",
+            "captures: [{name: escape, path: ../outside, format: json}]",
         ),
-        ("/cells/1/metadata/morphir/itest/command", json!("missing")),
-        ("/cells/1/metadata/morphir/itest/entrypoints", json!([])),
+        ("command: help", "command: missing"),
+        ("entrypoints: [data.example.test_ok]", "entrypoints: []"),
         (
-            "/cells/1/metadata/morphir/itest/entrypoints",
-            json!(["data.x", "data.x"]),
+            "entrypoints: [data.example.test_ok]",
+            "entrypoints: [data.x, data.x]",
         ),
     ] {
-        let mut value = notebook();
-        *value.pointer_mut(pointer).unwrap() = bad;
-        assert!(parse(&value).is_err(), "accepted {value}");
+        let text = with(from, to);
+        assert!(parse(&text).is_err(), "accepted {text}");
     }
-    let mut value = notebook();
-    value["cells"].as_array_mut().unwrap().swap(0, 1);
-    assert!(parse(&value).is_err());
-    let mut value = notebook();
-    value["cells"].as_array_mut().unwrap().pop();
-    assert!(parse(&value).is_err());
+    // The assertion before its command, and the command without an assertion.
+    let swapped = with(COMMAND, "").replacen(ASSERTION, &format!("{ASSERTION}\n{COMMAND}"), 1);
+    assert!(parse(&swapped).is_err(), "accepted {swapped}");
+    let unchecked = with(ASSERTION, "");
+    assert!(parse(&unchecked).is_err(), "accepted {unchecked}");
 }
 
 #[test]
 fn workspace_metadata_rejects_invalid_paths_and_unknown_modes() {
     for workspace in [
-        json!({"kind":"directory","path":"../outside"}),
-        json!({"kind":"directory","path":"/outside"}),
-        json!({"kind":"directory","path":"." ,"exclude":["../outside"]}),
-        json!({"kind":"directory"}),
-        json!({"kind":"notebook","path":"."}),
-        json!({"kind":"typo"}),
+        "{kind: directory, path: ../outside}",
+        "{kind: directory, path: /outside}",
+        "{kind: directory, path: ., exclude: [../outside]}",
+        "{kind: directory}",
+        "{kind: inline, path: .}",
+        "{kind: typo}",
     ] {
-        let mut value = notebook();
-        value["metadata"]["morphir"]["itest"]["workspace"] = workspace;
-        assert!(parse(&value).is_err(), "accepted {value}");
+        let text = with(
+            "provider: rego",
+            &format!("provider: rego\nworkspace: {workspace}"),
+        );
+        assert!(parse(&text).is_err(), "accepted {text}");
     }
 }
 
@@ -120,10 +160,11 @@ fn workspace_metadata_rejects_invalid_paths_and_unknown_modes() {
 fn disk_workspace_copies_inputs_and_preserves_config_without_build_outputs() {
     let source = tempfile::tempdir().unwrap();
     let target = tempfile::tempdir().unwrap();
-    let mut value = notebook();
-    value["metadata"]["morphir"]["itest"]["workspace"] =
-        json!({"kind":"directory","path":".","exclude":["installed"]});
-    fs::write(source.path().join("scenario.ipynb"), value.to_string()).unwrap();
+    let text = with(
+        "provider: rego",
+        "provider: rego\nworkspace: {kind: directory, path: ., exclude: [installed]}",
+    );
+    fs::write(source.path().join("scenarios.md"), text).unwrap();
     for path in [
         ".morphir/morphir.toml",
         ".morphir/out/stale",
@@ -148,7 +189,7 @@ fn disk_workspace_copies_inputs_and_preserves_config_without_build_outputs() {
         "installed",
         ".git",
         "node_modules",
-        "scenario.ipynb",
+        "scenarios.md",
     ] {
         assert!(!target.path().join(path).exists(), "copied excluded {path}");
     }
@@ -160,7 +201,7 @@ fn disk_workspace_refuses_symlinks() {
     let source = tempfile::tempdir().unwrap();
     let target = tempfile::tempdir().unwrap();
     let outside = tempfile::tempdir().unwrap();
-    fs::write(source.path().join("scenario.ipynb"), notebook().to_string()).unwrap();
+    fs::write(source.path().join("scenarios.md"), SCENARIO).unwrap();
     std::os::unix::fs::symlink(outside.path(), source.path().join("linked")).unwrap();
     let scenarios = support::discover(source.path(), None).unwrap();
     let error = super::workspace::materialize(&scenarios[0], target.path()).unwrap_err();
@@ -177,12 +218,13 @@ fn disk_workspace_checks_directory_aliases_across_file_cells() {
         let source = tempfile::tempdir().unwrap();
         let target = tempfile::tempdir().unwrap();
         fs::create_dir(source.path().join(directory)).unwrap();
-        let mut value = notebook();
-        value["cells"].as_array_mut().unwrap().push(json!({
-            "id":"extra", "cell_type":"raw", "source":"inline",
-            "metadata":{"morphir":{"file":{"path":inline,"language":"text"}}}
-        }));
-        fs::write(source.path().join("scenario.ipynb"), value.to_string()).unwrap();
+        let text = with(
+            COMMAND,
+            &format!(
+                "```yaml morphir:file\nid: extra\npath: {inline}\n```\n\n```text\ninline\n```\n\n{COMMAND}"
+            ),
+        );
+        fs::write(source.path().join("scenarios.md"), text).unwrap();
         let scenarios = support::discover(source.path(), None).unwrap();
         let result = super::workspace::materialize(&scenarios[0], target.path());
         assert_eq!(
@@ -195,10 +237,11 @@ fn disk_workspace_checks_directory_aliases_across_file_cells() {
 
 #[test]
 fn accepts_literal_quoted_arguments_without_shell_expansion() {
-    let mut value = notebook();
-    value["cells"][0]["source"] =
-        json!("morphir compile --input 'file with spaces.elm' --package-name '$LITERAL'");
-    let (_, steps) = parse(&value).unwrap();
+    let text = with(
+        "morphir --help",
+        "morphir compile --input 'file with spaces.elm' --package-name '$LITERAL'",
+    );
+    let (_, steps) = parse(&text).unwrap();
     assert_eq!(
         steps[0].args,
         [
@@ -258,10 +301,11 @@ fn evaluator_reports_must_match_every_requested_rule_and_only_true_passes() {
 fn captures_distinguish_json_null_missing_files_and_invalid_json() {
     use super::runner::{ProcessOutput, observation};
     let root = tempfile::tempdir().unwrap();
-    let mut value = notebook();
-    value["cells"][0]["metadata"]["morphir"]["itest"]["captures"] =
-        json!([{"name":"artifact","path":"result.json","format":"json"}]);
-    let (_, steps) = parse(&value).unwrap();
+    let text = with(
+        "captures: []",
+        "captures: [{name: artifact, path: result.json, format: json}]",
+    );
+    let (_, steps) = parse(&text).unwrap();
     let output = ProcessOutput {
         code: Some(0),
         stdout: "".into(),
@@ -286,10 +330,11 @@ fn captures_refuse_symlinks() {
     use super::runner::{ProcessOutput, observation};
     let root = tempfile::tempdir().unwrap();
     std::os::unix::fs::symlink("/tmp", root.path().join("outside")).unwrap();
-    let mut value = notebook();
-    value["cells"][0]["metadata"]["morphir"]["itest"]["captures"] =
-        json!([{"name":"artifact","path":"outside/file","format":"exists"}]);
-    let (_, steps) = parse(&value).unwrap();
+    let text = with(
+        "captures: []",
+        "captures: [{name: artifact, path: outside/file, format: exists}]",
+    );
+    let (_, steps) = parse(&text).unwrap();
     let output = ProcessOutput {
         code: Some(0),
         stdout: "".into(),
@@ -481,4 +526,21 @@ fn listed_scenarios_count_outline_rows_and_wip_skips() {
         counts,
         [(".#plain", 1, 1), (".#skipped", 1, 0), (".#rows-n", 3, 2)]
     );
+}
+
+#[test]
+fn a_dot_section_tag_gives_the_directory_id_alone() {
+    assert_eq!(
+        support::scenario_id("elm/single-file", "Any name", Some(".")).unwrap(),
+        "elm/single-file"
+    );
+    assert_eq!(
+        support::scenario_id("elm/single-file", "Any name", Some("types")).unwrap(),
+        "elm/single-file#types"
+    );
+    assert_eq!(
+        support::scenario_id("elm/single-file", "Any name", None).unwrap(),
+        "elm/single-file#any-name"
+    );
+    assert!(support::scenario_id("elm/single-file", "Any name", Some("..")).is_err());
 }

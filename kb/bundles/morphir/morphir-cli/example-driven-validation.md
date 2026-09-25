@@ -1,26 +1,30 @@
 ---
 type: Design Note
 title: Example-driven CLI validation
-description: Notebook and Markdown scenarios with embedded Rego assertions turn documented Morphir CLI workflows into incremental regression coverage.
+description: Markdown and Gherkin scenarios with embedded Rego assertions turn documented Morphir CLI workflows into incremental regression coverage.
 tags: [cli, examples, integration-tests, tdd, evaluation]
 status: stable
 ---
 
 # Example-driven CLI validation
 
-`morphir itest` recursively discovers `scenario.ipynb` or `scenarios.md` under categorized example
-directories. Each document supplies prose, literal CLI commands and Rego
-assertions. Project files remain on disk by default; optional file cells can
-add inputs or provide an entire workspace. The driver copies the scenario
-directory into a fresh workspace and
-uses the same Morphir executable for workflow commands and `morphir eval`.
+`morphir itest` recursively finds `scenarios.md`, `*.feature` and `*.feature.md` files under
+categorized example directories. Each document supplies prose, literal CLI commands and Rego
+assertions. Project files stay on disk by default. Optional declared files can add inputs or
+supply an entire workspace. The driver copies the scenario directory into a fresh workspace. It
+uses the same Morphir executable for workflow commands and `morphir eval`. The scenarios run on a
+`morphir-bdd` suite.
+
+`morphir itest` does not run Jupyter notebooks. A directory with a `scenario.ipynb` file fails
+with a message that tells the author to convert it to `scenarios.feature.md`. Notebook support
+returns with the VFS work on document trees and workspaces.
 
 ```sh
 mise run test:examples -- --filter elm/single-file
 mise run test:examples -- --list --tag language:elm
 ```
 
-The [single-file Elm notebook](https://github.com/finos/morphir/blob/main/examples/elm/single-file/scenario.ipynb)
+The [single-file Elm scenario](https://github.com/finos/morphir/blob/main/examples/elm/single-file/scenarios.feature.md)
 checks native type compilation, public record/custom-type structure, v3 task
 results and an installed IR copy. The negative fixture proves malformed Elm
 fails without publishing usable IR. Neither establishes native Elm function
@@ -28,12 +32,11 @@ lowering or native Morphir IR evaluation.
 
 ## Authoring and feedback
 
-Scenario title, purpose and tags belong in notebook metadata. Markdown cells
-explain intent. File cells carry logical paths and language metadata; paths are
-separate from nbformat cell IDs. Command cells declare case names, captures and
-timeouts. Assertion cells contain Rego modules and name the preceding command
-and rule entrypoints. Rego assertions remain literal source in both formats. Golden assertions offer
-exact text comparisons through the same evaluator pipeline.
+Scenario title, purpose and tags belong in the `scenarios.md` frontmatter or in the Gherkin
+feature. Prose explains intent. A command declares its literal command line, captures and
+timeout. An assertion holds a Rego module and names the command and the rule entrypoints it
+checks. Rego assertions stay literal source in every format. Golden assertions give exact text
+comparisons through the same evaluator pipeline.
 
 For Markdown authoring, use `scenarios.md` with YAML frontmatter for shared
 context and tags. Each top-level `##` heading starts an independent scenario
@@ -46,18 +49,20 @@ Pair `yaml morphir:command`, `yaml morphir:assertion` and `yaml morphir:file`
 metadata fences with the next language source fence. Prose, lists and subheadings
 may appear between the pair. Do not place YAML inside the source fence. A new
 scenario heading ends the association; dangling metadata fails. Unmarked fences
-are documentation. The Markdown reader adapts into the same validation and
-execution path as notebooks; there is no separate runner. The
+are documentation. The `scenarios.md` reader turns each section into a Gherkin scenario, so all
+formats share one runner. The
 [CLI basics example](https://github.com/finos/morphir/blob/main/examples/cli/basics/scenarios.md)
 checks version reporting and command help in two independent scenarios.
 
-On-disk workspaces are the default, not a requirement to embed project files in
-the notebook. Optional `metadata.morphir.itest.workspace` selects a relative
-project directory and exclusions with `kind: "directory"`, or deliberately
-uses only inline inputs with `kind: "inline"`, retaining `kind: "notebook"`
-as a compatible spelling. Markdown frontmatter accepts the same workspace
-settings. Mixed disk and inline inputs are
-supported, with collisions rejected. Commands run on temporary copies so the
+A `.feature.md` or `.feature` file writes the same scenario as Gherkin steps, such as
+`When I run "morphir …"` and `Then the result should satisfy the policy rules "…":`. A
+`yaml itest` fence in the feature description holds the provider, the workspace and optional
+files. A `@section:<id>` tag sets the scenario's ID, and `@section:.` gives the directory ID
+alone.
+
+On-disk workspaces are the default. The optional `workspace` setting selects a relative project
+directory and exclusions with `kind: directory`, or uses only the declared files with
+`kind: inline`. Mixed disk and declared inputs work, and the driver rejects collisions. Commands run on temporary copies so the
 example source tree is not changed.
 
 Repeated tags require all selected dimensions. Categories may contain more
@@ -67,13 +72,13 @@ and empty assertions cannot make a scenario green.
 
 ```mermaid
 flowchart LR
-    Workflow[User workflow] --> Notebook[Notebook or Markdown scenario]
-    Notebook --> CLI[Real Morphir CLI]
+    Workflow[User workflow] --> Scenario[Markdown or Gherkin scenario]
+    Scenario --> CLI[Real Morphir CLI]
     CLI --> Observation[Captured status and artifacts]
     Observation --> Eval[Morphir eval with Rego provider]
     Eval --> Diagnosis[Assertion result and diagnosis]
     Diagnosis --> Fix[Focused regression and fix]
-    Fix --> Notebook
+    Fix --> Scenario
 ```
 
 **Figure 1:** Real CLI observations are checked by a reusable evaluator while the scenario document retains the intended behavior.
@@ -95,7 +100,7 @@ own filesystem or process access. No external OPA executable is required.
 The native Morphir evaluator is the next target, not a current feature. The
 same boundary is intended for native IR programs, CLI hosting, a WASM ABI,
 UI workers and policy hosts. Beads epic `morphir-o6vm.9` tracks semantic core,
-CLI/notebook integration, native/WASM parity, UI/policy adapters and evaluator
+CLI and itest integration, native/WASM parity, UI/policy adapters and evaluator
 capability negotiation. See the
 [evaluation design and milestone table](https://github.com/finos/morphir/blob/main/docs/developers/evaluation.md).
 
@@ -107,11 +112,11 @@ Regorus integration does not claim all OPA builtins or Rego-to-Morphir compilati
 
 MCK owns IR/package compatibility contracts. `itest` exercises CLI workflows
 and reuses evaluator providers; it does not implement another compatibility kit.
-Existing projects without `scenario.ipynb` or `scenarios.md`, old `scenario.md` and `test.yaml`
-files remain unverified. Adopt classic JSON, TOML/YAML, workspaces and additional
+Existing projects without a scenario document, and old `scenario.md` and `test.yaml` files,
+remain unverified. Adopt classic JSON, TOML/YAML, workspaces and additional
 frontends/backends incrementally with their own observable checks.
 
-Driver tests cover discovery, notebook and Markdown parsing/materialization, tags, capture
+Driver tests cover discovery, Markdown parsing and materialization, tags, capture
 semantics, isolation and process cleanup. CLI acceptance tests run positive and
 negative examples and intentionally bad assertions. Provider fixtures test
 evaluation independently. Changes under `examples/**` trigger the Rust CI job.
@@ -161,7 +166,7 @@ never count that negative pass as successful multi-file compilation.
 Use golden assertions for whole generated files, inclusive 1-based line ranges,
 or exact text between unique start/end markers. Keep expected files on disk
 relative to the scenario document, or put literal expected text in a golden
-cell/source fence. The driver freezes expectations before CLI execution,
+source fence or doc string. The driver freezes expectations before CLI execution,
 selects actual text immediately after the referenced command, and evaluates
 text equality plus successful exit through `morphir eval`.
 

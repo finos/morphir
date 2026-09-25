@@ -12,7 +12,6 @@ mod logging;
 pub mod output;
 mod session;
 
-pub use morphir::notebook;
 use morphir::observability;
 
 use commands::{
@@ -82,7 +81,7 @@ enum Commands {
     },
     /// Evaluate a program through a registered native provider
     Eval(commands::eval::EvalArgs),
-    /// Run notebook or Markdown integration scenarios through real CLI processes
+    /// Run Markdown and Gherkin example scenarios through real CLI processes
     Itest(commands::itest::ItestArgs),
     // ===== Core Commands =====
     /// Compile source code to Morphir IR
