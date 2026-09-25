@@ -51,6 +51,23 @@ The [CLI reference](../../cli/package/create.md) lists all options. Continue wit
 the source-built steps in [publishing locally](publishing-locally.md#source-built-cli-preview)
 using the same shell and `$work` directory.
 
+### Linked metadata context files in the source-built draft
+
+The in-development V4.1 metadata profile can keep JSON-LD context files in a
+Library bundle. Export a complete metadata-bearing Library document to a tree,
+then explicitly give that tree to `package create`:
+
+```sh
+morphir metadata export --ir library-with-metadata.json --output "$work/exported" --context-storage external
+morphir package create --ir "$work/exported/ir.json" --context-root "$work/exported" --manifest-input authoring.json --output "$work/metadata-bundle"
+```
+
+The draft CLI inventories the exact `contexts/*.jsonld` bytes in `manifest.json`
+and signs them with the Library. It rejects missing, changed, linked, or undeclared
+bundle files. A consumer restores the context files with `ir.json`, so reading
+the facts does not require the author's workspace. This source-built path is
+under development and is not a capability of the beta.8 binary.
+
 ## 1. Choose the release identity
 
 Our example has these names:

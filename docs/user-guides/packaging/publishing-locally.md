@@ -73,6 +73,12 @@ use **only public** `root.json` and `policy.json` to initialize trust, then
 [Installing and using Libraries](installing-and-using.md). The
 [CLI reference](../../cli/package/registry.md) describes the exact command inputs.
 
+For a source-built [linked metadata bundle](creating-a-library.md#linked-metadata-context-files-in-the-source-built-draft),
+the same `sign`, `registry prepare`, and `publish` commands verify and carry its
+declared context files. `restore` supplies those files beside `ir.json`; changing
+one after publication invalidates the signed bundle. This V4.1 path remains a
+draft and is not in the beta.8 binary.
+
 ## What publication needs
 
 For the `eligibility@1.2.0` example, a complete release involves:

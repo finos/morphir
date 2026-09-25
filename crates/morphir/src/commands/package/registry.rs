@@ -6,8 +6,6 @@ use std::path::{Path, PathBuf};
 
 use clap::{Args, Subcommand};
 use miette::{IntoDiagnostic, WrapErr, miette};
-#[cfg(target_os = "macos")]
-use morphir_package::authoring::AuthoredLibrary;
 use morphir_package::local_registry::publication::Draft;
 #[cfg(target_os = "macos")]
 use morphir_package::local_registry::publication::Registry;
@@ -16,7 +14,7 @@ use morphir_package::local_registry::publication::{Predecessor, Proposal};
 
 use super::author::read_key;
 #[cfg(target_os = "macos")]
-use super::author::{read_bundle, stage_files};
+use super::author::{stage_files, verified_bundle};
 use super::{emit, read_bounded};
 
 #[derive(Clone, Debug, Subcommand)]
@@ -210,9 +208,7 @@ fn initialize(_args: &RegistryInitArgs) -> miette::Result<()> {
 
 #[cfg(target_os = "macos")]
 fn prepare(args: &RegistryPrepareArgs) -> miette::Result<()> {
-    let (manifest, ir) = read_bundle(&args.bundle)?;
-    let library =
-        AuthoredLibrary::from_bundle(&manifest, &ir).map_err(|error| miette!("{error}"))?;
+    let library = verified_bundle(&args.bundle)?;
     let (record, envelope) = read_release(&args.release)?;
     let policy = read_bounded(&args.policy, 1024 * 1024)?;
     let registry = Registry::open(&args.registry, &args.publisher_state, &policy)
@@ -268,9 +264,7 @@ fn sign_proposal(args: &SignProposalArgs) -> miette::Result<()> {
 
 #[cfg(target_os = "macos")]
 pub(super) fn publish(args: &PublishArgs) -> miette::Result<()> {
-    let (manifest, ir) = read_bundle(&args.bundle)?;
-    let library =
-        AuthoredLibrary::from_bundle(&manifest, &ir).map_err(|error| miette!("{error}"))?;
+    let library = verified_bundle(&args.bundle)?;
     let (record, envelope) = read_release(&args.release)?;
     let predecessor: Predecessor = serde_json::from_slice(&read_bounded(&args.predecessor, 4096)?)
         .into_diagnostic()

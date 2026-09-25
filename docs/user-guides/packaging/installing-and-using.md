@@ -108,6 +108,19 @@ The destination must be new. For another authenticated replay of the same lock,
 run restore with another destination, such as `consumer/replayed`. Keep using the
 same trust state.
 
+For a source-built V4.1 [linked metadata bundle](creating-a-library.md#linked-metadata-context-files-in-the-source-built-draft),
+the installed Library also has its signed `contexts/*.jsonld` files. You can
+query facts directly from its installed `ir.json`:
+
+```sh
+morphir metadata query --ir consumer/libraries/example.com/greeting/1.0.0/ir.json
+```
+
+The CLI resolves those contexts from the installed Library directory, without
+the author's source tree. The current draft labels those facts `unvalidated`
+until a verified predicate declaration closure is connected. This metadata
+command and V4.1 bundle path are not in the beta.8 binary.
+
 ## 5. Use the restored model
 
 The supplied `consumer/morphir.toml` names the consuming project and selects the

@@ -574,6 +574,9 @@ Create a verified dependency\-free classic V4 Library bundle
 \fB\-\-ir\fR \fI<FILE>\fR
 Already compiled classic JSON V4 Library IR
 .TP
+\fB\-\-context\-root\fR \fI<DIR>\fR
+Root of an exported document tree containing contexts/*.jsonld
+.TP
 \fB\-\-manifest\-input\fR \fI<FILE>\fR
 Authoring fields: packagePath, version, dependencies and exports
 .TP
@@ -591,7 +594,7 @@ Sign a verified Library with an explicitly supplied local key
 .PP
 .TP
 \fB\-\-bundle\fR \fI<DIR>\fR
-Verified bundle directory containing only manifest.json and ir.json
+Verified bundle directory containing manifest.json, ir.json, and declared contexts
 .TP
 \fB\-\-key\-file\fR \fI<FILE>\fR
 Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline

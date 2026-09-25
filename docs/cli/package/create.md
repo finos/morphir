@@ -7,6 +7,7 @@ Create a verified dependency-free classic V4 Library bundle
 
 ## Flags
 - **`--ir <FILE>`** — Already compiled classic JSON V4 Library IR
+- **`--context-root <DIR>`** — Root of an exported document tree containing contexts/*.jsonld
 - **`--manifest-input <FILE>`** — Authoring fields: packagePath, version, dependencies and exports
 - **`--output <DIR>`** — New bundle directory; existing paths are never replaced
 - **`--json`** — Output the created Library identity as JSON

@@ -129,6 +129,9 @@ cmd package display_order=6 subcommand_required=#true arg_required_else_help=#tr
         flag --ir help="Already compiled classic JSON V4 Library IR" required=#true {
             arg <FILE>
         }
+        flag --context-root help="Root of an exported document tree containing contexts/*.jsonld" {
+            arg <DIR>
+        }
         flag --manifest-input help="Authoring fields: packagePath, version, dependencies and exports" required=#true {
             arg <FILE>
         }
@@ -140,7 +143,7 @@ cmd package display_order=6 subcommand_required=#true arg_required_else_help=#tr
         complete dir type=path
     }
     cmd sign display_order=1 args_override_self=#false help="Sign a verified Library with an explicitly supplied local key" unknown_flags=error {
-        flag --bundle help="Verified bundle directory containing only manifest.json and ir.json" required=#true {
+        flag --bundle help="Verified bundle directory containing manifest.json, ir.json, and declared contexts" required=#true {
             arg <DIR>
         }
         flag --key-file help="Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline" required=#true {

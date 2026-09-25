@@ -14,6 +14,9 @@ pub struct CreateArgs {
     /// Already compiled classic JSON V4 Library IR
     #[arg(long, value_name = "FILE")]
     ir: PathBuf,
+    /// Root of an exported document tree containing contexts/*.jsonld
+    #[arg(long, value_name = "DIR")]
+    context_root: Option<PathBuf>,
     /// Authoring fields: packagePath, version, dependencies and exports
     #[arg(long, value_name = "FILE")]
     manifest_input: PathBuf,
@@ -27,7 +30,7 @@ pub struct CreateArgs {
 
 #[derive(Clone, Debug, Args)]
 pub struct SignArgs {
-    /// Verified bundle directory containing only manifest.json and ir.json
+    /// Verified bundle directory containing manifest.json, ir.json, and declared contexts
     #[arg(long, value_name = "DIR")]
     bundle: PathBuf,
     /// Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline
@@ -44,23 +47,25 @@ pub struct SignArgs {
 pub(super) fn create(args: &CreateArgs) -> miette::Result<()> {
     let input = read_bounded(&args.manifest_input, 1024 * 1024)?;
     let ir = read_bounded(&args.ir, 64 * 1024 * 1024)?;
-    let library = AuthoredLibrary::create(&input, &ir).map_err(|error| miette!("{error}"))?;
-    stage_files(
-        &args.output,
-        &[
-            ("manifest.json", library.manifest_bytes()),
-            ("ir.json", library.ir_bytes()),
-        ],
-    )?;
+    let library = if let Some(root) = &args.context_root {
+        AuthoredLibrary::create_with_contexts(&input, &ir, read_context_tree(root)?)
+    } else {
+        AuthoredLibrary::create(&input, &ir)
+    }
+    .map_err(|error| miette!("{error}"))?;
+    let mut files = vec![
+        ("manifest.json", library.manifest_bytes()),
+        ("ir.json", library.ir_bytes()),
+    ];
+    files.extend(library.context_files());
+    stage_files(&args.output, &files)?;
     emit(args.json, library.metadata().value(), || {
         format!("Created Library bundle at {}", args.output.display())
     })
 }
 
 pub(super) fn sign(args: &SignArgs) -> miette::Result<()> {
-    let (manifest, ir) = read_bundle(&args.bundle)?;
-    let library =
-        AuthoredLibrary::from_bundle(&manifest, &ir).map_err(|error| miette!("{error}"))?;
+    let library = verified_bundle(&args.bundle)?;
     let key = read_key(&args.key_file)?;
     let signed = library.sign(&key).map_err(|error| miette!("{error}"))?;
     stage_files(
@@ -77,37 +82,109 @@ pub(super) fn sign(args: &SignArgs) -> miette::Result<()> {
     )
 }
 
-pub(super) fn read_bundle(bundle: &Path) -> miette::Result<(Vec<u8>, Vec<u8>)> {
-    if !fs::symlink_metadata(bundle)
+pub(super) fn verified_bundle(bundle: &Path) -> miette::Result<AuthoredLibrary> {
+    let mut files = read_tree_files(bundle)?;
+    let manifest = files
+        .remove("manifest.json")
+        .ok_or_else(|| miette!("bundle is missing manifest.json"))?;
+    let ir = files
+        .remove("ir.json")
+        .ok_or_else(|| miette!("bundle is missing ir.json"))?;
+    if files.keys().any(|path| !path.starts_with("contexts/")) {
+        return Err(miette!(
+            "bundle contains an undeclared file outside contexts/"
+        ));
+    }
+    AuthoredLibrary::from_bundle_with_contexts(&manifest, &ir, files.into_iter().collect())
+        .map_err(|error| miette!("{error}"))
+}
+
+fn read_context_tree(root: &Path) -> miette::Result<Vec<(String, Vec<u8>)>> {
+    if !fs::symlink_metadata(root)
         .into_diagnostic()?
         .file_type()
         .is_dir()
     {
-        return Err(miette!("bundle must be a directory, not a link"));
+        return Err(miette!("context root must be a directory, not a link"));
     }
-    let mut entries = fs::read_dir(bundle)
-        .into_diagnostic()?
-        .map(|entry| entry.map(|entry| entry.file_name()).into_diagnostic())
-        .collect::<miette::Result<Vec<_>>>()?;
-    entries.sort();
-    if entries != ["ir.json", "manifest.json"] {
-        return Err(miette!(
-            "bundle must contain only manifest.json and ir.json"
-        ));
+    let files = read_tree_files_from(root, &root.join("contexts"))?;
+    if files.is_empty() {
+        return Err(miette!("context root has no contexts/*.jsonld files"));
     }
-    for file in ["manifest.json", "ir.json"] {
-        if !fs::symlink_metadata(bundle.join(file))
+    if files.keys().any(|path| !path.ends_with(".jsonld")) {
+        return Err(miette!("context root contains a non-JSON-LD resource"));
+    }
+    Ok(files.into_iter().collect())
+}
+
+fn read_tree_files(root: &Path) -> miette::Result<std::collections::BTreeMap<String, Vec<u8>>> {
+    read_tree_files_from(root, root)
+}
+
+fn read_tree_files_from(
+    root: &Path,
+    start: &Path,
+) -> miette::Result<std::collections::BTreeMap<String, Vec<u8>>> {
+    use std::path::Component;
+
+    let mut files = std::collections::BTreeMap::new();
+    let mut context_bytes = 0usize;
+    let mut pending = vec![start.to_path_buf()];
+    while let Some(directory) = pending.pop() {
+        if !fs::symlink_metadata(&directory)
             .into_diagnostic()?
             .file_type()
-            .is_file()
+            .is_dir()
         {
-            return Err(miette!("bundle files must be regular files"));
+            return Err(miette!("bundle resource directory must not be a link"));
+        }
+        for entry in fs::read_dir(&directory).into_diagnostic()? {
+            let entry = entry.into_diagnostic()?;
+            let path = entry.path();
+            let kind = entry.file_type().into_diagnostic()?;
+            if kind.is_dir() {
+                pending.push(path);
+                continue;
+            }
+            if !kind.is_file() {
+                return Err(miette!("bundle resources must be regular files"));
+            }
+            let relative = path
+                .strip_prefix(root)
+                .into_diagnostic()?
+                .components()
+                .map(|component| match component {
+                    Component::Normal(name) => name
+                        .to_str()
+                        .map(str::to_owned)
+                        .ok_or_else(|| miette!("bundle resource path must be UTF-8")),
+                    _ => Err(miette!("invalid bundle resource path")),
+                })
+                .collect::<miette::Result<Vec<_>>>()?
+                .join("/");
+            let limit = match relative.as_str() {
+                "manifest.json" => 1024 * 1024,
+                "ir.json" => 64 * 1024 * 1024,
+                _ => 1024 * 1024,
+            };
+            let bytes = read_bounded(&path, limit)?;
+            if relative.starts_with("contexts/") {
+                context_bytes = context_bytes
+                    .checked_add(bytes.len())
+                    .ok_or_else(|| miette!("context resources exceed 8 MiB"))?;
+                if context_bytes > 8 * 1024 * 1024 {
+                    return Err(miette!("context resources exceed 8 MiB"));
+                }
+            }
+            if files.insert(relative, bytes).is_some() {
+                return Err(miette!("duplicate bundle resource path"));
+            }
+            if files.len() > 130 {
+                return Err(miette!("bundle resource count exceeds 130"));
+            }
         }
     }
-    Ok((
-        read_bounded(&bundle.join("manifest.json"), 1024 * 1024)?,
-        read_bounded(&bundle.join("ir.json"), 64 * 1024 * 1024)?,
-    ))
+    Ok(files)
 }
 
 pub(super) fn read_key(path: &Path) -> miette::Result<LocalSigningKey> {
@@ -150,7 +227,17 @@ pub(super) fn stage_files(output: &Path, files: &[(&str, &[u8])]) -> miette::Res
         .into_diagnostic()
         .wrap_err("create staged Library directory")?;
     for (name, bytes) in files {
-        fs::write(staged.path().join(name), bytes)
+        let relative = Path::new(name);
+        if !relative
+            .components()
+            .all(|component| matches!(component, std::path::Component::Normal(_)))
+        {
+            return Err(miette!("invalid staged Library path {name}"));
+        }
+        let destination = staged.path().join(relative);
+        fs::create_dir_all(destination.parent().expect("staged file has a parent"))
+            .into_diagnostic()?;
+        fs::write(destination, bytes)
             .into_diagnostic()
             .wrap_err_with(|| format!("write staged {name}"))?;
     }
