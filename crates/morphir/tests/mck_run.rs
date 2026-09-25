@@ -698,6 +698,72 @@ fn a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report() {
     }
 }
 
+/// `--engine gherkin` with no `--kit` runs the kit embedded in this binary,
+/// materializing its `.feature` files into a temp dir (`write_feature_files`
+/// in `commands/mck.rs`) before the `Suite` scans them. The other replay
+/// tests always pass `--kit spec/ir/mck` (the checkout), so this is the only
+/// test that exercises that materialization against a real adapter exchange.
+///
+/// The embedded kit is built from the same `spec/ir/mck` checkout
+/// (`crates/morphir-mck`'s `the_embedded_kit_is_the_checkout_kit_with_its_fixtures`
+/// test pins this), so it must replay the frozen transcript identically to
+/// the `--kit` checkout run above, once `kitVersion` (which differs: the
+/// embedded kit reports its own build-time revision, not `git rev-parse
+/// HEAD` of a checkout) is normalized away the same way.
+fn a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript() {
+    let binding = "morphir-typescript";
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("report.json");
+    let exe = std::env::current_exe().unwrap();
+    let transcript = transcript_for(binding);
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--engine",
+        "gherkin",
+        "--adapter",
+        exe.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "replay",
+        "--adapter-arg",
+        transcript.to_str().unwrap(),
+        "--report",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "the embedded kit could not replay {binding}'s frozen transcript through --engine \
+         gherkin with no --kit; if the embedded kit has drifted from the spec/ir/mck checkout \
+         that recorded the transcript, that is the reason, not a defect in this test: {}",
+        stderr(&output)
+    );
+
+    let produced = read_json(&report);
+    assert_eq!(produced["execution"]["session"]["status"], "finished");
+    assert_eq!(produced["kit"]["source"], "embedded");
+    let mut expected = baseline_report(binding);
+    // The embedded kit reports its own build-time revision, not a checkout's `git rev-parse
+    // HEAD`; the other replay test above normalizes this the same way.
+    expected["kitVersion"] = produced["kit"]["version"].clone();
+    let caps = &produced["adapter"]["negotiation"]["capabilities"];
+    assert_eq!(caps["binding"], binding);
+    let projected = serde_json::json!({
+        "contractVersion":1, "binding":caps["binding"], "language":caps["language"],
+        "formatVersions":caps["formatVersions"], "kitVersion":produced["kit"]["version"],
+        "records":produced["records"]
+    });
+    assert_eq!(
+        without_volatile(projected),
+        without_volatile(expected),
+        "the embedded kit's gherkin report does not match {binding}'s frozen baseline; if the \
+         embedded kit has drifted from the checkout that recorded the transcript, the diff above \
+         is that drift, not a bug in the gherkin engine"
+    );
+}
+
 /// `stderr`, without its final `Operation ID: <uuid>` line: that id is fresh
 /// every run and carries no engine-specific meaning.
 fn without_operation_id(text: &str) -> String {
@@ -977,6 +1043,10 @@ fn main() {
         (
             "a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report",
             a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report,
+        ),
+        (
+            "a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript",
+            a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript,
         ),
         (
             "a_filter_matching_nothing_is_identical_between_engines",
