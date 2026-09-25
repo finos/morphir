@@ -260,6 +260,117 @@ fn the_contract_covers_capabilities_and_claims() {
     assert_records(&ir, records);
 }
 
+const COMPILE_TYPES: &[&str] = &[
+    "source-document",
+    "source-set",
+    "compile-package",
+    "compile-dependency",
+    "compile-options",
+    "compile-request",
+    "compile-result",
+    "baseline-module",
+    "compile-baseline",
+    "module-status",
+    "module-result",
+    "diagnostic-severity",
+    "source-position",
+    "source-range",
+    "source-location",
+    "related-information",
+    "diagnostic",
+    "generate-request",
+    "generate-result",
+    "artifact",
+];
+
+#[test]
+fn the_contract_covers_compile_diagnostics_and_generate() {
+    let ir = compile_contract();
+    let names = type_names(&ir);
+    for expected in COMPILE_TYPES {
+        assert!(
+            names.contains(*expected),
+            "mep.gleam is missing {expected}; has {names:?}"
+        );
+    }
+    // Fields follow the SDK struct declaration order (types.rs).
+    let records: &[(&str, &[&str])] = &[
+        (
+            "source-document",
+            &["uri", "language-id", "version", "text"],
+        ),
+        ("compile-package", &["name", "exposed-modules"]),
+        (
+            "compile-dependency",
+            &["package-name", "ir-version", "distribution"],
+        ),
+        ("compile-options", &["types-only", "ir-version", "extra"]),
+        ("source-set", &["root", "documents"]),
+        (
+            "compile-request",
+            &[
+                "language-id",
+                "sources",
+                "package",
+                "dependencies",
+                "options",
+                "baseline",
+            ],
+        ),
+        (
+            "compile-result",
+            &[
+                "success",
+                "ir-version",
+                "ir",
+                "diagnostics",
+                "modules",
+                "module-results",
+                "context-digest",
+            ],
+        ),
+        (
+            "baseline-module",
+            &[
+                "name",
+                "uri",
+                "source-digest",
+                "interface-digest",
+                "depends-on",
+                "ir",
+                "frontend-state",
+            ],
+        ),
+        ("compile-baseline", &["modules", "context-digest"]),
+        (
+            "module-result",
+            &[
+                "name",
+                "uri",
+                "status",
+                "source-digest",
+                "interface-digest",
+                "depends-on",
+                "ir",
+                "frontend-state",
+                "diagnostics",
+            ],
+        ),
+        ("generate-request", &["ir", "target", "options"]),
+        ("generate-result", &["success", "artifacts", "diagnostics"]),
+        (
+            "diagnostic",
+            &["severity", "code", "message", "location", "related"],
+        ),
+        ("source-location", &["uri", "range"]),
+        ("source-range", &["start", "end"]),
+        ("source-position", &["line", "character"]),
+        ("related-information", &["location", "message"]),
+        ("artifact", &["path", "content", "binary"]),
+    ];
+    assert_records(&ir, records);
+}
+
 /// Gleam prelude constructors, plus `Some` and `None` from `gleam/option`,
 /// in the kebab-case form the IR uses.
 const RESERVED_CONSTRUCTORS: &[&str] = &["true", "false", "nil", "ok", "error", "some", "none"];

@@ -268,3 +268,220 @@ pub type ErrorCode {
 pub type RpcError {
   RpcError(code: Int, message: String, data: Option(Json))
 }
+
+// -- Compile ----------------------------------------------------------------
+
+/// A source document sent to a frontend. `version` is a non-negative integer
+/// that goes up each time the document changes.
+pub type SourceDocument {
+  SourceDocument(uri: String, language_id: String, version: Int, text: String)
+}
+
+/// The package a compilation builds.
+///
+/// Wire rules: `exposed_modules` (wire `exposedModules`) is left out when
+/// absent. An absent list exposes every module; an empty list exposes none.
+pub type CompilePackage {
+  CompilePackage(name: String, exposed_modules: Option(List(String)))
+}
+
+/// A package distribution the compilation can use. `distribution` is a
+/// serialized Morphir distribution in the IR version that `ir_version` names.
+pub type CompileDependency {
+  CompileDependency(
+    package_name: String,
+    ir_version: String,
+    distribution: Json,
+  )
+}
+
+/// Options that control a compilation.
+///
+/// Wire rules:
+/// - `typesOnly` and `irVersion` are required and always written.
+/// - Members of `extra` sit beside the named members on the wire, not under
+///   an `extra` key. Unknown members are read into `extra`.
+/// - A writer refuses an `extra` key named `typesOnly`, `irVersion`,
+///   `sourceRootUri` or `sourceRoot`.
+/// - A reader refuses the legacy keys `sourceRootUri` and `sourceRoot`: the
+///   source root belongs in `SourceSet.root`.
+pub type CompileOptions {
+  CompileOptions(
+    types_only: Bool,
+    ir_version: String,
+    extra: Dict(String, Json),
+  )
+}
+
+/// The documents a compilation submits, with the root that module names are
+/// derived against.
+///
+/// Wire rules: `root` is left out when absent.
+pub type SourceSet {
+  SourceSet(root: Option(String), documents: List(SourceDocument))
+}
+
+/// Parameters of `morphir.frontend.compile`.
+///
+/// Wire rules:
+/// - `sources` is required. Unknown members are ignored, including a
+///   top-level `documents`, which cannot replace `sources`.
+/// - An absent `dependencies` is read as empty.
+/// - `baseline` is left out when absent.
+pub type CompileRequest {
+  CompileRequest(
+    language_id: String,
+    sources: SourceSet,
+    package: CompilePackage,
+    dependencies: List(CompileDependency),
+    options: CompileOptions,
+    baseline: Option(CompileBaseline),
+  )
+}
+
+/// Result of `morphir.frontend.compile`.
+///
+/// Wire rules:
+/// - `irVersion`, `ir` and `contextDigest` are left out when absent.
+/// - An absent `diagnostics` or `modules` is read as empty.
+/// - `moduleResults` is left out when empty, and an absent `moduleResults`
+///   is read as empty.
+pub type CompileResult {
+  CompileResult(
+    success: Bool,
+    ir_version: Option(String),
+    ir: Option(Json),
+    diagnostics: List(Diagnostic),
+    modules: List(String),
+    module_results: List(ModuleResult),
+    context_digest: Option(String),
+  )
+}
+
+/// A module from a prior compilation, sent back for incremental compilation.
+///
+/// Wire rules: an absent `dependsOn` is read as empty. `frontendState` is
+/// left out when absent.
+pub type BaselineModule {
+  BaselineModule(
+    name: String,
+    uri: String,
+    source_digest: String,
+    interface_digest: String,
+    depends_on: List(String),
+    ir: Json,
+    frontend_state: Option(Json),
+  )
+}
+
+/// The baseline a host sends for incremental compilation.
+///
+/// Wire rules: an absent `modules` is read as empty. `contextDigest` is left
+/// out when absent, and a baseline without it cannot be reused.
+pub type CompileBaseline {
+  CompileBaseline(modules: List(BaselineModule), context_digest: Option(String))
+}
+
+/// The outcome for one module in an incremental compilation. Wire values are
+/// lowercase: `compiled`, `unchanged`, `failed`, `blocked`.
+pub type ModuleStatus {
+  Compiled
+  Unchanged
+  Failed
+  Blocked
+}
+
+/// The result for one module in an incremental compilation.
+///
+/// Wire rules: `sourceDigest`, `interfaceDigest`, `ir` and `frontendState`
+/// are left out when absent. An absent `dependsOn` or `diagnostics` is read
+/// as empty.
+pub type ModuleResult {
+  ModuleResult(
+    name: String,
+    uri: String,
+    status: ModuleStatus,
+    source_digest: Option(String),
+    interface_digest: Option(String),
+    depends_on: List(String),
+    ir: Option(Json),
+    frontend_state: Option(Json),
+    diagnostics: List(Diagnostic),
+  )
+}
+
+// -- Generate ---------------------------------------------------------------
+
+/// Parameters of `morphir.backend.generate`. `target` is the exact target id
+/// the host selected; a backend does not guess a default.
+///
+/// Wire rules: an absent `options` is read as empty.
+pub type GenerateRequest {
+  GenerateRequest(ir: Json, target: String, options: Dict(String, Json))
+}
+
+/// Result of `morphir.backend.generate`.
+///
+/// Wire rules: an absent `artifacts` or `diagnostics` is read as empty.
+pub type GenerateResult {
+  GenerateResult(
+    success: Bool,
+    artifacts: List(Artifact),
+    diagnostics: List(Diagnostic),
+  )
+}
+
+/// A generated file. `path` is relative to the output directory.
+///
+/// Wire rules: when `binary` is true, `content` is base64; otherwise it is
+/// text. An absent `binary` is read as false.
+pub type Artifact {
+  Artifact(path: String, content: String, binary: Bool)
+}
+
+// -- Diagnostics ------------------------------------------------------------
+
+/// A diagnostic message.
+///
+/// Wire rules: `code` and `location` are left out when absent. `related` is
+/// left out when empty, and an absent `related` is read as empty.
+pub type Diagnostic {
+  Diagnostic(
+    severity: DiagnosticSeverity,
+    code: Option(String),
+    message: String,
+    location: Option(SourceLocation),
+    related: List(RelatedInformation),
+  )
+}
+
+/// How serious a diagnostic is. Wire values are lowercase: `error`,
+/// `warning`, `info`, `hint`.
+pub type DiagnosticSeverity {
+  ErrorSeverity
+  WarningSeverity
+  InfoSeverity
+  HintSeverity
+}
+
+/// A range in a source document, identified by URI.
+pub type SourceLocation {
+  SourceLocation(uri: String, range: SourceRange)
+}
+
+/// A half-open range: `start` is inclusive and `end` is exclusive.
+pub type SourceRange {
+  SourceRange(start: SourcePosition, end: SourcePosition)
+}
+
+/// A zero-based position in a source document. `line` counts lines.
+/// `character` counts UTF-16 code units from the start of the line, as in
+/// the Language Server Protocol. Both are non-negative.
+pub type SourcePosition {
+  SourcePosition(line: Int, character: Int)
+}
+
+/// More information about a diagnostic, at another location.
+pub type RelatedInformation {
+  RelatedInformation(location: SourceLocation, message: String)
+}
