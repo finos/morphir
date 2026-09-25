@@ -19,7 +19,7 @@ use starbase::AppResult;
 /// Experimental local Library operations, separate from executable repositories.
 #[derive(Clone, Debug, Subcommand)]
 pub enum PackageAction {
-    /// Create a verified dependency-free classic V4 Library bundle
+    /// Create a verified dependency-free V4 or V4.1 Library bundle
     Create(CreateArgs),
     /// Sign a verified Library with an explicitly supplied local key
     Sign(SignArgs),

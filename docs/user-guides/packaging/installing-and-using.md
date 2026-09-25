@@ -108,7 +108,7 @@ The destination must be new. For another authenticated replay of the same lock,
 run restore with another destination, such as `consumer/replayed`. Keep using the
 same trust state.
 
-For a source-built V4.1 [linked metadata bundle](creating-a-library.md#linked-metadata-context-files-in-the-source-built-draft),
+For a V4.1 [linked metadata bundle](creating-a-library.md#linked-metadata-context-files-in-the-v41-preview),
 the installed Library also has its signed `contexts/*.jsonld` files. You can
 query facts directly from its installed `ir.json`:
 
@@ -123,8 +123,8 @@ already present in its full lock, use
 [`morphir metadata validate-trusted`](../../cli/metadata/validate-trusted.md).
 That command freshly authenticates the provider Library and derives predicate
 declarations from its native V4 facts before validating the consumer. These
-metadata commands and the V4.1 bundle path are still source-built drafts and
-are not in the beta.9 binary.
+metadata commands and the V4.1 bundle path are available in beta.9 as
+early-access features.
 
 ## 5. Use the restored model
 

@@ -13,16 +13,17 @@ available to `morphir package resolve` yet.
 
 :::caution Early access
 This guide targets **Morphir CLI v0.4.0-beta.9**. Package formats and authoring
-workflows may change. `morphir package create` covers only a dependency-free
-classic V4 Library; see [the early authoring path](#source-built-cli-preview).
+workflows may change. `morphir package create` covers dependency-free classic V4
+Libraries and early-access single-file V4.1 Libraries with linked metadata; see
+[the early authoring path](#cli-authoring-preview).
 The other steps below work with bundle files directly and do not constitute a
 complete publication workflow.
 :::
 
-## Source-built CLI preview
+## CLI authoring preview
 
-The source-built CLI now has an early authoring path for a **dependency-free classic
-JSON V4** Library. This command first ships in v0.4.0-beta.6. The checked-in
+The beta.9 CLI has an early authoring path for a **dependency-free classic
+JSON V4** Library. This command first shipped in v0.4.0-beta.6. The checked-in
 [`hello` publication example](https://github.com/finos/morphir/tree/main/examples/package/local-library-publish)
 starts with Gleam source and this `authoring.json`:
 
@@ -48,12 +49,12 @@ The command checks the IR identity and exports, derives the exact-byte digest,
 and writes `manifest.json` beside `ir.json`. It rejects a nonempty dependency map
 in this first authoring profile. An existing output path is left untouched.
 The [CLI reference](../../cli/package/create.md) lists all options. Continue with
-the source-built steps in [publishing locally](publishing-locally.md#source-built-cli-preview)
+the CLI steps in [publishing locally](publishing-locally.md#cli-publication-preview)
 using the same shell and `$work` directory.
 
-### Linked metadata context files in the source-built draft
+### Linked metadata context files in the V4.1 preview
 
-The in-development V4.1 metadata profile can keep JSON-LD context files in a
+The early-access V4.1 metadata profile can keep JSON-LD context files in a
 Library bundle. Export a complete metadata-bearing Library document to a tree,
 then explicitly give that tree to `package create`:
 
@@ -62,11 +63,12 @@ morphir metadata export --ir library-with-metadata.json --output "$work/exported
 morphir package create --ir "$work/exported/ir.json" --context-root "$work/exported" --manifest-input authoring.json --output "$work/metadata-bundle"
 ```
 
-The draft CLI inventories the exact `contexts/*.jsonld` bytes in `manifest.json`
-and signs them with the Library. It rejects missing, changed, linked, or undeclared
-bundle files. A consumer restores the context files with `ir.json`, so reading
-the facts does not require the author's workspace. This source-built path is
-under development and is not a capability of the beta.9 binary.
+The beta.9 CLI inventories the exact `contexts/*.jsonld` bytes in `manifest.json`.
+Signing and publishing the Library then authenticate those bytes. The CLI rejects
+missing, changed, linked, or undeclared bundle files. A consumer restores the
+context files with `ir.json`, so reading
+the facts does not require the author's workspace. This V4.1 path is available
+in beta.9 and remains an early-access format that may change.
 
 ## 1. Choose the release identity
 

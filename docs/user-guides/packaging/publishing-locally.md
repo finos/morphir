@@ -16,18 +16,20 @@ or [Trust explained simply](trust-explained.md) first.
 
 :::caution Early access: publisher tooling is limited
 This guide describes **Morphir CLI v0.4.0-beta.9**. Its `morphir package registry`,
-`sign` and `publish` commands publish only a dependency-free classic V4 Library, and
-only on macOS; see [the early publication path](#source-built-cli-preview). The
-later steps explain the publication inputs and how to try a prepared local
+`sign` and `publish` commands publish dependency-free classic V4 or single-file
+V4.1 Libraries only on macOS; see
+[the early publication path](#cli-publication-preview). The later steps explain
+the publication inputs and how to try a prepared local
 registry. Formats and workflows may change.
 :::
 
-## Source-built CLI preview
+## CLI publication preview
 
-The source-built CLI can publish a dependency-free classic V4 Library to an
-explicitly initialized local registry on **macOS**. This path first ships in
+The beta.9 CLI can publish a dependency-free classic V4 Library, or a single-file
+V4.1 Library with linked metadata, to an explicitly initialized local registry
+on **macOS**. This path first shipped in
 v0.4.0-beta.6; publication on other platforms awaits qualification. Continue
-from [Create a Library](creating-a-library.md#source-built-cli-preview) in the
+from [Create a Library](creating-a-library.md#cli-authoring-preview) in the
 same shell, where `$work` points to a temporary directory. The checked-in
 [`hello` example](https://github.com/finos/morphir/tree/main/examples/package/local-library-publish)
 includes `bootstrap.mjs`, a small helper that builds the public root and policy
@@ -73,11 +75,11 @@ use **only public** `root.json` and `policy.json` to initialize trust, then
 [Installing and using Libraries](installing-and-using.md). The
 [CLI reference](../../cli/package/registry.md) describes the exact command inputs.
 
-For a source-built [linked metadata bundle](creating-a-library.md#linked-metadata-context-files-in-the-source-built-draft),
+For a V4.1 [linked metadata bundle](creating-a-library.md#linked-metadata-context-files-in-the-v41-preview),
 the same `sign`, `registry prepare`, and `publish` commands verify and carry its
 declared context files. `restore` supplies those files beside `ir.json`; changing
-one after publication invalidates the signed bundle. This V4.1 path remains a
-draft and is not in the beta.9 binary.
+one after publication invalidates the signed bundle. This V4.1 path is available
+in beta.9 as an early-access format.
 
 ## What publication needs
 
