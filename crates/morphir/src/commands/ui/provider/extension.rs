@@ -293,7 +293,7 @@ async fn invoke_installed(
             let _ = session.close().await;
             return Err(host_error(error));
         }
-        Err(CallError::Failed(error) | CallError::Open(error)) => return Err(host_error(error)),
+        Err(CallError::Failed(error) | CallError::Invalid(error)) => return Err(host_error(error)),
         Err(other) => return Err(extension_error(other.to_string())),
     };
     session.close().await.map_err(host_error)?;

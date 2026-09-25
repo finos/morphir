@@ -161,7 +161,7 @@ where
             }
             Err(CliError::Extension { message })
         }
-        Err(CallError::Failed(error) | CallError::Open(error)) => {
+        Err(CallError::Failed(error) | CallError::Invalid(error)) => {
             Err(failure(provider, method, error))
         }
         Err(other) => Err(CliError::Extension {
