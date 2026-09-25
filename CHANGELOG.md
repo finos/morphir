@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.0-beta.9] - 2026-09-25
-
 ### Added
 - `spec/mep/`: the Morphir Extension Protocol contract as a Gleam model,
   compiled to committed Morphir IR (`spec/mep/generated/mep.ir.json`) with a
@@ -16,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   covers the handshake, capabilities and claims, compile, diagnostics and
   generate messages, and documents the pre-1.0 versioning rule and the wire
   mapping (#964, #960).
+
+## [0.4.0-beta.9] - 2026-09-25
+
+### Added
 - Early-access V4.1 linked metadata in single-file JSON, YAML and Ion. The
   `morphir metadata` commands query facts, export their contexts, check
   document structure, and validate assertions against native declarations
