@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.9] - 2026-09-25
+
 ### Added
 - Early-access V4.1 linked metadata in single-file JSON, YAML and Ion. The
   `morphir metadata` commands query facts, export their contexts, check
