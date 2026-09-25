@@ -161,7 +161,7 @@ fn separately_expanded_typed_fact_coalesces_without_losing_ownership() {
 }
 
 #[test]
-fn proposed_v4_revision_is_not_misclassified_as_v3() {
+fn v4_4_1_target_is_indexed_for_sidecar_projection() {
     let root = tempfile::tempdir().unwrap();
     let ir = root.path().join("morphir-ir.json");
     let config = root.path().join("morphir.json");
@@ -169,17 +169,21 @@ fn proposed_v4_revision_is_not_misclassified_as_v3() {
     proposed["formatVersion"] = serde_json::json!("4.1.0");
     std::fs::write(&ir, proposed.to_string()).unwrap();
     std::fs::write(&config, r#"{"decorations":{"labels":{"ir":"morphir-ir.json","entryPoint":"example/v4-test:domain#user-id","storageLocation":"attributes/labels.json"}}}"#).unwrap();
-    let error = DecorationProject::open(&config, "labels", &ir)
-        .err()
+    let project = DecorationProject::open(&config, "labels", &ir).unwrap();
+    let target =
+        NodeUri::parse("morphir://ir/pkg/example/v4-test?format=4.1.0#/module/domain/type/user-id")
+            .unwrap();
+    let mut sidecar = DecorationSidecar::empty();
+    sidecar.insert(target.clone(), serde_json::json!("customer-1"));
+    let graph = project
+        .project_sidecar(&sidecar, DocumentId::new("attributes/labels.json").unwrap())
         .unwrap();
-    assert!(
-        error.to_string().contains("unsupported V4 target IR"),
-        "{error}"
-    );
+    assert_eq!(graph.facts()[0].subject(), &target);
+    assert_eq!(graph.facts()[0].predicate(), &target);
 }
 
 #[test]
-fn unsupported_entry_point_index_only_blocks_projection() {
+fn v4_4_1_entry_point_projects_for_a_v4_4_0_target() {
     let root = tempfile::tempdir().unwrap();
     let target_ir = root.path().join("target-ir.json");
     let type_ir = root.path().join("type-ir.json");
@@ -197,11 +201,14 @@ fn unsupported_entry_point_index_only_blocks_projection() {
         .set(target, serde_json::json!("customer-1"))
         .unwrap();
     let sidecar = project.load().unwrap();
-    let error = project
+    let graph = project
         .project_sidecar(&sidecar, DocumentId::new("attributes/labels.json").unwrap())
-        .err()
         .unwrap();
-    assert!(error.to_string().contains("entryPoint"), "{error}");
+    assert_eq!(graph.facts().len(), 1);
+    assert_eq!(
+        graph.facts()[0].predicate().to_string(),
+        "morphir://ir/pkg/example/v4-test?format=4.1.0#/module/domain/type/user-id"
+    );
 }
 
 #[test]
