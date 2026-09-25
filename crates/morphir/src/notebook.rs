@@ -201,39 +201,53 @@ impl Notebook {
 
     /// Populate a fresh workspace; never replace existing files or follow symlinks.
     pub fn materialize(&self, root: &Path) -> Result<()> {
-        ensure!(
-            fs::symlink_metadata(root)?.is_dir(),
-            "workspace root must be a real directory"
-        );
-        for file in &self.files {
-            let mut path = root.to_path_buf();
-            let parts: Vec<_> = file.path.split('/').collect();
-            for part in &parts[..parts.len() - 1] {
-                path.push(part);
-                match fs::create_dir(&path) {
-                    Ok(()) => {}
-                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => ensure!(
-                        fs::symlink_metadata(&path)?.is_dir(),
-                        "workspace ancestor is not a real directory: {}",
-                        path.display()
-                    ),
-                    Err(error) => return Err(error.into()),
-                }
-            }
-            path.push(parts.last().unwrap());
-            fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&path)
-                .with_context(|| format!("materialize {}", file.path))?
-                .write_all(file.source.as_bytes())?;
-        }
-        Ok(())
+        write_workspace_files(
+            root,
+            self.files
+                .iter()
+                .map(|file| (file.path.as_str(), file.source.as_str())),
+        )
     }
 }
 
+/// Write `(path, source)` files into a fresh workspace at `root`; never replace existing files
+/// or follow symlinks. Validate the paths with [`validate_workspace_paths`] first.
+pub fn write_workspace_files<'a>(
+    root: &Path,
+    files: impl IntoIterator<Item = (&'a str, &'a str)>,
+) -> Result<()> {
+    ensure!(
+        fs::symlink_metadata(root)?.is_dir(),
+        "workspace root must be a real directory"
+    );
+    for (file, source) in files {
+        let mut path = root.to_path_buf();
+        let parts: Vec<_> = file.split('/').collect();
+        for part in &parts[..parts.len() - 1] {
+            path.push(part);
+            match fs::create_dir(&path) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => ensure!(
+                    fs::symlink_metadata(&path)?.is_dir(),
+                    "workspace ancestor is not a real directory: {}",
+                    path.display()
+                ),
+                Err(error) => return Err(error.into()),
+            }
+        }
+        path.push(parts.last().unwrap());
+        fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .with_context(|| format!("materialize {file}"))?
+            .write_all(source.as_bytes())?;
+    }
+    Ok(())
+}
+
 /// Validate the complete set before copying disk inputs or materializing cells.
-fn validate_workspace_paths<'a>(
+pub fn validate_workspace_paths<'a>(
     files: impl IntoIterator<Item = &'a str>,
     directories: impl IntoIterator<Item = &'a str>,
 ) -> Result<()> {

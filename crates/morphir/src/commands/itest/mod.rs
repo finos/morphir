@@ -3,6 +3,7 @@ mod golden;
 mod markdown;
 mod model;
 mod runner;
+pub mod steps;
 #[cfg(windows)]
 mod windows_job;
 mod workspace;
@@ -72,27 +73,7 @@ fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
             "multiple scenario documents in {}; keep either scenario.ipynb or scenarios.md",
             directory.display()
         );
-        let relative = directory.strip_prefix(root)?;
-        let id = if relative.as_os_str().is_empty() {
-            ".".into()
-        } else {
-            let id = relative
-                .components()
-                .map(|component| {
-                    component
-                        .as_os_str()
-                        .to_str()
-                        .context("scenario directory name must be UTF-8")
-                })
-                .collect::<Result<Vec<_>>>()?
-                .join("/");
-            model::relative_path(&id)?;
-            ensure!(
-                !id.contains('#'),
-                "scenario directory cannot contain reserved '#' separator"
-            );
-            id
-        };
+        let id = directory_id(root, &directory)?;
         let text = fs::read_to_string(entry.path())?;
         let documents = if entry.file_name() == "scenarios.md" {
             markdown::parse(&text).map(|sections| {
@@ -128,6 +109,31 @@ fn discover(root: &Path, filter: Option<&str>) -> Result<Vec<Scenario>> {
         ensure!(!scenarios.is_empty(), "no scenarios match path {filter:?}");
     }
     Ok(scenarios)
+}
+
+/// A scenario directory's id: its path relative to the itest `root`, with `/` separators, or
+/// `.` for the root itself.
+fn directory_id(root: &Path, directory: &Path) -> Result<String> {
+    let relative = directory.strip_prefix(root)?;
+    if relative.as_os_str().is_empty() {
+        return Ok(".".into());
+    }
+    let id = relative
+        .components()
+        .map(|component| {
+            component
+                .as_os_str()
+                .to_str()
+                .context("scenario directory name must be UTF-8")
+        })
+        .collect::<Result<Vec<_>>>()?
+        .join("/");
+    model::relative_path(&id)?;
+    ensure!(
+        !id.contains('#'),
+        "scenario directory cannot contain reserved '#' separator"
+    );
+    Ok(id)
 }
 
 fn validate_filter(filter: &str) -> Result<()> {

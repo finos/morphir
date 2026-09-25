@@ -17,7 +17,7 @@ pub struct Metadata {
     pub workspace: Workspace,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Workspace {
     Directory {
@@ -35,6 +35,21 @@ impl Default for Workspace {
             path: ".".into(),
             exclude: Vec::new(),
         }
+    }
+}
+
+impl Workspace {
+    /// A directory workspace's path and exclusions must be portable relative paths.
+    pub fn validate(&self) -> Result<()> {
+        if let Workspace::Directory { path, exclude } = self {
+            if path != "." {
+                relative_path(path).context("invalid workspace directory")?;
+            }
+            for path in exclude {
+                relative_path(path).context("invalid workspace exclusion")?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -134,14 +149,7 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
     );
     let metadata: Metadata =
         serde_json::from_value(profile["itest"].clone()).context("invalid scenario metadata")?;
-    if let Workspace::Directory { path, exclude } = &metadata.workspace {
-        if path != "." {
-            relative_path(path).context("invalid workspace directory")?;
-        }
-        for path in exclude {
-            relative_path(path).context("invalid workspace exclusion")?;
-        }
-    }
+    metadata.workspace.validate()?;
     ensure!(
         !metadata.title.trim().is_empty() && !metadata.description.trim().is_empty(),
         "scenario needs title and description"

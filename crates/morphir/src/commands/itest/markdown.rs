@@ -64,7 +64,9 @@ pub(super) fn validate_id(id: &str) -> Result<()> {
     Ok(())
 }
 
-fn section_id(title: &str, explicit: Option<String>) -> Result<String> {
+/// A section's id: `explicit` when given, or else the title's lowercase ASCII words joined by
+/// hyphens.
+pub(super) fn section_id(title: &str, explicit: Option<String>) -> Result<String> {
     let id = explicit.unwrap_or_else(|| {
         title
             .to_ascii_lowercase()

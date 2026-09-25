@@ -801,3 +801,134 @@ This text must never be silently ignored as an expectation.
     .unwrap();
     assert_golden_output(&run(root.path(), &["--list"]), false, "expected a string");
 }
+
+mod itest_runner {
+    use morphir::commands::itest::steps::{ItestDirs, ItestRunner};
+    use morphir_bdd::steps::cli::{CliProgram, CliRequest, CliRunner};
+    use morphir_gherkin::extension::Context;
+    use std::{fs, path::Path, time::Duration};
+
+    /// A scenario context that holds only `ItestDirs` for a prepared temporary root.
+    fn context(root: &Path) -> Context {
+        fs::create_dir_all(root.join("project")).unwrap();
+        let mut context = Context::default();
+        context.insert(ItestDirs::new(root));
+        context
+    }
+
+    #[tokio::test]
+    async fn itest_runner_runs_morphir_with_per_step_logs() {
+        let temp = tempfile::tempdir().unwrap();
+        let context = context(temp.path());
+        let program = CliProgram {
+            name: "morphir".into(),
+            path: env!("CARGO_BIN_EXE_morphir").into(),
+        };
+        let args = vec!["--version".to_owned()];
+        let output = ItestRunner
+            .run(CliRequest {
+                program: &program,
+                args: &args,
+                timeout: None,
+                context: &context,
+            })
+            .await
+            .unwrap();
+        assert_eq!(output.status, Some(0), "stderr={}", output.stderr);
+        assert!(
+            output.stdout.contains(env!("CARGO_PKG_VERSION")),
+            "stdout={}",
+            output.stdout
+        );
+        assert!(temp.path().join("step-1/stdout.log").is_file());
+        assert!(temp.path().join("step-1/stderr.log").is_file());
+
+        // A second command in the same scenario gets the next step directory.
+        ItestRunner
+            .run(CliRequest {
+                program: &program,
+                args: &args,
+                timeout: Some(Duration::from_secs(30)),
+                context: &context,
+            })
+            .await
+            .unwrap();
+        assert!(temp.path().join("step-2/stdout.log").is_file());
+    }
+
+    #[tokio::test]
+    async fn itest_runner_needs_itest_dirs() {
+        let program = CliProgram {
+            name: "morphir".into(),
+            path: env!("CARGO_BIN_EXE_morphir").into(),
+        };
+        let error = ItestRunner
+            .run(CliRequest {
+                program: &program,
+                args: &[],
+                timeout: None,
+                context: &Context::default(),
+            })
+            .await
+            .unwrap_err();
+        assert!(error.contains("MaterializeExample"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn itest_runner_isolates_the_morphir_home() {
+        let temp = tempfile::tempdir().unwrap();
+        let context = context(temp.path());
+        let program = CliProgram {
+            name: "sh".into(),
+            path: "/bin/sh".into(),
+        };
+        let args = vec![
+            "-c".to_owned(),
+            "echo $MORPHIR_HOME; echo $MORPHIR_LOG_FILE; pwd".to_owned(),
+        ];
+        let output = ItestRunner
+            .run(CliRequest {
+                program: &program,
+                args: &args,
+                timeout: None,
+                context: &context,
+            })
+            .await
+            .unwrap();
+        let lines: Vec<_> = output.stdout.lines().collect();
+        assert_eq!(
+            lines[0],
+            temp.path().join("home").display().to_string(),
+            "stdout={}",
+            output.stdout
+        );
+        assert_eq!(lines[1], "false");
+        assert_eq!(
+            Path::new(lines[2]).canonicalize().unwrap(),
+            temp.path().join("project").canonicalize().unwrap()
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn itest_runner_times_out() {
+        let temp = tempfile::tempdir().unwrap();
+        let context = context(temp.path());
+        let program = CliProgram {
+            name: "sh".into(),
+            path: "/bin/sh".into(),
+        };
+        let args = vec!["-c".to_owned(), "sleep 30".to_owned()];
+        let error = ItestRunner
+            .run(CliRequest {
+                program: &program,
+                args: &args,
+                timeout: Some(Duration::from_millis(200)),
+                context: &context,
+            })
+            .await
+            .unwrap_err();
+        assert!(error.contains("timed out after"), "{error}");
+    }
+}

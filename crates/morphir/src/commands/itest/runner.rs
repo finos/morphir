@@ -14,6 +14,7 @@ use std::{
     process::{Command, Stdio},
     time::{Duration, Instant},
 };
+use tempfile::TempDir;
 
 #[derive(Debug)]
 pub struct ProcessOutput {
@@ -90,19 +91,40 @@ fn confined(root: &Path, relative: &str) -> Result<PathBuf> {
 }
 
 pub fn run(scenario: &Scenario, binary: &Path, keep: bool) -> Result<()> {
+    let (root, _temp) = temporary_root(&scenario.id, keep)?;
+    run_in_temporary(scenario, binary, &root)
+}
+
+/// A new temporary root for scenario `id`. With `keep`, the root outlives the run: its path is
+/// printed and no guard is returned. Otherwise the returned guard deletes it when dropped.
+pub(super) fn temporary_root(id: &str, keep: bool) -> Result<(PathBuf, Option<TempDir>)> {
     let temp = tempfile::Builder::new()
         .prefix("morphir-example-")
         .tempdir()?;
     if keep {
         let root = temp.keep();
-        eprintln!("{}: retained {}", scenario.id, root.display());
-        run_in_temporary(scenario, binary, &root)
+        eprintln!("{id}: retained {}", root.display());
+        Ok((root, None))
     } else {
-        run_in_temporary(scenario, binary, temp.path())
+        Ok((temp.path().to_owned(), Some(temp)))
     }
 }
 
-fn isolated_command(binary: &Path, workspace: &Path, root: &Path) -> Command {
+/// Create `root/project` and `root/home`, fill the project with `materialize`, then add the
+/// project's `.morphir` directory. Returns the project directory.
+pub(super) fn prepare_root(
+    root: &Path,
+    materialize: impl FnOnce(&Path) -> Result<()>,
+) -> Result<PathBuf> {
+    let project = root.join("project");
+    fs::create_dir_all(&project)?;
+    fs::create_dir_all(root.join("home"))?;
+    materialize(&project)?;
+    fs::create_dir_all(project.join(".morphir"))?;
+    Ok(project)
+}
+
+pub(super) fn isolated_command(binary: &Path, workspace: &Path, root: &Path) -> Command {
     let mut command = Command::new(binary);
     command.current_dir(workspace);
     for (key, _) in std::env::vars_os() {
@@ -266,11 +288,9 @@ fn run_in_temporary(scenario: &Scenario, binary: &Path, root: &Path) -> Result<(
     }
     // Freeze authored expectations before any CLI command can change files.
     let expected = expected_texts(scenario)?;
-    let project = root.join("project");
-    fs::create_dir_all(&project)?;
-    fs::create_dir_all(root.join("home"))?;
-    super::workspace::materialize(scenario, &project)?;
-    fs::create_dir_all(project.join(".morphir"))?;
+    let project = prepare_root(root, |project| {
+        super::workspace::materialize(scenario, project)
+    })?;
     for (index, step) in scenario.steps.iter().enumerate() {
         let logs = root.join(format!("step-{}", index + 1));
         fs::create_dir_all(&logs)?;

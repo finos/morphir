@@ -1,6 +1,6 @@
 //! Copy project inputs before running commands; never execute in the author's tree.
 use super::{Scenario, model::Workspace};
-use crate::notebook::relative_path;
+use crate::notebook::{relative_path, validate_workspace_paths, write_workspace_files};
 use anyhow::{Context, Result, ensure};
 use std::{
     fs,
@@ -15,37 +15,50 @@ fn excluded(path: &Path, exclusions: &[String]) -> bool {
         )
     }) || path
         .file_name()
-        .is_some_and(|name| name == "scenario.ipynb" || name == "scenarios.md")
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| {
+            name == "scenario.ipynb"
+                || name == "scenarios.md"
+                || name.ends_with(".feature")
+                || name.ends_with(".feature.md")
+        })
         || path.starts_with(".morphir/cache")
         || exclusions.iter().any(|excluded| path.starts_with(excluded))
 }
 
-fn source_directory(scenario: &Scenario, relative: &str) -> Result<PathBuf> {
-    let mut source = scenario.directory.clone();
+fn source_directory(directory: &Path, relative: &str) -> Result<PathBuf> {
+    let mut source = directory.to_owned();
     if relative != "." {
         relative_path(relative)?;
         for component in Path::new(relative).components() {
             source.push(component);
-            ensure!(
-                fs::symlink_metadata(&source)?.is_dir(),
-                "workspace source must be a real directory: {}",
-                source.display()
-            );
+            real_directory(&source)?;
         }
     }
-    ensure!(
-        fs::symlink_metadata(&source)?.is_dir(),
-        "workspace source must be a real directory: {}",
-        source.display()
-    );
+    real_directory(&source)?;
     Ok(source)
 }
 
-pub(super) fn materialize(scenario: &Scenario, destination: &Path) -> Result<()> {
-    let Workspace::Directory { path, exclude } = &scenario.metadata.workspace else {
-        return scenario.notebook.materialize(destination);
+fn real_directory(source: &Path) -> Result<()> {
+    let message = || {
+        format!(
+            "workspace source must be a real directory: {}",
+            source.display()
+        )
     };
-    let source = source_directory(scenario, path)?;
+    ensure!(
+        fs::symlink_metadata(source).with_context(message)?.is_dir(),
+        message()
+    );
+    Ok(())
+}
+
+/// Disk inputs of a directory workspace: `(path, source)` files and directories, relative to
+/// `destination`.
+type Inputs = (Vec<(String, PathBuf)>, Vec<String>);
+
+fn collect_inputs(directory: &Path, path: &str, exclude: &[String]) -> Result<Inputs> {
+    let source = source_directory(directory, path)?;
     let mut files = Vec::new();
     let mut directories = Vec::new();
     for entry in walkdir::WalkDir::new(&source)
@@ -85,10 +98,10 @@ pub(super) fn materialize(scenario: &Scenario, destination: &Path) -> Result<()>
             files.push((path, entry.path().to_owned()));
         }
     }
-    scenario.notebook.validate_additional_paths(
-        files.iter().map(|(path, _)| path.as_str()),
-        directories.iter().map(String::as_str),
-    )?;
+    Ok((files, directories))
+}
+
+fn copy_inputs((files, directories): Inputs, destination: &Path) -> Result<()> {
     for directory in directories {
         fs::create_dir_all(destination.join(directory))?;
     }
@@ -96,5 +109,43 @@ pub(super) fn materialize(scenario: &Scenario, destination: &Path) -> Result<()>
         fs::copy(&source, destination.join(&path))
             .with_context(|| format!("copy workspace input {path}"))?;
     }
+    Ok(())
+}
+
+pub(super) fn materialize(scenario: &Scenario, destination: &Path) -> Result<()> {
+    let Workspace::Directory { path, exclude } = &scenario.metadata.workspace else {
+        return scenario.notebook.materialize(destination);
+    };
+    let inputs = collect_inputs(&scenario.directory, path, exclude)?;
+    scenario.notebook.validate_additional_paths(
+        inputs.0.iter().map(|(path, _)| path.as_str()),
+        inputs.1.iter().map(String::as_str),
+    )?;
+    copy_inputs(inputs, destination)?;
     scenario.notebook.materialize(destination)
+}
+
+/// Materialize an example into `destination` from its directory `directory`, its `workspace`
+/// and its `(path, source)` overlay files, which today's Markdown writes as `morphir:file`
+/// fences. An inline workspace holds only the overlay files.
+pub(super) fn materialize_example<'a>(
+    directory: &Path,
+    workspace: &Workspace,
+    overlay: impl IntoIterator<Item = (&'a str, &'a str)> + Clone,
+    destination: &Path,
+) -> Result<()> {
+    let inputs = match workspace {
+        Workspace::Directory { path, exclude } => collect_inputs(directory, path, exclude)?,
+        Workspace::Notebook {} => Default::default(),
+    };
+    validate_workspace_paths(
+        overlay
+            .clone()
+            .into_iter()
+            .map(|(path, _)| path)
+            .chain(inputs.0.iter().map(|(path, _)| path.as_str())),
+        inputs.1.iter().map(String::as_str),
+    )?;
+    copy_inputs(inputs, destination)?;
+    write_workspace_files(destination, overlay)
 }
