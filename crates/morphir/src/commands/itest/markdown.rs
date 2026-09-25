@@ -9,6 +9,8 @@ enum Block {
     Scenario {
         title: String,
         id: Option<String>,
+        /// The byte offset of the heading's first character in the frontmatter-stripped body.
+        start: usize,
     },
     Fence {
         info: String,
@@ -48,7 +50,32 @@ impl Role {
 struct Section {
     id: String,
     title: String,
+    /// The heading's 1-based line in the source document (including its frontmatter).
+    line: usize,
     cells: Vec<Value>,
+}
+
+/// One `##` section of a `scenarios.md` file, lowered to a synthetic notebook: its resolved id,
+/// its heading title, the heading's 1-based line in the source file, and the notebook
+/// `model::parse` reads.
+pub(super) struct ParsedSection {
+    /// The section's id: explicit (`{#id}`) or derived from its title.
+    pub(super) id: String,
+    /// The section heading's text.
+    pub(super) title: String,
+    /// The section heading's 1-based line in the source `scenarios.md` file.
+    pub(super) line: usize,
+    /// The section's synthetic notebook, as `model::parse` expects it.
+    pub(super) notebook: Notebook,
+}
+
+/// A `scenarios.md` file's frontmatter metadata and its `##` sections, in source order.
+pub(super) struct ParsedDocument {
+    /// The frontmatter's own metadata: its title (not a section heading's), description, tags,
+    /// provider and workspace.
+    pub(super) metadata: super::model::Metadata,
+    /// The document's sections, in source order.
+    pub(super) sections: Vec<ParsedSection>,
 }
 
 /// Heading IDs are usable as the fragment of an itest path filter.
@@ -83,7 +110,7 @@ fn yaml(text: &str) -> Result<Map<String, Value>> {
     serde_saphyr::from_str(text).context("invalid YAML metadata")
 }
 
-fn frontmatter(text: &str) -> Result<(Map<String, Value>, &str)> {
+fn frontmatter(text: &str) -> Result<(super::model::Metadata, Map<String, Value>, &str)> {
     let mut lines = text.split_inclusive('\n');
     let first = lines.next().context("missing YAML frontmatter")?;
     ensure!(
@@ -106,7 +133,7 @@ fn frontmatter(text: &str) -> Result<(Map<String, Value>, &str)> {
                 !context.title.trim().is_empty(),
                 "frontmatter needs a title"
             );
-            return Ok((metadata, &text[end + line.len()..]));
+            return Ok((context, metadata, &text[end + line.len()..]));
         }
         end += line.len();
     }
@@ -116,7 +143,7 @@ fn frontmatter(text: &str) -> Result<(Map<String, Value>, &str)> {
 fn blocks(text: &str) -> Vec<Block> {
     let mut blocks = Vec::new();
     let mut depth = 0;
-    let mut heading: Option<(String, Option<String>)> = None;
+    let mut heading: Option<(String, Option<String>, usize)> = None;
     for (event, range) in
         Parser::new_ext(text, Options::ENABLE_HEADING_ATTRIBUTES).into_offset_iter()
     {
@@ -128,7 +155,7 @@ fn blocks(text: &str) -> Vec<Block> {
                         id,
                         ..
                     } if depth == 0 => {
-                        heading = Some((String::new(), id.map(|id| id.into_string())));
+                        heading = Some((String::new(), id.map(|id| id.into_string()), range.start));
                     }
                     Tag::CodeBlock(CodeBlockKind::Fenced(info)) => blocks.push(Block::Fence {
                         info: info.into_string(),
@@ -142,18 +169,18 @@ fn blocks(text: &str) -> Vec<Block> {
             Event::End(tag) => {
                 depth -= 1;
                 if tag == TagEnd::Heading(HeadingLevel::H2)
-                    && let Some((title, id)) = heading.take()
+                    && let Some((title, id, start)) = heading.take()
                 {
-                    blocks.push(Block::Scenario { title, id });
+                    blocks.push(Block::Scenario { title, id, start });
                 }
             }
             Event::Text(text) | Event::Code(text) => {
-                if let Some((title, _)) = &mut heading {
+                if let Some((title, _, _)) = &mut heading {
                     title.push_str(&text);
                 }
             }
             Event::SoftBreak | Event::HardBreak => {
-                if let Some((title, _)) = &mut heading {
+                if let Some((title, _, _)) = &mut heading {
                     title.push(' ');
                 }
             }
@@ -229,14 +256,19 @@ fn cell(role: Role, mut metadata: Map<String, Value>, info: &str, source: &str) 
         "metadata": {"morphir": profile}, "outputs": [], "execution_count": null}))
 }
 
-pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
-    let (defaults, body) = frontmatter(text)?;
+/// Parses a `scenarios.md` file into its frontmatter metadata and its `##` sections. This is the
+/// single Markdown pass: [`parse`] and [`super::reader::read_scenarios_md`] both build on it, so
+/// the file is never parsed twice.
+pub(super) fn parse_sections(text: &str) -> Result<ParsedDocument> {
+    let (frontmatter_metadata, defaults, body) = frontmatter(text)?;
+    let body_offset = text.len() - body.len();
+    let prefix_lines = text[..body_offset].bytes().filter(|c| *c == b'\n').count();
     let mut sections: Vec<Section> = Vec::new();
     let mut ids = HashSet::new();
     let mut pending = None;
     for block in blocks(body) {
         match block {
-            Block::Scenario { title, id } => {
+            Block::Scenario { title, id, start } => {
                 ensure!(
                     pending.is_none(),
                     "metadata needs a source fence before the next scenario heading"
@@ -244,9 +276,11 @@ pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
                 ensure!(!title.trim().is_empty(), "scenario heading needs a title");
                 let id = section_id(&title, id)?;
                 ensure!(ids.insert(id.clone()), "duplicate scenario id {id:?}");
+                let line = prefix_lines + body[..start].bytes().filter(|c| *c == b'\n').count() + 1;
                 sections.push(Section {
                     id,
                     title,
+                    line,
                     cells: Vec::new(),
                 });
             }
@@ -299,7 +333,7 @@ pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
         !sections.is_empty(),
         "Markdown document needs at least one level-two scenario heading"
     );
-    sections
+    let sections = sections
         .into_iter()
         .map(|section| {
             let mut metadata = defaults.clone();
@@ -308,7 +342,27 @@ pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
             "metadata": {"morphir": {"version": 1, "itest": metadata}}, "cells": section.cells});
             let notebook = Notebook::parse(&document.to_string())
                 .with_context(|| format!("Markdown scenario {}", section.id))?;
-            Ok((section.id, notebook))
+            Ok(ParsedSection {
+                id: section.id,
+                title: section.title,
+                line: section.line,
+                notebook,
+            })
         })
-        .collect()
+        .collect::<Result<Vec<_>>>()?;
+    Ok(ParsedDocument {
+        metadata: frontmatter_metadata,
+        sections,
+    })
+}
+
+/// Reads every `##` section of a `scenarios.md` file into a synthetic notebook, keyed by its
+/// section id. [`super::reader::read_scenarios_md`] lowers the same sections into Gherkin
+/// scenarios by calling [`parse_sections`] directly, so this file is parsed only once.
+pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
+    Ok(parse_sections(text)?
+        .sections
+        .into_iter()
+        .map(|section| (section.id, section.notebook))
+        .collect())
 }

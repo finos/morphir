@@ -2,11 +2,14 @@
 mod golden;
 mod markdown;
 mod model;
+mod reader;
 mod runner;
 pub mod steps;
 #[cfg(windows)]
 mod windows_job;
 mod workspace;
+
+pub use reader::read_scenarios_md;
 #[cfg(test)]
 use runner::execute;
 use runner::run;
