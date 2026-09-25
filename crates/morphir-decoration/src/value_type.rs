@@ -41,6 +41,10 @@ pub struct ValueValidator {
 }
 
 impl ValueValidator {
+    pub fn entry_point(&self) -> &FQName {
+        &self.entry_point
+    }
+
     pub fn v3(
         distribution: &classic::Distribution,
         entry_point: &str,

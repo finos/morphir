@@ -4,7 +4,13 @@
 use crate::sidecar::{DecorationSidecar, SidecarError};
 use crate::value_type::{ValueTypeError, ValueValidator};
 use morphir_core::ir::classic;
-use morphir_core::node_address::{NodeCatalog, NodeIndex, NodeUri};
+use morphir_core::metadata::{
+    Assertion, AssertionKey, Carrier, DocumentId, Fact, GraphIndex, GraphName, MetadataError,
+    ObjectTerm,
+};
+use morphir_core::node_address::{
+    ArtifactSelector, IndexedNodeKind, NodeCatalog, NodeIndex, NodeOwner, NodeRoot, NodeUri,
+};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -26,6 +32,8 @@ pub enum ProjectError {
     Value(#[from] ValueTypeError),
     #[error(transparent)]
     Sidecar(#[from] SidecarError),
+    #[error(transparent)]
+    Metadata(#[from] MetadataError),
 }
 
 #[derive(Deserialize)]
@@ -51,6 +59,7 @@ pub struct DecorationProject {
     sidecar_relative: String,
     catalog: NodeCatalog,
     validator: ValueValidator,
+    predicate: Result<NodeUri, String>,
     v3: Option<(classic::Distribution, String)>,
 }
 
@@ -78,7 +87,10 @@ impl DecorationProject {
                 message: format!("{error:?}"),
             })?;
         let target_version = target_value.get("formatVersion").unwrap_or(&Value::Null);
-        let is_v4 = target_version.as_u64() == Some(4) || target_version.as_str() == Some("4.0.0");
+        let is_v4 = target_version.as_u64() == Some(4)
+            || target_version
+                .as_str()
+                .is_some_and(|version| version.starts_with("4."));
         let mut catalog = NodeCatalog::new();
         let v3 = if is_v4 {
             let (file, _) =
@@ -90,7 +102,7 @@ impl DecorationProject {
                 })?;
             let index = NodeIndex::v4_file(&file).map_err(|error| ProjectError::Ir {
                 kind: "target",
-                message: error.to_string(),
+                message: format!("unsupported V4 target IR for node indexing: {error}"),
             })?;
             catalog.add_current(index);
             catalog
@@ -128,14 +140,17 @@ impl DecorationProject {
             .get("formatVersion")
             .cloned()
             .unwrap_or(Value::Null);
-        let validator = match type_version {
+        let (validator, type_index) = match type_version {
             Value::Number(ref number) if number.as_u64() == Some(3) => {
                 let distribution: classic::Distribution = serde_json::from_str(&type_text)
                     .map_err(|error| ProjectError::Ir {
                         kind: "decoration type",
                         message: error.to_string(),
                     })?;
-                ValueValidator::v3(&distribution, &decoration.entry_point)?
+                (
+                    ValueValidator::v3(&distribution, &decoration.entry_point)?,
+                    NodeIndex::v3_json(type_text.as_bytes()).map_err(|error| error.to_string()),
+                )
             }
             Value::String(ref version) if version.starts_with("3.") => {
                 let distribution: classic::Distribution = serde_json::from_str(&type_text)
@@ -143,7 +158,10 @@ impl DecorationProject {
                         kind: "decoration type",
                         message: error.to_string(),
                     })?;
-                ValueValidator::v3(&distribution, &decoration.entry_point)?
+                (
+                    ValueValidator::v3(&distribution, &decoration.entry_point)?,
+                    NodeIndex::v3_json(type_text.as_bytes()).map_err(|error| error.to_string()),
+                )
             }
             _ => {
                 let (file, _) =
@@ -153,9 +171,13 @@ impl DecorationProject {
                             message: error.to_string(),
                         }
                     })?;
-                ValueValidator::v4(&file.distribution, &decoration.entry_point)?
+                (
+                    ValueValidator::v4(&file.distribution, &decoration.entry_point)?,
+                    NodeIndex::v4_file(&file).map_err(|error| error.to_string()),
+                )
             }
         };
+        let predicate = type_index.and_then(|index| indexed_type_predicate(&index, &validator));
         Ok(Self {
             name: name.to_owned(),
             sidecar_path,
@@ -163,6 +185,7 @@ impl DecorationProject {
             sidecar_relative: decoration.storage_location.clone(),
             catalog,
             validator,
+            predicate,
             v3,
         })
     }
@@ -189,6 +212,43 @@ impl DecorationProject {
             self.validator.validate(value)?;
         }
         Ok(())
+    }
+
+    /// Project a validated sidecar into new default-graph assertions. The
+    /// caller supplies the stable identity of the document it actually read.
+    /// This only reads the sidecar and does not edit it or the target IR.
+    pub fn project_sidecar(
+        &self,
+        sidecar: &DecorationSidecar,
+        owner: DocumentId,
+    ) -> Result<GraphIndex, ProjectError> {
+        self.validate(sidecar)?;
+        let predicate = self.predicate.as_ref().map_err(|reason| {
+            ProjectError::Config(format!("cannot project entryPoint: {reason}"))
+        })?;
+        let mut graph = GraphIndex::new();
+        for (text, value) in sidecar.targets() {
+            let target = NodeUri::parse(text).map_err(|error| SidecarError::InvalidTarget {
+                target: text.clone(),
+                reason: error.to_string(),
+            })?;
+            let fact = Fact::new(
+                target.clone(),
+                predicate.clone(),
+                ObjectTerm::typed_json(value.clone(), predicate.clone()),
+                GraphName::Default,
+            );
+            let key = AssertionKey::new(
+                owner.clone(),
+                Carrier::Sidecar {
+                    target,
+                    entry_point: predicate.clone(),
+                },
+                fact,
+            )?;
+            graph.insert(Assertion::new(key))?;
+        }
+        Ok(graph)
     }
 
     pub fn set(&self, target: NodeUri, value: Value) -> Result<(), ProjectError> {
@@ -234,6 +294,59 @@ impl DecorationProject {
     fn checked_sidecar_path(&self) -> Result<PathBuf, ProjectError> {
         confined(&self.root, &self.sidecar_relative)
     }
+}
+
+fn indexed_type_predicate(
+    index: &NodeIndex,
+    validator: &ValueValidator,
+) -> Result<NodeUri, String> {
+    let entry = validator.entry_point();
+    let mut matches = index
+        .nodes()
+        .filter(|(uri, node)| {
+            if node.kind != IndexedNodeKind::TypeDefinition {
+                return false;
+            }
+            let NodeRoot::Type {
+                owner,
+                module,
+                name,
+            } = uri.root()
+            else {
+                return false;
+            };
+            let package = match owner {
+                NodeOwner::OwnPackage => match uri.artifact() {
+                    ArtifactSelector::Package(package) => package.as_path(),
+                    ArtifactSelector::Workspace(_) => return false,
+                },
+                NodeOwner::Dependency(package) => package.as_path(),
+            };
+            package == &entry.package_path
+                && module == &entry.module_path
+                && name == &entry.local_name
+        })
+        .map(|(uri, _)| uri.clone());
+    let predicate = matches
+        .next()
+        .ok_or_else(|| format!("decoration entryPoint {entry} has no indexed type declaration"))?;
+    if matches.next().is_some() {
+        return Err(format!(
+            "decoration entryPoint {entry} has multiple indexed type declarations"
+        ));
+    }
+    if matches!(
+        predicate.root(),
+        NodeRoot::Type {
+            owner: NodeOwner::Dependency(_),
+            ..
+        }
+    ) {
+        return Err(format!(
+            "decoration entryPoint {entry} needs a verified external declaration provider"
+        ));
+    }
+    Ok(predicate)
 }
 
 fn io(path: &Path, source: std::io::Error) -> ProjectError {
