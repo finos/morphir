@@ -404,7 +404,7 @@ waited on them.
 
 Development does not have to wait on a pin. `crates/morphir/Cargo.toml`
 declares the morphir-rust crates as path dependencies into the submodule, so
-a change in `morphir-daemon` is visible to the CLI build immediately and both
+a change in `morphir-host` is visible to the CLI build immediately and both
 sides can be written in one worktree. Sequencing applies to merging: the
 morphir-rust pull request merges, the pin here advances, then the CLI change
 merges against the advanced pin.

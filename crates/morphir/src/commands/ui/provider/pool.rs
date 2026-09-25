@@ -41,7 +41,9 @@ use crate::extensions::guest;
 /// daemon's session actor stopped an idle session. A background task checks
 /// every [`SWEEP_INTERVAL`], so an idle guest stops between the limit and the
 /// limit plus one interval after its last call ended. A guest with a call in
-/// flight is never stopped, however long the call runs.
+/// flight is never stopped, however long the call runs. A call that starts
+/// while the sweep is stopping its guest may instead finish on the detached
+/// guest, which is then dropped without an orderly close, or open a fresh one.
 pub(super) struct PooledInvoker {
     shared: Arc<Shared>,
 }

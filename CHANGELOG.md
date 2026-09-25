@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The `morphir-rust` pin moves to `8c10fe6` (finos/morphir-rust#271). `compile`, `generate`, `extension list` and the playground catalog resolve providers through the `morphir-host` registry, over `NativeSource` built-ins and `InstalledSource` installed extensions. The UI workspace provider starts its installed guest through `InstalledSource` (#963, #959).
-- The workbench reuses guests through a `morphir-host` `Pool` instead of the daemon session actor. As before, a guest is stopped in order after five minutes without a call. A guest is now replaced when an installed extension is reinstalled at the same version, and a result that fails to decode is retried once on a fresh guest (#963, #959).
+- The workbench reuses guests through a `morphir-host` `Pool` instead of the daemon session actor. As before, a guest is normally stopped in order after five minutes without a call. A guest is now replaced when an installed extension is reinstalled at the same version, and a result that fails to decode is retried once on a fresh guest (#963, #959).
 - Transport failures that begin as I/O or JSON errors read `IO error: ...` or `JSON error: ...` again, not the `Extension error: IO error: ...` wording noted under 0.4.0-beta.8 (#963).
 - Playground error texts: a rejected call now reads `Provider '<provider>' rejected '<method>': ...`, the same text as `morphir compile`, instead of `failed during '<method>'`. A lost guest's message no longer includes `Extension session is no longer available: ` and can end with `; transport state is indeterminate` (#963).
 
