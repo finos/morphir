@@ -1,10 +1,10 @@
 //! The example workspace: the `yaml itest` fence that describes it, and the processor that
 //! copies it into a new temporary root before a scenario's first step.
-use super::{ItestDirs, ItestRoot, KeepTemp};
+use super::{FrozenGoldens, ItestDirs, ItestRoot, KeepTemp, library::golden_file_step};
 use crate::commands::itest::{
     document_dir,
     model::{self, Workspace},
-    runner::{prepare_root, temporary_root},
+    runner::{prepare_root, read_text, temporary_root},
     scenario_id_of,
     workspace::materialize_example,
 };
@@ -12,7 +12,7 @@ use crate::notebook::validate_workspace_paths;
 use anyhow::{Context as _, Result};
 use morphir_evaluator::ProviderId;
 use morphir_gherkin::{
-    Document, Fence, NodePath, Scenario,
+    Document, Fence, NodePath, Scenario, Segment,
     extension::{Context, FenceExtension, Processor, Scope},
     visit::Node,
 };
@@ -218,6 +218,8 @@ fn materialize(doc: &Document, at: &NodePath, ctx: &mut Context) -> Result<()> {
         example_dir: example_dir(doc),
         workspace: spec.workspace.clone(),
     };
+    // Freeze authored expectations before any CLI command can change files.
+    let frozen = freeze_goldens(doc, at, &example.example_dir)?;
     let (temporary, guard) = temporary_root(&id, keep)?;
     prepare_root(&temporary, |project| {
         materialize_example(
@@ -229,7 +231,48 @@ fn materialize(doc: &Document, at: &NodePath, ctx: &mut Context) -> Result<()> {
     })?;
     ctx.insert(example);
     ctx.insert(ItestDirs::with_guard(temporary, guard));
+    ctx.insert(frozen);
     Ok(())
+}
+
+/// Reads every golden file the steps of the scenario at `at` name (its own steps, and its
+/// feature's and rule's backgrounds), relative to `example_dir`, through `runner::read_text`: a
+/// path that is not portable, that traverses a symlink, or that is not a regular UTF-8 file fails
+/// the scenario before its first step.
+fn freeze_goldens(doc: &Document, at: &NodePath, example_dir: &Path) -> Result<FrozenGoldens> {
+    let scenario = scenario_at(doc, at).with_context(|| format!("{at} is not a scenario"))?;
+    let feature = doc
+        .feature
+        .as_ref()
+        .context("the document has no Feature")?;
+    let rule = at.segments().iter().find_map(|segment| match segment {
+        Segment::Rule(index) => feature.rules.get(*index),
+        _ => None,
+    });
+    let backgrounds = feature
+        .background
+        .iter()
+        .chain(rule.and_then(|rule| rule.background.as_ref()));
+    let mut frozen = FrozenGoldens::default();
+    for step in backgrounds
+        .flat_map(|background| &background.steps)
+        .chain(&scenario.steps)
+    {
+        let Some(golden) = golden_file_step(&step.text) else {
+            continue;
+        };
+        if frozen.0.contains_key(&golden.golden_file) {
+            continue;
+        }
+        let text = read_text(example_dir, &golden.golden_file).with_context(|| {
+            format!(
+                "golden {:?}: load expectation before commands",
+                golden.golden_file
+            )
+        })?;
+        frozen.0.insert(golden.golden_file, text);
+    }
+    Ok(frozen)
 }
 
 /// The directory that holds `doc`.
@@ -264,7 +307,7 @@ pub fn scenario_id(root: &Path, doc: &Document, at: &NodePath) -> Result<String>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::itest::steps::{ItestDirs, ItestRoot, KeepTemp};
+    use crate::commands::itest::steps::{FrozenGoldens, ItestDirs, ItestRoot, KeepTemp};
     use morphir_gherkin::{
         NodePath, Segment,
         extension::{Context, Extensions},
@@ -398,6 +441,55 @@ Feature: Compile a directory example
             error.contains("duplicate or conflicting workspace path"),
             "{error}"
         );
+    }
+
+    #[test]
+    fn materialize_example_freezes_the_golden_files_the_steps_name() {
+        let temp = tempfile::tempdir().unwrap();
+        let feature = "Feature: Goldens\n  Background:\n    Then the file \"a\" at \"all\" should match the golden file \"golden/bg.txt\" with exact line endings\n\n  Scenario: S\n    When I run \"morphir --version\"\n    Then the file \"a\" at \"all\" should match the golden file \"golden/s.txt\" with LF line endings\n    Then the file \"a\" at \"all\" should match with exact line endings:\n      ```\n      inline\n      ```\n";
+        let dir = example(temp.path(), feature);
+        fs::create_dir_all(dir.join("golden")).unwrap();
+        fs::write(dir.join("golden/bg.txt"), "background\n").unwrap();
+        fs::write(dir.join("golden/s.txt"), "scenario\n").unwrap();
+        let context = context(temp.path(), &dir, 0, false).unwrap();
+        let frozen = &context.get::<FrozenGoldens>().unwrap().0;
+        assert_eq!(frozen.len(), 2);
+        assert_eq!(frozen["golden/bg.txt"], "background\n");
+        assert_eq!(frozen["golden/s.txt"], "scenario\n");
+        // A later change to the author's file does not reach the frozen text.
+        fs::write(dir.join("golden/s.txt"), "changed\n").unwrap();
+        assert_eq!(frozen["golden/s.txt"], "scenario\n");
+    }
+
+    #[test]
+    fn materialize_example_fails_before_the_first_step_on_a_bad_golden_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let feature = |golden: &str| {
+            format!(
+                "Feature: Goldens\n  Scenario: S\n    When I run \"morphir --version\"\n    Then the file \"a\" at \"all\" should match the golden file \"{golden}\" with exact line endings\n"
+            )
+        };
+        let dir = example(temp.path(), &feature("missing.txt"));
+        let error = context(temp.path(), &dir, 0, false).unwrap_err();
+        assert!(
+            error.contains("golden \"missing.txt\": load expectation before commands")
+                && error.contains("is missing or is not a regular file"),
+            "{error}"
+        );
+        let dir = example(temp.path(), &feature("../outside.txt"));
+        let error = context(temp.path(), &dir, 0, false).unwrap_err();
+        assert!(
+            error.contains("load expectation before commands"),
+            "{error}"
+        );
+        #[cfg(unix)]
+        {
+            let outside = tempfile::NamedTempFile::new().unwrap();
+            std::os::unix::fs::symlink(outside.path(), dir.join("linked.txt")).unwrap();
+            let dir = example(temp.path(), &feature("linked.txt"));
+            let error = context(temp.path(), &dir, 0, false).unwrap_err();
+            assert!(error.contains("assertion traverses a symlink"), "{error}");
+        }
     }
 
     #[test]

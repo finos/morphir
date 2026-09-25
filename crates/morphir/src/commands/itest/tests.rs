@@ -419,3 +419,44 @@ fn exiting_parent() {
         // The driver, not this exiting parent, must own descendant cleanup.
     }
 }
+
+#[test]
+fn suite_file_errors_under_excluded_directories_are_recognized() {
+    let root = std::path::Path::new("/r/examples");
+    for (message, excluded) in [
+        ("/r/examples/node_modules/pkg/a.feature:1:1: bad", true),
+        ("/r/examples/elm/out/a.feature: no Feature heading", true),
+        ("/r/examples/elm/a.feature:1:1: bad", false),
+        ("/r/examples/elm/scenarios.md: out of order", false),
+        (
+            "the directory /r/examples/target cannot be read: denied",
+            false,
+        ),
+    ] {
+        assert_eq!(
+            support::under_excluded_dir(root, message),
+            excluded,
+            "{message}"
+        );
+    }
+}
+
+#[test]
+fn listed_scenarios_count_outline_rows_and_wip_skips() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("x.feature");
+    fs::write(
+        &path,
+        "Feature: F\n  Scenario: Plain\n    When I run \"morphir x\"\n\n  @wip\n  Scenario: Skipped\n    When I run \"morphir x\"\n\n  Scenario Outline: Rows <n>\n    When I run \"morphir x\"\n\n    Examples:\n      | n |\n      | 1 |\n      | 2 |\n\n    @wip\n    Examples:\n      | n |\n      | 3 |\n",
+    )
+    .unwrap();
+    let listed = support::read_listed(&path, ".").unwrap();
+    let counts: Vec<_> = listed
+        .iter()
+        .map(|scenario| (scenario.id.as_str(), scenario.runs, scenario.will_run))
+        .collect();
+    assert_eq!(
+        counts,
+        [(".#plain", 1, 1), (".#skipped", 1, 0), (".#rows-n", 3, 2)]
+    );
+}

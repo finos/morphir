@@ -105,7 +105,10 @@ compiles if {
 "#;
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_markdown_drives_cli_with_disk_and_inline_files() {
     let temp = tempfile::tempdir().unwrap();
     let example = temp.path().join("elm/markdown");
@@ -113,7 +116,6 @@ fn itest_markdown_drives_cli_with_disk_and_inline_files() {
     let source = "module Example exposing (Name)\n\ntype alias Name = String\n";
     fs::write(example.join("Example.elm"), source).unwrap();
     fs::write(example.join("scenarios.md"), MARKDOWN).unwrap();
-    write_scenario(&temp.path().join("cli/notebook"), &scenario());
     for args in [
         vec!["--list"],
         vec!["--filter", "elm", "--tag", "suite:offline"],
@@ -139,7 +141,9 @@ fn itest_markdown_drives_cli_with_disk_and_inline_files() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("compiled") && stderr.contains("compiles"),
+        stderr.contains("FAIL elm/markdown#compile-types\n")
+            && stderr.contains("morphir [\"compile\", \"--input\", \"Example.elm\"")
+            && stderr.contains("data.markdown_test.compiles"),
         "{stderr}"
     );
 }
@@ -223,11 +227,15 @@ fn itest_lists_filters_and_drives_real_cli_commands() {
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_distinguishes_search_root_from_a_directory_named_root() {
     let temp = tempfile::tempdir().unwrap();
-    write_scenario(temp.path(), &scenario());
-    write_scenario(&temp.path().join("root"), &scenario());
+    fs::write(temp.path().join("scenarios.md"), VERSION_MD).unwrap();
+    fs::create_dir_all(temp.path().join("root")).unwrap();
+    fs::write(temp.path().join("root/scenarios.md"), VERSION_MD).unwrap();
     for (filter, other) in [("root", "."), (".", "root")] {
         let output = run(temp.path(), &["--filter", filter]);
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -236,10 +244,17 @@ fn itest_distinguishes_search_root_from_a_directory_named_root() {
             "stdout={stdout} stderr={}",
             String::from_utf8_lossy(&output.stderr)
         );
-        assert!(stdout.contains(&format!("PASS {filter}:")), "{stdout}");
-        assert!(!stdout.contains(&format!("PASS {other}:")), "{stdout}");
         assert!(
-            stdout.contains("1 passed; 0 failed; 1 not selected"),
+            stdout.contains(&format!("PASS {filter}#first:")),
+            "{stdout}"
+        );
+        assert!(
+            stdout.contains(&format!("PASS {filter}#second:")),
+            "{stdout}"
+        );
+        assert!(!stdout.contains(&format!("PASS {other}#")), "{stdout}");
+        assert!(
+            stdout.contains("2 passed; 0 failed; 2 not selected"),
             "{stdout}"
         );
     }
@@ -247,11 +262,11 @@ fn itest_distinguishes_search_root_from_a_directory_named_root() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(output.status.success());
     assert!(
-        stdout.lines().any(|line| line.starts_with(".:")),
+        stdout.lines().any(|line| line.starts_with(".#first:")),
         "{stdout}"
     );
     assert!(
-        stdout.lines().any(|line| line.starts_with("root:")),
+        stdout.lines().any(|line| line.starts_with("root#first:")),
         "{stdout}"
     );
 }
@@ -297,7 +312,6 @@ fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_fails_on_wrong_undefined_or_invalid_assertions_and_reports_case() {
     for policy in [
         "package cli_test\nimport rego.v1\ntest_exit if { input.exitCode == 99 }",
@@ -306,15 +320,29 @@ fn itest_fails_on_wrong_undefined_or_invalid_assertions_and_reports_case() {
         "package cli_test\ntest_exit if {",
     ] {
         let temp = tempfile::tempdir().unwrap();
-        let mut bad = scenario();
-        bad["cells"][2]["source"] = json!(policy);
-        write_scenario(temp.path(), &bad);
+        fs::write(
+            temp.path().join("scenarios.md"),
+            format!(
+                "---\nversion: 1\ntitle: Invalid CLI option\ndescription: The actual CLI rejects an unknown option with exit code 2.\ntags: [area:cli, kind:negative]\nprovider: rego\n---\n## Reject\n```yaml morphir:command\nid: command\nname: Reject unknown option\ntimeout_seconds: 10\n```\n```sh\nmorphir --not-a-real-option\n```\n```yaml morphir:assertion\nid: assert\ncommand: command\nentrypoints: [data.cli_test.test_exit]\n```\n```rego\n{policy}\n```\n"
+            ),
+        )
+        .unwrap();
         let output = run(temp.path(), &[]);
-        assert!(!output.status.success());
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        for expected in ["Reject unknown option", "assert", "stdout:", "stderr:"] {
-            assert!(stderr.contains(expected), "{stderr}");
+        let (stdout, stderr) = text(&output);
+        assert!(!output.status.success(), "{policy}: {stdout}");
+        for expected in [
+            "FAIL .#reject\n",
+            "command 1: morphir [\"--not-a-real-option\"]\nexit: Some(2)\nstdout:\n",
+            "\nstderr:\n",
+            "data.cli_test.test_exit",
+        ] {
+            assert!(
+                stderr.contains(expected),
+                "{policy}: missing {expected:?}: {stderr}"
+            );
         }
+        assert!(!stderr.contains("Step panicked"), "{stderr}");
+        assert_eq!(stdout, "0 passed; 1 failed; 0 not selected\n");
     }
 }
 
@@ -650,15 +678,44 @@ This disk golden needs no source fence.
     assert_golden_output(&run(root.path(), &[]), false, "golden mismatch");
 }
 
+/// A `scenarios.md` document with one section: the command `command`, then a golden check whose
+/// metadata lines (after `id` and `command`) are `golden`, then `body` as its inline expectation.
+fn golden_md(command: &str, golden: &str, body: Option<&str>) -> String {
+    let mut text = format!(
+        "---\nversion: 1\ntitle: Golden\ndescription: Golden checks.\ntags: [suite:offline]\nprovider: rego\n---\n## Check\n```yaml morphir:command\nid: run\nname: Observe files\ntimeout_seconds: 30\n```\n```sh\n{command}\n```\n```yaml morphir:golden\nid: golden\ncommand: run\n{golden}```\n"
+    );
+    if let Some(body) = body {
+        text.push_str(&format!("```text\n{body}```\n"));
+    }
+    text
+}
+
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_cannot_mask_a_failed_command() {
     let root = tempfile::tempdir().unwrap();
-    fs::write(root.path().join("actual.txt"), "same").unwrap();
-    let mut notebook = golden_notebook("same", golden_options());
-    notebook["cells"][0]["source"] = json!("morphir --not-a-real-option");
-    write_scenario(root.path(), &notebook);
-    assert_golden_output(&run(root.path(), &[]), false, "exit");
+    fs::write(root.path().join("actual.txt"), "same\n").unwrap();
+    fs::write(root.path().join("expected.txt"), "same\n").unwrap();
+    let golden = "actual: actual.txt\nexpected_file: expected.txt\n";
+    fs::write(
+        root.path().join("scenarios.md"),
+        golden_md("morphir --version", golden, None),
+    )
+    .unwrap();
+    assert_golden_output(&run(root.path(), &[]), true, "1 passed");
+    fs::write(
+        root.path().join("scenarios.md"),
+        golden_md("morphir --not-a-real-option", golden, None),
+    )
+    .unwrap();
+    let output = run(root.path(), &[]);
+    assert_golden_output(&output, false, "exit: Some(2)");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(
+            "golden \"expected.txt\": command 1 (morphir [\"--not-a-real-option\"]) exited with Some(2), not 0"
+        ),
+        "{stderr}"
+    );
 }
 
 #[test]
@@ -693,21 +750,35 @@ fn itest_golden_rejects_invalid_metadata_before_execution() {
 
 #[cfg(unix)]
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
 fn itest_golden_rejects_symlinked_expected_files_even_in_inline_workspaces() {
     let root = tempfile::tempdir().unwrap();
     let outside = tempfile::NamedTempFile::new().unwrap();
     std::os::unix::fs::symlink(outside.path(), root.path().join("expected.txt")).unwrap();
-    let mut options = golden_options();
-    options["expected_file"] = json!("expected.txt");
-    let mut notebook = golden_notebook("", options);
-    notebook["metadata"]["morphir"]["itest"]["workspace"] = json!({"kind":"inline"});
-    write_scenario(root.path(), &notebook);
-    assert_golden_output(&run(root.path(), &[]), false, "symlink");
+    fs::write(root.path().join("actual.txt"), "").unwrap();
+    let text = golden_md(
+        "morphir --version",
+        "actual: actual.txt\nexpected_file: expected.txt\n",
+        None,
+    )
+    .replace(
+        "provider: rego\n",
+        "provider: rego\nworkspace: {kind: inline}\n",
+    );
+    fs::write(root.path().join("scenarios.md"), text).unwrap();
+    let output = run(root.path(), &[]);
+    assert_golden_output(&output, false, "assertion traverses a symlink");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("load expectation before commands"),
+        "{stderr}"
+    );
 }
 
 #[test]
-#[ignore = "rewritten off notebook fixtures in Task C6"]
+#[cfg_attr(
+    not(feature = "rego"),
+    ignore = "requires the rego feature: this scenario asserts through Rego, and the evaluator is compiled out by --no-default-features"
+)]
 fn itest_golden_freezes_expected_files_before_cli_commands() {
     let root = tempfile::tempdir().unwrap();
     fs::write(
@@ -722,17 +793,21 @@ fn itest_golden_freezes_expected_files_before_cli_commands() {
         "authored expectation\n",
     )
     .unwrap();
-    let mut options = golden_options();
-    options["actual"] = json!("installed/morphir-ir.json");
-    options["expected_file"] = json!("expected/compile.dest/morphir-ir.json");
-    let mut notebook = golden_notebook("", options);
     // A trusted CLI command can write outside its copied workspace. Deliberately
     // overwrite the author's expectation to prove it was frozen before execution.
-    notebook["cells"][0]["source"] = json!(format!(
+    let command = format!(
         "morphir compile --input Example.elm --extension morphir-elm-native --package-name examples/frozen --out-dir {} --output installed --json",
         shell_words::quote(expected_dir.to_str().unwrap())
-    ));
-    write_scenario(root.path(), &notebook);
+    );
+    fs::write(
+        root.path().join("scenarios.md"),
+        golden_md(
+            &command,
+            "actual: installed/morphir-ir.json\nexpected_file: expected/compile.dest/morphir-ir.json\n",
+            None,
+        ),
+    )
+    .unwrap();
     let output = run(root.path(), &[]);
     assert_golden_output(&output, false, "-authored expectation");
     let installed: Value = serde_json::from_str(
@@ -1012,6 +1087,82 @@ fn itest_fails_every_selected_scenario_when_a_temporary_ancestor_has_configurati
     );
     assert!(!stderr.contains("FAIL .#second"), "{stderr}");
     assert_eq!(stdout, "0 passed; 1 failed; 1 not selected\n");
+}
+
+/// A `.feature` document with one outline of two rows, `Row 1` and `Row 2`.
+const OUTLINE: &str = "Feature: Outline\n  Scenario Outline: Row <n>\n    When I run \"morphir --version\"\n\n    Examples:\n      | n |\n      | 1 |\n      | 2 |\n";
+
+#[test]
+fn itest_counts_every_outline_row_when_a_temporary_ancestor_has_configuration() {
+    let temp = tempfile::tempdir().unwrap();
+    let temporary_root = temp.path().join("tmp");
+    fs::create_dir_all(&temporary_root).unwrap();
+    let suite = temp.path().join("suite");
+    fs::create_dir_all(&suite).unwrap();
+    fs::write(suite.join("outline.feature"), OUTLINE).unwrap();
+    fs::write(
+        temp.path().join("morphir.toml"),
+        "[workspace]\nmembers = ['*']\n",
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .arg("itest")
+        .arg(&suite)
+        .env("TMPDIR", &temporary_root)
+        .env("TEMP", &temporary_root)
+        .env("TMP", &temporary_root)
+        .env("MORPHIR_HOME", temp.path().join("outer-home"))
+        .env("MORPHIR_BDD_OUT", temp.path().join("reports"))
+        .env("MORPHIR_LOG_FILE", "false")
+        .output()
+        .unwrap();
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(stderr.contains("FAIL .#row-n\n"), "{stderr}");
+    assert_eq!(stdout, "0 passed; 2 failed; 0 not selected\n", "{stderr}");
+}
+
+#[test]
+fn itest_fails_when_selected_scenarios_do_not_run() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::write(temp.path().join("outline.feature"), OUTLINE).unwrap();
+    let output = run(temp.path(), &[]);
+    let (stdout, stderr) = text(&output);
+    assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(
+        stdout.ends_with("2 passed; 0 failed; 0 not selected\n"),
+        "{stdout}"
+    );
+    // The outline's listed id is `.#row-n`, but each row runs under its own name, so the suite's
+    // filter selects no row. That gap must fail the run, not pass it with nothing run.
+    let output = run(temp.path(), &["--filter", ".#row-n"]);
+    let (stdout, stderr) = text(&output);
+    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(
+        stderr.contains("2 selected scenario(s) did not run, and no error says why"),
+        "{stderr}"
+    );
+    assert_eq!(stdout, "0 passed; 0 failed; 2 not selected\n");
+}
+
+#[test]
+fn itest_ignores_suite_file_errors_under_excluded_directories() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::write(temp.path().join("scenarios.md"), VERSION_MD).unwrap();
+    fs::create_dir_all(temp.path().join("node_modules/pkg")).unwrap();
+    fs::write(
+        temp.path().join("node_modules/pkg/broken.feature"),
+        "this is not Gherkin\n",
+    )
+    .unwrap();
+    let output = run(temp.path(), &["--filter", ".#first"]);
+    let (stdout, stderr) = text(&output);
+    assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
+    assert!(!stderr.contains("FAIL"), "{stderr}");
+    assert!(
+        stdout.ends_with("1 passed; 0 failed; 1 not selected\n"),
+        "{stdout}"
+    );
 }
 
 #[test]

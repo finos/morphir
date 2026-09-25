@@ -17,6 +17,7 @@ pub use workspace::{
 };
 
 use std::{
+    collections::HashMap,
     path::PathBuf,
     sync::{Arc, Mutex, atomic::AtomicUsize},
     time::Duration,
@@ -45,10 +46,13 @@ pub struct ItestDirs {
     /// command's captures and `stdout is JSON` flag on this instead.
     pub command: Arc<AtomicUsize>,
     /// The timeout the scenario's most recent `When I run` named, or `None` if it named none (or
-    /// no command has run yet). The policy step's own `morphir eval` call reuses it, the same way
-    /// `commands::itest::runner::run_in_temporary` reuses the triggering command's own
-    /// `timeout_seconds` today.
+    /// no command has run yet). The policy step's own `morphir eval` call reuses it, as legacy
+    /// itest gave an assertion its command's `timeout_seconds`.
     pub last_timeout: Arc<Mutex<Option<Duration>>>,
+    /// The scenario's most recent `When I run` command line, as `morphir ["arg", …]` (the layout
+    /// legacy itest printed a command in), or `None` if no command has run yet. The policy and
+    /// golden steps name it when they fail.
+    pub last_command_line: Arc<Mutex<Option<String>>>,
     /// Deletes `root` when the last copy of these directories drops; `None` when the root is
     /// kept or was not created by this crate.
     _guard: Option<Arc<TempDir>>,
@@ -68,10 +72,17 @@ impl ItestDirs {
             step: Arc::new(AtomicUsize::new(0)),
             command: Arc::new(AtomicUsize::new(0)),
             last_timeout: Arc::new(Mutex::new(None)),
+            last_command_line: Arc::new(Mutex::new(None)),
             _guard: temp.map(Arc::new),
         }
     }
 }
+
+/// The scenario's golden expected files, read before its first step: each file's path, as its
+/// golden step names it (relative to the example's directory), to its text. `MaterializeExample`
+/// fills it, so a command cannot change an expectation before the golden step compares with it.
+#[derive(Debug, Clone, Default)]
+pub struct FrozenGoldens(pub HashMap<String, String>);
 
 /// `--keep-temp`: keep each scenario's temporary root after the run, for diagnosis.
 #[derive(Debug, Clone, Copy)]

@@ -8,16 +8,15 @@
 //! differ. That keeps a capture or `stdout is JSON` from an earlier command out of a later one's
 //! observation, even though nothing runs between commands to reset them explicitly.
 //!
-//! The policy step (`Then the result should satisfy the policy rules {string}:`) builds the same
-//! observation JSON `runner::observation` has always built, writes it as an evaluation request the
-//! same way `commands::itest::runner::prepare_assertion` does today, and runs `morphir eval
-//! --request <path> --json` through `steps::runner::run_isolated`, in its own `policy-N` harness
-//! directory and with the timeout [`ItestDirs::last_timeout`] recorded for the scenario's most
-//! recent `When I run` — the same working directory and timeout
-//! `commands::itest::runner::run_in_temporary` uses for an assertion today. The golden steps apply
-//! a `Selection` and a `LineEndings` normalization to a file relative to [`ItestDirs::project`],
-//! then compare it to an inline doc string or a golden file relative to
-//! [`ExampleWorkspace::example_dir`].
+//! The policy step (`Then the result should satisfy the policy rules {string}:`) builds the
+//! observation JSON `runner::observation` builds, writes it as an evaluation request, and runs
+//! `morphir eval --request <path> --json` through `steps::runner::run_isolated`, in its own
+//! `policy-N` harness directory and with the timeout [`ItestDirs::last_timeout`] recorded for the
+//! scenario's most recent `When I run`, as legacy itest ran an assertion. The golden steps first
+//! require that command to have exited 0, then apply a `Selection` and a `LineEndings`
+//! normalization to a file relative to [`ItestDirs::project`], and compare it to an inline doc
+//! string or to a golden file that `MaterializeExample` froze in [`FrozenGoldens`] before the
+//! first step. Every failure names the command, with its exit code, stdout and stderr.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
@@ -37,7 +36,7 @@ use crate::commands::itest::reader;
 use crate::commands::itest::runner::{ProcessOutput, check_report, observation};
 
 use super::runner::run_isolated;
-use super::{DEFAULT_TIMEOUT, ExampleSpec, ExampleWorkspace, ItestDirs};
+use super::{DEFAULT_TIMEOUT, ExampleSpec, FrozenGoldens, ItestDirs};
 
 /// The message every step here panics with when it needs [`LastOutput`] but no command has run
 /// yet, in the same style as `morphir_bdd::steps::cli`'s own message.
@@ -106,6 +105,28 @@ fn last_output(world: &MorphirWorld) -> &LastOutput {
     world.context.get::<LastOutput>().expect(NO_COMMAND)
 }
 
+/// The scenario's most recent command, laid out as legacy itest printed it:
+/// `command <n>: morphir [<args>]`, then `exit:`, `stdout:` and `stderr:` sections.
+fn command_diagnostics(world: &MorphirWorld) -> String {
+    let dirs = dirs(world);
+    let number = dirs.command.load(Ordering::SeqCst);
+    let line = command_line(dirs);
+    let output = last_output(world);
+    format!(
+        "command {number}: {line}\nexit: {:?}\nstdout:\n{}\nstderr:\n{}",
+        output.status, output.stdout, output.stderr
+    )
+}
+
+/// The scenario's most recent command line ([`ItestDirs::last_command_line`]).
+fn command_line(dirs: &ItestDirs) -> String {
+    dirs.last_command_line
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+        .unwrap_or_else(|| "(no command)".to_owned())
+}
+
 /// The evaluator provider an example's `yaml itest` fence named, or `rego` (the default
 /// [`ExampleSpec::provider`]) if the example has no such fence.
 fn provider(world: &MorphirWorld) -> ProviderId {
@@ -147,8 +168,7 @@ fn stdout_is_json(world: &mut MorphirWorld) {
 
 /// The timeout the policy step's own `morphir eval` call uses: the scenario's most recently
 /// recorded [`ItestDirs::last_timeout`] (the timeout its triggering `When I run` named), or
-/// [`DEFAULT_TIMEOUT`] if it named none — the same timeout
-/// `commands::itest::runner::run_in_temporary` uses for an assertion today.
+/// [`DEFAULT_TIMEOUT`] if it named none. Legacy itest gave an assertion its command's timeout too.
 fn eval_timeout(world: &MorphirWorld) -> Duration {
     dirs(world)
         .last_timeout
@@ -160,8 +180,7 @@ fn eval_timeout(world: &MorphirWorld) -> Duration {
 /// Runs `morphir eval --request <path> --json` through `steps::runner::run_isolated`, the same
 /// per-scenario isolation `When I run {string}` uses for every other command, but in `cwd` (the
 /// policy check's own harness directory, not the project) and with `timeout` (see
-/// [`eval_timeout`]) — the same working directory and timeout
-/// `commands::itest::runner::run_in_temporary` uses for an assertion today.
+/// [`eval_timeout`]), the working directory and timeout legacy itest gave an assertion.
 async fn run_eval(
     world: &MorphirWorld,
     cwd: &Path,
@@ -186,12 +205,11 @@ async fn run_eval(
 /// `Then the result should satisfy the policy rules {string}:` checks the scenario's current
 /// command against a Rego policy, the doc string.
 ///
-/// It builds the observation the same way `runner::observation` always has (from the current
-/// [`LastOutput`], [`LastCommand::captures`] and [`LastCommand::stdout_json`]), writes it as an
-/// evaluation request the way `commands::itest::runner::prepare_assertion` does for a Rego
-/// assertion today, runs it through [`run_eval`], and checks the report with `runner::check_report`
+/// It builds the observation with `runner::observation` (from the current [`LastOutput`],
+/// [`LastCommand::captures`] and [`LastCommand::stdout_json`]), writes it as an evaluation
+/// request, runs it through [`run_eval`], and checks the report with `runner::check_report`
 /// against `entrypoints` (a comma-and-space-separated list, the reverse of how the reader joined
-/// them).
+/// them). A failure names the command ([`command_diagnostics`]) and the rules.
 #[then(expr = "the result should satisfy the policy rules {string}:")]
 async fn satisfies_the_policy_rules(world: &mut MorphirWorld, entrypoints: String, step: &Step) {
     let entrypoints: Vec<String> = entrypoints.split(", ").map(str::to_owned).collect();
@@ -217,8 +235,10 @@ async fn satisfies_the_policy_rules(world: &mut MorphirWorld, entrypoints: Strin
         stdout: output.stdout,
         stderr: output.stderr,
     };
+    let diagnostics = command_diagnostics(world);
+    let rules = entrypoints.join(", ");
     let input = observation(&step_model, &process_output, &project)
-        .unwrap_or_else(|error| panic!("{error:#}"));
+        .unwrap_or_else(|error| panic!("{diagnostics}\npolicy rules {rules}: {error:#}"));
 
     let request_value = json!({
         "version": 1,
@@ -258,20 +278,15 @@ async fn satisfies_the_policy_rules(world: &mut MorphirWorld, entrypoints: Strin
     });
 
     let evaluated = run_eval(world, &harness, &request_path, timeout).await;
-    assert_eq!(
-        evaluated.status,
-        Some(0),
-        "evaluator failed: {:?}\nevaluator stdout:\n{}\nevaluator stderr:\n{}",
-        evaluated.status,
-        evaluated.stdout,
-        evaluated.stderr
+    let evaluator = format!(
+        "{diagnostics}\npolicy rules {rules}\nevaluator stdout:\n{}\nevaluator stderr:\n{}",
+        evaluated.stdout, evaluated.stderr
     );
-    check_report(&evaluated.stdout, provider, &entrypoints).unwrap_or_else(|error| {
-        panic!(
-            "{error:#}\nevaluator stdout:\n{}\nevaluator stderr:\n{}",
-            evaluated.stdout, evaluated.stderr
-        )
-    });
+    if evaluated.status != Some(0) {
+        panic!("{evaluator}\nevaluator failed: {:?}", evaluated.status);
+    }
+    check_report(&evaluated.stdout, provider, &entrypoints)
+        .unwrap_or_else(|error| panic!("{evaluator}\n{error:#}"));
 }
 
 /// Parses a golden step's `<select>` text: `all`, `lines <start> to <end>`, or `between '<start>'
@@ -360,9 +375,8 @@ fn actual_path(world: &MorphirWorld, actual: &str) -> PathBuf {
     dirs(world).project.join(actual)
 }
 
-/// Reads `path` (the file named by `relative`, for the panic message), panicking with today's
-/// `commands::itest::runner::read_text` error text if it is missing, not a regular file, or not
-/// UTF-8.
+/// Reads `path` (the file named by `relative`, for the panic message), panicking if it is missing,
+/// not a regular file, or not UTF-8, with the text `runner::read_text` uses.
 fn read_golden(path: &Path, relative: &str) -> String {
     if !path.is_file() {
         panic!("golden file {relative:?} is missing or is not a regular file");
@@ -371,11 +385,25 @@ fn read_golden(path: &Path, relative: &str) -> String {
         .unwrap_or_else(|error| panic!("read UTF-8 golden file {relative:?}: {error}"))
 }
 
+/// Panics unless the scenario's most recent command exited 0: a golden check never passes over a
+/// failed command, as legacy itest's golden policy (`input.exitCode == 0`) did not. `label` names
+/// the expectation: its golden file, or `inline text`.
+fn require_success(world: &MorphirWorld, label: &str) {
+    let status = last_output(world).status;
+    if status != Some(0) {
+        let dirs = dirs(world);
+        panic!(
+            "{}\ngolden {label:?}: command {} ({}) exited with {status:?}, not 0",
+            command_diagnostics(world),
+            dirs.command.load(Ordering::SeqCst),
+            command_line(dirs)
+        );
+    }
+}
+
 /// Selects, normalizes and compares `actual`'s text (from [`ItestDirs::project`]) against
-/// `expected`, already normalized the same way. Panics with `golden::diff` on a mismatch, in the
-/// same shape `commands::itest::runner::prepare_assertion` panics with today: `expected_label` is
-/// the golden file's own path, or `"inline text"`, debug-quoted the same way `golden.expected` was
-/// there.
+/// `expected`, after [`require_success`]. Panics with `golden::diff` on a mismatch:
+/// `expected_label` is the golden file's own path, or `"inline text"`.
 fn check_golden(
     world: &MorphirWorld,
     actual: &str,
@@ -384,54 +412,116 @@ fn check_golden(
     expected: &str,
     expected_label: &str,
 ) {
+    require_success(world, expected_label);
+    let diagnostics = || command_diagnostics(world);
     let selection = parse_selection(select).unwrap_or_else(|error| panic!("{error}"));
     let line_endings = parse_line_endings(line_endings);
     let path = actual_path(world, actual);
     let actual_text = read_golden(&path, actual);
     let selected = selection.select(&actual_text).unwrap_or_else(|error| {
-        panic!("golden file {actual:?}, selection {selection:?}: {error:#}")
+        panic!(
+            "{}\ngolden file {actual:?}, selection {selection:?}: {error:#}",
+            diagnostics()
+        )
     });
     let actual_normalized = line_endings.normalize(selected);
     let expected_normalized = line_endings.normalize(expected);
     if actual_normalized != expected_normalized {
         panic!(
-            "golden mismatch: {actual:?}, selection {selection:?}, expected {expected_label:?}\n{}",
+            "{}\ngolden mismatch: {actual:?}, selection {selection:?}, expected {expected_label:?}\n{}",
+            diagnostics(),
             golden::diff(&expected_normalized, &actual_normalized)
         );
     }
 }
 
+/// The parts of a golden-file step's text:
+/// `the file "<actual>" at "<select>" should match the golden file "<golden_file>" with <word>
+/// line endings`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GoldenFileStep {
+    /// The file the command wrote, relative to the project.
+    pub actual: String,
+    /// The selection text, for [`parse_selection`].
+    pub select: String,
+    /// The expected file, relative to the example's directory.
+    pub golden_file: String,
+    /// `exact` or `LF`.
+    pub line_endings: String,
+}
+
+/// Parses a golden-file step's text, or `None` when `text` is not one. This is the one reader of
+/// that step's grammar: the step itself and `MaterializeExample` (which freezes the expected
+/// files before the first step) both use it. A quoted value unescapes `\"` to `"` and keeps every
+/// other `\` pair as written, as a cucumber `{string}` parameter does.
+pub(crate) fn golden_file_step(text: &str) -> Option<GoldenFileStep> {
+    let rest = text.strip_prefix("the file ")?;
+    let (actual, rest) = take_quoted(rest)?;
+    let rest = rest.strip_prefix(" at ")?;
+    let (select, rest) = take_quoted(rest)?;
+    let rest = rest.strip_prefix(" should match the golden file ")?;
+    let (golden_file, rest) = take_quoted(rest)?;
+    let line_endings = rest.strip_prefix(" with ")?.strip_suffix(" line endings")?;
+    if line_endings.is_empty() || line_endings.contains(char::is_whitespace) {
+        return None;
+    }
+    Some(GoldenFileStep {
+        actual,
+        select,
+        golden_file,
+        line_endings: line_endings.to_owned(),
+    })
+}
+
+/// Splits a `"…"` value from the start of `text`: the value with `\"` unescaped, and what follows
+/// its closing quote.
+fn take_quoted(text: &str) -> Option<(String, &str)> {
+    let body = text.strip_prefix('"')?;
+    let mut value = String::new();
+    let mut chars = body.char_indices();
+    while let Some((index, ch)) = chars.next() {
+        match ch {
+            '\\' => match chars.next() {
+                Some((_, '"')) => value.push('"'),
+                Some((_, other)) => {
+                    value.push('\\');
+                    value.push(other);
+                }
+                None => return None,
+            },
+            '"' => return Some((value, &body[index + 1..])),
+            other => value.push(other),
+        }
+    }
+    None
+}
+
 /// `Then the file {string} at {string} should match the golden file {string} with {word} line
-/// endings` compares `actual` against a golden file relative to [`ExampleWorkspace::example_dir`].
-#[then(
-    expr = "the file {string} at {string} should match the golden file {string} with {word} line endings"
-)]
-fn matches_the_golden_file(
-    world: &mut MorphirWorld,
-    actual: String,
-    select: String,
-    golden_file: String,
-    line_endings: String,
-) {
-    model::relative_path(&golden_file)
-        .unwrap_or_else(|error| panic!("invalid golden expected path {golden_file:?}: {error:#}"));
-    let example_dir = world
+/// endings` compares `actual` against a golden file relative to the example's directory, as
+/// [`FrozenGoldens`] holds it from before the first step. [`golden_file_step`] reads the text.
+#[then(regex = r"^the file .* should match the golden file .* line endings$")]
+fn matches_the_golden_file(world: &mut MorphirWorld, step: &Step) {
+    let parsed = golden_file_step(&step.value)
+        .unwrap_or_else(|| panic!("not a golden-file step: {:?}", step.value));
+    let expected = world
         .context
-        .get::<ExampleWorkspace>()
-        .expect(
-            "no example workspace: the `MaterializeExample` processor must prepare the scenario \
-             before this step",
-        )
-        .example_dir
-        .clone();
-    let expected = read_golden(&example_dir.join(&golden_file), &golden_file);
+        .get::<FrozenGoldens>()
+        .and_then(|frozen| frozen.0.get(&parsed.golden_file))
+        .cloned()
+        .unwrap_or_else(|| {
+            panic!(
+                "golden {:?} was not read before the first step: the `MaterializeExample` \
+                 processor freezes each golden file the scenario's steps name",
+                parsed.golden_file
+            )
+        });
     check_golden(
         world,
-        &actual,
-        &select,
-        &line_endings,
+        &parsed.actual,
+        &parsed.select,
+        &parsed.line_endings,
         &expected,
-        &golden_file,
+        &parsed.golden_file,
     );
 }
 
@@ -466,6 +556,29 @@ pub fn link() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn golden_file_step_reads_the_text_the_reader_writes() {
+        assert_eq!(
+            golden_file_step(
+                r#"the file "out/a \"b\".txt" at "between 'x\n' and 'y'" should match the golden file "golden/a.txt" with LF line endings"#
+            ),
+            Some(GoldenFileStep {
+                actual: r#"out/a "b".txt"#.to_owned(),
+                select: r"between 'x\n' and 'y'".to_owned(),
+                golden_file: "golden/a.txt".to_owned(),
+                line_endings: "LF".to_owned(),
+            })
+        );
+        for text in [
+            r#"the file "a" at "all" should match with exact line endings:"#,
+            r#"the file "a" at "all" should match the golden file "b" with two words line endings"#,
+            r#"the file "a" at "all" should match the golden file "b"#,
+            r#"I run "morphir --version""#,
+        ] {
+            assert_eq!(golden_file_step(text), None, "{text}");
+        }
+    }
 
     #[test]
     fn parse_selection_accepts_all() {

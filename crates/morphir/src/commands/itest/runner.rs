@@ -84,6 +84,17 @@ fn confined(root: &Path, relative: &str) -> Result<PathBuf> {
     Ok(path)
 }
 
+/// Reads the UTF-8 file `relative` under `root`. The path must be a portable relative path that
+/// traverses no symlink ([`confined`]) and names a regular file.
+pub(super) fn read_text(root: &Path, relative: &str) -> Result<String> {
+    let path = confined(root, relative)?;
+    ensure!(
+        path.is_file(),
+        "golden file {relative:?} is missing or is not a regular file"
+    );
+    fs::read_to_string(&path).with_context(|| format!("read UTF-8 golden file {relative:?}"))
+}
+
 /// A new temporary root for scenario `id`. With `keep`, the root outlives the run: its path is
 /// printed and no guard is returned. Otherwise the returned guard deletes it when dropped.
 pub(super) fn temporary_root(id: &str, keep: bool) -> Result<(PathBuf, Option<TempDir>)> {

@@ -7,6 +7,10 @@
 //! its `@section:` tag or else the id of its name. The suite then runs the selected scenarios one
 //! at a time with the [`steps`] building blocks, and prints one `PASS` or `FAIL` line for each
 //! scenario and a summary line.
+//!
+//! Scenarios run, and their lines print as they finish, in document order: documents in path
+//! order, and each document's scenarios in the order they are written. (Before the suite, itest
+//! ran them sorted by id.) `--list` still prints them sorted by id.
 mod golden;
 mod markdown;
 mod model;
@@ -71,11 +75,34 @@ struct Scenario {
     pub steps: Vec<Step>,
 }
 
+/// The directory names discovery never enters: build outputs, dependencies and VCS data. The
+/// suite's own file errors under them are not reported either.
+const EXCLUDED_DIRS: [&str; 7] = [
+    ".git",
+    ".morphir",
+    "node_modules",
+    "target",
+    "elm-stuff",
+    "out",
+    "dist",
+];
+
 fn included(entry: &walkdir::DirEntry) -> bool {
-    !matches!(
-        entry.file_name().to_str(),
-        Some(".git" | ".morphir" | "node_modules" | "target" | "elm-stuff" | "out" | "dist")
-    )
+    entry
+        .file_name()
+        .to_str()
+        .is_none_or(|name| !EXCLUDED_DIRS.contains(&name))
+}
+
+/// Whether the suite's file error `message`, which starts with the path of the file it names,
+/// names a file under one of the [`EXCLUDED_DIRS`] below `root`.
+fn under_excluded_dir(root: &Path, message: &str) -> bool {
+    let Some(rest) = message.strip_prefix(&root.display().to_string()) else {
+        return false;
+    };
+    rest.split(['/', '\\'])
+        .take_while(|component| !component.contains(':'))
+        .any(|component| EXCLUDED_DIRS.contains(&component))
 }
 
 /// The legacy loader: every `scenario.ipynb` and `scenarios.md` under `root`, as notebooks. The
@@ -270,8 +297,11 @@ struct Listed {
     tags: Vec<String>,
     /// The scenario's own description, else its rule's, else its feature's, on one line.
     description: String,
-    /// How many scenarios the suite runs for it: 1, or one for each row of an outline's examples.
+    /// How many scenarios the suite finds for it: 1, or one for each row of an outline's examples.
     runs: usize,
+    /// How many of those the suite runs when it is selected: `runs`, less the ones a `@wip` tag
+    /// skips.
+    will_run: usize,
 }
 
 impl Listed {
@@ -456,12 +486,22 @@ fn read_listed(path: &Path, directory: &str) -> std::result::Result<Vec<Listed>,
         .map(one_line)
         .find(|text| !text.is_empty())
         .unwrap_or_default();
+        let wip = |tags: &[morphir_gherkin::Tag]| tags.iter().any(|tag| tag.name == "wip");
+        let will_run = if wip(&feature.tags)
+            || rule.is_some_and(|rule| wip(&rule.tags))
+            || wip(&scenario.tags)
+        {
+            0
+        } else {
+            runs(scenario, |examples| !wip(&examples.tags))
+        };
         listed.push(Listed {
             id,
             title: scenario.name.clone(),
             tags,
             description,
-            runs: runs(scenario),
+            runs: runs(scenario, |_| true),
+            will_run,
         });
     }
     Ok(listed)
@@ -478,14 +518,16 @@ fn one_line(description: &Description) -> String {
         .join(" ")
 }
 
-/// How many scenarios the suite runs for `scenario`: 1, or one for each data row of an outline.
-fn runs(scenario: &GherkinScenario) -> usize {
+/// How many scenarios the suite makes of `scenario`: 1, or one for each data row of an outline's
+/// examples blocks that `counted` accepts.
+fn runs(scenario: &GherkinScenario, counted: impl Fn(&morphir_gherkin::Examples) -> bool) -> usize {
     if scenario.examples.is_empty() {
         return 1;
     }
     scenario
         .examples
         .iter()
+        .filter(|examples| counted(examples))
         .filter_map(|examples| examples.table.as_ref())
         .map(|table| table.rows.len().saturating_sub(1))
         .sum()
@@ -552,7 +594,13 @@ struct Tally {
 
 impl Tally {
     fn fail(&mut self, id: &str, reason: &str) {
-        self.failed += 1;
+        self.fail_runs(id, reason, 1);
+    }
+
+    /// Prints one `FAIL` line for `id` and counts `runs` failed scenarios: an outline's rows all
+    /// fail with it.
+    fn fail_runs(&mut self, id: &str, reason: &str, runs: usize) {
+        self.failed += runs;
         eprintln!("FAIL {id}\n{reason}");
     }
 }
@@ -602,11 +650,12 @@ fn run_suite(args: ItestArgs) -> Result<()> {
     let expression = tag_expression(&args.tags)?;
     let discovered: usize = documents.iter().map(Found::discovered).sum();
     let mut tally = Tally::default();
+    let mut missing = 0;
     if let Err(error) = check_temporary_ancestors() {
         // Every scenario's temporary root shares these ancestors, so none of them can run.
         let reason = format!("{error:#}");
-        for scenario in &selected {
-            tally.fail(&scenario.id, &reason);
+        for scenario in selected.iter().filter(|scenario| scenario.will_run > 0) {
+            tally.fail_runs(&scenario.id, &reason, scenario.will_run);
         }
         for (document, reason) in &refused {
             tally.fail(&document.directory, reason);
@@ -620,7 +669,18 @@ fn run_suite(args: ItestArgs) -> Result<()> {
         let run = run_scenarios(&args, runnable, expression)?;
         tally.passed += run.passed;
         tally.failed += run.failed;
-        report_documents_that_did_not_run(&args.root, &documents, &refused, &run, &mut tally);
+        let explained =
+            report_documents_that_did_not_run(&args.root, &documents, &refused, &run, &mut tally);
+        let expected = expected_runs(&documents, &args.tags, filter, &explained);
+        let ran = run.passed + run.failed;
+        if ran < expected {
+            missing = expected - ran;
+            eprintln!(
+                "error: {missing} selected scenario(s) did not run, and no error says why; \
+                 see the suite report in {}",
+                run.reports.display()
+            );
+        }
     }
     println!(
         "{} passed; {} failed; {} not selected",
@@ -633,7 +693,29 @@ fn run_suite(args: ItestArgs) -> Result<()> {
         "{} integration scenario(s) failed",
         tally.failed
     );
+    ensure!(
+        missing == 0,
+        "{missing} selected integration scenario(s) did not run"
+    );
     Ok(())
+}
+
+/// How many scenarios the suite should run: the `will_run` of every selected scenario of a
+/// readable document, except the documents in `explained`, whose file errors were reported.
+fn expected_runs(
+    documents: &[Found],
+    tags: &[String],
+    filter: Option<&str>,
+    explained: &HashSet<PathBuf>,
+) -> usize {
+    documents
+        .iter()
+        .filter(|document| !explained.contains(&document.path))
+        .filter_map(|document| document.scenarios.as_ref().ok())
+        .flatten()
+        .filter(|scenario| scenario.selected(tags, filter))
+        .map(|scenario| scenario.will_run)
+        .sum()
 }
 
 /// Refuses a host whose system Morphir configuration the scenarios would read.
@@ -684,6 +766,8 @@ struct SuiteRun {
     passed: usize,
     failed: usize,
     error_messages: Vec<String>,
+    /// Where the suite wrote its JSON report.
+    reports: PathBuf,
 }
 
 /// The name of the thread the suite runs on.
@@ -762,6 +846,7 @@ fn run_scenarios(
         passed: passed.load(Ordering::SeqCst),
         failed: failed.load(Ordering::SeqCst),
         error_messages: result.error_messages,
+        reports: result.json,
     })
 }
 
@@ -790,6 +875,10 @@ fn report_outcome(
             passed.fetch_add(1, Ordering::SeqCst);
         }
         Some(failure) => {
+            // A step's panic message is the reason; cucumber's own prefix adds nothing.
+            let failure = failure
+                .strip_prefix("Step panicked. Captured output: ")
+                .unwrap_or(failure);
             eprintln!("FAIL {id}\n{failure}");
             failed.fetch_add(1, Ordering::SeqCst);
         }
@@ -798,17 +887,21 @@ fn report_outcome(
 
 /// Prints a `FAIL` line for each document the suite could not run: one for each of the suite's
 /// file errors (under the id of the directory it names), and one for each selected document the
-/// suite does not read, such as a notebook. A file error for a document `--filter` leaves out is
-/// not reported.
+/// suite does not read, such as a notebook. A file error for a document `--filter` leaves out, or
+/// for a file under one of the [`EXCLUDED_DIRS`], is not reported. Returns the paths of the
+/// documents whose file errors were reported.
 fn report_documents_that_did_not_run(
     root: &Path,
     documents: &[Found],
     refused: &[(&Found, &str)],
     run: &SuiteRun,
     tally: &mut Tally,
-) {
+) -> HashSet<PathBuf> {
     let mut reported = HashSet::new();
     for message in &run.error_messages {
+        if under_excluded_dir(root, message) {
+            continue;
+        }
         let named = documents
             .iter()
             .filter(|document| message.starts_with(&document.path.display().to_string()))
@@ -820,7 +913,7 @@ fn report_documents_that_did_not_run(
                         .iter()
                         .any(|(refused, _)| refused.path == document.path);
                 if selected {
-                    reported.insert(document.path.as_path());
+                    reported.insert(document.path.clone());
                     tally.fail(&document.directory, message);
                 }
             }
@@ -828,10 +921,11 @@ fn report_documents_that_did_not_run(
         }
     }
     for (document, reason) in refused {
-        if !reported.contains(document.path.as_path()) {
+        if !reported.contains(&document.path) {
             tally.fail(&document.directory, reason);
         }
     }
+    reported
 }
 
 /// Where the suite writes its JSON and JUnit reports: `MORPHIR_BDD_OUT` when set, else

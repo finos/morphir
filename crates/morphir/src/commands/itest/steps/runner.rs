@@ -39,6 +39,11 @@ impl CliRunner for ItestRunner {
                 .last_timeout
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner) = request.timeout;
+            *dirs
+                .last_command_line
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) =
+                Some(format!("{} {:?}", request.program.name, request.args));
             let timeout = request.timeout.unwrap_or(DEFAULT_TIMEOUT);
             let project = dirs.project.clone();
             run_isolated(request.program, request.args, &dirs, &project, timeout).await
