@@ -141,6 +141,7 @@
 - [`morphir mck report <SUBCOMMAND>`](mck/report.md)
 - [`morphir mck report check [FLAGS] <REPORT> <ALLOWED_FAILING>`](mck/report/check.md)
 - [`morphir mck report render [--format <FORMAT>] <-o --output <OUTPUT>> <REPORT>`](mck/report/render.md)
+- [`morphir mck report compare <A> <B>`](mck/report/compare.md)
 - [`morphir mck kit <SUBCOMMAND>`](mck/kit.md)
 - [`morphir mck kit status [FLAGS]`](mck/kit/status.md)
 - [`morphir mck kit vendor <FLAGS>`](mck/kit/vendor.md)

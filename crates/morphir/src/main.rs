@@ -815,6 +815,8 @@ enum MckReportAction {
     Check(commands::mck::report::CheckArgs),
     /// Render a consolidated JSON report as a standalone offline HTML file
     Render(commands::mck::report::RenderArgs),
+    /// Compare two reports' records, ignoring duration and timing
+    Compare(commands::mck::report::CompareArgs),
 }
 
 /// The `morphir kb` subcommand tree — a drop-in port of the morphir-scala
@@ -1304,6 +1306,9 @@ impl AppSession for MorphirSession {
                     MckReportAction::Check(args) => commands::mck::report::run_check(args.clone()),
                     MckReportAction::Render(args) => {
                         commands::mck::report::run_render(args.clone())
+                    }
+                    MckReportAction::Compare(args) => {
+                        commands::mck::report::run_compare(args.clone())
                     }
                 },
                 MckAction::Kit { action } => match action {

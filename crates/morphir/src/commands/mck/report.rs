@@ -4,10 +4,13 @@ use std::path::{Path, PathBuf};
 
 use clap::{Args, ValueEnum};
 use morphir_mck::ir::{Run, run::RunFailure};
+use morphir_mck::json::to_tab_json;
 use morphir_mck::kit::{embedded::embedded_source, load_kit};
 use morphir_mck::provenance::{Driver, KitProvenance};
 use morphir_mck::report::check::{AllowedFailures, check};
 use morphir_mck::report::draft::{DraftReport, NegotiatedCapabilities, ReportError};
+use morphir_mck::report::{Millis, Record};
+use serde::Deserialize;
 use serde_json::json;
 use starbase::AppResult;
 
@@ -138,6 +141,74 @@ pub fn run_render(args: RenderArgs) -> AppResult<miette::Report> {
         write_atomic(&args.output, html.as_bytes())
             .map_err(|e| format!("cannot write {}: {e}", args.output.display()))?;
         println!("Wrote {}", args.output.display());
+        Ok::<_, String>(())
+    })();
+    finish(match result {
+        Ok(()) => Outcome::Passed,
+        Err(error) => Outcome::Error(error),
+    })
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct CompareArgs {
+    /// The first report
+    pub a: PathBuf,
+    /// The second report
+    pub b: PathBuf,
+}
+
+/// The part of a report `mck report compare` reads: only its `records`, in
+/// the shared v1 [`Record`] shape both the consolidated v1 report and the
+/// v2 draft report carry. Any other member is ignored, so this reads either
+/// format without requiring the draft schema's other, stricter members.
+#[derive(Deserialize)]
+struct Comparable {
+    #[serde(default)]
+    records: Vec<Record>,
+}
+
+fn read_comparable(path: &Path) -> Result<Comparable, String> {
+    serde_json::from_str(&read(path)?).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// `record` with `durationMs` cleared: the one field `mck report compare`
+/// ignores, since two engines rarely take the same wall-clock time.
+fn without_duration(record: &Record) -> Record {
+    let mut record = record.clone();
+    record.duration_ms = Millis::default();
+    record
+}
+
+pub fn run_compare(args: CompareArgs) -> AppResult<miette::Report> {
+    let result = (|| {
+        let a = read_comparable(&args.a)?;
+        let b = read_comparable(&args.b)?;
+        if a.records.len() != b.records.len() {
+            return Err(format!(
+                "record counts differ: {} has {} record(s), {} has {} record(s)",
+                args.a.display(),
+                a.records.len(),
+                args.b.display(),
+                b.records.len()
+            ));
+        }
+        for (index, (left, right)) in a.records.iter().zip(&b.records).enumerate() {
+            if without_duration(left) != without_duration(right) {
+                return Err(format!(
+                    "records differ at index {index}:\n{}: {}\n{}: {}",
+                    args.a.display(),
+                    to_tab_json(left),
+                    args.b.display(),
+                    to_tab_json(right)
+                ));
+            }
+        }
+        println!(
+            "{} and {} agree ({} record(s))",
+            args.a.display(),
+            args.b.display(),
+            a.records.len()
+        );
         Ok::<_, String>(())
     })();
     finish(match result {

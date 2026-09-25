@@ -926,6 +926,81 @@ fn an_empty_selection_is_never_a_success() {
     );
 }
 
+/// The frozen v1-shaped TypeScript report: `mck report compare` must read it
+/// without requiring the draft v2 format's other members.
+fn frozen_v1_report_path() -> PathBuf {
+    repo().join("spec/mck/baseline/reports/morphir-typescript.json")
+}
+
+fn mck_report_compare_accepts_two_copies_of_a_frozen_report() {
+    let work = tempfile::tempdir().unwrap();
+    let text = std::fs::read_to_string(frozen_v1_report_path()).unwrap();
+    let a = work.path().join("a.json");
+    let b = work.path().join("b.json");
+    std::fs::write(&a, &text).unwrap();
+    std::fs::write(&b, &text).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+}
+
+fn mck_report_compare_rejects_a_changed_record_result_and_names_its_index() {
+    let work = tempfile::tempdir().unwrap();
+    let mut report = read_json(&frozen_v1_report_path());
+    let a = work.path().join("a.json");
+    std::fs::write(&a, serde_json::to_vec(&report).unwrap()).unwrap();
+    let records = report["records"].as_array_mut().unwrap();
+    assert!(
+        records.len() > 1,
+        "the frozen report has more than one record"
+    );
+    assert_eq!(records[1]["result"], "pass");
+    records[1]["result"] = Value::String("fail".into());
+    let b = work.path().join("b.json");
+    std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert!(
+        stderr(&output).contains("index 1"),
+        "the differing record's index is named: {}",
+        stderr(&output)
+    );
+}
+
+fn mck_report_compare_rejects_a_record_count_mismatch() {
+    let work = tempfile::tempdir().unwrap();
+    let mut report = read_json(&frozen_v1_report_path());
+    let a = work.path().join("a.json");
+    std::fs::write(&a, serde_json::to_vec(&report).unwrap()).unwrap();
+    report["records"].as_array_mut().unwrap().pop();
+    let b = work.path().join("b.json");
+    std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert!(
+        stderr(&output).contains("counts differ"),
+        "the count mismatch is reported: {}",
+        stderr(&output)
+    );
+}
+
 fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
@@ -1067,6 +1142,18 @@ fn main() {
         (
             "an_empty_selection_is_never_a_success",
             an_empty_selection_is_never_a_success,
+        ),
+        (
+            "mck_report_compare_accepts_two_copies_of_a_frozen_report",
+            mck_report_compare_accepts_two_copies_of_a_frozen_report,
+        ),
+        (
+            "mck_report_compare_rejects_a_changed_record_result_and_names_its_index",
+            mck_report_compare_rejects_a_changed_record_result_and_names_its_index,
+        ),
+        (
+            "mck_report_compare_rejects_a_record_count_mismatch",
+            mck_report_compare_rejects_a_record_count_mismatch,
         ),
     ];
     let filter = args.iter().skip(1).find(|a| !a.starts_with('-')).cloned();

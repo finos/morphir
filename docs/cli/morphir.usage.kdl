@@ -1489,6 +1489,12 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete report type=path
             complete output type=path
         }
+        cmd compare display_order=2 args_override_self=#false help="Compare two reports' records, ignoring duration and timing" unknown_flags=error {
+            arg <A> help="The first report"
+            arg <B> help="The second report"
+            complete a type=path
+            complete b type=path
+        }
     }
     cmd kit display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
         cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {

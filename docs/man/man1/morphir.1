@@ -398,6 +398,9 @@ Verify report inventory and the binding's allowed\-failing baseline
 \fBmck report render\fR
 Render a consolidated JSON report as a standalone offline HTML file
 .TP
+\fBmck report compare\fR
+Compare two reports' records, ignoring duration and timing
+.TP
 \fBmck kit\fR
 Inspect, vendor and update kit data
 .TP
@@ -2691,6 +2694,19 @@ Destination for the standalone report; cannot overwrite the JSON input
 .TP
 \fB<REPORT>\fR
 Consolidated JSON report to display
+.SH "MORPHIR MCK REPORT COMPARE"
+Compare two reports' records, ignoring duration and timing
+.PP
+\fBUsage:\fR morphir mck report compare <A> <B>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<A>\fR
+The first report
+.TP
+\fB<B>\fR
+The second report
 .SH "MORPHIR MCK KIT STATUS"
 Identify a kit: source, revision, corpus hash and whether it is modified
 .PP
