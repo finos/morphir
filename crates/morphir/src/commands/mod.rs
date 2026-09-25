@@ -14,6 +14,7 @@ pub mod ir_storage;
 pub mod itest;
 pub mod kb;
 pub mod mck;
+pub mod metadata;
 pub mod migrate;
 pub mod out_context;
 pub mod package;

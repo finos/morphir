@@ -1,0 +1,361 @@
+{
+  "status": "reference fixture",
+  "artifact": "morphir://ir/pkg/acme/metadata?format=4.0.0",
+  "predicates": [
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "data",
+        "type": "morphir/SDK:basics#bool"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition",
+        "TypeSpecification",
+        "TypeDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "data",
+        "type": "morphir/SDK:string#string"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition",
+        "TypeSpecification",
+        "TypeDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/replacement",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "node",
+        "targetKind": "Value"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "json",
+        "type": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/target-names"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition"
+      ],
+      "semanticConstraints": {
+        "languageIdPattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+        "languageIdFields": [
+          "frontend",
+          "backend"
+        ]
+      },
+      "interpretation": {
+        "kind": "required",
+        "id": "target-name-language-ids"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/label-list",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "json",
+        "type": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/label-list"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/display-info",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "json",
+        "type": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/display-info"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/review-state",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "json",
+        "type": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/review-state"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/optional-label",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "json",
+        "type": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/optional-label"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/unit-marker",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "json",
+        "type": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/unit-marker"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/integer-keyed-map",
+      "declarationRole": "ValueSpecification",
+      "object": {
+        "kind": "json",
+        "type": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/integer-keyed-map"
+      },
+      "subjects": [
+        "ValueSpecification",
+        "ValueDefinition"
+      ],
+      "interpretation": {
+        "kind": "descriptive"
+      }
+    }
+  ],
+  "dataTypes": [
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/target-names",
+      "declarationRole": "TypeSpecification",
+      "shape": {
+        "kind": "alias",
+        "typeParams": [],
+        "body": {
+          "kind": "record",
+          "closed": true,
+          "fields": {
+            "frontend": {
+              "kind": "reference",
+              "type": "morphir/SDK:dict#dict",
+              "arguments": [
+                {
+                  "kind": "reference",
+                  "type": "morphir/SDK:string#string",
+                  "arguments": []
+                },
+                {
+                  "kind": "reference",
+                  "type": "morphir/SDK:string#string",
+                  "arguments": []
+                }
+              ],
+              "jsonEncoding": "string-keyed-object"
+            },
+            "backend": {
+              "kind": "reference",
+              "type": "morphir/SDK:dict#dict",
+              "arguments": [
+                {
+                  "kind": "reference",
+                  "type": "morphir/SDK:string#string",
+                  "arguments": []
+                },
+                {
+                  "kind": "reference",
+                  "type": "morphir/SDK:string#string",
+                  "arguments": []
+                }
+              ],
+              "jsonEncoding": "string-keyed-object"
+            }
+          }
+        }
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=3.1.0#/module/lifecycle/type/deprecation",
+      "declarationRole": "TypeSpecification",
+      "shape": {
+        "kind": "record",
+        "closed": true,
+        "fields": {
+          "deprecated": {
+            "kind": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/label-list",
+      "declarationRole": "TypeSpecification",
+      "shape": {
+        "kind": "alias",
+        "typeParams": [],
+        "body": {
+          "kind": "reference",
+          "type": "morphir/SDK:list#list",
+          "arguments": [
+            {
+              "kind": "reference",
+              "type": "morphir/SDK:string#string",
+              "arguments": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/display-info",
+      "declarationRole": "TypeSpecification",
+      "shape": {
+        "kind": "alias",
+        "typeParams": [],
+        "body": {
+          "kind": "record",
+          "closed": true,
+          "fields": {
+            "title": {
+              "kind": "reference",
+              "type": "morphir/SDK:string#string",
+              "arguments": []
+            },
+            "enabled": {
+              "kind": "reference",
+              "type": "morphir/SDK:basics#bool",
+              "arguments": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/review-state",
+      "declarationRole": "TypeSpecification",
+      "shape": {
+        "kind": "custom",
+        "typeParams": [],
+        "constructors": {
+          "pending": [],
+          "approved": [
+            {
+              "kind": "reference",
+              "type": "morphir/SDK:string#string",
+              "arguments": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/optional-label",
+      "declarationRole": "TypeSpecification",
+      "shape": {
+        "kind": "alias",
+        "typeParams": [],
+        "body": {
+          "kind": "reference",
+          "type": "morphir/SDK:maybe#maybe",
+          "arguments": [
+            {
+              "kind": "reference",
+              "type": "morphir/SDK:string#string",
+              "arguments": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/unit-marker",
+      "declarationRole": "TypeSpecification",
+      "shape": {
+        "kind": "alias",
+        "typeParams": [],
+        "body": {
+          "kind": "unit"
+        }
+      }
+    },
+    {
+      "uri": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/type/integer-keyed-map",
+      "declarationRole": "TypeSpecification",
+      "shape": {
+        "kind": "alias",
+        "typeParams": [],
+        "body": {
+          "kind": "reference",
+          "type": "morphir/SDK:dict#dict",
+          "arguments": [
+            {
+              "kind": "reference",
+              "type": "morphir/SDK:basics#int",
+              "arguments": []
+            },
+            {
+              "kind": "reference",
+              "type": "morphir/SDK:string#string",
+              "arguments": []
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "sidecarEntryPoints": [
+    {
+      "entryPoint": "morphir://ir/pkg/acme/metadata?format=3.1.0#/module/lifecycle/type/deprecation",
+      "type": "morphir://ir/pkg/acme/metadata?format=3.1.0#/module/lifecycle/type/deprecation",
+      "projectionPredicate": "morphir://ir/pkg/acme/metadata?format=3.1.0#/module/lifecycle/type/deprecation",
+      "objectKind": "json"
+    }
+  ],
+  "annotations": [
+    {
+      "uri": "morphir://ir/pkg/acme/annotation-vocab?format=4.0.0#/module/annotations/value/public-api",
+      "declarationRole": "AnnotationDeclaration",
+      "name": "acme/annotation-vocab:annotations#public-api"
+    }
+  ]
+}

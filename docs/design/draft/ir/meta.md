@@ -8,6 +8,8 @@ sidebar_position: 10
 
 > **Status:** Out of v4.0.0; the name `$meta` is reserved and ignored by readers ([decision 0014](../../../../kb/bundles/morphir/morphir-ir/decisions/0014-scope-of-v4-0-0-for-design-only-features.md)).
 
+The [linked-metadata draft](./linked-metadata.md) develops `$meta` as a future document-level carrier for scoped facts about any addressed node. The example fields below illustrate one use of `$meta`; they do not limit that future graph design. No linked-data meaning is assigned to `4.0.0` files by this draft.
+
 The `$meta` key provides a standard location for file-level metadata in VFS JSON files without polluting the main schema.
 
 ## Design Principles

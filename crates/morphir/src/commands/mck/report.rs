@@ -50,10 +50,6 @@ fn read(path: &Path) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))
 }
 
-fn read_report(path: &Path) -> Result<DraftReport, String> {
-    DraftReport::from_json(&read(path)?).map_err(|e| format!("{}: {e}", path.display()))
-}
-
 pub fn run_check(args: CheckArgs) -> AppResult<miette::Report> {
     if let Some(pattern) = &args.filter
         && let Err(error) = regex::Regex::new(pattern)
@@ -61,7 +57,7 @@ pub fn run_check(args: CheckArgs) -> AppResult<miette::Report> {
         return finish(Outcome::Usage(format!("invalid --filter regex: {error}")));
     }
     let result = (|| {
-        let report = read_report(&args.report)?;
+        let text = read(&args.report)?;
         let allowed = AllowedFailures::from_json(&read(&args.allowed_failing)?)?;
         let kit = match &args.kit {
             None => load_kit(embedded_source()).map_err(|e| e.to_string())?,
@@ -69,8 +65,22 @@ pub fn run_check(args: CheckArgs) -> AppResult<miette::Report> {
                 .kit()
                 .clone(),
         };
-        let checked = check(&report, &kit, &allowed, args.filter.as_deref())?;
-        println!("{}: {}", args.report.display(), report.summary_line());
+        let value: serde_json::Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+        let (checked, summary) = if value["suite"] == "metadata" {
+            let report = morphir_mck::metadata::report::MetadataReport::from_value(value)?;
+            let checked = morphir_mck::metadata::report::check(
+                &report,
+                &kit,
+                &allowed,
+                args.filter.as_deref(),
+            )?;
+            (checked, report.summary_line())
+        } else {
+            let report = DraftReport::from_value(value).map_err(|e| e.to_string())?;
+            let checked = check(&report, &kit, &allowed, args.filter.as_deref())?;
+            (checked, report.summary_line())
+        };
+        println!("{}: {}", args.report.display(), summary);
         println!(
             "Verified inventory: {} cases, {} records ({})",
             checked.selected_cases,
@@ -112,9 +122,18 @@ pub fn run_render(args: RenderArgs) -> AppResult<miette::Report> {
         }
     }
     let result = (|| {
-        let report = read_report(&args.report)?;
-        let html = match args.format {
-            RenderFormat::Html => morphir_mck::report::html::render(&report),
+        let text = read(&args.report)?;
+        let value: serde_json::Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+        let html = if value["suite"] == "metadata" {
+            let report = morphir_mck::metadata::report::MetadataReport::from_value(value)?;
+            match args.format {
+                RenderFormat::Html => morphir_mck::metadata::report::render(&report),
+            }
+        } else {
+            let report = DraftReport::from_value(value).map_err(|e| e.to_string())?;
+            match args.format {
+                RenderFormat::Html => morphir_mck::report::html::render(&report),
+            }
         };
         write_atomic(&args.output, html.as_bytes())
             .map_err(|e| format!("cannot write {}: {e}", args.output.display()))?;

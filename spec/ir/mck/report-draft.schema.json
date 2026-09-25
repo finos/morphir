@@ -21,7 +21,7 @@
 			"const": "2.0.0-draft.1"
 		},
 		"suite": {
-			"const": "ir"
+			"enum": ["ir", "metadata"]
 		},
 		"startedAt": {
 			"type": "string",
@@ -135,7 +135,7 @@
 									"const": "succeeded"
 								},
 								"capabilities": {
-									"$ref": "#/definitions/Capabilities"
+									"oneOf": [{"$ref": "#/definitions/Capabilities"}, {"$ref": "#/definitions/MetadataCapabilities"}]
 								}
 							}
 						},
@@ -248,11 +248,59 @@
 		"records": {
 			"type": "array",
 			"items": {
-				"$ref": "#/definitions/Record"
+				"oneOf": [{"$ref": "#/definitions/Record"}, {"$ref": "#/definitions/MetadataRecord"}]
 			}
 		}
 	},
+	"allOf": [{
+		"if": {"properties": {"suite": {"const": "metadata"}}, "required": ["suite"]},
+		"then": {"properties": {"records": {"items": {"$ref": "#/definitions/MetadataRecord"}}}},
+		"else": {"properties": {"records": {"items": {"$ref": "#/definitions/Record"}}}}
+	}],
 	"definitions": {
+		"MetadataTarget": {
+			"type": "object", "additionalProperties": false,
+			"required": ["profile", "layout", "irRevision"],
+			"properties": {
+				"profile": {"enum": ["json", "yaml", "ion"]},
+				"layout": {"enum": ["single", "tree", "datagram", "record"]},
+				"irRevision": {"type": "string"},
+				"ionVersion": {"type": "string"}
+			}
+		},
+		"MetadataClaim": {
+			"type": "object", "additionalProperties": false,
+			"required": ["operation", "profile", "layout", "irRevision"],
+			"properties": {
+				"operation": {"enum": ["normalize", "compareFacts", "resolveAnnotation", "resolveContext", "resolveSources", "profileEquivalence", "publish", "projectSidecar", "sourceEdit"]},
+				"profile": {"enum": ["json", "yaml", "ion"]},
+				"layout": {"enum": ["single", "tree", "datagram", "record"]},
+				"irRevision": {"type": "string"},
+				"ionVersion": {"type": "string"}
+			}
+		},
+		"MetadataCapabilities": {
+			"type": "object", "additionalProperties": false,
+			"required": ["suite", "contractVersion", "implementation", "implementationVersion", "claims"],
+			"properties": {
+				"suite": {"const": "metadata"},
+				"contractVersion": {"const": "0.1.0-draft.1"},
+				"implementation": {"type": "string", "minLength": 1},
+				"implementationVersion": {"type": "string", "minLength": 1},
+				"claims": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/definitions/MetadataClaim"}}
+			}
+		},
+		"MetadataRecord": {
+			"type": "object", "additionalProperties": false,
+			"required": ["caseId", "operation", "targets", "result", "message"],
+			"properties": {
+				"caseId": {"type": "string", "pattern": "^metadata-[0-9]{4}$"},
+				"operation": {"type": "string"},
+				"targets": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/MetadataTarget"}},
+				"result": {"$ref": "#/definitions/Result"},
+				"message": {"type": ["string", "null"]}
+			}
+		},
 		"Result": {
 			"enum": [
 				"pass",

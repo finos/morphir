@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Early-access V4.1 linked metadata in single-file JSON, YAML and Ion. The
+  `morphir metadata` commands query facts, export their contexts, check
+  document structure, and validate assertions against native declarations
+  from a freshly authenticated provider Library. The shared MCK has a focused
+  metadata suite, and V3/V4 decorator sidecars remain supported (#999).
+
 ### Changed
 - The `morphir-rust` pin moves to `8c10fe6` (finos/morphir-rust#271). `compile`, `generate`, `extension list` and the playground catalog resolve providers through the `morphir-host` registry, over `NativeSource` built-ins and `InstalledSource` installed extensions. The UI workspace provider starts its installed guest through `InstalledSource` (#963, #959).
 - The workbench reuses guests through a `morphir-host` `Pool` instead of the daemon session actor. As before, a guest is stopped in order after five minutes without a call. A guest is now replaced when an installed extension is reinstalled at the same version. A result that does not decode or fails the host's checks is reported at once and its guest is stopped in order, without a retry on a fresh guest (#963, #959).

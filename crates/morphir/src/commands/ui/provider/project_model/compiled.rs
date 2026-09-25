@@ -228,6 +228,7 @@ mod tests {
         };
         IRFile {
             format_version: FormatVersion::Integer(4),
+            metadata: None,
             distribution: Distribution::Library(LibraryContent {
                 package_name: morphir_core::naming::PackageName::parse("acme/model"),
                 dependencies: Default::default(),

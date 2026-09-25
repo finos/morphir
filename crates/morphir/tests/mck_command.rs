@@ -58,6 +58,17 @@ fn check_accepts_the_repository_kit_and_summarises_on_stdout() {
         1,
         "stdout carries only the summary: {summary}"
     );
+    let corpus: Value = serde_json::from_slice(
+        &std::fs::read(repository_kit().join("metadata-contract-draft.json")).unwrap(),
+    )
+    .unwrap();
+    let reference_cases = corpus["cases"].as_array().unwrap().len();
+    assert!(
+        summary.contains(&format!(
+            "{reference_cases} metadata reference case(s) admitted"
+        )),
+        "reference cases must be visible without counting as executable: {summary}"
+    );
 }
 
 #[test]

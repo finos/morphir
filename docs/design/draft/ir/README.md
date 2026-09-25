@@ -62,6 +62,7 @@ This specification is organized into the following sections:
 | [Decorations](./decorations.md) | Out of 4.0.0 (decision 0014) | Layered metadata system for IR annotations |
 | [Document](./document.md) | In 4.0.0 (decision 0013) | Schema-less JSON-like data type |
 | [Metadata](./meta.md) | Out of 4.0.0 (decision 0014) | File-level metadata (`$meta`) |
+| [Linked metadata](./linked-metadata.md) | Future V4 draft | Scoped facts across attributes, annotations, and `$meta`, with V3/V4 decorator coexistence |
 | [References](./refs.md) | Out of 4.0.0 (decision 0014) | Node references (`$ref`) for deduplication |
 
 For process and WASM extension runtimes, MEP, and verified installation, see
@@ -208,6 +209,7 @@ Example: Path `["Main", "Domain"]` → `pkg/main/domain/`
 - **[Decorations](./decorations.md)** - Layered metadata system for IR annotations
 - **[Document](./document.md)** - Schema-less JSON-like data type
 - **[Metadata](./meta.md)** - File-level metadata (`$meta`)
+- **[Linked metadata](./linked-metadata.md)** - Future native facts, context scoping, and provenance
 - **[References](./refs.md)** - Node references (`$ref`) for deduplication
 
 ## Related

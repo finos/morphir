@@ -210,6 +210,12 @@ fn validator() -> &'static jsonschema::Validator {
     })
 }
 
+pub(crate) fn validate_schema(value: &Value) -> Result<(), ReportError> {
+    validator()
+        .validate(value)
+        .map_err(|error| ReportError(format!("{}: {error}", error.instance_path)))
+}
+
 /// JSON Schema integers include spellings such as 4.0 and 4e0. Serde's
 /// integer visitors only accept integer-encoded JSON numbers, so normalize the
 /// record fields after schema validation has checked integrality and sign.
@@ -245,9 +251,7 @@ impl DraftReport {
     }
 
     pub fn from_value(value: Value) -> Result<Self, ReportError> {
-        validator()
-            .validate(&value)
-            .map_err(|error| ReportError(format!("{}: {error}", error.instance_path)))?;
+        validate_schema(&value)?;
         let report =
             Self(serde_json::from_value(normalize_record_numbers(value)?).map_err(json_error)?);
         report.validate_semantics()?;

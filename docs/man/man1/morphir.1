@@ -36,6 +36,21 @@ Check all configured targets and values
 \fBdecoration migrate\-v3\fR
 Replace a legacy flat V3 NodeID map with URI keys
 .TP
+\fBmetadata\fR
+Inspect and export proposed V4 linked metadata
+.TP
+\fBmetadata validate\fR
+Parse metadata carriers and report the semantic\-validation boundary
+.TP
+\fBmetadata validate\-trusted\fR
+Validate with declarations from a freshly authenticated Library restore
+.TP
+\fBmetadata query\fR
+Query expanded facts and their assertion locations
+.TP
+\fBmetadata export\fR
+Export JSON with inline contexts or an inventory\-ready directory
+.TP
 \fBpackage\fR
 Restore freshly authenticated Libraries from a local registry (MVP)
 .TP
@@ -499,6 +514,86 @@ Exact V3 or V4 target IR JSON to decorate
 .TP
 \fB<NAME>\fR
 Decoration name from the project config
+.SH "MORPHIR METADATA VALIDATE"
+Parse metadata carriers and report the semantic\-validation boundary
+.PP
+\fBUsage:\fR morphir metadata validate [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+A V4.1 single\-file JSON, YAML, or Ion document
+.TP
+\fB\-\-schema\-closure\fR \fI<SCHEMA_CLOSURE>\fR
+Optional local predicate closure for typed @json expansion
+.SH "MORPHIR METADATA VALIDATE-TRUSTED"
+Validate with declarations from a freshly authenticated Library restore
+.PP
+\fBUsage:\fR morphir metadata validate\-trusted [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+Consumer V4.1 single\-file IR to validate
+.TP
+\fB\-\-provider\-release\fR \fI<PACKAGE@VERSION>\fR
+Exact provider Library release in the full lock
+.TP
+\fB\-\-policy\fR \fI<POLICY>\fR
+Explicit trusted\-host policy file
+.TP
+\fB\-\-lock\fR \fI<LOCK>\fR
+Full package lock; replay never rewrites it
+.TP
+\fB\-\-registry\fR \fI<REGISTRY>\fR
+Caller\-controlled local registry
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Existing initialized trust\-state directory
+.TP
+\fB\-\-assurance\fR \fI<ASSURANCE>\fR
+Accept the local MVP's caller\-controlled filesystem roots
+.SH "MORPHIR METADATA QUERY"
+Query expanded facts and their assertion locations
+.PP
+\fBUsage:\fR morphir metadata query [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+A V4.1 single\-file JSON, YAML, or Ion document
+.TP
+\fB\-\-schema\-closure\fR \fI<SCHEMA_CLOSURE>\fR
+Optional local predicate closure for typed @json expansion
+.TP
+\fB\-\-subject\fR \fI<SUBJECT>\fR
+.TP
+\fB\-\-object\fR \fI<OBJECT>\fR
+.TP
+\fB\-\-predicate\fR \fI<PREDICATE>\fR
+.SH "MORPHIR METADATA EXPORT"
+Export JSON with inline contexts or an inventory\-ready directory
+.PP
+\fBUsage:\fR morphir metadata export [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+A V4.1 single\-file JSON, YAML, or Ion document
+.TP
+\fB\-\-schema\-closure\fR \fI<SCHEMA_CLOSURE>\fR
+Optional local predicate closure for typed @json expansion
+.TP
+\fB\-\-output\fR \fI<OUTPUT>\fR
+.TP
+\fB\-\-context\-storage\fR \fI<CONTEXT_STORAGE>\fR
+.RS
+\fIDefault: \fRauto
+.RE
 .SH "MORPHIR PACKAGE CREATE"
 Create a verified dependency\-free classic V4 Library bundle
 .PP
@@ -509,6 +604,9 @@ Create a verified dependency\-free classic V4 Library bundle
 .TP
 \fB\-\-ir\fR \fI<FILE>\fR
 Already compiled classic JSON V4 Library IR
+.TP
+\fB\-\-context\-root\fR \fI<DIR>\fR
+Root of an exported document tree containing contexts/*.jsonld
 .TP
 \fB\-\-manifest\-input\fR \fI<FILE>\fR
 Authoring fields: packagePath, version, dependencies and exports
@@ -527,7 +625,7 @@ Sign a verified Library with an explicitly supplied local key
 .PP
 .TP
 \fB\-\-bundle\fR \fI<DIR>\fR
-Verified bundle directory containing only manifest.json and ir.json
+Verified bundle directory containing manifest.json, ir.json, and declared contexts
 .TP
 \fB\-\-key\-file\fR \fI<FILE>\fR
 Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline
@@ -2348,6 +2446,12 @@ Run the kit against an implementation's adapter and report the results
 .PP
 \fBOptions:\fR
 .PP
+.TP
+\fB\-\-suite\fR \fI<SUITE>\fR
+Compatibility suite to execute
+.RS
+\fIDefault: \fRir
+.RE
 .TP
 \fB\-\-adapter\fR \fI<EXE>\fR
 The implementation's adapter executable. Required: there is no built\-in binding and no discovery

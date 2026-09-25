@@ -12,6 +12,8 @@ use std::process::Output;
 
 use serde_json::Value;
 
+#[path = "support/metadata_acceptance.rs"]
+mod metadata_acceptance;
 #[path = "support/mvp_acceptance.rs"]
 mod mvp_acceptance;
 #[path = "support/package_acceptance.rs"]
@@ -63,6 +65,170 @@ fn replay_adapter(path: &Path, exit_code: i32) {
         }
     }
     std::process::exit(exit_code);
+}
+
+fn metadata_adapter(mode: &str) {
+    let corpus: Value = serde_json::from_str(include_str!(
+        "../../../spec/ir/mck/metadata-contract-draft.json"
+    ))
+    .unwrap();
+    let case = if mode == "reordered-facts" {
+        corpus["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|case| case["id"] == "metadata-0004")
+            .unwrap()
+    } else {
+        &corpus["cases"][0]
+    };
+    for line in std::io::stdin().lock().lines().map_while(Result::ok) {
+        let request: Value = serde_json::from_str(&line).unwrap();
+        let id = request["id"].clone();
+        let reply = match request["op"].as_str() {
+            Some("capabilities") if mode == "old" => serde_json::json!({
+                "id":id,"contractVersion":1,"binding":"old","language":"rust",
+                "formatVersions":"[4.0.0,4.1.0)","versions":[4],"profiles":["json"],
+                "layouts":["single"],"paths":["current","pinned"],"nodes":["Type"]
+            }),
+            Some("capabilities") => serde_json::json!({
+                "id":id,"suite":"metadata","contractVersion":"0.1.0-draft.1",
+                "implementation":"fixture","implementationVersion":"1.0.0",
+                "claims":[{"operation":"normalize","profile":"json","layout":"single","irRevision":"4.1.0"}]
+            }),
+            Some("run") if mode == "pass" && request["caseId"] == "metadata-0001" => {
+                assert_eq!(request["given"], case["given"]);
+                serde_json::json!({"id":id,"ok":true,"observation":case["expected"]})
+            }
+            Some("run") if mode == "reordered-facts" && request["caseId"] == "metadata-0004" => {
+                let mut observed = case["expected"].clone();
+                let value = observed["facts"][0]["object"]["@value"]
+                    .as_object_mut()
+                    .unwrap();
+                let reordered = ["backend", "frontend"]
+                    .into_iter()
+                    .map(|key| (key.to_owned(), value.remove(key).unwrap()))
+                    .collect();
+                *value = reordered;
+                let fact = observed["facts"][0].as_object_mut().unwrap();
+                let reordered = ["graph", "object", "predicate", "subject"]
+                    .into_iter()
+                    .map(|key| (key.to_owned(), fact.remove(key).unwrap()))
+                    .collect();
+                *fact = reordered;
+                serde_json::json!({"id":id,"ok":true,"observation":observed})
+            }
+            Some("exit") => return,
+            other => panic!("unexpected metadata adapter request {other:?}"),
+        };
+        println!("{reply}");
+        std::io::stdout().flush().unwrap();
+    }
+}
+
+fn metadata_cli_accepts_reordered_fact_object_members() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("metadata-report.json");
+    let adapter = std::env::current_exe().unwrap();
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--suite",
+        "metadata",
+        "--adapter",
+        adapter.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "reordered-facts",
+        "--filter",
+        "^metadata-0004$",
+        "--report",
+        report.to_str().unwrap(),
+        "--strict",
+    ]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert_eq!(read_json(&report)["records"][0]["result"], "pass");
+}
+
+fn metadata_cli_runs_and_checks_one_fixed_case() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("metadata-report.json");
+    let allowed = work.path().join("allowed.json");
+    std::fs::write(&allowed, "{\"cases\":[]}").unwrap();
+    let adapter = std::env::current_exe().unwrap();
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--suite",
+        "metadata",
+        "--adapter",
+        adapter.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "pass",
+        "--filter",
+        "^metadata-0001$",
+        "--report",
+        report.to_str().unwrap(),
+        "--strict",
+    ]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    let produced = read_json(&report);
+    assert_eq!(produced["suite"], "metadata");
+    assert_eq!(produced["records"][0]["result"], "pass");
+    let checked = morphir(&[
+        "mck",
+        "report",
+        "check",
+        report.to_str().unwrap(),
+        allowed.to_str().unwrap(),
+        "--filter",
+        "^metadata-0001$",
+    ]);
+    assert!(checked.status.success(), "{}", stderr(&checked));
+    let rendered = work.path().join("metadata-report.html");
+    let output = morphir(&[
+        "mck",
+        "report",
+        "render",
+        report.to_str().unwrap(),
+        "--output",
+        rendered.to_str().unwrap(),
+    ]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(
+        std::fs::read_to_string(rendered)
+            .unwrap()
+            .contains("metadata-0001")
+    );
+}
+
+fn old_capabilities_skip_metadata_and_fail_strict_qualification() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("metadata-report.json");
+    let adapter = std::env::current_exe().unwrap();
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--suite",
+        "metadata",
+        "--adapter",
+        adapter.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "old",
+        "--filter",
+        "^metadata-0001$",
+        "--report",
+        report.to_str().unwrap(),
+        "--strict",
+    ]);
+    assert!(!output.status.success());
+    let produced = read_json(&report);
+    assert_eq!(produced["records"][0]["result"], "skipped");
 }
 
 fn morphir(args: &[&str]) -> Output {
@@ -338,6 +504,7 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     if std::env::var_os("MORPHIR_MCK_MVP_REQUIRED").is_some_and(|value| !value.is_empty()) {
         mvp_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
     }
+    metadata_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
 
     if let Some(directory) = std::env::var_os("MORPHIR_MCK_ACCEPTANCE_EVIDENCE") {
         let directory = Path::new(&directory);
@@ -354,6 +521,7 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
             "package-mvp-runtime.json",
             "package-mvp-negative.log",
             "package-examples.log",
+            "metadata-preview.json",
         ] {
             if work.path().join(name).exists() {
                 std::fs::copy(work.path().join(name), directory.join(name)).unwrap();
@@ -616,6 +784,10 @@ fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some(ADAPTER_FLAG) {
+        if let Some(mode @ ("old" | "pass" | "reordered-facts")) = args.get(2).map(String::as_str) {
+            metadata_adapter(mode);
+            return;
+        }
         let exit_code = match args.get(2).map(String::as_str) {
             Some("replay") => 0,
             Some("shutdown-failure") => 7,
@@ -625,6 +797,18 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "metadata_cli_accepts_reordered_fact_object_members",
+            metadata_cli_accepts_reordered_fact_object_members,
+        ),
+        (
+            "metadata_cli_runs_and_checks_one_fixed_case",
+            metadata_cli_runs_and_checks_one_fixed_case,
+        ),
+        (
+            "old_capabilities_skip_metadata_and_fail_strict_qualification",
+            old_capabilities_skip_metadata_and_fail_strict_qualification,
+        ),
         (
             "missing_prepared_adapter_fails_closed",
             mvp_acceptance::missing_prepared_adapter_fails_closed,

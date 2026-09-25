@@ -540,7 +540,38 @@ impl Session {
                 status_text(status),
                 with_stderr(&self.stderr())
             ))),
-            Some(_) => write_failure.map_or(Ok(()), Err),
+            Some(_) => {
+                if let Some(error) = write_failure {
+                    return Err(error);
+                }
+                // No reply belongs to `exit`. Drain until EOF so a queued
+                // second response cannot be mistaken for a clean session.
+                let until = Instant::now() + self.limits.exit_grace;
+                let remaining = until.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return Err(TransportError::Shutdown(
+                        "adapter stdout did not close".into(),
+                    ));
+                }
+                match self.frames.recv_timeout(remaining) {
+                    Ok(Frame::Eof) | Err(RecvTimeoutError::Disconnected) => Ok(()),
+                    Ok(Frame::Line(_)) => Err(TransportError::Shutdown(
+                        "unsolicited adapter response after exit".into(),
+                    )),
+                    Ok(Frame::NotUtf8) => Err(TransportError::Shutdown(
+                        "unsolicited non-UTF-8 adapter output after exit".into(),
+                    )),
+                    Ok(Frame::TooLong) => Err(TransportError::Shutdown(
+                        "unsolicited oversized adapter output after exit".into(),
+                    )),
+                    Ok(Frame::Failed(why)) => Err(TransportError::Shutdown(format!(
+                        "adapter stdout failed after exit: {why}"
+                    ))),
+                    Err(RecvTimeoutError::Timeout) => Err(TransportError::Shutdown(
+                        "adapter stdout did not close".into(),
+                    )),
+                }
+            }
         }
     }
 }

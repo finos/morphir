@@ -1,0 +1,3 @@
+{
+  "@context": ["../lifecycle.jsonld", {"aliasDeprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"}]
+}

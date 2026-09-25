@@ -65,6 +65,365 @@ fn create_library_preserves_compiled_ir_and_refuses_overwrite() {
 }
 
 #[test]
+fn create_and_sign_library_with_inventoried_metadata_context() {
+    use serde_json::json;
+
+    let workspace = tempfile::tempdir().unwrap();
+    let source = workspace.path().join("source");
+    std::fs::create_dir_all(source.join("contexts")).unwrap();
+    let context = br#"{"@context":{"operationalName":"morphir://ir/pkg/example/greeting?format=4.1.0#/module/greeting/value/operational-name"}}"#;
+    std::fs::write(source.join("contexts/names.jsonld"), context).unwrap();
+    let predicate =
+        "morphir://ir/pkg/example/greeting?format=4.1.0#/module/greeting/value/operational-name";
+    let ir = json!({"formatVersion":"4.1.0","distribution":{"Library":{"packageName":"example/greeting","dependencies":{},"def":{"modules":{"greeting":{"Public":{"types":{},"values":{
+        "operational-name":{"Public":{"ExpressionBody":{"inputTypes":{},
+            "outputType":"morphir/SDK:string#string",
+            "body":{"Literal":{"StringLiteral":"sayHello"}}}}}
+    }}}}}}},
+    "$meta":{"@context":["./contexts/names.jsonld", {"@vocab":"morphir://ir/pkg/morphir/metadata?format=4.1.0#/module/schema/value/"}],"@graph":[{
+        "@id":predicate,
+        "subject-role":"ValueSpecification","object-form":"data","interpreter":"descriptive"
+    }]}});
+    std::fs::write(source.join("ir.json"), serde_json::to_vec(&ir).unwrap()).unwrap();
+    let input = workspace.path().join("authoring.json");
+    std::fs::write(
+        &input,
+        r#"{"packagePath":"example.com/greeting","version":"1.0.0","dependencies":{},"exports":{"greeting":"greeting"}}"#,
+    )
+    .unwrap();
+    let bundle = workspace.path().join("bundle");
+    let created = morphir(
+        workspace.path(),
+        &[
+            "package",
+            "create",
+            "--ir",
+            source.join("ir.json").to_str().unwrap(),
+            "--context-root",
+            source.to_str().unwrap(),
+            "--manifest-input",
+            input.to_str().unwrap(),
+            "--output",
+            bundle.to_str().unwrap(),
+        ],
+    );
+    assert!(
+        created.status.success(),
+        "{}",
+        String::from_utf8_lossy(&created.stderr)
+    );
+    assert_eq!(
+        std::fs::read(bundle.join("contexts/names.jsonld")).unwrap(),
+        context
+    );
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(bundle.join("manifest.json")).unwrap()).unwrap();
+    assert_eq!(manifest["formatVersion"], "0.1.0-draft.2");
+    assert!(manifest["contextResources"]["contexts/names.jsonld"].is_object());
+
+    let key = workspace.path().join("publisher.key");
+    std::fs::write(&key, format!("{}\n", "11".repeat(32))).unwrap();
+    let release = workspace.path().join("signed");
+    let signed = morphir(
+        workspace.path(),
+        &[
+            "package",
+            "sign",
+            "--bundle",
+            bundle.to_str().unwrap(),
+            "--key-file",
+            key.to_str().unwrap(),
+            "--output",
+            release.to_str().unwrap(),
+        ],
+    );
+    assert!(
+        signed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&signed.stderr)
+    );
+    assert!(release.join("record.json").is_file());
+
+    #[cfg(target_os = "macos")]
+    {
+        use morphir_package::authoring::LocalSigningKey;
+        use morphir_package::digest::Digest;
+
+        let signing_key = LocalSigningKey::from_seed([0x11; 32]);
+        let key_id = signing_key.tuf_key_id().unwrap();
+        let role = json!({"keyids":[key_id.clone()],"threshold":1});
+        let root = signing_key
+            .sign_tuf(&json!({
+                "_type":"root","spec_version":"1.0.36","version":1,
+                "expires":"2099-01-01T00:00:00Z","consistent_snapshot":true,
+                "keys":{key_id:signing_key.tuf_public_key()},
+                "roles":{"root":role,"targets":role,"snapshot":role,"timestamp":role}
+            }))
+            .unwrap();
+        let digest = Digest::of_bytes(&root).to_string();
+        let policy = json!({"formatVersion":"0.1.0-draft.3","kind":"LibraryTrustPolicy",
+            "repositories":[{"identity":digest,"bootstrapRoot":{"version":1,"digest":digest},"namespaces":["example.com"]}],
+            "publisherRules":[{"namespace":"example.com","publicKeys":[signing_key.public_key_hex()],"threshold":1}],
+            "continuedUse":"fresh-metadata"});
+        let root_file = workspace.path().join("root.json");
+        let policy_file = workspace.path().join("policy.json");
+        std::fs::write(&root_file, root).unwrap();
+        std::fs::write(&policy_file, serde_json::to_vec(&policy).unwrap()).unwrap();
+        let registry = workspace.path().join("registry");
+        let publisher_state = workspace.path().join("publisher-state");
+        let draft = workspace.path().join("draft");
+        let proposal = workspace.path().join("proposal.json");
+        let consumer_state = workspace.path().join("consumer-state");
+        let lock = workspace.path().join("consumer.lock");
+        let restored = workspace.path().join("restored");
+        let run = |args: &[&str]| {
+            let output = morphir(workspace.path(), args);
+            assert!(
+                output.status.success(),
+                "{args:?}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            output
+        };
+        run(&[
+            "package",
+            "registry",
+            "init",
+            "--policy",
+            policy_file.to_str().unwrap(),
+            "--root",
+            root_file.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--publisher-state",
+            publisher_state.to_str().unwrap(),
+        ]);
+        run(&[
+            "package",
+            "registry",
+            "prepare",
+            "--bundle",
+            bundle.to_str().unwrap(),
+            "--release",
+            release.to_str().unwrap(),
+            "--policy",
+            policy_file.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--publisher-state",
+            publisher_state.to_str().unwrap(),
+            "--expires",
+            "2098-01-01T00:00:00Z",
+            "--output",
+            draft.to_str().unwrap(),
+        ]);
+        run(&[
+            "package",
+            "registry",
+            "sign-proposal",
+            "--draft",
+            draft.join("draft.json").to_str().unwrap(),
+            "--targets-key-file",
+            key.to_str().unwrap(),
+            "--snapshot-key-file",
+            key.to_str().unwrap(),
+            "--timestamp-key-file",
+            key.to_str().unwrap(),
+            "--output",
+            proposal.to_str().unwrap(),
+        ]);
+        run(&[
+            "package",
+            "publish",
+            "--bundle",
+            bundle.to_str().unwrap(),
+            "--release",
+            release.to_str().unwrap(),
+            "--predecessor",
+            draft.join("predecessor.json").to_str().unwrap(),
+            "--proposal",
+            proposal.to_str().unwrap(),
+            "--policy",
+            policy_file.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--publisher-state",
+            publisher_state.to_str().unwrap(),
+        ]);
+        run(&[
+            "package",
+            "trust",
+            "init",
+            "--policy",
+            policy_file.to_str().unwrap(),
+            "--root",
+            root_file.to_str().unwrap(),
+            "--state",
+            consumer_state.to_str().unwrap(),
+        ]);
+        run(&[
+            "package",
+            "resolve",
+            "--root",
+            "example.com/greeting@1.0.0",
+            "--policy",
+            policy_file.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--state",
+            consumer_state.to_str().unwrap(),
+            "--output",
+            lock.to_str().unwrap(),
+            "--assurance",
+            "portable",
+        ]);
+        run(&[
+            "package",
+            "restore",
+            "--policy",
+            policy_file.to_str().unwrap(),
+            "--lock",
+            lock.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--state",
+            consumer_state.to_str().unwrap(),
+            "--output",
+            restored.to_str().unwrap(),
+            "--assurance",
+            "portable",
+        ]);
+        let installed = restored.join("example.com/greeting/1.0.0");
+        assert_eq!(
+            std::fs::read(installed.join("contexts/names.jsonld")).unwrap(),
+            context
+        );
+        let consumer = workspace.path().join("consumer-ir.json");
+        let dependency_value = "morphir://ir/pkg/example/consumer?format=4.1.0#/dependency/example%2Fdependency/module/api/value/read";
+        let consumer_bytes = serde_json::to_vec(&json!({
+            "formatVersion":"4.1.0",
+            "distribution":{"Library":{"packageName":"example/consumer","dependencies":{
+                "example/dependency":{"modules":{"api":{"types":{},"values":{"read":{
+                    "annotations":{"facts":{"operationalName":"sayHello"}},
+                    "output":"morphir/SDK:string#string"
+                }}}}}
+            },
+                "def":{"modules":{"app":{"Public":{"types":{},"values":{}}}}}}},
+            "$meta":{"@context":{"operationalName":predicate},"@graph":[{
+                "@id":dependency_value,
+                "operationalName":"sayHello"
+            }]}
+        }))
+        .unwrap();
+        std::fs::write(&consumer, &consumer_bytes).unwrap();
+        let trusted_args = [
+            "metadata",
+            "validate-trusted",
+            "--ir",
+            consumer.to_str().unwrap(),
+            "--provider-release",
+            "example.com/greeting@1.0.0",
+            "--policy",
+            policy_file.to_str().unwrap(),
+            "--lock",
+            lock.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--state",
+            consumer_state.to_str().unwrap(),
+            "--assurance",
+            "portable",
+        ];
+        let validated = run(&trusted_args);
+        let result: serde_json::Value = serde_json::from_slice(&validated.stdout).unwrap();
+        assert_eq!(result["semanticStatus"], "validated");
+        assert_eq!(result["factCount"], 1);
+        assert_eq!(result["assertionCount"], 2);
+        assert_eq!(result["validatedAssertionCount"], 2);
+        assert_eq!(result["unvalidatedAssertionCount"], 0);
+
+        let mut wrong_type: serde_json::Value = serde_json::from_slice(&consumer_bytes).unwrap();
+        wrong_type["$meta"]["@graph"][0]["operationalName"] = json!(42);
+        std::fs::write(&consumer, serde_json::to_vec(&wrong_type).unwrap()).unwrap();
+        let rejected_fact = morphir(workspace.path(), &trusted_args);
+        assert!(!rejected_fact.status.success());
+        assert!(!String::from_utf8_lossy(&rejected_fact.stdout).contains("validated"));
+        std::fs::write(&consumer, &consumer_bytes).unwrap();
+
+        let mut wrong_role: serde_json::Value = serde_json::from_slice(&consumer_bytes).unwrap();
+        wrong_role["distribution"]["Library"]["def"]["modules"]["app"]["Public"]["values"]["owned"] = json!({"Public":{"ExpressionBody":{
+            "inputTypes":{},"outputType":"morphir/SDK:string#string",
+            "body":{"Literal":{"StringLiteral":"sayHello"}}
+        }}});
+        wrong_role["$meta"]["@graph"][0]["@id"] =
+            json!("morphir://ir/pkg/example/consumer?format=4.1.0#/module/app/value/owned");
+        std::fs::write(&consumer, serde_json::to_vec(&wrong_role).unwrap()).unwrap();
+        let rejected_role = morphir(workspace.path(), &trusted_args);
+        assert!(!rejected_role.status.success());
+        assert!(String::from_utf8_lossy(&rejected_role.stderr).contains("subject role"));
+        std::fs::write(&consumer, &consumer_bytes).unwrap();
+
+        let mut missing_provider = trusted_args;
+        missing_provider[5] = "example.com/missing@1.0.0";
+        let rejected_release = morphir(workspace.path(), &missing_provider);
+        assert!(!rejected_release.status.success());
+        assert!(
+            String::from_utf8_lossy(&rejected_release.stderr)
+                .contains("absent from the verified lock")
+        );
+
+        let published_bundle = std::fs::read_dir(registry.join("bundles"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        std::fs::write(published_bundle.join("ir.json"), b"{}").unwrap();
+        let rejected_provider = morphir(workspace.path(), &trusted_args);
+        assert!(!rejected_provider.status.success());
+        assert!(!String::from_utf8_lossy(&rejected_provider.stdout).contains("validated"));
+    }
+
+    std::fs::write(bundle.join("contexts/names.jsonld"), b"changed").unwrap();
+    let rejected_release = workspace.path().join("rejected-release");
+    let rejected = morphir(
+        workspace.path(),
+        &[
+            "package",
+            "sign",
+            "--bundle",
+            bundle.to_str().unwrap(),
+            "--key-file",
+            key.to_str().unwrap(),
+            "--output",
+            rejected_release.to_str().unwrap(),
+        ],
+    );
+    assert!(!rejected.status.success());
+    assert!(!rejected_release.exists());
+
+    std::fs::remove_file(source.join("contexts/names.jsonld")).unwrap();
+    let missing_bundle = workspace.path().join("missing-bundle");
+    let missing = morphir(
+        workspace.path(),
+        &[
+            "package",
+            "create",
+            "--ir",
+            source.join("ir.json").to_str().unwrap(),
+            "--context-root",
+            source.to_str().unwrap(),
+            "--manifest-input",
+            input.to_str().unwrap(),
+            "--output",
+            missing_bundle.to_str().unwrap(),
+        ],
+    );
+    assert!(!missing.status.success());
+    assert!(!missing_bundle.exists());
+}
+
+#[test]
 fn create_rejects_dependencies_without_publishing_a_partial_bundle() {
     let workspace = tempfile::tempdir().unwrap();
     let ir = source().join("spec/package/mck/fixtures/two-libraries/eligibility/ir.json");

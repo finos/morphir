@@ -277,11 +277,19 @@ pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
                 let cases: Vec<_> = kit.cases.iter().map(|c| c.id.as_str()).collect();
                 println!(
                     "{}",
-                    to_tab_json(&json!({ "files": kit.files, "cases": cases, "errors": errors }))
+                    to_tab_json(
+                        &json!({ "files": kit.files, "cases": cases, "metadataReferenceCases": kit.metadata_reference_cases, "errors": errors })
+                    )
                 );
             } else {
                 for error in &kit.errors {
                     eprintln!("{}:{}: {}", error.file, error.line, error.message);
+                }
+                if kit.metadata_reference_cases > 0 {
+                    print!(
+                        "{} metadata reference case(s) admitted (separate metadata suite); ",
+                        kit.metadata_reference_cases
+                    );
                 }
                 println!(
                     "{} case(s) in {} file(s), {} error(s)",
@@ -629,6 +637,9 @@ pub async fn run_mck_kit_update(args: MckKitUpdateArgs) -> AppResult<miette::Rep
 
 #[derive(Args, Clone, Debug)]
 pub struct MckRunArgs {
+    /// Compatibility suite to execute
+    #[arg(long, value_enum, default_value_t = MckSuite::Ir)]
+    pub suite: MckSuite,
     /// The implementation's adapter executable. Required: there is no
     /// built-in binding and no discovery
     #[arg(long, value_name = "EXE", required = true)]
@@ -670,6 +681,13 @@ pub struct MckRunArgs {
     pub session_timeout: u64,
 }
 
+#[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MckSuite {
+    #[default]
+    Ir,
+    Metadata,
+}
+
 /// An adapter that never started: every exchange reports why.
 struct Unstarted(String);
 
@@ -677,6 +695,15 @@ impl Testee for Unstarted {
     fn exchange(
         &mut self,
         _: &morphir_mck::transport::protocol::Request,
+    ) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+        Err(self.0.clone())
+    }
+}
+
+impl morphir_mck::metadata::run::MetadataTestee for Unstarted {
+    fn exchange(
+        &mut self,
+        _: &serde_json::Value,
     ) -> Result<serde_json::Map<String, serde_json::Value>, String> {
         Err(self.0.clone())
     }
@@ -786,6 +813,9 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
         Ok(filter) => filter,
         Err(error) => return finish(Outcome::Usage(format!("invalid --filter regex: {error}"))),
     };
+    if args.suite == MckSuite::Metadata {
+        return run_mck_metadata(args, filter).await;
+    }
     let (kit, kit_version, kit_provenance) = match kit_for_run(&args) {
         Ok(found) => found,
         Err(message) => return finish(Outcome::Error(message)),
@@ -883,5 +913,115 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
         RunVerdict::Passed => finish(Outcome::Passed),
         RunVerdict::Failed => finish(Outcome::Failed),
         RunVerdict::NothingSelected => finish(Outcome::Error("no cases selected".to_owned())),
+    }
+}
+
+async fn run_mck_metadata(
+    args: MckRunArgs,
+    filter: Option<regex::Regex>,
+) -> AppResult<miette::Report> {
+    let (kit, kit_version, kit_provenance) = match kit_for_run(&args) {
+        Ok(found) => found,
+        Err(message) => return finish(Outcome::Error(message)),
+    };
+    let limits = Limits {
+        request_timeout: std::time::Duration::from_millis(args.timeout),
+        session_timeout: std::time::Duration::from_millis(args.session_timeout),
+        ..Limits::DEFAULT
+    };
+    let command: Vec<String> = std::iter::once(&args.adapter)
+        .chain(&args.adapter_args)
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    let started_at = iso_timestamp(std::time::SystemTime::now());
+    let (run, shutdown, spawn_error) =
+        match Session::spawn(&args.adapter, &args.adapter_args, limits) {
+            Err(error) => (
+                morphir_mck::metadata::run::run_kit(
+                    &kit,
+                    &mut Unstarted(error.to_string()),
+                    filter.as_ref(),
+                ),
+                Ok(()),
+                Some(error.to_string()),
+            ),
+            Ok(mut session) => {
+                let terminator = session.terminator();
+                let interrupt = tokio::spawn(async move {
+                    if tokio::signal::ctrl_c().await.is_ok() {
+                        terminator.kill();
+                        eprintln!("error: interrupted; the adapter was terminated");
+                        std::process::exit(130);
+                    }
+                });
+                let run = tokio::task::block_in_place(|| {
+                    morphir_mck::metadata::run::run_kit(&kit, &mut session, filter.as_ref())
+                });
+                let shutdown = tokio::task::block_in_place(|| session.close());
+                interrupt.abort();
+                (run, shutdown, None)
+            }
+        };
+    if let Some(file) = &args.report {
+        let mut provenance = match serde_json::to_value(kit_provenance) {
+            Ok(value) => value,
+            Err(error) => return finish(Outcome::Error(error.to_string())),
+        };
+        provenance["version"] = serde_json::json!(kit_version);
+        let report = match morphir_mck::metadata::report::assemble(
+            &run,
+            provenance,
+            command,
+            args.filter.as_deref(),
+            args.strict,
+            &started_at,
+            (
+                spawn_error.as_deref(),
+                shutdown.as_ref().err().map(ToString::to_string).as_deref(),
+            ),
+        ) {
+            Ok(report) => report,
+            Err(error) => {
+                return finish(Outcome::Error(format!(
+                    "cannot construct metadata report: {error}"
+                )));
+            }
+        };
+        if let Err(error) = report::write_atomic(file, report.to_json().as_bytes()) {
+            return finish(Outcome::Error(format!(
+                "cannot write report {}: {error}",
+                file.display()
+            )));
+        }
+    }
+    let count = |kind: &str| run.records.iter().filter(|r| r.result == kind).count();
+    println!(
+        "{} pass, {} fail, {} kit-error, {} skipped",
+        count("pass"),
+        count("fail"),
+        count("kit-error"),
+        count("skipped")
+    );
+    for record in run.records.iter().filter(|r| r.result != "pass") {
+        println!(
+            "{} {}: {}",
+            record.result,
+            record.case_id,
+            record.message.as_deref().unwrap_or("")
+        );
+    }
+    if let Err(error) = shutdown {
+        return finish(Outcome::Error(error.to_string()));
+    }
+    if let Some(error) = run.failure {
+        return finish(Outcome::Error(error));
+    }
+    if run.records.is_empty() {
+        return finish(Outcome::Error("no cases selected".into()));
+    }
+    if count("fail") > 0 || count("kit-error") > 0 || (args.strict && count("skipped") > 0) {
+        finish(Outcome::Failed)
+    } else {
+        finish(Outcome::Passed)
     }
 }

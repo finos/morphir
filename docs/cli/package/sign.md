@@ -6,7 +6,7 @@
 Sign a verified Library with an explicitly supplied local key
 
 ## Flags
-- **`--bundle <DIR>`** — Verified bundle directory containing only manifest.json and ir.json
+- **`--bundle <DIR>`** — Verified bundle directory containing manifest.json, ir.json, and declared contexts
 - **`--key-file <FILE>`** — Explicit Ed25519 seed file: 64 lowercase hex characters and optional final newline
 - **`--output <DIR>`** — New directory for public release record and signature envelope
 - **`--json`** — Output the signer public key as JSON
