@@ -8,6 +8,7 @@ use morphir_mck::schema;
 use serde_json::{Value, json};
 
 const CORPUS: &str = "spec/ir/mck/metadata-contract-draft.json";
+const SCHEMA: &str = "spec/ir/mck/metadata-contract-draft.schema.json";
 const CLOSURE: &str = "spec/ir/mck/metadata-fixtures/schema-closure.json";
 const PUBLISHED_LIFECYCLE: &str =
     "spec/ir/mck/metadata-fixtures/contexts/lifecycle-published.jsonld";
@@ -52,6 +53,152 @@ fn embedded_metadata_corpus_is_admitted() {
     let kit = load_kit(embedded_source()).unwrap();
     assert!(kit.errors.is_empty(), "{:?}", kit.errors);
     assert!(schema::check(&kit).unwrap().is_success());
+}
+
+#[test]
+fn older_corpus_and_schema_without_targets_return_a_kit_error() {
+    let old_schema = changed(files(), SCHEMA, |value| {
+        value["$defs"]["case"]["required"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|field| field != "targets");
+    });
+    let old_pair = changed(old_schema, CORPUS, |value| {
+        for case in value["cases"].as_array_mut().unwrap() {
+            case.as_object_mut().unwrap().remove("targets");
+        }
+    });
+    let message = error(old_pair);
+    assert!(message.contains("metadata-0001"), "{message}");
+    assert!(message.contains("targets"), "{message}");
+}
+
+#[test]
+fn looser_schema_cannot_make_malformed_or_unknown_profiles_panic() {
+    for profile in [json!(7), json!("toml")] {
+        let loose_schema = changed(files(), SCHEMA, |value| {
+            value["$defs"]["target"]["properties"]["profile"] = json!({});
+        });
+        let loose_pair = changed(loose_schema, CORPUS, |value| {
+            let case = &mut value["cases"][17];
+            case["targets"][2]["profile"] = profile;
+            case["targets"][2]["layout"] = json!("single");
+            case["targets"][2]
+                .as_object_mut()
+                .unwrap()
+                .remove("ionVersion");
+            let ion = case["given"]["fixtures"]
+                .as_object_mut()
+                .unwrap()
+                .remove("ion")
+                .unwrap();
+            case["given"]["fixtures"]["toml"] = ion;
+        });
+        let message = error(loose_pair);
+        assert!(message.contains("metadata-0018"), "{message}");
+        assert!(message.contains("profile"), "{message}");
+    }
+}
+
+#[test]
+fn every_reference_case_has_its_exact_profile_targets() {
+    let corpus: Value = serde_json::from_slice(&files()[CORPUS]).unwrap();
+    let cases = corpus["cases"].as_array().unwrap();
+    assert_eq!(cases.len(), 73);
+    for case in cases {
+        let id = case["id"].as_str().unwrap();
+        let expected = if id == "metadata-0018" {
+            json!([
+                {"profile":"json","layout":"single","irRevision":"4.1.0"},
+                {"profile":"yaml","layout":"single","irRevision":"4.1.0"},
+                {"profile":"ion","layout":"record","irRevision":"4.1.0","ionVersion":"0.1.0-draft.2"}
+            ])
+        } else {
+            json!([{"profile":"json","layout":"single","irRevision":"4.1.0"}])
+        };
+        assert_eq!(case["targets"], expected, "{id}");
+    }
+}
+
+#[test]
+fn profile_equivalence_targets_must_match_named_fixtures() {
+    let message = error(changed(files(), CORPUS, |value| {
+        let case = &mut value["cases"][17];
+        case["targets"].as_array_mut().unwrap().remove(1);
+    }));
+    assert!(message.contains("metadata-0018"), "{message}");
+    assert!(message.contains("fixtures"), "{message}");
+}
+
+#[test]
+fn profile_equivalence_layouts_must_match_the_reference_fixtures() {
+    for (index, layout) in [(0, "tree"), (2, "datagram")] {
+        let message = error(changed(files(), CORPUS, |value| {
+            value["cases"][17]["targets"][index]["layout"] = json!(layout);
+        }));
+        assert!(message.contains("metadata-0018"), "{message}");
+        assert!(message.contains("layout"), "{message}");
+    }
+}
+
+#[test]
+fn profile_equivalence_fixtures_must_be_confined_existing_files() {
+    for path in [
+        Value::Null,
+        json!("elsewhere/value.yaml"),
+        json!("metadata-fixtures/../profiles/value.yaml"),
+        json!("metadata-fixtures/profiles/missing.yaml"),
+        json!("metadata-fixtures/profiles/value.json"),
+    ] {
+        let message = error(changed(files(), CORPUS, |value| {
+            value["cases"][17]["given"]["fixtures"]["yaml"] = path;
+        }));
+        assert!(message.contains("metadata-0018"), "{message}");
+        assert!(message.contains("fixture"), "{message}");
+    }
+}
+
+#[test]
+fn ordinary_cases_cannot_claim_other_profiles() {
+    let message = error(changed(files(), CORPUS, |value| {
+        value["cases"][0]["targets"] = json!([
+            {"profile":"json","layout":"single","irRevision":"4.1.0"},
+            {"profile":"yaml","layout":"single","irRevision":"4.1.0"}
+        ]);
+    }));
+    assert!(message.contains("targets"), "{message}");
+}
+
+#[test]
+fn targets_require_exact_revisions_and_profile_layouts() {
+    let message = error(changed(files(), CORPUS, |value| {
+        value["cases"][0]["targets"][0]["irRevision"] = json!("4.0.0");
+    }));
+    assert!(message.contains("targets"), "{message}");
+
+    let message = error(changed(files(), CORPUS, |value| {
+        value["cases"][17]["targets"][2]["ionVersion"] = json!("0.1.0-draft.1");
+    }));
+    assert!(message.contains("targets"), "{message}");
+
+    let message = error(changed(files(), CORPUS, |value| {
+        value["cases"][17]["targets"][2]["layout"] = json!("single");
+    }));
+    assert!(message.contains("targets"), "{message}");
+}
+
+#[test]
+fn duplicate_profile_targets_cannot_reuse_one_fixture() {
+    let message = error(changed(files(), CORPUS, |value| {
+        value["cases"][17]["targets"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({
+                "profile":"json", "layout":"tree", "irRevision":"4.1.0"
+            }));
+    }));
+    assert!(message.contains("metadata-0018"), "{message}");
+    assert!(message.contains("fixtures"), "{message}");
 }
 
 #[test]

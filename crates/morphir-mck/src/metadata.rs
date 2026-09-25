@@ -316,13 +316,6 @@ fn check_fixture_references(source: &KitSource, case: &Value, id: &str) -> Resul
             fixture(source, &given["acceptedResource"], false)?;
             fixture(source, &given["resourceFile"], false)?;
         }
-        "profileEquivalence" => {
-            if let Some(profiles) = given["fixtures"].as_object() {
-                for path in profiles.values() {
-                    fixture(source, path, false)?;
-                }
-            }
-        }
         "publish" => {
             fixture(source, &given["contextFile"], false)?;
             fixture(source, &given["publishedContextFile"], false)?;
@@ -366,6 +359,65 @@ fn check_fixture_references(source: &KitSource, case: &Value, id: &str) -> Resul
     Ok(())
 }
 
+fn check_targets(source: &KitSource, case: &Value, id: &str) -> Result<(), String> {
+    let targets = case["targets"]
+        .as_array()
+        .filter(|targets| !targets.is_empty())
+        .ok_or_else(|| format!("{id}: targets must be a nonempty array"))?;
+    if case["operation"] != "profileEquivalence" {
+        if targets.len() != 1 || targets[0]["profile"] != "json" || targets[0]["layout"] != "single"
+        {
+            return Err(format!(
+                "{id}: ordinary reference case targets must be json/single"
+            ));
+        }
+        return Ok(());
+    }
+
+    let fixtures = case["given"]["fixtures"]
+        .as_object()
+        .ok_or_else(|| format!("{id}: profileEquivalence needs given.fixtures"))?;
+    let profiles: BTreeSet<_> = targets
+        .iter()
+        .map(|target| {
+            target["profile"]
+                .as_str()
+                .ok_or_else(|| format!("{id}: target profile must be a string"))
+        })
+        .collect::<Result<_, _>>()?;
+    let fixture_profiles: BTreeSet<_> = fixtures.keys().map(String::as_str).collect();
+    if profiles.len() != targets.len() || profiles != fixture_profiles {
+        return Err(format!(
+            "{id}: targets must name exactly the profiles in given.fixtures"
+        ));
+    }
+    for target in targets {
+        let profile = target["profile"]
+            .as_str()
+            .ok_or_else(|| format!("{id}: target profile must be a string"))?;
+        let (layout, expected_fixture) = match profile {
+            "json" => ("single", "metadata-fixtures/profiles/value.json"),
+            "yaml" => ("single", "metadata-fixtures/profiles/value.yaml"),
+            "ion" => ("record", "metadata-fixtures/profiles/value.ion"),
+            _ => return Err(format!("{id}: unsupported target profile {profile}")),
+        };
+        if target["layout"] != layout {
+            return Err(format!("{id}: {profile} target layout must be {layout}"));
+        }
+        let relative = fixtures[profile]
+            .as_str()
+            .ok_or_else(|| format!("{id}: {profile} fixture must be a path string"))?;
+        let path = fixture_path(relative).map_err(|error| format!("{id}: {error}"))?;
+        if relative != expected_fixture {
+            return Err(format!(
+                "{id}: {profile} fixture must be {expected_fixture}"
+            ));
+        }
+        read(source, &path).map_err(|error| format!("{id}: {error}"))?;
+    }
+    Ok(())
+}
+
 /// `None` means an older/ad-hoc kit has no metadata reference corpus.
 /// A present corpus must be completely admitted before any kit command succeeds.
 pub(crate) fn admit(source: &KitSource) -> Result<Option<usize>, String> {
@@ -405,6 +457,7 @@ pub(crate) fn admit(source: &KitSource) -> Result<Option<usize>, String> {
         if !ids.insert(id) {
             return Err(format!("{CORPUS}: duplicate metadata case id {id}"));
         }
+        check_targets(source, case, id)?;
         check_fixture_references(source, case, id)?;
         if case["expected"]["outcome"] == "accepted"
             && let Some(facts) = case["expected"]["facts"].as_array()

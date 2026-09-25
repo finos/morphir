@@ -6,6 +6,13 @@
     {
       "id": "metadata-0001",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -43,6 +50,13 @@
     {
       "id": "metadata-0002",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -85,6 +99,13 @@
     {
       "id": "metadata-0003",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "annotationsFacts",
@@ -118,6 +139,13 @@
     {
       "id": "metadata-0004",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -170,6 +198,13 @@
     {
       "id": "metadata-0005",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.0.0",
         "valueSpecification": {
@@ -225,6 +260,13 @@
     {
       "id": "metadata-0006",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -248,6 +290,13 @@
     {
       "id": "metadata-0007",
       "operation": "resolveAnnotation",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "context": {
           "publicApi": "morphir://ir/pkg/acme/annotation-vocab?format=4.0.0#/module/annotations/value/public-api"
@@ -267,6 +316,13 @@
     {
       "id": "metadata-0008",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "imports": [
           "metadata-fixtures/contexts/naming.jsonld",
@@ -295,6 +351,13 @@
     {
       "id": "metadata-0009",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "imports": [
           "metadata-fixtures/contexts/ops.jsonld",
@@ -309,6 +372,13 @@
     {
       "id": "metadata-0010",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "parent": {
           "name": {
@@ -328,6 +398,13 @@
     {
       "id": "metadata-0011",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "import": "morphir://context/sha256/0000000000000000000000000000000000000000000000000000000000000000",
         "acceptedResource": "metadata-fixtures/contexts/lifecycle.jsonld"
@@ -340,6 +417,13 @@
     {
       "id": "metadata-0012",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "import": "morphir://context/sha256/22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
         "acceptedResource": null
@@ -352,6 +436,13 @@
     {
       "id": "metadata-0013",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "context": {
@@ -369,6 +460,13 @@
     {
       "id": "metadata-0014",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "context": {
@@ -396,6 +494,13 @@
     {
       "id": "metadata-0015",
       "operation": "resolveSources",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.0.0",
         "$meta": {
@@ -453,6 +558,13 @@
     {
       "id": "metadata-0016",
       "operation": "resolveSources",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.0.0",
         "$meta": {
@@ -493,6 +605,13 @@
     {
       "id": "metadata-0017",
       "operation": "resolveSources",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.0.0",
         "$meta": {
@@ -548,6 +667,24 @@
     {
       "id": "metadata-0018",
       "operation": "profileEquivalence",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        },
+        {
+          "profile": "yaml",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        },
+        {
+          "profile": "ion",
+          "layout": "record",
+          "irRevision": "4.1.0",
+          "ionVersion": "0.1.0-draft.2"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "fixtures": {
@@ -594,6 +731,13 @@
     {
       "id": "metadata-0019",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "graph": "morphir://ir/pkg/acme/graphs?format=4.0.0#/module/reviews/value/compiler",
         "fact": {
@@ -612,6 +756,13 @@
     {
       "id": "metadata-0020",
       "operation": "publish",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "contextStorage": "external",
         "contextFile": "metadata-fixtures/contexts/lifecycle.jsonld",
@@ -634,6 +785,13 @@
     {
       "id": "metadata-0021",
       "operation": "publish",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "contextStorage": "external",
         "declaredSha256": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -648,6 +806,13 @@
     {
       "id": "metadata-0022",
       "operation": "projectSidecar",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "irVersion": 3,
         "target": "morphir://ir/pkg/acme/orders?format=3.1.0#/module/api/value/legacy-submit-order",
@@ -680,6 +845,13 @@
     {
       "id": "metadata-0023",
       "operation": "sourceEdit",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "provenanceStorage": "document",
         "sourceDependentRemoval": true,
@@ -695,6 +867,13 @@
     {
       "id": "metadata-0024",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "resource": "morphir://context/sha256/ba2d5bacfd9ae14d1fbceab7182914d78f4235faf736c724f3673b685f5e1f25",
         "resourceFile": "metadata-fixtures/contexts/relative-import.jsonld"
@@ -707,6 +886,13 @@
     {
       "id": "metadata-0025",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -737,6 +923,13 @@
     {
       "id": "metadata-0026",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -770,6 +963,13 @@
     {
       "id": "metadata-0027",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -800,6 +1000,13 @@
     {
       "id": "metadata-0028",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -831,6 +1038,13 @@
     {
       "id": "metadata-0029",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -868,6 +1082,13 @@
     {
       "id": "metadata-0030",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "parent": {
           "deprecated": {
@@ -893,6 +1114,13 @@
     {
       "id": "metadata-0031",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "artifact": {
           "label": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
@@ -916,6 +1144,13 @@
     {
       "id": "metadata-0032",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "imports": [
           "metadata-fixtures/contexts/naming.jsonld",
@@ -942,6 +1177,13 @@
     {
       "id": "metadata-0033",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "import": "metadata-fixtures/contexts/recursive-root.jsonld",
         "workspaceRoot": "metadata-fixtures/contexts"
@@ -957,6 +1199,13 @@
     {
       "id": "metadata-0034",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "imports": [
           "metadata-fixtures/contexts/lifecycle.jsonld",
@@ -971,6 +1220,13 @@
     {
       "id": "metadata-0035",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "imports": [
           "metadata-fixtures/contexts/naming.jsonld",
@@ -985,6 +1241,13 @@
     {
       "id": "metadata-0036",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "context": {
           "@language": "en",
@@ -1000,6 +1263,13 @@
     {
       "id": "metadata-0037",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "context": {
           "aliases": {
@@ -1017,6 +1287,13 @@
     {
       "id": "metadata-0038",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "import": "metadata-fixtures/contexts/cycle-a.jsonld"
       },
@@ -1028,6 +1305,13 @@
     {
       "id": "metadata-0039",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "import": "../outside.jsonld",
         "workspaceRoot": "metadata-fixtures/contexts",
@@ -1041,6 +1325,13 @@
     {
       "id": "metadata-0040",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "import": "metadata-fixtures/contexts/absent.jsonld"
       },
@@ -1052,6 +1343,13 @@
     {
       "id": "metadata-0041",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "import": "https://example.org/metadata-context.jsonld"
       },
@@ -1063,6 +1361,13 @@
     {
       "id": "metadata-0042",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "context": [
           "metadata-fixtures/contexts/lifecycle.jsonld",
@@ -1080,6 +1385,13 @@
     {
       "id": "metadata-0043",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "import": "morphir://context/sha256/22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
         "acceptedResource": "metadata-fixtures/contexts/lifecycle.jsonld",
@@ -1093,6 +1405,13 @@
     {
       "id": "metadata-0044",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "imports": [
           "metadata-fixtures/contexts/ops.jsonld",
@@ -1113,6 +1432,13 @@
     {
       "id": "metadata-0045",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "parent": {
           "replacement": {
@@ -1136,6 +1462,13 @@
     {
       "id": "metadata-0046",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "imports": [
           "metadata-fixtures/contexts/naming.jsonld",
@@ -1156,6 +1489,13 @@
     {
       "id": "metadata-0047",
       "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "context": {
           "@import": "./lifecycle.jsonld",
@@ -1171,6 +1511,13 @@
     {
       "id": "metadata-0048",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1219,6 +1566,13 @@
     {
       "id": "metadata-0049",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1247,6 +1601,13 @@
     {
       "id": "metadata-0050",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1287,6 +1648,13 @@
     {
       "id": "metadata-0051",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1327,6 +1695,13 @@
     {
       "id": "metadata-0052",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1367,6 +1742,13 @@
     {
       "id": "metadata-0053",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1417,6 +1799,13 @@
     {
       "id": "metadata-0054",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1459,6 +1848,13 @@
     {
       "id": "metadata-0055",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1479,6 +1875,13 @@
     {
       "id": "metadata-0056",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1503,6 +1906,13 @@
     {
       "id": "metadata-0057",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1527,6 +1937,13 @@
     {
       "id": "metadata-0058",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1566,6 +1983,13 @@
     {
       "id": "metadata-0059",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1600,6 +2024,13 @@
     {
       "id": "metadata-0060",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1634,6 +2065,13 @@
     {
       "id": "metadata-0061",
       "operation": "compareFacts",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "left": {
           "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
@@ -1677,6 +2115,13 @@
     {
       "id": "metadata-0062",
       "operation": "compareFacts",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "left": {
           "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
@@ -1734,6 +2179,13 @@
     {
       "id": "metadata-0063",
       "operation": "compareFacts",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "left": {
           "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
@@ -1806,6 +2258,13 @@
     {
       "id": "metadata-0064",
       "operation": "compareFacts",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "left": {
           "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
@@ -1875,6 +2334,13 @@
     {
       "id": "metadata-0065",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1901,6 +2367,13 @@
     {
       "id": "metadata-0066",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1926,6 +2399,13 @@
     {
       "id": "metadata-0067",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1952,6 +2432,13 @@
     {
       "id": "metadata-0068",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -1977,6 +2464,13 @@
     {
       "id": "metadata-0069",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -2002,6 +2496,13 @@
     {
       "id": "metadata-0070",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -2025,6 +2526,13 @@
     {
       "id": "metadata-0071",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -2037,8 +2545,12 @@
         },
         "facts": {
           "targetNames": {
-            "frontend": { "gleam": "legacy_submit_order" },
-            "backend": { "sql": "LEGACY_SUBMIT_ORDER" }
+            "frontend": {
+              "gleam": "legacy_submit_order"
+            },
+            "backend": {
+              "sql": "LEGACY_SUBMIT_ORDER"
+            }
           }
         }
       },
@@ -2051,8 +2563,12 @@
             "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
             "object": {
               "@value": {
-                "frontend": { "gleam": "legacy_submit_order" },
-                "backend": { "sql": "LEGACY_SUBMIT_ORDER" }
+                "frontend": {
+                  "gleam": "legacy_submit_order"
+                },
+                "backend": {
+                  "sql": "LEGACY_SUBMIT_ORDER"
+                }
               },
               "@type": "@json"
             },
@@ -2064,10 +2580,19 @@
     {
       "id": "metadata-0072",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
-        "availableInterpreters": ["target-name-language-ids"],
+        "availableInterpreters": [
+          "target-name-language-ids"
+        ],
         "context": {
           "targetNames": {
             "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
@@ -2076,8 +2601,12 @@
         },
         "facts": {
           "targetNames": {
-            "frontend": { "gleam": "legacy_submit_order" },
-            "backend": { "sql": "LEGACY_SUBMIT_ORDER" }
+            "frontend": {
+              "gleam": "legacy_submit_order"
+            },
+            "backend": {
+              "sql": "LEGACY_SUBMIT_ORDER"
+            }
           }
         }
       },
@@ -2089,20 +2618,33 @@
             "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
             "object": {
               "@value": {
-                "frontend": { "gleam": "legacy_submit_order" },
-                "backend": { "sql": "LEGACY_SUBMIT_ORDER" }
+                "frontend": {
+                  "gleam": "legacy_submit_order"
+                },
+                "backend": {
+                  "sql": "LEGACY_SUBMIT_ORDER"
+                }
               },
               "@type": "@json"
             },
             "graph": "default"
           }
         ],
-        "assertionCarriers": ["attributesFacts"]
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
       }
     },
     {
       "id": "metadata-0073",
       "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
       "given": {
         "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
         "carrier": "attributesFacts",
@@ -2125,7 +2667,9 @@
             "graph": "default"
           }
         ],
-        "assertionCarriers": ["attributesFacts"]
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
       }
     }
   ]

@@ -14,17 +14,35 @@
   },
   "$defs": {
     "relativePath": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "layout", "irRevision"],
+      "properties": {
+        "profile": {"enum": ["json", "yaml", "ion"]},
+        "layout": {"enum": ["single", "tree", "datagram", "record"]},
+        "irRevision": {"const": "4.1.0"},
+        "ionVersion": {"const": "0.1.0-draft.2"}
+      },
+      "allOf": [{
+        "if": {"properties": {"profile": {"const": "ion"}}, "required": ["profile"]},
+        "then": {"required": ["ionVersion"], "properties": {"layout": {"enum": ["datagram", "record", "tree"]}}},
+        "else": {"not": {"required": ["ionVersion"]}, "properties": {"layout": {"enum": ["single", "tree"]}}}
+      }]
+    },
     "case": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "operation", "given", "expected"],
+      "required": ["id", "operation", "targets", "given", "expected"],
       "properties": {
         "id": {"type": "string", "pattern": "^metadata-[0-9]{4}$"},
         "operation": {"enum": ["normalize", "compareFacts", "resolveAnnotation", "resolveContext", "resolveSources", "profileEquivalence", "publish", "projectSidecar", "sourceEdit"]},
+        "targets": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/target"}},
         "given": {"type": "object"},
         "expected": {"$ref": "#/$defs/expected"}
       },
       "allOf": [
+        {"if": {"properties": {"operation": {"const": "profileEquivalence"}}}, "then": {"properties": {"targets": {"minItems": 2}}}, "else": {"properties": {"targets": {"maxItems": 1}}}},
         {"if": {"properties": {"operation": {"const": "compareFacts"}}}, "then": {"properties": {"given": {"required": ["left", "right"]}, "expected": {"required": ["equal", "distinctFacts", "facts"]}}}}
       ]
     },
