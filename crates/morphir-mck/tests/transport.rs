@@ -73,6 +73,15 @@ mod adapter {
                     }
                 }
             }
+            "extra-on-exit" => {
+                for (id, line) in requests() {
+                    if is_exit(&line) {
+                        capabilities(id);
+                        return;
+                    }
+                    capabilities(id);
+                }
+            }
             // Answers capabilities, then leaves without answering.
             "eof" => {
                 let mut requests = requests();
@@ -300,6 +309,13 @@ fn a_healthy_adapter_answers_and_exits_cleanly() {
         .unwrap();
     assert!(parse_decode_response(&Value::Object(decoded)).is_ok());
     s.close().unwrap();
+}
+
+fn an_unsolicited_reply_after_exit_fails_shutdown() {
+    let mut s = session("extra-on-exit", None, quick());
+    s.exchange(&Request::Capabilities).unwrap();
+    let error = s.close().unwrap_err();
+    assert!(error.to_string().contains("unsolicited"), "{error}");
 }
 
 fn expect_failure(mode: &str, limits: Limits, check: impl Fn(&TransportError)) {
@@ -613,6 +629,10 @@ fn main() {
     }
 
     let tests: &[(&str, fn())] = &[
+        (
+            "an_unsolicited_reply_after_exit_fails_shutdown",
+            an_unsolicited_reply_after_exit_fails_shutdown,
+        ),
         (
             "a_healthy_adapter_answers_and_exits_cleanly",
             a_healthy_adapter_answers_and_exits_cleanly,

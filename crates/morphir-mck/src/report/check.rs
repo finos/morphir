@@ -14,6 +14,9 @@ use crate::kit::snapshot::collect;
 pub struct AllowedFailures(BTreeSet<String>);
 
 impl AllowedFailures {
+    pub fn cases(&self) -> &BTreeSet<String> {
+        &self.0
+    }
     pub fn from_json(text: &str) -> Result<Self, String> {
         #[derive(Deserialize)]
         struct Input {

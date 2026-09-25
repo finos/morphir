@@ -1,6 +1,9 @@
 //! Admission of the fixed linked-metadata reference corpus into the shared kit.
 //! This validates the authored inputs; it does not execute metadata operations.
 
+pub mod report;
+pub mod run;
+
 use std::collections::BTreeSet;
 
 use jsonschema::{Retrieve, Uri};
