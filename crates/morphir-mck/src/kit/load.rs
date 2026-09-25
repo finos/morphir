@@ -14,6 +14,9 @@ use super::syntax::text::utf16_cmp;
 #[derive(Debug, Clone)]
 pub struct Kit {
     pub cases: Vec<KitCase>,
+    /// Fixed linked-metadata reference cases admitted for authoring checks.
+    /// These are not executable IR adapter cases.
+    pub metadata_reference_cases: usize,
     pub errors: Vec<KitError>,
     /// The case files, as repository-relative paths in load order.
     pub files: Vec<String>,
@@ -75,6 +78,7 @@ pub fn load_kit(source: KitSource) -> io::Result<Kit> {
         }];
         return Ok(Kit {
             cases: Vec::new(),
+            metadata_reference_cases: 0,
             errors,
             files,
             source,
@@ -138,8 +142,22 @@ pub fn load_kit(source: KitSource) -> io::Result<Kit> {
         }
     }
 
+    let metadata_reference_cases = match crate::metadata::admit(&source) {
+        Ok(Some(count)) => count,
+        Ok(None) => 0,
+        Err(message) => {
+            errors.push(KitError {
+                file: source.display("spec/ir/mck/metadata-contract-draft.json"),
+                line: 0,
+                message,
+            });
+            0
+        }
+    };
+
     let mut kit = Kit {
         cases,
+        metadata_reference_cases,
         errors,
         files,
         source,

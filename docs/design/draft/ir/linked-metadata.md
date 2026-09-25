@@ -228,6 +228,74 @@ A fact is an expanded subject, predicate, object, and graph. The first executabl
 
 Ordinary provenance comes from the containing document. A writer can optionally store exceptional detail in `$meta.assertionSources`. A record selects one authored assertion by carrier and expanded subject, predicate, and object, then lists tagged document, compiler, or author sources. Its selector must match an assertion in the same document; an edit that changes the fact updates the selector with it or fails. The [reference cases](https://github.com/finos/morphir/blob/main/spec/ir/mck/metadata-contract-draft.json) show matched, unmatched, and duplicate selectors. Source labels are descriptive claims, not proof of authorship.
 
+For example, the document-level `deprecated: true` assertion can retain both compiler and author detail. The selector uses expanded identities, not the alias text. Omitting `assertionSources` leaves the same graph fact and ordinary document provenance.
+
+```json
+{
+  "$meta": {
+    "@context": { "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated" },
+    "@graph": [{
+      "@id": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+      "deprecated": true
+    }],
+    "assertionSources": [{
+      "selector": {
+        "carrier": "documentGraph",
+        "subject": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+        "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+        "object": { "@value": true }
+      },
+      "sources": [
+        { "kind": "compiler", "producer": "morphir-gleam", "ref": "src/Orders.gleam" },
+        { "kind": "author", "ref": "review/deprecation" }
+      ]
+    }]
+  }
+}
+```
+
+```yaml
+$meta:
+  "@context":
+    deprecated: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+  "@graph":
+    - "@id": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order"
+      deprecated: true
+  assertionSources:
+    - selector:
+        carrier: documentGraph
+        subject: "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order"
+        predicate: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        object: { "@value": true }
+      sources:
+        - { kind: compiler, producer: morphir-gleam, ref: src/Orders.gleam }
+        - { kind: author, ref: review/deprecation }
+```
+
+```ion
+morphir::$meta::{
+  '@context': {
+    deprecated: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+  },
+  '@graph': [{
+    '@id': "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+    deprecated: true,
+  }],
+  assertionSources: [{
+    selector: {
+      carrier: "documentGraph",
+      subject: "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+      predicate: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+      object: { '@value': true },
+    },
+    sources: [
+      { kind: "compiler", producer: "morphir-gleam", ref: "src/Orders.gleam" },
+      { kind: "author", ref: "review/deprecation" },
+    ],
+  }],
+}
+```
+
 Predicates come from an explicit Morphir declaration closure. Its contract determines allowed subject kinds, node-reference versus typed data object, and whether interpretation beyond storage is required. An undeclared predicate remains readable for roundtrips but cannot count as validated semantics. The `targetNames` declaration requires an interpreter for its language-ID rule; if that interpreter is unavailable, a type-valid fact is retained but reported as unvalidated. A bare array at a fact property means repeated objects; `@json` wraps one structured data object. The `targetNames` data type requires string-keyed `morphir/SDK:dict#dict` support in the shared validator. Current decorator validation does not have that support yet.
 
 ## Context resources and publication

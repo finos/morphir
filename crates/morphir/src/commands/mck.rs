@@ -277,11 +277,19 @@ pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
                 let cases: Vec<_> = kit.cases.iter().map(|c| c.id.as_str()).collect();
                 println!(
                     "{}",
-                    to_tab_json(&json!({ "files": kit.files, "cases": cases, "errors": errors }))
+                    to_tab_json(
+                        &json!({ "files": kit.files, "cases": cases, "metadataReferenceCases": kit.metadata_reference_cases, "errors": errors })
+                    )
                 );
             } else {
                 for error in &kit.errors {
                     eprintln!("{}:{}: {}", error.file, error.line, error.message);
+                }
+                if kit.metadata_reference_cases > 0 {
+                    print!(
+                        "{} metadata reference case(s) admitted (not executable); ",
+                        kit.metadata_reference_cases
+                    );
                 }
                 println!(
                     "{} case(s) in {} file(s), {} error(s)",

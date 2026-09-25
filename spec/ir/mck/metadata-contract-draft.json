@@ -2099,6 +2099,34 @@
         ],
         "assertionCarriers": ["attributesFacts"]
       }
+    },
+    {
+      "id": "metadata-0073",
+      "operation": "normalize",
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+        },
+        "facts": {
+          "aliases": "metadata-fixtures/contexts/absent-literal.jsonld"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "metadata-fixtures/contexts/absent-literal.jsonld"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": ["attributesFacts"]
+      }
     }
   ]
 }
