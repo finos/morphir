@@ -370,6 +370,21 @@ fn accepted_publication_requires_matching_authored_archive() {
 }
 
 #[test]
+fn source_edit_requires_a_concrete_assertion_to_guard() {
+    let message = error(changed(files(), CORPUS, |value| {
+        let case = value["cases"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|case| case["id"] == "metadata-0023")
+            .unwrap();
+        case["given"].as_object_mut().unwrap().remove("fact");
+    }));
+    assert!(message.contains("/cases/22/given"), "{message}");
+    assert!(message.contains("fact"), "{message}");
+}
+
+#[test]
 fn closure_predicate_types_must_resolve_to_declared_data_types() {
     let message = error(changed(files(), CLOSURE, |value| {
         value["predicates"][3]["object"]["type"] =

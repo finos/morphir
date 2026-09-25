@@ -865,7 +865,16 @@
         "provenanceStorage": "document",
         "sourceDependentRemoval": true,
         "trustedProducerManifest": false,
-        "storedAssertionSources": false
+        "storedAssertionSources": false,
+        "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.1.0",
+        "carrier": "documentGraph",
+        "fact": {
+          "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+          "object": {"@value": true},
+          "graph": "default"
+        },
+        "removeSource": {"kind": "compiler", "producer": "morphir-gleam", "ref": "src/Orders.gleam"}
       },
       "expected": {
         "outcome": "rejected",

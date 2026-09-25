@@ -43,7 +43,8 @@
       },
       "allOf": [
         {"if": {"properties": {"operation": {"const": "profileEquivalence"}}}, "then": {"properties": {"targets": {"minItems": 2}}}, "else": {"properties": {"targets": {"maxItems": 1}}}},
-        {"if": {"properties": {"operation": {"const": "compareFacts"}}}, "then": {"properties": {"given": {"required": ["left", "right"]}, "expected": {"required": ["equal", "distinctFacts", "facts"]}}}}
+        {"if": {"properties": {"operation": {"const": "compareFacts"}}}, "then": {"properties": {"given": {"required": ["left", "right"]}, "expected": {"required": ["equal", "distinctFacts", "facts"]}}}},
+        {"if": {"properties": {"operation": {"const": "sourceEdit"}}}, "then": {"properties": {"given": {"required": ["ownerDocument", "carrier", "fact", "removeSource"], "properties": {"fact": {"$ref": "#/$defs/fact"}, "removeSource": {"type": "object", "required": ["kind"]}}}, "expected": {"required": ["factsChanged"]}}}}
       ]
     },
     "expected": {
