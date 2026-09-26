@@ -48,6 +48,10 @@ pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<Stri
                     serde_json::to_string(&value.canonical_ordered())
                         .map_err(|error| error.to_string())
                 }
+                ValueReference::UnresolvedHole(_, Some(_)) => {
+                    serde_saphyr::to_string(&value.canonical_ordered())
+                        .map_err(|error| error.to_string())
+                }
                 _ => serde_saphyr::to_string(&value.canonical_json())
                     .map_err(|error| error.to_string()),
             }
@@ -183,6 +187,17 @@ impl ValueReference {
                     ("fields", fields(entries)),
                 ]),
             ),
+            Self::UnresolvedHole(target, expected_type) => {
+                let reason = node(
+                    "UnresolvedReference",
+                    members(vec![("target", OrderedValue::String(target.clone()))]),
+                );
+                let mut hole = vec![("reason", reason)];
+                if let Some(name) = expected_type {
+                    hole.push(("expectedType", OrderedValue::String(name.clone())));
+                }
+                node("Hole", members(hole))
+            }
             _ => self.canonical_json().into(),
         }
     }
@@ -1300,6 +1315,14 @@ mod tests {
         let ion = to_ion("Value", Profile::Json, json).unwrap();
         assert!(ion.contains("\"morphir/SDK:string#string\""));
         assert_eq!(to_ion("Value", Profile::Ion, &ion).unwrap(), ion);
+        let canonical_json = to_profile("Value", &ion, Profile::Json).unwrap();
+        assert!(
+            canonical_json.find("reason").unwrap() < canonical_json.find("expectedType").unwrap()
+        );
+        let canonical_yaml = to_profile("Value", &ion, Profile::Yaml).unwrap();
+        assert!(
+            canonical_yaml.find("reason:").unwrap() < canonical_yaml.find("expectedType:").unwrap()
+        );
         for profile in [Profile::Json, Profile::Yaml] {
             let text = to_profile("Value", &ion, profile).unwrap();
             assert_eq!(to_ion("Value", profile, &text).unwrap(), ion);
