@@ -590,6 +590,34 @@ fn itest_writes_no_suite_reports_into_the_project_it_runs_in() {
     );
 }
 
+/// `--report-dir` keeps the suite reports in the directory it names, creating it, and wins over
+/// `MORPHIR_BDD_OUT`.
+#[test]
+fn itest_report_dir_keeps_the_suite_reports_and_wins_over_the_environment() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("examples");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("outline.feature"), OUTLINE).unwrap();
+    let chosen = temp.path().join("reports/itest");
+    let ignored = temp.path().join("from-environment");
+    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .arg("itest")
+        .arg(&root)
+        .arg("--report-dir")
+        .arg(&chosen)
+        .env("MORPHIR_HOME", temp.path().join("home"))
+        .env("MORPHIR_LOG_FILE", "false")
+        .env("MORPHIR_BDD_OUT", &ignored)
+        .output()
+        .unwrap();
+    let (stdout, stderr) = text(&output);
+    assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
+    for report in ["itest.json", "itest.xml"] {
+        assert!(chosen.join(report).is_file(), "{report}: {stderr}");
+    }
+    assert!(!ignored.exists(), "MORPHIR_BDD_OUT was used");
+}
+
 #[test]
 fn itest_golden_expected_file_and_explicit_line_endings() {
     let root = tempfile::tempdir().unwrap();

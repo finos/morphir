@@ -416,8 +416,12 @@ cmd itest display_order=8 args_override_self=#false help="Run Markdown and Gherk
     }
     flag --list help="List matching scenarios and their purpose without executing commands"
     flag --keep-temp help="Retain isolated projects, homes and per-step logs for diagnosis"
+    flag --report-dir help="Write the suite reports (itest.json, itest.xml) to this directory and keep them; MORPHIR_BDD_OUT does the same when this is not given. Without either, the reports go to a temporary directory that the run removes" {
+        arg <DIR>
+    }
     arg "[ROOT]" help="Directory to search recursively for scenarios.md, .feature and .feature.md files" required=#false default=examples
     complete root type=path
+    complete dir type=path
 }
 cmd compile display_order=9 args_override_self=#false help="Compile source code to Morphir IR" unknown_flags=error {
     flag "-l --language" help="Source language (e.g., gleam, elm)" {

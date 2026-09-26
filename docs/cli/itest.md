@@ -15,3 +15,4 @@ Run Markdown and Gherkin example scenarios through real CLI processes
 - **`--tag <TAGS>…`** — Require this exact tag; repeat to require all supplied tags
 - **`--list`** — List matching scenarios and their purpose without executing commands
 - **`--keep-temp`** — Retain isolated projects, homes and per-step logs for diagnosis
+- **`--report-dir <DIR>`** — Write the suite reports (itest.json, itest.xml) to this directory and keep them; MORPHIR_BDD_OUT does the same when this is not given. Without either, the reports go to a temporary directory that the run removes

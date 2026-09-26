@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `morphir itest` runs scenarios, and prints their PASS and FAIL lines, in document order; it used to run them sorted by id. `--list` is unchanged (#946).
 - A scenario document that cannot be read no longer fails a run when `--filter` leaves it out. Before, every document was checked before selection (#946).
 - The `scenarios.md` reader now refuses a `morphir:assertion` or `morphir:golden` block that does not check the command just before it (#946).
-- `morphir itest` writes its suite reports (`itest.json`, `itest.xml`) to a temporary directory that it removes after the run, or to `MORPHIR_BDD_OUT` when that is set. It writes nothing into the project it runs in (#946).
+- `morphir itest` writes its suite reports (`itest.json`, `itest.xml`) to a temporary directory that it removes after the run. `--report-dir <DIR>` keeps them in `<DIR>`; `MORPHIR_BDD_OUT` does the same when the flag is not given. It writes nothing into the project it runs in (#946).
 - `morphir itest --tag @x` is now refused as an invalid tag. It used to match nothing (#946).
 - The converted `elm/single-file` example's id is now `elm/single-file#compile-and-install` (#946).
 

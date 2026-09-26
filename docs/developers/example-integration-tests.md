@@ -597,8 +597,13 @@ logs of the invoking CLI too.
 
 The run also writes JSON and JUnit suite reports, `itest.json` and `itest.xml`.
 By default they go to a temporary directory that the run removes, so `morphir
-itest` writes nothing into the project it runs in. Set `MORPHIR_BDD_OUT` to a
-directory to keep them there.
+itest` writes nothing into the project it runs in. Pass `--report-dir <DIR>` to
+keep them in `<DIR>`, which the run creates when it is missing. `MORPHIR_BDD_OUT`
+does the same when `--report-dir` is not given.
+
+```bash
+morphir itest examples --tag suite:offline --report-dir target/itest-reports
+```
 
 ## Incremental coverage
 

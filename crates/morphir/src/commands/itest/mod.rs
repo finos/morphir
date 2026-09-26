@@ -568,6 +568,11 @@ pub struct ItestArgs {
     /// Retain isolated projects, homes and per-step logs for diagnosis
     #[arg(long)]
     pub keep_temp: bool,
+    /// Write the suite reports (itest.json, itest.xml) to this directory and keep them;
+    /// MORPHIR_BDD_OUT does the same when this is not given. Without either, the reports go to a
+    /// temporary directory that the run removes
+    #[arg(long, value_name = "DIR")]
+    pub report_dir: Option<PathBuf>,
 }
 
 /// Runs `morphir itest`: lists or runs the selected example scenarios, and fails when a scenario
@@ -693,7 +698,7 @@ fn run_suite(args: ItestArgs) -> Result<()> {
                 ),
                 None => eprintln!(
                     "error: {missing} selected scenario(s) did not run, and no error says why; \
-                     set MORPHIR_BDD_OUT to keep the suite report"
+                     pass --report-dir to keep the suite report"
                 ),
             }
         }
@@ -782,7 +787,8 @@ struct SuiteRun {
     passed: usize,
     failed: usize,
     error_messages: Vec<String>,
-    /// Where the suite wrote its JSON report, when `MORPHIR_BDD_OUT` keeps it after the run.
+    /// Where the suite wrote its JSON report, when `--report-dir` or `MORPHIR_BDD_OUT` keeps it
+    /// after the run.
     reports: Option<PathBuf>,
 }
 
@@ -798,10 +804,10 @@ fn run_scenarios(
 ) -> Result<SuiteRun> {
     steps::link();
     let binary = std::env::current_exe().context("locate the running Morphir CLI")?;
-    let reports = report_dir()?;
+    let reports = report_dir(args.report_dir.as_deref())?;
     let out_dir = match &reports {
-        ReportDir::Kept => None,
-        ReportDir::Temporary(temp) => Some(temp.path().to_owned()),
+        ReportDir::Kept(dir) => dir.clone(),
+        ReportDir::Temporary(temp) => temp.path().to_owned(),
     };
     let root = args.root.clone();
     let filter = args.filter.clone();
@@ -867,12 +873,7 @@ fn run_scenarios(
             let suite = feature_names.into_iter().fold(suite, |suite, name| {
                 suite.reader(&name, feature_reader.clone())
             });
-            // With `MORPHIR_BDD_OUT` set, the suite's own default already reads it.
-            let suite = match out_dir {
-                Some(dir) => suite.out_dir(dir),
-                None => suite,
-            };
-            Ok(runtime.block_on(suite.run()))
+            Ok(runtime.block_on(suite.out_dir(out_dir).run()))
         })
         .context("start the itest suite thread")?
         .join()
@@ -882,7 +883,7 @@ fn run_scenarios(
         failed: failed.load(Ordering::SeqCst),
         error_messages: result.error_messages,
         reports: match reports {
-            ReportDir::Kept => Some(result.json),
+            ReportDir::Kept(_) => Some(result.json),
             ReportDir::Temporary(_) => None,
         },
     })
@@ -971,26 +972,29 @@ fn report_documents_that_did_not_run(
 
 /// Where the suite writes its JSON and JUnit reports.
 enum ReportDir {
-    /// `MORPHIR_BDD_OUT`, which the suite reads by itself. The reports stay there after the run.
-    Kept,
+    /// `--report-dir`, else `MORPHIR_BDD_OUT`. The reports stay there after the run.
+    Kept(PathBuf),
     /// A temporary directory, removed when this value drops, so that `morphir itest` writes
     /// nothing into the project it runs in.
     Temporary(TempDir),
 }
 
-/// The directory for the suite's reports: `MORPHIR_BDD_OUT` when it is set, created here so that
-/// a bad path is a readable error and not a panic inside the suite; else a new temporary
-/// directory.
-fn report_dir() -> Result<ReportDir> {
-    if let Some(dir) = std::env::var_os("MORPHIR_BDD_OUT") {
-        let dir = PathBuf::from(dir);
+/// The directory for the suite's reports: `flag` (`--report-dir`) when given, else
+/// `MORPHIR_BDD_OUT` when it is set, created here so that a bad path is a readable error and not a
+/// panic inside the suite; else a new temporary directory.
+fn report_dir(flag: Option<&Path>) -> Result<ReportDir> {
+    let kept = match flag {
+        Some(dir) => Some((dir.to_owned(), "--report-dir")),
+        None => std::env::var_os("MORPHIR_BDD_OUT").map(|dir| (dir.into(), "MORPHIR_BDD_OUT")),
+    };
+    if let Some((dir, source)) = kept {
         std::fs::create_dir_all(&dir).with_context(|| {
             format!(
-                "create the itest report directory {} (MORPHIR_BDD_OUT)",
+                "create the itest report directory {} ({source})",
                 dir.display()
             )
         })?;
-        return Ok(ReportDir::Kept);
+        return Ok(ReportDir::Kept(dir));
     }
     let temp = tempfile::Builder::new()
         .prefix("morphir-itest-reports-")
