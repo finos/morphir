@@ -19,6 +19,7 @@ Its snapshot digest is
 The frozen reports and transcripts continue to replay against this kit as the live
 `spec/ir/mck/` cases move to Ion. This snapshot does not change any historical
 report or transcript byte. New captures go in a separate dated baseline.
+The first Ion exchange is in [baseline-ion-2026-09-26](../baseline-ion-2026-09-26/README.md).
 
 A kit addition, such as the [IR 3.1.0 cases](#ir-310-update), is the one exception. It updates these
 files in place, and only by addition:

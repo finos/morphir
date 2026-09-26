@@ -11,6 +11,7 @@ crates/morphir/src/commands/ui/assets/assets/* binary
 
 # Frozen managed MCK kit bytes must match their manifest on every platform.
 spec/mck/baseline/kit-2026-09-26/** -text
+spec/mck/baseline-ion-2026-09-26/** -text
 
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads

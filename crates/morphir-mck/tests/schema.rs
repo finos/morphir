@@ -41,7 +41,7 @@ fn single_case(text: &str) -> Kit {
 fn fixed_corpus_preserves_all_schema_gate_outcomes() {
     let report = check(&load_kit(embedded_source()).unwrap()).unwrap();
     assert!(report.is_success(), "{report:?}");
-    assert_eq!(report.accepted_fences(), 183);
+    assert_eq!(report.accepted_fences(), 181);
     assert_eq!(report.rejected_fences(), 13);
     assert_eq!(report.schema_count, 8);
     assert_eq!(report.example_count, 4);

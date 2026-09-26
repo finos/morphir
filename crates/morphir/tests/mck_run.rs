@@ -472,10 +472,21 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     success(&["mck", "coverage", "--kit", "kit"]);
     success(&["mck", "schema", "check", "--kit", "kit"]);
 
-    let source = repo().join("spec/ir/mck");
+    // Keep the installed CLI's acquisition and health checks on the current
+    // kit, then replay the immutable historical exchange on its pinned kit.
+    let source = historical_kit();
+    success(&[
+        "mck",
+        "kit",
+        "vendor",
+        "--source",
+        source.to_str().unwrap(),
+        "--dest",
+        "frozen-kit",
+    ]);
     for (kit, report) in [
         (source.to_str().unwrap(), "source.json"),
-        ("kit", "report.json"),
+        ("frozen-kit", "report.json"),
     ] {
         success(&[
             "mck",
@@ -516,7 +527,7 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
         "report.json",
         "allowed.json",
         "--kit",
-        "kit",
+        "frozen-kit",
         "--filter",
         &filter,
     ]);
@@ -611,7 +622,7 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
         "--adapter-arg",
         transcript.to_str().unwrap(),
         "--kit",
-        repo().join("spec/ir/mck").to_str().unwrap(),
+        historical_kit().to_str().unwrap(),
         "--filter",
         &filter,
         "--report",
@@ -652,7 +663,7 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
             .exists()
     );
     let mut expected = read_json(&repo().join("spec/mck/baseline/reports/morphir-typescript.json"));
-    // A --kit checkout reports its own revision, as the first driver did.
+    // The managed kit reports its own version; historical records are stable.
     expected["kitVersion"] = produced["kit"]["version"].clone();
     let caps = &produced["adapter"]["negotiation"]["capabilities"];
     let projected = serde_json::json!({
@@ -661,7 +672,7 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
         "records":produced["records"]
     });
     assert_eq!(without_volatile(projected), without_volatile(expected));
-    assert_eq!(produced["kit"]["source"], "local");
+    assert_eq!(produced["kit"]["source"], "vendored");
     assert_eq!(caps["binding"], "morphir-typescript");
     assert_eq!(produced["adapter"]["command"][1], ADAPTER_FLAG);
     let allowed = work.path().join("allowed.json");
@@ -673,7 +684,7 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
         report.to_str().unwrap(),
         allowed.to_str().unwrap(),
         "--kit",
-        repo().join("spec/ir/mck").to_str().unwrap(),
+        historical_kit().to_str().unwrap(),
         "--filter",
         &filter,
     ]);
@@ -689,6 +700,10 @@ fn transcript_for(binding: &str) -> PathBuf {
 /// The frozen consolidated-v1-shaped report `binding` recorded.
 fn baseline_report(binding: &str) -> Value {
     read_json(&repo().join(format!("spec/mck/baseline/reports/{binding}.json")))
+}
+
+fn historical_kit() -> PathBuf {
+    repo().join("spec/mck/baseline/kit-2026-09-26")
 }
 
 /// Run only the cases captured in the historical transcript. New kit cases
@@ -719,10 +734,7 @@ fn replay_run(binding: &str, transcript: &Path, report: &Path) -> Output {
         "--adapter-arg",
         transcript.to_str().unwrap(),
         "--kit",
-        repo()
-            .join("spec/mck/baseline/kit-2026-09-26")
-            .to_str()
-            .unwrap(),
+        historical_kit().to_str().unwrap(),
         "--filter",
         &filter,
         "--report",
@@ -747,7 +759,7 @@ fn a_run_against_recorded_answers_reproduces_each_frozen_report() {
         let produced = read_json(&report);
         assert_eq!(produced["execution"]["session"]["status"], "finished");
         let mut expected = baseline_report(binding);
-        // A --kit checkout reports its own revision, as the legacy engine does.
+        // The managed kit reports its own version; historical records are stable.
         expected["kitVersion"] = produced["kit"]["version"].clone();
         let caps = &produced["adapter"]["negotiation"]["capabilities"];
         assert_eq!(caps["binding"], binding);
@@ -798,25 +810,15 @@ fn a_transcript_cut_partway_reports_kit_errors() {
     );
 }
 
-/// With no `--kit`, the CLI runs the kit embedded in this binary,
-/// materializing its `.feature` files into a temp dir (`write_feature_files`
-/// in `commands/mck.rs`) before the `Suite` scans them. The other replay
-/// tests always pass `--kit spec/ir/mck` (the checkout), so this is the only
-/// test that exercises that materialization against a real adapter exchange.
-///
-/// The embedded kit is built from the same `spec/ir/mck` checkout
-/// (`crates/morphir-mck`'s `the_embedded_kit_is_the_checkout_kit_with_its_fixtures`
-/// test pins this), so it must replay the frozen transcript identically to
-/// the `--kit` checkout run above, once `kitVersion` (which differs: the
-/// embedded kit reports its own build-time revision, not `git rev-parse
-/// HEAD` of a checkout) is normalized away the same way.
-fn a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript() {
-    let binding = "morphir-typescript";
-    let filter = baseline_filter(binding);
+/// Without `--kit`, the CLI materializes its current embedded Gherkin kit.
+/// Replay a small v2 exchange recorded from the Rust adapter, independent of
+/// the historical 802-record transcript pinned to the pre-Ion kit.
+fn a_gherkin_run_with_no_kit_replays_a_current_ion_spelling_case() {
+    let filter = "^values-0023$";
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
     let exe = std::env::current_exe().unwrap();
-    let transcript = transcript_for(binding);
+    let transcript = repo().join("spec/mck/baseline-ion-2026-09-26/values-0023-rust.ndjson");
     let output = morphir(&[
         "mck",
         "run",
@@ -829,40 +831,29 @@ fn a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcr
         "--adapter-arg",
         transcript.to_str().unwrap(),
         "--filter",
-        &filter,
+        filter,
         "--report",
         report.to_str().unwrap(),
     ]);
     assert_eq!(
         output.status.code(),
         Some(0),
-        "the embedded kit could not replay {binding}'s frozen transcript with no --kit; \
-         if the embedded kit has drifted from the spec/ir/mck checkout \
-         that recorded the transcript, that is the reason, not a defect in this test: {}",
+        "the embedded kit could not replay the recorded Ion case: {}",
         stderr(&output)
     );
 
     let produced = read_json(&report);
     assert_eq!(produced["execution"]["session"]["status"], "finished");
     assert_eq!(produced["kit"]["source"], "embedded");
-    let mut expected = baseline_report(binding);
-    // The embedded kit reports its own build-time revision, not a checkout's `git rev-parse
-    // HEAD`; the other replay test above normalizes this the same way.
-    expected["kitVersion"] = produced["kit"]["version"].clone();
-    let caps = &produced["adapter"]["negotiation"]["capabilities"];
-    assert_eq!(caps["binding"], binding);
-    let projected = serde_json::json!({
-        "contractVersion":1, "binding":caps["binding"], "language":caps["language"],
-        "formatVersions":caps["formatVersions"], "kitVersion":produced["kit"]["version"],
-        "records":produced["records"]
-    });
-    assert_eq!(
-        without_volatile(projected),
-        without_volatile(expected),
-        "the embedded kit's gherkin report does not match {binding}'s frozen baseline; if the \
-         embedded kit has drifted from the checkout that recorded the transcript, the diff above \
-         is that drift, not a bug in the gherkin engine"
+    let records = produced["records"].as_array().unwrap();
+    assert_eq!(records.len(), 6);
+    assert!(
+        records
+            .iter()
+            .all(|record| { record["caseId"] == "values-0023" && record["result"] == "pass" })
     );
+    let caps = &produced["adapter"]["negotiation"]["capabilities"];
+    assert_eq!(caps["binding"], "morphir-rust");
 }
 
 /// A filter matching no case is an error, rather than a passing empty suite.
@@ -1222,7 +1213,7 @@ fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
         "--adapter-arg",
         transcript().to_str().unwrap(),
         "--kit",
-        repo().join("spec/ir/mck").to_str().unwrap(),
+        historical_kit().to_str().unwrap(),
         "--filter",
         &filter,
         "--report",
@@ -1335,8 +1326,8 @@ fn main() {
             a_transcript_cut_partway_reports_kit_errors,
         ),
         (
-            "a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript",
-            a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript,
+            "a_gherkin_run_with_no_kit_replays_a_current_ion_spelling_case",
+            a_gherkin_run_with_no_kit_replays_a_current_ion_spelling_case,
         ),
         (
             "a_filter_matching_nothing_is_an_error",

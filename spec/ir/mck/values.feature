@@ -37,22 +37,6 @@ Feature: Values
       | JSON   | "x"                                               |
       | JSON   | { "Variable": { "attributes": {}, "name": "x" } } |
 
-  Scenario Outline: values-0003 Reference shorthand
-    Then its canonical <format> spelling is <spelling>
-
-    Examples:
-      | format | spelling                                  |
-      | YAML   | Reference: morphir/SDK:basics#add         |
-      | JSON   | { "Reference": "morphir/SDK:basics#add" } |
-
-  Scenario Outline: values-0003 Reference shorthand
-    Then a reader of <format> accepts <input>
-
-    Examples:
-      | format | input                                                                     |
-      | JSON   | "morphir/SDK:basics#add"                                                  |
-      | JSON   | { "Reference": { "attributes": {}, "fqname": "morphir/SDK:basics#add" } } |
-
   Scenario: values-0004 Apply
     Then its canonical YAML spelling is:
       """yaml
@@ -397,4 +381,5 @@ Feature: Values
       )
       """
     Then a reader of JSON accepts "morphir/SDK:basics#add"
+    And a reader of JSON accepts { "Reference": { "attributes": {}, "fqname": "morphir/SDK:basics#add" } }
     And a reader of YAML accepts Reference: morphir/SDK:basics#add

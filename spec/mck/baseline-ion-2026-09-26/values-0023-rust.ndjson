@@ -1,0 +1,15 @@
+{"dir":"request","message":{"id":1,"op":"capabilities","contractVersion":"2.0.0-draft.1"}}
+{"dir":"response","message":{"id":1,"contractVersion":"2.0.0-draft.1","binding":"morphir-rust","language":"rust","formatVersions":"[3.0.0,3.2.0),[4.0.0,4.1.0)","versions":[3,4],"profiles":["json","yaml","ion"],"layouts":["single","tree"],"paths":["current","pinned"],"nodes":["Name","Path","FQName","FormatVersion","Type","Literal","Pattern","Value","TypeSpecification","TypeDefinition","ValueSpecification","ValueDefinition","AccessControlledTypeDefinition","AccessControlledValueDefinition","ModuleDefinition","ModuleSpecification","IRFile","Distribution","DistributionManifestFile","ModuleManifestFile","TypeDefinitionFile","ValueDefinitionFile"],"profileLimits":[{"profile":"ion","versions":[4],"nodes":["Value"],"layouts":["single"]}]}}
+{"dir":"request","message":{"id":2,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  ref\n  'morphir/SDK:basics#add'\n)\n"}}
+{"dir":"response","message":{"id":2,"ok":true,"kind":"Reference","canonical":{"ion":"(\n  ref\n  'morphir/SDK:basics#add'\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":3,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"Reference: morphir/SDK:basics#add\n"}}
+{"dir":"response","message":{"id":3,"ok":true,"kind":"Reference","canonical":{"yaml":"Reference: morphir/SDK:basics#add\n"},"warnings":[]}}
+{"dir":"request","message":{"id":4,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"Reference\": \"morphir/SDK:basics#add\" }\n"}}
+{"dir":"response","message":{"id":4,"ok":true,"kind":"Reference","canonical":{"json":"{ \"Reference\": \"morphir/SDK:basics#add\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":5,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  ref\n  'morphir/SDK:basics#add'\n)\n"}}
+{"dir":"response","message":{"id":5,"ok":true,"kind":"Reference","canonical":{"ion":"(\n  ref\n  'morphir/SDK:basics#add'\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":6,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"Reference: morphir/SDK:basics#add\n"}}
+{"dir":"response","message":{"id":6,"ok":true,"kind":"Reference","canonical":{"yaml":"Reference: morphir/SDK:basics#add\n"},"warnings":[]}}
+{"dir":"request","message":{"id":7,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"Reference\": \"morphir/SDK:basics#add\" }\n"}}
+{"dir":"response","message":{"id":7,"ok":true,"kind":"Reference","canonical":{"json":"{ \"Reference\": \"morphir/SDK:basics#add\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":8,"op":"exit"}}
