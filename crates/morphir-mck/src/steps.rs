@@ -30,7 +30,7 @@ use crate::kit::gherkin::vocabulary::{KitStep, parse_step};
 use crate::kit::load::FeatureKit;
 use crate::kit::syntax::info_string::set_label;
 use crate::kit::{KIT_PATH, Role};
-use crate::report::{Outcome, Record};
+use crate::report::{Check, Outcome, Record};
 
 /// Why a step fails when the lowered kit has no fence for it.
 pub const NO_FENCE: &str = "no kit fence for this step; run morphir mck check";
@@ -158,7 +158,10 @@ impl KitRunState {
         Ok(self
             .records_of(case)
             .iter()
-            .filter(|r| r.fence_index == fence.fence)
+            .filter(|r| {
+                r.fence_index == fence.fence
+                    || (fence.fence == 0 && r.check == Some(Check::RoundTrip))
+            })
             .cloned()
             .collect())
     }
@@ -297,51 +300,57 @@ fn tree_file(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
 
+/// The semantic case's Ion reference is checked when its data fence runs.
+#[given(regex = r"^an? \S+ whose canonical form is:$")]
+fn reference(world: &mut MorphirWorld, step: &Step) {
+    let _ = (world, step);
+}
+
 /// `Then its canonical <format> spelling is:` with a doc string.
-#[then(regex = r"^its canonical (?:YAML|JSON|text) spelling is:$")]
+#[then(regex = r"^its canonical (?:YAML|JSON|Ion|text) spelling is:$")]
 fn canonical_doc(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
 
 /// `Then its canonical <format> spelling is <spelling>`.
-#[then(regex = r"^its canonical (?:YAML|JSON|text) spelling is .+$")]
+#[then(regex = r"^its canonical (?:YAML|JSON|Ion|text) spelling is .+$")]
 fn canonical_inline(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
 
 /// `Then a reader of <format> accepts:` with a doc string.
-#[then(regex = r"^a reader of (?:YAML|JSON|text) accepts:$")]
+#[then(regex = r"^a reader of (?:YAML|JSON|Ion|text) accepts:$")]
 fn accepted_doc(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
 
 /// `Then a reader of <format> accepts <input>`, `…accepts <input> with warning <code>`, and
 /// `…accepts with warning <code>:` with a doc string.
-#[then(regex = r"^a reader of (?:YAML|JSON|text) accepts .+$")]
+#[then(regex = r"^a reader of (?:YAML|JSON|Ion|text) accepts .+$")]
 fn accepted(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
 
 /// `Then a reader of <format> rejects with <diagnostic>:` with a doc string.
-#[then(regex = r"^a reader of (?:YAML|JSON|text) rejects with \S+:$")]
+#[then(regex = r"^a reader of (?:YAML|JSON|Ion|text) rejects with \S+:$")]
 fn rejected_doc(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
 
 /// `Then a reader of <format> rejects <input> with <diagnostic>`.
-#[then(regex = r"^a reader of (?:YAML|JSON|text) rejects .+ with \S+$")]
+#[then(regex = r"^a reader of (?:YAML|JSON|Ion|text) rejects .+ with \S+$")]
 fn rejected_inline(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
 
 /// `Then a reader of <format> reads as a <Node>:` with a doc string.
-#[then(regex = r"^a reader of (?:YAML|JSON|text) reads as an? \S+:$")]
+#[then(regex = r"^a reader of (?:YAML|JSON|Ion|text) reads as an? \S+:$")]
 fn reads_as_doc(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
 
 /// `Then a reader of <format> reads <input> as a <Node>`.
-#[then(regex = r"^a reader of (?:YAML|JSON|text) reads .+ as an? \S+$")]
+#[then(regex = r"^a reader of (?:YAML|JSON|Ion|text) reads .+ as an? \S+$")]
 fn reads_as_inline(world: &mut MorphirWorld, step: &Step) {
     check_fence(world, step);
 }
@@ -364,6 +373,7 @@ fn tree_check(world: &mut MorphirWorld, step: &Step) {
 /// steps only if the binary uses something from the same object. Call this from the `main` of
 /// every binary that runs the kit through a `Suite`.
 pub fn link() {
+    std::hint::black_box(reference as fn(&mut MorphirWorld, &Step));
     std::hint::black_box(tree_file as fn(&mut MorphirWorld, &Step));
     std::hint::black_box(canonical_doc as fn(&mut MorphirWorld, &Step));
     std::hint::black_box(canonical_inline as fn(&mut MorphirWorld, &Step));

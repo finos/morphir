@@ -87,7 +87,11 @@ The native runner requests adapter protocol v2 with
 advertise `ion`; a v1 response may advertise only `json` and `yaml`. If a
 responsive v1 adapter rejects the versioned request with `protocol_error`, the
 runner retries the unversioned v1 capabilities request. The other operations
-still use the JSON and YAML vocabulary until Ion cases are enabled. The
+use the same envelope. Optional v2 `profileLimits` narrow a profile's
+versions, nodes and layouts; the Rust adapter currently limits Ion to v4
+`Value` in the `single` layout. A semantic case's Ion reference is transcoded
+by the kit's independent reference codec. This first codec admits canonical
+Ion `Value` references; other shapes require an explicit codec extension. The
 [worked transcript](protocol.example.json) shows a v1 exchange.
 
 To add a case, choose the next unused ID in its topic file, explain the

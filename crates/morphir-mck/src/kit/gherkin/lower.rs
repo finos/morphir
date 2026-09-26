@@ -26,7 +26,8 @@ use morphir_gherkin::{
 
 use super::vocabulary::{Body, KitStep, parse_step};
 use crate::kit::syntax::case::{
-    CaseId, Compare, KitCase, KitError, KitFence, ParsedFile, Status, case_errors,
+    CanonicalReference, CaseCheck, CaseId, Compare, KitCase, KitError, KitFence, ParsedFile,
+    Status, case_errors,
 };
 use crate::kit::syntax::info_string::{FenceInfo, Language, Role};
 use crate::schema::is_node_kind;
@@ -136,6 +137,8 @@ struct CaseTags {
     version: Option<i64>,
     compare: Option<Compare>,
     pending: bool,
+    spelling: bool,
+    semantic: bool,
 }
 
 impl CaseTags {
@@ -146,14 +149,15 @@ impl CaseTags {
             version: self.version.or(outer.version),
             compare: self.compare.or(outer.compare),
             pending: self.pending || outer.pending,
+            spelling: self.spelling || outer.spelling,
+            semantic: self.semantic || outer.semantic,
         }
     }
 }
 
-/// Whether `tag` is one of the kit's own: `@pending`, or a tag in the `node`, `version` or
-/// `compare` namespace.
+/// Tags with kit meaning, including namespaced tags that require validation.
 fn is_kit_tag(tag: &Tag) -> bool {
-    tag.name == "pending" || matches!(tag.namespaced(), Some(("node" | "version" | "compare", _)))
+    matches!(tag.name.as_str(), "pending" | "spelling" | "semantic") || tag.namespaced().is_some()
 }
 
 /// A scenario name's case id and title: `<topic>-<NNNN> <title>`.
@@ -211,6 +215,14 @@ impl Lowering<'_> {
                 out.pending = true;
                 continue;
             }
+            if tag.name == "spelling" {
+                out.spelling = true;
+                continue;
+            }
+            if tag.name == "semantic" {
+                out.semantic = true;
+                continue;
+            }
             match tag.namespaced() {
                 Some(("node", kind)) if is_node_kind(kind) => out.node = Some(kind.to_owned()),
                 Some(("node", kind)) => self.fail(line, format!("unknown node kind \"{kind}\"")),
@@ -224,6 +236,7 @@ impl Lowering<'_> {
                 Some(("compare", value)) => {
                     self.fail(line, format!("compare must be attributes, got \"{value}\""))
                 }
+                Some(_) => self.fail(line, format!("unknown namespaced tag @{}", tag.name)),
                 _ => {}
             }
         }
@@ -255,6 +268,9 @@ impl Lowering<'_> {
             return;
         };
         let tags = self.tags(&scenario.tags).over(outer_tags);
+        if tags.spelling && tags.semantic {
+            self.fail(line, "a case has both @spelling and @semantic".to_owned());
+        }
         let id = format!("{}-{}", name.topic, name.digits);
         match &self.draft {
             Some((case, first)) if case.id.as_str() == id => {
@@ -345,6 +361,14 @@ impl Lowering<'_> {
                 Status::Active
             },
             compare: tags.compare.unwrap_or(Compare::Stripped),
+            check: if tags.spelling {
+                Some(CaseCheck::Spelling)
+            } else if tags.semantic {
+                Some(CaseCheck::Semantic)
+            } else {
+                None
+            },
+            reference: None,
             prose: prose(description),
             fences: Vec::new(),
             file: self.file.to_owned(),
@@ -375,6 +399,26 @@ impl Lowering<'_> {
             Some(Ok(KitStep::TreeCheck { .. })) => return,
             Some(Ok(step)) => step,
         };
+        if let KitStep::Reference { node, body } = step {
+            if !is_node_kind(&node) {
+                self.fail(line, format!("unknown reference node kind \"{node}\""));
+                return;
+            }
+            let Some((case, _)) = self.draft.as_mut() else {
+                return;
+            };
+            if case.reference.is_some() {
+                let id = case.id.to_string();
+                self.fail(line, format!("more than one Ion reference in {id}"));
+                return;
+            }
+            case.reference = Some(CanonicalReference {
+                node,
+                body: body_text(body),
+                line,
+            });
+            return;
+        }
         let (info, body) = match fence_of(step) {
             Ok(fence) => fence,
             Err(message) => return self.fail(line, message),
@@ -413,6 +457,7 @@ fn body_text(body: Body) -> String {
 fn fence_of(step: KitStep) -> Result<(FenceInfo, String), String> {
     let no_keys: [(&str, String); 0] = [];
     Ok(match step {
+        KitStep::Reference { .. } => unreachable!("a reference is not a fence"),
         KitStep::Canonical { format, body } => (
             FenceInfo::from_parts(format.language(), Role::Canonical, no_keys),
             body_text(body),
@@ -479,12 +524,17 @@ fn tree_file_language(body: &Body) -> Result<Language, String> {
             );
         }
     };
-    [Language::Yaml, Language::Json, Language::Text]
-        .into_iter()
-        .find(|language| language.as_str() == content_type)
-        .ok_or_else(|| {
-            format!("tree file content type \"{content_type}\" is not yaml, json or text")
-        })
+    [
+        Language::Yaml,
+        Language::Json,
+        Language::Ion,
+        Language::Text,
+    ]
+    .into_iter()
+    .find(|language| language.as_str() == content_type)
+    .ok_or_else(|| {
+        format!("tree file content type \"{content_type}\" is not yaml, json, ion or text")
+    })
 }
 
 /// `text` with each `<name>` placeholder replaced by the row's cell in the column `name`. A
@@ -834,10 +884,16 @@ Feature: Values
 "#;
         assert_eq!(
             errors(&lowered(text)),
-            vec![(
-                6,
-                "the kit tag @pending may not sit on an Examples block".to_owned()
-            )]
+            vec![
+                (
+                    6,
+                    "the kit tag @pending may not sit on an Examples block".to_owned()
+                ),
+                (
+                    6,
+                    "the kit tag @spelling may not sit on an Examples block".to_owned()
+                ),
+            ]
         );
     }
 
@@ -864,6 +920,150 @@ Feature: Values
                 (4, "unknown placeholder <spellnig>".to_owned()),
                 (3, "case has no data fences (values-0001)".to_owned())
             ]
+        );
+    }
+
+    #[test]
+    fn spelling_case_accepts_one_canonical_per_profile_including_ion() {
+        let text = r#"@node:Value @version:4
+Feature: Values
+
+  @spelling
+  Scenario Outline: values-0003 Reference spelling
+    Then its canonical <format> spelling is <spelling>
+
+    Examples:
+      | format | spelling                                  |
+      | Ion    | (ref 'morphir/SDK:basics#add')            |
+      | YAML   | Reference: morphir/SDK:basics#add         |
+      | JSON   | { "Reference": "morphir/SDK:basics#add" } |
+"#;
+        let file = lowered(text);
+        assert_eq!(errors(&file), vec![]);
+        assert_eq!(file.parsed.cases[0].fences.len(), 3);
+    }
+
+    #[test]
+    fn semantic_case_has_one_ion_reference_and_accepted_input() {
+        let text = r#"@node:Value @version:4
+Feature: Values
+
+  @semantic
+  Scenario: values-0031 A reference is read from JSON
+    Given a Value whose canonical form is:
+      """ion
+      (
+        ref
+        'morphir/SDK:basics#add'
+      )
+      """
+    Then a reader of JSON accepts "morphir/SDK:basics#add"
+"#;
+        let file = lowered(text);
+        assert_eq!(errors(&file), vec![]);
+        assert_eq!(file.parsed.cases[0].fences.len(), 1);
+    }
+
+    #[test]
+    fn check_tags_and_canonical_steps_are_validated() {
+        let text = r#"@node:Value
+Feature: Values
+
+  @spelling @semantic
+  Scenario: values-0001 Ambiguous check
+    Then its canonical JSON spelling is 1
+
+  @semantic
+  Scenario: values-0002 Wrong reference format
+    Given a Value whose canonical form is:
+      """json
+      1
+      """
+    Then a reader of JSON accepts 1
+
+  @spelling
+  Scenario: values-0003 Reader in spelling case
+    Then a reader of JSON accepts 1
+
+  @unknown:word
+  Scenario: values-0004 Unknown namespaced tag
+    Then its canonical JSON spelling is 1
+
+  @semantic
+  Scenario: values-0005 Reject only has an unnecessary reference
+    Given a Value whose canonical form is:
+      """ion
+      (ref 'morphir/SDK:basics#add')
+      """
+    Then a reader of JSON rejects 1 with invalid_type
+
+  @semantic
+  Scenario: values-0006 Malformed Ion reference
+    Given a Value whose canonical form is:
+      """ion
+      (ref 42)
+      """
+    Then a reader of JSON accepts 1
+
+  @semantic
+  Scenario: values-0007 Unsupported semantic tree
+    Given a Value whose canonical form is:
+      """ion
+      (
+        ref
+        'morphir/SDK:basics#add'
+      )
+      """
+    Given the tree file "manifest" in set "test":
+      """json
+      {}
+      """
+    Then the "test" tree reads back as the canonical form
+"#;
+        let actual = errors(&lowered(text));
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message.contains("both @spelling and @semantic")),
+            "{actual:?}"
+        );
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message.contains("content type") && message.contains("Ion")),
+            "{actual:?}"
+        );
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message.contains("spelling case")
+                    && message.contains("accepted")),
+            "{actual:?}"
+        );
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message.contains("unknown namespaced tag")),
+            "{actual:?}"
+        );
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message
+                    .contains("reject-only semantic case has an Ion reference")),
+            "{actual:?}"
+        );
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message.contains("Ion reference") && message.contains("symbol")),
+            "{actual:?}"
+        );
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message.contains("semantic tree steps are not supported")),
+            "{actual:?}"
         );
     }
 }

@@ -12,6 +12,8 @@ build = "build.rs"
 [dependencies]
 serde.workspace = true
 serde_json = { workspace = true, features = ["raw_value"] }
+serde-saphyr.workspace = true
+ion-rs = "1.0.1"
 jsonschema.workspace = true
 sha2.workspace = true
 regex.workspace = true

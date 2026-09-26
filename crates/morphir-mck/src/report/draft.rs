@@ -126,7 +126,7 @@ impl Serialize for NegotiatedCapabilities {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
         let c = &self.0;
-        let mut out = serializer.serialize_struct("Capabilities", 9)?;
+        let mut out = serializer.serialize_struct("Capabilities", 10)?;
         if c.contract_version == semver::Version::new(1, 0, 0) {
             out.serialize_field("contractVersion", &1u8)?;
         } else {
@@ -140,6 +140,9 @@ impl Serialize for NegotiatedCapabilities {
         out.serialize_field("layouts", &c.layouts)?;
         out.serialize_field("paths", &c.paths)?;
         out.serialize_field("nodes", &c.nodes)?;
+        if !c.profile_limits.is_empty() {
+            out.serialize_field("profileLimits", &c.profile_limits)?;
+        }
         out.end()
     }
 }

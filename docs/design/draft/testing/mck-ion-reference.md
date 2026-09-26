@@ -54,6 +54,11 @@ The runner sends each canonical and accepted document to the adapter in its own 
 
 `Profile` becomes `ion | json | yaml` in the protocol schema and in the engine's `Profile` and `RecordProfile` types. The kit's steps accept `ion` as a doc-string content type. An adapter declares the profiles it reads and writes in `capabilities.profiles`, as today. The Rust adapter declares `ion`. An adapter that does not declare `ion` never receives Ion input.
 
+The first Rust claim is bounded: v2 `profileLimits` restrict Ion to v4 `Value`
+fragments in the `single` layout. The runner checks that limit before sending
+a request. Broader Ion support requires a later capability change backed by
+cases.
+
 The change is not additive for a published driver. A v1 driver reads `Profile` as the closed set `json | yaml` (`crates/morphir-mck/src/transport/protocol.rs`), so a capabilities answer that lists `ion` fails its negotiation. The shipped numeric version 1 remains supported; the revised contract uses exact `2.0.0-draft.1` under [the default contract versioning decision](../../../../kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md):
 
 - **The capabilities request** carries the driver's `contractVersion`. A v1 driver sends none.
@@ -192,7 +197,10 @@ This check is about meaning. P's byte spelling is pinned only by spelling cases.
 
 `accepted` and `rejected` fences run in their own language, as today. When the runner compares an adapter's answer to an `accepted` fence, it transcodes the answer to Ion and compares it with the Ion canonical. If the adapter does not declare the fence's language, the fence is `skipped` with a reason.
 
-The runner transcodes in-process with the morphir-common codecs. The report states the codec version the runner used.
+The runner transcodes in-process with a kit-owned reference codec. It parses the
+public Ion, JSON and YAML spellings independently of the implementation under
+test. The first admitted shape is a v4 `Value` reference; unsupported shapes
+are kit errors until the reference codec and cases are extended.
 
 ### Failures
 
@@ -256,7 +264,10 @@ CI already renders the HTML and uploads the JSON and HTML reports on every run: 
 
 ### Frozen baselines
 
-The replay tests in `crates/morphir/tests/mck_run.rs` use recorded transcripts. New checks send new requests. Each change records the Rust transcript again under the append-only rule in `spec/mck/baseline/README.md`: earlier records and exchanges stay unchanged and in order. The TypeScript transcript changes only when TypeScript receives new requests. With transcoding, the TypeScript adapter now runs semantic cases instead of skipping them, so its transcript grows too.
+The replay tests in `crates/morphir/tests/mck_run.rs` select only the case IDs
+captured by the historical reports. Their transcripts and reports remain frozen.
+New checks run against live Rust and TypeScript adapters in the current MCK
+gates. A future dated baseline may capture them as separate evidence.
 
 ## Testing
 
@@ -274,4 +285,7 @@ The replay tests in `crates/morphir/tests/mck_run.rs` use recorded transcripts. 
 ## Open questions
 
 - **Which cases are spelling cases?** The move of the existing cases must list them from each profile's written rules: one case for each rule, not one for each node. That list is how the kit keeps the clarity of "this is how you encode this shape in this format".
-- **How are Ion fences pinned byte for byte?** They depend on a canonical Ion text writer. The Ion draft (`docs/design/draft/ir/ion.md`) must say which writer settings (spacing, symbol quoting, struct order) are canonical before the first `ion canonical` fence is frozen.
+- **How are Ion fences pinned byte for byte?** The canonical writer follows the
+  multiline S-expression layout in the [Ion draft](../ir/ion.md). The first
+  frozen fence uses that layout for a `Value` reference; later node shapes need
+  their own reference-codec support and cases.

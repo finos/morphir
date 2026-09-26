@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use morphir_mck::kit::manifest::LockSource;
@@ -11,7 +12,7 @@ fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-fn baseline() -> (Kit, Value) {
+fn baseline() -> (Kit, Value, String) {
     let root = repo();
     let kit = load_kit(KitSource::directory(&root.join("spec/ir/mck"), Some(&root))).unwrap();
     assert!(kit.errors.is_empty(), "{:?}", kit.errors);
@@ -30,11 +31,28 @@ fn baseline() -> (Kit, Value) {
     caps.as_object_mut().unwrap().remove("id");
     report["adapter"]["negotiation"]["capabilities"] = caps;
     report["records"] = legacy["records"].clone();
+    // The historical report predates newer kit cases. Exercise its exact
+    // recorded selection without rewriting or extending frozen evidence.
+    let case_ids = legacy["records"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|record| record["caseId"].as_str().unwrap())
+        .collect::<BTreeSet<_>>();
+    let filter = format!(
+        "^(?:{})$",
+        case_ids
+            .into_iter()
+            .map(regex::escape)
+            .collect::<Vec<_>>()
+            .join("|")
+    );
+    report["selection"] = json!({"kind":"filter","syntax":"rust-regex","pattern":filter});
     let lock = collect(&kit)
         .unwrap()
         .lock(LockSource::Local { revision: None });
     report["kit"]["snapshotDigest"] = json!(lock.snapshot_digest.as_str());
-    (kit, report)
+    (kit, report, filter)
 }
 
 fn verdict(kit: &Kit, value: Value, filter: Option<&str>, allowed: &[&str]) -> Result<(), String> {
@@ -45,8 +63,8 @@ fn verdict(kit: &Kit, value: Value, filter: Option<&str>, allowed: &[&str]) -> R
 
 #[test]
 fn frozen_baseline_passes_but_missing_extra_and_reordered_records_fail() {
-    let (kit, value) = baseline();
-    verdict(&kit, value.clone(), None, &[]).unwrap();
+    let (kit, value, filter) = baseline();
+    verdict(&kit, value.clone(), Some(&filter), &[]).unwrap();
     for mutation in ["pinned", "case", "duplicate", "reorder"] {
         let mut changed = value.clone();
         let records = changed["records"].as_array_mut().unwrap();
@@ -58,7 +76,7 @@ fn frozen_baseline_passes_but_missing_extra_and_reordered_records_fail() {
             _ => unreachable!(),
         }
         assert!(
-            verdict(&kit, changed, None, &[])
+            verdict(&kit, changed, Some(&filter), &[])
                 .unwrap_err()
                 .contains("inventory"),
             "{mutation}"
@@ -68,7 +86,7 @@ fn frozen_baseline_passes_but_missing_extra_and_reordered_records_fail() {
 
 #[test]
 fn filtered_claim_requires_independent_filter_and_scopes_stale_entries() {
-    let (kit, mut value) = baseline();
+    let (kit, mut value, _) = baseline();
     value["selection"] = json!({"kind":"filter","syntax":"rust-regex","pattern":"^types-0001$"});
     value["records"]
         .as_array_mut()
@@ -89,19 +107,19 @@ fn filtered_claim_requires_independent_filter_and_scopes_stale_entries() {
 
 #[test]
 fn failed_sessions_bad_digests_and_forged_skip_reasons_fail() {
-    let (kit, value) = baseline();
+    let (kit, value, filter) = baseline();
     let mut failed = value.clone();
     failed["execution"]["session"] =
         json!({"status":"failed","errors":[{"phase":"shutdown","message":"exit 7"}]});
     assert!(
-        verdict(&kit, failed, None, &[])
+        verdict(&kit, failed, Some(&filter), &[])
             .unwrap_err()
             .contains("session")
     );
     let mut different = value.clone();
     different["kit"]["snapshotDigest"] = json!(format!("sha256-{}", "0".repeat(64)));
     assert!(
-        verdict(&kit, different, None, &[])
+        verdict(&kit, different, Some(&filter), &[])
             .unwrap_err()
             .contains("digest")
     );
@@ -109,7 +127,7 @@ fn failed_sessions_bad_digests_and_forged_skip_reasons_fail() {
     skipped["records"][0]["result"] = json!("skipped");
     skipped["records"][0]["message"] = json!("node Value not in capabilities");
     assert!(
-        verdict(&kit, skipped, None, &[])
+        verdict(&kit, skipped, Some(&filter), &[])
             .unwrap_err()
             .contains("skip")
     );
@@ -117,7 +135,7 @@ fn failed_sessions_bad_digests_and_forged_skip_reasons_fail() {
 
 #[test]
 fn unsupported_records_cannot_claim_a_pass() {
-    let (kit, mut value) = baseline();
+    let (kit, mut value, filter) = baseline();
     for record in value["records"].as_array_mut().unwrap() {
         if record["result"] == "skipped" {
             record["result"] = json!("pass");
@@ -125,7 +143,7 @@ fn unsupported_records_cannot_claim_a_pass() {
         }
     }
     assert!(
-        verdict(&kit, value, None, &[])
+        verdict(&kit, value, Some(&filter), &[])
             .unwrap_err()
             .contains("skip")
     );
@@ -133,7 +151,7 @@ fn unsupported_records_cannot_claim_a_pass() {
 
 #[test]
 fn repeated_adapter_paths_cannot_authorize_duplicate_fences() {
-    let (kit, mut value) = baseline();
+    let (kit, mut value, filter) = baseline();
     value["adapter"]["negotiation"]["capabilities"]["paths"] = json!(["current", "current"]);
     for record in value["records"].as_array_mut().unwrap() {
         if record["path"] == "pinned" {
@@ -141,7 +159,7 @@ fn repeated_adapter_paths_cannot_authorize_duplicate_fences() {
         }
     }
     assert!(
-        verdict(&kit, value, None, &[])
+        verdict(&kit, value, Some(&filter), &[])
             .unwrap_err()
             .contains("duplicate")
     );
@@ -149,18 +167,18 @@ fn repeated_adapter_paths_cannot_authorize_duplicate_fences() {
 
 #[test]
 fn kit_error_allowances_require_a_complete_kit_identity() {
-    let (mut kit, mut value) = baseline();
+    let (mut kit, mut value, filter) = baseline();
     let id = value["records"][0]["caseId"].as_str().unwrap().to_owned();
     value["records"][0]["result"] = json!("kit-error");
     value["records"][0]["message"] = json!("adapter could not process this fence");
-    verdict(&kit, value.clone(), None, &[&id]).unwrap();
+    verdict(&kit, value.clone(), Some(&filter), &[&id]).unwrap();
     kit.errors.push(morphir_mck::kit::syntax::case::KitError {
         file: "spec/ir/mck/types.md".into(),
         line: 1,
         message: "authoring error".into(),
     });
     assert!(
-        verdict(&kit, value, None, &[&id])
+        verdict(&kit, value, Some(&filter), &[&id])
             .unwrap_err()
             .contains("cannot establish kit snapshot digest")
     );
@@ -168,9 +186,9 @@ fn kit_error_allowances_require_a_complete_kit_identity() {
 
 #[test]
 fn baseline_allowances_cannot_hide_unknown_cases_or_an_absence_of_passes() {
-    let (kit, mut value) = baseline();
+    let (kit, mut value, filter) = baseline();
     assert!(
-        verdict(&kit, value.clone(), None, &["types-9999"])
+        verdict(&kit, value.clone(), Some(&filter), &["types-9999"])
             .unwrap_err()
             .contains("unknown allowed")
     );
@@ -179,9 +197,17 @@ fn baseline_allowances_cannot_hide_unknown_cases_or_an_absence_of_passes() {
             record["result"] = json!("fail");
         }
     }
-    let ids: Vec<_> = kit.cases.iter().map(|case| case.id.as_str()).collect();
+    let ids: Vec<String> = value["records"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|record| record["caseId"].as_str().unwrap().to_owned())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let ids = ids.iter().map(String::as_str).collect::<Vec<_>>();
     assert!(
-        verdict(&kit, value, None, &ids)
+        verdict(&kit, value, Some(&filter), &ids)
             .unwrap_err()
             .contains("no passing record")
     );

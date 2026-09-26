@@ -359,6 +359,7 @@
 					"enum": [
 						"json",
 						"yaml",
+						"ion",
 						"tree"
 					]
 				},
@@ -446,8 +447,8 @@
 					"items": {
 						"enum": [
 							"json",
-						"yaml",
-						"ion"
+							"yaml",
+							"ion"
 						]
 					}
 				},
@@ -476,11 +477,29 @@
 						"minLength": 1
 					},
 					"minItems": 1
+				},
+				"profileLimits": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["profile", "versions", "nodes", "layouts"],
+						"properties": {
+							"profile": { "enum": ["json", "yaml", "ion"] },
+							"versions": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1 } },
+							"nodes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+							"layouts": { "type": "array", "minItems": 1, "items": { "enum": ["single", "tree"] } }
+						}
+					}
 				}
 			},
 			"allOf": [{
 				"if": { "properties": { "contractVersion": { "const": 1 } } },
-				"then": { "properties": { "profiles": { "items": { "enum": ["json", "yaml"] } } } }
+				"then": {
+					"properties": { "profiles": { "items": { "enum": ["json", "yaml"] } } },
+					"not": { "required": ["profileLimits"] }
+				}
 			}]
 		},
 		"SessionError": {

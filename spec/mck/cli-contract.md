@@ -217,7 +217,13 @@ negotiation first, `{"op":"exit"}` to shut down. The runner asks for v2 by putti
 `"contractVersion":"2.0.0-draft.1"` on the capabilities request. A v1 adapter that answers with
 `protocol_error` gets an unversioned v1 retry in the same session. V2 adds `ion` to
 the capabilities profile vocabulary; an adapter advertises it only after it can
-serve Ion operations.
+serve Ion operations. A v2 response may also include `profileLimits`: a list of
+profile-specific subsets of its advertised `versions`, `nodes` and `layouts`.
+The runner skips a request outside a profile's limit. A profile without a limit
+continues to claim the full cross product. This lets the Rust adapter claim Ion
+for version 4 `Value` in the `single` layout without claiming every node or
+version it serves in JSON/YAML. A v1 response has neither Ion nor
+`profileLimits`.
 
 ### Limits
 

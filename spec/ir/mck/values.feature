@@ -368,3 +368,33 @@ Feature: Values
         name: x
       """
     And its canonical JSON spelling is { "Variable": { "attributes": { "source": { "startLine": 3, "startColumn": 5, "endLine": 3, "endColumn": 6 } }, "name": "x" } }
+
+  @spelling
+  Scenario: values-0023 Reference spelling in three profiles
+    Derived from values-0003. The Ion text follows the canonical writer's
+    multiline S-expression layout.
+
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        ref
+        'morphir/SDK:basics#add'
+      )
+      """
+    And its canonical YAML spelling is Reference: morphir/SDK:basics#add
+    And its canonical JSON spelling is { "Reference": "morphir/SDK:basics#add" }
+
+  @semantic
+  Scenario: values-0024 Reference meaning across profiles
+    Derived from values-0003. The expected meaning belongs to the kit's
+    independently parsed Ion reference.
+
+    Given a Value whose canonical form is:
+      """ion
+      (
+        ref
+        'morphir/SDK:basics#add'
+      )
+      """
+    Then a reader of JSON accepts "morphir/SDK:basics#add"
+    And a reader of YAML accepts Reference: morphir/SDK:basics#add
