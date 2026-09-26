@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generate messages, and the cancellation and progress notifications from the
   protocol draft, and documents the pre-1.0 versioning rule and the wire
   mapping (#964, #960).
+- The compatibility kit's cases gain `.feature` twins under `spec/ir/mck/`, beside the existing Markdown kit files; `morphir mck check` checks that a case and its twin stay in step (#946).
+- `morphir mck run --engine gherkin` runs the kit from its `.feature` files. `--engine legacy`, which runs the Markdown kit, stays the default for the parity window. The gherkin engine runs the IR suite only, so `--engine gherkin --suite metadata` is a usage error (#946).
+- `morphir mck convert` writes a kit case's `.feature` twin from its Markdown source; `morphir mck convert --check` checks an existing twin against that source without writing it (#946).
+- `morphir mck report compare` compares two kit reports, for example a Gherkin-engine report and a legacy-engine report. It fails when the record counts differ, and otherwise names the first record index where any field differs. It ignores `durationMs`, `startedAt` and `driverVersion`. A report with no `records` member is an error (#946).
+- CI runs a parity step that runs the kit under both engines and compares their reports (#946).
 
 ## [0.4.0-beta.9] - 2026-09-25
 
