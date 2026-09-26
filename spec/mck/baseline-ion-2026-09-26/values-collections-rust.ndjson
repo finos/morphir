@@ -1,0 +1,135 @@
+{"dir":"request","message":{"id":1,"op":"capabilities","contractVersion":"2.0.0-draft.1"}}
+{"dir":"response","message":{"id":1,"contractVersion":"2.0.0-draft.1","binding":"morphir-rust","language":"rust","formatVersions":"[3.0.0,3.2.0),[4.0.0,4.1.0)","versions":[3,4],"profiles":["json","yaml","ion"],"layouts":["single","tree"],"paths":["current","pinned"],"nodes":["Name","Path","FQName","FormatVersion","Type","Literal","Pattern","Value","TypeSpecification","TypeDefinition","ValueSpecification","ValueDefinition","AccessControlledTypeDefinition","AccessControlledValueDefinition","ModuleDefinition","ModuleSpecification","IRFile","Distribution","DistributionManifestFile","ModuleManifestFile","TypeDefinitionFile","ValueDefinitionFile"],"profileLimits":[{"profile":"ion","versions":[4],"nodes":["Value"],"layouts":["single"]}]}}
+{"dir":"request","message":{"id":2,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  tuple\n  x\n  1\n)\n"}}
+{"dir":"response","message":{"id":2,"ok":true,"kind":"Tuple","canonical":{"ion":"(\n  tuple\n  x\n  1\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":3,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"Tuple:\n  - Variable: x\n  - Literal:\n      IntegerLiteral: 1\n"}}
+{"dir":"response","message":{"id":3,"ok":true,"kind":"Tuple","canonical":{"yaml":"Tuple:\n  - Variable: x\n  - Literal:\n      IntegerLiteral: 1\n"},"warnings":[]}}
+{"dir":"request","message":{"id":4,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"}}
+{"dir":"response","message":{"id":4,"ok":true,"kind":"Tuple","canonical":{"json":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":5,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  tuple\n  x\n  1\n)\n"}}
+{"dir":"response","message":{"id":5,"ok":true,"kind":"Tuple","canonical":{"ion":"(\n  tuple\n  x\n  1\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":6,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"Tuple:\n  - Variable: x\n  - Literal:\n      IntegerLiteral: 1\n"}}
+{"dir":"response","message":{"id":6,"ok":true,"kind":"Tuple","canonical":{"yaml":"Tuple:\n  - Variable: x\n  - Literal:\n      IntegerLiteral: 1\n"},"warnings":[]}}
+{"dir":"request","message":{"id":7,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"}}
+{"dir":"response","message":{"id":7,"ok":true,"kind":"Tuple","canonical":{"json":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":8,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"Tuple\": { \"elements\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] } }\n"}}
+{"dir":"response","message":{"id":8,"ok":true,"kind":"Tuple","canonical":{"json":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":9,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"Tuple\": { \"attributes\": {}, \"elements\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] } }\n"}}
+{"dir":"response","message":{"id":9,"ok":true,"kind":"Tuple","canonical":{"json":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":10,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  tuple\n  x\n  1\n)\n"}}
+{"dir":"response","message":{"id":10,"ok":true,"kind":"Tuple","canonical":{"ion":"(\n  tuple\n  x\n  1\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":11,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{\"Tuple\":[{\"Variable\":\"x\"},{\"Literal\":{\"IntegerLiteral\":1}}]}"}}
+{"dir":"response","message":{"id":11,"ok":true,"kind":"Tuple","canonical":{"json":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":12,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"{\"Tuple\":[{\"Variable\":\"x\"},{\"Literal\":{\"IntegerLiteral\":1}}]}"}}
+{"dir":"response","message":{"id":12,"ok":true,"kind":"Tuple","canonical":{"yaml":"Tuple:\n  - Variable: x\n  - Literal:\n      IntegerLiteral: 1\n"},"warnings":[]}}
+{"dir":"request","message":{"id":13,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"Tuple\": { \"elements\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] } }\n"}}
+{"dir":"response","message":{"id":13,"ok":true,"kind":"Tuple","canonical":{"json":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":14,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"Tuple\": { \"attributes\": {}, \"elements\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] } }\n"}}
+{"dir":"response","message":{"id":14,"ok":true,"kind":"Tuple","canonical":{"json":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":15,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  tuple\n  x\n  1\n)\n"}}
+{"dir":"response","message":{"id":15,"ok":true,"kind":"Tuple","canonical":{"ion":"(\n  tuple\n  x\n  1\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":16,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{\"Tuple\":[{\"Variable\":\"x\"},{\"Literal\":{\"IntegerLiteral\":1}}]}"}}
+{"dir":"response","message":{"id":16,"ok":true,"kind":"Tuple","canonical":{"json":"{ \"Tuple\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":17,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"{\"Tuple\":[{\"Variable\":\"x\"},{\"Literal\":{\"IntegerLiteral\":1}}]}"}}
+{"dir":"response","message":{"id":17,"ok":true,"kind":"Tuple","canonical":{"yaml":"Tuple:\n  - Variable: x\n  - Literal:\n      IntegerLiteral: 1\n"},"warnings":[]}}
+{"dir":"request","message":{"id":18,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"[{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }]\n"}}
+{"dir":"response","message":{"id":18,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":19,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"[{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }]\n"}}
+{"dir":"response","message":{"id":19,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Variable\": \"x\" }, { \"Literal\": { \"IntegerLiteral\": 1 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":20,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  list\n  1\n  2\n  3\n)\n"}}
+{"dir":"response","message":{"id":20,"ok":true,"kind":"List","canonical":{"ion":"(\n  list\n  1\n  2\n  3\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":21,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"List:\n  - Literal:\n      IntegerLiteral: 1\n  - Literal:\n      IntegerLiteral: 2\n  - Literal:\n      IntegerLiteral: 3\n"}}
+{"dir":"response","message":{"id":21,"ok":true,"kind":"List","canonical":{"yaml":"List:\n  - Literal:\n      IntegerLiteral: 1\n  - Literal:\n      IntegerLiteral: 2\n  - Literal:\n      IntegerLiteral: 3\n"},"warnings":[]}}
+{"dir":"request","message":{"id":22,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"}}
+{"dir":"response","message":{"id":22,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":23,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  list\n  1\n  2\n  3\n)\n"}}
+{"dir":"response","message":{"id":23,"ok":true,"kind":"List","canonical":{"ion":"(\n  list\n  1\n  2\n  3\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":24,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"List:\n  - Literal:\n      IntegerLiteral: 1\n  - Literal:\n      IntegerLiteral: 2\n  - Literal:\n      IntegerLiteral: 3\n"}}
+{"dir":"response","message":{"id":24,"ok":true,"kind":"List","canonical":{"yaml":"List:\n  - Literal:\n      IntegerLiteral: 1\n  - Literal:\n      IntegerLiteral: 2\n  - Literal:\n      IntegerLiteral: 3\n"},"warnings":[]}}
+{"dir":"request","message":{"id":25,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"}}
+{"dir":"response","message":{"id":25,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":26,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"[1, 2, 3]\n"}}
+{"dir":"response","message":{"id":26,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":27,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"List\": [1, 2, 3] }\n"}}
+{"dir":"response","message":{"id":27,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":28,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"List\": { \"items\": [1, 2, 3] } }\n"}}
+{"dir":"response","message":{"id":28,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":29,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"List\": { \"attributes\": {}, \"items\": [1, 2, 3] } }\n"}}
+{"dir":"response","message":{"id":29,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":30,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  list\n  1\n  2\n  3\n)\n"}}
+{"dir":"response","message":{"id":30,"ok":true,"kind":"List","canonical":{"ion":"(\n  list\n  1\n  2\n  3\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":31,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{\"List\":[{\"Literal\":{\"IntegerLiteral\":1}},{\"Literal\":{\"IntegerLiteral\":2}},{\"Literal\":{\"IntegerLiteral\":3}}]}"}}
+{"dir":"response","message":{"id":31,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":32,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"{\"List\":[{\"Literal\":{\"IntegerLiteral\":1}},{\"Literal\":{\"IntegerLiteral\":2}},{\"Literal\":{\"IntegerLiteral\":3}}]}"}}
+{"dir":"response","message":{"id":32,"ok":true,"kind":"List","canonical":{"yaml":"List:\n  - Literal:\n      IntegerLiteral: 1\n  - Literal:\n      IntegerLiteral: 2\n  - Literal:\n      IntegerLiteral: 3\n"},"warnings":[]}}
+{"dir":"request","message":{"id":33,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"[1, 2, 3]\n"}}
+{"dir":"response","message":{"id":33,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":34,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"List\": [1, 2, 3] }\n"}}
+{"dir":"response","message":{"id":34,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":35,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"List\": { \"items\": [1, 2, 3] } }\n"}}
+{"dir":"response","message":{"id":35,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":36,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"List\": { \"attributes\": {}, \"items\": [1, 2, 3] } }\n"}}
+{"dir":"response","message":{"id":36,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":37,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  list\n  1\n  2\n  3\n)\n"}}
+{"dir":"response","message":{"id":37,"ok":true,"kind":"List","canonical":{"ion":"(\n  list\n  1\n  2\n  3\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":38,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{\"List\":[{\"Literal\":{\"IntegerLiteral\":1}},{\"Literal\":{\"IntegerLiteral\":2}},{\"Literal\":{\"IntegerLiteral\":3}}]}"}}
+{"dir":"response","message":{"id":38,"ok":true,"kind":"List","canonical":{"json":"{ \"List\": [{ \"Literal\": { \"IntegerLiteral\": 1 } }, { \"Literal\": { \"IntegerLiteral\": 2 } }, { \"Literal\": { \"IntegerLiteral\": 3 } }] }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":39,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"{\"List\":[{\"Literal\":{\"IntegerLiteral\":1}},{\"Literal\":{\"IntegerLiteral\":2}},{\"Literal\":{\"IntegerLiteral\":3}}]}"}}
+{"dir":"response","message":{"id":39,"ok":true,"kind":"List","canonical":{"yaml":"List:\n  - Literal:\n      IntegerLiteral: 1\n  - Literal:\n      IntegerLiteral: 2\n  - Literal:\n      IntegerLiteral: 3\n"},"warnings":[]}}
+{"dir":"request","message":{"id":40,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n"}}
+{"dir":"response","message":{"id":40,"ok":true,"kind":"Constructor","canonical":{"ion":"(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":41,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"Constructor: morphir/SDK:maybe#just\n"}}
+{"dir":"response","message":{"id":41,"ok":true,"kind":"Constructor","canonical":{"yaml":"Constructor: morphir/SDK:maybe#just\n"},"warnings":[]}}
+{"dir":"request","message":{"id":42,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n"}}
+{"dir":"response","message":{"id":42,"ok":true,"kind":"Constructor","canonical":{"json":"{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":43,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n"}}
+{"dir":"response","message":{"id":43,"ok":true,"kind":"Constructor","canonical":{"ion":"(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":44,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"Constructor: morphir/SDK:maybe#just\n"}}
+{"dir":"response","message":{"id":44,"ok":true,"kind":"Constructor","canonical":{"yaml":"Constructor: morphir/SDK:maybe#just\n"},"warnings":[]}}
+{"dir":"request","message":{"id":45,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n"}}
+{"dir":"response","message":{"id":45,"ok":true,"kind":"Constructor","canonical":{"json":"{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":46,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"Constructor\": { \"attributes\": {}, \"fqname\": \"morphir/SDK:maybe#just\" } }\n"}}
+{"dir":"response","message":{"id":46,"ok":true,"kind":"Constructor","canonical":{"json":"{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":47,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n"}}
+{"dir":"response","message":{"id":47,"ok":true,"kind":"Constructor","canonical":{"ion":"(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":48,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{\"Constructor\":\"morphir/SDK:maybe#just\"}"}}
+{"dir":"response","message":{"id":48,"ok":true,"kind":"Constructor","canonical":{"json":"{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":49,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"Constructor: \"morphir/SDK:maybe#just\"\n"}}
+{"dir":"response","message":{"id":49,"ok":true,"kind":"Constructor","canonical":{"yaml":"Constructor: morphir/SDK:maybe#just\n"},"warnings":[]}}
+{"dir":"request","message":{"id":50,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"Constructor\": { \"attributes\": {}, \"fqname\": \"morphir/SDK:maybe#just\" } }\n"}}
+{"dir":"response","message":{"id":50,"ok":true,"kind":"Constructor","canonical":{"json":"{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":51,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n"}}
+{"dir":"response","message":{"id":51,"ok":true,"kind":"Constructor","canonical":{"ion":"(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":52,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{\"Constructor\":\"morphir/SDK:maybe#just\"}"}}
+{"dir":"response","message":{"id":52,"ok":true,"kind":"Constructor","canonical":{"json":"{ \"Constructor\": \"morphir/SDK:maybe#just\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":53,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"Constructor: \"morphir/SDK:maybe#just\"\n"}}
+{"dir":"response","message":{"id":53,"ok":true,"kind":"Constructor","canonical":{"yaml":"Constructor: morphir/SDK:maybe#just\n"},"warnings":[]}}
+{"dir":"request","message":{"id":54,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  fieldFunction\n  name\n)\n"}}
+{"dir":"response","message":{"id":54,"ok":true,"kind":"FieldFunction","canonical":{"ion":"(\n  fieldFunction\n  name\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":55,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"FieldFunction: name\n"}}
+{"dir":"response","message":{"id":55,"ok":true,"kind":"FieldFunction","canonical":{"yaml":"FieldFunction: name\n"},"warnings":[]}}
+{"dir":"request","message":{"id":56,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"FieldFunction\": \"name\" }\n"}}
+{"dir":"response","message":{"id":56,"ok":true,"kind":"FieldFunction","canonical":{"json":"{ \"FieldFunction\": \"name\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":57,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  fieldFunction\n  name\n)\n"}}
+{"dir":"response","message":{"id":57,"ok":true,"kind":"FieldFunction","canonical":{"ion":"(\n  fieldFunction\n  name\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":58,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"FieldFunction: name\n"}}
+{"dir":"response","message":{"id":58,"ok":true,"kind":"FieldFunction","canonical":{"yaml":"FieldFunction: name\n"},"warnings":[]}}
+{"dir":"request","message":{"id":59,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"FieldFunction\": \"name\" }\n"}}
+{"dir":"response","message":{"id":59,"ok":true,"kind":"FieldFunction","canonical":{"json":"{ \"FieldFunction\": \"name\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":60,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{ \"FieldFunction\": { \"attributes\": {}, \"name\": \"name\" } }\n"}}
+{"dir":"response","message":{"id":60,"ok":true,"kind":"FieldFunction","canonical":{"json":"{ \"FieldFunction\": \"name\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":61,"op":"decode","version":4,"profile":"ion","path":"current","strip":true,"node":"Value","input":"(\n  fieldFunction\n  name\n)\n"}}
+{"dir":"response","message":{"id":61,"ok":true,"kind":"FieldFunction","canonical":{"ion":"(\n  fieldFunction\n  name\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":62,"op":"decode","version":4,"profile":"json","path":"current","strip":true,"node":"Value","input":"{\"FieldFunction\":\"name\"}"}}
+{"dir":"response","message":{"id":62,"ok":true,"kind":"FieldFunction","canonical":{"json":"{ \"FieldFunction\": \"name\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":63,"op":"decode","version":4,"profile":"yaml","path":"current","strip":true,"node":"Value","input":"FieldFunction: name\n"}}
+{"dir":"response","message":{"id":63,"ok":true,"kind":"FieldFunction","canonical":{"yaml":"FieldFunction: name\n"},"warnings":[]}}
+{"dir":"request","message":{"id":64,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{ \"FieldFunction\": { \"attributes\": {}, \"name\": \"name\" } }\n"}}
+{"dir":"response","message":{"id":64,"ok":true,"kind":"FieldFunction","canonical":{"json":"{ \"FieldFunction\": \"name\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":65,"op":"decode","version":4,"profile":"ion","path":"pinned","strip":true,"node":"Value","input":"(\n  fieldFunction\n  name\n)\n"}}
+{"dir":"response","message":{"id":65,"ok":true,"kind":"FieldFunction","canonical":{"ion":"(\n  fieldFunction\n  name\n)\n"},"warnings":[]}}
+{"dir":"request","message":{"id":66,"op":"decode","version":4,"profile":"json","path":"pinned","strip":true,"node":"Value","input":"{\"FieldFunction\":\"name\"}"}}
+{"dir":"response","message":{"id":66,"ok":true,"kind":"FieldFunction","canonical":{"json":"{ \"FieldFunction\": \"name\" }\n"},"warnings":[]}}
+{"dir":"request","message":{"id":67,"op":"decode","version":4,"profile":"yaml","path":"pinned","strip":true,"node":"Value","input":"FieldFunction: name\n"}}
+{"dir":"response","message":{"id":67,"ok":true,"kind":"FieldFunction","canonical":{"yaml":"FieldFunction: name\n"},"warnings":[]}}
+{"dir":"request","message":{"id":68,"op":"exit"}}

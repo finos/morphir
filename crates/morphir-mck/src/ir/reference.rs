@@ -28,6 +28,13 @@ pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<Stri
                 Ok(format!("Literal:\n  IntegerLiteral: {number}\n"))
             }
             ValueReference::Boolean(value) => Ok(format!("Literal:\n  BoolLiteral: {value}\n")),
+            // JSON flow syntax is valid YAML 1.2. Semantic checks need a
+            // readable YAML document; spelling cases pin the YAML writer.
+            // This also avoids serde_saphyr exposing serde_json's private
+            // arbitrary-precision number wrapper in nested literals.
+            ValueReference::Tuple(_) | ValueReference::List(_) => {
+                serde_json::to_string(&value.canonical_json()).map_err(|error| error.to_string())
+            }
             _ => {
                 serde_saphyr::to_string(&value.canonical_json()).map_err(|error| error.to_string())
             }
@@ -50,20 +57,32 @@ pub(super) fn to_ion(node: &str, profile: Profile, text: &str) -> Result<String,
 #[derive(Debug, PartialEq, Eq)]
 enum ValueReference {
     Reference(String),
+    Constructor(String),
     Variable(String),
+    FieldFunction(String),
     Unit,
     Integer(i64),
     Boolean(bool),
+    Tuple(Vec<ValueReference>),
+    List(Vec<ValueReference>),
 }
 
 impl ValueReference {
     fn canonical_json(&self) -> Value {
         match self {
             Self::Reference(name) => json!({"Reference": name}),
+            Self::Constructor(name) => json!({"Constructor": name}),
             Self::Variable(name) => json!({"Variable": name}),
+            Self::FieldFunction(name) => json!({"FieldFunction": name}),
             Self::Unit => json!({"Unit": {}}),
             Self::Integer(number) => json!({"Literal": {"IntegerLiteral": number}}),
             Self::Boolean(value) => json!({"Literal": {"BoolLiteral": value}}),
+            Self::Tuple(items) => {
+                json!({"Tuple": items.iter().map(Self::canonical_json).collect::<Vec<_>>()})
+            }
+            Self::List(items) => {
+                json!({"List": items.iter().map(Self::canonical_json).collect::<Vec<_>>()})
+            }
         }
     }
 
@@ -75,17 +94,45 @@ impl ValueReference {
                     .push(Element::symbol(name))
                     .build_sexp(),
             ),
+            Self::Constructor(name) => Element::from(
+                Sequence::builder()
+                    .push(Element::symbol("constructor"))
+                    .push(Element::symbol(name))
+                    .build_sexp(),
+            ),
             Self::Variable(name) => Element::symbol(name),
+            Self::FieldFunction(name) => Element::from(
+                Sequence::builder()
+                    .push(Element::symbol("fieldFunction"))
+                    .push(Element::symbol(name))
+                    .build_sexp(),
+            ),
             Self::Unit => Element::from(Sequence::builder().build_sexp()),
             Self::Integer(number) => Element::from(ion_rs::Int::from(*number)),
             Self::Boolean(value) => Element::from(*value),
+            Self::Tuple(items) => collection_element("tuple", items),
+            Self::List(items) => collection_element("list", items),
         }
     }
+}
+
+fn collection_element(head: &str, items: &[ValueReference]) -> Element {
+    Element::from(
+        items
+            .iter()
+            .map(ValueReference::ion_element)
+            .fold(
+                Sequence::builder().push(Element::symbol(head)),
+                |builder, item| builder.push(item),
+            )
+            .build_sexp(),
+    )
 }
 
 fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
     match value {
         Value::String(name) => variable(name),
+        Value::Array(items) => read_items(items).map(ValueReference::List),
         Value::Number(number) => number
             .as_i64()
             .map(ValueReference::Integer)
@@ -94,14 +141,45 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
         Value::Object(fields) if fields.len() == 1 => {
             let (kind, payload) = fields.iter().next().expect("one member");
             match kind.as_str() {
-                "Reference" => read_named(payload, "fqname").map(ValueReference::Reference),
+                "Reference" => read_named(payload, "fqname")
+                    .and_then(|name| fqname(&name).map(ValueReference::Reference)),
+                "Constructor" => read_named(payload, "fqname")
+                    .and_then(|name| fqname(&name).map(ValueReference::Constructor)),
                 "Variable" => read_named(payload, "name").and_then(|name| variable(&name)),
+                "FieldFunction" => read_named(payload, "name")
+                    .and_then(|name| variable(&name).map(|_| ValueReference::FieldFunction(name))),
                 "Unit" if empty_attributes(payload) => Ok(ValueReference::Unit),
                 "Literal" => read_literal(payload),
+                "Tuple" => read_collection(payload, "elements").map(ValueReference::Tuple),
+                "List" => read_collection(payload, "items").map(ValueReference::List),
                 _ => Err(format!("unsupported Value reference shape {kind}")),
             }
         }
         _ => Err("a Value reference has one supported shape".to_owned()),
+    }
+}
+
+fn read_items(items: &[Value]) -> Result<Vec<ValueReference>, String> {
+    items.iter().map(read_profile_value).collect()
+}
+
+fn read_collection(payload: &Value, member: &str) -> Result<Vec<ValueReference>, String> {
+    match payload {
+        Value::Array(items) => read_items(items),
+        Value::Object(fields)
+            if fields.len() == 1
+                || (fields.len() == 2
+                    && matches!(fields.get("attributes"), Some(Value::Object(attrs)) if attrs.is_empty())) =>
+        {
+            fields
+                .get(member)
+                .and_then(Value::as_array)
+                .ok_or_else(|| format!("a Value {member} collection needs an array"))
+                .and_then(|items| read_items(items))
+        }
+        _ => Err(format!(
+            "a Value {member} collection has unsupported members"
+        )),
     }
 }
 
@@ -130,7 +208,15 @@ fn read_named(value: &Value, member: &str) -> Result<String, String> {
 }
 
 fn variable(name: &str) -> Result<ValueReference, String> {
-    let canonical = name.split('-').all(|segment| {
+    if canonical_name(name) {
+        Ok(ValueReference::Variable(name.to_owned()))
+    } else {
+        Err(format!("a Value variable name is not canonical: {name}"))
+    }
+}
+
+fn canonical_name(name: &str) -> bool {
+    name.split('-').all(|segment| {
         !segment.is_empty()
             && (segment
                 .bytes()
@@ -138,11 +224,26 @@ fn variable(name: &str) -> Result<ValueReference, String> {
                 || segment
                     .bytes()
                     .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit()))
-    });
-    if canonical {
-        Ok(ValueReference::Variable(name.to_owned()))
+    })
+}
+
+fn fqname(name: &str) -> Result<String, String> {
+    let valid = name
+        .split_once(':')
+        .and_then(|(package, tail)| {
+            tail.split_once('#')
+                .map(|(module, local)| (package, module, local))
+        })
+        .is_some_and(|(package, module, local)| {
+            [package, module]
+                .into_iter()
+                .all(|path| !path.is_empty() && path.split('/').all(canonical_name))
+                && canonical_name(local)
+        });
+    if valid {
+        Ok(name.to_owned())
     } else {
-        Err(format!("a Value variable name is not canonical: {name}"))
+        Err(format!("a Value FQName is not canonical: {name}"))
     }
 }
 
@@ -192,15 +293,7 @@ fn read_ion(node: &str, text: &str) -> Result<ValueReference, String> {
         return Err(format!("reference codec does not support {node}"));
     }
     let element = Element::read_one(text.as_bytes()).map_err(|error| error.to_string())?;
-    let value = if let Some(name) = element.as_symbol().and_then(|symbol| symbol.text()) {
-        variable(name)?
-    } else if let Some(number) = element.as_i64() {
-        ValueReference::Integer(number)
-    } else if let Some(value) = element.as_bool() {
-        ValueReference::Boolean(value)
-    } else {
-        read_sexp(&element)?
-    };
+    let value = read_element(&element)?;
     let canonical = canonical_ion(&value)?;
     if normalize_canonical(text) != normalize_canonical(&canonical) {
         return Err(format!(
@@ -208,6 +301,20 @@ fn read_ion(node: &str, text: &str) -> Result<ValueReference, String> {
         ));
     }
     Ok(value)
+}
+
+fn read_element(element: &Element) -> Result<ValueReference, String> {
+    Ok(
+        if let Some(name) = element.as_symbol().and_then(|symbol| symbol.text()) {
+            variable(name)?
+        } else if let Some(number) = element.as_i64() {
+            ValueReference::Integer(number)
+        } else if let Some(value) = element.as_bool() {
+            ValueReference::Boolean(value)
+        } else {
+            read_sexp(element)?
+        },
+    )
 }
 
 fn read_sexp(element: &Element) -> Result<ValueReference, String> {
@@ -218,17 +325,39 @@ fn read_sexp(element: &Element) -> Result<ValueReference, String> {
     if parts.is_empty() {
         return Ok(ValueReference::Unit);
     }
-    let [head, argument] = parts.as_slice() else {
-        return Err("a Value reference has one argument".to_owned());
-    };
-    if head.as_symbol().and_then(|symbol| symbol.text()) != Some("ref") {
-        return Err("a Value reference starts with ref".to_owned());
-    }
-    let name = argument
+    let (head, rest) = parts.split_first().expect("nonempty");
+    let head = head
         .as_symbol()
         .and_then(|symbol| symbol.text())
-        .ok_or("a Value reference names a symbol")?;
-    Ok(ValueReference::Reference(name.to_owned()))
+        .ok_or("a Value reference head is a symbol")?;
+    match head {
+        "ref" | "constructor" | "fieldFunction" => {
+            let [argument] = rest else {
+                return Err(format!("a Value {head} reference has one argument"));
+            };
+            let name = argument
+                .as_symbol()
+                .and_then(|symbol| symbol.text())
+                .ok_or("a named Value reference names a symbol")?;
+            match head {
+                "ref" => fqname(name).map(ValueReference::Reference),
+                "constructor" => fqname(name).map(ValueReference::Constructor),
+                _ => variable(name).map(|_| ValueReference::FieldFunction(name.to_owned())),
+            }
+        }
+        "tuple" | "list" => {
+            let items = rest
+                .iter()
+                .map(|item| read_element(item))
+                .collect::<Result<Vec<_>, _>>()?;
+            if head == "tuple" {
+                Ok(ValueReference::Tuple(items))
+            } else {
+                Ok(ValueReference::List(items))
+            }
+        }
+        _ => Err(format!("unsupported Value reference head {head}")),
+    }
 }
 
 fn canonical_ion(value: &ValueReference) -> Result<String, String> {
@@ -358,6 +487,90 @@ mod tests {
                 )
                 .is_err()
             );
+        }
+    }
+
+    #[test]
+    fn named_and_collection_values_convert_between_profiles() {
+        for (ion, json) in [
+            (
+                "(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n",
+                r#"{"Constructor":"morphir/SDK:maybe#just"}"#,
+            ),
+            (
+                "(\n  fieldFunction\n  name\n)\n",
+                r#"{"FieldFunction":"name"}"#,
+            ),
+            (
+                "(\n  tuple\n  x\n  1\n)\n",
+                r#"{"Tuple":[{"Variable":"x"},{"Literal":{"IntegerLiteral":1}}]}"#,
+            ),
+            (
+                "(\n  list\n  1\n  2\n  3\n)\n",
+                r#"{"List":[{"Literal":{"IntegerLiteral":1}},{"Literal":{"IntegerLiteral":2}},{"Literal":{"IntegerLiteral":3}}]}"#,
+            ),
+        ] {
+            assert_eq!(to_profile("Value", ion, Profile::Json).unwrap(), json);
+            assert_eq!(to_ion("Value", Profile::Json, json).unwrap(), ion);
+            let yaml = to_profile("Value", ion, Profile::Yaml).unwrap();
+            assert_eq!(to_ion("Value", Profile::Yaml, &yaml).unwrap(), ion);
+        }
+    }
+
+    #[test]
+    fn named_and_collection_reader_aliases_and_invalid_shapes() {
+        for (ion, json) in [
+            (
+                "(\n  constructor\n  'morphir/SDK:maybe#just'\n)\n",
+                r#"{"Constructor":{"attributes":{},"fqname":"morphir/SDK:maybe#just"}}"#,
+            ),
+            (
+                "(\n  fieldFunction\n  name\n)\n",
+                r#"{"FieldFunction":{"attributes":{},"name":"name"}}"#,
+            ),
+            (
+                "(\n  tuple\n  x\n  1\n)\n",
+                r#"{"Tuple":{"attributes":{},"elements":[{"Variable":"x"},{"Literal":{"IntegerLiteral":1}}]}}"#,
+            ),
+            (
+                "(\n  list\n  1\n  2\n  3\n)\n",
+                r#"{"List":{"items":[1,2,3]}}"#,
+            ),
+            ("(\n  list\n  1\n  2\n  3\n)\n", "[1,2,3]"),
+        ] {
+            assert_eq!(to_ion("Value", Profile::Json, json).unwrap(), ion);
+        }
+        for bad in [
+            r#"{"FieldFunction":"Usd"}"#,
+            r#"{"Tuple":{"attributes":{"x":1},"elements":[]}}"#,
+            r#"{"List":{"items":[],"unexpected":1}}"#,
+        ] {
+            assert!(to_ion("Value", Profile::Json, bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn named_references_follow_the_v4_fqname_grammar() {
+        for valid in [
+            "morphir/SDK:maybe#just",
+            "my-org/finance:pricing/models#value-in-USD",
+        ] {
+            for kind in ["Reference", "Constructor"] {
+                let json = format!(r#"{{"{kind}":"{valid}"}}"#);
+                assert!(to_ion("Value", Profile::Json, &json).is_ok());
+            }
+        }
+        for invalid in [
+            "bad_name:mod#x",
+            "pkg:Mod#x",
+            "pkg:mod#x_y",
+            "pkg/mod#x",
+            "pkg:mod#",
+        ] {
+            for kind in ["Reference", "Constructor"] {
+                let json = format!(r#"{{"{kind}":"{invalid}"}}"#);
+                assert!(to_ion("Value", Profile::Json, &json).is_err());
+            }
         }
     }
 }

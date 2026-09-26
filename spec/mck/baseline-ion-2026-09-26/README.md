@@ -20,3 +20,9 @@ after the variable, unit, integer and boolean spelling/semantic split. The
 same pinned Rust adapter reported 66 passes, no failures, kit errors or skips.
 The exchange was captured with `tools/record-mck-transcript.ts` and matched a
 second capture byte for byte. It leaves the earlier reference exchange intact.
+
+`values-collections-rust.ndjson` separately captures the nine Value constructor,
+field-function, tuple and list spelling/semantic cases (`values-0007`, `0008`,
+`0014`, `0015`, and `0029` through `0033`). The pinned Rust adapter reported
+66 passes, no failures, kit errors or skips. A second capture matched byte for
+byte. The earlier exchanges remain unchanged.
