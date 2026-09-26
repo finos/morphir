@@ -604,8 +604,8 @@ mod tests {
         let kit = repo.path().join(KIT_PATH);
         std::fs::create_dir_all(&kit).unwrap();
         std::fs::write(
-            kit.join("types.md"),
-            format!("## types-0001: {case_title}\n```text canonical\nfixtures/a.json\n```\n"),
+            kit.join("types.feature"),
+            format!("@node:Type\nFeature: Types\n  Scenario: types-0001 {case_title}\n    Then its canonical YAML spelling is a\n"),
         )
         .unwrap();
         std::fs::create_dir_all(repo.path().join("fixtures")).unwrap();
@@ -615,6 +615,8 @@ mod tests {
             std::fs::create_dir_all(path.parent().unwrap()).unwrap();
             std::fs::write(path, "{}").unwrap();
         }
+        let loaded = load_kit(KitSource::directory(&kit, Some(repo.path()))).unwrap();
+        assert!(loaded.errors.is_empty(), "{:?}", loaded.errors);
         repo
     }
 
@@ -746,7 +748,7 @@ mod tests {
         };
         assert_eq!(lock.source, LockSource::Local { revision: None });
 
-        std::fs::write(first.join("fixtures/a.json"), "[]").unwrap();
+        std::fs::write(first.join("spec/ir/mck/types.feature"), "changed").unwrap();
         let error = vendor(
             &VendorSource::Local(first.clone()),
             &out.path().join("third"),
@@ -754,7 +756,10 @@ mod tests {
         )
         .unwrap_err()
         .to_string();
-        assert!(error.contains("altered: fixtures/a.json"), "{error}");
+        assert!(
+            error.contains("altered: spec/ir/mck/types.feature"),
+            "{error}"
+        );
     }
 
     #[test]
@@ -791,17 +796,17 @@ mod tests {
         let dest = out.path().join("kit");
         vendor(&local(&repo), &dest, None).unwrap();
 
-        std::fs::write(join(&dest, "spec/ir/mck/extra.md"), "## extra-0001: e\n").unwrap();
+        std::fs::write(join(&dest, "spec/ir/mck/extra.feature"), "Feature: Extra\n").unwrap();
         assert!(matches!(
             open_managed(&dest),
             Err(VendorError::Modified { .. })
         ));
-        std::fs::remove_file(join(&dest, "spec/ir/mck/extra.md")).unwrap();
+        std::fs::remove_file(join(&dest, "spec/ir/mck/extra.feature")).unwrap();
         assert!(open_managed(&dest).is_ok());
 
         let manifest = manifest_path(&dest);
         let text = std::fs::read_to_string(&manifest).unwrap();
-        std::fs::write(&manifest, text.replace(">=1, <2", ">=2, <3")).unwrap();
+        std::fs::write(&manifest, text.replace(">=2, <3", ">=3, <4")).unwrap();
         assert!(matches!(
             open_managed(&dest),
             Err(VendorError::UnsupportedDriver { .. })
@@ -833,8 +838,8 @@ mod tests {
         ));
 
         std::fs::write(
-            repo.path().join(KIT_PATH).join("types.md"),
-            "## types-0001: two\n```yaml canonical\na: 1\n```\n",
+            repo.path().join(KIT_PATH).join("types.feature"),
+            "@node:Type\nFeature: Types\n  Scenario: types-0001 two\n    Then its canonical YAML spelling is a: 1\n",
         )
         .unwrap();
         let UpdateOutcome::Updated(report) = update(&dest, &local(&repo), None).unwrap() else {
@@ -842,16 +847,13 @@ mod tests {
         };
         assert_eq!(
             report.changes,
-            vec![
-                ("fixtures/a.json".to_owned(), Change::Removed),
-                ("spec/ir/mck/types.md".to_owned(), Change::Changed)
-            ]
+            vec![("spec/ir/mck/types.feature".to_owned(), Change::Changed)]
         );
         assert_eq!(report.leftover, None);
         assert_eq!(open_managed(&dest).unwrap().lock, report.new);
         assert!(
             !dest.join("fixtures").exists(),
-            "a file dropped from the closure is removed"
+            "unreferenced files stay outside the snapshot"
         );
         assert_eq!(
             std::fs::read_dir(out.path()).unwrap().count(),
@@ -866,18 +868,21 @@ mod tests {
         let out = tempfile::tempdir().unwrap();
         let dest = out.path().join("kit");
         vendor(&local(&repo), &dest, None).unwrap();
-        std::fs::write(dest.join("fixtures/a.json"), "[1]").unwrap();
+        std::fs::write(dest.join("spec/ir/mck/types.feature"), "changed").unwrap();
         std::fs::write(
-            repo.path().join(KIT_PATH).join("types.md"),
-            "## types-0001: two\n```yaml canonical\na: 1\n```\n",
+            repo.path().join(KIT_PATH).join("types.feature"),
+            "@node:Type\nFeature: Types\n  Scenario: types-0001 two\n    Then its canonical YAML spelling is a: 1\n",
         )
         .unwrap();
 
         let error = update(&dest, &local(&repo), None).unwrap_err().to_string();
-        assert!(error.contains("altered: fixtures/a.json"), "{error}");
+        assert!(
+            error.contains("altered: spec/ir/mck/types.feature"),
+            "{error}"
+        );
         assert_eq!(
-            std::fs::read_to_string(dest.join("fixtures/a.json")).unwrap(),
-            "[1]"
+            std::fs::read_to_string(dest.join("spec/ir/mck/types.feature")).unwrap(),
+            "changed"
         );
     }
 
@@ -912,8 +917,8 @@ mod tests {
         vendor(&local(&repo), &dest, None).unwrap();
         std::fs::write(dest.join(".gitattributes"), "* -text\n").unwrap();
         std::fs::write(
-            repo.path().join(KIT_PATH).join("types.md"),
-            "## types-0001: two\n```yaml canonical\na: 1\n```\n",
+            repo.path().join(KIT_PATH).join("types.feature"),
+            "@node:Type\nFeature: Types\n  Scenario: types-0001 two\n    Then its canonical YAML spelling is a: 1\n",
         )
         .unwrap();
         assert!(matches!(

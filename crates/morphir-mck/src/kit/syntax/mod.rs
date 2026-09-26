@@ -1,9 +1,8 @@
-//! The kit's case grammar: pure functions from text to cases and errors.
-//!
-//! This module depends on nothing but `std`, and the build script includes it
-//! by path to find the fixtures the embedded kit must carry. Keep it that way.
+//! Shared case types, fence information and text helpers. The historical
+//! Markdown parser is retained only for unit tests of frozen behavior.
 
 pub mod case;
 pub mod info_string;
+#[cfg(test)]
 pub mod markdown;
 pub mod text;

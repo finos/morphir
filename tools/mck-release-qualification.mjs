@@ -4,10 +4,10 @@ export function sourceQualificationTargets(metadata) {
   const engine = metadata.packages.find(pkg => pkg.name === "morphir-mck");
   if (!engine) throw new Error("missing morphir-mck in source tag");
   const available = new Set(engine.targets.filter(target => target.kind.includes("test")).map(target => target.name));
-  const ir = ["runner_parity", "transport"];
-  for (const name of ir) {
-    if (!available.has(name)) throw new Error(`missing ${name} qualification test`);
-  }
+  const kitTest = available.has("runner_parity") ? "runner_parity" : available.has("kit_steps") ? "kit_steps" : null;
+  if (!kitTest) throw new Error("missing runner_parity or kit_steps qualification test");
+  if (!available.has("transport")) throw new Error("missing transport qualification test");
+  const ir = [kitTest, "transport"];
   const packages = ["package_corpus", "package_protocol", "package_runner"];
   const present = packages.filter(name => available.has(name));
   if (present.length !== 0 && present.length !== packages.length) {

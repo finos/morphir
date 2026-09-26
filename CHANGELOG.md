@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The converted `elm/single-file` example's id is now `elm/single-file#compile-and-install` (#946).
 
 ### Removed
+- **Breaking**: MCK Markdown case files, `morphir mck convert`, `morphir mck run --engine`, and the `mck:parity` task. The Gherkin `.feature` kit is the sole IR case source; managed kits require driver contract 2 (#946).
 - **Breaking**: notebook scenarios (`scenario.ipynb`) are no longer supported. Convert one to `scenarios.feature.md`; notebook support returns with the VFS work (#946).
 - **Breaking**: the workspace spelling `kind: notebook` is removed; write `kind: inline` (#946).
 

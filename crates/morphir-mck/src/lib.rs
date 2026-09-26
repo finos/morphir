@@ -28,4 +28,4 @@ pub mod transport;
 /// The runner's interpretation of a kit, as an integer a vendored kit's
 /// manifest can bound (`driverContract`). It increases only when that
 /// interpretation changes incompatibly.
-pub const DRIVER_CONTRACT: u32 = 1;
+pub const DRIVER_CONTRACT: u32 = 2;

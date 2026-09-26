@@ -19,7 +19,7 @@ manifest at its root:
 vendor/morphir-mck/
   mck-kit.lock.json
   spec/ir/mck/README.md
-  spec/ir/mck/types.md
+  spec/ir/mck/types.feature
   spec/ir/mck/...
   spec/mck/vocabulary.json
   website/static/ir/examples/v4/complete-example.json
@@ -37,7 +37,7 @@ encoding conversion happens at any step; implementors should mark the directory 
 For the IR suite the snapshot holds exactly:
 
 1. every file under `spec/ir/mck/`;
-2. every file a `text` fence in any case resolves to;
+2. every external text fixture referenced by a case step;
 3. the coverage vocabulary, `spec/mck/vocabulary.json`;
 4. the schemas and examples `schema check` reads: the two IR schemas under
    `website/static/schemas/`, plus `spec/mck/vocabulary.schema.json`,
@@ -49,10 +49,9 @@ IR-3 extends the fixed closure to support installed offline schema checks. Re-ve
 revision carrying these inputs. An older managed snapshot missing them fails closed; the driver
 does not silently add files to its manifest. The digest algorithm and lock format are unchanged.
 
-Files outside this transitive set are not included. Items 1 and 2 are the **legacy corpus set**,
-the input of the TypeScript driver's `kit.lock.json` hash. At the baseline that is 15 files, listed
-in [baseline/corpus-inventory.json](baseline/corpus-inventory.json). A kit with parse errors or an
-unresolvable fixture cannot be snapshotted.
+Files outside this transitive set are not included. The historical Markdown corpus and its
+15-file inventory remain frozen in [baseline/corpus-inventory.json](baseline/corpus-inventory.json).
+A kit with parse errors or an unresolvable fixture cannot be snapshotted.
 
 ## Digests
 
@@ -81,7 +80,7 @@ A snapshot records two digests:
 
 | Field | Input set | Purpose |
 | --- | --- | --- |
-| `corpusHash` | Legacy corpus set (items 1 and 2) | Same identity the TypeScript `kit.lock.json` recorded, for parity and cross-runner comparison |
+| `corpusHash` | Case files and their external text fixtures (items 1 and 2) | Identifies the executable corpus independently of the fixed schema inputs |
 | `snapshotDigest` | Every file in `files` | Identifies the complete bytes a managed run uses |
 
 The manifest is never an entry in `files`, so it does not hash itself.
@@ -89,8 +88,9 @@ The manifest is never an entry in `files`, so it does not hash itself.
 ## `mck-kit.lock.json`
 
 Schema: [mck-kit.lock.schema.json](mck-kit.lock.schema.json).
-[mck-kit.lock.example.json](mck-kit.lock.example.json) is an illustrative manifest over the legacy
-corpus set at the baseline, so its two digests are equal; a real snapshot also lists the vocabulary
+[mck-kit.lock.example.json](mck-kit.lock.example.json) is a frozen illustrative manifest over the
+historical Markdown corpus. Its driver range and file inventory are not a current executable kit.
+A real snapshot lists Gherkin cases, vocabulary
 and schemas. Tab-indented JSON with a trailing
 newline, keys in the order shown, `files` sorted in digest order, so regenerating an unchanged
 snapshot is byte-identical.
@@ -107,7 +107,7 @@ snapshot is byte-identical.
 		"revision": "a2803f2cbfbb9baffe8a939e9462b18fd5bcdda0"
 	},
 	"algorithm": "mck-file-map-sha256/1",
-	"corpusHash": "sha256-075bb621c9901fcca21830051065b3d5f303dfb827b1624c52c82d796bf4c609",
+  "corpusHash": "sha256-...",
 	"snapshotDigest": "sha256-...",
 	"files": [
 		{ "path": "spec/ir/mck/README.md", "sha256": "...", "size": 8439 }
@@ -120,7 +120,7 @@ snapshot is byte-identical.
   snapshot had a manifest; a plain directory has `revision: null`.
 - `driverContract` is a range over the **driver contract version**, an integer the CLI reports as
   `driverContract` in `morphir mck kit status` (and its `--json`). The CLI disables `--version` on
-  every subcommand, so `morphir mck --version` does not exist. It starts at 1 and increases only when the runner's interpretation of a
+  every subcommand, so `morphir mck --version` does not exist. It is 2 for the Gherkin-only kit and increases only when the runner's interpretation of a
   kit changes incompatibly. A CLI whose contract is outside the range refuses the kit before
   starting an adapter, exit 1. It never fetches another kit and never downgrades silently.
 - There is no timestamp. A manifest is a function of its content and source.

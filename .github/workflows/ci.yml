@@ -494,14 +494,6 @@ jobs:
         if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-typescript-adapter.json') != '' }}
         run: cargo run --locked -p morphir -- mck report render .dev/out/mck/morphir-typescript-adapter.json --format html --output .dev/out/mck/morphir-typescript-adapter.html
 
-      # Runs the kit's gherkin engine against the TypeScript adapter and
-      # requires its report to match the legacy report above, record for
-      # record. The Rust binding's half of this gate runs in the
-      # rust-conformance job, after its own mck:run-rust.
-      - name: Check gherkin/legacy parity for the TypeScript binding
-        if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-typescript-adapter.json') != '' }}
-        run: mise run mck:parity
-
       - name: Validate draft package schemas and examples
         run: mise run package:schema-check
 
@@ -515,7 +507,6 @@ jobs:
           path: |
             .dev/out/mck/morphir-typescript-adapter.json
             .dev/out/mck/morphir-typescript-adapter.html
-            .dev/out/mck/morphir-typescript-adapter.gherkin.json
 
   # Kit run against the Rust binding and the migrate validation. Both build
   # from the shared cargo cache and neither needs the extensions, so they run
@@ -549,14 +540,6 @@ jobs:
         if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-rust.json') != '' }}
         run: cargo run --locked -p morphir -- mck report render .dev/out/mck/morphir-rust.json --format html --output .dev/out/mck/morphir-rust.html
 
-      # Runs the kit's gherkin engine against the Rust adapter and requires
-      # its report to match the legacy report above, record for record. The
-      # TypeScript binding's half of this gate runs in the docs job, after
-      # its own mck:run.
-      - name: Check gherkin/legacy parity for the Rust binding
-        if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-rust.json') != '' }}
-        run: mise run mck:parity
-
       - name: Upload the Rust binding's MCK report
         uses: actions/upload-artifact@v7
         if: always()
@@ -565,7 +548,6 @@ jobs:
           path: |
             .dev/out/mck/morphir-rust.json
             .dev/out/mck/morphir-rust.html
-            .dev/out/mck/morphir-rust.gherkin.json
             .dev/out/mck/node-address-rust.json
 
       - name: Validate migrated IR against the v4 schema

@@ -1,7 +1,7 @@
 //! The fixed part of a kit's input closure (`spec/mck/kit-manifest.md`):
 //! parent-owned files every snapshot carries whatever its cases name. The
 //! rest of the closure is every file under the kit directory and every
-//! fixture a `text` fence names.
+//! external fixture a case step names.
 //!
 //! Std-only: the build script includes this file by path.
 

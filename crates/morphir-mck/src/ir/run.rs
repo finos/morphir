@@ -1028,7 +1028,6 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::kit::load::load_kit;
     use crate::kit::source::KitSource;
 
     /// An adapter answering from a closure.
@@ -1056,7 +1055,7 @@ mod tests {
             .iter()
             .map(|(p, t)| ((*p).to_owned(), Cow::Owned(t.as_bytes().to_vec())))
             .collect();
-        load_kit(KitSource::map("test kit", files)).unwrap()
+        crate::kit::load::load_markdown_kit(KitSource::map("test kit", files)).unwrap()
     }
 
     fn run_with(kit: &Kit, filter: Option<&Regex>, testee: &mut dyn Testee) -> Run {

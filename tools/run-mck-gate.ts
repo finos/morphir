@@ -1,6 +1,5 @@
 // Repository task plumbing only: the native report checker owns every verdict.
 // bun run tools/run-mck-gate.ts <report> <baseline> <kit> <adapter> [adapter args...]
-// bun run tools/run-mck-gate.ts parity <legacy-report> <gherkin-report> <kit> <adapter> [adapter args...]
 import { rmSync } from "node:fs";
 
 const DEFAULT_COMMAND = ["cargo", "run", "--locked", "-p", "morphir", "--", "mck"];
@@ -32,47 +31,12 @@ export function runMckGate(
 	).exitCode;
 }
 
-// The parity gate: the legacy report already exists (a prior `runMckGate` call
-// wrote it), so this runs only the gherkin engine, with the same adapter
-// command line, and compares the two reports' records. It never re-runs the
-// legacy engine.
-export function runMckParity(
-	legacyReport: string,
-	gherkinReport: string,
-	kit: string,
-	adapterArgs: string[],
-	command = DEFAULT_COMMAND,
-): number {
-	rmSync(gherkinReport, { force: true });
-	const run = Bun.spawnSync(
-		[...command, "run", "--engine", "gherkin", "--kit", kit, "--report", gherkinReport, ...adapterArgs],
-		{ stdio: ["inherit", "inherit", "inherit"] },
-	);
-	if (run.signalCode) return 1;
-	if (run.exitCode !== 0 && run.exitCode !== 1) return run.exitCode;
-	return Bun.spawnSync(
-		[...command, "report", "compare", legacyReport, gherkinReport],
-		{ stdio: ["inherit", "inherit", "inherit"] },
-	).exitCode;
-}
-
 if (import.meta.main) {
 	const argv = process.argv.slice(2);
-	if (argv[0] === "parity") {
-		const [, legacyReport, gherkinReport, kit, adapter, ...args] = argv;
-		if (!legacyReport || !gherkinReport || !kit || !adapter) {
-			console.error(
-				"usage: run-mck-gate.ts parity <legacy-report> <gherkin-report> <kit> <adapter> [adapter args...]",
-			);
-			process.exit(2);
-		}
-		process.exit(runMckParity(legacyReport, gherkinReport, kit, adapterArgs(adapter, args)));
-	} else {
-		const [report, baseline, kit, adapter, ...args] = argv;
-		if (!report || !baseline || !kit || !adapter) {
-			console.error("usage: run-mck-gate.ts <report> <baseline> <kit> <adapter> [adapter args...]");
-			process.exit(2);
-		}
-		process.exit(runMckGate(report, baseline, kit, adapterArgs(adapter, args)));
+	const [report, baseline, kit, adapter, ...args] = argv;
+	if (!report || !baseline || !kit || !adapter) {
+		console.error("usage: run-mck-gate.ts <report> <baseline> <kit> <adapter> [adapter args...]");
+		process.exit(2);
 	}
+	process.exit(runMckGate(report, baseline, kit, adapterArgs(adapter, args)));
 }

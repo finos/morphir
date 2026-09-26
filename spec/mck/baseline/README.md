@@ -5,6 +5,10 @@ The Rust runner is measured against it under the rules in [migration.md](../migr
 These files are evidence. Do not regenerate them to make a parity check pass; a new capture is a
 new dated baseline beside this one.
 
+The Markdown case grammar and the dual-engine parity task retired after the Gherkin cutover
+in #946. The inventories, reports and transcripts here describe the historical kit and remain
+frozen evidence; current IR runs use `.feature` cases and driver contract 2.
+
 A kit addition, such as the [IR 3.1.0 cases](#ir-310-update), is the one exception. It updates these
 files in place, and only by addition:
 
@@ -75,8 +79,9 @@ old driver's run and stays as it was.
   the 58 new requests between them, and the `capabilities` response says
   `[3.0.0,3.2.0),[4.0.0,4.1.0)`. The report keeps its version 1 header, with the same change to
   `formatVersions`. Its 730 earlier records are unchanged, `durationMs` included, and in the same
-  order. The 72 new records, the first at index 204, come from replaying the new transcript
-  (`crates/morphir-mck/tests/runner_parity.rs`).
+  order. The 72 new records, the first at index 204, came from replaying the new transcript
+  through the historical `runner_parity` test; current replay coverage is in
+  `crates/morphir/tests/mck_run.rs`.
 
 ## Files
 

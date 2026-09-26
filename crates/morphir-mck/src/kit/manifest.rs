@@ -736,10 +736,10 @@ mod tests {
 
     #[test]
     fn driver_ranges_parse_strictly_and_contain_the_current_contract() {
-        assert_eq!(DriverRange::parse(">=1, <2"), Ok(DriverRange::CURRENT));
+        assert_eq!(DriverRange::parse(">=2, <3"), Ok(DriverRange::CURRENT));
         assert!(DriverRange::CURRENT.contains(DRIVER_CONTRACT));
         assert!(
-            !DriverRange::parse(">=2, <3")
+            !DriverRange::parse(">=1, <2")
                 .unwrap()
                 .contains(DRIVER_CONTRACT)
         );

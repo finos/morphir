@@ -374,13 +374,12 @@ mod tests {
         format!("morphir-{REVISION}/{path}")
     }
 
-    /// A finos/morphir-shaped archive holding a one-case kit whose fixture
-    /// lives outside the kit directory, plus unrelated content.
+    /// A finos/morphir-shaped archive holding a one-case kit and unrelated content.
     fn good_entries() -> Vec<(String, String)> {
         let mut files = vec![
             (
-                top("spec/ir/mck/types.md"),
-                "## types-0001: t\n```text canonical\nwebsite/fixture.json\n```\n".to_owned(),
+                top("spec/ir/mck/types.feature"),
+                "@node:Type\nFeature: Types\n  Scenario: types-0001 t\n    Then its canonical YAML spelling is a\n".to_owned(),
             ),
             (top("spec/ir/mck/README.md"), "readme".to_owned()),
             (top("website/fixture.json"), "{}".to_owned()),
@@ -413,15 +412,11 @@ mod tests {
     }
 
     #[test]
-    fn takes_the_kit_its_fixtures_and_the_fixed_inputs_and_nothing_else() {
+    fn takes_the_kit_and_the_fixed_inputs_and_nothing_else() {
         let file = build(vec![]);
         let snapshot =
             snapshot_from_archive(file.path(), &revision(), &ArchiveLimits::DEFAULT).unwrap();
-        let mut expected = vec![
-            "spec/ir/mck/README.md",
-            "spec/ir/mck/types.md",
-            "website/fixture.json",
-        ];
+        let mut expected = vec!["spec/ir/mck/README.md", "spec/ir/mck/types.feature"];
         expected.extend(FIXED_INPUTS);
         expected.sort_unstable();
         assert_eq!(
@@ -489,10 +484,10 @@ mod tests {
 
     #[test]
     fn refuses_duplicates_collisions_and_unportable_names_in_the_closure() {
-        let types = top("spec/ir/mck/types.md");
+        let types = top("spec/ir/mck/types.feature");
         refused(vec![Entry::File(&types, "again")], "appears twice");
         refused(
-            vec![Entry::File(&top("spec/ir/mck/TYPES.md"), "x")],
+            vec![Entry::File(&top("spec/ir/mck/TYPES.feature"), "x")],
             "collide",
         );
         refused(
@@ -544,7 +539,7 @@ mod tests {
     }
 
     #[test]
-    fn a_revision_without_a_fixed_input_or_a_fixture_cannot_be_snapshotted() {
+    fn a_revision_without_a_fixed_input_cannot_be_snapshotted() {
         let good = good_entries();
         let root = top("");
         let mut entries = vec![Entry::Dir(&root)];
@@ -561,18 +556,6 @@ mod tests {
             error.contains(&format!("lacks {}", FIXED_INPUTS[0])),
             "{error}"
         );
-
-        let mut entries = vec![Entry::Dir(&root)];
-        entries.extend(
-            good.iter()
-                .filter(|(p, _)| !p.ends_with("website/fixture.json"))
-                .map(|(p, t)| Entry::File(p, t)),
-        );
-        let file = archive(&entries);
-        let error = snapshot_from_archive(file.path(), &revision(), &ArchiveLimits::DEFAULT)
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("kit has 1 error"), "{error}");
     }
 
     #[test]

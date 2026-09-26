@@ -42,7 +42,28 @@ fn repository(files: &[(&str, &str)]) -> (TempDir, PathBuf) {
     (root, kit)
 }
 
-const GOOD_CASE: &str = "## types-0001: Unit\n```yaml canonical\nUnit: {}\n```\n";
+const GOOD_FEATURE: &str = "@node:Type\nFeature: Types\n  Scenario: types-0001 Unit\n    Then its canonical YAML spelling is a\n";
+
+#[test]
+fn check_accepts_a_feature_only_kit() {
+    let (_root, kit) = repository(&[(
+        "types.feature",
+        "@node:Type\nFeature: Types\n  Scenario: types-0001 Unit\n    Then its canonical YAML spelling is:\n      \"\"\"yaml\n      Unit: {}\n      \"\"\"\n",
+    )]);
+    let output = morphir(&["mck", "check", kit.to_str().unwrap(), "--json"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let result = json_of(&output);
+    assert_eq!(result["files"], json!(["spec/ir/mck/types.feature"]));
+    assert_eq!(result["cases"], json!(["types-0001"]));
+    assert_eq!(result["errors"], json!([]));
+}
+
+#[test]
+fn convert_is_not_a_kit_command_after_the_cutover() {
+    let output = morphir(&["mck", "convert", "--help"]);
+    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
+    assert!(stderr(&output).contains("unrecognized subcommand 'convert'"));
+}
 
 #[test]
 fn check_accepts_the_repository_kit_and_summarises_on_stdout() {
@@ -74,34 +95,18 @@ fn check_accepts_the_repository_kit_and_summarises_on_stdout() {
 #[test]
 fn check_reports_errors_on_stderr_with_locations_and_exits_1() {
     let (_root, kit) = repository(&[(
-        "types.md",
-        "## types-1: bad id\n\n## types-0002: open\n```yaml canonical\na: 1\n",
+        "types.feature",
+        "Feature: Types\n  Scenario: types-0001 open\n    Then an unsupported step\n",
     )]);
     let output = morphir(&["mck", "check", kit.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
-    assert_eq!(
-        stdout(&output).trim_end(),
-        "1 case(s) in 1 file(s), 3 error(s)"
-    );
+    assert!(stdout(&output).contains("1 case(s) in 1 file(s),"));
 
     let diagnostics = stderr(&output);
-    let file = kit.join("types.md").display().to_string();
+    let file = kit.join("types.feature").display().to_string();
+    assert!(diagnostics.contains(&format!("{file}:3:")), "{diagnostics}");
     assert!(
-        diagnostics.contains(&format!(
-            "{file}:1: malformed case id in heading \"types-1: bad id\""
-        )),
-        "{diagnostics}"
-    );
-    assert!(
-        diagnostics.contains(&format!("{file}:4: unterminated fence")),
-        "{diagnostics}"
-    );
-    assert!(
-        diagnostics.contains(&format!("{file}:3: case has no data fences (types-0002)")),
-        "{diagnostics}"
-    );
-    assert!(
-        !stdout(&output).contains("malformed"),
+        !stdout(&output).contains("unsupported"),
         "diagnostics stay off stdout"
     );
 }
@@ -109,8 +114,11 @@ fn check_reports_errors_on_stderr_with_locations_and_exits_1() {
 #[test]
 fn check_json_is_tab_indented_machine_output_on_stdout_only() {
     let (_root, kit) = repository(&[
-        ("types.md", GOOD_CASE),
-        ("values.md", "## values-0001: v {status=done}\n"),
+        ("types.feature", GOOD_FEATURE),
+        (
+            "values.feature",
+            "Feature: Values\n  Scenario: values-0001 v\n    Then an unsupported step\n",
+        ),
     ]);
     let output = morphir(&["mck", "check", kit.to_str().unwrap(), "--json"]);
     assert_eq!(output.status.code(), Some(1));
@@ -119,7 +127,7 @@ fn check_json_is_tab_indented_machine_output_on_stdout_only() {
     let payload: Value = serde_json::from_str(&text).expect("stdout is exactly one JSON document");
     assert_eq!(
         payload["files"],
-        serde_json::json!(["spec/ir/mck/types.md", "spec/ir/mck/values.md"])
+        serde_json::json!(["spec/ir/mck/types.feature", "spec/ir/mck/values.feature"])
     );
     assert_eq!(
         payload["cases"],
@@ -131,48 +139,10 @@ fn check_json_is_tab_indented_machine_output_on_stdout_only() {
         .iter()
         .map(|e| e["message"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        messages,
-        vec![
-            "status must be pending, got \"done\"",
-            "case has no data fences (values-0001)"
-        ]
-    );
+    assert!(messages.contains(&"not a kit step"), "{messages:?}");
     assert!(
-        !stderr(&output).contains("status must be pending"),
+        !stderr(&output).contains("not a kit step"),
         "with --json the errors are in the payload"
-    );
-}
-
-#[test]
-fn check_confines_text_fixtures_to_the_repository() {
-    let case = |target: &str| format!("## types-0001: fixture\n```text canonical\n{target}\n```\n");
-    let (root, kit) = repository(&[("types.md", &case("fixtures/a.json"))]);
-    std::fs::create_dir_all(root.path().join("fixtures")).unwrap();
-    std::fs::write(root.path().join("fixtures").join("a.json"), "{}").unwrap();
-    assert_eq!(
-        morphir(&["mck", "check", kit.to_str().unwrap()])
-            .status
-            .code(),
-        Some(0)
-    );
-
-    let outside = root
-        .path()
-        .parent()
-        .unwrap()
-        .join("mck-outside-fixture.json");
-    std::fs::write(&outside, "{}").unwrap();
-    std::fs::write(kit.join("types.md"), case("../mck-outside-fixture.json")).unwrap();
-    let output = morphir(&["mck", "check", kit.to_str().unwrap()]);
-    std::fs::remove_file(&outside).ok();
-    assert_eq!(output.status.code(), Some(1));
-    assert!(
-        stderr(&output).contains(
-            "text fence names ../mck-outside-fixture.json, which is not in the kit source"
-        ),
-        "{}",
-        stderr(&output)
     );
 }
 
@@ -234,7 +204,7 @@ fn kit_status_reports_an_unedited_checkout_as_matching_and_an_edited_kit_as_modi
     assert_eq!(checkout["modified"], false);
     assert_eq!(checkout["corpusHash"], embedded["corpusHash"]);
 
-    let (_root, kit) = repository(&[("types.md", GOOD_CASE)]);
+    let (_root, kit) = repository(&[("types.feature", GOOD_FEATURE)]);
     let edited = morphir(&[
         "mck",
         "kit",
@@ -255,7 +225,10 @@ fn kit_status_reports_an_unedited_checkout_as_matching_and_an_edited_kit_as_modi
 
 #[test]
 fn kit_status_fails_for_a_kit_with_errors() {
-    let (_root, kit) = repository(&[("types.md", "## types-1: bad id\n")]);
+    let (_root, kit) = repository(&[(
+        "types.feature",
+        "Feature: Types\n  Scenario: types-1 bad id\n    Then its canonical JSON spelling is {}\n",
+    )]);
     let output = morphir(&["mck", "kit", "status", "--kit", kit.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(
@@ -290,7 +263,7 @@ fn vendor_embedded(dest: &Path) -> Output {
 
 #[test]
 fn an_invalid_manifest_is_an_error_never_a_fallback_to_the_raw_kit() {
-    let (root, kit) = repository(&[("types.md", GOOD_CASE)]);
+    let (root, kit) = repository(&[("types.feature", GOOD_FEATURE)]);
     std::fs::write(root.path().join("mck-kit.lock.json"), "{}").unwrap();
     for args in [&["mck", "check"][..], &["mck", "kit", "status", "--kit"]] {
         let output = morphir(&[args, &[kit.to_str().unwrap()]].concat());
@@ -333,7 +306,7 @@ fn the_embedded_kit_vendors_offline_into_a_new_nested_directory_and_verifies() {
         assert_eq!(status["mode"], "vendored");
         assert_eq!(status["snapshotDigest"], vendored["snapshotDigest"]);
         assert_eq!(status["corpusHash"], vendored["corpusHash"]);
-        assert_eq!(status["driverContract"], 1);
+        assert_eq!(status["driverContract"], 2);
     }
     let check = morphir(&[
         "mck",
@@ -398,12 +371,19 @@ fn an_edited_snapshot_fails_check_status_and_update_naming_the_file() {
     let work = TempDir::new().unwrap();
     let dest = work.path().join("kit");
     assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
-    let types = dest.join("spec").join("ir").join("mck").join("types.md");
+    let types = dest
+        .join("spec")
+        .join("ir")
+        .join("mck")
+        .join("types.feature");
     let original = std::fs::read(&types).unwrap();
     std::fs::write(&types, [original.as_slice(), b"\n"].concat()).unwrap();
     std::fs::write(
-        dest.join("spec").join("ir").join("mck").join("mine.md"),
-        "## mine-0001: m\n",
+        dest.join("spec")
+            .join("ir")
+            .join("mck")
+            .join("mine.feature"),
+        "Feature: Mine\n",
     )
     .unwrap();
 
@@ -420,11 +400,11 @@ fn an_edited_snapshot_fails_check_status_and_update_naming_the_file() {
         assert_eq!(output.status.code(), Some(1), "{args:?}");
         let diagnostics = stderr(&output);
         assert!(
-            diagnostics.contains("altered: spec/ir/mck/types.md"),
+            diagnostics.contains("altered: spec/ir/mck/types.feature"),
             "{args:?}: {diagnostics}"
         );
         assert!(
-            diagnostics.contains("not in the manifest: spec/ir/mck/mine.md"),
+            diagnostics.contains("not in the manifest: spec/ir/mck/mine.feature"),
             "{args:?}: {diagnostics}"
         );
         assert_eq!(stdout(&output), "", "{args:?}");
@@ -442,12 +422,12 @@ fn a_snapshot_for_another_driver_contract_is_refused_before_use() {
     assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
     let manifest = dest.join("mck-kit.lock.json");
     let text = std::fs::read_to_string(&manifest).unwrap();
-    std::fs::write(&manifest, text.replace(">=1, <2", ">=2, <3")).unwrap();
+    std::fs::write(&manifest, text.replace(">=2, <3", ">=3, <4")).unwrap();
     let output = morphir(&["mck", "check", dest.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(
         stderr(&output)
-            .contains("supports driver contract >=2, <3; this CLI implements contract 1"),
+            .contains("supports driver contract >=3, <4; this CLI implements contract 2"),
         "{}",
         stderr(&output)
     );
@@ -657,7 +637,11 @@ fn update_of_a_github_snapshot_takes_its_source_from_the_manifest() {
 fn update_verifies_the_existing_snapshot_before_fetching_anything() {
     let work = TempDir::new().unwrap();
     let dest = github_sourced_snapshot(work.path());
-    let types = dest.join("spec").join("ir").join("mck").join("types.md");
+    let types = dest
+        .join("spec")
+        .join("ir")
+        .join("mck")
+        .join("types.feature");
     let original = std::fs::read(&types).unwrap();
     std::fs::write(&types, [original.as_slice(), b"\n"].concat()).unwrap();
     let full = "0000000000000000000000000000000000000000";
@@ -687,7 +671,7 @@ fn update_verifies_the_existing_snapshot_before_fetching_anything() {
         assert_eq!(output.status.code(), Some(1), "{args:?}");
         let diagnostics = stderr(&output);
         assert!(
-            diagnostics.contains("altered: spec/ir/mck/types.md"),
+            diagnostics.contains("altered: spec/ir/mck/types.feature"),
             "{args:?}: {diagnostics}"
         );
         assert!(

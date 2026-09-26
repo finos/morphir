@@ -82,7 +82,7 @@ impl From<io::Error> for SnapshotError {
 }
 
 /// Collects `kit`'s closure: every file under the kit directory, every
-/// `text` fixture, and the fixed inputs.
+/// external text fixture, and the fixed inputs.
 pub fn collect(kit: &Kit) -> Result<Snapshot, SnapshotError> {
     let Some(mut files) = kit.corpus_files()? else {
         return Err(SnapshotError::KitHasErrors(kit.errors.len()));
@@ -263,7 +263,7 @@ mod tests {
     use std::borrow::Cow;
 
     use super::*;
-    use crate::kit::load::load_kit;
+    use crate::kit::load::load_markdown_kit as load_kit;
     use crate::kit::source::KitSource;
 
     const CASE: &str = "## types-0001: t\n```text canonical\nfixtures/a.json\n```\n";

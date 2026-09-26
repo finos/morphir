@@ -304,7 +304,7 @@ mod tests {
     }"#;
 
     fn kit(markdown: &str) -> crate::kit::Kit {
-        load_kit(KitSource::map(
+        crate::kit::load::load_markdown_kit(KitSource::map(
             "coverage fixture",
             BTreeMap::from([
                 (

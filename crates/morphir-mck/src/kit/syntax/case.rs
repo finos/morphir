@@ -1,16 +1,19 @@
-//! Turns one MCK case file into cases. An H2 opens a case; its fences are the
-//! data; everything else under it is prose. Every structural rule from the
-//! kit's README is enforced here and reported as a `KitError` with a line, so
-//! the check command can print `file:line: message`.
+//! Shared MCK case types and structural validation. Historical Markdown
+//! parsing remains compiled only for unit tests.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+#[cfg(test)]
+use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use super::info_string::{FenceInfo, InfoError, Language, Role, parse_info_string, set_label};
+use super::info_string::{FenceInfo, Language, Role, set_label};
+#[cfg(test)]
+use super::info_string::{InfoError, parse_info_string};
+#[cfg(test)]
 use super::markdown::{Block, tokenize};
-use super::text::{
-    is_js_blank, js_parse_int, js_tokens, js_trim, js_trim_start, lazy_prefix, split_lines,
-};
+use super::text::{is_js_blank, js_trim, split_lines};
+#[cfg(test)]
+use super::text::{js_parse_int, js_tokens, js_trim_start, lazy_prefix};
 
 /// A case identifier, `<topic>-<NNNN>`. Only the parser constructs one.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -109,15 +112,18 @@ pub struct ParsedFile {
     pub errors: Vec<KitError>,
 }
 
+#[cfg(test)]
 const HEADING_KEYS: [&str; 4] = ["node", "version", "status", "compare"];
 
 /// The file's topic: its base name without `.md`. Accepts either separator so
 /// an operating-system path from a Windows checkout works.
+#[cfg(test)]
 pub fn topic_of(file: &str) -> &str {
     let base = file.rsplit(['/', '\\']).next().unwrap_or(file);
     base.strip_suffix(".md").unwrap_or(base)
 }
 
+#[cfg(test)]
 struct CaseHeading<'a> {
     topic: &'a str,
     digits: &'a str,
@@ -126,6 +132,7 @@ struct CaseHeading<'a> {
 }
 
 /// `^([a-z][a-z0-9-]*)-(\d{4}): (.+?)(?:\s*\{([^}]*)\})?\s*$`
+#[cfg(test)]
 fn case_heading(text: &str) -> Option<CaseHeading<'_>> {
     // The topic class excludes ':', so "-NNNN" can only be the last five
     // characters of the leading [a-z0-9-] run.
@@ -155,6 +162,7 @@ fn case_heading(text: &str) -> Option<CaseHeading<'_>> {
     })
 }
 
+#[cfg(test)]
 struct Parser<'a> {
     file: &'a str,
     file_topic: &'a str,
@@ -163,6 +171,7 @@ struct Parser<'a> {
     out: ParsedFile,
 }
 
+#[cfg(test)]
 impl Parser<'_> {
     fn fail(&mut self, line: usize, message: String) {
         self.out.errors.push(KitError {
@@ -375,6 +384,7 @@ pub(crate) fn case_errors(case: &KitCase) -> Vec<(usize, String)> {
     errors
 }
 
+#[cfg(test)]
 pub fn parse_kit_file(file: &str, source: &str) -> ParsedFile {
     let mut parser = Parser {
         file,
