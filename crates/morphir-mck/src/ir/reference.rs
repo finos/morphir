@@ -192,13 +192,21 @@ fn yaml_float_lexemes(text: &str) -> Result<Vec<String>, String> {
         .filter(|event| !matches!(event, Ok(Event::Comment(..))))
         .collect::<Result<Vec<_>, _>>()?;
     let mut lexemes = Vec::new();
+    let mut skip_through = None;
     for (index, event) in events.iter().enumerate() {
+        if skip_through.is_some_and(|end| index <= end) {
+            continue;
+        }
         if !matches!(event, Event::Scalar(name, _, _, _) if name == "FloatLiteral") {
             continue;
         }
         let value = match events.get(index + 1) {
             Some(Event::Scalar(value, ScalarStyle::Plain, _, _)) => Some(value.as_ref()),
-            Some(Event::MappingStart(..)) => yaml_expanded_float_lexeme(&events, index + 2),
+            Some(Event::MappingStart(..)) => {
+                let value = yaml_expanded_float_lexeme(&events, index + 2);
+                skip_through = Some(yaml_mapping_end(&events, index + 1));
+                value
+            }
             _ => None,
         };
         if let Some(value) = value {
@@ -208,6 +216,23 @@ fn yaml_float_lexemes(text: &str) -> Result<Vec<String>, String> {
         }
     }
     Ok(lexemes)
+}
+
+fn yaml_mapping_end(events: &[Event<'_>], start: usize) -> usize {
+    let mut depth = 0;
+    for (index, event) in events.iter().enumerate().skip(start) {
+        match event {
+            Event::MappingStart(..) | Event::SequenceStart(..) => depth += 1,
+            Event::MappingEnd | Event::SequenceEnd => {
+                depth -= 1;
+                if depth == 0 {
+                    return index;
+                }
+            }
+            _ => {}
+        }
+    }
+    events.len()
 }
 
 // The YAML profile rewrites only source spellings JSON cannot parse; a JSON
@@ -689,11 +714,30 @@ fn restore_record_order(
 }
 
 fn raw_float_lexeme(value: &OrderedValue) -> Option<&str> {
-    match value {
+    let OrderedValue::Object(node) = value else {
+        return match value {
+            OrderedValue::Number(number) => Some(&number.0),
+            _ => None,
+        };
+    };
+    let OrderedValue::Object(literal) = node.get("Literal")? else {
+        return None;
+    };
+    let literal = if literal.contains_key("attributes") {
+        match literal.get("literal")? {
+            OrderedValue::Object(inner) => inner,
+            _ => return None,
+        }
+    } else {
+        literal
+    };
+    let payload = literal.get("FloatLiteral")?;
+    let number = match payload {
+        OrderedValue::Object(inner) => inner.get("value")?,
+        other => other,
+    };
+    match number {
         OrderedValue::Number(number) => Some(&number.0),
-        OrderedValue::Object(fields) => ["Literal", "literal", "FloatLiteral", "value"]
-            .iter()
-            .find_map(|name| fields.get(*name).and_then(raw_float_lexeme)),
         _ => None,
     }
 }
@@ -1605,6 +1649,21 @@ mod tests {
     #[test]
     fn expanded_yaml_float_ignores_unknown_members() {
         let yaml = "Literal:\n  FloatLiteral:\n    future: true\n    value: 4.0\n";
+        assert_eq!(
+            to_ion("Value", Profile::Yaml, yaml).unwrap(),
+            "(\n  float\n  \"4.0\"\n)\n"
+        );
+    }
+
+    #[test]
+    fn expanded_float_uses_value_instead_of_ignored_numbers() {
+        let json = r#"{"Literal":{"FloatLiteral":{"Literal":2.0,"value":4.0}}}"#;
+        assert_eq!(
+            to_ion("Value", Profile::Json, json).unwrap(),
+            "(\n  float\n  \"4.0\"\n)\n"
+        );
+        let yaml =
+            "Literal:\n  FloatLiteral:\n    future:\n      FloatLiteral: 2.0\n    value: 4.0\n";
         assert_eq!(
             to_ion("Value", Profile::Yaml, yaml).unwrap(),
             "(\n  float\n  \"4.0\"\n)\n"
