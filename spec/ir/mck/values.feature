@@ -2,40 +2,46 @@
 Feature: Values
   Value expressions. At value position a bare string is a Variable or a Reference, a bare boolean or number is a literal, and a bare array is a List (decision 0009); a Tuple always carries its wrapper. Every node has an expanded spelling whose payload starts with `attributes` (decision 0005).
 
-  Scenario: values-0001 Literal shorthands
-    Then its canonical YAML spelling is:
+  @spelling
+  Scenario: values-0001 Integer literal spelling
+    Then its canonical Ion spelling is 42
+    And its canonical YAML spelling is:
       """yaml
       Literal:
         IntegerLiteral: 42
       """
     And its canonical JSON spelling is { "Literal": { "IntegerLiteral": 42 } }
 
-  Scenario Outline: values-0001 Literal shorthands
-    Then a reader of <format> accepts <input>
+  @semantic
+  Scenario: values-0025 Integer literal reader shorthands
+    Given a Value whose canonical form is:
+      """ion
+      42
+      """
+    Then a reader of JSON accepts { "Literal": 42 }
+    And a reader of JSON accepts 42
+    And a reader of JSON accepts { "Literal": { "IntegerLiteral": { "value": 42 } } }
+    And a reader of JSON accepts { "Literal": { "WholeNumberLiteral": 42 } }
+    And a reader of JSON accepts { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } }
 
-    Examples:
-      | format | input                                                                    |
-      | JSON   | { "Literal": 42 }                                                        |
-      | JSON   | 42                                                                       |
-      | JSON   | { "Literal": { "IntegerLiteral": { "value": 42 } } }                     |
-      | JSON   | { "Literal": { "WholeNumberLiteral": 42 } }                              |
-      | JSON   | { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } } |
-
-  Scenario Outline: values-0002 Variable and reference shorthands
+  @spelling
+  Scenario Outline: values-0002 Variable spelling
     Then its canonical <format> spelling is <spelling>
 
     Examples:
       | format | spelling            |
+      | Ion    | x                   |
       | YAML   | Variable: x         |
       | JSON   | { "Variable": "x" } |
 
-  Scenario Outline: values-0002 Variable and reference shorthands
-    Then a reader of <format> accepts <input>
-
-    Examples:
-      | format | input                                             |
-      | JSON   | "x"                                               |
-      | JSON   | { "Variable": { "attributes": {}, "name": "x" } } |
+  @semantic
+  Scenario: values-0026 Variable reader shorthands
+    Given a Value whose canonical form is:
+      """ion
+      x
+      """
+    Then a reader of JSON accepts "x"
+    And a reader of JSON accepts { "Variable": { "attributes": {}, "name": "x" } }
 
   Scenario: values-0004 Apply
     Then its canonical YAML spelling is:
@@ -153,27 +159,44 @@ Feature: Values
       | JSON   | { "Native": { "fqname": "morphir/SDK:basics#add", "nativeInfo": { "hint": { "Arithmetic": {} } } } } | unknown_node |
       | JSON   | { "External": { "externalName": "console.log", "targetPlatform": "javascript" } }                    | unknown_node |
 
-  Scenario Outline: values-0010 Unit value
-    Then its canonical <format> spelling is <spelling>
+  @spelling
+  Scenario: values-0010 Unit value spelling
+    Then its canonical Ion spelling is:
+      """ion
+      (
+      )
+      """
+    And its canonical YAML spelling is Unit: {}
+    And its canonical JSON spelling is { "Unit": {} }
 
-    Examples:
-      | format | spelling       |
-      | YAML   | Unit: {}       |
-      | JSON   | { "Unit": {} } |
-
-  Scenario: values-0010 Unit value
+  @semantic
+  Scenario: values-0027 Unit value reader
+    Given a Value whose canonical form is:
+      """ion
+      (
+      )
+      """
     Then a reader of JSON accepts { "Unit": { "attributes": {} } }
 
-  Scenario: values-0011 Bare scalars are literals
-    Decision 0009. A bare `42` is an IntegerLiteral and a bare `true` a BoolLiteral; `4.0` is a FloatLiteral because its lexeme has a point. A bare string is never a StringLiteral (values-0002).
-
-    Then its canonical YAML spelling is:
+  @spelling
+  Scenario: values-0011 Boolean literal spelling
+    Then its canonical Ion spelling is true
+    And its canonical YAML spelling is:
       """yaml
       Literal:
         BoolLiteral: true
       """
     And its canonical JSON spelling is { "Literal": { "BoolLiteral": true } }
-    And a reader of JSON accepts true
+
+  @semantic
+  Scenario: values-0028 Bare booleans are literals
+    Decision 0009. A bare `42` is an IntegerLiteral and a bare `true` a BoolLiteral; `4.0` is a FloatLiteral because its lexeme has a point. A bare string is never a StringLiteral (values-0002).
+
+    Given a Value whose canonical form is:
+      """ion
+      true
+      """
+    Then a reader of JSON accepts true
 
   Scenario: values-0012 Bare number lexemes
     Then its canonical YAML spelling is:

@@ -13,3 +13,10 @@ byte-identical when captured again with the adapter built in this worktree. It
 checks embedded-kit materialization with a real adapter exchange while the older
 802-record reports and transcripts remain frozen under `baseline/` and replay
 against `kit-2026-09-26/`.
+
+`values-atoms-rust.ndjson` is a separate append-only capture of the eight
+`values-0001`, `0002`, `0010`, `0011`, `0025`, `0026`, `0027` and `0028` cases
+after the variable, unit, integer and boolean spelling/semantic split. The
+same pinned Rust adapter reported 66 passes, no failures, kit errors or skips.
+The exchange was captured with `tools/record-mck-transcript.ts` and matched a
+second capture byte for byte. It leaves the earlier reference exchange intact.
