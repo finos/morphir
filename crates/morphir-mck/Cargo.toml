@@ -12,6 +12,7 @@ build = "build.rs"
 [dependencies]
 serde.workspace = true
 serde_json = { workspace = true, features = ["raw_value"] }
+indexmap = { version = "2", features = ["serde"] }
 serde-saphyr.workspace = true
 ion-rs = "1.0.1"
 jsonschema.workspace = true

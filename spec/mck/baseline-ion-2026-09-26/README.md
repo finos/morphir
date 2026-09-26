@@ -31,3 +31,8 @@ byte. The earlier exchanges remain unchanged.
 access spelling/semantic cases (`values-0004` to `0006` and `0034` to `0036`).
 The pinned Rust adapter reported 46 passes, no failures, kit errors or skips.
 A second capture matched byte for byte; the earlier exchanges remain intact.
+
+`values-record-rust.ndjson` separately captures ordered record and record update
+spelling/semantic cases (`values-0013`, `0021`, and `0037` through `0040`).
+The pinned Rust adapter reported 44 passes, no failures, kit errors or skips.
+A second capture matched byte for byte; the earlier exchanges remain intact.

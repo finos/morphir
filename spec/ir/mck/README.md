@@ -71,10 +71,11 @@ The currently pinned v4 `Value` spelling rules are reference
 (`values-0001`), bare boolean (`values-0011`), unit (`values-0010`),
 tuple (`values-0007`), list (`values-0008`), constructor (`values-0014`),
 field function (`values-0015`), apply (`values-0004`), conditional
-(`values-0005`), and field access (`values-0006`).
+(`values-0005`), field access (`values-0006`), ordered record
+(`values-0013`), and record update (`values-0021`).
 Each has one Ion, YAML and JSON spelling check. Their accepted reader
 aliases live in separate `@semantic` cases (`values-0024` through
-`values-0036`). Other cases still use the original dual-profile form until
+`values-0040`, where assigned). Other cases still use the original dual-profile form until
 their node shapes and profile rules are admitted by the independent reference
 codec.
 
@@ -109,7 +110,7 @@ versions, nodes and layouts; the Rust adapter currently limits Ion to v4
 by the kit's independent reference codec. The codec currently admits v4
 `Value` references, constructors, variables, field functions, units, integers
 that fit i64, booleans, tuples, lists, applications, conditionals and field
-access over admitted values;
+access, ordered records, record updates and string literals over admitted values;
 other shapes require an explicit codec extension. The
 [worked transcript](protocol.example.json) shows a v1 exchange.
 

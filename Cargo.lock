@@ -5167,6 +5167,7 @@ dependencies = [
  "flate2",
  "futures-executor",
  "futures-util",
+ "indexmap",
  "ion-rs",
  "jsonschema 0.26.2",
  "morphir-bdd",
