@@ -573,14 +573,7 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
         node,
         files,
     };
-    let read = judge_tree_read(
-        label,
-        run.case.id.as_str(),
-        manifest.fence.index,
-        language,
-        &decode(testee, &read_request)?,
-        &expected,
-    );
+    let read_response = decode(testee, &read_request)?;
 
     let writes: Vec<WriteIssue> = if manifest.fence.info.key("mode") == Some("read") {
         Vec::new()
@@ -607,6 +600,14 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
         .members
         .iter()
         .map(|t| {
+            let read = judge_tree_read(
+                label,
+                run.case.id.as_str(),
+                t.fence.index,
+                language,
+                &read_response,
+                &expected,
+            );
             let write = writes
                 .iter()
                 .find(|issue| issue.fence_index == t.fence.index);
@@ -1554,7 +1555,10 @@ mod tests {
                     .contains("read back differently")
             );
             let diff = file.diff.as_deref().unwrap();
-            assert!(diff.contains("tree read"));
+            assert!(diff.starts_with(&format!(
+                "--- expected document-tree-0001 fence {} profile yaml tree read",
+                file.fence_index
+            )));
             assert!(diff.contains(&format!("profile tree path {path}")));
         }
 

@@ -328,17 +328,15 @@ fn record_row(out: &mut String, index: usize, r: &Record) {
             "Runner message",
             r.message.as_deref().unwrap_or("Not recorded"),
         );
-        if r.check.is_some() {
-            field(
-                out,
-                "Check",
-                match r.check() {
-                    super::Check::Spelling => "spelling",
-                    super::Check::Semantic => "semantic",
-                    super::Check::RoundTrip => "round-trip",
-                },
-            );
-        }
+        field(
+            out,
+            "Check",
+            match r.check() {
+                super::Check::Spelling => "spelling",
+                super::Check::Semantic => "semantic",
+                super::Check::RoundTrip => "round-trip",
+            },
+        );
         out.push_str("</dl>");
         if let Some(diff) = &r.diff {
             out.push_str("<pre class=\"unified-diff\" aria-label=\"Unified diff\">");

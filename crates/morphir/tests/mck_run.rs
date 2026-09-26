@@ -958,6 +958,34 @@ fn mck_report_compare_accepts_two_copies_of_a_frozen_report() {
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
 }
 
+fn mck_report_compare_treats_implicit_semantic_check_as_explicit() {
+    let work = tempfile::tempdir().unwrap();
+    let mut report = read_json(&frozen_v1_report_path());
+    let a = work.path().join("implicit.json");
+    std::fs::write(&a, serde_json::to_vec(&report).unwrap()).unwrap();
+    report["records"][0]["check"] = Value::String("semantic".into());
+    let b = work.path().join("explicit.json");
+    std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    report["records"][0]["check"] = Value::String("spelling".into());
+    std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+}
+
 fn mck_report_compare_rejects_a_changed_record_result_and_names_its_index() {
     let work = tempfile::tempdir().unwrap();
     let mut report = read_json(&frozen_v1_report_path());
@@ -1234,6 +1262,10 @@ fn main() {
         (
             "mck_report_compare_accepts_two_copies_of_a_frozen_report",
             mck_report_compare_accepts_two_copies_of_a_frozen_report,
+        ),
+        (
+            "mck_report_compare_treats_implicit_semantic_check_as_explicit",
+            mck_report_compare_treats_implicit_semantic_check_as_explicit,
         ),
         (
             "mck_report_compare_rejects_a_changed_record_result_and_names_its_index",

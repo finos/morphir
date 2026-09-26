@@ -107,6 +107,7 @@ fn diagnostics_and_runner_messages_are_available_without_javascript() {
         assert!(output.contains(text), "missing {text}");
     }
     assert!(output.contains("<details"));
+    assert!(output.contains("<dt>Check</dt><dd>semantic</dd>"));
     assert!(output.contains("<table"));
 }
 

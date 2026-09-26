@@ -281,6 +281,9 @@ three-context-line unified `diff`. Its headers identify the case, fence, profile
 document-tree writes, the logical path. The optional `check` member is `spelling`, `semantic`
 or `round-trip`; readers treat its absence in older reports as `semantic`. The terminal and
 offline HTML report show the diff under the short message.
+The current untagged kit cases keep omitting `check`; explicit `spelling` and `round-trip`
+classification begins with the tagged Ion case grammar. Existing document-tree write checks
+compare files, rather than the planned Ion transcode round trip.
 
 Record order is part of the contract (kept): kit-error records first in kit error order; then cases
 with files sorted by name and cases in file order; within a case, each path in the adapter's
