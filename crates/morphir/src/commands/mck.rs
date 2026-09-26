@@ -666,9 +666,13 @@ pub struct MckRunArgs {
     #[arg(long, value_name = "DIR")]
     pub repo_root: Option<PathBuf>,
 
-    /// Write the version 1 report here, and its provenance beside it
+    /// Write the consolidated JSON report here
     #[arg(long, value_name = "FILE")]
     pub report: Option<PathBuf>,
+
+    /// Write a standalone HTML view of this run here
+    #[arg(long, value_name = "FILE")]
+    pub html: Option<PathBuf>,
 
     /// Fail when any fence is skipped, not only when one fails
     #[arg(long)]
@@ -905,7 +909,7 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
     if let Some(header) = &run.header {
         eprintln!("{header}");
     }
-    if let Some(file) = &args.report {
+    if args.report.is_some() || args.html.is_some() {
         let draft = match report::assemble(
             &run,
             kit_provenance,
@@ -920,11 +924,19 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
                 return finish(Outcome::Error(format!("cannot construct report: {error}")));
             }
         };
-        if let Err(error) = report::write_atomic(file, draft.to_json().as_bytes()) {
+        if let Some(file) = &args.report
+            && let Err(error) = report::write_atomic(file, draft.to_json().as_bytes())
+        {
             return finish(Outcome::Error(format!(
                 "cannot write the report {}: {error}",
                 file.display()
             )));
+        }
+        if let Some(file) = &args.html {
+            let html = morphir_mck::report::html::render(&draft);
+            if let Err(error) = report::write_html(args.report.as_deref(), file, &html) {
+                return finish(Outcome::Error(error));
+            }
         }
     }
     println!("{}", run.report.summary_line());
@@ -1016,7 +1028,7 @@ async fn run_mck_metadata(
                 (run, shutdown, None)
             }
         };
-    if let Some(file) = &args.report {
+    if args.report.is_some() || args.html.is_some() {
         let mut provenance = match serde_json::to_value(kit_provenance) {
             Ok(value) => value,
             Err(error) => return finish(Outcome::Error(error.to_string())),
@@ -1041,11 +1053,19 @@ async fn run_mck_metadata(
                 )));
             }
         };
-        if let Err(error) = report::write_atomic(file, report.to_json().as_bytes()) {
+        if let Some(file) = &args.report
+            && let Err(error) = report::write_atomic(file, report.to_json().as_bytes())
+        {
             return finish(Outcome::Error(format!(
                 "cannot write report {}: {error}",
                 file.display()
             )));
+        }
+        if let Some(file) = &args.html {
+            let html = morphir_mck::metadata::report::render(&report);
+            if let Err(error) = report::write_html(args.report.as_deref(), file, &html) {
+                return finish(Outcome::Error(error));
+            }
         }
     }
     let count = |kind: &str| run.records.iter().filter(|r| r.result == kind).count();

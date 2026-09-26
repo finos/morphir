@@ -4,21 +4,26 @@ import { rmSync } from "node:fs";
 
 const DEFAULT_COMMAND = ["cargo", "run", "--locked", "-p", "morphir", "--", "mck"];
 
-function adapterArgs(adapter: string, args: string[]): string[] {
-	return ["--adapter", adapter, ...args.flatMap((arg) => ["--adapter-arg", arg])];
-}
-
 export function runMckGate(
 	report: string,
 	baseline: string,
 	kit: string,
-	adapterArgs: string[],
+	adapter: string,
+	args: string[],
 	command = DEFAULT_COMMAND,
 ): number {
 	// A build/usage failure may leave no new report. Never adjudicate an old one.
 	rmSync(report, { force: true });
+	const transcript = report.endsWith(".json")
+		? `${report.slice(0, -5)}.ndjson`
+		: `${report}.ndjson`;
+	const html = report.endsWith(".json") ? `${report.slice(0, -5)}.html` : `${report}.html`;
+	rmSync(transcript, { force: true });
+	rmSync(html, { force: true });
+	const recordedAdapter = ["run", "tools/record-mck-transcript.ts", transcript, adapter, ...args];
+	const adapterArgs = ["--adapter", "bun", ...recordedAdapter.flatMap((arg) => ["--adapter-arg", arg])];
 	const run = Bun.spawnSync(
-		[...command, "run", "--kit", kit, "--report", report, ...adapterArgs],
+		[...command, "run", "--kit", kit, "--report", report, "--html", html, ...adapterArgs],
 		{ stdio: ["inherit", "inherit", "inherit"] },
 	);
 	// Exit 1 includes case failures which the baseline may allow. The native
@@ -38,5 +43,5 @@ if (import.meta.main) {
 		console.error("usage: run-mck-gate.ts <report> <baseline> <kit> <adapter> [adapter args...]");
 		process.exit(2);
 	}
-	process.exit(runMckGate(report, baseline, kit, adapterArgs(adapter, args)));
+	process.exit(runMckGate(report, baseline, kit, adapter, args));
 }

@@ -44,6 +44,30 @@ fn mixed_records_count_cases_separately_and_preserve_case_and_record_order() {
 }
 
 #[test]
+fn case_matrix_shows_ion_yaml_json_and_unpinned_spelling() {
+    let mut value = example();
+    let mut ion = value["records"][0].clone();
+    ion["caseId"] = json!("values-0023");
+    ion["check"] = json!("spelling");
+    ion["profile"] = json!("ion");
+    let mut json = ion.clone();
+    json["profile"] = json!("json");
+    json["fenceIndex"] = json!(1);
+    json["result"] = json!("fail");
+    value["records"] = json!([ion, json]);
+
+    let output = html(value);
+    assert!(output.contains("class=\"profile-matrix\""));
+    for profile in ["Ion", "YAML", "JSON"] {
+        assert!(output.contains(&format!("<th scope=\"col\">{profile}</th>")));
+    }
+    assert!(output.contains("data-profile=\"yaml\" class=\"matrix-cell not-pinned\""));
+    assert!(output.contains("data-profile=\"ion\" class=\"matrix-cell pass\""));
+    assert!(output.contains("data-profile=\"json\" class=\"matrix-cell fail\""));
+    assert!(output.contains("not-pinned"));
+}
+
+#[test]
 fn shutdown_failure_stays_visible_even_when_all_records_pass() {
     let mut value = example();
     value["execution"]["session"] = json!({"status":"failed","errors":[{"phase":"shutdown","message":"adapter exit status 12"}]});
@@ -123,6 +147,16 @@ fn optional_diff_and_check_render_safely_in_static_details() {
     assert!(output.contains("&lt;script&gt;"));
     assert!(output.contains("&amp; value"));
     assert!(!output.contains("-old <script>"));
+}
+
+#[test]
+fn older_reports_without_check_or_diff_still_render() {
+    let mut value = example();
+    value["records"][0]["message"] = json!("older report detail");
+    let output = html(value);
+    assert!(output.contains("<dt>Check</dt><dd>semantic</dd>"));
+    assert!(!output.contains("class=\"diff-add\""));
+    assert!(!output.contains("class=\"diff-remove\""));
 }
 
 #[test]

@@ -107,6 +107,8 @@ jobs:
               - 'ecosystem/morphir-typescript'
               # resolves and runs the Rust binding's MCK adapter
               - 'tools/run-mck-gate*'
+              - 'tools/record-mck-transcript*'
+              - 'tools/mck-ci-summary*'
               # validates the output of `mise run migrate:validate` against the v4 schema
               - 'website/scripts/validate-migrated-ir.js'
               # the v4 schema `mise run migrate:validate` validates migrated IR against
@@ -131,6 +133,7 @@ jobs:
               # the Bun tooling tests the docs job runs through `mise run tools:test`
               - 'tools/*.test.ts'
               - 'tools/run-mck-gate.ts'
+              - 'tools/mck-ci-summary.ts'
               - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
@@ -152,6 +155,8 @@ jobs:
               - 'website/static/schemas/morphir-ir-v4-document-tree-files.yaml'
               - 'tools/gen-mck-vocabulary*'
               - 'tools/run-mck-gate*'
+              - 'tools/record-mck-transcript*'
+              - 'tools/mck-ci-summary*'
               - 'ecosystem/morphir-typescript'
               # the Rust binding is driven through its adapter by mck:run-rust,
               # so a pointer bump has to re-run the kit validations too
@@ -490,9 +495,9 @@ jobs:
           rm -f .dev/out/mck/morphir-typescript-adapter.json .dev/out/mck/morphir-typescript-adapter.html
           mise run mck:run
 
-      - name: Render the TypeScript binding's MCK report
-        if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-typescript-adapter.json') != '' }}
-        run: cargo run --locked -p morphir -- mck report render .dev/out/mck/morphir-typescript-adapter.json --format html --output .dev/out/mck/morphir-typescript-adapter.html
+      - name: Summarize TypeScript binding conformance
+        if: always()
+        run: bun run tools/mck-ci-summary.ts TypeScript .dev/out/mck/morphir-typescript-adapter.json mck-reports
 
       - name: Validate draft package schemas and examples
         run: mise run package:schema-check
@@ -507,6 +512,7 @@ jobs:
           path: |
             .dev/out/mck/morphir-typescript-adapter.json
             .dev/out/mck/morphir-typescript-adapter.html
+            .dev/out/mck/morphir-typescript-adapter.ndjson
 
   # Kit run against the Rust binding and the migrate validation. Both build
   # from the shared cargo cache and neither needs the extensions, so they run
@@ -536,9 +542,9 @@ jobs:
           rm -f .dev/out/mck/morphir-rust.json .dev/out/mck/morphir-rust.html
           mise run mck:run-rust
 
-      - name: Render the Rust binding's MCK report
-        if: ${{ !cancelled() && hashFiles('.dev/out/mck/morphir-rust.json') != '' }}
-        run: cargo run --locked -p morphir -- mck report render .dev/out/mck/morphir-rust.json --format html --output .dev/out/mck/morphir-rust.html
+      - name: Summarize Rust binding conformance
+        if: always()
+        run: bun run tools/mck-ci-summary.ts Rust .dev/out/mck/morphir-rust.json mck-report-morphir-rust
 
       - name: Upload the Rust binding's MCK report
         uses: actions/upload-artifact@v7
@@ -548,6 +554,7 @@ jobs:
           path: |
             .dev/out/mck/morphir-rust.json
             .dev/out/mck/morphir-rust.html
+            .dev/out/mck/morphir-rust.ndjson
             .dev/out/mck/node-address-rust.json
 
       - name: Validate migrated IR against the v4 schema

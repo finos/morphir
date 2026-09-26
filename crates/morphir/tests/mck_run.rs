@@ -173,6 +173,7 @@ fn metadata_cli_accepts_reordered_fact_object_members() {
 fn metadata_cli_runs_and_checks_one_fixed_case() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("metadata-report.json");
+    let run_html = work.path().join("metadata-run.html");
     let allowed = work.path().join("allowed.json");
     std::fs::write(&allowed, "{\"cases\":[]}").unwrap();
     let adapter = std::env::current_exe().unwrap();
@@ -191,12 +192,19 @@ fn metadata_cli_runs_and_checks_one_fixed_case() {
         "^metadata-0001$",
         "--report",
         report.to_str().unwrap(),
+        "--html",
+        run_html.to_str().unwrap(),
         "--strict",
     ]);
     assert!(output.status.success(), "{}", stderr(&output));
     let produced = read_json(&report);
     assert_eq!(produced["suite"], "metadata");
     assert_eq!(produced["records"][0]["result"], "pass");
+    assert!(
+        std::fs::read_to_string(&run_html)
+            .unwrap()
+            .contains("metadata-0001")
+    );
     let checked = morphir(&[
         "mck",
         "report",
@@ -218,9 +226,13 @@ fn metadata_cli_runs_and_checks_one_fixed_case() {
     ]);
     assert!(output.status.success(), "{}", stderr(&output));
     assert!(
-        std::fs::read_to_string(rendered)
+        std::fs::read_to_string(&rendered)
             .unwrap()
             .contains("metadata-0001")
+    );
+    assert_eq!(
+        std::fs::read_to_string(run_html).unwrap(),
+        std::fs::read_to_string(rendered).unwrap()
     );
 }
 
@@ -584,6 +596,7 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
     let filter = baseline_filter("morphir-typescript");
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("out").join("report.json");
+    let html = work.path().join("out").join("report.html");
     let exe = std::env::current_exe().unwrap();
     let transcript = transcript();
     let output = morphir(&[
@@ -603,6 +616,8 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
         &filter,
         "--report",
         report.to_str().unwrap(),
+        "--html",
+        html.to_str().unwrap(),
     ]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     assert!(
@@ -623,6 +638,11 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
     );
 
     let produced = read_json(&report);
+    assert!(
+        std::fs::read_to_string(&html)
+            .unwrap()
+            .contains("<!doctype html>")
+    );
     assert_eq!(produced["contractVersion"], "2.0.0-draft.1");
     assert_eq!(produced["selection"]["kind"], "filter");
     assert_eq!(produced["execution"]["session"]["status"], "finished");
@@ -936,6 +956,46 @@ fn a_missing_adapter_program_fails_every_fence_and_still_reports() {
                 .unwrap()
                 .starts_with("failed to start adapter: ")
     }));
+}
+
+fn an_html_only_run_writes_the_offline_view() {
+    let work = tempfile::tempdir().unwrap();
+    let html = work.path().join("report.html");
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--adapter",
+        "definitely-not-an-mck-adapter",
+        "--filter",
+        "^types-0001$",
+        "--html",
+        html.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1));
+    let rendered = std::fs::read_to_string(&html).unwrap();
+    assert!(rendered.starts_with("<!doctype html>"));
+    assert!(rendered.contains("types-0001"));
+    assert!(rendered.contains("Session failed"));
+}
+
+fn html_output_cannot_replace_the_json_report() {
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("report.json");
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--adapter",
+        "definitely-not-an-mck-adapter",
+        "--filter",
+        "^types-0001$",
+        "--report",
+        report.to_str().unwrap(),
+        "--html",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(stderr(&output).contains("HTML output must not overwrite its JSON input"));
+    assert_eq!(read_json(&report)["suite"], "ir");
 }
 
 fn an_empty_selection_is_never_a_success() {
@@ -1290,6 +1350,14 @@ fn main() {
         (
             "a_missing_adapter_program_fails_every_fence_and_still_reports",
             a_missing_adapter_program_fails_every_fence_and_still_reports,
+        ),
+        (
+            "an_html_only_run_writes_the_offline_view",
+            an_html_only_run_writes_the_offline_view,
+        ),
+        (
+            "html_output_cannot_replace_the_json_report",
+            html_output_cannot_replace_the_json_report,
         ),
         (
             "an_empty_selection_is_never_a_success",

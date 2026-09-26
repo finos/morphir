@@ -236,6 +236,23 @@ pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Write the already rendered HTML without replacing its JSON source.
+pub(super) fn write_html(report: Option<&Path>, path: &Path, html: &str) -> Result<(), String> {
+    if let Some(report) = report {
+        let same_file = if path.exists() {
+            same_file::is_same_file(report, path)
+                .map_err(|error| format!("cannot compare HTML output with JSON report: {error}"))?
+        } else {
+            false
+        };
+        if report == path || same_file {
+            return Err("HTML output must not overwrite its JSON input".to_owned());
+        }
+    }
+    write_atomic(path, html.as_bytes())
+        .map_err(|error| format!("cannot write HTML report {}: {error}", path.display()))
+}
+
 pub(super) fn assemble(
     run: &Run,
     kit: KitProvenance,

@@ -70,4 +70,4 @@ createInterface({ input: child.stdout })
 		process.stdout.write(`${line}\n`);
 	});
 
-child.on("exit", (code) => out.end(() => process.exit(code ?? 1)));
+child.on("close", (code) => out.end(() => process.exit(code ?? 1)));

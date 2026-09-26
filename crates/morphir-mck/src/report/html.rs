@@ -55,7 +55,9 @@ pub fn render(report: &DraftReport) -> String {
         out.push_str("<p class=\"empty\">No records were reported. This does not establish compatibility or coverage.</p>");
     }
     for (case_index, (id, records)) in groups.iter().enumerate() {
-        write!(out, "<section class=\"case\" aria-labelledby=\"case-{case_index}\"><h3 id=\"case-{case_index}\"><code>{}</code> <span class=\"muted\">{} records</span></h3><div class=\"table-scroll\"><table><caption class=\"sr-only\">Records for {}</caption><thead><tr><th scope=\"col\">Outcome</th><th scope=\"col\">IR</th><th scope=\"col\">Profile</th><th scope=\"col\">Role</th><th scope=\"col\">Fence</th><th scope=\"col\">Path</th><th scope=\"col\">Duration</th><th scope=\"col\">Diagnostics</th></tr></thead><tbody>", escape(id), records.len(), escape(id)).unwrap();
+        write!(out, "<section class=\"case\" aria-labelledby=\"case-{case_index}\"><h3 id=\"case-{case_index}\"><code>{}</code> <span class=\"muted\">{} records</span></h3>", escape(id), records.len()).unwrap();
+        profile_matrix(&mut out, id, records);
+        write!(out, "<div class=\"table-scroll\"><table><caption class=\"sr-only\">Records for {}</caption><thead><tr><th scope=\"col\">Outcome</th><th scope=\"col\">IR</th><th scope=\"col\">Profile</th><th scope=\"col\">Role</th><th scope=\"col\">Fence</th><th scope=\"col\">Path</th><th scope=\"col\">Duration</th><th scope=\"col\">Diagnostics</th></tr></thead><tbody>", escape(id)).unwrap();
         for &(index, record) in records {
             record_row(&mut out, index, record);
         }
@@ -95,6 +97,34 @@ fn cases(records: &[Record]) -> CaseRecords<'_> {
         groups[group].1.push((index, record));
     }
     groups
+}
+
+fn profile_matrix(out: &mut String, id: &str, records: &[(usize, &Record)]) {
+    write!(out, "<table class=\"profile-matrix\"><caption class=\"sr-only\">Profile results for {}</caption><thead><tr><th scope=\"col\">Ion</th><th scope=\"col\">YAML</th><th scope=\"col\">JSON</th></tr></thead><tbody><tr>", escape(id)).unwrap();
+    for (profile, name) in [
+        (RecordProfile::Ion, "ion"),
+        (RecordProfile::Yaml, "yaml"),
+        (RecordProfile::Json, "json"),
+    ] {
+        let matching = records
+            .iter()
+            .filter(|(_, record)| record.profile == profile)
+            .map(|(_, record)| record.result)
+            .collect::<Vec<_>>();
+        let status = if matching.is_empty() {
+            "not-pinned"
+        } else if matching.contains(&Outcome::KitError) {
+            "kit-error"
+        } else if matching.contains(&Outcome::Fail) {
+            "fail"
+        } else if matching.contains(&Outcome::Skipped) {
+            "skipped"
+        } else {
+            "pass"
+        };
+        write!(out, "<td data-profile=\"{name}\" class=\"matrix-cell {status}\"><span class=\"badge {status}\">{status}</span><span class=\"matrix-count\">{} record{}</span></td>", matching.len(), if matching.len() == 1 { "" } else { "s" }).unwrap();
+    }
+    out.push_str("</tr></tbody></table>");
 }
 
 fn attention(out: &mut String, report: &DraftReport) {

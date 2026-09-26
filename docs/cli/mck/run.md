@@ -15,7 +15,8 @@ Run the kit against an implementation's adapter and report the results
 - **`--adapter-arg <ARG>…`** — An argument for the adapter; repeat for more
 - **`--kit <DIR>`** — A kit directory or vendored snapshot; the kit embedded in this CLI when omitted
 - **`--repo-root <DIR>`** — Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)
-- **`--report <FILE>`** — Write the version 1 report here, and its provenance beside it
+- **`--report <FILE>`** — Write the consolidated JSON report here
+- **`--html <FILE>`** — Write a standalone HTML view of this run here
 - **`--strict`** — Fail when any fence is skipped, not only when one fails
 - **`--filter <REGEX>`** — Run only the cases whose id matches this Rust regular expression, unanchored
 - **`--timeout <MS>`** — How long one request may wait for its answer, in milliseconds
