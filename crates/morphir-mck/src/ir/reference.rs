@@ -513,10 +513,9 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
                     };
                     if members.keys().any(|name| {
                         !matches!(name.as_str(), "reason" | "attributes" | "expectedType")
-                    }) || members
-                        .get("attributes")
-                        .is_some_and(|value| !empty_attributes(value))
-                    {
+                    }) || members.get("attributes").is_some_and(
+                        |value| !matches!(value, Value::Object(attrs) if attrs.is_empty()),
+                    ) {
                         return Err("a Hole has a reason, optional empty attributes, and optional expectedType".to_owned());
                     }
                     let Some(Value::Object(reason)) = members.get("reason") else {
@@ -1337,6 +1336,7 @@ mod tests {
             "18446744073709551616",
             r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"bad_name:mod#x"}}}}"#,
             r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}},"expectedType":"bad_name"}}"#,
+            r#"{"Hole":{"attributes":{"attributes":{}},"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}}}}"#,
         ] {
             assert!(to_ion("Value", Profile::Json, json).is_err(), "{json}");
         }
