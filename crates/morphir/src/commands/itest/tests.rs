@@ -429,6 +429,33 @@ fn recognizes_case_insensitive_morphir_environment_names() {
     ));
 }
 
+/// `has_exited` sees the exit but leaves the child unreaped, so the id of the group it leads is
+/// still reserved when `execute` kills that group; `wait` then reaps it with its real status.
+#[cfg(unix)]
+#[test]
+fn has_exited_leaves_the_exited_child_unreaped() {
+    use rustix::process::{Pid, WaitId, WaitIdOptions, waitid};
+    let mut child = Command::new("/bin/sh")
+        .args(["-c", "exit 3"])
+        .spawn()
+        .unwrap();
+    let start = std::time::Instant::now();
+    while !super::runner::has_exited(&mut child).unwrap() {
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "the child never exited"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let pid = Pid::from_raw(child.id() as i32).unwrap();
+    let options = WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT;
+    assert!(
+        waitid(WaitId::Pid(pid), options).unwrap().is_some(),
+        "the child is still waitable, so it was not reaped"
+    );
+    assert_eq!(child.wait().unwrap().code(), Some(3));
+}
+
 #[test]
 fn normal_exit_also_terminates_descendants() {
     let temp = tempfile::tempdir().unwrap();

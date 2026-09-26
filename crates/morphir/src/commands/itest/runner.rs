@@ -36,7 +36,16 @@ pub fn execute(mut command: Command, logs: &Path, timeout: Duration) -> Result<P
     let mut child = command.spawn().context("start CLI process")?;
     let start = Instant::now();
     let status = loop {
-        if let Some(status) = child.try_wait()? {
+        if has_exited(&mut child)? {
+            // On Unix the child is still unreaped here, so the process group it leads keeps its
+            // id while its descendants are signalled: the id cannot name an unrelated group yet.
+            #[cfg(unix)]
+            let tree_result = terminate_tree(&mut child);
+            let status = child.wait().context("reap CLI process")?;
+            #[cfg(windows)]
+            job.terminate()?;
+            #[cfg(unix)]
+            tree_result.context("clean up CLI descendants")?;
             break status;
         }
         if start.elapsed() >= timeout {
@@ -55,10 +64,6 @@ pub fn execute(mut command: Command, logs: &Path, timeout: Duration) -> Result<P
         }
         std::thread::sleep(Duration::from_millis(10));
     };
-    #[cfg(windows)]
-    job.terminate()?;
-    #[cfg(unix)]
-    terminate_tree(&mut child).context("clean up CLI descendants")?;
     Ok(ProcessOutput {
         code: status.code(),
         stdout: fs::read_to_string(stdout)?,
@@ -209,12 +214,44 @@ pub(super) fn check_report(text: &str, provider: ProviderId, entrypoints: &[Stri
     Ok(())
 }
 
+/// Whether `child` has exited, without reaping it: `waitid` with `WNOWAIT` leaves the child a
+/// zombie, so its pid, and the id of the process group it leads, stay reserved until
+/// `child.wait()`. That lets [`terminate_tree`] signal the group after the child exits without the
+/// risk that the id now names an unrelated group.
+#[cfg(unix)]
+pub(super) fn has_exited(child: &mut std::process::Child) -> Result<bool> {
+    use rustix::process::{Pid, WaitId, WaitIdOptions, waitid};
+    let pid = Pid::from_raw(child.id() as i32).context("invalid child process id")?;
+    let options = WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT;
+    loop {
+        match waitid(WaitId::Pid(pid), options) {
+            Ok(status) => return Ok(status.is_some()),
+            Err(rustix::io::Errno::INTR) => {}
+            Err(error) => return Err(anyhow::Error::from(error).context("poll CLI process")),
+        }
+    }
+}
+
+/// Whether `child` has exited. Off Unix there is no process group to protect, so this may reap.
+#[cfg(not(unix))]
+pub(super) fn has_exited(child: &mut std::process::Child) -> Result<bool> {
+    Ok(child.try_wait()?.is_some())
+}
+
+/// Kills the process group that `child` leads. Call it only while `child` is unreaped (running,
+/// or a zombie that [`has_exited`] saw), so that the group id is still the child's own.
+///
+/// `ESRCH` means that no member is left. On Apple platforms `killpg` also returns `EPERM` when
+/// every member left is a zombie, and the unreaped leader always is one after a normal exit. The
+/// leader still holds the group id, so that `EPERM` cannot come from an unrelated group.
 #[cfg(unix)]
 fn terminate_tree(child: &mut std::process::Child) -> Result<()> {
     use rustix::process::{Pid, Signal, kill_process_group};
     let pid = Pid::from_raw(child.id() as i32).context("invalid child process id")?;
     match kill_process_group(pid, Signal::KILL) {
         Ok(()) | Err(rustix::io::Errno::SRCH) => Ok(()),
+        #[cfg(target_vendor = "apple")]
+        Err(rustix::io::Errno::PERM) => Ok(()),
         Err(error) => Err(error.into()),
     }
 }
