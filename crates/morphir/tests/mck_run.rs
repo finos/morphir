@@ -860,6 +860,27 @@ fn without_operation_id(text: &str) -> String {
 /// not a `Suite` "empty run" error (Task B6, global constraint "Filters and
 /// tags that select nothing"): the exit code and stderr must be identical
 /// between `--engine legacy` and `--engine gherkin`.
+/// The gherkin engine runs the IR suite only: asking it for the metadata suite
+/// is a usage error, found before any adapter starts.
+fn the_gherkin_engine_refuses_the_metadata_suite() {
+    let out = morphir(&[
+        "mck",
+        "run",
+        "--suite",
+        "metadata",
+        "--engine",
+        "gherkin",
+        "--adapter",
+        "definitely-not-an-mck-adapter",
+    ]);
+    assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("--engine gherkin runs the IR suite only"),
+        "{}",
+        stderr(&out)
+    );
+}
+
 fn a_filter_matching_nothing_is_identical_between_engines() {
     let run = |engine: &str| {
         morphir(&[
@@ -1214,6 +1235,10 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "the_gherkin_engine_refuses_the_metadata_suite",
+            the_gherkin_engine_refuses_the_metadata_suite,
+        ),
         (
             "metadata_cli_accepts_reordered_fact_object_members",
             metadata_cli_accepts_reordered_fact_object_members,

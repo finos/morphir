@@ -54,12 +54,8 @@ morphir-evaluator = { path = "../morphir-evaluator" }
 morphir-opa = { path = "../morphir-opa", optional = true }
 morphir-mck = { path = "../morphir-mck" }
 morphir-package = { path = "../../ecosystem/morphir-rust/crates/morphir-package" }
-# itest's steps run the Gherkin engine's shared suite runner and `MorphirWorld`.
+# `mck run --engine gherkin` runs the kit's `.feature` files through a `morphir_bdd::Suite`.
 morphir-bdd = { path = "../../ecosystem/morphir-rust/crates/morphir-bdd" }
-# itest's `.feature` cases are read through the Morphir Gherkin model.
-morphir-gherkin = { path = "../../ecosystem/morphir-rust/crates/morphir-gherkin" }
-# itest's own Gherkin step definitions use cucumber's step macros directly.
-cucumber = { workspace = true }
 # `mck kit vendor --source github:finos/morphir` downloads one commit archive over HTTPS.
 reqwest.workspace = true
 # `mck run --filter` takes a Rust regular expression
@@ -122,6 +118,7 @@ windows-sys = { workspace = true, features = ["Wdk_Storage_FileSystem", "Win32_S
 [dev-dependencies]
 morphir-runtime = { path = "../../ecosystem/morphir-rust/crates/morphir-runtime" }
 jsonschema.workspace = true
+cucumber = { workspace = true }
 # `test-util` lets the playground provider's timeout test advance a virtual
 # clock instead of waiting two real minutes.
 tokio = { version = "1", features = ["test-util"] }

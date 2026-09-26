@@ -4778,7 +4778,6 @@ dependencies = [
  "morphir-elm-binding",
  "morphir-evaluator",
  "morphir-extension-sdk",
- "morphir-gherkin",
  "morphir-gleam-binding",
  "morphir-host",
  "morphir-host-native",
