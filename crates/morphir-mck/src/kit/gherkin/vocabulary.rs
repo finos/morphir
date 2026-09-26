@@ -11,6 +11,13 @@ use crate::kit::Language;
 /// One kit step, parsed from its text: what fence it stands for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KitStep {
+    /// `Given a <Node> whose canonical form is:` with an Ion doc string.
+    Reference {
+        /// The node the reference denotes.
+        node: String,
+        /// Its canonical Ion text.
+        body: Body,
+    },
     /// `Then its canonical <format> spelling is <spelling>` or `…is:` with a doc string.
     Canonical {
         /// The data format the spelling is in.
@@ -73,6 +80,8 @@ pub enum Format {
     Yaml,
     /// `JSON`, info-string language `json`.
     Json,
+    /// `Ion`, info-string language `ion`.
+    Ion,
     /// `text`, info-string language `text`.
     Text,
 }
@@ -83,6 +92,7 @@ impl Format {
         match self {
             Self::Yaml => Language::Yaml,
             Self::Json => Language::Json,
+            Self::Ion => Language::Ion,
             Self::Text => Language::Text,
         }
     }
@@ -92,6 +102,7 @@ impl Format {
         match self {
             Self::Yaml => "YAML",
             Self::Json => "JSON",
+            Self::Ion => "Ion",
             Self::Text => "text",
         }
     }
@@ -102,6 +113,7 @@ impl Format {
         match word {
             "YAML" => Self::Yaml,
             "JSON" => Self::Json,
+            "Ion" => Self::Ion,
             "text" => Self::Text,
             other => unreachable!("matcher captured an unknown format word \"{other}\""),
         }
@@ -132,40 +144,41 @@ macro_rules! step_regex {
 
 step_regex!(
     CANONICAL_DOC,
-    r"^its canonical (YAML|JSON|text) spelling is:$"
+    r"^its canonical (YAML|JSON|Ion|text) spelling is:$"
 );
+step_regex!(REFERENCE_DOC, r"^an? (\S+) whose canonical form is:$");
 step_regex!(
     CANONICAL_INLINE,
-    r"^its canonical (YAML|JSON|text) spelling is (.+)$"
+    r"^its canonical (YAML|JSON|Ion|text) spelling is (.+)$"
 );
 step_regex!(
     ACCEPTED_WARNING_DOC,
-    r"^a reader of (YAML|JSON|text) accepts with warning (\S+):$"
+    r"^a reader of (YAML|JSON|Ion|text) accepts with warning (\S+):$"
 );
 step_regex!(
     ACCEPTED_WARNING_INLINE,
-    r"^a reader of (YAML|JSON|text) accepts (.+) with warning (\S+)$"
+    r"^a reader of (YAML|JSON|Ion|text) accepts (.+) with warning (\S+)$"
 );
-step_regex!(ACCEPTED_DOC, r"^a reader of (YAML|JSON|text) accepts:$");
+step_regex!(ACCEPTED_DOC, r"^a reader of (YAML|JSON|Ion|text) accepts:$");
 step_regex!(
     ACCEPTED_INLINE,
-    r"^a reader of (YAML|JSON|text) accepts (.+)$"
+    r"^a reader of (YAML|JSON|Ion|text) accepts (.+)$"
 );
 step_regex!(
     REJECTED_DOC,
-    r"^a reader of (YAML|JSON|text) rejects with (\S+):$"
+    r"^a reader of (YAML|JSON|Ion|text) rejects with (\S+):$"
 );
 step_regex!(
     REJECTED_INLINE,
-    r"^a reader of (YAML|JSON|text) rejects (.+) with (\S+)$"
+    r"^a reader of (YAML|JSON|Ion|text) rejects (.+) with (\S+)$"
 );
 step_regex!(
     READS_AS_DOC,
-    r"^a reader of (YAML|JSON|text) reads as an? (\S+):$"
+    r"^a reader of (YAML|JSON|Ion|text) reads as an? (\S+):$"
 );
 step_regex!(
     READS_AS_INLINE,
-    r"^a reader of (YAML|JSON|text) reads (.+) as an? (\S+)$"
+    r"^a reader of (YAML|JSON|Ion|text) reads (.+) as an? (\S+)$"
 );
 step_regex!(
     TREE_FILE,
@@ -224,6 +237,14 @@ pub fn parse_step(
     text: &str,
     doc_string: Option<(&Option<String>, &str)>,
 ) -> Option<Result<KitStep, String>> {
+    if let Some(caps) = REFERENCE_DOC.captures(text) {
+        return Some(
+            doc_string_body(doc_string, Format::Ion).map(|body| KitStep::Reference {
+                node: caps[1].to_owned(),
+                body,
+            }),
+        );
+    }
     if let Some(caps) = CANONICAL_DOC.captures(text) {
         let format = Format::parse(&caps[1]);
         return Some(
@@ -349,6 +370,12 @@ fn indefinite_article(word: &str) -> &'static str {
 /// The step text the converter writes for `step`, without a doc string.
 pub fn step_text(step: &KitStep) -> String {
     match step {
+        KitStep::Reference { node, .. } => {
+            format!(
+                "{} {node} whose canonical form is:",
+                indefinite_article(node)
+            )
+        }
         KitStep::Canonical { format, body } => match body {
             Body::Inline(inline) => format!("its canonical {} spelling is {inline}", format.word()),
             Body::DocString { .. } => format!("its canonical {} spelling is:", format.word()),

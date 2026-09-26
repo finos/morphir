@@ -374,6 +374,7 @@ fn required_network_denial_fails_when_tcp_is_available() {
 // The harness may use Cargo and source fixtures; the installed CLI and its native
 // replay adapter run with only explicitly copied inputs and an empty tool path.
 fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
+    let filter = baseline_filter("morphir-typescript");
     let denied_probe = std::env::var("MORPHIR_MCK_REQUIRE_NETWORK_DENIAL")
         .ok()
         .map(|address| {
@@ -477,6 +478,8 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
             replay.to_str().unwrap(),
             "--kit",
             kit,
+            "--filter",
+            &filter,
             "--report",
             report,
         ]);
@@ -502,6 +505,8 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
         "allowed.json",
         "--kit",
         "kit",
+        "--filter",
+        &filter,
     ]);
     success(&[
         "mck",
@@ -576,6 +581,7 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
 }
 
 fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
+    let filter = baseline_filter("morphir-typescript");
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("out").join("report.json");
     let exe = std::env::current_exe().unwrap();
@@ -593,6 +599,8 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
         transcript.to_str().unwrap(),
         "--kit",
         repo().join("spec/ir/mck").to_str().unwrap(),
+        "--filter",
+        &filter,
         "--report",
         report.to_str().unwrap(),
     ]);
@@ -616,7 +624,7 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
 
     let produced = read_json(&report);
     assert_eq!(produced["contractVersion"], "2.0.0-draft.1");
-    assert_eq!(produced["selection"]["kind"], "all");
+    assert_eq!(produced["selection"]["kind"], "filter");
     assert_eq!(produced["execution"]["session"]["status"], "finished");
     assert!(
         !report
@@ -646,6 +654,8 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
         allowed.to_str().unwrap(),
         "--kit",
         repo().join("spec/ir/mck").to_str().unwrap(),
+        "--filter",
+        &filter,
     ]);
     assert!(checked.status.success(), "{}", stderr(&checked));
 }
@@ -661,10 +671,22 @@ fn baseline_report(binding: &str) -> Value {
     read_json(&repo().join(format!("spec/mck/baseline/reports/{binding}.json")))
 }
 
+/// Run only the cases captured in the historical transcript. New kit cases
+/// have their own live adapter coverage and must not change frozen evidence.
+fn baseline_filter(binding: &str) -> String {
+    let report = baseline_report(binding);
+    let mut ids = std::collections::BTreeSet::new();
+    for record in report["records"].as_array().unwrap() {
+        ids.insert(record["caseId"].as_str().unwrap());
+    }
+    format!("^(?:{})$", ids.into_iter().collect::<Vec<_>>().join("|"))
+}
+
 /// Runs `morphir mck run` against this test binary as a replay adapter for
 /// `transcript`, with the kit checkout `spec/ir/mck`, and writes the report to `report`.
-fn replay_run(transcript: &Path, report: &Path) -> Output {
+fn replay_run(binding: &str, transcript: &Path, report: &Path) -> Output {
     let exe = std::env::current_exe().unwrap();
+    let filter = baseline_filter(binding);
     morphir(&[
         "mck",
         "run",
@@ -678,6 +700,8 @@ fn replay_run(transcript: &Path, report: &Path) -> Output {
         transcript.to_str().unwrap(),
         "--kit",
         repo().join("spec/ir/mck").to_str().unwrap(),
+        "--filter",
+        &filter,
         "--report",
         report.to_str().unwrap(),
     ])
@@ -689,7 +713,7 @@ fn a_run_against_recorded_answers_reproduces_each_frozen_report() {
         let work = tempfile::tempdir().unwrap();
         let report = work.path().join("report.json");
         let transcript = transcript_for(binding);
-        let output = replay_run(&transcript, &report);
+        let output = replay_run(binding, &transcript, &report);
         assert_eq!(
             output.status.code(),
             Some(0),
@@ -738,7 +762,7 @@ fn a_transcript_cut_partway_reports_kit_errors() {
     std::fs::write(&cut, kept).unwrap();
 
     let report = work.path().join("report.json");
-    let output = replay_run(&cut, &report);
+    let output = replay_run("morphir-typescript", &cut, &report);
     assert_ne!(output.status.code(), Some(0), "{}", stderr(&output));
     let records = without_volatile(read_json(&report))["records"].clone();
     assert!(
@@ -765,6 +789,7 @@ fn a_transcript_cut_partway_reports_kit_errors() {
 /// HEAD` of a checkout) is normalized away the same way.
 fn a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript() {
     let binding = "morphir-typescript";
+    let filter = baseline_filter(binding);
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
     let exe = std::env::current_exe().unwrap();
@@ -780,6 +805,8 @@ fn a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcr
         "replay",
         "--adapter-arg",
         transcript.to_str().unwrap(),
+        "--filter",
+        &filter,
         "--report",
         report.to_str().unwrap(),
     ]);
@@ -1116,6 +1143,7 @@ fn copy_tree(from: &Path, to: &Path) {
 }
 
 fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
+    let filter = baseline_filter("morphir-typescript");
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
     let exe = std::env::current_exe().unwrap();
@@ -1132,6 +1160,8 @@ fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
         transcript().to_str().unwrap(),
         "--kit",
         repo().join("spec/ir/mck").to_str().unwrap(),
+        "--filter",
+        &filter,
         "--report",
         report.to_str().unwrap(),
     ]);

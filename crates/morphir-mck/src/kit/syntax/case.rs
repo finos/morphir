@@ -49,6 +49,19 @@ pub enum Compare {
     Attributes,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CaseCheck {
+    Spelling,
+    Semantic,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanonicalReference {
+    pub node: String,
+    pub body: String,
+    pub line: usize,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KitFence {
     pub info: FenceInfo,
@@ -93,6 +106,8 @@ pub struct KitCase {
     pub version: Option<i64>,
     pub status: Status,
     pub compare: Compare,
+    pub check: Option<CaseCheck>,
+    pub reference: Option<CanonicalReference>,
     pub prose: Vec<String>,
     pub fences: Vec<KitFence>,
     pub file: String,
@@ -225,6 +240,8 @@ impl Parser<'_> {
             version: None,
             status: Status::Active,
             compare: Compare::Stripped,
+            check: None,
+            reference: None,
             prose: Vec::new(),
             fences: Vec::new(),
             file: self.file.to_owned(),
@@ -328,6 +345,48 @@ pub(crate) fn case_errors(case: &KitCase) -> Vec<(usize, String)> {
         }
     }
 
+    match case.check {
+        Some(CaseCheck::Spelling) => {
+            if let Some(fence) = case.fences.iter().find(|f| f.info.role != Role::Canonical) {
+                errors.push((
+                    fence.line,
+                    format!("spelling case has an {} step", fence.info.role),
+                ));
+            }
+            if let Some(reference) = &case.reference {
+                errors.push((
+                    reference.line,
+                    "spelling case has a semantic reference".to_owned(),
+                ));
+            }
+        }
+        Some(CaseCheck::Semantic) => {
+            if let Some(fence) = case.fences.iter().find(|f| f.info.role == Role::Canonical) {
+                errors.push((fence.line, "semantic case has a spelling step".to_owned()));
+            }
+            let needs_reference = case
+                .fences
+                .iter()
+                .any(|f| matches!(f.info.role, Role::Accepted | Role::File));
+            if needs_reference && case.reference.is_none() {
+                errors.push((
+                    case.line,
+                    format!("semantic case needs one Ion reference ({})", case.id),
+                ));
+            } else if !needs_reference && case.reference.is_some() {
+                errors.push((
+                    case.line,
+                    "reject-only semantic case has an Ion reference".to_owned(),
+                ));
+            }
+        }
+        None => {
+            if case.reference.is_some() {
+                errors.push((case.line, "an Ion reference needs @semantic".to_owned()));
+            }
+        }
+    }
+
     // A set's own rules. `mode=read` is a property of the set, not of one
     // file in it: the runner either runs the write half for the whole set
     // or for none of it, so a set that says both is a kit error rather
@@ -370,7 +429,8 @@ pub(crate) fn case_errors(case: &KitCase) -> Vec<(usize, String)> {
                 .fences
                 .iter()
                 .any(|f| matches!(f.info.role, Role::Accepted | Role::File));
-            if canonicals.is_empty() && accepted_or_file {
+            if case.check != Some(CaseCheck::Semantic) && canonicals.is_empty() && accepted_or_file
+            {
                 errors.push((
                     case.line,
                     format!("active case has no canonical fence ({})", case.id),

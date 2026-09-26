@@ -280,6 +280,7 @@ fn record_row(out: &mut String, index: usize, r: &Record) {
     let profile = match r.profile {
         RecordProfile::Json => "json",
         RecordProfile::Yaml => "yaml",
+        RecordProfile::Ion => "ion",
         RecordProfile::Tree => "tree",
     };
     let role = match r.role {

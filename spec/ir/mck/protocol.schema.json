@@ -4,8 +4,19 @@
 	"title": "Morphir Compatibility Kit adapter protocol",
 	"description": "The JSON-lines adapter protocol accepts the shipped numeric contract version 1 and the exact SemVer draft 2.0.0-draft.1. An unversioned capabilities request asks for v1; a versioned draft request asks for v2, which adds Ion to the capabilities profile vocabulary. Every message rejects unknown fields (additionalProperties: false throughout). A validator that knows what it is looking at should be pointed at one definition (Request, Capabilities, DecodeResponse, WriteTreeResponse); a validator given a bare line validates against the root oneOf below, whose branches are disjoint so that exactly one accepts any message.",
 	"definitions": {
-		"Profile": { "type": "string", "enum": ["json", "yaml"] },
+		"Profile": { "type": "string", "enum": ["json", "yaml", "ion"] },
 		"CapabilitiesProfile": { "type": "string", "enum": ["json", "yaml", "ion"] },
+		"ProfileLimit": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["profile", "versions", "nodes", "layouts"],
+			"properties": {
+				"profile": { "$ref": "#/definitions/CapabilitiesProfile" },
+				"versions": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1 } },
+				"nodes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+				"layouts": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/Layout" } }
+			}
+		},
 		"Layout": { "type": "string", "enum": ["single", "tree"] },
 		"PathMode": { "type": "string", "enum": ["current", "pinned"] },
 		"Stage": { "type": "string", "enum": ["syntax", "normalization", "semantic"] },
@@ -81,13 +92,17 @@
 							"items": { "type": "string" },
 							"minItems": 1,
 							"description": "Node kinds this adapter decodes, spelled as the kit names them (aliases included, e.g. \"Distribution\")."
-						}
+						},
+						"profileLimits": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/ProfileLimit" } }
 					},
 					"required": ["id", "contractVersion", "binding", "language", "formatVersions", "versions", "profiles", "layouts", "paths", "nodes"]
 				},
 				{
 					"if": { "properties": { "contractVersion": { "const": 1 } } },
-					"then": { "properties": { "profiles": { "items": { "$ref": "#/definitions/Profile" } } } }
+					"then": {
+						"properties": { "profiles": { "items": { "enum": ["json", "yaml"] } } },
+						"not": { "required": ["profileLimits"] }
+					}
 				}
 			]
 		},

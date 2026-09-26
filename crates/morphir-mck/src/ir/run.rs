@@ -1,8 +1,7 @@
-//! The run loop (IR suite README, "What the driver does with a case"). It
-//! never parses YAML and never looks inside a canonical: an adapter returns
-//! strings, and strings are compared. What an implementation cannot do is a
-//! capabilities question, so a fence it declared no support for is skipped,
-//! never failed.
+//! The run loop (IR suite README, "What the driver does with a case").
+//! Untagged cases keep their original byte comparisons. Semantic cases use
+//! the kit-owned reference codec to compare meaning through canonical Ion.
+//! An unsupported capability is skipped rather than failed.
 //!
 //! This is a port of the first driver's `run.ts`: record identity, order,
 //! skip reasons and messages are the ones that driver wrote, so reports from
@@ -15,10 +14,13 @@ use super::compare::{
     canonical_diff, check_canonical, check_rejected, check_warnings, describe, normalize_canonical,
     path_budget_of,
 };
+use super::reference;
 use crate::kit::load::{Kit, Profile as KitProfile};
-use crate::kit::syntax::case::{Compare, KitCase, KitError, KitFence, Status};
-use crate::kit::syntax::info_string::{Language, Role as FenceRole, set_label};
-use crate::report::{Millis, Outcome, Record, RecordProfile, Report, ReportDiagnostic, Role};
+use crate::kit::syntax::case::{CaseCheck, Compare, KitCase, KitError, KitFence, Status};
+use crate::kit::syntax::info_string::{FenceInfo, Language, Role as FenceRole, set_label};
+use crate::report::{
+    Check, Millis, Outcome, Record, RecordProfile, Report, ReportDiagnostic, Role,
+};
 use crate::transport::protocol::{
     Capabilities, DecodeResponse, Layout, PathMode, Profile, Request, TreeFile, WritePolicy,
     WriteTreeResponse, parse_capabilities, parse_decode_response, parse_write_tree_response,
@@ -95,6 +97,7 @@ fn role_of(role: FenceRole) -> Role {
 fn protocol_profile(language: Language) -> Profile {
     match language {
         Language::Yaml => Profile::Yaml,
+        Language::Ion => Profile::Ion,
         // A text fence's own language says nothing; its target decides.
         Language::Json | Language::Text => Profile::Json,
     }
@@ -104,6 +107,7 @@ fn record_profile(profile: Profile) -> RecordProfile {
     match profile {
         Profile::Json => RecordProfile::Json,
         Profile::Yaml => RecordProfile::Yaml,
+        Profile::Ion => RecordProfile::Ion,
     }
 }
 
@@ -201,7 +205,10 @@ fn record(
         expected_diagnostic: verdict.expected_diagnostic,
         observed_diagnostic: verdict.observed_diagnostic,
         message: verdict.message,
-        check: None,
+        check: case.check.map(|check| match check {
+            CaseCheck::Spelling => Check::Spelling,
+            CaseCheck::Semantic => Check::Semantic,
+        }),
         diff: verdict.diff,
         duration_ms: Millis(duration.max(0.0)),
     }
@@ -238,11 +245,45 @@ fn unsupported(
         }
         RecordProfile::Json => Profile::Json,
         RecordProfile::Yaml => Profile::Yaml,
+        RecordProfile::Ion => Profile::Ion,
     };
     if !caps.profiles.contains(&profile.into()) {
         return Some(format!("profile {profile} not in capabilities"));
     }
+    if let Some(reason) = profile_limit_skip(caps, version, profile, Layout::Single, node) {
+        return Some(reason);
+    }
     (!caps.paths.contains(&path)).then(|| format!("path {path} not in capabilities"))
+}
+
+fn profile_limit_skip(
+    caps: &Capabilities,
+    version: i64,
+    profile: Profile,
+    layout: Layout,
+    node: Option<&str>,
+) -> Option<String> {
+    let limit = caps
+        .profile_limits
+        .iter()
+        .find(|limit| limit.profile == profile.into())?;
+    if !limit.layouts.contains(&layout) {
+        return Some(format!(
+            "profile {profile} does not support layout {layout}"
+        ));
+    }
+    if !u32::try_from(version).is_ok_and(|version| limit.versions.contains(&version)) {
+        return Some(format!(
+            "profile {profile} does not support version {version}"
+        ));
+    }
+    if !node.is_some_and(|node| limit.nodes.iter().any(|supported| supported == node)) {
+        return Some(format!(
+            "profile {profile} does not support node {}",
+            node.unwrap_or("unset")
+        ));
+    }
+    None
 }
 
 /// Expected identity and legitimate skip reason, derived without an adapter or results.
@@ -327,6 +368,15 @@ pub(crate) fn inventory(
                                     && !caps.profiles.contains(&language.into()))
                                 .then(|| format!("profile {language} not in capabilities"))
                             })
+                            .or_else(|| {
+                                profile_limit_skip(
+                                    caps,
+                                    version,
+                                    members[0].language,
+                                    Layout::Tree,
+                                    case.node.as_deref(),
+                                )
+                            })
                         })
                     } else {
                         unsupported(caps, version, target.profile, path, case.node.as_deref())
@@ -345,6 +395,29 @@ pub(crate) fn inventory(
                 .collect();
             per_path.sort_by_key(|entry| entry.fence_index);
             entries.extend(per_path);
+            if case.check == Some(CaseCheck::Semantic) && case.reference.is_some() {
+                for (offset, profile) in [Profile::Ion, Profile::Json, Profile::Yaml]
+                    .into_iter()
+                    .enumerate()
+                {
+                    entries.push(InventoryEntry {
+                        case_id: case.id.as_str().to_owned(),
+                        ir_version: version,
+                        profile: record_profile(profile),
+                        role: Role::Canonical,
+                        fence_index: case.fences.len() + offset,
+                        path: Some(path),
+                        skip: unsupported(
+                            caps,
+                            version,
+                            record_profile(profile),
+                            path,
+                            case.node.as_deref(),
+                        ),
+                        kit_error: None,
+                    });
+                }
+            }
         }
     }
     entries
@@ -424,6 +497,54 @@ fn judge_accepted(
     }
 }
 
+fn judge_semantic(
+    target: &Target,
+    response: &DecodeResponse,
+    reference: &str,
+    node: &str,
+    case_id: &str,
+) -> Verdict {
+    let (canonical, warnings) = match response {
+        DecodeResponse::Rejected(d) => {
+            return Verdict {
+                observed_diagnostic: Some(d.into()),
+                ..Verdict::fail(format!("semantic fence failed to decode: {}", describe(d)))
+            };
+        }
+        DecodeResponse::Ok {
+            canonical,
+            warnings,
+            ..
+        } => (canonical, warnings),
+    };
+    if let Some(problem) = check_warnings(target.fence.info.key("warning"), warnings) {
+        return Verdict::fail(problem);
+    }
+    let Some((_, got)) = canonical
+        .iter()
+        .find(|(profile, _)| *profile == target.language)
+    else {
+        return Verdict::fail(format!("adapter returned no {} canonical", target.language));
+    };
+    let actual = match reference::to_ion(node, target.language, got) {
+        Ok(actual) => actual,
+        Err(error) => return Verdict::fail(format!("answer-not-readable: {error}")),
+    };
+    let want = normalize_canonical(reference);
+    let got = normalize_canonical(&actual);
+    match check_canonical(want, got) {
+        None => Verdict::pass(),
+        Some(reason) => Verdict {
+            diff: Some(canonical_diff(
+                want,
+                got,
+                &format!("{case_id} fence {} semantic Ion", target.fence.index),
+            )),
+            ..Verdict::fail(reason)
+        },
+    }
+}
+
 fn role_name(role: Role) -> &'static str {
     match role {
         Role::Canonical => "canonical",
@@ -437,6 +558,7 @@ fn profile_name(profile: RecordProfile) -> &'static str {
     match profile {
         RecordProfile::Json => "json",
         RecordProfile::Yaml => "yaml",
+        RecordProfile::Ion => "ion",
         RecordProfile::Tree => "tree",
     }
 }
@@ -523,6 +645,15 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
         return Ok(all(Verdict::skipped(format!(
             "profile {language} not in capabilities"
         ))));
+    }
+    if let Some(skip) = profile_limit_skip(
+        caps,
+        run.version,
+        language,
+        Layout::Tree,
+        run.case.node.as_deref(),
+    ) {
+        return Ok(all(Verdict::skipped(skip)));
     }
     let Some(manifest) = run
         .members
@@ -780,10 +911,16 @@ fn reconcile_paths(by_path: &mut [(PathMode, Vec<Record>)], case: &KitCase) {
                 .map_or("", |d| d.code.as_str())
         )
     };
-    for fence in &case.fences {
+    let total = case.fences.len()
+        + if case.check == Some(CaseCheck::Semantic) && case.reference.is_some() {
+            3
+        } else {
+            0
+        };
+    for index in 0..total {
         let mut signatures: Vec<String> = Vec::new();
         for (_, records) in by_path.iter() {
-            if let Some(r) = records.iter().find(|r| r.fence_index == fence.index) {
+            if let Some(r) = records.iter().find(|r| r.fence_index == index) {
                 let sig = signature(r);
                 if !signatures.contains(&sig) {
                     signatures.push(sig);
@@ -795,7 +932,7 @@ fn reconcile_paths(by_path: &mut [(PathMode, Vec<Record>)], case: &KitCase) {
         }
         let message = format!("paths disagree: {}", signatures.join(" vs "));
         for (_, records) in by_path.iter_mut() {
-            if let Some(r) = records.iter_mut().find(|r| r.fence_index == fence.index) {
+            if let Some(r) = records.iter_mut().find(|r| r.fence_index == index) {
                 r.result = Outcome::Fail;
                 r.message = Some(message.clone());
             }
@@ -895,6 +1032,107 @@ pub fn kit_error_records(kit: &Kit) -> Vec<Record> {
     records
 }
 
+#[derive(Clone, Copy)]
+struct CasePath {
+    version: i64,
+    path: PathMode,
+}
+
+fn run_round_trip(
+    case: &KitCase,
+    case_path: CasePath,
+    profile: Profile,
+    fence_index: usize,
+    state: &mut RunState,
+    testee: &mut dyn Testee,
+    clock: &dyn Fn() -> f64,
+) -> Record {
+    let started = clock();
+    let CasePath { version, path } = case_path;
+    let reference = case
+        .reference
+        .as_ref()
+        .expect("a semantic round trip has a reference");
+    let verdict = 'verdict: {
+        let input = match reference::to_profile(&reference.node, &reference.body, profile) {
+            Ok(input) => input,
+            Err(error) => break 'verdict Verdict::kit_error(format!("Ion reference: {error}")),
+        };
+        let caps = match (&state.caps, &state.dead) {
+            (Some(caps), None) => caps,
+            (None, Some(dead)) => break 'verdict Verdict::kit_error(dead.clone()),
+            (_, Some(dead)) => {
+                break 'verdict Verdict::kit_error(format!("adapter unavailable: {dead}"));
+            }
+            (None, None) => unreachable!("capabilities either succeeded or recorded why not"),
+        };
+        if let Some(skip) = unsupported(
+            caps,
+            version,
+            record_profile(profile),
+            path,
+            case.node.as_deref(),
+        ) {
+            break 'verdict Verdict::skipped(skip);
+        }
+        let request = Request::Decode {
+            version: u32::try_from(version).unwrap_or(u32::MAX),
+            profile,
+            path,
+            strip: case.compare != Compare::Attributes,
+            node: case.node.clone().unwrap_or_default(),
+            input: input.clone(),
+        };
+        let response = match decode(testee, &request) {
+            Ok(response) => response,
+            Err(error) => {
+                state.dead = Some(error.clone());
+                break 'verdict Verdict::kit_error(error);
+            }
+        };
+        let language = match profile {
+            Profile::Json => Language::Json,
+            Profile::Yaml => Language::Yaml,
+            Profile::Ion => Language::Ion,
+        };
+        let fence = KitFence {
+            info: FenceInfo::from_parts(language, FenceRole::Canonical, [] as [(&str, &str); 0]),
+            body: input.clone(),
+            line: reference.line,
+            index: fence_index,
+        };
+        let target = Target {
+            fence: &fence,
+            role: Role::Canonical,
+            profile: record_profile(profile),
+            language: profile,
+            body: Ok(input),
+        };
+        judge_semantic(
+            &target,
+            &response,
+            &reference.body,
+            &reference.node,
+            case.id.as_str(),
+        )
+    };
+    Record {
+        case_id: case.id.as_str().to_owned(),
+        ir_version: version,
+        profile: record_profile(profile),
+        role: Role::Canonical,
+        fence_index,
+        path: Some(path),
+        result: verdict.result,
+        expected_diagnostic: verdict.expected_diagnostic,
+        observed_diagnostic: verdict.observed_diagnostic,
+        message: verdict.message,
+        check: Some(Check::RoundTrip),
+        diff: verdict.diff,
+        duration_ms: Millis((clock() - started).max(0.0)),
+    }
+}
+
 /// Every record of one case, exactly as `run_kit` writes them.
 pub fn run_case(
     kit: &Kit,
@@ -904,6 +1142,10 @@ pub fn run_case(
     clock: &dyn Fn() -> f64,
 ) -> Vec<Record> {
     let version = case.version.unwrap_or(CURRENT_VERSION);
+    let reference_check = case
+        .reference
+        .as_ref()
+        .map(|reference| reference::to_profile(&reference.node, &reference.body, Profile::Ion));
     let targets: Vec<Target> = case.fences.iter().map(|f| target_of(kit, f)).collect();
     // The expectation every accepted fence and file set is held to,
     // normalized, with the unnormalized body a tree write is fed.
@@ -939,6 +1181,9 @@ pub fn run_case(
                     Ok(body) => body,
                     Err(message) => break 'verdict Verdict::kit_error(message.clone()),
                 };
+                if let Some(Err(error)) = &reference_check {
+                    break 'verdict Verdict::kit_error(format!("Ion reference: {error}"));
+                }
                 let caps = match (&state.caps, &state.dead) {
                     (Some(caps), None) => caps,
                     (None, Some(dead)) => break 'verdict Verdict::kit_error(dead.clone()),
@@ -982,6 +1227,17 @@ pub fn run_case(
                         }
                     }
                     Ok(response) => {
+                        if case.check == Some(CaseCheck::Semantic)
+                            && let Some(reference) = &case.reference
+                        {
+                            break 'verdict judge_semantic(
+                                target,
+                                &response,
+                                &reference.body,
+                                &reference.node,
+                                case.id.as_str(),
+                            );
+                        }
                         let expected = canonicals
                             .iter()
                             .find(|(p, _)| *p == target.profile)
@@ -1033,6 +1289,22 @@ pub fn run_case(
                         Verdict::kit_error(format!("set {} produced no verdict", set_label(name)))
                     });
                 per_path.push(record(case, version, target, path, verdict, duration));
+            }
+        }
+        if case.check == Some(CaseCheck::Semantic) && case.reference.is_some() {
+            for (offset, profile) in [Profile::Ion, Profile::Json, Profile::Yaml]
+                .into_iter()
+                .enumerate()
+            {
+                per_path.push(run_round_trip(
+                    case,
+                    CasePath { version, path },
+                    profile,
+                    case.fences.len() + offset,
+                    state,
+                    testee,
+                    clock,
+                ));
             }
         }
         // Sets are judged after the single-document fences; report in fence order.
@@ -1125,6 +1397,7 @@ mod tests {
 
     use super::*;
     use crate::kit::source::KitSource;
+    use crate::kit::syntax::case::CanonicalReference;
     use crate::transport::protocol::{CONTRACT_VERSION, CapabilitiesProfile};
 
     /// An adapter answering from a closure.
@@ -1152,6 +1425,155 @@ mod tests {
 
     fn decoded(canonical: &str) -> Value {
         json!({ "ok": true, "kind": "Unit", "canonical": { "yaml": canonical }, "warnings": [] })
+    }
+
+    #[test]
+    fn semantic_answer_is_compared_as_canonical_ion() {
+        let fence = KitFence {
+            info: crate::kit::syntax::info_string::FenceInfo::from_parts(
+                Language::Json,
+                FenceRole::Accepted,
+                [] as [(&str, &str); 0],
+            ),
+            body: "\"morphir/SDK:basics#add\"\n".to_owned(),
+            line: 1,
+            index: 0,
+        };
+        let target = Target {
+            fence: &fence,
+            role: Role::Accepted,
+            profile: RecordProfile::Json,
+            language: Profile::Json,
+            body: Ok(fence.body.clone()),
+        };
+        let reference = "(\n  ref\n  'morphir/SDK:basics#add'\n)\n";
+        let answer = DecodeResponse::Ok {
+            kind: "Value".to_owned(),
+            canonical: vec![(
+                Profile::Json,
+                "{\"Reference\":\"morphir/SDK:basics#add\"}\n".to_owned(),
+            )],
+            warnings: Vec::new(),
+        };
+        assert_eq!(
+            judge_semantic(&target, &answer, reference, "Value", "values-0031").result,
+            Outcome::Pass
+        );
+        let unreadable = DecodeResponse::Ok {
+            kind: "Value".to_owned(),
+            canonical: vec![(Profile::Json, "{}".to_owned())],
+            warnings: Vec::new(),
+        };
+        let verdict = judge_semantic(&target, &unreadable, reference, "Value", "values-0031");
+        assert_eq!(verdict.result, Outcome::Fail);
+        assert!(verdict.message.unwrap().contains("answer-not-readable"));
+        let different = DecodeResponse::Ok {
+            kind: "Value".to_owned(),
+            canonical: vec![(
+                Profile::Json,
+                "{\"Reference\":\"other/pkg:mod#name\"}".to_owned(),
+            )],
+            warnings: Vec::new(),
+        };
+        let verdict = judge_semantic(&target, &different, reference, "Value", "values-0031");
+        assert_eq!(verdict.result, Outcome::Fail);
+        assert!(verdict.diff.unwrap().contains("@@"));
+    }
+
+    #[test]
+    fn malformed_semantic_reference_is_a_kit_error_before_decode() {
+        let mut kit = kit_of(&[(
+            "spec/ir/mck/values.md",
+            "## values-0001: reference {node=Value}\n```json canonical\n{\"Reference\":\"morphir/SDK:basics#add\"}\n```\n```json accepted\n\"morphir/SDK:basics#add\"\n```\n",
+        )]);
+        kit.cases[0].check = Some(CaseCheck::Semantic);
+        kit.cases[0].reference = Some(CanonicalReference {
+            node: "Value".to_owned(),
+            body: "(ref 42)\n".to_owned(),
+            line: 1,
+        });
+        let run = run_with(
+            &kit,
+            None,
+            &mut Scripted(|request: &Request| {
+                assert!(is_capabilities(request), "invalid kit must not call decode");
+                let mut caps = caps(&["current"]);
+                caps["nodes"] = json!(["Value"]);
+                Ok(caps)
+            }),
+        );
+        assert!(
+            run.report.records.iter().all(|record| {
+                record.result == Outcome::KitError
+                    && record.message.as_deref().unwrap().contains("Ion reference")
+            }),
+            "{:?}",
+            run.report.records
+        );
+    }
+
+    #[test]
+    fn profile_limits_skip_only_unimplemented_ion_combinations() {
+        let capabilities = parse_capabilities(&json!({
+            "contractVersion": "2.0.0-draft.1",
+            "binding": "fake",
+            "language": "rust",
+            "formatVersions": "[3.0.0,3.2.0),[4.0.0,4.1.0)",
+            "versions": [3, 4],
+            "profiles": ["json", "yaml", "ion"],
+            "layouts": ["single", "tree"],
+            "paths": ["current"],
+            "nodes": ["Type", "Value"],
+            "profileLimits": [{
+                "profile": "ion",
+                "versions": [4],
+                "nodes": ["Value"],
+                "layouts": ["single"]
+            }]
+        }))
+        .unwrap();
+        assert_eq!(
+            unsupported(
+                &capabilities,
+                4,
+                RecordProfile::Ion,
+                PathMode::Current,
+                Some("Value")
+            ),
+            None
+        );
+        assert!(
+            unsupported(
+                &capabilities,
+                4,
+                RecordProfile::Ion,
+                PathMode::Current,
+                Some("Type")
+            )
+            .unwrap()
+            .contains("node Type")
+        );
+        assert!(
+            unsupported(
+                &capabilities,
+                3,
+                RecordProfile::Ion,
+                PathMode::Current,
+                Some("Value")
+            )
+            .unwrap()
+            .contains("version 3")
+        );
+        assert_eq!(
+            unsupported(
+                &capabilities,
+                4,
+                RecordProfile::Json,
+                PathMode::Current,
+                Some("Type")
+            ),
+            None
+        );
     }
 
     fn kit_of(files: &[(&str, &str)]) -> Kit {

@@ -91,7 +91,7 @@ macro_rules! closed_enum {
     };
 }
 
-closed_enum!(Profile, "profile", { Json => "json", Yaml => "yaml" });
+closed_enum!(Profile, "profile", { Json => "json", Yaml => "yaml", Ion => "ion" });
 closed_enum!(CapabilitiesProfile, "capabilities profile", { Json => "json", Yaml => "yaml", Ion => "ion" });
 
 impl From<Profile> for CapabilitiesProfile {
@@ -99,6 +99,7 @@ impl From<Profile> for CapabilitiesProfile {
         match value {
             Profile::Json => Self::Json,
             Profile::Yaml => Self::Yaml,
+            Profile::Ion => Self::Ion,
         }
     }
 }
@@ -122,6 +123,18 @@ pub struct Capabilities {
     pub paths: Vec<PathMode>,
     /// Node kinds as the kit names them, aliases included.
     pub nodes: Vec<String>,
+    /// Optional v2 restrictions for a profile. An unlisted profile supports
+    /// the full declared node/version/layout cross product.
+    pub profile_limits: Vec<ProfileLimit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileLimit {
+    pub profile: CapabilitiesProfile,
+    pub versions: Vec<u32>,
+    pub nodes: Vec<String>,
+    pub layouts: Vec<Layout>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -317,6 +330,7 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
             "layouts",
             "paths",
             "nodes",
+            "profileLimits",
         ],
         "",
     )?;
@@ -425,10 +439,30 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
     }
     let legacy_contract = contract_version == legacy_version();
     let allowed_profiles = if legacy_contract {
-        Profile::allowed()
+        "json, yaml".to_owned()
     } else {
         CapabilitiesProfile::allowed()
     };
+    let profiles = listed(
+        o,
+        "profiles",
+        |profile| {
+            if legacy_contract {
+                match profile {
+                    "json" => Some(CapabilitiesProfile::Json),
+                    "yaml" => Some(CapabilitiesProfile::Yaml),
+                    _ => None,
+                }
+            } else {
+                CapabilitiesProfile::parse(profile)
+            }
+        },
+        &allowed_profiles,
+    )?;
+    let layouts = listed(o, "layouts", Layout::parse, &Layout::allowed())?;
+    let paths = listed(o, "paths", PathMode::parse, &PathMode::allowed())?;
+    let profile_limits =
+        parse_profile_limits(o, legacy_contract, &profiles, &versions, &nodes, &layouts)?;
     Ok(Capabilities {
         contract_version,
         binding: binding.to_owned(),
@@ -436,22 +470,93 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
         format_versions: format_versions.to_owned(),
         table,
         versions,
-        profiles: listed(
-            o,
-            "profiles",
-            |profile| {
-                if legacy_contract {
-                    Profile::parse(profile).map(Into::into)
-                } else {
-                    CapabilitiesProfile::parse(profile)
-                }
-            },
-            &allowed_profiles,
-        )?,
-        layouts: listed(o, "layouts", Layout::parse, &Layout::allowed())?,
-        paths: listed(o, "paths", PathMode::parse, &PathMode::allowed())?,
+        profiles,
+        layouts,
+        paths,
         nodes,
+        profile_limits,
     })
+}
+
+fn parse_profile_limits(
+    o: &Object,
+    legacy_contract: bool,
+    profiles: &[CapabilitiesProfile],
+    versions: &[u32],
+    nodes: &[String],
+    layouts: &[Layout],
+) -> Result<Vec<ProfileLimit>, ProtocolError> {
+    let Some(value) = o.get("profileLimits") else {
+        return Ok(Vec::new());
+    };
+    if legacy_contract {
+        return fail("profileLimits requires v2");
+    }
+    let Some(items) = value.as_array().filter(|items| !items.is_empty()) else {
+        return fail("profileLimits must be a non-empty array");
+    };
+    let mut found = std::collections::HashSet::new();
+    items
+        .iter()
+        .map(|item| {
+            let limit = object(item, "profileLimits item")?;
+            known_keys(
+                limit,
+                &["profile", "versions", "nodes", "layouts"],
+                "profileLimits.",
+            )?;
+            let profile = CapabilitiesProfile::parse(string(limit, "profile")?)
+                .ok_or_else(|| ProtocolError("profileLimits has an unknown profile".to_owned()))?;
+            if !profiles.contains(&profile) || !found.insert(profile) {
+                return fail("profileLimits profile is undeclared or repeated");
+            }
+            let limited_versions: Vec<u32> = limit
+                .get("versions")
+                .and_then(Value::as_array)
+                .filter(|items| !items.is_empty())
+                .ok_or_else(|| {
+                    ProtocolError("profileLimits versions must be non-empty".to_owned())
+                })?
+                .iter()
+                .map(|value| integer(value).and_then(|v| u32::try_from(v).ok()))
+                .collect::<Option<_>>()
+                .ok_or_else(|| {
+                    ProtocolError("profileLimits versions must be positive integers".to_owned())
+                })?;
+            if limited_versions
+                .iter()
+                .any(|version| !versions.contains(version))
+            {
+                return fail("profileLimits versions outside versions");
+            }
+            let limited_nodes: Vec<String> = limit
+                .get("nodes")
+                .and_then(Value::as_array)
+                .filter(|items| !items.is_empty())
+                .ok_or_else(|| ProtocolError("profileLimits nodes must be non-empty".to_owned()))?
+                .iter()
+                .map(|value| value.as_str().map(str::to_owned))
+                .collect::<Option<_>>()
+                .ok_or_else(|| ProtocolError("profileLimits nodes must be strings".to_owned()))?;
+            if limited_nodes.iter().any(|node| !nodes.contains(node)) {
+                return fail("profileLimits nodes outside nodes");
+            }
+            let limited_layouts = listed(limit, "layouts", Layout::parse, &Layout::allowed())?;
+            if limited_layouts.is_empty()
+                || limited_layouts
+                    .iter()
+                    .any(|layout| !layouts.contains(layout))
+            {
+                return fail("profileLimits layouts outside layouts");
+            }
+            Ok(ProfileLimit {
+                profile,
+                versions: limited_versions,
+                nodes: limited_nodes,
+                layouts: limited_layouts,
+            })
+        })
+        .collect()
 }
 
 fn parse_diagnostic(value: Option<&Value>) -> Result<Diagnostic, ProtocolError> {
@@ -748,6 +853,38 @@ mod tests {
     }
 
     #[test]
+    fn v2_profile_limits_make_partial_ion_claims_explicit() {
+        let limits = json!([{
+            "profile": "ion",
+            "versions": [4],
+            "nodes": ["Value"],
+            "layouts": ["single"]
+        }]);
+        let v2 = caps(json!({
+            "contractVersion": CONTRACT_VERSION,
+            "profiles": ["json", "yaml", "ion"],
+            "nodes": ["Type", "Value", "Distribution"],
+            "profileLimits": limits
+        }));
+        let parsed = parse_capabilities(&v2).unwrap();
+        assert_eq!(parsed.profile_limits.len(), 1);
+        assert_eq!(parsed.profile_limits[0].profile, CapabilitiesProfile::Ion);
+        assert_eq!(parsed.profile_limits[0].nodes, vec!["Value"]);
+        refused(
+            caps(json!({"profileLimits": limits})),
+            "profileLimits requires v2",
+        );
+        refused(
+            caps(json!({
+                "contractVersion": CONTRACT_VERSION,
+                "profiles": ["json", "yaml", "ion"],
+                "profileLimits": limits
+            })),
+            "outside nodes",
+        );
+    }
+
+    #[test]
     fn refuses_capabilities_that_break_the_contract() {
         refused(caps(json!({ "extra": true })), "unknown field \"extra\"");
         refused(
@@ -980,9 +1117,16 @@ mod tests {
             &json!({"id": 1, "op": "capabilities", "contractVersion": CONTRACT_VERSION})
         ));
 
+        v2["profileLimits"] = json!([{
+            "profile": "ion", "versions": [4], "nodes": ["Type"], "layouts": ["single"]
+        }]);
+        assert!(validator.is_valid(&v2));
+
         let mut v1 = v2;
         v1["contractVersion"] = json!(1);
         assert!(!validator.is_valid(&v1));
+        v1.as_object_mut().unwrap().remove("profileLimits");
+        assert!(!validator.is_valid(&v1), "v1 cannot advertise Ion");
         assert!(!validator.is_valid(&json!({"id": 1, "op": "capabilities", "contractVersion": 1})));
         assert!(!validator.is_valid(&json!({"id": 1, "op": "capabilities", "contractVersion": 2})));
     }

@@ -11,6 +11,7 @@ use super::text::js_tokens;
 pub enum Language {
     Yaml,
     Json,
+    Ion,
     Text,
 }
 
@@ -19,6 +20,7 @@ impl Language {
         match word {
             "yaml" => Some(Self::Yaml),
             "json" => Some(Self::Json),
+            "ion" => Some(Self::Ion),
             "text" => Some(Self::Text),
             _ => None,
         }
@@ -28,6 +30,7 @@ impl Language {
         match self {
             Self::Yaml => "yaml",
             Self::Json => "json",
+            Self::Ion => "ion",
             Self::Text => "text",
         }
     }

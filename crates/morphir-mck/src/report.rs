@@ -43,6 +43,7 @@ impl Outcome {
 pub enum RecordProfile {
     Json,
     Yaml,
+    Ion,
     Tree,
 }
 
