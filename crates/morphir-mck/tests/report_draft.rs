@@ -182,7 +182,7 @@ fn v2_ion_capabilities_round_trip_in_draft_reports() {
     let schema: Value = serde_json::from_str(morphir_mck::report::draft::SCHEMA).unwrap();
     let validator = jsonschema::draft7::options().build(&schema).unwrap();
     let mut value = example();
-    value["adapter"]["negotiation"]["capabilities"]["contractVersion"] = json!(2);
+    value["adapter"]["negotiation"]["capabilities"]["contractVersion"] = json!("2.0.0-draft.1");
     value["adapter"]["negotiation"]["capabilities"]["profiles"] = json!(["json", "ion"]);
     assert!(validator.is_valid(&value));
     assert!(read(value.clone()).is_ok());

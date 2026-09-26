@@ -211,10 +211,10 @@ that the tests passed. The output cannot overwrite the JSON input, including thr
 
 ## Adapter transport
 
-The IR wire protocol uses integer versions 1 and 2: newline-delimited JSON, one object per line,
+The IR wire protocol accepts numeric version 1 and exact SemVer draft `2.0.0-draft.1`: newline-delimited JSON, one object per line,
 request ids starting at 1 and incrementing, strict envelopes, unknown fields rejected, capability
 negotiation first, `{"op":"exit"}` to shut down. The runner asks for v2 by putting
-`"contractVersion":2` on the capabilities request. A v1 adapter that answers with
+`"contractVersion":"2.0.0-draft.1"` on the capabilities request. A v1 adapter that answers with
 `protocol_error` gets an unversioned v1 retry in the same session. V2 adds `ion` to
 the capabilities profile vocabulary; an adapter advertises it only after it can
 serve Ion operations.
@@ -273,7 +273,7 @@ group on Unix, a Job Object on Windows. Ctrl-C does the same before the CLI exit
 
 Production reports use the consolidated draft in
 [`report-draft.schema.json`](../ir/mck/report-draft.schema.json), with the exact string
-`contractVersion: "2.0.0-draft.1"`. The adapter wire protocol accepts integer versions 1 and 2.
+`contractVersion: "2.0.0-draft.1"`. The adapter wire protocol accepts numeric v1 and exact draft `2.0.0-draft.1`.
 The reader rejects unknown report versions rather than guessing their shape. Stable `2.0.0`
 requires an explicit stabilization decision. This draft does not promise indefinite support for
 earlier drafts.

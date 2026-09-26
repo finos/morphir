@@ -106,14 +106,14 @@ pub enum Negotiation {
 /// Keeps the parsed protocol capabilities once, including the validated support
 /// table. Serialization reconstructs their wire shape without caching JSON.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NegotiatedCapabilities(Capabilities);
+pub struct NegotiatedCapabilities(Box<Capabilities>);
 
 impl NegotiatedCapabilities {
     pub fn from_capabilities(capabilities: &Capabilities) -> Result<Self, ReportError> {
-        let candidate = Self(capabilities.clone());
+        let candidate = Self(Box::new(capabilities.clone()));
         let value = serde_json::to_value(&candidate).map_err(json_error)?;
         parse_capabilities(&value)
-            .map(Self)
+            .map(|capabilities| Self(Box::new(capabilities)))
             .map_err(|e| ReportError(e.to_string()))
     }
 
@@ -127,7 +127,11 @@ impl Serialize for NegotiatedCapabilities {
         use serde::ser::SerializeStruct;
         let c = &self.0;
         let mut out = serializer.serialize_struct("Capabilities", 9)?;
-        out.serialize_field("contractVersion", &c.contract_version.as_u64())?;
+        if c.contract_version == semver::Version::new(1, 0, 0) {
+            out.serialize_field("contractVersion", &1u8)?;
+        } else {
+            out.serialize_field("contractVersion", &c.contract_version)?;
+        }
         out.serialize_field("binding", &c.binding)?;
         out.serialize_field("language", &c.language)?;
         out.serialize_field("formatVersions", &c.format_versions)?;
@@ -144,7 +148,7 @@ impl<'de> Deserialize<'de> for NegotiatedCapabilities {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(deserializer)?;
         parse_capabilities(&value)
-            .map(Self)
+            .map(|capabilities| Self(Box::new(capabilities)))
             .map_err(serde::de::Error::custom)
     }
 }

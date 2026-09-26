@@ -12,26 +12,28 @@
 
 use std::fmt;
 
+use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::format_version::{DOMAIN_FLOOR, SupportTable};
 
-pub const CONTRACT_VERSION: u64 = 2;
+pub const CONTRACT_VERSION: &str = "2.0.0-draft.1";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AdapterContract {
-    V1,
-    V2,
+fn legacy_version() -> Version {
+    Version::new(1, 0, 0)
 }
 
-impl AdapterContract {
-    pub fn as_u64(self) -> u64 {
-        match self {
-            Self::V1 => 1,
-            Self::V2 => 2,
-        }
-    }
+fn draft_version() -> Version {
+    Version::parse(CONTRACT_VERSION).expect("fixed MCK adapter contract version")
+}
+
+fn supported_draft(text: &str) -> Option<Version> {
+    let version = Version::parse(text).ok()?;
+    let supported =
+        VersionReq::parse("=2.0.0-draft.1").expect("fixed MCK adapter contract requirement");
+    (version.to_string() == text && version.build.is_empty() && supported.matches(&version))
+        .then_some(version)
 }
 
 /// A response or envelope that breaks the protocol.
@@ -101,14 +103,6 @@ impl From<Profile> for CapabilitiesProfile {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct VersionTwo;
-
-impl Serialize for VersionTwo {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u8(2)
-    }
-}
 closed_enum!(Layout, "layout", { Single => "single", Tree => "tree" });
 closed_enum!(PathMode, "path", { Current => "current", Pinned => "pinned" });
 closed_enum!(Stage, "stage", { Syntax => "syntax", Normalization => "normalization", Semantic => "semantic" });
@@ -116,7 +110,7 @@ closed_enum!(Stage, "stage", { Syntax => "syntax", Normalization => "normalizati
 /// What an adapter says it can do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Capabilities {
-    pub contract_version: AdapterContract,
+    pub contract_version: Version,
     pub binding: String,
     pub language: String,
     /// The canonical spelling of `table`, as the adapter sent it.
@@ -151,7 +145,7 @@ pub enum Request {
     #[serde(rename = "capabilities")]
     CapabilitiesV2 {
         #[serde(rename = "contractVersion")]
-        contract_version: VersionTwo,
+        contract_version: Version,
     },
     Decode {
         version: u32,
@@ -181,7 +175,7 @@ pub enum Request {
 impl Request {
     pub fn capabilities_v2() -> Self {
         Self::CapabilitiesV2 {
-            contract_version: VersionTwo,
+            contract_version: draft_version(),
         }
     }
     /// The request as one protocol line, without its trailing newline.
@@ -326,9 +320,9 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
         ],
         "",
     )?;
-    let contract_version = match o.get("contractVersion").and_then(integer) {
-        Some(1) => AdapterContract::V1,
-        Some(2) => AdapterContract::V2,
+    let contract_version = match o.get("contractVersion") {
+        Some(value) if integer(value) == Some(1) => legacy_version(),
+        Some(Value::String(text)) if supported_draft(text).is_some() => draft_version(),
         _ => {
             return fail(format!(
                 "unsupported contractVersion {}; this driver speaks 1 and {CONTRACT_VERSION}",
@@ -429,9 +423,11 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
             }
         }
     }
-    let allowed_profiles = match contract_version {
-        AdapterContract::V1 => Profile::allowed(),
-        AdapterContract::V2 => CapabilitiesProfile::allowed(),
+    let legacy_contract = contract_version == legacy_version();
+    let allowed_profiles = if legacy_contract {
+        Profile::allowed()
+    } else {
+        CapabilitiesProfile::allowed()
     };
     Ok(Capabilities {
         contract_version,
@@ -443,9 +439,12 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
         profiles: listed(
             o,
             "profiles",
-            |profile| match contract_version {
-                AdapterContract::V1 => Profile::parse(profile).map(Into::into),
-                AdapterContract::V2 => CapabilitiesProfile::parse(profile),
+            |profile| {
+                if legacy_contract {
+                    Profile::parse(profile).map(Into::into)
+                } else {
+                    CapabilitiesProfile::parse(profile)
+                }
             },
             &allowed_profiles,
         )?,
@@ -603,8 +602,12 @@ pub fn parse_request(value: &Value) -> Result<Request, ProtocolError> {
             known_keys(o, &["op", "contractVersion"], "")?;
             match o.get("contractVersion") {
                 None => Ok(Request::Capabilities),
-                Some(version) if integer(version) == Some(2) => Ok(Request::capabilities_v2()),
-                _ => fail("\"contractVersion\" must be 2 when present"),
+                Some(Value::String(version)) if supported_draft(version).is_some() => {
+                    Ok(Request::capabilities_v2())
+                }
+                _ => fail(format!(
+                    "\"contractVersion\" must be {CONTRACT_VERSION} when present"
+                )),
             }
         }
         "exit" => {
@@ -716,9 +719,10 @@ mod tests {
 
     #[test]
     fn v2_capabilities_can_advertise_ion_but_v1_cannot() {
-        let v2 = caps(json!({"contractVersion": 2, "profiles": ["json", "yaml", "ion"]}));
+        let v2 =
+            caps(json!({"contractVersion": CONTRACT_VERSION, "profiles": ["json", "yaml", "ion"]}));
         let parsed = parse_capabilities(&v2).unwrap();
-        assert_eq!(parsed.contract_version, AdapterContract::V2);
+        assert_eq!(parsed.contract_version, draft_version());
         assert!(parsed.profiles.contains(&CapabilitiesProfile::Ion));
 
         refused(
@@ -728,6 +732,18 @@ mod tests {
         refused(
             caps(json!({"contractVersion": 3})),
             "unsupported contractVersion 3",
+        );
+        refused(
+            caps(json!({"contractVersion": 2})),
+            "unsupported contractVersion 2",
+        );
+        refused(
+            caps(json!({"contractVersion": "2.0.0-draft.2"})),
+            "unsupported contractVersion",
+        );
+        refused(
+            caps(json!({"contractVersion": "2.0.0-draft.1+build.123"})),
+            "unsupported contractVersion",
         );
     }
 
@@ -934,13 +950,19 @@ mod tests {
     fn v2_capabilities_request_names_its_contract_version() {
         assert_eq!(
             Request::capabilities_v2().line(1),
-            r#"{"id":1,"op":"capabilities","contractVersion":2}"#
+            r#"{"id":1,"op":"capabilities","contractVersion":"2.0.0-draft.1"}"#
         );
         let (id, body) = parse_envelope(&Request::capabilities_v2().line(1)).unwrap();
         assert_eq!(id, 1);
         assert_eq!(
             parse_request(&Value::Object(body)).unwrap(),
             Request::capabilities_v2()
+        );
+        assert!(
+            parse_request(&json!({
+                "op": "capabilities", "contractVersion": "2.0.0-draft.1+build.123"
+            }))
+            .is_err()
         );
     }
 
@@ -951,14 +973,17 @@ mod tests {
                 .unwrap();
         let validator = jsonschema::options().build(&schema).unwrap();
 
-        let mut v2 = caps(json!({"contractVersion": 2, "profiles": ["ion"]}));
+        let mut v2 = caps(json!({"contractVersion": CONTRACT_VERSION, "profiles": ["ion"]}));
         v2["id"] = json!(1);
         assert!(validator.is_valid(&v2));
-        assert!(validator.is_valid(&json!({"id": 1, "op": "capabilities", "contractVersion": 2})));
+        assert!(validator.is_valid(
+            &json!({"id": 1, "op": "capabilities", "contractVersion": CONTRACT_VERSION})
+        ));
 
         let mut v1 = v2;
         v1["contractVersion"] = json!(1);
         assert!(!validator.is_valid(&v1));
         assert!(!validator.is_valid(&json!({"id": 1, "op": "capabilities", "contractVersion": 1})));
+        assert!(!validator.is_valid(&json!({"id": 1, "op": "capabilities", "contractVersion": 2})));
     }
 }

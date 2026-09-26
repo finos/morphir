@@ -2,8 +2,10 @@
 //!
 //! This binary is also the adapter: started as
 //! `mck_run --mck-test-adapter replay <transcript>` it answers from the frozen
-//! protocol transcript of the TypeScript adapter, refusing any request that
-//! is not byte for byte the one the first driver sent. So the whole command
+//! protocol transcript of the TypeScript adapter. It accepts the new v2
+//! capabilities request and answers with the frozen v1 capabilities, then
+//! refuses any request that is not byte for byte the one the first driver
+//! sent. So the whole command
 //! runs against real recorded answers with no other runtime installed.
 
 use std::io::{BufRead, Write};
@@ -64,7 +66,11 @@ fn replay_adapter(path: &Path, exit_code: i32) {
         let Some((expected, response)) = exchanges.next() else {
             std::process::exit(2)
         };
-        if line != expected {
+        // The frozen v1 transcript stays untouched. Its capabilities answer
+        // is valid for a v2 driver, and all following request ids still align.
+        let versioned_first = expected == r#"{"id":1,"op":"capabilities"}"#
+            && line == r#"{"id":1,"op":"capabilities","contractVersion":"2.0.0-draft.1"}"#;
+        if line != expected && !versioned_first {
             eprint!("request differs from the transcript:\n sent     {line}\n recorded {expected}");
             std::process::exit(2);
         }

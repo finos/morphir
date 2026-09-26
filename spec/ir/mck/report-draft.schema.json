@@ -420,7 +420,7 @@
 			"additionalProperties": false,
 			"properties": {
 				"contractVersion": {
-					"enum": [1, 2]
+					"enum": [1, "2.0.0-draft.1"]
 				},
 				"binding": {
 					"type": "string",

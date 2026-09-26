@@ -54,10 +54,10 @@ The runner sends each canonical and accepted document to the adapter in its own 
 
 `Profile` becomes `ion | json | yaml` in the protocol schema and in the engine's `Profile` and `RecordProfile` types. The kit's steps accept `ion` as a doc-string content type. An adapter declares the profiles it reads and writes in `capabilities.profiles`, as today. The Rust adapter declares `ion`. An adapter that does not declare `ion` never receives Ion input.
 
-The change is not additive for a published driver. A v1 driver reads `Profile` as the closed set `json | yaml` (`crates/morphir-mck/src/transport/protocol.rs`), so a capabilities answer that lists `ion` fails its negotiation. So the protocol moves to `contractVersion` `2`:
+The change is not additive for a published driver. A v1 driver reads `Profile` as the closed set `json | yaml` (`crates/morphir-mck/src/transport/protocol.rs`), so a capabilities answer that lists `ion` fails its negotiation. The shipped numeric version 1 remains supported; the revised contract uses exact `2.0.0-draft.1` under [the default contract versioning decision](../../../../kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md):
 
 - **The capabilities request** carries the driver's `contractVersion`. A v1 driver sends none.
-- **An adapter** lists `ion` in `capabilities.profiles` only when the request carries `contractVersion` `2` or later. For a v1 driver it answers exactly as today.
+- **An adapter** lists `ion` in `capabilities.profiles` only when the request carries `contractVersion` `2.0.0-draft.1`. For a v1 driver it answers exactly as today.
 - **A v2 driver** accepts an adapter that answers with `contractVersion` `1`, and never sends that adapter Ion.
 
 No published driver or adapter breaks. An old driver sees no `ion`, and an old adapter never receives Ion.

@@ -816,13 +816,15 @@ impl RunState {
     /// Asks the testee for its capabilities, as the first request of a run.
     pub fn open(testee: &mut dyn Testee) -> Self {
         let mut dead: Option<String> = None;
-        let first = testee.exchange(&Request::capabilities_v2());
-        let negotiated = match first {
-            Ok(body) if is_v1_capabilities_rejection(&body) => {
-                testee.exchange(&Request::Capabilities)
-            }
-            other => other,
-        };
+        let negotiated = testee
+            .exchange(&Request::capabilities_v2())
+            .and_then(|body| {
+                if is_v1_capabilities_rejection(&body)? {
+                    testee.exchange(&Request::Capabilities)
+                } else {
+                    Ok(body)
+                }
+            });
         let caps = match negotiated
             .and_then(|body| parse_capabilities(&Value::Object(body)).map_err(|error| error.0))
         {
@@ -859,14 +861,14 @@ impl RunState {
     }
 }
 
-fn is_v1_capabilities_rejection(body: &Map<String, Value>) -> bool {
-    body.get("ok") == Some(&Value::Bool(false))
-        && body
-            .get("diagnostic")
-            .and_then(Value::as_object)
-            .and_then(|diagnostic| diagnostic.get("code"))
-            .and_then(Value::as_str)
-            == Some("protocol_error")
+fn is_v1_capabilities_rejection(body: &Map<String, Value>) -> Result<bool, String> {
+    if body.get("ok") != Some(&Value::Bool(false)) {
+        return Ok(false);
+    }
+    match parse_decode_response(&Value::Object(body.clone())).map_err(|error| error.0)? {
+        DecodeResponse::Rejected(diagnostic) => Ok(diagnostic.code == "protocol_error"),
+        DecodeResponse::Ok { .. } => Ok(false),
+    }
 }
 
 /// The kit-error records for `kit.errors`, in legacy order.
@@ -1123,7 +1125,7 @@ mod tests {
 
     use super::*;
     use crate::kit::source::KitSource;
-    use crate::transport::protocol::{AdapterContract, CapabilitiesProfile};
+    use crate::transport::protocol::{CONTRACT_VERSION, CapabilitiesProfile};
 
     /// An adapter answering from a closure.
     struct Scripted<F: FnMut(&Request) -> Result<Value, String>>(F);
@@ -1296,7 +1298,10 @@ mod tests {
             }
         }));
         assert!(state.dead.is_none());
-        assert_eq!(state.caps.unwrap().contract_version, AdapterContract::V1);
+        assert_eq!(
+            state.caps.unwrap().contract_version,
+            semver::Version::new(1, 0, 0)
+        );
         assert_eq!(
             requests,
             vec![Request::capabilities_v2(), Request::Capabilities]
@@ -1304,17 +1309,36 @@ mod tests {
     }
 
     #[test]
+    fn malformed_version_rejection_is_a_protocol_error_without_retry() {
+        let mut requests = Vec::new();
+        let state = RunState::open(&mut Scripted(|request: &Request| {
+            requests.push(request.clone());
+            Ok(json!({
+                "ok": false,
+                "diagnostic": {"code": "protocol_error"},
+                "extra": true
+            }))
+        }));
+        assert_eq!(requests, vec![Request::capabilities_v2()]);
+        assert!(state.caps.is_none());
+        assert!(state.dead.unwrap().contains("unknown field \"extra\""));
+    }
+
+    #[test]
     fn v2_driver_accepts_an_ion_capable_adapter() {
         let state = RunState::open(&mut Scripted(|request: &Request| {
             assert_eq!(*request, Request::capabilities_v2());
             let mut response = caps(&["current"]);
-            response["contractVersion"] = json!(2);
+            response["contractVersion"] = json!(CONTRACT_VERSION);
             response["profiles"] = json!(["json", "yaml", "ion"]);
             Ok(response)
         }));
         assert!(state.dead.is_none());
         let caps = state.caps.unwrap();
-        assert_eq!(caps.contract_version, AdapterContract::V2);
+        assert_eq!(
+            caps.contract_version,
+            semver::Version::parse(CONTRACT_VERSION).unwrap()
+        );
         assert!(caps.profiles.contains(&CapabilitiesProfile::Ion));
     }
 
