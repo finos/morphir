@@ -36,6 +36,41 @@ morphir_footer::{}
 
 A missing `ionVersion` means the latest version that reader implements. Today that is `0.1.0-draft.1`. Writers still emit the field. `formatVersion` is required. A reader ignores a header member it does not understand unless `critical` names it. `ionVersion` follows SemVer. On `0.y.z` the minor acts as the major.
 
+### Canonical text
+
+The writer emits UTF-8 Ion 1.0 text. A single-file distribution is a datagram with the header first, dependencies in IR order, modules and their members in IR order, and the footer last. A document-tree file uses the same text rules but omits the footer. Top-level values touch with one line feed between them, and the file ends with exactly one line feed. There is no leading whitespace or byte-order mark. A writer always emits `ionVersion`; the draft.1 writer emits exactly `"0.1.0-draft.1"`. The separate, opt-in linked-metadata draft uses its own exact version.
+
+Each nonempty struct or list starts with `{` or `[`, puts one member or item per line at two spaces per nesting level, adds a comma after every member or item, and closes on its own line. A field uses `name: value`, with one space after the colon. An empty struct is written with its braces on separate lines; empty arrays are omitted where the schema permits.
+
+An S-expression starts with `(` and a line feed, puts each operand on its own line at two spaces per nesting level without commas, and closes with `)` on its own line. An empty S-expression is `(` followed by a line feed and `)`. For example, `(apply a b)` is written:
+
+```ion
+(
+  apply
+  a
+  b
+)
+```
+
+Annotations are adjacent symbols separated by `::`, with no spaces. There are no comments or extra blank lines. The examples elsewhere in this draft also show reader-accepted compact spellings; the writer uses this layout.
+
+The header member order is `ionVersion`, `formatVersion`, `kind`, `packageName`, followed by optional `entryPoints` and, in a tree, `pathBudget`. A v3 definition module writes `name`, then optional `doc`. A v3 alias writes `module`, `name`, `typeExp`, optional `typeParams`, then optional `doc`. A v3 custom type writes `module`, `name`, `access`, `constructors`, optional `typeParams`, then optional `doc`. A v3 value writes `module`, `name`, `outputType`, `body`, optional `inputTypes`, then optional `doc`. A v4 package writes `name`, then optional `modules`; a v4 module writes `name`, optional `annotations`, optional `doc`, optional `types`, then optional `values`. A v4 entry point writes `target`, `kind`, then optional `doc`. Nested type and value structs follow the member order of their node definitions. Collections whose IR type preserves order retain that order, including v4 entry points and parameter maps. Tree scope removes `package`, `module`, or `name` members supplied by the path without reordering the remaining members. A reader accepts any struct member order and Ion whitespace that the grammar permits; order and layout constrain only canonical writer output.
+
+Symbols with a legal unquoted Ion symbol spelling are bare, such as `library`, `public`, `kind`, or `start`. A symbol needing a quote, such as an entry-point key with a space, uses single quotes; string values use double quotes. Inside either quoted form, the writer uses `\0`, `\a`, `\b`, `\t`, `\n`, `\v`, `\f`, and `\r` for NUL, alert, backspace, tab, line feed, vertical tab, form feed, and carriage return. It writes backslash as `\\` and either quote mark as `\"` or `\'`. Every other Unicode scalar is emitted directly as UTF-8, without a Unicode escape. The writer applies the same rule to annotation symbols, struct field names, and S-expression symbols. It never substitutes a string for a symbol or vice versa.
+
+For example, the canonical empty v3 library is:
+
+```ion
+morphir::{
+  ionVersion: "0.1.0-draft.1",
+  formatVersion: "3.0.0",
+  kind: library,
+  packageName: "example",
+}
+morphir_footer::{
+}
+```
+
 `kind` is `library` or `specs` for v3, and `library`, `specs` or `application` for v4. A v3 `specs` distribution is IR `3.1.0` ([IR 3.1.0 draft](./v3-document-trees.md)). A writer emits `formatVersion: "3.0.0"` for a v3 `library` and `"3.1.0"` for a v3 `specs`. A reader rejects a v3 `specs` header whose `formatVersion` is below `3.1.0` with `specs_before_3_1`. A v3 reader rejects a v4-only node.
 
 ## Annotations
@@ -82,12 +117,12 @@ A function type is binary. A list type is a reference to `morphir/SDK:list#list`
 public::def::custom::type::{
   module: "eligibility",
   name: "result",
-  typeParams: ["a", "b"],
   access: public,
   constructors: [
     { name: "ok", args: [ { name: "value", type: "a" } ] },
     { name: "err", args: [ { name: "reason", type: "b" } ] },
   ],
+  typeParams: ["a", "b"],
 }
 ```
 
@@ -149,6 +184,7 @@ A `specs` distribution writes its own modules as `module::spec`, with no `packag
 
 ```ion
 morphir::{
+  ionVersion: "0.1.0-draft.1",
   formatVersion: "4.0.0",
   kind: application,
   packageName: "example",
@@ -233,7 +269,7 @@ A module, type, or value may be named `manifest` or `module`. The distribution m
 
 A `module.ion` directly under the package directory is rejected. A module path has at least one name, so its file is `pkg/<package>/<module>/module.ion`.
 
-The compatibility kit's profile list stays `json` and `yaml`. The Ion tree is storage.
+The compatibility kit adds `ion` in its version 2 adapter protocol. A version 1 adapter still advertises only `json` and `yaml`; see [the Ion reference design](../testing/mck-ion-reference.md#profiles).
 
 ## Out of scope
 
