@@ -90,10 +90,19 @@ Feature: Values
     And a reader of JSON accepts { "Field": { "attributes": {}, "target": { "Variable": "record" }, "name": "field-name" } }
     And a reader of JSON accepts { "Field": { "subject": { "Variable": "record" }, "fieldName": "field-name" } } with warning legacy_spelling
 
-  Scenario: values-0007 Tuple value
+  @spelling
+  Scenario: values-0007 Tuple spelling
     Decision 0009: a Tuple always carries its wrapper; a bare array at value position is a List.
 
-    Then its canonical YAML spelling is:
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        tuple
+        x
+        1
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       Tuple:
         - Variable: x
@@ -102,21 +111,37 @@ Feature: Values
       """
     And its canonical JSON spelling is { "Tuple": [{ "Variable": "x" }, { "Literal": { "IntegerLiteral": 1 } }] }
 
-  Scenario Outline: values-0007 Tuple value
-    Then a reader of <format> accepts <input>
+  @semantic
+  Scenario: values-0029 Tuple reader forms
+    Given a Value whose canonical form is:
+      """ion
+      (
+        tuple
+        x
+        1
+      )
+      """
+    Then a reader of JSON accepts { "Tuple": { "elements": [{ "Variable": "x" }, { "Literal": { "IntegerLiteral": 1 } }] } }
+    And a reader of JSON accepts { "Tuple": { "attributes": {}, "elements": [{ "Variable": "x" }, { "Literal": { "IntegerLiteral": 1 } }] } }
 
-    Examples:
-      | format | input                                                                                                        |
-      | JSON   | { "Tuple": { "elements": [{ "Variable": "x" }, { "Literal": { "IntegerLiteral": 1 } }] } }                   |
-      | JSON   | { "Tuple": { "attributes": {}, "elements": [{ "Variable": "x" }, { "Literal": { "IntegerLiteral": 1 } }] } } |
-
-  Scenario: values-0007 Tuple value
+  @semantic
+  Scenario: values-0030 Bare array reads as a List
     Then a reader of JSON reads [{ "Variable": "x" }, { "Literal": { "IntegerLiteral": 1 } }] as a List
 
-  Scenario: values-0008 Bare array and bare scalars at value position
+  @spelling
+  Scenario: values-0008 List spelling
     Decision 0009 closed bead morphir-ir-v4-stabilize.4: a bare array is a List, a bare number is an IntegerLiteral or FloatLiteral by its lexeme, and a bare boolean is a BoolLiteral. Writers keep the wrapped forms.
 
-    Then its canonical YAML spelling is:
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        list
+        1
+        2
+        3
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       List:
         - Literal:
@@ -128,15 +153,21 @@ Feature: Values
       """
     And its canonical JSON spelling is { "List": [{ "Literal": { "IntegerLiteral": 1 } }, { "Literal": { "IntegerLiteral": 2 } }, { "Literal": { "IntegerLiteral": 3 } }] }
 
-  Scenario Outline: values-0008 Bare array and bare scalars at value position
-    Then a reader of <format> accepts <input>
-
-    Examples:
-      | format | input                                                |
-      | JSON   | [1, 2, 3]                                            |
-      | JSON   | { "List": [1, 2, 3] }                                |
-      | JSON   | { "List": { "items": [1, 2, 3] } }                   |
-      | JSON   | { "List": { "attributes": {}, "items": [1, 2, 3] } } |
+  @semantic
+  Scenario: values-0031 List reader forms
+    Given a Value whose canonical form is:
+      """ion
+      (
+        list
+        1
+        2
+        3
+      )
+      """
+    Then a reader of JSON accepts [1, 2, 3]
+    And a reader of JSON accepts { "List": [1, 2, 3] }
+    And a reader of JSON accepts { "List": { "items": [1, 2, 3] } }
+    And a reader of JSON accepts { "List": { "attributes": {}, "items": [1, 2, 3] } }
 
   Scenario: values-0009 Hole
     Decision 0008: Hole stays a value expression with an optional `expectedType`; the Native and External expressions are removed, and a reader refuses them as unknown nodes. Native and external operations are definition bodies (definitions-0007).
@@ -231,26 +262,50 @@ Feature: Values
       | JSON   | { "Record": { "attrs": {}, "fields": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } } } | legacy_spelling |
       | JSON   | { "Record": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } }                            | legacy_spelling |
 
-  Scenario Outline: values-0014 Constructor and field function
-    Then its canonical <format> spelling is <spelling>
+  @spelling
+  Scenario: values-0014 Constructor spelling
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        constructor
+        'morphir/SDK:maybe#just'
+      )
+      """
+    And its canonical YAML spelling is Constructor: morphir/SDK:maybe#just
+    And its canonical JSON spelling is { "Constructor": "morphir/SDK:maybe#just" }
 
-    Examples:
-      | format | spelling                                    |
-      | YAML   | Constructor: morphir/SDK:maybe#just         |
-      | JSON   | { "Constructor": "morphir/SDK:maybe#just" } |
-
-  Scenario: values-0014 Constructor and field function
+  @semantic
+  Scenario: values-0032 Constructor reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        constructor
+        'morphir/SDK:maybe#just'
+      )
+      """
     Then a reader of JSON accepts { "Constructor": { "attributes": {}, "fqname": "morphir/SDK:maybe#just" } }
 
-  Scenario Outline: values-0015 Field function
-    Then its canonical <format> spelling is <spelling>
+  @spelling
+  Scenario: values-0015 Field function spelling
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        fieldFunction
+        name
+      )
+      """
+    And its canonical YAML spelling is FieldFunction: name
+    And its canonical JSON spelling is { "FieldFunction": "name" }
 
-    Examples:
-      | format | spelling                    |
-      | YAML   | FieldFunction: name         |
-      | JSON   | { "FieldFunction": "name" } |
-
-  Scenario: values-0015 Field function
+  @semantic
+  Scenario: values-0033 Field function reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        fieldFunction
+        name
+      )
+      """
     Then a reader of JSON accepts { "FieldFunction": { "attributes": {}, "name": "name" } }
 
   Scenario: values-0016 Lambda
