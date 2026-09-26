@@ -4,9 +4,11 @@
 //! implementation's IR codec, so adapter output cannot define the expected
 //! result. Unsupported node shapes fail as kit errors until admitted here.
 
+use granit_parser::{Event, Parser, ScalarStyle};
 use indexmap::IndexMap;
 use ion_rs::{Element, Sequence, TextFormat};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
+use serde_json::value::RawValue;
 use serde_json::{Map, Value, json};
 
 use super::compare::normalize_canonical;
@@ -64,8 +66,21 @@ pub(super) fn to_ion(node: &str, profile: Profile, text: &str) -> Result<String,
         return Err(format!("reference codec does not support {node}"));
     }
     let value: OrderedValue = match profile {
-        Profile::Json => serde_json::from_str(text).map_err(|error| error.to_string())?,
-        Profile::Yaml => serde_saphyr::from_str(text).map_err(|error| error.to_string())?,
+        Profile::Json => {
+            let raw: Box<RawValue> =
+                serde_json::from_str(text).map_err(|error| error.to_string())?;
+            read_raw_json(&raw)?
+        }
+        Profile::Yaml => {
+            let mut value: OrderedValue =
+                serde_saphyr::from_str(text).map_err(|error| error.to_string())?;
+            let mut lexemes = yaml_float_lexemes(text)?.into_iter();
+            restore_yaml_float_lexemes(&mut value, &mut lexemes)?;
+            if lexemes.next().is_some() {
+                return Err("YAML has unmatched FloatLiteral lexemes".to_owned());
+            }
+            value
+        }
         Profile::Ion => return canonical_ion(&read_ion(node, text)?),
     };
     canonical_ion(&read_ordered_profile_value(&value)?)
@@ -78,10 +93,131 @@ pub(super) fn to_ion(node: &str, profile: Profile, text: &str) -> Result<String,
 enum OrderedValue {
     Null,
     Bool(bool),
-    Number(serde_json::Number),
+    Number(RawNumber),
     String(String),
     Array(Vec<OrderedValue>),
     Object(IndexMap<String, OrderedValue>),
+}
+
+// serde_json::Number normalizes an integer-looking -0 to 0. Keep the source
+// token for explicit FloatLiteral payloads, including nested values.
+#[derive(Debug, Deserialize)]
+#[serde(from = "serde_json::Number")]
+struct RawNumber(String);
+
+impl From<serde_json::Number> for RawNumber {
+    fn from(number: serde_json::Number) -> Self {
+        Self(number.to_string())
+    }
+}
+
+impl Serialize for RawNumber {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        RawValue::from_string(self.0.clone())
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+fn read_raw_json(raw: &RawValue) -> Result<OrderedValue, String> {
+    let text = raw.get().trim();
+    match text.as_bytes().first() {
+        Some(b'{') => {
+            let fields: IndexMap<String, Box<RawValue>> =
+                serde_json::from_str(text).map_err(|error| error.to_string())?;
+            Ok(ordered_object(
+                fields
+                    .into_iter()
+                    .map(|(name, value)| Ok((name, read_raw_json(&value)?)))
+                    .collect::<Result<Vec<_>, String>>()?,
+            ))
+        }
+        Some(b'[') => {
+            let items: Vec<Box<RawValue>> =
+                serde_json::from_str(text).map_err(|error| error.to_string())?;
+            Ok(OrderedValue::Array(
+                items
+                    .iter()
+                    .map(|item| read_raw_json(item))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ))
+        }
+        Some(b'"') => serde_json::from_str(text)
+            .map(OrderedValue::String)
+            .map_err(|error| error.to_string()),
+        Some(b't' | b'f') => serde_json::from_str(text)
+            .map(OrderedValue::Bool)
+            .map_err(|error| error.to_string()),
+        Some(b'n') => Ok(OrderedValue::Null),
+        _ => {
+            serde_json::from_str::<serde_json::Number>(text).map_err(|error| error.to_string())?;
+            Ok(OrderedValue::Number(RawNumber(text.to_owned())))
+        }
+    }
+}
+
+fn yaml_float_lexemes(text: &str) -> Result<Vec<String>, String> {
+    let events = Parser::new_from_str(text)
+        .map(|event| {
+            event
+                .map(|(event, _)| event)
+                .map_err(|error| error.to_string())
+        })
+        .filter(|event| !matches!(event, Ok(Event::Comment(..))))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut lexemes = Vec::new();
+    for (index, event) in events.iter().enumerate() {
+        if !matches!(event, Event::Scalar(name, _, _, _) if name == "FloatLiteral") {
+            continue;
+        }
+        let value = match events.get(index + 1) {
+            Some(Event::Scalar(value, ScalarStyle::Plain, _, _)) => Some(value.as_ref()),
+            Some(Event::MappingStart(..)) if matches!(events.get(index + 2), Some(Event::Scalar(name, _, _, _)) if name == "value") => {
+                match events.get(index + 3) {
+                    Some(Event::Scalar(value, ScalarStyle::Plain, _, _)) => Some(value.as_ref()),
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        if let Some(value) = value {
+            float_number(value)?;
+            lexemes.push(value.to_owned());
+        }
+    }
+    Ok(lexemes)
+}
+
+fn restore_yaml_float_lexemes(
+    value: &mut OrderedValue,
+    lexemes: &mut impl Iterator<Item = String>,
+) -> Result<(), String> {
+    match value {
+        OrderedValue::Object(fields) => {
+            for (name, payload) in fields {
+                if name == "FloatLiteral" {
+                    let number = match payload {
+                        OrderedValue::Object(inner) => inner.get_mut("value"),
+                        other => Some(other),
+                    };
+                    if let Some(OrderedValue::Number(number)) = number {
+                        number.0 = lexemes
+                            .next()
+                            .ok_or("YAML FloatLiteral has no source lexeme")?;
+                    }
+                } else {
+                    restore_yaml_float_lexemes(payload, lexemes)?;
+                }
+            }
+        }
+        OrderedValue::Array(items) => {
+            for item in items {
+                restore_yaml_float_lexemes(item, lexemes)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 impl From<Value> for OrderedValue {
@@ -89,7 +225,7 @@ impl From<Value> for OrderedValue {
         match value {
             Value::Null => Self::Null,
             Value::Bool(value) => Self::Bool(value),
-            Value::Number(value) => Self::Number(value),
+            Value::Number(value) => Self::Number(value.into()),
             Value::String(value) => Self::String(value),
             Value::Array(values) => Self::Array(values.into_iter().map(Self::from).collect()),
             Value::Object(fields) => Self::Object(
@@ -149,6 +285,13 @@ impl ValueReference {
             )
         };
         match self {
+            Self::Float(lexeme) => node(
+                "Literal",
+                node(
+                    "FloatLiteral",
+                    OrderedValue::Number(RawNumber(lexeme.clone())),
+                ),
+            ),
             Self::Tuple(items) => node(
                 "Tuple",
                 OrderedValue::Array(items.iter().map(Self::canonical_ordered).collect()),
@@ -396,6 +539,9 @@ fn restore_record_order(
             .collect::<Result<Vec<_>, _>>()
     };
     match value {
+        ValueReference::Float(_) => raw_float_lexeme(raw)
+            .ok_or("a FloatLiteral has a number lexeme".to_owned())
+            .and_then(float),
         ValueReference::Record(_) => {
             let Some(OrderedValue::Object(node)) = payload("Record") else {
                 return Err("a Record has an object payload".to_owned());
@@ -473,6 +619,16 @@ fn restore_record_order(
             name,
         )),
         other => Ok(other),
+    }
+}
+
+fn raw_float_lexeme(value: &OrderedValue) -> Option<&str> {
+    match value {
+        OrderedValue::Number(number) => Some(&number.0),
+        OrderedValue::Object(fields) => ["Literal", "literal", "FloatLiteral", "value"]
+            .iter()
+            .find_map(|name| fields.get(*name).and_then(raw_float_lexeme)),
+        _ => None,
     }
 }
 
@@ -1304,6 +1460,18 @@ mod tests {
                 "(\n  float\n  \"4.0\"\n)\n",
             ),
             (
+                r#"{"Literal":{"FloatLiteral":-0}}"#,
+                "(\n  float\n  \"-0\"\n)\n",
+            ),
+            (
+                r#"{"Literal":{"FloatLiteral":{"value":-0}}}"#,
+                "(\n  float\n  \"-0\"\n)\n",
+            ),
+            (
+                r#"{"Literal":{"FloatLiteral":1.0e2}}"#,
+                "(\n  float\n  \"1.0e2\"\n)\n",
+            ),
+            (
                 r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"my-org/project:module#deleted"}}}}"#,
                 "(\n  hole\n  unresolvedReference::  {\n    target: \"my-org/project:module#deleted\",\n  }\n)\n",
             ),
@@ -1313,7 +1481,11 @@ mod tests {
             assert_eq!(to_ion("Value", Profile::Ion, &ion).unwrap(), ion);
             for profile in [Profile::Json, Profile::Yaml] {
                 let text = to_profile("Value", &ion, profile).unwrap();
-                assert_eq!(to_ion("Value", profile, &text).unwrap(), ion);
+                assert_eq!(
+                    to_ion("Value", profile, &text).unwrap(),
+                    ion,
+                    "{profile:?}: {text}"
+                );
             }
         }
     }
@@ -1335,6 +1507,22 @@ mod tests {
         for profile in [Profile::Json, Profile::Yaml] {
             let text = to_profile("Value", &ion, profile).unwrap();
             assert_eq!(to_ion("Value", profile, &text).unwrap(), ion);
+        }
+    }
+
+    #[test]
+    fn nested_float_keeps_source_lexeme_across_profiles() {
+        let json =
+            r#"{"Apply":{"function":{"Variable":"f"},"argument":{"Literal":{"FloatLiteral":-0}}}}"#;
+        let ion = to_ion("Value", Profile::Json, json).unwrap();
+        assert!(ion.contains("\"-0\""));
+        for profile in [Profile::Json, Profile::Yaml] {
+            let text = to_profile("Value", &ion, profile).unwrap();
+            assert_eq!(
+                to_ion("Value", profile, &text).unwrap(),
+                ion,
+                "{profile:?}: {text}"
+            );
         }
     }
 
