@@ -95,6 +95,14 @@ impl Serialize for Millis {
 }
 
 /// One fence's verdict on one path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Check {
+    Spelling,
+    Semantic,
+    RoundTrip,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Record {
@@ -112,7 +120,18 @@ pub struct Record {
     pub observed_diagnostic: Option<ReportDiagnostic>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub check: Option<Check>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff: Option<String>,
     pub duration_ms: Millis,
+}
+
+impl Record {
+    /// Old reports predate `check` and describe semantic comparisons.
+    pub fn check(&self) -> Check {
+        self.check.unwrap_or(Check::Semantic)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -226,6 +245,8 @@ mod tests {
             expected_diagnostic: Some("x".into()),
             observed_diagnostic: None,
             message: Some("m".into()),
+            check: None,
+            diff: None,
             duration_ms: Millis(1.0),
         };
         assert_eq!(

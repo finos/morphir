@@ -392,6 +392,12 @@
 				"message": {
 					"type": "string"
 				},
+				"check": {
+					"enum": ["spelling", "semantic", "round-trip"]
+				},
+				"diff": {
+					"type": "string"
+				},
 				"durationMs": {
 					"type": "number",
 					"minimum": 0

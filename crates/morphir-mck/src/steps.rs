@@ -456,6 +456,8 @@ mod tests {
             expected_diagnostic: None,
             observed_diagnostic: None,
             message: Some(message.to_owned()),
+            check: None,
+            diff: None,
             duration_ms: Millis(0.0),
         }
     }

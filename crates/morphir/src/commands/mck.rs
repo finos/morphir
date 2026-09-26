@@ -7,6 +7,7 @@
 //! a failed check or an operational error, and 2 is a usage error.
 
 use std::ffi::OsString;
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -941,6 +942,23 @@ pub async fn run_mck_run(args: MckRunArgs) -> AppResult<miette::Report> {
             record.fence_index,
             record.message.as_deref().unwrap_or("")
         );
+        if let Some(diff) = &record.diff {
+            let color = std::io::stdout().is_terminal();
+            for line in diff.split_inclusive('\n') {
+                let code = if line.starts_with('+') && !line.starts_with("+++") {
+                    Some("\x1b[32m")
+                } else if line.starts_with('-') && !line.starts_with("---") {
+                    Some("\x1b[31m")
+                } else {
+                    None
+                };
+                if color && let Some(code) = code {
+                    print!("{code}{line}\x1b[0m");
+                } else {
+                    print!("{line}");
+                }
+            }
+        }
     }
     if let Err(error) = shutdown {
         return finish(Outcome::Error(error.to_string()));

@@ -276,6 +276,11 @@ earlier drafts.
 
 Record identity (`caseId`, `irVersion`, `profile`, `role`, `fenceIndex`, `path`), result kinds
 (`pass`, `fail`, `kit-error`, `skipped`), skip reasons and failure messages are kept exactly.
+Canonical mismatches retain the short first-line `message` and may also carry a bounded
+three-context-line unified `diff`. Its headers identify the case, fence, profile and, for
+document-tree writes, the logical path. The optional `check` member is `spelling`, `semantic`
+or `round-trip`; readers treat its absence in older reports as `semantic`. The terminal and
+offline HTML report show the diff under the short message.
 
 Record order is part of the contract (kept): kit-error records first in kit error order; then cases
 with files sorted by name and cases in file order; within a case, each path in the adapter's

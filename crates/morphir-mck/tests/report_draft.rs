@@ -9,6 +9,7 @@ fn draft_schema_is_a_separate_closed_contract() {
     );
 }
 
+use morphir_mck::report::Check;
 use morphir_mck::report::draft::{DraftReport, Negotiation, Session};
 use serde_json::{Value, json};
 
@@ -36,6 +37,23 @@ fn fixed_example_round_trips_and_exposes_typed_data() {
         serde_json::from_str::<Value>(&report.to_json()).unwrap(),
         example()
     );
+}
+
+#[test]
+fn old_records_default_to_semantic_and_new_diff_fields_round_trip() {
+    let old = read(example()).unwrap();
+    assert_eq!(old.records[0].check(), Check::Semantic);
+    let mut value = example();
+    value["records"][0]["check"] = json!("round-trip");
+    value["records"][0]["diff"] = json!("--- expected\n+++ actual\n@@ -1 +1 @@\n-a\n+b\n");
+    let parsed = read(value.clone()).unwrap();
+    assert_eq!(parsed.records[0].check(), Check::RoundTrip);
+    assert_eq!(
+        serde_json::from_str::<Value>(&parsed.to_json()).unwrap(),
+        value
+    );
+    value["records"][0]["check"] = json!("unknown");
+    assert!(read(value).is_err());
 }
 
 #[test]
