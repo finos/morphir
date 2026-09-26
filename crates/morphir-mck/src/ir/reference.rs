@@ -253,6 +253,8 @@ enum ValueReference {
     Float(String),
     Boolean(bool),
     String(String),
+    // The optional type is a canonical, no-argument reference in this slice.
+    // The full Type ADT is admitted with the Type reference cases.
     UnresolvedHole(String, Option<String>),
     Tuple(Vec<ValueReference>),
     List(Vec<ValueReference>),
