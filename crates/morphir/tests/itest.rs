@@ -1132,7 +1132,13 @@ fn itest_fails_a_scenarios_md_the_reader_refuses_and_runs_the_rest() {
     let listed = run(temp.path(), &["--list"]);
     let (_, stderr) = text(&listed);
     assert!(!listed.status.success(), "{stderr}");
-    assert!(stderr.contains("checks command \"first\""), "{stderr}");
+    // Join the report's wrapped lines: where they break depends on the temporary path's length.
+    let unwrapped = stderr
+        .split_whitespace()
+        .filter(|word| *word != "│")
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(unwrapped.contains("checks command \"first\""), "{stderr}");
     assert_eq!(stderr.matches("/cli/refused/").count(), 1, "{stderr}");
 }
 
