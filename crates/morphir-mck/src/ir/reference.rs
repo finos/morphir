@@ -4,9 +4,12 @@
 //! implementation's IR codec, so adapter output cannot define the expected
 //! result. Unsupported node shapes fail as kit errors until admitted here.
 
+use granit_parser::{Event, Parser, ScalarStyle};
 use indexmap::IndexMap;
 use ion_rs::{Element, Sequence, TextFormat};
-use serde::{Deserialize, Serialize};
+use serde::de::Visitor;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::value::RawValue;
 use serde_json::{Map, Value, json};
 
 use super::compare::normalize_canonical;
@@ -30,6 +33,9 @@ pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<Stri
                 ValueReference::Integer(number) => {
                     Ok(format!("Literal:\n  IntegerLiteral: {number}\n"))
                 }
+                ValueReference::Float(lexeme) => {
+                    Ok(format!("Literal:\n  FloatLiteral: {lexeme}\n"))
+                }
                 ValueReference::Boolean(value) => Ok(format!("Literal:\n  BoolLiteral: {value}\n")),
                 // JSON flow syntax is valid YAML 1.2. Semantic checks need a
                 // readable YAML document; spelling cases pin the YAML writer.
@@ -45,6 +51,10 @@ pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<Stri
                     serde_json::to_string(&value.canonical_ordered())
                         .map_err(|error| error.to_string())
                 }
+                ValueReference::UnresolvedHole(_, Some(_)) => {
+                    serde_saphyr::to_string(&value.canonical_ordered())
+                        .map_err(|error| error.to_string())
+                }
                 _ => serde_saphyr::to_string(&value.canonical_json())
                     .map_err(|error| error.to_string()),
             }
@@ -57,8 +67,21 @@ pub(super) fn to_ion(node: &str, profile: Profile, text: &str) -> Result<String,
         return Err(format!("reference codec does not support {node}"));
     }
     let value: OrderedValue = match profile {
-        Profile::Json => serde_json::from_str(text).map_err(|error| error.to_string())?,
-        Profile::Yaml => serde_saphyr::from_str(text).map_err(|error| error.to_string())?,
+        Profile::Json => {
+            let raw: Box<RawValue> =
+                serde_json::from_str(text).map_err(|error| error.to_string())?;
+            read_raw_json(&raw)?
+        }
+        Profile::Yaml => {
+            let mut value: OrderedValue =
+                serde_saphyr::from_str(text).map_err(|error| error.to_string())?;
+            let mut lexemes = yaml_float_lexemes(text)?.into_iter();
+            restore_yaml_float_lexemes(&mut value, &mut lexemes)?;
+            if lexemes.next().is_some() {
+                return Err("YAML has unmatched FloatLiteral lexemes".to_owned());
+            }
+            value
+        }
         Profile::Ion => return canonical_ion(&read_ion(node, text)?),
     };
     canonical_ion(&read_ordered_profile_value(&value)?)
@@ -71,10 +94,219 @@ pub(super) fn to_ion(node: &str, profile: Profile, text: &str) -> Result<String,
 enum OrderedValue {
     Null,
     Bool(bool),
-    Number(serde_json::Number),
+    Number(RawNumber),
     String(String),
     Array(Vec<OrderedValue>),
     Object(IndexMap<String, OrderedValue>),
+}
+
+// serde_json::Number normalizes an integer-looking -0 to 0. Keep the source
+// token for explicit FloatLiteral payloads, including nested values.
+#[derive(Debug)]
+struct RawNumber(String);
+
+impl<'de> Deserialize<'de> for RawNumber {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct NumberVisitor;
+        impl Visitor<'_> for NumberVisitor {
+            type Value = RawNumber;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a numeric scalar")
+            }
+
+            fn visit_i64<E: serde::de::Error>(self, value: i64) -> Result<Self::Value, E> {
+                Ok(RawNumber(value.to_string()))
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, value: u64) -> Result<Self::Value, E> {
+                Ok(RawNumber(value.to_string()))
+            }
+
+            fn visit_f64<E: serde::de::Error>(self, value: f64) -> Result<Self::Value, E> {
+                Ok(RawNumber(value.to_string()))
+            }
+        }
+        deserializer.deserialize_any(NumberVisitor)
+    }
+}
+
+impl From<serde_json::Number> for RawNumber {
+    fn from(number: serde_json::Number) -> Self {
+        Self(number.to_string())
+    }
+}
+
+impl Serialize for RawNumber {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        RawValue::from_string(self.0.clone())
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+fn read_raw_json(raw: &RawValue) -> Result<OrderedValue, String> {
+    let text = raw.get().trim();
+    match text.as_bytes().first() {
+        Some(b'{') => {
+            let fields: IndexMap<String, Box<RawValue>> =
+                serde_json::from_str(text).map_err(|error| error.to_string())?;
+            Ok(ordered_object(
+                fields
+                    .into_iter()
+                    .map(|(name, value)| Ok((name, read_raw_json(&value)?)))
+                    .collect::<Result<Vec<_>, String>>()?,
+            ))
+        }
+        Some(b'[') => {
+            let items: Vec<Box<RawValue>> =
+                serde_json::from_str(text).map_err(|error| error.to_string())?;
+            Ok(OrderedValue::Array(
+                items
+                    .iter()
+                    .map(|item| read_raw_json(item))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ))
+        }
+        Some(b'"') => serde_json::from_str(text)
+            .map(OrderedValue::String)
+            .map_err(|error| error.to_string()),
+        Some(b't' | b'f') => serde_json::from_str(text)
+            .map(OrderedValue::Bool)
+            .map_err(|error| error.to_string()),
+        Some(b'n') => Ok(OrderedValue::Null),
+        _ => {
+            serde_json::from_str::<serde_json::Number>(text).map_err(|error| error.to_string())?;
+            Ok(OrderedValue::Number(RawNumber(text.to_owned())))
+        }
+    }
+}
+
+fn yaml_float_lexemes(text: &str) -> Result<Vec<String>, String> {
+    let events = Parser::new_from_str(text)
+        .map(|event| {
+            event
+                .map(|(event, _)| event)
+                .map_err(|error| error.to_string())
+        })
+        .filter(|event| !matches!(event, Ok(Event::Comment(..))))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut lexemes = Vec::new();
+    let mut skip_through = None;
+    for (index, event) in events.iter().enumerate() {
+        if skip_through.is_some_and(|end| index <= end) {
+            continue;
+        }
+        if !matches!(event, Event::Scalar(name, _, _, _) if name == "FloatLiteral") {
+            continue;
+        }
+        let value = match events.get(index + 1) {
+            Some(Event::Scalar(value, ScalarStyle::Plain, _, _)) => Some(value.as_ref()),
+            Some(Event::MappingStart(..)) => {
+                let value = yaml_expanded_float_lexeme(&events, index + 2);
+                skip_through = Some(yaml_mapping_end(&events, index + 1));
+                value
+            }
+            _ => None,
+        };
+        if let Some(value) = value {
+            let normalized = yaml_json_number_lexeme(value);
+            float_number(&normalized)?;
+            lexemes.push(normalized);
+        }
+    }
+    Ok(lexemes)
+}
+
+fn yaml_mapping_end(events: &[Event<'_>], start: usize) -> usize {
+    let mut depth = 0;
+    for (index, event) in events.iter().enumerate().skip(start) {
+        match event {
+            Event::MappingStart(..) | Event::SequenceStart(..) => depth += 1,
+            Event::MappingEnd | Event::SequenceEnd => {
+                depth -= 1;
+                if depth == 0 {
+                    return index;
+                }
+            }
+            _ => {}
+        }
+    }
+    events.len()
+}
+
+// The YAML profile rewrites only source spellings JSON cannot parse; a JSON
+// spelling such as 1.5E3 retains its exact exponent text.
+fn yaml_json_number_lexeme(text: &str) -> String {
+    let (sign, unsigned) = match text.strip_prefix('-') {
+        Some(rest) => ("-", rest),
+        None => ("", text.strip_prefix('+').unwrap_or(text)),
+    };
+    let (mantissa, exponent) = match unsigned.find(['e', 'E']) {
+        Some(index) => (&unsigned[..index], &unsigned[index..]),
+        None => (unsigned, ""),
+    };
+    let mantissa = match mantissa.split_once('.') {
+        Some(("", fraction)) => format!("0.{fraction}"),
+        Some((integer, "")) => format!("{integer}.0"),
+        _ => mantissa.to_owned(),
+    };
+    format!("{sign}{mantissa}{exponent}")
+}
+
+fn yaml_expanded_float_lexeme<'a>(events: &'a [Event<'_>], start: usize) -> Option<&'a str> {
+    let mut depth = 1;
+    for index in start..events.len() {
+        match &events[index] {
+            Event::MappingStart(..) | Event::SequenceStart(..) => depth += 1,
+            Event::MappingEnd | Event::SequenceEnd => {
+                depth -= 1;
+                if depth == 0 {
+                    break;
+                }
+            }
+            Event::Scalar(name, _, _, _) if depth == 1 && name == "value" => {
+                if let Some(Event::Scalar(value, ScalarStyle::Plain, _, _)) = events.get(index + 1)
+                {
+                    return Some(value.as_ref());
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn restore_yaml_float_lexemes(
+    value: &mut OrderedValue,
+    lexemes: &mut impl Iterator<Item = String>,
+) -> Result<(), String> {
+    match value {
+        OrderedValue::Object(fields) => {
+            for (name, payload) in fields {
+                if name == "FloatLiteral" {
+                    let number = match payload {
+                        OrderedValue::Object(inner) => inner.get_mut("value"),
+                        other => Some(other),
+                    };
+                    if let Some(OrderedValue::Number(number)) = number {
+                        number.0 = lexemes
+                            .next()
+                            .ok_or("YAML FloatLiteral has no source lexeme")?;
+                    }
+                } else {
+                    restore_yaml_float_lexemes(payload, lexemes)?;
+                }
+            }
+        }
+        OrderedValue::Array(items) => {
+            for item in items {
+                restore_yaml_float_lexemes(item, lexemes)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 impl From<Value> for OrderedValue {
@@ -82,7 +314,7 @@ impl From<Value> for OrderedValue {
         match value {
             Value::Null => Self::Null,
             Value::Bool(value) => Self::Bool(value),
-            Value::Number(value) => Self::Number(value),
+            Value::Number(value) => Self::Number(value.into()),
             Value::String(value) => Self::String(value),
             Value::Array(values) => Self::Array(values.into_iter().map(Self::from).collect()),
             Value::Object(fields) => Self::Object(
@@ -107,8 +339,12 @@ enum ValueReference {
     FieldFunction(String),
     Unit,
     Integer(i64),
+    Float(String),
     Boolean(bool),
     String(String),
+    // The optional type is a canonical, no-argument reference in this slice.
+    // The full Type ADT is admitted with the Type reference cases.
+    UnresolvedHole(String, Option<String>),
     Tuple(Vec<ValueReference>),
     List(Vec<ValueReference>),
     Apply(Box<ValueReference>, Box<ValueReference>),
@@ -140,6 +376,13 @@ impl ValueReference {
             )
         };
         match self {
+            Self::Float(lexeme) => node(
+                "Literal",
+                node(
+                    "FloatLiteral",
+                    OrderedValue::Number(RawNumber(lexeme.clone())),
+                ),
+            ),
             Self::Tuple(items) => node(
                 "Tuple",
                 OrderedValue::Array(items.iter().map(Self::canonical_ordered).collect()),
@@ -178,6 +421,17 @@ impl ValueReference {
                     ("fields", fields(entries)),
                 ]),
             ),
+            Self::UnresolvedHole(target, expected_type) => {
+                let reason = node(
+                    "UnresolvedReference",
+                    members(vec![("target", OrderedValue::String(target.clone()))]),
+                );
+                let mut hole = vec![("reason", reason)];
+                if let Some(name) = expected_type {
+                    hole.push(("expectedType", OrderedValue::String(name.clone())));
+                }
+                node("Hole", members(hole))
+            }
             _ => self.canonical_json().into(),
         }
     }
@@ -190,8 +444,22 @@ impl ValueReference {
             Self::FieldFunction(name) => json!({"FieldFunction": name}),
             Self::Unit => json!({"Unit": {}}),
             Self::Integer(number) => json!({"Literal": {"IntegerLiteral": number}}),
+            Self::Float(lexeme) => {
+                json!({"Literal": {"FloatLiteral": float_number(lexeme).expect("validated float")}})
+            }
             Self::Boolean(value) => json!({"Literal": {"BoolLiteral": value}}),
             Self::String(value) => json!({"Literal": {"StringLiteral": value}}),
+            Self::UnresolvedHole(target, expected_type) => {
+                let mut hole = Map::new();
+                hole.insert(
+                    "reason".to_owned(),
+                    json!({"UnresolvedReference": {"target": target}}),
+                );
+                if let Some(name) = expected_type {
+                    hole.insert("expectedType".to_owned(), Value::String(name.clone()));
+                }
+                json!({"Hole": hole})
+            }
             Self::Tuple(items) => {
                 json!({"Tuple": items.iter().map(Self::canonical_json).collect::<Vec<_>>()})
             }
@@ -242,8 +510,25 @@ impl ValueReference {
             ),
             Self::Unit => Element::from(Sequence::builder().build_sexp()),
             Self::Integer(number) => Element::from(ion_rs::Int::from(*number)),
+            Self::Float(lexeme) => sexp_element("float", [Element::string(lexeme.as_str())]),
             Self::Boolean(value) => Element::from(*value),
             Self::String(value) => sexp_element("string", [Element::string(value.as_str())]),
+            Self::UnresolvedHole(target, expected_type) => sexp_element(
+                "hole",
+                std::iter::once(
+                    Element::from(
+                        ion_rs::Struct::builder()
+                            .with_field("target", target.as_str())
+                            .build(),
+                    )
+                    .with_annotations(["unresolvedReference"]),
+                )
+                .chain(
+                    expected_type
+                        .iter()
+                        .map(|name| Element::string(name.as_str())),
+                ),
+            ),
             Self::Tuple(items) => collection_element("tuple", items),
             Self::List(items) => collection_element("list", items),
             Self::Apply(function, argument) => {
@@ -275,6 +560,21 @@ fn canonical_fields(fields: &[(String, ValueReference)]) -> Value {
         map.insert(name.clone(), value.canonical_json());
     }
     Value::Object(map)
+}
+
+fn float_number(lexeme: &str) -> Result<serde_json::Number, String> {
+    let number = lexeme
+        .parse::<serde_json::Number>()
+        .map_err(|error| error.to_string())?;
+    if !number.as_f64().is_some_and(f64::is_finite) {
+        return Err("a FloatLiteral holds a finite JSON number".to_owned());
+    }
+    Ok(number)
+}
+
+fn float(lexeme: &str) -> Result<ValueReference, String> {
+    float_number(lexeme)?;
+    Ok(ValueReference::Float(lexeme.to_owned()))
 }
 
 fn ion_fields(fields: &[(String, ValueReference)]) -> impl Iterator<Item = Element> {
@@ -330,6 +630,9 @@ fn restore_record_order(
             .collect::<Result<Vec<_>, _>>()
     };
     match value {
+        ValueReference::Float(_) => raw_float_lexeme(raw)
+            .ok_or("a FloatLiteral has a number lexeme".to_owned())
+            .and_then(float),
         ValueReference::Record(_) => {
             let Some(OrderedValue::Object(node)) = payload("Record") else {
                 return Err("a Record has an object payload".to_owned());
@@ -410,6 +713,35 @@ fn restore_record_order(
     }
 }
 
+fn raw_float_lexeme(value: &OrderedValue) -> Option<&str> {
+    let OrderedValue::Object(node) = value else {
+        return match value {
+            OrderedValue::Number(number) => Some(&number.0),
+            _ => None,
+        };
+    };
+    let OrderedValue::Object(literal) = node.get("Literal")? else {
+        return None;
+    };
+    let literal = if literal.contains_key("attributes") {
+        match literal.get("literal")? {
+            OrderedValue::Object(inner) => inner,
+            _ => return None,
+        }
+    } else {
+        literal
+    };
+    let payload = literal.get("FloatLiteral")?;
+    let number = match payload {
+        OrderedValue::Object(inner) => inner.get("value")?,
+        other => other,
+    };
+    match number {
+        OrderedValue::Number(number) => Some(&number.0),
+        _ => None,
+    }
+}
+
 fn ordered_fields(
     fields: &IndexMap<String, OrderedValue>,
 ) -> Result<Vec<(String, ValueReference)>, String> {
@@ -423,10 +755,11 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
     match value {
         Value::String(name) => variable(name),
         Value::Array(items) => read_items(items).map(ValueReference::List),
-        Value::Number(number) => number
-            .as_i64()
-            .map(ValueReference::Integer)
-            .ok_or("a Value integer fits i64".to_owned()),
+        Value::Number(number) => match number.as_i64() {
+            Some(integer) => Ok(ValueReference::Integer(integer)),
+            None if number.is_f64() => float(&number.to_string()),
+            None => Err("a Value integer fits i64".to_owned()),
+        },
         Value::Bool(value) => Ok(ValueReference::Boolean(*value)),
         Value::Object(fields) if fields.len() == 1 => {
             let (kind, payload) = fields.iter().next().expect("one member");
@@ -440,6 +773,44 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
                     .and_then(|name| variable(&name).map(|_| ValueReference::FieldFunction(name))),
                 "Unit" if empty_attributes(payload) => Ok(ValueReference::Unit),
                 "Literal" => read_literal(payload),
+                "Hole" => {
+                    let Value::Object(members) = payload else {
+                        return Err("a Hole has an object payload".to_owned());
+                    };
+                    if members.keys().any(|name| {
+                        !matches!(name.as_str(), "reason" | "attributes" | "expectedType")
+                    }) || members.get("attributes").is_some_and(
+                        |value| !matches!(value, Value::Object(attrs) if attrs.is_empty()),
+                    ) {
+                        return Err("a Hole has a reason, optional empty attributes, and optional expectedType".to_owned());
+                    }
+                    let Some(Value::Object(reason)) = members.get("reason") else {
+                        return Err("a Hole has a reason".to_owned());
+                    };
+                    let Some(Value::Object(details)) = reason.get("UnresolvedReference") else {
+                        return Err("an admitted Hole has an UnresolvedReference reason".to_owned());
+                    };
+                    if reason.len() != 1 {
+                        return Err("a Hole reason has one kind".to_owned());
+                    }
+                    let target = details
+                        .get("target")
+                        .and_then(Value::as_str)
+                        .ok_or("an UnresolvedReference has a target string")?;
+                    let expected_type = members
+                        .get("expectedType")
+                        .map(|value| {
+                            value
+                                .as_str()
+                                .ok_or_else(|| "a Hole expectedType is a name".to_owned())
+                                .and_then(fqname)
+                        })
+                        .transpose()?;
+                    Ok(ValueReference::UnresolvedHole(
+                        fqname(target)?,
+                        expected_type,
+                    ))
+                }
                 "Tuple" => read_collection(payload, "elements").map(ValueReference::Tuple),
                 "List" => read_collection(payload, "items").map(ValueReference::List),
                 "Apply" => {
@@ -647,7 +1018,7 @@ fn read_literal(value: &Value) -> Result<ValueReference, String> {
             match kind.as_str() {
                 "IntegerLiteral" | "WholeNumberLiteral" => {
                     let number = match payload {
-                        Value::Object(inner) if inner.len() == 1 => inner.get("value"),
+                        Value::Object(inner) => inner.get("value"),
                         other => Some(other),
                     };
                     number
@@ -659,6 +1030,16 @@ fn read_literal(value: &Value) -> Result<ValueReference, String> {
                     .as_bool()
                     .map(ValueReference::Boolean)
                     .ok_or("a BoolLiteral needs a boolean".to_owned()),
+                "FloatLiteral" => {
+                    let number = match payload {
+                        Value::Object(inner) => inner.get("value"),
+                        other => Some(other),
+                    };
+                    number
+                        .filter(|value| value.as_f64().is_some())
+                        .ok_or("a FloatLiteral needs a number".to_owned())
+                        .and_then(|value| float(&value.to_string()))
+                }
                 "StringLiteral" => payload
                     .as_str()
                     .map(|text| ValueReference::String(text.to_owned()))
@@ -780,6 +1161,51 @@ fn read_sexp(element: &Element) -> Result<ValueReference, String> {
             text.as_string()
                 .map(|text| ValueReference::String(text.to_owned()))
                 .ok_or("a StringLiteral has a string argument".to_owned())
+        }
+        "float" => {
+            let [lexeme] = rest else {
+                return Err("a FloatLiteral has one argument".to_owned());
+            };
+            let lexeme = lexeme
+                .as_string()
+                .ok_or("a FloatLiteral has a string lexeme")?;
+            float(lexeme)
+        }
+        "hole" => {
+            let (reason, expected_type) = match rest {
+                [reason] => (reason, None),
+                [reason, expected] => (reason, Some(expected)),
+                _ => {
+                    return Err(
+                        "an admitted Hole has a reason and optional expected type".to_owned()
+                    );
+                }
+            };
+            let annotations = reason
+                .annotations()
+                .iter()
+                .map(|symbol| symbol.text())
+                .collect::<Vec<_>>();
+            if annotations != [Some("unresolvedReference")] {
+                return Err("an admitted Hole has an UnresolvedReference reason".to_owned());
+            }
+            let structure = reason.as_struct().ok_or("a Hole reason is a struct")?;
+            let target = structure
+                .get("target")
+                .and_then(Element::as_string)
+                .ok_or("an UnresolvedReference target is a string")?;
+            let expected_type = expected_type
+                .map(|element| {
+                    element
+                        .as_string()
+                        .ok_or_else(|| "a Hole expected type is a string".to_owned())
+                        .and_then(fqname)
+                })
+                .transpose()?;
+            Ok(ValueReference::UnresolvedHole(
+                fqname(target)?,
+                expected_type,
+            ))
         }
         "record" => read_ion_fields(rest).map(ValueReference::Record),
         "update" => {
@@ -1126,6 +1552,156 @@ mod tests {
         for profile in [Profile::Json, Profile::Yaml] {
             let encoded = to_profile("Value", &ion, profile).unwrap();
             assert_eq!(to_ion("Value", profile, &encoded).unwrap(), ion);
+        }
+    }
+
+    #[test]
+    fn float_and_hole_values_round_trip_across_profiles() {
+        for (json, expected_ion) in [
+            (
+                r#"{"Literal":{"FloatLiteral":4.0}}"#,
+                "(\n  float\n  \"4.0\"\n)\n",
+            ),
+            (
+                r#"{"Literal":{"FloatLiteral":{"value":4.0}}}"#,
+                "(\n  float\n  \"4.0\"\n)\n",
+            ),
+            (
+                r#"{"Literal":{"FloatLiteral":{"future":true,"value":4.0}}}"#,
+                "(\n  float\n  \"4.0\"\n)\n",
+            ),
+            (
+                r#"{"Literal":{"FloatLiteral":-0}}"#,
+                "(\n  float\n  \"-0\"\n)\n",
+            ),
+            (
+                r#"{"Literal":{"FloatLiteral":{"value":-0}}}"#,
+                "(\n  float\n  \"-0\"\n)\n",
+            ),
+            (
+                r#"{"Literal":{"FloatLiteral":1.0e2}}"#,
+                "(\n  float\n  \"1.0e2\"\n)\n",
+            ),
+            (
+                r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"my-org/project:module#deleted"}}}}"#,
+                "(\n  hole\n  unresolvedReference::  {\n    target: \"my-org/project:module#deleted\",\n  }\n)\n",
+            ),
+        ] {
+            let ion = to_ion("Value", Profile::Json, json).unwrap();
+            assert_eq!(ion, expected_ion);
+            assert_eq!(to_ion("Value", Profile::Ion, &ion).unwrap(), ion);
+            for profile in [Profile::Json, Profile::Yaml] {
+                let text = to_profile("Value", &ion, profile).unwrap();
+                assert_eq!(
+                    to_ion("Value", profile, &text).unwrap(),
+                    ion,
+                    "{profile:?}: {text}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn unresolved_hole_preserves_expected_type_across_profiles() {
+        let json = r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"my-org/project:module#deleted"}},"expectedType":"morphir/SDK:string#string"}}"#;
+        let ion = to_ion("Value", Profile::Json, json).unwrap();
+        assert!(ion.contains("\"morphir/SDK:string#string\""));
+        assert_eq!(to_ion("Value", Profile::Ion, &ion).unwrap(), ion);
+        let canonical_json = to_profile("Value", &ion, Profile::Json).unwrap();
+        assert!(
+            canonical_json.find("reason").unwrap() < canonical_json.find("expectedType").unwrap()
+        );
+        let canonical_yaml = to_profile("Value", &ion, Profile::Yaml).unwrap();
+        assert!(
+            canonical_yaml.find("reason:").unwrap() < canonical_yaml.find("expectedType:").unwrap()
+        );
+        for profile in [Profile::Json, Profile::Yaml] {
+            let text = to_profile("Value", &ion, profile).unwrap();
+            assert_eq!(to_ion("Value", profile, &text).unwrap(), ion);
+        }
+    }
+
+    #[test]
+    fn unresolved_hole_ignores_unknown_reason_members() {
+        let baseline = r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}}}}"#;
+        let extended =
+            r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x","future":true}}}}"#;
+        let ion = to_ion("Value", Profile::Json, baseline).unwrap();
+        assert_eq!(to_ion("Value", Profile::Json, extended).unwrap(), ion);
+    }
+
+    #[test]
+    fn nested_float_keeps_source_lexeme_across_profiles() {
+        let json =
+            r#"{"Apply":{"function":{"Variable":"f"},"argument":{"Literal":{"FloatLiteral":-0}}}}"#;
+        let ion = to_ion("Value", Profile::Json, json).unwrap();
+        assert!(ion.contains("\"-0\""));
+        for profile in [Profile::Json, Profile::Yaml] {
+            let text = to_profile("Value", &ion, profile).unwrap();
+            assert_eq!(
+                to_ion("Value", profile, &text).unwrap(),
+                ion,
+                "{profile:?}: {text}"
+            );
+        }
+    }
+
+    #[test]
+    fn expanded_yaml_float_ignores_unknown_members() {
+        let yaml = "Literal:\n  FloatLiteral:\n    future: true\n    value: 4.0\n";
+        assert_eq!(
+            to_ion("Value", Profile::Yaml, yaml).unwrap(),
+            "(\n  float\n  \"4.0\"\n)\n"
+        );
+    }
+
+    #[test]
+    fn expanded_float_uses_value_instead_of_ignored_numbers() {
+        let json = r#"{"Literal":{"FloatLiteral":{"Literal":2.0,"value":4.0}}}"#;
+        assert_eq!(
+            to_ion("Value", Profile::Json, json).unwrap(),
+            "(\n  float\n  \"4.0\"\n)\n"
+        );
+        let yaml =
+            "Literal:\n  FloatLiteral:\n    future:\n      FloatLiteral: 2.0\n    value: 4.0\n";
+        assert_eq!(
+            to_ion("Value", Profile::Yaml, yaml).unwrap(),
+            "(\n  float\n  \"4.0\"\n)\n"
+        );
+    }
+
+    #[test]
+    fn yaml_float_scalars_normalize_to_json_lexemes() {
+        for (source, lexeme) in [
+            (".5", "0.5"),
+            ("5.", "5.0"),
+            ("+1.5", "1.5"),
+            ("+.5e3", "0.5e3"),
+        ] {
+            let yaml = format!("Literal:\n  FloatLiteral: {source}\n");
+            let ion = to_ion("Value", Profile::Yaml, &yaml).unwrap();
+            assert_eq!(ion, format!("(\n  float\n  \"{lexeme}\"\n)\n"));
+        }
+    }
+
+    #[test]
+    fn float_and_hole_reference_shapes_are_bounded() {
+        for json in [
+            r#"{"Literal":{"FloatLiteral":"4.0"}}"#,
+            r#"{"Literal":{"FloatLiteral":1e400}}"#,
+            "18446744073709551616",
+            r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"bad_name:mod#x"}}}}"#,
+            r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}},"expectedType":"bad_name"}}"#,
+            r#"{"Hole":{"attributes":{"attributes":{}},"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}}}}"#,
+        ] {
+            assert!(to_ion("Value", Profile::Json, json).is_err(), "{json}");
+        }
+        for ion in [
+            "(float \"NaN\")",
+            "(hole unresolvedReference::{target: \"bad_name:mod#x\"})",
+            "(hole unresolvedReference::{target: \"pkg:mod#x\", target: \"pkg:mod#y\"})",
+        ] {
+            assert!(to_profile("Value", ion, Profile::Json).is_err(), "{ion}");
         }
     }
 }
