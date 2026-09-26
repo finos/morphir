@@ -48,3 +48,8 @@ unresolved-reference hole whose optional expected type is a canonical type
 reference. The pinned Rust adapter reported 10 passes, no failures, kit errors
 or skips. A second capture matched byte for byte; earlier exchanges remain
 intact.
+
+`values-float-expanded-rust.ndjson` separately captures the updated
+`values-0043` reader case, including the expanded `FloatLiteral.value` JSON
+form. The pinned Rust adapter reported 10 passes, no failures, kit errors or
+skips. A second capture matched byte for byte; earlier exchanges remain intact.

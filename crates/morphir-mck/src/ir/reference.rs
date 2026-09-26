@@ -764,10 +764,16 @@ fn read_literal(value: &Value) -> Result<ValueReference, String> {
                     .as_bool()
                     .map(ValueReference::Boolean)
                     .ok_or("a BoolLiteral needs a boolean".to_owned()),
-                "FloatLiteral" => payload
-                    .as_f64()
-                    .ok_or("a FloatLiteral needs a number".to_owned())
-                    .and_then(|_| float(&payload.to_string())),
+                "FloatLiteral" => {
+                    let number = match payload {
+                        Value::Object(inner) if inner.len() == 1 => inner.get("value"),
+                        other => Some(other),
+                    };
+                    number
+                        .filter(|value| value.as_f64().is_some())
+                        .ok_or("a FloatLiteral needs a number".to_owned())
+                        .and_then(|value| float(&value.to_string()))
+                }
                 "StringLiteral" => payload
                     .as_str()
                     .map(|text| ValueReference::String(text.to_owned()))
@@ -1291,6 +1297,10 @@ mod tests {
         for (json, expected_ion) in [
             (
                 r#"{"Literal":{"FloatLiteral":4.0}}"#,
+                "(\n  float\n  \"4.0\"\n)\n",
+            ),
+            (
+                r#"{"Literal":{"FloatLiteral":{"value":4.0}}}"#,
                 "(\n  float\n  \"4.0\"\n)\n",
             ),
             (

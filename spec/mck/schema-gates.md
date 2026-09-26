@@ -37,7 +37,7 @@ from this JSON schema gate; they remain inputs to the runner.
 An accepted fence carrying `warning=` must be rejected by the schema, except
 `definitions-0006`, `definitions-0010` and `definitions-0018`: the documentation
 wrapper remains schema-valid for its documented compatibility window. The fixed
-corpus yields 183 accepted and 13 expected rejections, with no failed or skipped fences.
+corpus yields 184 accepted and 13 expected rejections, with no failed or skipped fences.
 
 The pinned in-process library is `jsonschema` 0.26.2 (declared MSRV Rust 1.70), with
 default HTTP/file resolution features disabled and an explicit rejecting retriever.

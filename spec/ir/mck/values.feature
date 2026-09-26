@@ -361,6 +361,7 @@ Feature: Values
       )
       """
     Then a reader of JSON accepts 4.0
+    And a reader of JSON accepts { "Literal": { "FloatLiteral": { "value": 4.0 } } }
 
   @spelling
   Scenario: values-0013 Record spelling
