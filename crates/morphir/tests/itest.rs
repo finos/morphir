@@ -1204,27 +1204,36 @@ fn itest_counts_every_outline_row_when_a_temporary_ancestor_has_configuration() 
     assert_eq!(stdout, "0 passed; 2 failed; 0 not selected\n", "{stderr}");
 }
 
+/// The suite expands an outline's `<n>` in each row's name, so each row runs as `Row 1` or
+/// `Row 2`; the rows must still run, and report, under the outline's listed id `.#row-n`.
 #[test]
-fn itest_fails_when_selected_scenarios_do_not_run() {
+fn itest_runs_and_reports_every_outline_row_under_the_outline_id() {
     let temp = tempfile::tempdir().unwrap();
     fs::write(temp.path().join("outline.feature"), OUTLINE).unwrap();
-    let output = run(temp.path(), &[]);
+    let output = run(temp.path(), &["--list"]);
     let (stdout, stderr) = text(&output);
     assert!(output.status.success(), "stdout={stdout} stderr={stderr}");
-    assert!(
-        stdout.ends_with("2 passed; 0 failed; 0 not selected\n"),
-        "{stdout}"
-    );
-    // The outline's listed id is `.#row-n`, but each row runs under its own name, so the suite's
-    // filter selects no row. That gap must fail the run, not pass it with nothing run.
-    let output = run(temp.path(), &["--filter", ".#row-n"]);
-    let (stdout, stderr) = text(&output);
-    assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
-    assert!(
-        stderr.contains("2 selected scenario(s) did not run, and no error says why"),
-        "{stderr}"
-    );
-    assert_eq!(stdout, "0 passed; 0 failed; 2 not selected\n");
+    assert!(stdout.starts_with(".#row-n: Row <n> []\n"), "{stdout}");
+    for args in [&[][..], &["--filter", ".#row-n"][..]] {
+        let output = run(temp.path(), args);
+        let (stdout, stderr) = text(&output);
+        assert!(
+            output.status.success(),
+            "{args:?}: stdout={stdout} stderr={stderr}"
+        );
+        assert!(
+            stdout.contains("PASS .#row-n: Row 1 (1 steps)\n"),
+            "{stdout}"
+        );
+        assert!(
+            stdout.contains("PASS .#row-n: Row 2 (1 steps)\n"),
+            "{stdout}"
+        );
+        assert!(
+            stdout.ends_with("2 passed; 0 failed; 0 not selected\n"),
+            "{args:?}: {stdout}"
+        );
+    }
 }
 
 #[test]

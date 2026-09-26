@@ -19,8 +19,7 @@ use super::golden::{LineEndings, Selection};
 use super::markdown::{self, CellRole, ParsedSection};
 use super::model::{self, AssertionKind, ExpectedText, Metadata, Step};
 use anyhow::{Context, Result, bail, ensure};
-use morphir_gherkin::Document;
-use morphir_gherkin::LineCol;
+use morphir_gherkin::{Document, LineCol, Scenario, Span, Tag};
 use serde_json::Value;
 use std::fmt::Write as _;
 use std::fs;
@@ -31,6 +30,40 @@ use std::path::Path;
 /// `morphir_bdd::suite::Reader`, for registration through `Suite::reader("scenarios.md", …)`.
 pub fn read_scenarios_md(path: &Path) -> Result<Document, String> {
     read(path).map_err(|error| format!("{error:#}"))
+}
+
+/// Reads `path` as a `.feature` or `.feature.md` file, as the suite's default reader does, and
+/// tags each scenario that has no `@section:` tag with the section id of its own name. The suite
+/// expands an outline's `<placeholders>` in each row's name but not in its tags, so the tag keeps
+/// every row on the id `--list` prints for the outline. Fits `morphir_bdd::suite::Reader`.
+pub fn read_feature(path: &Path) -> Result<Document, String> {
+    let (mut document, _) =
+        morphir_gherkin::read_document(path).map_err(|error| error.to_string())?;
+    if let Some(feature) = document.feature.as_mut() {
+        let rules = feature
+            .rules
+            .iter_mut()
+            .flat_map(|rule| &mut rule.scenarios);
+        for scenario in feature.scenarios.iter_mut().chain(rules) {
+            tag_section(scenario);
+        }
+    }
+    Ok(document)
+}
+
+fn tag_section(scenario: &mut Scenario) {
+    let tagged = scenario
+        .tags
+        .iter()
+        .any(|tag| matches!(tag.namespaced(), Some(("section", _))));
+    // A name with no valid id gets no tag: listing the document already refuses it.
+    if let (false, Ok(id)) = (tagged, markdown::section_id(&scenario.name, None)) {
+        scenario.tags.push(Tag {
+            name: format!("section:{id}"),
+            span: Span::default(),
+            position: scenario.position,
+        });
+    }
 }
 
 fn read(path: &Path) -> Result<Document> {

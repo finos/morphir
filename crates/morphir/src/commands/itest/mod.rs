@@ -21,7 +21,7 @@ pub mod steps;
 mod windows_job;
 mod workspace;
 
-pub use reader::read_scenarios_md;
+pub use reader::{read_feature, read_scenarios_md};
 #[cfg(test)]
 use runner::execute;
 #[cfg(test)]
@@ -819,6 +819,14 @@ fn run_scenarios(
                 .build()
                 .context("create a runtime for the itest suite")?;
             let reader: Reader = Arc::new(read_scenarios_md);
+            let feature_reader: Reader = Arc::new(read_feature);
+            // The suite picks a reader by file name, so each `.feature` document's name gets one.
+            let feature_names: HashSet<String> = runnable
+                .iter()
+                .filter_map(|path| path.file_name()?.to_str())
+                .filter(|name| *name != SCENARIOS_MD)
+                .map(str::to_owned)
+                .collect();
             let filter_root = root.clone();
             let outcome_root = root.clone();
             let suite = Suite::new("itest")
@@ -856,6 +864,9 @@ fn run_scenarios(
                 .on_scenario_finished(move |outcome| {
                     report_outcome(&outcome_root, outcome, &counts.0, &counts.1);
                 });
+            let suite = feature_names.into_iter().fold(suite, |suite, name| {
+                suite.reader(&name, feature_reader.clone())
+            });
             // With `MORPHIR_BDD_OUT` set, the suite's own default already reads it.
             let suite = match out_dir {
                 Some(dir) => suite.out_dir(dir),
