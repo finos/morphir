@@ -1,0 +1,5 @@
+{
+  "@context": {
+    "ops": {"@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/business/value/", "@prefix": true}
+  }
+}

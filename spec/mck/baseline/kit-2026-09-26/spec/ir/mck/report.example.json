@@ -1,0 +1,81 @@
+{
+	"contractVersion": 1,
+	"binding": "morphir-typescript",
+	"language": "typescript",
+	"formatVersions": "[4.0.0,4.1.0)",
+	"driverVersion": "0.0.1",
+	"kitVersion": "4a972bc3",
+	"startedAt": "2026-09-14T19:27:41.478Z",
+	"records": [
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "skipped",
+			"message": "profile yaml not in capabilities",
+			"durationMs": 0.0311
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 1,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 1.5826
+		},
+		{
+			"caseId": "definitions-0001",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "accepted",
+			"fenceIndex": 2,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 0.1492
+		},
+		{
+			"caseId": "distributions-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "fail",
+			"expectedDiagnostic": "invalid_distribution_shape",
+			"observedDiagnostic": {
+				"code": "invalid_type",
+				"stage": "semantic",
+				"cursor": "/distribution",
+				"message": "expected an object, found an array"
+			},
+			"message": "expected invalid_distribution_shape, got invalid_type at /distribution: expected an object, found an array",
+			"durationMs": 0.2174
+		},
+		{
+			"caseId": "versions-0001",
+			"irVersion": 3,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "skipped",
+			"message": "version 3 not in capabilities",
+			"durationMs": 0.0005
+		},
+		{
+			"caseId": "kit-0000",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"result": "kit-error",
+			"message": "spec/ir/mck/types.md:12: duplicate case ID types-0007",
+			"durationMs": 0
+		}
+	]
+}

@@ -1,0 +1,5 @@
+{
+  "@context": {
+    "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0&rev=sha256:d38de93027cc08dcb97469f274cf27ea17ba1e3c433b4e9c95f8247f7a5f6266#/module/lifecycle/value/deprecated"
+  }
+}

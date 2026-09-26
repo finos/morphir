@@ -703,7 +703,7 @@ fn baseline_filter(binding: &str) -> String {
 }
 
 /// Runs `morphir mck run` against this test binary as a replay adapter for
-/// `transcript`, with the kit checkout `spec/ir/mck`, and writes the report to `report`.
+/// `transcript`, with the managed kit frozen before Ion migration.
 fn replay_run(binding: &str, transcript: &Path, report: &Path) -> Output {
     let exe = std::env::current_exe().unwrap();
     let filter = baseline_filter(binding);
@@ -719,7 +719,10 @@ fn replay_run(binding: &str, transcript: &Path, report: &Path) -> Output {
         "--adapter-arg",
         transcript.to_str().unwrap(),
         "--kit",
-        repo().join("spec/ir/mck").to_str().unwrap(),
+        repo()
+            .join("spec/mck/baseline/kit-2026-09-26")
+            .to_str()
+            .unwrap(),
         "--filter",
         &filter,
         "--report",

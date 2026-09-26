@@ -9,6 +9,17 @@ The Markdown case grammar and the dual-engine parity task retired after the Gher
 in #946. The inventories, reports and transcripts here describe the historical kit and remain
 frozen evidence; current IR runs use `.feature` cases and driver contract 2.
 
+## Kit snapshot before Ion case migration
+
+`kit-2026-09-26/` is a managed, self-contained copy of the Gherkin kit at parent commit
+`a8293bdf22607ff2dfe2dba51543d4040322cc77`. It was created with
+`morphir mck kit vendor --source . --dest spec/mck/baseline/kit-2026-09-26`.
+Its snapshot digest is
+`sha256-c1fbce52a8d002c1e70de4ff8214dbb6a7a1ecdb8a8d6e79a50c7b0643fbfe61`.
+The frozen reports and transcripts continue to replay against this kit as the live
+`spec/ir/mck/` cases move to Ion. This snapshot does not change any historical
+report or transcript byte. New captures go in a separate dated baseline.
+
 A kit addition, such as the [IR 3.1.0 cases](#ir-310-update), is the one exception. It updates these
 files in place, and only by addition:
 

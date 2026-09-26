@@ -1,0 +1,4 @@
+{
+	"$comment": "The TypeScript adapter's parent CI gate allows no failing cases. Capability skips remain visible and are not a full compatibility certificate.",
+	"cases": []
+}

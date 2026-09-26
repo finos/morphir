@@ -1,0 +1,2694 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "status": "reference",
+  "schemaClosure": "metadata-fixtures/schema-closure.json",
+  "cases": [
+    {
+      "id": "metadata-0001",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        },
+        "facts": {
+          "deprecated": true
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+            "object": {
+              "@value": true
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ],
+        "sources": [
+          [
+            {
+              "kind": "document"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "metadata-0002",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+        },
+        "facts": {
+          "aliases": [
+            "legacySubmitOrder",
+            "submitOrderOld"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "legacySubmitOrder"
+            },
+            "graph": "default"
+          },
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "submitOrderOld"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts",
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0003",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "annotationsFacts",
+        "context": {
+          "replacement": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/replacement",
+            "@type": "@id"
+          }
+        },
+        "facts": {
+          "replacement": "morphir://ir/pkg/acme/orders-next?format=4.0.0#/module/api/value/submit-order-v2"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/replacement",
+            "object": {
+              "@id": "morphir://ir/pkg/acme/orders-next?format=4.0.0#/module/api/value/submit-order-v2"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "annotationsFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0004",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "targetNames": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "targetNames": {
+            "frontend": {
+              "gleam": "legacy_submit_order",
+              "typescript": "legacySubmitOrder"
+            },
+            "backend": {
+              "java": "legacySubmitOrder",
+              "sql": "LEGACY_SUBMIT_ORDER"
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "object": {
+              "@value": {
+                "frontend": {
+                  "gleam": "legacy_submit_order",
+                  "typescript": "legacySubmitOrder"
+                },
+                "backend": {
+                  "java": "legacySubmitOrder",
+                  "sql": "LEGACY_SUBMIT_ORDER"
+                }
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0005",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.1.0",
+        "valueSpecification": {
+          "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "attributes": {
+            "@context": {
+              "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+            },
+            "facts": {
+              "deprecated": true
+            }
+          },
+          "annotations": {
+            "@context": {
+              "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+            },
+            "facts": {
+              "deprecated": true
+            }
+          }
+        },
+        "$meta": {
+          "@context": {
+            "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+          },
+          "@graph": [
+            {
+              "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+              "deprecated": true
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+            "object": {
+              "@value": true
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts",
+          "annotationsFacts",
+          "documentGraph"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0006",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+          "legacy": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        },
+        "facts": {
+          "deprecated": true,
+          "legacy": true
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "distinctFacts": 1,
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0007",
+      "operation": "resolveAnnotation",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "context": {
+          "publicApi": "morphir://ir/pkg/acme/annotation-vocab?format=4.0.0#/module/annotations/value/public-api"
+        },
+        "entries": [
+          "publicApi"
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "annotationNames": [
+          "acme/annotation-vocab:annotations#public-api"
+        ],
+        "facts": []
+      }
+    },
+    {
+      "id": "metadata-0008",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "imports": [
+          "metadata-fixtures/contexts/naming.jsonld",
+          "morphir://context/sha256/22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
+          {
+            "targetNames": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+              "@type": "@json"
+            }
+          }
+        ],
+        "acceptedResource": "metadata-fixtures/contexts/lifecycle.jsonld"
+      },
+      "expected": {
+        "outcome": "accepted",
+        "terms": {
+          "transactionalName": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/transactional-name",
+          "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+          "targetNames": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        }
+      }
+    },
+    {
+      "id": "metadata-0009",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "imports": [
+          "metadata-fixtures/contexts/ops.jsonld",
+          "metadata-fixtures/contexts/ops-conflict.jsonld"
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_term_collision"
+      }
+    },
+    {
+      "id": "metadata-0010",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "parent": {
+          "name": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/business/value/name",
+            "@protected": true
+          }
+        },
+        "child": {
+          "name": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/operations/value/name"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "protected_term_redefinition"
+      }
+    },
+    {
+      "id": "metadata-0011",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "import": "morphir://context/sha256/0000000000000000000000000000000000000000000000000000000000000000",
+        "acceptedResource": "metadata-fixtures/contexts/lifecycle.jsonld"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_digest_mismatch"
+      }
+    },
+    {
+      "id": "metadata-0012",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "import": "morphir://context/sha256/22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
+        "acceptedResource": null
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_resource_unavailable"
+      }
+    },
+    {
+      "id": "metadata-0013",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "context": {
+          "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        },
+        "facts": {
+          "deprecated": "true"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "predicate_object_type_mismatch"
+      }
+    },
+    {
+      "id": "metadata-0014",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "context": {
+          "mystery": "morphir://ir/pkg/acme/unknown?format=4.0.0#/module/misc/value/mystery"
+        },
+        "facts": {
+          "mystery": "remember me"
+        }
+      },
+      "expected": {
+        "outcome": "preserved_unvalidated",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/unknown?format=4.0.0#/module/misc/value/mystery",
+            "object": {
+              "@value": "remember me"
+            },
+            "graph": "default"
+          }
+        ],
+        "diagnostic": "predicate_declaration_unavailable"
+      }
+    },
+    {
+      "id": "metadata-0015",
+      "operation": "resolveSources",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.1.0",
+        "$meta": {
+          "@context": {
+            "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+          },
+          "@graph": [
+            {
+              "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+              "deprecated": true
+            }
+          ],
+          "assertionSources": [
+            {
+              "selector": {
+                "carrier": "documentGraph",
+                "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+                "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+                "object": {
+                  "@value": true
+                }
+              },
+              "sources": [
+                {
+                  "kind": "compiler",
+                  "producer": "morphir-gleam",
+                  "ref": "src/Orders.gleam"
+                },
+                {
+                  "kind": "author",
+                  "ref": "review/deprecation"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "sources": [
+          [
+            {
+              "kind": "compiler",
+              "producer": "morphir-gleam",
+              "ref": "src/Orders.gleam"
+            },
+            {
+              "kind": "author",
+              "ref": "review/deprecation"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "metadata-0016",
+      "operation": "resolveSources",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.1.0",
+        "$meta": {
+          "@context": {
+            "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+          },
+          "@graph": [
+            {
+              "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+              "deprecated": false
+            }
+          ],
+          "assertionSources": [
+            {
+              "selector": {
+                "carrier": "documentGraph",
+                "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+                "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+                "object": {
+                  "@value": true
+                }
+              },
+              "sources": [
+                {
+                  "kind": "author",
+                  "ref": "review/deprecation"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "assertion_selector_unmatched"
+      }
+    },
+    {
+      "id": "metadata-0017",
+      "operation": "resolveSources",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.1.0",
+        "$meta": {
+          "@context": {
+            "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+          },
+          "@graph": [
+            {
+              "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+              "deprecated": true
+            }
+          ],
+          "assertionSources": [
+            {
+              "selector": {
+                "carrier": "documentGraph",
+                "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+                "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+                "object": {
+                  "@value": true
+                }
+              },
+              "sources": [
+                {
+                  "kind": "document"
+                }
+              ]
+            },
+            {
+              "selector": {
+                "carrier": "documentGraph",
+                "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+                "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+                "object": {
+                  "@value": true
+                }
+              },
+              "sources": [
+                {
+                  "kind": "author",
+                  "ref": "review/deprecation"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "duplicate_assertion_selector"
+      }
+    },
+    {
+      "id": "metadata-0018",
+      "operation": "profileEquivalence",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        },
+        {
+          "profile": "yaml",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        },
+        {
+          "profile": "ion",
+          "layout": "record",
+          "irRevision": "4.1.0",
+          "ionVersion": "0.1.0-draft.2"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "fixtures": {
+          "json": "metadata-fixtures/profiles/value.json",
+          "yaml": "metadata-fixtures/profiles/value.yaml",
+          "ion": "metadata-fixtures/profiles/value.ion"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+            "object": {
+              "@value": true
+            },
+            "graph": "default"
+          },
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "legacySubmitOrder"
+            },
+            "graph": "default"
+          },
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "submitOrderOld"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts",
+          "attributesFacts",
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0019",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "graph": "morphir://ir/pkg/acme/graphs?format=4.0.0#/module/reviews/value/compiler",
+        "fact": {
+          "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+          "object": {
+            "@value": true
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "unsupported_graph_kind"
+      }
+    },
+    {
+      "id": "metadata-0020",
+      "operation": "publish",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "contextStorage": "external",
+        "contextFile": "metadata-fixtures/contexts/lifecycle.jsonld",
+        "contextDigest": "sha256:22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
+        "archiveFile": "metadata-fixtures/archives/orders.json",
+        "authoring": {
+          "packagePath": "example.com/orders",
+          "version": "1.0.0",
+          "dependencies": {},
+          "exports": {}
+        },
+        "archiveOwnsPredicate": false,
+        "externalPredicateRevision": "sha256:d38de93027cc08dcb97469f274cf27ea17ba1e3c433b4e9c95f8247f7a5f6266",
+        "providerFile": "metadata-fixtures/providers/metadata-specs.json",
+        "providerTrusted": true,
+        "publishedContextFile": "metadata-fixtures/contexts/lifecycle-published.jsonld"
+      },
+      "expected": {
+        "outcome": "accepted",
+        "inventory": [
+          {
+            "path": "contexts/lifecycle.jsonld",
+            "sha256": "6392c505ee8764e7edb335b06488d3427e51a555157fadb877b38e8977d446c1"
+          }
+        ],
+        "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0&rev=sha256:d38de93027cc08dcb97469f274cf27ea17ba1e3c433b4e9c95f8247f7a5f6266#/module/lifecycle/value/deprecated"
+      }
+    },
+    {
+      "id": "metadata-0021",
+      "operation": "publish",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "contextStorage": "external",
+        "declaredSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "contextFile": "metadata-fixtures/contexts/lifecycle.jsonld"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_digest_mismatch",
+        "usablePublicationChanged": false
+      }
+    },
+    {
+      "id": "metadata-0022",
+      "operation": "projectSidecar",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "irVersion": 3,
+        "target": "morphir://ir/pkg/acme/orders?format=3.1.0#/module/api/value/legacy-submit-order",
+        "entryPoint": "morphir://ir/pkg/acme/metadata?format=3.1.0#/module/lifecycle/type/deprecation",
+        "typedValue": {
+          "deprecated": true
+        },
+        "source": "decorations/lifecycle.json"
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=3.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=3.1.0#/module/lifecycle/type/deprecation",
+            "object": {
+              "@value": {
+                "deprecated": true
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "sidecar"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0023",
+      "operation": "sourceEdit",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "provenanceStorage": "document",
+        "sourceDependentRemoval": true,
+        "trustedProducerManifest": false,
+        "storedAssertionSources": false,
+        "ownerDocument": "morphir://ir/pkg/acme/orders?format=4.1.0",
+        "carrier": "documentGraph",
+        "fact": {
+          "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+          "object": {"@value": true},
+          "graph": "default"
+        },
+        "removeSource": {"kind": "compiler", "producer": "morphir-gleam", "ref": "src/Orders.gleam"}
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "assertion_source_unknown",
+        "factsChanged": false
+      }
+    },
+    {
+      "id": "metadata-0024",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "resource": "morphir://context/sha256/ba2d5bacfd9ae14d1fbceab7182914d78f4235faf736c724f3673b685f5e1f25",
+        "resourceFile": "metadata-fixtures/contexts/relative-import.jsonld"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "relative_import_without_base"
+      }
+    },
+    {
+      "id": "metadata-0025",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "targetNames": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "targetNames": {
+            "frontend": {
+              "gleam": 42,
+              "typescript": "legacySubmitOrder"
+            },
+            "backend": {
+              "java": "legacySubmitOrder",
+              "sql": "LEGACY_SUBMIT_ORDER"
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "predicate_object_type_mismatch"
+      }
+    },
+    {
+      "id": "metadata-0026",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "naming": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/",
+            "@prefix": true
+          }
+        },
+        "facts": {
+          "naming:aliases": "oldSubmitOrder"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "oldSubmitOrder"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0027",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "@vocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/"
+        },
+        "facts": {
+          "aliases": "oldSubmitOrder"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "oldSubmitOrder"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0028",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "@vocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/",
+          "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        },
+        "facts": {
+          "deprecated": true
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+            "object": {
+              "@value": true
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0029",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "life": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/",
+            "@prefix": true
+          },
+          "replacedBy": {
+            "@id": "life:replacement",
+            "@type": "@id"
+          }
+        },
+        "facts": {
+          "replacedBy": "morphir://ir/pkg/acme/orders-next?format=4.0.0#/module/api/value/submit-order-v2"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/replacement",
+            "object": {
+              "@id": "morphir://ir/pkg/acme/orders-next?format=4.0.0#/module/api/value/submit-order-v2"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0030",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "parent": {
+          "deprecated": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+            "@protected": true
+          }
+        },
+        "child": {
+          "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "terms": {
+          "deprecated": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+            "@protected": true
+          },
+          "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+        }
+      }
+    },
+    {
+      "id": "metadata-0031",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "artifact": {
+          "label": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+          "@vocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/"
+        },
+        "document": {
+          "label": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        },
+        "attributes": {
+          "@vocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "terms": {
+          "label": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        },
+        "effectiveVocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/"
+      }
+    },
+    {
+      "id": "metadata-0032",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "imports": [
+          "metadata-fixtures/contexts/naming.jsonld",
+          {
+            "targetNames": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+              "@type": "@json"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "terms": {
+          "transactionalName": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/transactional-name",
+          "targetNames": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        },
+        "effectiveVocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/"
+      }
+    },
+    {
+      "id": "metadata-0033",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "import": "metadata-fixtures/contexts/recursive-root.jsonld",
+        "workspaceRoot": "metadata-fixtures/contexts"
+      },
+      "expected": {
+        "outcome": "accepted",
+        "terms": {
+          "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+          "aliasDeprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        }
+      }
+    },
+    {
+      "id": "metadata-0034",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "imports": [
+          "metadata-fixtures/contexts/lifecycle.jsonld",
+          "metadata-fixtures/contexts/lifecycle.jsonld"
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "duplicate_context_import"
+      }
+    },
+    {
+      "id": "metadata-0035",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "imports": [
+          "metadata-fixtures/contexts/naming.jsonld",
+          "metadata-fixtures/contexts/naming-conflict.jsonld"
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_vocab_collision"
+      }
+    },
+    {
+      "id": "metadata-0036",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "context": {
+          "@language": "en",
+          "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "unsupported_context_keyword",
+        "keyword": "@language"
+      }
+    },
+    {
+      "id": "metadata-0037",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "context": {
+          "aliases": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "@container": "@list"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "unsupported_context_keyword",
+        "keyword": "@container"
+      }
+    },
+    {
+      "id": "metadata-0038",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "import": "metadata-fixtures/contexts/cycle-a.jsonld"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_import_cycle"
+      }
+    },
+    {
+      "id": "metadata-0039",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "import": "../outside.jsonld",
+        "workspaceRoot": "metadata-fixtures/contexts",
+        "baseFile": "metadata-fixtures/contexts/naming.jsonld"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_path_escape"
+      }
+    },
+    {
+      "id": "metadata-0040",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "import": "metadata-fixtures/contexts/absent.jsonld"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_resource_unavailable"
+      }
+    },
+    {
+      "id": "metadata-0041",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "import": "https://example.org/metadata-context.jsonld"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "remote_context_forbidden"
+      }
+    },
+    {
+      "id": "metadata-0042",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "context": [
+          "metadata-fixtures/contexts/lifecycle.jsonld",
+          {
+            "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+          },
+          "metadata-fixtures/contexts/naming.jsonld"
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "invalid_context_form"
+      }
+    },
+    {
+      "id": "metadata-0043",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "import": "morphir://context/sha256/22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
+        "acceptedResource": "metadata-fixtures/contexts/lifecycle.jsonld",
+        "resourceTrusted": false
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_resource_untrusted"
+      }
+    },
+    {
+      "id": "metadata-0044",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "imports": [
+          "metadata-fixtures/contexts/ops.jsonld",
+          "metadata-fixtures/contexts/ops-conflict.jsonld",
+          {
+            "ops": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/operations/value/",
+              "@prefix": true
+            }
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "context_term_collision"
+      }
+    },
+    {
+      "id": "metadata-0045",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "parent": {
+          "replacement": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/replacement",
+            "@type": "@id",
+            "@protected": true
+          }
+        },
+        "child": {
+          "replacement": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/replacement",
+            "@type": "@json"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "protected_term_redefinition"
+      }
+    },
+    {
+      "id": "metadata-0046",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "imports": [
+          "metadata-fixtures/contexts/naming.jsonld",
+          {
+            "@vocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "terms": {
+          "transactionalName": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/transactional-name",
+          "targetNames": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names"
+        },
+        "effectiveVocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/"
+      }
+    },
+    {
+      "id": "metadata-0047",
+      "operation": "resolveContext",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "context": {
+          "@import": "./lifecycle.jsonld",
+          "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "unsupported_context_keyword",
+        "keyword": "@import"
+      }
+    },
+    {
+      "id": "metadata-0048",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "targetNames": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "targetNames": {
+            "frontend": {
+              "rescript": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/submit-order-v2"
+            },
+            "backend": {
+              "sql": "LEGACY_SUBMIT_ORDER"
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "object": {
+              "@value": {
+                "frontend": {
+                  "rescript": "morphir://ir/pkg/acme/orders?format=4.0.0#/module/api/value/submit-order-v2"
+                },
+                "backend": {
+                  "sql": "LEGACY_SUBMIT_ORDER"
+                }
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0049",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "targetNames": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "targetNames": {
+            "frontend": {
+              "C#": "LegacySubmitOrder"
+            },
+            "backend": {
+              "sql": "LEGACY_SUBMIT_ORDER"
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "invalid_language_id"
+      }
+    },
+    {
+      "id": "metadata-0050",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "label-list": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/label-list",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "label-list": [
+            "alpha",
+            "beta"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/label-list",
+            "object": {
+              "@value": [
+                "alpha",
+                "beta"
+              ],
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0051",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "display-info": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/display-info",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "display-info": {
+            "title": "Order",
+            "enabled": true
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/display-info",
+            "object": {
+              "@value": {
+                "title": "Order",
+                "enabled": true
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0052",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "review-state": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/review-state",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "review-state": [
+            "approved",
+            "Ada"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/review-state",
+            "object": {
+              "@value": [
+                "approved",
+                "Ada"
+              ],
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0053",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "target-names": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "target-names": {
+            "frontend": {
+              "gleam": "submit_order",
+              "f-sharp": "SubmitOrder"
+            },
+            "backend": {
+              "postgresql": "SUBMIT_ORDER"
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "object": {
+              "@value": {
+                "frontend": {
+                  "gleam": "submit_order",
+                  "f-sharp": "SubmitOrder"
+                },
+                "backend": {
+                  "postgresql": "SUBMIT_ORDER"
+                }
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0054",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+        },
+        "facts": {
+          "aliases": [
+            "alpha",
+            "beta"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "alpha"
+            },
+            "graph": "default"
+          },
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "beta"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts",
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0055",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+        },
+        "facts": {}
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [],
+        "assertionCarriers": [],
+        "sourceState": {
+          "facts": {}
+        }
+      }
+    },
+    {
+      "id": "metadata-0056",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+        },
+        "facts": {
+          "aliases": []
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [],
+        "assertionCarriers": [],
+        "sourceState": {
+          "facts": {
+            "aliases": []
+          }
+        }
+      }
+    },
+    {
+      "id": "metadata-0057",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "optional-label": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/optional-label"
+        },
+        "facts": {
+          "optional-label": null
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [],
+        "assertionCarriers": [],
+        "sourceState": {
+          "facts": {
+            "optional-label": null
+          }
+        }
+      }
+    },
+    {
+      "id": "metadata-0058",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "optional-label": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/optional-label",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "optional-label": null
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/optional-label",
+            "object": {
+              "@value": null,
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ],
+        "sourceState": {
+          "facts": {
+            "optional-label": null
+          }
+        }
+      }
+    },
+    {
+      "id": "metadata-0059",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "optional-label": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/optional-label",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "optional-label": "reviewed"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/optional-label",
+            "object": {
+              "@value": "reviewed",
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0060",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "unit-marker": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/unit-marker",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "unit-marker": null
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/unit-marker",
+            "object": {
+              "@value": null,
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0061",
+      "operation": "compareFacts",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "left": {
+          "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "carrier": "attributesFacts",
+          "context": {
+            "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated"
+          },
+          "facts": {
+            "aliases": "alpha"
+          }
+        },
+        "right": {
+          "facts": {
+            "aliases": "alpha"
+          },
+          "context": {
+            "deprecated": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+            "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+          },
+          "carrier": "attributesFacts",
+          "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "equal": true,
+        "distinctFacts": 1,
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "alpha"
+            },
+            "graph": "default"
+          }
+        ]
+      }
+    },
+    {
+      "id": "metadata-0062",
+      "operation": "compareFacts",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "left": {
+          "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "carrier": "attributesFacts",
+          "context": {
+            "display-info": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/display-info",
+              "@type": "@json"
+            }
+          },
+          "facts": {
+            "display-info": {
+              "title": "Order",
+              "enabled": true
+            }
+          }
+        },
+        "right": {
+          "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "carrier": "attributesFacts",
+          "context": {
+            "display-info": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/display-info",
+              "@type": "@json"
+            }
+          },
+          "facts": {
+            "display-info": {
+              "enabled": true,
+              "title": "Order"
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "equal": true,
+        "distinctFacts": 1,
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/display-info",
+            "object": {
+              "@value": {
+                "title": "Order",
+                "enabled": true
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ]
+      }
+    },
+    {
+      "id": "metadata-0063",
+      "operation": "compareFacts",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "left": {
+          "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "carrier": "attributesFacts",
+          "context": {
+            "target-names": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+              "@type": "@json"
+            }
+          },
+          "facts": {
+            "target-names": {
+              "frontend": {
+                "gleam": "submit_order",
+                "typescript": "submitOrder"
+              },
+              "backend": {
+                "sql": "SUBMIT_ORDER"
+              }
+            }
+          }
+        },
+        "right": {
+          "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "carrier": "attributesFacts",
+          "context": {
+            "target-names": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+              "@type": "@json"
+            }
+          },
+          "facts": {
+            "target-names": {
+              "backend": {
+                "sql": "SUBMIT_ORDER"
+              },
+              "frontend": {
+                "typescript": "submitOrder",
+                "gleam": "submit_order"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "equal": true,
+        "distinctFacts": 1,
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "object": {
+              "@value": {
+                "frontend": {
+                  "gleam": "submit_order",
+                  "typescript": "submitOrder"
+                },
+                "backend": {
+                  "sql": "SUBMIT_ORDER"
+                }
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ]
+      }
+    },
+    {
+      "id": "metadata-0064",
+      "operation": "compareFacts",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "left": {
+          "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "carrier": "attributesFacts",
+          "context": {
+            "label-list": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/label-list",
+              "@type": "@json"
+            }
+          },
+          "facts": {
+            "label-list": [
+              "alpha",
+              "beta"
+            ]
+          }
+        },
+        "right": {
+          "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+          "carrier": "attributesFacts",
+          "context": {
+            "label-list": {
+              "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/label-list",
+              "@type": "@json"
+            }
+          },
+          "facts": {
+            "label-list": [
+              "beta",
+              "alpha"
+            ]
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "equal": false,
+        "distinctFacts": 2,
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/label-list",
+            "object": {
+              "@value": [
+                "alpha",
+                "beta"
+              ],
+              "@type": "@json"
+            },
+            "graph": "default"
+          },
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/label-list",
+            "object": {
+              "@value": [
+                "beta",
+                "alpha"
+              ],
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ]
+      }
+    },
+    {
+      "id": "metadata-0065",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "label-list": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/label-list",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "label-list": [
+            "alpha",
+            42
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "predicate_object_type_mismatch",
+        "diagnosticPath": "$.facts.label-list[1]",
+        "facts": []
+      }
+    },
+    {
+      "id": "metadata-0066",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "display-info": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/display-info",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "display-info": {
+            "title": "Order"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "predicate_object_type_mismatch",
+        "diagnosticPath": "$.facts.display-info",
+        "facts": []
+      }
+    },
+    {
+      "id": "metadata-0067",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "review-state": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/review-state",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "review-state": [
+            "approved",
+            42
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "predicate_object_type_mismatch",
+        "diagnosticPath": "$.facts.review-state[1]",
+        "facts": []
+      }
+    },
+    {
+      "id": "metadata-0068",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "review-state": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/review-state",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "review-state": [
+            "unknown"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "unknown_constructor",
+        "diagnosticPath": "$.facts.review-state",
+        "facts": []
+      }
+    },
+    {
+      "id": "metadata-0069",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "integer-keyed-map": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/integer-keyed-map",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "integer-keyed-map": {
+            "1": "one"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "unsupported_data_type",
+        "diagnosticPath": "$.facts.integer-keyed-map",
+        "facts": []
+      }
+    },
+    {
+      "id": "metadata-0070",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "unit-marker": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/unit-marker",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "unit-marker": "null"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostic": "predicate_object_type_mismatch",
+        "diagnosticPath": "$.facts.unit-marker",
+        "facts": []
+      }
+    },
+    {
+      "id": "metadata-0071",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "availableInterpreters": [],
+        "context": {
+          "targetNames": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "targetNames": {
+            "frontend": {
+              "gleam": "legacy_submit_order"
+            },
+            "backend": {
+              "sql": "LEGACY_SUBMIT_ORDER"
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "preserved_unvalidated",
+        "diagnostic": "required_interpreter_unavailable",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "object": {
+              "@value": {
+                "frontend": {
+                  "gleam": "legacy_submit_order"
+                },
+                "backend": {
+                  "sql": "LEGACY_SUBMIT_ORDER"
+                }
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ]
+      }
+    },
+    {
+      "id": "metadata-0072",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "availableInterpreters": [
+          "target-name-language-ids"
+        ],
+        "context": {
+          "targetNames": {
+            "@id": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "@type": "@json"
+          }
+        },
+        "facts": {
+          "targetNames": {
+            "frontend": {
+              "gleam": "legacy_submit_order"
+            },
+            "backend": {
+              "sql": "LEGACY_SUBMIT_ORDER"
+            }
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/target-names",
+            "object": {
+              "@value": {
+                "frontend": {
+                  "gleam": "legacy_submit_order"
+                },
+                "backend": {
+                  "sql": "LEGACY_SUBMIT_ORDER"
+                }
+              },
+              "@type": "@json"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    },
+    {
+      "id": "metadata-0073",
+      "operation": "normalize",
+      "targets": [
+        {
+          "profile": "json",
+          "layout": "single",
+          "irRevision": "4.1.0"
+        }
+      ],
+      "given": {
+        "owner": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+        "carrier": "attributesFacts",
+        "context": {
+          "aliases": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases"
+        },
+        "facts": {
+          "aliases": "metadata-fixtures/contexts/absent-literal.jsonld"
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api/value/legacy-submit-order",
+            "predicate": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+            "object": {
+              "@value": "metadata-fixtures/contexts/absent-literal.jsonld"
+            },
+            "graph": "default"
+          }
+        ],
+        "assertionCarriers": [
+          "attributesFacts"
+        ]
+      }
+    }
+  ]
+}

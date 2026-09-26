@@ -1,0 +1,28 @@
+{
+  "formatVersion": "4.1.0",
+  "distribution": {
+    "Library": {
+      "packageName": "acme/orders",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "api": {
+            "Public": {
+              "types": {},
+              "values": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$meta": {
+    "@context": "./contexts/lifecycle.jsonld",
+    "@graph": [
+      {
+        "@id": "morphir://ir/pkg/acme/orders?format=4.1.0#/module/api",
+        "deprecated": true
+      }
+    ]
+  }
+}

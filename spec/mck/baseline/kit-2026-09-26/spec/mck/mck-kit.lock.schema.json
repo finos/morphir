@@ -1,0 +1,97 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://morphir.finos.org/schemas/mck/mck-kit.lock-v1.schema.json",
+	"title": "MCK kit snapshot manifest",
+	"description": "Provenance and integrity manifest at the root of a vendored MCK kit snapshot. See kit-manifest.md.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"lockVersion",
+		"suite",
+		"contract",
+		"driverContract",
+		"source",
+		"algorithm",
+		"corpusHash",
+		"snapshotDigest",
+		"files"
+	],
+	"properties": {
+		"lockVersion": { "const": 1 },
+		"suite": { "enum": ["ir"] },
+		"contract": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["protocol", "report"],
+			"properties": {
+				"protocol": { "type": "integer", "minimum": 1 },
+				"report": { "type": "integer", "minimum": 1 }
+			}
+		},
+		"driverContract": {
+			"description": "Supported driver contract versions, as '>=N, <M' over integers.",
+			"type": "string",
+			"pattern": "^>=[1-9][0-9]*, <[1-9][0-9]*$"
+		},
+		"source": {
+			"oneOf": [
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["kind", "repository", "revision"],
+					"properties": {
+						"kind": { "const": "github" },
+						"repository": { "const": "finos/morphir" },
+						"revision": { "$ref": "#/$defs/commit" }
+					}
+				},
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["kind", "cliVersion", "revision"],
+					"properties": {
+						"kind": { "const": "embedded" },
+						"cliVersion": { "type": "string", "minLength": 1 },
+						"revision": { "oneOf": [{ "$ref": "#/$defs/commit" }, { "type": "null" }] }
+					}
+				},
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["kind", "revision"],
+					"properties": {
+						"kind": { "const": "local" },
+						"revision": { "oneOf": [{ "$ref": "#/$defs/commit" }, { "type": "null" }] }
+					}
+				}
+			]
+		},
+		"algorithm": { "const": "mck-file-map-sha256/1" },
+		"corpusHash": { "$ref": "#/$defs/digest" },
+		"snapshotDigest": { "$ref": "#/$defs/digest" },
+		"files": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 10000,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["path", "sha256", "size"],
+				"properties": {
+					"path": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 1024,
+						"pattern": "^(?!/)(?!.*(^|/)\\.{1,2}(/|$))(?!.*//)[^\\\\\\u0000]+(?<!/)$"
+					},
+					"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+					"size": { "type": "integer", "minimum": 0 }
+				}
+			}
+		}
+	},
+	"$defs": {
+		"commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"digest": { "type": "string", "pattern": "^sha256-[0-9a-f]{64}$" }
+	}
+}
