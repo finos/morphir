@@ -67,8 +67,9 @@ or directory category. Repeated `--tag` options
 require every tag. Empty suites and selections fail, including with `--list`.
 Scenario directories must have UTF-8 names that follow the portable path rules
 below; discovery rejects names that would produce ambiguous or unselectable IDs.
-All discovered document structures and scenario metadata are validated before
-selection; Rego compilation occurs when the selected assertions execute.
+Every discovered document is read before selection. A document that cannot be
+read fails the run, unless `--filter` leaves its directory out. Rego compilation
+occurs when the selected assertions execute.
 Listing prints the scenario's intent and tags without executing it.
 Use one scenario document per directory. Two documents in one directory are an
 error. Scenario directory names cannot contain the reserved `#` separator.
@@ -442,7 +443,8 @@ test_writes_v3_ir if {
 ```
 
 In `scenarios.md`, its `yaml morphir:assertion` metadata identifies the command
-and the named rules:
+and the named rules. The command must be the last command before the assertion;
+the reader refuses an assertion or golden block that checks an earlier command:
 
 ```yaml
 id: check
@@ -592,6 +594,11 @@ runs after a normal child exit. `--keep-temp` retains each command's logs,
 `observation.json`, and assertion request/report logs. Otherwise the temporary
 workspace is removed. Set an outer scratch `MORPHIR_HOME` to contain the ordinary
 logs of the invoking CLI too.
+
+The run also writes JSON and JUnit suite reports, `itest.json` and `itest.xml`.
+By default they go to a temporary directory that the run removes, so `morphir
+itest` writes nothing into the project it runs in. Set `MORPHIR_BDD_OUT` to a
+directory to keep them there.
 
 ## Incremental coverage
 

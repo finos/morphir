@@ -259,7 +259,7 @@ itest's step kinds are step libraries with fixed step text:
 | Rego `Assertion` | `Then the result should satisfy the policy rules "<entrypoints>":` with a `rego` doc string, over `morphir-opa` |
 | `Golden` with `select` and `line_endings` | `Then the file "<actual>" at "<select>" should match the golden file "<file>" with <exact\|LF> line endings`, or the same step ending `:` with a doc string in place of the file |
 
-- **Existing scenarios:** a reader for itest's `scenarios.md` format lowers each `##` section into the same model. The 19 existing example scenarios therefore run unchanged. New examples are written as `.feature.md`, and old ones move over when they are next touched.
+- **Existing scenarios:** a reader for itest's `scenarios.md` format lowers each `##` section into the same model. Every existing example therefore runs unchanged. New examples are written as `.feature.md`, and old ones move over when they are next touched.
 - **Golden steps:** `feat/itest-golden` is rebased and landed first, so the golden step library starts from its `golden.rs`.
 - **Notebooks:** itest's notebook support is removed. That covers `scenario.ipynb` discovery and running, and the `notebook` module in `crates/morphir/src/lib.rs`, which only itest uses. The one notebook example, `examples/elm/single-file/scenario.ipynb`, becomes a `.feature.md` file. Notebook support returns later with the VFS work on document trees and workspaces.
 
