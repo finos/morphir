@@ -1,0 +1,74 @@
+formatVersion: 4
+distribution:
+  Library:
+    packageName: regulation
+    dependencies:
+      morphir/SDK:
+        modules:
+          basics:
+            types:
+              int:
+                OpaqueTypeSpecification: {}
+              float:
+                OpaqueTypeSpecification: {}
+              bool:
+                OpaqueTypeSpecification: {}
+            values:
+              add:
+                inputs:
+                  a: morphir/SDK:basics#int
+                  b: morphir/SDK:basics#int
+                output: morphir/SDK:basics#int
+          list:
+            types:
+              list:
+                TypeAliasSpecification:
+                  typeParams: [a]
+                  typeExp:
+                    Reference: ["morphir/SDK:list#list", a]
+            values:
+              map:
+                inputs:
+                  f:
+                    Function:
+                      parameterType: a
+                      returnType: b
+                  list:
+                    Reference: ["morphir/SDK:list#list", a]
+                output:
+                  Reference: ["morphir/SDK:list#list", b]
+    def:
+      modules:
+        u-s/f-r-2052-a/data-tables:
+          Public:
+            types:
+              data-tables:
+                Public:
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp:
+                      Record:
+                        fields:
+                          inflows: regulation:u-s/f-r-2052-a/data-tables#inflows
+                          outflows: regulation:u-s/f-r-2052-a/data-tables#outflows
+                          supplemental: regulation:u-s/f-r-2052-a/data-tables#supplemental
+              inflows:
+                Public:
+                  TypeAliasDefinition:
+                    typeParams: []
+                    typeExp:
+                      Record:
+                        fields:
+                          assets:
+                            Reference: ["morphir/SDK:list#list", "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"]
+            values:
+              calculate-total:
+                Public:
+                  ExpressionBody:
+                    inputTypes:
+                      tables: regulation:u-s/f-r-2052-a/data-tables#data-tables
+                    outputType: morphir/SDK:basics#float
+                    body:
+                      Literal:
+                        FloatLiteral: 0.0
+            doc: Data tables module for regulatory reporting

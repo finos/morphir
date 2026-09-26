@@ -1,0 +1,5 @@
+{
+  "@context": {
+    "@vocab": "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/operations/value/"
+  }
+}

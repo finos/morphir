@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/ir/mck/metadata-protocol-draft.schema.json",
+  "title": "Draft linked-metadata MCK adapter protocol",
+  "description": "Closed JSON-lines messages for the separate 0.1.0-draft.1 metadata suite; see protocols/metadata-draft.md. Numeric IR adapter protocol v1 remains unchanged.",
+  "oneOf": [
+    {"$ref": "#/$defs/capabilitiesRequest"},
+    {"$ref": "#/$defs/runRequest"},
+    {"$ref": "#/$defs/exitRequest"},
+    {"$ref": "#/$defs/capabilitiesResponse"},
+    {"$ref": "#/$defs/runSuccess"},
+    {"$ref": "#/$defs/runFailure"}
+  ],
+  "$defs": {
+    "id": {"type": "integer", "minimum": 1},
+    "operation": {"enum": ["normalize", "compareFacts", "resolveAnnotation", "resolveContext", "resolveSources", "profileEquivalence", "publish", "projectSidecar", "sourceEdit"]},
+    "profile": {"enum": ["json", "yaml", "ion"]},
+    "layout": {"enum": ["single", "tree", "datagram", "record"]},
+    "irRevision": {
+      "type": "string",
+      "pattern": "^(3|[4-9]|[1-9][0-9]+)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "description": "One exact canonical N.M.P IR formatVersion with major at least 3, never a range, prerelease, or build. The runner also parses it with a SemVer library and rejects every component above u32::MAX."
+    },
+    "ionVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*$",
+      "description": "One exact canonical Ion profile prerelease version. It must be independently qualified; no default Ion version is inferred."
+    },
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["profile", "layout", "irRevision"],
+      "properties": {"profile": {"$ref": "#/$defs/profile"}, "layout": {"$ref": "#/$defs/layout"}, "irRevision": {"$ref": "#/$defs/irRevision"}, "ionVersion": {"$ref": "#/$defs/ionVersion"}},
+      "allOf": [{"$ref": "#/$defs/profileLayoutRule"}]
+    },
+    "claim": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operation", "profile", "layout", "irRevision"],
+      "properties": {"operation": {"$ref": "#/$defs/operation"}, "profile": {"$ref": "#/$defs/profile"}, "layout": {"$ref": "#/$defs/layout"}, "irRevision": {"$ref": "#/$defs/irRevision"}, "ionVersion": {"$ref": "#/$defs/ionVersion"}},
+      "allOf": [{"$ref": "#/$defs/profileLayoutRule"}]
+    },
+    "profileLayoutRule": {
+      "if": {"properties": {"profile": {"const": "ion"}}, "required": ["profile"]},
+      "then": {"required": ["ionVersion"], "properties": {"layout": {"enum": ["datagram", "record", "tree"]}}},
+      "else": {"not": {"required": ["ionVersion"]}, "properties": {"layout": {"enum": ["single", "tree"]}}}
+    },
+    "fixture": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "sha256", "contentBase64"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^metadata-fixtures/[A-Za-z0-9][A-Za-z0-9._/-]*$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "contentBase64": {"type": "string", "pattern": "^[A-Za-z0-9+/]*={0,2}$", "description": "RFC 4648 base64 of exact fixture bytes, including final newline if present. The runner checks decoding and SHA-256 before sending."}
+      }
+    },
+    "capabilitiesRequest": {
+      "type": "object", "additionalProperties": false, "required": ["id", "op"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "op": {"const": "capabilities"}}
+    },
+    "runRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "op", "caseId", "operation", "targets", "given", "schemaClosure", "fixtures"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "op": {"const": "run"},
+        "caseId": {"type": "string", "pattern": "^metadata-[0-9]{4}$"},
+        "operation": {"$ref": "#/$defs/operation"},
+        "targets": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/target"}},
+        "given": {"type": "object", "description": "The exact authored case.given JSON value. It is data, not a file-reference instruction."},
+        "schemaClosure": {"type": "string", "pattern": "^metadata-fixtures/[A-Za-z0-9][A-Za-z0-9._/-]*$"},
+        "fixtures": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/fixture"}}
+      },
+      "allOf": [{"if": {"properties": {"operation": {"const": "profileEquivalence"}}}, "then": {"properties": {"targets": {"minItems": 2}}}}]
+    },
+    "exitRequest": {
+      "type": "object", "additionalProperties": false, "required": ["id", "op"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "op": {"const": "exit"}}
+    },
+    "capabilitiesResponse": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "suite", "contractVersion", "implementation", "implementationVersion", "claims"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "suite": {"const": "metadata"},
+        "contractVersion": {"const": "0.1.0-draft.1"},
+        "implementation": {"type": "string", "minLength": 1},
+        "implementationVersion": {"type": "string", "minLength": 1},
+        "claims": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/claim"}}
+      }
+    },
+    "fact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["subject", "predicate", "object", "graph"],
+      "properties": {
+        "subject": {"type": "string", "pattern": "^morphir://ir/"},
+        "predicate": {"type": "string", "pattern": "^morphir://ir/"},
+        "object": {"type": "object", "minProperties": 1}, "graph": {"const": "default"}
+      }
+    },
+    "observation": {
+      "type": "object", "additionalProperties": false, "required": ["outcome"],
+      "properties": {
+        "outcome": {"enum": ["accepted", "rejected", "preserved_unvalidated"]},
+        "facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}},
+        "assertionCarriers": {"type": "array", "items": {"enum": ["attributesFacts", "annotationsFacts", "documentGraph", "sidecar"]}},
+        "sources": {"type": "array", "items": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["kind"]}}},
+        "terms": {"type": "object"},
+        "effectiveVocab": {"type": "string", "pattern": "^morphir://ir/"},
+        "keyword": {"type": "string", "pattern": "^@"},
+        "annotationNames": {"type": "array", "items": {"type": "string"}},
+        "distinctFacts": {"type": "integer", "minimum": 0},
+        "equal": {"type": "boolean"},
+        "sourceState": {"type": "object", "additionalProperties": false, "required": ["facts"], "properties": {"facts": {"type": "object"}}},
+        "diagnosticPath": {"type": "string", "minLength": 1},
+        "inventory": {"type": "array", "items": {"type": "object", "required": ["path", "sha256"]}},
+        "predicate": {"type": "string"},
+        "diagnostic": {"type": "string", "minLength": 1},
+        "usablePublicationChanged": {"type": "boolean"},
+        "factsChanged": {"type": "boolean"}
+      },
+      "allOf": [
+        {"if": {"properties": {"outcome": {"const": "rejected"}}}, "then": {"required": ["diagnostic"]}},
+        {"if": {"properties": {"outcome": {"const": "preserved_unvalidated"}}}, "then": {"required": ["diagnostic", "facts"]}}
+      ]
+    },
+    "runSuccess": {
+      "type": "object", "additionalProperties": false, "required": ["id", "ok", "observation"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "ok": {"const": true}, "observation": {"$ref": "#/$defs/observation"}}
+    },
+    "runFailure": {
+      "type": "object", "additionalProperties": false, "required": ["id", "ok", "error"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "ok": {"const": false},
+        "error": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message"],
+          "properties": {"code": {"enum": ["invalid_request", "unsupported_operation", "internal_error"]}, "message": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  }
+}

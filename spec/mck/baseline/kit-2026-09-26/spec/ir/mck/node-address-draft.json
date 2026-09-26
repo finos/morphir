@@ -1,0 +1,564 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "cases": [
+    {
+      "id": "node-address-0001",
+      "input": "node-address-fixtures/v3-greeting.json",
+      "uri": "morphir://ir/pkg/elm-compat?format=3.0.0#/module/api/type/request",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeDefinition",
+        "node": [
+          "TypeAliasDefinition",
+          [],
+          [
+            "Record",
+            {},
+            [
+              {
+                "name": [
+                  "action"
+                ],
+                "tpe": [
+                  "Reference",
+                  {},
+                  [
+                    [
+                      [
+                        "morphir"
+                      ],
+                      [
+                        "s",
+                        "d",
+                        "k"
+                      ]
+                    ],
+                    [
+                      [
+                        "string"
+                      ]
+                    ],
+                    [
+                      "string"
+                    ]
+                  ],
+                  []
+                ]
+              },
+              {
+                "name": [
+                  "order",
+                  "id"
+                ],
+                "tpe": [
+                  "Reference",
+                  {},
+                  [
+                    [
+                      [
+                        "morphir"
+                      ],
+                      [
+                        "s",
+                        "d",
+                        "k"
+                      ]
+                    ],
+                    [
+                      [
+                        "maybe"
+                      ]
+                    ],
+                    [
+                      "maybe"
+                    ]
+                  ],
+                  [
+                    [
+                      "Reference",
+                      {},
+                      [
+                        [
+                          [
+                            "morphir"
+                          ],
+                          [
+                            "s",
+                            "d",
+                            "k"
+                          ]
+                        ],
+                        [
+                          [
+                            "string"
+                          ]
+                        ],
+                        [
+                          "string"
+                        ]
+                      ],
+                      []
+                    ]
+                  ]
+                ]
+              },
+              {
+                "name": [
+                  "products"
+                ],
+                "tpe": [
+                  "Reference",
+                  {},
+                  [
+                    [
+                      [
+                        "morphir"
+                      ],
+                      [
+                        "s",
+                        "d",
+                        "k"
+                      ]
+                    ],
+                    [
+                      [
+                        "list"
+                      ]
+                    ],
+                    [
+                      "list"
+                    ]
+                  ],
+                  [
+                    [
+                      "Tuple",
+                      {},
+                      [
+                        [
+                          "Reference",
+                          {},
+                          [
+                            [
+                              [
+                                "elm",
+                                "compat"
+                              ]
+                            ],
+                            [
+                              [
+                                "main"
+                              ]
+                            ],
+                            [
+                              "product"
+                            ]
+                          ],
+                          []
+                        ],
+                        [
+                          "Reference",
+                          {},
+                          [
+                            [
+                              [
+                                "elm",
+                                "compat"
+                              ]
+                            ],
+                            [
+                              [
+                                "main"
+                              ]
+                            ],
+                            [
+                              "quantity"
+                            ]
+                          ],
+                          []
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "node-address-0002",
+      "input": "node-address-fixtures/v3-greeting.json",
+      "uri": "morphir://ir/pkg/elm-compat?format=3.0.0#/module/api/type/request/type-exp/record/field/action",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": [
+          "Reference",
+          {},
+          [
+            [
+              [
+                "morphir"
+              ],
+              [
+                "s",
+                "d",
+                "k"
+              ]
+            ],
+            [
+              [
+                "string"
+              ]
+            ],
+            [
+              "string"
+            ]
+          ],
+          []
+        ]
+      }
+    },
+    {
+      "id": "node-address-0003",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/user-id",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeDefinition",
+        "node": {
+          "TypeAliasDefinition": {
+            "typeParams": [],
+            "typeExp": {
+              "Reference": {
+                "fqname": "morphir/SDK:string#string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "node-address-0004",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/user-id/type-exp",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Reference": {
+            "fqname": "morphir/SDK:string#string"
+          }
+        }
+      }
+    },
+    {
+      "id": "node-address-0005",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/missing",
+      "expected": {
+        "outcome": "stale_target"
+      }
+    },
+    {
+      "id": "node-address-0006",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "not-a-morphir-uri",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    },
+    {
+      "id": "node-address-0007",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=3.0.0#/module/domain/type/user-id",
+      "expected": {
+        "outcome": "format_version_mismatch"
+      }
+    },
+    {
+      "id": "node-address-0008",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&rev=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/user-id",
+      "expected": {
+        "outcome": "revision_unavailable"
+      }
+    },
+    {
+      "id": "node-address-0009",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/other/package?format=4.0.0#/module/domain/type/user-id",
+      "expected": {
+        "outcome": "artifact_mismatch"
+      }
+    },
+    {
+      "id": "node-address-0010",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&guard=sha256:05709fcf331bd4125b9a2121fac18712390e8572bb545cd091be14bd925ffe92#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Unit": {}
+        }
+      }
+    },
+    {
+      "id": "node-address-0011",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&guard=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expected": {
+        "outcome": "stale_target"
+      }
+    },
+    {
+      "id": "node-address-0012",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    },
+    {
+      "id": "node-address-0013",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&rev=sha256:59bcadf6e9ab4811d2d9704efb68a51bd12290cdfa2c581d3a4616b3c322d62e#/module/domain/type/user-id",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeDefinition",
+        "node": {
+          "TypeAliasDefinition": {
+            "typeParams": [],
+            "typeExp": {
+              "Reference": {
+                "fqname": "morphir/SDK:string#string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "node-address-0014",
+      "input": "node-address-fixtures/v3-greeting.json",
+      "uri": "morphir://ir/pkg/elm-compat?format=3.0.0&rev=sha256:539664c494509047ff485e37aff86a900978fa717bde8da30c24dc72599a0423#/module/api/type/api-error/constructor/invalid-request/argument/0",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": [
+          "Reference",
+          {},
+          [
+            [
+              [
+                "morphir"
+              ],
+              [
+                "s",
+                "d",
+                "k"
+              ]
+            ],
+            [
+              [
+                "string"
+              ]
+            ],
+            [
+              "string"
+            ]
+          ],
+          []
+        ]
+      }
+    },
+    {
+      "id": "node-address-0015",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/incomplete-user/incomplete/partial-type/record/field/id",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Reference": {
+            "fqname": "morphir/SDK:string#string"
+          }
+        }
+      }
+    },
+    {
+      "id": "node-address-0016",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/value/get-user-name/output",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Reference": {
+            "fqname": "morphir/SDK:string#string"
+          }
+        }
+      }
+    },
+    {
+      "id": "node-address-0017",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/value/get-user-name/body/hole/expected-type",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Reference": {
+            "fqname": "morphir/SDK:string#string"
+          }
+        }
+      }
+    },
+    {
+      "id": "node-address-0018",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&rev=sha256:59bcadf6e9ab4811d2d9704efb68a51bd12290cdfa2c581d3a4616b3c322d62e#/module/domain/type/pair/type-exp/tuple/element/0",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Unit": {}
+        }
+      }
+    },
+    {
+      "id": "node-address-0019",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/value/user-id",
+      "expected": {
+        "outcome": "stale_target"
+      }
+    },
+    {
+      "id": "node-address-0020",
+      "input": "node-address-fixtures/v4-library-user-deleted.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/user-id",
+      "expected": {
+        "outcome": "stale_target"
+      }
+    },
+    {
+      "id": "node-address-0021",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/pair/type-exp/record/field/id",
+      "expected": {
+        "outcome": "stale_target"
+      }
+    },
+    {
+      "id": "node-address-0022",
+      "input": "node-address-fixtures/v4-library-pair-shifted.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&guard=sha256:05709fcf331bd4125b9a2121fac18712390e8572bb545cd091be14bd925ffe92#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expected": {
+        "outcome": "stale_target"
+      }
+    },
+    {
+      "id": "node-address-0023",
+      "input": "node-address-fixtures/v4-library-pair-appended.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&guard=sha256:05709fcf331bd4125b9a2121fac18712390e8572bb545cd091be14bd925ffe92#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Unit": {}
+        }
+      }
+    },
+    {
+      "id": "node-address-0024",
+      "input": "node-address-fixtures/v4-library-unrelated-edit.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&guard=sha256:05709fcf331bd4125b9a2121fac18712390e8572bb545cd091be14bd925ffe92#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Unit": {}
+        }
+      }
+    },
+    {
+      "id": "node-address-0025",
+      "input": "node-address-fixtures/v4-library-pair-identical-insert.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&guard=sha256:05709fcf331bd4125b9a2121fac18712390e8572bb545cd091be14bd925ffe92#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expected": {
+        "outcome": "resolved",
+        "kind": "TypeExpression",
+        "node": {
+          "Unit": {}
+        }
+      }
+    },
+    {
+      "id": "node-address-0026",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/sales%2forders/type/user-id",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    },
+    {
+      "id": "node-address-0027",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/caf%C3%A9",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    },
+    {
+      "id": "node-address-0028",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&format=4.0.0#/module/domain/type/user-id",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    },
+    {
+      "id": "node-address-0029",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0&guard=sha256:05709fcf331bd4125b9a2121fac18712390e8572bb545cd091be14bd925ffe92#/module/domain/type/pair/type-exp/tuple/element/01",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    },
+    {
+      "id": "node-address-0030",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/pair/type-exp/tuple/element/1",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    },
+    {
+      "id": "node-address-0031",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/domain/type/pair/type-exp/tuple/member/1",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    },
+    {
+      "id": "node-address-0032",
+      "input": "node-address-fixtures/v3-greeting.json",
+      "uri": "morphir://ir/pkg/elm-compat?format=3.0.0#/module/api/type/request/type-exp/record/field/missing",
+      "expected": {
+        "outcome": "stale_target"
+      }
+    },
+    {
+      "id": "node-address-0033",
+      "input": "node-address-fixtures/v4-library.json",
+      "uri": "morphir://ir/pkg/example/v4-test?format=4.0.0#/module/Domain/type/user-id",
+      "expected": {
+        "outcome": "invalid_node_uri"
+      }
+    }
+  ]
+}

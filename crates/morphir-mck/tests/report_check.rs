@@ -1,9 +1,10 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+use morphir_mck::kit::Kit;
 use morphir_mck::kit::manifest::LockSource;
 use morphir_mck::kit::snapshot::collect;
-use morphir_mck::kit::{Kit, KitSource, load_kit};
+use morphir_mck::kit::vendor::open_managed;
 use morphir_mck::report::check::{AllowedFailures, check};
 use morphir_mck::report::draft::DraftReport;
 use serde_json::{Value, json};
@@ -14,7 +15,9 @@ fn repo() -> PathBuf {
 
 fn baseline() -> (Kit, Value, String) {
     let root = repo();
-    let kit = load_kit(KitSource::directory(&root.join("spec/ir/mck"), Some(&root))).unwrap();
+    let kit = open_managed(&root.join("spec/mck/baseline/kit-2026-09-26"))
+        .unwrap()
+        .kit;
     assert!(kit.errors.is_empty(), "{:?}", kit.errors);
     let mut report: Value = serde_json::from_str(include_str!(
         "../../../spec/ir/mck/report-draft.example.json"
@@ -53,6 +56,17 @@ fn baseline() -> (Kit, Value, String) {
         .lock(LockSource::Local { revision: None });
     report["kit"]["snapshotDigest"] = json!(lock.snapshot_digest.as_str());
     (kit, report, filter)
+}
+
+#[test]
+fn historical_report_uses_a_frozen_managed_kit() {
+    let root = repo();
+    let managed = open_managed(&root.join("spec/mck/baseline/kit-2026-09-26")).unwrap();
+    assert!(managed.kit.cases.len() >= 120);
+    assert_eq!(
+        managed.lock.snapshot_digest.as_str(),
+        "sha256-c1fbce52a8d002c1e70de4ff8214dbb6a7a1ecdb8a8d6e79a50c7b0643fbfe61"
+    );
 }
 
 fn verdict(kit: &Kit, value: Value, filter: Option<&str>, allowed: &[&str]) -> Result<(), String> {

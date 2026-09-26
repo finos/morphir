@@ -1,0 +1,298 @@
+{
+	"lockVersion": 1,
+	"suite": "ir",
+	"contract": {
+		"protocol": 1,
+		"report": 1
+	},
+	"driverContract": ">=2, <3",
+	"source": {
+		"kind": "local",
+		"revision": null
+	},
+	"algorithm": "mck-file-map-sha256/1",
+	"corpusHash": "sha256-602c703d6abf01fa9796066bc6ebbea369f0afcde3f4a5224844e0772aa476e6",
+	"snapshotDigest": "sha256-c1fbce52a8d002c1e70de4ff8214dbb6a7a1ecdb8a8d6e79a50c7b0643fbfe61",
+	"files": [
+		{
+			"path": "spec/ir/mck/README.md",
+			"sha256": "aeae5693cc84789ce628c3cdb282f623eb7c61b6c201729f34aaf271eff3b917",
+			"size": 6288
+		},
+		{
+			"path": "spec/ir/mck/allowed-failing.json",
+			"sha256": "5a418b034e52d2223bad21cd0992aa10b83af8b0231a183269dda79cf77b49a8",
+			"size": 176
+		},
+		{
+			"path": "spec/ir/mck/definitions.feature",
+			"sha256": "cacff2dfe5a0edd7f759a3db4de50289cc1c37f3aeb080c5525f1054c984d3e5",
+			"size": 25791
+		},
+		{
+			"path": "spec/ir/mck/distributions.feature",
+			"sha256": "fce497f1fe6879be3380f7e0ee9ec45049be8fdfc6c8caf8f6c8823b53f2c91c",
+			"size": 17413
+		},
+		{
+			"path": "spec/ir/mck/document-tree.feature",
+			"sha256": "a1aa74103357f788fcd0e6dac589b9f7e9c2e519b3f98eec66033c4d47148524",
+			"size": 30161
+		},
+		{
+			"path": "spec/ir/mck/documents/complete-example.yaml",
+			"sha256": "bacf818923d2cd3a07e787e7a7001422ff262128f939abe0e1445d86d948c86e",
+			"size": 2495
+		},
+		{
+			"path": "spec/ir/mck/metadata-contract-draft.json",
+			"sha256": "960a59f571052546e39f8df1cb000e8b85763e48fe4ae6f54db6545291cb707b",
+			"size": 77303
+		},
+		{
+			"path": "spec/ir/mck/metadata-contract-draft.md",
+			"sha256": "49792a5f744b1289e9a5b926a62b319a8a19059a7921825e49d7572bb6b2c94b",
+			"size": 16364
+		},
+		{
+			"path": "spec/ir/mck/metadata-contract-draft.schema.json",
+			"sha256": "d74485158d38b2c556189f7402d297a56b8118f2c60a6e39129795b4eaa07a5d",
+			"size": 4998
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/archives/orders.json",
+			"sha256": "bf6c11e71e7ff25ef9db74c3de66e41c6cd6bf3cfe4baa2ff8b768899ead0f50",
+			"size": 520
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/cycle-a.jsonld",
+			"sha256": "d43904db97da9c52eb3f048a2869fbd8f429bf4e5f0e684688f1a5781f9e11c8",
+			"size": 39
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/cycle-b.jsonld",
+			"sha256": "651ea974df3001b527cea4bfda54b0741a44a7f76326b6d1dc360213eb4e6ce0",
+			"size": 39
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/lifecycle-published.jsonld",
+			"sha256": "6392c505ee8764e7edb335b06488d3427e51a555157fadb877b38e8977d446c1",
+			"size": 199
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/lifecycle.jsonld",
+			"sha256": "22f21b8430e099cc82444fe5b7846f5bfa45decae8d1e16918eb73619d0837c6",
+			"size": 123
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/naming-conflict.jsonld",
+			"sha256": "65f2952de7c8b1d98b87b63587924dbba1f70e811a622bd89111965915aee8ad",
+			"size": 110
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/naming.jsonld",
+			"sha256": "e295333f9af6f4bd9407940d88dd5cf1249d3b7014a27a8c866ed320a77f4f21",
+			"size": 318
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/nested/recursive-leaf.jsonld",
+			"sha256": "e779b30da9de6347bffff09649c285ecebc845bae5d99b2ad03e2144a5a5299e",
+			"size": 145
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/ops-conflict.jsonld",
+			"sha256": "d7b3072de023b3c5a5c4a1a264284fa7a0844ba2f7ffa9353e0bffadaf87d655",
+			"size": 131
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/ops.jsonld",
+			"sha256": "5478cf593d73a70bb731d28a5706a5cdf8d3aed23386de353fc229f57a61a445",
+			"size": 133
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/recursive-root.jsonld",
+			"sha256": "42106b843b9a730b64eb265e1daf2f755f385b47f6490833756e103bc9d013df",
+			"size": 53
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/contexts/relative-import.jsonld",
+			"sha256": "ba2d5bacfd9ae14d1fbceab7182914d78f4235faf736c724f3673b685f5e1f25",
+			"size": 39
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/profiles/value.ion",
+			"sha256": "0f67ddd7e697c638a228aa1f492e29cef1a1745c217b5c1f9df219a13cf6df3d",
+			"size": 535
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/profiles/value.json",
+			"sha256": "82d107b77824a27ff5c555f4600c0fe1294ce95be2d2bcf3b4eb2173d10ff5e5",
+			"size": 349
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/profiles/value.yaml",
+			"sha256": "fbfa18c1f05029237a0335935b8f597922af225aafdac453ca45be9b44d11691",
+			"size": 290
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/providers/metadata-specs.json",
+			"sha256": "d38de93027cc08dcb97469f274cf27ea17ba1e3c433b4e9c95f8247f7a5f6266",
+			"size": 424
+		},
+		{
+			"path": "spec/ir/mck/metadata-fixtures/schema-closure.json",
+			"sha256": "7e58fd57d19b022e29c8f63a7fcaf328bc70ee116d5d55a8b99d668f1cd06d06",
+			"size": 10285
+		},
+		{
+			"path": "spec/ir/mck/metadata-protocol-draft.schema.json",
+			"sha256": "c6f40fed52dbca466fb366f631cf52103503edadc2825433a04cd192a31d6a0b",
+			"size": 8111
+		},
+		{
+			"path": "spec/ir/mck/names.feature",
+			"sha256": "9e7de8831da4270ccdcc701f9a57f929fd39d376b9743821a3d253973cf19e43",
+			"size": 4183
+		},
+		{
+			"path": "spec/ir/mck/node-address-draft.json",
+			"sha256": "1a46dc4bf16c4f39dfbcbb32521618f1fe240c0df4a24e7ef459354cebda9066",
+			"size": 16916
+		},
+		{
+			"path": "spec/ir/mck/node-address-fixtures/v3-greeting.json",
+			"sha256": "539664c494509047ff485e37aff86a900978fa717bde8da30c24dc72599a0423",
+			"size": 29091
+		},
+		{
+			"path": "spec/ir/mck/node-address-fixtures/v4-library-pair-appended.json",
+			"sha256": "bd91b22f2e6b30856547a036641d2510039f63d63f11f6d244226792969d864f",
+			"size": 3025
+		},
+		{
+			"path": "spec/ir/mck/node-address-fixtures/v4-library-pair-identical-insert.json",
+			"sha256": "1113c822c4837d3d21c2792515c8588501679e0c9f7e2f5b9908e59737872fc7",
+			"size": 3066
+		},
+		{
+			"path": "spec/ir/mck/node-address-fixtures/v4-library-pair-shifted.json",
+			"sha256": "860697c6d58436c824de3abed0a129e19561db07aac58ab33e64a3652f96a4c3",
+			"size": 3025
+		},
+		{
+			"path": "spec/ir/mck/node-address-fixtures/v4-library-unrelated-edit.json",
+			"sha256": "f631aa8d0b95b875ca2b48a80451997fe939fed4786fab83211a14af346893fa",
+			"size": 2999
+		},
+		{
+			"path": "spec/ir/mck/node-address-fixtures/v4-library-user-deleted.json",
+			"sha256": "9d56bb163a19c8768a6fe944feef37c2485b86eab99eab4d54c6a8d03021f25b",
+			"size": 2719
+		},
+		{
+			"path": "spec/ir/mck/node-address-fixtures/v4-library.json",
+			"sha256": "59bcadf6e9ab4811d2d9704efb68a51bd12290cdfa2c581d3a4616b3c322d62e",
+			"size": 2774
+		},
+		{
+			"path": "spec/ir/mck/node-address-protocol.schema.json",
+			"sha256": "286c2ede8f7b974ff3467a792f0c66538c71193b86d1fedd96566c65e4f71965",
+			"size": 3041
+		},
+		{
+			"path": "spec/ir/mck/patterns-and-literals.feature",
+			"sha256": "45b71901c8a2cb6ffe636c165b105c1fcdfa66bdf1d28b3fecb21108ed44652d",
+			"size": 13058
+		},
+		{
+			"path": "spec/ir/mck/protocol.example.json",
+			"sha256": "da3225a456a974744bf0f8445c1d7ec0ff33c94f3d760e02bd913f2cc3c49446",
+			"size": 2255
+		},
+		{
+			"path": "spec/ir/mck/protocol.schema.json",
+			"sha256": "2bd100cc463289e836245c97ee9061302d93355d3a90d4dde9c6c1b60f84fac5",
+			"size": 10663
+		},
+		{
+			"path": "spec/ir/mck/protocols/metadata-draft.md",
+			"sha256": "8f1a487a3521c3c186bc088878e4ce3d79e8351798226d97b3cbc1a536bcfdd2",
+			"size": 10822
+		},
+		{
+			"path": "spec/ir/mck/report-draft.example.json",
+			"sha256": "7a193922ce3a558a9eac8a784b762ff0b932d1bf53901cce13d02280ab1fa2db",
+			"size": 1101
+		},
+		{
+			"path": "spec/ir/mck/report-draft.schema.json",
+			"sha256": "530a7208c12754d8855eeb383e90b7bfb7ec07b247c49f054de0f41cca91b055",
+			"size": 10574
+		},
+		{
+			"path": "spec/ir/mck/report.example.json",
+			"sha256": "779de310a8a12a5bc110bb83b393dbeef50b46329d0e5ca4d5d0509289809c95",
+			"size": 1889
+		},
+		{
+			"path": "spec/ir/mck/report.schema.json",
+			"sha256": "38e65fafef5952f3dc049326865b9904fbfa5e9e359d40b6c5b8da1875c00137",
+			"size": 2401
+		},
+		{
+			"path": "spec/ir/mck/types.feature",
+			"sha256": "4dc0c0e95e11d4203e96c8d561676a9c23134e3635ae68cc3e840eee8f7eeed8",
+			"size": 10224
+		},
+		{
+			"path": "spec/ir/mck/values.feature",
+			"sha256": "af0f4a0e962077a9514320b3e5536f67b4c02987775f5c2518c5f2eaf8364fbe",
+			"size": 18520
+		},
+		{
+			"path": "spec/ir/mck/versions.feature",
+			"sha256": "72d92762204a0cfcf9c57c083fb737c8ffd8350873490523ac264eb1e56c1f67",
+			"size": 6029
+		},
+		{
+			"path": "spec/mck/mck-kit.lock.example.json",
+			"sha256": "476fc35571a3423e0d200f351928f8ea39fe47c290838be769a7af004bd295ea",
+			"size": 2745
+		},
+		{
+			"path": "spec/mck/mck-kit.lock.schema.json",
+			"sha256": "180ee38485e29aa198e34d4cfa3c98710212fe0a7acbb86145f3093b5fe1bc97",
+			"size": 2730
+		},
+		{
+			"path": "spec/mck/provenance.schema.json",
+			"sha256": "4da91b830afabbee4aed2e0a2f9e865f854d6014109bab01a427c9f8d58eba9c",
+			"size": 1945
+		},
+		{
+			"path": "spec/mck/vocabulary.json",
+			"sha256": "0506381e034428c979b7c7f9c228faadbd2594c12fffe851fa98021dbd67ea26",
+			"size": 8765
+		},
+		{
+			"path": "spec/mck/vocabulary.schema.json",
+			"sha256": "fa25da5ddc0307a962295ab45e05af74206aac22e2bf8db57c93b09944299e7c",
+			"size": 1664
+		},
+		{
+			"path": "website/static/ir/examples/v4/complete-example.json",
+			"sha256": "30fbea9879b377dde11d0a4916b926dba152069e7b24bd43e4cf33cb27fcd979",
+			"size": 4151
+		},
+		{
+			"path": "website/static/schemas/morphir-ir-v4-document-tree-files.json",
+			"sha256": "5e39697eb2ebcbd44ee1ca323a66c579cef40cc1b0221e7c866ea6a95a9692a0",
+			"size": 26287
+		},
+		{
+			"path": "website/static/schemas/morphir-ir-v4.json",
+			"sha256": "38dd8ba14062eb86928acf830b41311fec34558881fff3663a6387bc8b60c155",
+			"size": 136448
+		}
+	]
+}

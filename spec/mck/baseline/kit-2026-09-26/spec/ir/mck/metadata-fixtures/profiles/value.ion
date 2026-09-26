@@ -1,0 +1,14 @@
+// Proposed future Ion Value specification fragment. No current ionVersion claims support.
+public::spec::value::{
+  module: "api",
+  name: "legacy-submit-order",
+  attributes: {
+    '@context': {
+      deprecated: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/lifecycle/value/deprecated",
+      aliases: "morphir://ir/pkg/acme/metadata?format=4.0.0#/module/naming/value/aliases",
+    },
+    facts: { deprecated: true, aliases: ["legacySubmitOrder", "submitOrderOld"] },
+  },
+  inputs: {},
+  output: "morphir/SDK:basics#unit",
+}

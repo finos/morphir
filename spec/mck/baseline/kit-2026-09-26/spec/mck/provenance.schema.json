@@ -1,0 +1,49 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://morphir.finos.org/schemas/mck/provenance-v1.schema.json",
+	"title": "MCK run provenance sidecar",
+	"description": "Written beside an IR report as <report>.provenance.json. IR report version 1 is closed; this carries the driver build, the digests of the kit bytes that ran, and the adapter command. See cli-contract.md.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["provenanceVersion", "driver", "kit", "adapter"],
+	"properties": {
+		"provenanceVersion": { "const": 1 },
+		"driver": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "version", "commit", "dirty"],
+			"properties": {
+				"name": { "const": "morphir" },
+				"version": { "type": "string", "minLength": 1 },
+				"commit": { "oneOf": [{ "$ref": "#/$defs/commit" }, { "type": "null" }] },
+				"dirty": { "type": "boolean" }
+			}
+		},
+		"kit": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["source", "revision", "snapshotDigest", "corpusHash", "modified"],
+			"properties": {
+				"source": { "enum": ["embedded", "vendored", "local"] },
+				"revision": { "oneOf": [{ "$ref": "#/$defs/commit" }, { "type": "null" }] },
+				"snapshotDigest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] },
+				"corpusHash": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] },
+				"modified": { "type": "boolean" }
+			}
+		},
+		"adapter": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["command", "binding", "formatVersions"],
+			"properties": {
+				"command": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+				"binding": { "type": ["string", "null"] },
+				"formatVersions": { "type": ["string", "null"] }
+			}
+		}
+	},
+	"$defs": {
+		"commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"digest": { "type": "string", "pattern": "^sha256-[0-9a-f]{64}$" }
+	}
+}
