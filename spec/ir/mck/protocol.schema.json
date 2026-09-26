@@ -2,9 +2,10 @@
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"$id": "https://morphir.finos.org/spec/ir/mck/protocol.schema.json",
 	"title": "Morphir Compatibility Kit adapter protocol",
-	"description": "Contract version 1 of the JSON-lines adapter protocol between the mck driver and a testee adapter. Normative for the adapter protocol; the kit README (Running the driver against a binding) explains how the driver uses it. Every message rejects unknown fields (additionalProperties: false throughout); the contract extends only through contractVersion, never through an added-but-ignored key. A validator that knows what it is looking at should be pointed at one definition (Request, Capabilities, DecodeResponse, WriteTreeResponse); a validator given a bare line validates against the root oneOf below, whose branches are disjoint so that exactly one accepts any message.",
+	"description": "The JSON-lines adapter protocol accepts the shipped numeric contract version 1 and the exact SemVer draft 2.0.0-draft.1. An unversioned capabilities request asks for v1; a versioned draft request asks for v2, which adds Ion to the capabilities profile vocabulary. Every message rejects unknown fields (additionalProperties: false throughout). A validator that knows what it is looking at should be pointed at one definition (Request, Capabilities, DecodeResponse, WriteTreeResponse); a validator given a bare line validates against the root oneOf below, whose branches are disjoint so that exactly one accepts any message.",
 	"definitions": {
 		"Profile": { "type": "string", "enum": ["json", "yaml"] },
+		"CapabilitiesProfile": { "type": "string", "enum": ["json", "yaml", "ion"] },
 		"Layout": { "type": "string", "enum": ["single", "tree"] },
 		"PathMode": { "type": "string", "enum": ["current", "pinned"] },
 		"Stage": { "type": "string", "enum": ["syntax", "normalization", "semantic"] },
@@ -52,7 +53,7 @@
 					"additionalProperties": false,
 					"properties": {
 						"id": { "type": "integer", "minimum": 1 },
-						"contractVersion": { "const": 1 },
+						"contractVersion": { "enum": [1, "2.0.0-draft.1"] },
 						"binding": {
 							"type": "string",
 							"minLength": 1,
@@ -72,7 +73,7 @@
 							"type": "array",
 							"items": { "type": "integer", "minimum": 1, "description": "A positive integer IR version this binding supports." }
 						},
-						"profiles": { "type": "array", "items": { "$ref": "#/definitions/Profile" } },
+						"profiles": { "type": "array", "items": { "$ref": "#/definitions/CapabilitiesProfile" } },
 						"layouts": { "type": "array", "items": { "$ref": "#/definitions/Layout" } },
 						"paths": { "type": "array", "items": { "$ref": "#/definitions/PathMode" } },
 						"nodes": {
@@ -83,6 +84,10 @@
 						}
 					},
 					"required": ["id", "contractVersion", "binding", "language", "formatVersions", "versions", "profiles", "layouts", "paths", "nodes"]
+				},
+				{
+					"if": { "properties": { "contractVersion": { "const": 1 } } },
+					"then": { "properties": { "profiles": { "items": { "$ref": "#/definitions/Profile" } } } }
 				}
 			]
 		},
@@ -94,7 +99,8 @@
 					"additionalProperties": false,
 					"properties": {
 						"id": { "type": "integer", "minimum": 1 },
-						"op": { "const": "capabilities" }
+						"op": { "const": "capabilities" },
+						"contractVersion": { "const": "2.0.0-draft.1" }
 					},
 					"required": ["id", "op"]
 				}

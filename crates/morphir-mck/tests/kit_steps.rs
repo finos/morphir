@@ -31,7 +31,7 @@ struct Fake;
 impl Testee for Fake {
     fn exchange(&mut self, request: &Request) -> Result<Map<String, Value>, String> {
         let body = match request {
-            Request::Capabilities => json!({
+            Request::Capabilities | Request::CapabilitiesV2 { .. } => json!({
                 "contractVersion": 1, "binding": "fake", "language": "rust",
                 "formatVersions": "[4.0.0,4.1.0)", "versions": [4], "profiles": ["json", "yaml"],
                 "layouts": ["single"], "paths": ["current", "pinned"], "nodes": ["Value"]

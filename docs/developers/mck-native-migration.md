@@ -56,8 +56,9 @@ to managed files fail verification before execution.
 
 Every run requires an explicit adapter. Pass extra arguments with repeated
 `--adapter-arg` options. There is no adapter discovery or in-process fallback.
-The IR adapter wire protocol remains version 1, so existing compliant adapters
-can be used with the native runner.
+The IR adapter wire protocol accepts numeric v1 and exact draft `2.0.0-draft.1`. The native runner asks
+for v2 first and retries the unversioned v1 handshake when a responsive v1
+adapter rejects the versioned request, so existing compliant adapters remain usable.
 
 These commands use the same committed snapshot throughout:
 

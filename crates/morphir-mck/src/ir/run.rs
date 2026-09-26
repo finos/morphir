@@ -239,7 +239,7 @@ fn unsupported(
         RecordProfile::Json => Profile::Json,
         RecordProfile::Yaml => Profile::Yaml,
     };
-    if !caps.profiles.contains(&profile) {
+    if !caps.profiles.contains(&profile.into()) {
         return Some(format!("profile {profile} not in capabilities"));
     }
     (!caps.paths.contains(&path)).then(|| format!("path {path} not in capabilities"))
@@ -324,7 +324,7 @@ pub(crate) fn inventory(
                             .or_else(|| {
                                 let language = members[0].language;
                                 (members.iter().all(|t| t.language == language)
-                                    && !caps.profiles.contains(&language))
+                                    && !caps.profiles.contains(&language.into()))
                                 .then(|| format!("profile {language} not in capabilities"))
                             })
                         })
@@ -519,7 +519,7 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
             "mixed profiles in set {label}"
         ))));
     }
-    if !caps.profiles.contains(&language) {
+    if !caps.profiles.contains(&language.into()) {
         return Ok(all(Verdict::skipped(format!(
             "profile {language} not in capabilities"
         ))));
@@ -816,8 +816,16 @@ impl RunState {
     /// Asks the testee for its capabilities, as the first request of a run.
     pub fn open(testee: &mut dyn Testee) -> Self {
         let mut dead: Option<String> = None;
-        let caps = match testee
-            .exchange(&Request::Capabilities)
+        let negotiated = testee
+            .exchange(&Request::capabilities_v2())
+            .and_then(|body| {
+                if is_v1_capabilities_rejection(&body)? {
+                    testee.exchange(&Request::Capabilities)
+                } else {
+                    Ok(body)
+                }
+            });
+        let caps = match negotiated
             .and_then(|body| parse_capabilities(&Value::Object(body)).map_err(|error| error.0))
         {
             Ok(caps) => Some(caps),
@@ -850,6 +858,16 @@ impl RunState {
                 RunFailure::Capabilities(message)
             }
         })
+    }
+}
+
+fn is_v1_capabilities_rejection(body: &Map<String, Value>) -> Result<bool, String> {
+    if body.get("ok") != Some(&Value::Bool(false)) {
+        return Ok(false);
+    }
+    match parse_decode_response(&Value::Object(body.clone())).map_err(|error| error.0)? {
+        DecodeResponse::Rejected(diagnostic) => Ok(diagnostic.code == "protocol_error"),
+        DecodeResponse::Ok { .. } => Ok(false),
     }
 }
 
@@ -1107,6 +1125,7 @@ mod tests {
 
     use super::*;
     use crate::kit::source::KitSource;
+    use crate::transport::protocol::{CONTRACT_VERSION, CapabilitiesProfile};
 
     /// An adapter answering from a closure.
     struct Scripted<F: FnMut(&Request) -> Result<Value, String>>(F);
@@ -1122,6 +1141,13 @@ mod tests {
             "contractVersion": 1, "binding": "fake", "language": "rust", "formatVersions": "[4.0.0,4.1.0)",
             "versions": [4], "profiles": ["json", "yaml"], "layouts": ["single", "tree"], "paths": paths, "nodes": ["Type"]
         })
+    }
+
+    fn is_capabilities(request: &Request) -> bool {
+        matches!(
+            request,
+            Request::Capabilities | Request::CapabilitiesV2 { .. }
+        )
     }
 
     fn decoded(canonical: &str) -> Value {
@@ -1200,7 +1226,7 @@ mod tests {
             &kit,
             None,
             &mut Scripted(|r: &Request| {
-                Ok(if *r == Request::Capabilities {
+                Ok(if is_capabilities(r) {
                     caps(&["current"])
                 } else {
                     decoded("Unit: {}\n")
@@ -1258,6 +1284,65 @@ mod tests {
     }
 
     #[test]
+    fn v2_driver_uses_v1_adapter_after_version_rejection() {
+        let mut requests = Vec::new();
+        let state = RunState::open(&mut Scripted(|request: &Request| {
+            requests.push(request.clone());
+            match request {
+                Request::CapabilitiesV2 { .. } => Ok(json!({
+                    "ok": false,
+                    "diagnostic": {"code": "protocol_error", "message": "unknown field contractVersion"}
+                })),
+                Request::Capabilities => Ok(caps(&["current"])),
+                _ => panic!("unexpected request"),
+            }
+        }));
+        assert!(state.dead.is_none());
+        assert_eq!(
+            state.caps.unwrap().contract_version,
+            semver::Version::new(1, 0, 0)
+        );
+        assert_eq!(
+            requests,
+            vec![Request::capabilities_v2(), Request::Capabilities]
+        );
+    }
+
+    #[test]
+    fn malformed_version_rejection_is_a_protocol_error_without_retry() {
+        let mut requests = Vec::new();
+        let state = RunState::open(&mut Scripted(|request: &Request| {
+            requests.push(request.clone());
+            Ok(json!({
+                "ok": false,
+                "diagnostic": {"code": "protocol_error"},
+                "extra": true
+            }))
+        }));
+        assert_eq!(requests, vec![Request::capabilities_v2()]);
+        assert!(state.caps.is_none());
+        assert!(state.dead.unwrap().contains("unknown field \"extra\""));
+    }
+
+    #[test]
+    fn v2_driver_accepts_an_ion_capable_adapter() {
+        let state = RunState::open(&mut Scripted(|request: &Request| {
+            assert_eq!(*request, Request::capabilities_v2());
+            let mut response = caps(&["current"]);
+            response["contractVersion"] = json!(CONTRACT_VERSION);
+            response["profiles"] = json!(["json", "yaml", "ion"]);
+            Ok(response)
+        }));
+        assert!(state.dead.is_none());
+        let caps = state.caps.unwrap();
+        assert_eq!(
+            caps.contract_version,
+            semver::Version::parse(CONTRACT_VERSION).unwrap()
+        );
+        assert!(caps.profiles.contains(&CapabilitiesProfile::Ion));
+    }
+
+    #[test]
     fn a_transport_failure_mid_run_marks_later_fences_unavailable() {
         let kit = kit_of(&[(
             "spec/ir/mck/types.md",
@@ -1272,7 +1357,9 @@ mod tests {
             &mut Scripted(|r: &Request| {
                 calls += 1;
                 match (r, calls) {
-                    (Request::Capabilities, _) => Ok(caps(&["current"])),
+                    (Request::Capabilities | Request::CapabilitiesV2 { .. }, _) => {
+                        Ok(caps(&["current"]))
+                    }
                     (_, 2) => Err("adapter exited with code 3".to_owned()),
                     _ => Ok(decoded("Unit: {}\n")),
                 }
@@ -1361,7 +1448,7 @@ mod tests {
             &kit,
             None,
             &mut Scripted(|r: &Request| match r {
-                Request::Capabilities => Ok(caps(&["current"])),
+                Request::Capabilities | Request::CapabilitiesV2 { .. } => Ok(caps(&["current"])),
                 _ => Err("adapter exited with code 3".to_owned()),
             }),
         );
@@ -1418,7 +1505,9 @@ mod tests {
             &kit,
             None,
             &mut Scripted(|r: &Request| match r {
-                Request::Capabilities => Ok(caps(&["current", "pinned"])),
+                Request::Capabilities | Request::CapabilitiesV2 { .. } => {
+                    Ok(caps(&["current", "pinned"]))
+                }
                 Request::Decode {
                     path: PathMode::Current,
                     ..
@@ -1457,7 +1546,7 @@ mod tests {
             &kit,
             None,
             &mut Scripted(|r: &Request| match r {
-                Request::Capabilities => Ok(caps(&["current"])),
+                Request::Capabilities | Request::CapabilitiesV2 { .. } => Ok(caps(&["current"])),
                 Request::WriteTree { policy, .. } => {
                     assert_eq!(policy.path_budget, 4000);
                     Ok(json!({ "ok": true, "files": [
@@ -1498,7 +1587,7 @@ mod tests {
             &kit,
             None,
             &mut Scripted(|r: &Request| {
-                Ok(if *r == Request::Capabilities {
+                Ok(if is_capabilities(r) {
                     caps(&["current"])
                 } else {
                     decoded("Other: {}\n")
@@ -1531,7 +1620,7 @@ mod tests {
             &kit,
             None,
             &mut Scripted(|r: &Request| match r {
-                Request::Capabilities => Ok(caps(&["current"])),
+                Request::Capabilities | Request::CapabilitiesV2 { .. } => Ok(caps(&["current"])),
                 Request::WriteTree { .. } => Ok(json!({ "ok": true, "files": [
                     { "path": "manifest", "content": "pathBudget: 3000\n" },
                     { "path": "pkg/a", "content": "b: 2\n" }
@@ -1566,7 +1655,7 @@ mod tests {
             &kit,
             None,
             &mut Scripted(|r: &Request| match r {
-                Request::Capabilities => Ok(caps(&["current"])),
+                Request::Capabilities | Request::CapabilitiesV2 { .. } => Ok(caps(&["current"])),
                 Request::WriteTree { .. } => Ok(json!({ "ok": true, "files": [] })),
                 _ => Ok(json!({ "ok": false, "diagnostic": { "code": "invalid_tree" } })),
             }),
@@ -1585,7 +1674,7 @@ mod tests {
     fn the_filter_selects_by_case_id_and_an_empty_run_is_never_a_success() {
         let kit = kit_of(&[("spec/ir/mck/types.md", UNIT)]);
         let answer = |r: &Request| {
-            Ok(if *r == Request::Capabilities {
+            Ok(if is_capabilities(r) {
                 caps(&["current"])
             } else {
                 decoded("Unit: {}\n")
@@ -1615,7 +1704,7 @@ mod tests {
             ),
         ]);
         let answer = |r: &Request| {
-            Ok(if *r == Request::Capabilities {
+            Ok(if is_capabilities(r) {
                 caps(&["current"])
             } else {
                 decoded("Unit: {}\n")

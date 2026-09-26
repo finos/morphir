@@ -420,7 +420,7 @@
 			"additionalProperties": false,
 			"properties": {
 				"contractVersion": {
-					"const": 1
+					"enum": [1, "2.0.0-draft.1"]
 				},
 				"binding": {
 					"type": "string",
@@ -446,7 +446,8 @@
 					"items": {
 						"enum": [
 							"json",
-							"yaml"
+						"yaml",
+						"ion"
 						]
 					}
 				},
@@ -476,7 +477,11 @@
 					},
 					"minItems": 1
 				}
-			}
+			},
+			"allOf": [{
+				"if": { "properties": { "contractVersion": { "const": 1 } } },
+				"then": { "properties": { "profiles": { "items": { "enum": ["json", "yaml"] } } } }
+			}]
 		},
 		"SessionError": {
 			"type": "object",

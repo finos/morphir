@@ -599,7 +599,7 @@ fn the_frozen_transcript_replays_byte_for_byte() {
                 .unwrap_or_else(|e| panic!("{e}; adapter said: {}", s.stderr())),
         );
         match &request {
-            Request::Capabilities => {
+            Request::Capabilities | Request::CapabilitiesV2 { .. } => {
                 let caps = parse_capabilities(&answer).unwrap();
                 assert_eq!(caps.format_versions, "[4.0.0,4.1.0)");
             }
