@@ -332,10 +332,13 @@ fn converted_feature_text(kit: &Kit, md_file: &str) -> Result<String, String> {
 
 /// One `.feature` file that no longer matches converting its `.md` twin's current cases: its
 /// committed text differs (`Changed`, carrying the `.feature` file's repository-relative path),
-/// or it is not committed at all (`Missing`).
+/// it is not committed at all (`Missing`), or it has no Markdown source with cases (`Orphan`,
+/// carrying its repository-relative path), so the gherkin engine would run cases the legacy
+/// engine does not.
 enum Drift {
     Changed(String),
     Missing,
+    Orphan(String),
 }
 
 /// The drift-check line for one `.feature` file, as both `mck check` and `mck convert --check`
@@ -347,6 +350,10 @@ fn drift_message(kit: &Kit, drift: &Drift, topic: &str) -> String {
             format!("{target}: out of date with {topic}.md; run morphir mck convert")
         }
         Drift::Missing => format!("{topic}.feature: missing; run morphir mck convert"),
+        Drift::Orphan(file) => {
+            let target = kit.source.display(file);
+            format!("{target}: no {topic}.md with cases; delete it or restore its Markdown source")
+        }
     }
 }
 
@@ -356,10 +363,14 @@ fn drift_message(kit: &Kit, drift: &Drift, topic: &str) -> String {
 /// at least one other `.feature` file (`!FeatureKit.kit.files.is_empty()`); a Markdown-only kit,
 /// with none at all, carries no twins yet during the parity window and is not drift, so ad hoc
 /// `.md`-only fixture kits stay unaffected.
+///
+/// A `.feature` file in `feature_files` with no Markdown twin that holds cases is drift too
+/// (`Orphan`), reported after the Markdown files, in `feature_files` order.
 fn drifted_feature_files(
     kit: &Kit,
-    feature_files_present: bool,
+    feature_files: &[String],
 ) -> Result<Vec<(Drift, String)>, String> {
+    let feature_files_present = !feature_files.is_empty();
     let mut drifted = Vec::new();
     for md_file in kit.files.iter().filter(|f| has_cases(kit, f)) {
         let feature_file = feature_sibling(md_file);
@@ -379,6 +390,19 @@ fn drifted_feature_files(
             drifted.push((Drift::Changed(feature_file), topic));
         }
     }
+    let expected: Vec<String> = kit
+        .files
+        .iter()
+        .filter(|f| has_cases(kit, f))
+        .map(|f| feature_sibling(f))
+        .collect();
+    for feature_file in feature_files {
+        if !expected.contains(feature_file) {
+            let base = feature_file.rsplit('/').next().unwrap_or(feature_file);
+            let topic = base.strip_suffix(".feature").unwrap_or(base).to_owned();
+            drifted.push((Drift::Orphan(feature_file.clone()), topic));
+        }
+    }
     Ok(drifted)
 }
 
@@ -396,7 +420,7 @@ pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
                     )));
                 }
             };
-            let drifted = match drifted_feature_files(kit, !feature.kit.files.is_empty()) {
+            let drifted = match drifted_feature_files(kit, &feature.kit.files) {
                 Ok(drifted) => drifted,
                 Err(message) => return finish(Outcome::Error(message)),
             };
@@ -417,6 +441,7 @@ pub fn run_mck_check(args: MckCheckArgs) -> AppResult<miette::Report> {
                     .map(|(drift, topic)| match drift {
                         Drift::Changed(file) => json!(file),
                         Drift::Missing => json!(format!("{topic}.feature")),
+                        Drift::Orphan(file) => json!(file),
                     })
                     .collect();
                 println!(
@@ -492,7 +517,7 @@ pub fn run_mck_convert(args: MckConvertArgs) -> AppResult<miette::Report> {
                 )));
             }
         };
-        match drifted_feature_files(&kit, !feature.kit.files.is_empty()) {
+        match drifted_feature_files(&kit, &feature.kit.files) {
             Ok(drifted) if drifted.is_empty() => Outcome::Passed,
             Ok(drifted) => {
                 for (drift, topic) in &drifted {

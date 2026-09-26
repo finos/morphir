@@ -135,6 +135,25 @@ fn check_exits_1_and_reports_a_missing_twin_when_another_feature_file_still_exis
     assert_eq!(report.lines().count(), 1, "{report}");
 }
 
+/// A `.feature` file whose Markdown source is gone would keep running retired scenarios under
+/// `--engine gherkin`, so it is drift too.
+#[test]
+fn check_exits_1_and_reports_a_feature_file_with_no_markdown_source() {
+    let (_work, kit) = temp_checkout();
+    std::fs::copy(kit.join("values.feature"), kit.join("retired.feature")).unwrap();
+
+    let output = morphir(&["mck", "convert", "--check", "--kit", kit.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
+    let report = stdout(&output);
+    assert!(
+        report.contains(
+            "retired.feature: no retired.md with cases; delete it or restore its Markdown source"
+        ),
+        "{report}"
+    );
+    assert_eq!(report.lines().count(), 1, "{report}");
+}
+
 /// A Markdown-only kit (no `.feature` files at all) carries no twins yet during the parity
 /// window: a missing twin is drift only once the kit directory already has at least one other
 /// `.feature` file, so this is not drift.
