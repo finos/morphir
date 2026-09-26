@@ -12,7 +12,8 @@ use regex::Regex;
 use serde_json::{Map, Value};
 
 use super::compare::{
-    check_canonical, check_rejected, check_warnings, describe, normalize_canonical, path_budget_of,
+    canonical_diff, check_canonical, check_rejected, check_warnings, describe, normalize_canonical,
+    path_budget_of,
 };
 use crate::kit::load::{Kit, Profile as KitProfile};
 use crate::kit::syntax::case::{Compare, KitCase, KitError, KitFence, Status};
@@ -144,6 +145,13 @@ struct Verdict {
     expected_diagnostic: Option<String>,
     observed_diagnostic: Option<ReportDiagnostic>,
     message: Option<String>,
+    diff: Option<String>,
+}
+
+struct WriteIssue {
+    fence_index: usize,
+    message: String,
+    diff: Option<String>,
 }
 
 impl Verdict {
@@ -153,6 +161,7 @@ impl Verdict {
             expected_diagnostic: None,
             observed_diagnostic: None,
             message,
+            diff: None,
         }
     }
 
@@ -192,6 +201,8 @@ fn record(
         expected_diagnostic: verdict.expected_diagnostic,
         observed_diagnostic: verdict.observed_diagnostic,
         message: verdict.message,
+        check: None,
+        diff: verdict.diff,
         duration_ms: Millis(duration.max(0.0)),
     }
 }
@@ -396,7 +407,21 @@ fn judge_accepted(
             ));
         }
     };
-    check_canonical(want, got).map_or_else(Verdict::pass, Verdict::fail)
+    match check_canonical(want, got) {
+        None => Verdict::pass(),
+        Some(reason) => Verdict {
+            diff: Some(canonical_diff(
+                want,
+                got,
+                &format!(
+                    "{case_id} fence {} profile {}",
+                    target.fence.index,
+                    profile_name(target.profile)
+                ),
+            )),
+            ..Verdict::fail(reason)
+        },
+    }
 }
 
 fn role_name(role: Role) -> &'static str {
@@ -548,9 +573,9 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
         node,
         files,
     };
-    let read = judge_tree_read(label, language, &decode(testee, &read_request)?, &expected);
+    let read_response = decode(testee, &read_request)?;
 
-    let writes: Vec<(usize, String)> = if manifest.fence.info.key("mode") == Some("read") {
+    let writes: Vec<WriteIssue> = if manifest.fence.info.key("mode") == Some("read") {
         Vec::new()
     } else {
         let request = Request::WriteTree {
@@ -562,25 +587,49 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
             },
             input: canonical_body,
         };
-        judge_tree_write(label, run.members, manifest, &write_tree(testee, &request)?)
+        judge_tree_write(
+            label,
+            run.case.id.as_str(),
+            run.members,
+            manifest,
+            &write_tree(testee, &request)?,
+        )
     };
 
     Ok(run
         .members
         .iter()
         .map(|t| {
+            let read = judge_tree_read(
+                label,
+                run.case.id.as_str(),
+                t.fence.index,
+                language,
+                &read_response,
+                &expected,
+            );
             let write = writes
                 .iter()
-                .find(|(index, _)| *index == t.fence.index)
-                .map(|(_, m)| m.clone());
+                .find(|issue| issue.fence_index == t.fence.index);
             let verdict = match (read.result, write) {
                 (Outcome::Pass, None) => Verdict::pass(),
-                (Outcome::Pass, Some(write)) => Verdict::fail(write),
-                (_, Some(write)) => Verdict {
+                (Outcome::Pass, Some(issue)) => Verdict {
+                    diff: issue.diff.clone(),
+                    ..Verdict::fail(issue.message.clone())
+                },
+                (_, Some(issue)) => Verdict {
                     message: Some(format!(
-                        "{}; {write}",
-                        read.message.clone().unwrap_or_default()
+                        "{}; {}",
+                        read.message.clone().unwrap_or_default(),
+                        issue.message
                     )),
+                    diff: {
+                        let parts = [read.diff.clone(), issue.diff.clone()]
+                            .into_iter()
+                            .flatten()
+                            .collect::<Vec<_>>();
+                        (!parts.is_empty()).then(|| parts.join("\n"))
+                    },
                     ..read.clone()
                 },
                 (_, None) => read.clone(),
@@ -592,6 +641,8 @@ fn run_file_set(run: &SetRun, testee: &mut dyn Testee) -> Result<Vec<(usize, Ver
 
 fn judge_tree_read(
     label: &str,
+    case_id: &str,
+    fence_index: usize,
     language: Profile,
     response: &DecodeResponse,
     expected: &str,
@@ -612,28 +663,38 @@ fn judge_tree_read(
                 )),
                 Some(got) => match check_canonical(expected, got) {
                     None => Verdict::pass(),
-                    Some(diff) => {
-                        Verdict::fail(format!("set {label} read back differently: {diff}"))
-                    }
+                    Some(reason) => Verdict {
+                        diff: Some(canonical_diff(
+                            expected,
+                            got,
+                            &format!("{case_id} fence {fence_index} profile {language} tree read"),
+                        )),
+                        ..Verdict::fail(format!("set {label} read back differently: {reason}"))
+                    },
                 },
             }
         }
     }
 }
 
-/// The write half, as a message per failing fence index.
+/// The write half, as a message and optional diff per failing fence index.
 fn judge_tree_write(
     label: &str,
+    case_id: &str,
     members: &[&Target],
     manifest: &Target,
     response: &WriteTreeResponse,
-) -> Vec<(usize, String)> {
+) -> Vec<WriteIssue> {
     let files = match response {
         WriteTreeResponse::Rejected(d) => {
             let message = format!("set {label} failed to writeTree: {}", describe(d));
             return members
                 .iter()
-                .map(|t| (t.fence.index, message.clone()))
+                .map(|t| WriteIssue {
+                    fence_index: t.fence.index,
+                    message: message.clone(),
+                    diff: None,
+                })
                 .collect();
         }
         WriteTreeResponse::Ok { files } => files,
@@ -642,7 +703,7 @@ fn judge_tree_write(
         .iter()
         .map(|f| (f.path.as_str(), f.content.as_str()))
         .collect();
-    let mut out: Vec<(usize, String)> = Vec::new();
+    let mut out: Vec<WriteIssue> = Vec::new();
     for t in members {
         let logical = t.fence.info.key("path").unwrap_or("");
         // The last file with the path wins, as a Map built from the list would.
@@ -653,16 +714,26 @@ fn judge_tree_write(
             .map(|(_, c)| *c);
         produced.retain(|(p, _)| *p != logical);
         match content {
-            None => out.push((
-                t.fence.index,
-                format!("writeTree did not produce {logical}"),
-            )),
+            None => out.push(WriteIssue {
+                fence_index: t.fence.index,
+                message: format!("writeTree did not produce {logical}"),
+                diff: None,
+            }),
             Some(content) => {
-                if let Some(diff) = check_canonical(t.body.as_deref().unwrap_or(""), content) {
-                    out.push((
-                        t.fence.index,
-                        format!("writeTree wrote {logical} differently: {diff}"),
-                    ));
+                let expected = t.body.as_deref().unwrap_or("");
+                if let Some(reason) = check_canonical(expected, content) {
+                    out.push(WriteIssue {
+                        fence_index: t.fence.index,
+                        message: format!("writeTree wrote {logical} differently: {reason}"),
+                        diff: Some(canonical_diff(
+                            expected,
+                            content,
+                            &format!(
+                                "{} fence {} profile tree path {logical}",
+                                case_id, t.fence.index
+                            ),
+                        )),
+                    });
                 }
             }
         }
@@ -680,10 +751,14 @@ fn judge_tree_write(
             .join("; ");
         match out
             .iter_mut()
-            .find(|(index, _)| *index == manifest.fence.index)
+            .find(|issue| issue.fence_index == manifest.fence.index)
         {
-            Some((_, existing)) => *existing = format!("{existing}; {extra}"),
-            None => out.push((manifest.fence.index, extra)),
+            Some(issue) => issue.message = format!("{}; {extra}", issue.message),
+            None => out.push(WriteIssue {
+                fence_index: manifest.fence.index,
+                message: extra,
+                diff: None,
+            }),
         }
     }
     out
@@ -794,6 +869,8 @@ pub fn kit_error_records(kit: &Kit) -> Vec<Record> {
             expected_diagnostic: None,
             observed_diagnostic: None,
             message: Some(format!("{}:{}: {}", error.file, error.line, error.message)),
+            check: None,
+            diff: None,
             duration_ms: Millis(0.0),
         });
     }
@@ -883,6 +960,7 @@ pub fn run_case(
                             expected_diagnostic: check.expected_diagnostic,
                             observed_diagnostic: check.observed_diagnostic,
                             message: check.message,
+                            diff: None,
                         }
                     }
                     Ok(response) => {
@@ -1407,6 +1485,99 @@ mod tests {
                 ),
                 ("pass", None)
             ]
+        );
+    }
+
+    #[test]
+    fn canonical_and_accepted_failures_keep_reason_and_attach_diff() {
+        let kit = kit_of(&[(
+            "spec/ir/mck/types.md",
+            "## types-0001: unit {node=Type}\n```yaml canonical\nUnit: {}\n```\n```yaml accepted\nUnit : {}\n```\n",
+        )]);
+        let run = run_with(
+            &kit,
+            None,
+            &mut Scripted(|r: &Request| {
+                Ok(if *r == Request::Capabilities {
+                    caps(&["current"])
+                } else {
+                    decoded("Other: {}\n")
+                })
+            }),
+        );
+        let records = &run.report.records;
+        assert_eq!(records.len(), 2);
+        for (index, record) in records.iter().enumerate() {
+            assert_eq!(record.result, Outcome::Fail);
+            assert_eq!(
+                record.message.as_deref(),
+                Some("line 1 differs: expected Unit: {} got Other: {}")
+            );
+            let diff = record.diff.as_deref().unwrap();
+            assert!(diff.contains(&format!(
+                "--- expected types-0001 fence {index} profile yaml"
+            )));
+            assert!(diff.contains("-Unit: {}\n+Other: {}\n"));
+        }
+    }
+
+    #[test]
+    fn tree_read_and_each_written_file_get_named_diffs() {
+        let kit = kit_of(&[(
+            "spec/ir/mck/document-tree.md",
+            "## document-tree-0001: tree {node=Type}\n```yaml canonical\nUnit: {}\n```\n```yaml file path=manifest\npathBudget: 4000\n```\n```yaml file path=pkg/a\nb: 1\n```\n",
+        )]);
+        let run = run_with(
+            &kit,
+            None,
+            &mut Scripted(|r: &Request| match r {
+                Request::Capabilities => Ok(caps(&["current"])),
+                Request::WriteTree { .. } => Ok(json!({ "ok": true, "files": [
+                    { "path": "manifest", "content": "pathBudget: 3000\n" },
+                    { "path": "pkg/a", "content": "b: 2\n" }
+                ] })),
+                _ => Ok(decoded("Other: {}\n")),
+            }),
+        );
+        let files: Vec<_> = run
+            .report
+            .records
+            .iter()
+            .filter(|r| r.role == Role::File)
+            .collect();
+        assert_eq!(files.len(), 2);
+        for (file, path) in files.iter().zip(["manifest", "pkg/a"]) {
+            assert_eq!(file.result, Outcome::Fail);
+            assert!(
+                file.message
+                    .as_deref()
+                    .unwrap()
+                    .contains("read back differently")
+            );
+            let diff = file.diff.as_deref().unwrap();
+            assert!(diff.starts_with(&format!(
+                "--- expected document-tree-0001 fence {} profile yaml tree read",
+                file.fence_index
+            )));
+            assert!(diff.contains(&format!("profile tree path {path}")));
+        }
+
+        let no_text = run_with(
+            &kit,
+            None,
+            &mut Scripted(|r: &Request| match r {
+                Request::Capabilities => Ok(caps(&["current"])),
+                Request::WriteTree { .. } => Ok(json!({ "ok": true, "files": [] })),
+                _ => Ok(json!({ "ok": false, "diagnostic": { "code": "invalid_tree" } })),
+            }),
+        );
+        assert!(
+            no_text
+                .report
+                .records
+                .iter()
+                .filter(|r| r.role == Role::File)
+                .all(|r| r.diff.is_none())
         );
     }
 

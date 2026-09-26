@@ -107,7 +107,22 @@ fn diagnostics_and_runner_messages_are_available_without_javascript() {
         assert!(output.contains(text), "missing {text}");
     }
     assert!(output.contains("<details"));
+    assert!(output.contains("<dt>Check</dt><dd>semantic</dd>"));
     assert!(output.contains("<table"));
+}
+
+#[test]
+fn optional_diff_and_check_render_safely_in_static_details() {
+    let mut value = example();
+    value["records"][0]["check"] = json!("round-trip");
+    value["records"][0]["diff"] = json!("--- expected\n-old <script>\n+new & value\n");
+    let output = html(value);
+    assert!(output.contains("round-trip"));
+    assert!(output.contains("class=\"diff-remove\""));
+    assert!(output.contains("class=\"diff-add\""));
+    assert!(output.contains("&lt;script&gt;"));
+    assert!(output.contains("&amp; value"));
+    assert!(!output.contains("-old <script>"));
 }
 
 #[test]

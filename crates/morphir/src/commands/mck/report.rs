@@ -172,11 +172,12 @@ fn read_comparable(path: &Path) -> Result<Comparable, String> {
     serde_json::from_str(&read(path)?).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// `record` with `durationMs` cleared: the one field `mck report compare`
-/// ignores, since two engines rarely take the same wall-clock time.
-fn without_duration(record: &Record) -> Record {
+/// Normalize fields whose contract meaning does not depend on their spelling:
+/// duration is ignored and an omitted check means semantic.
+fn normalized_record(record: &Record) -> Record {
     let mut record = record.clone();
     record.duration_ms = Millis::default();
+    record.check = Some(record.check());
     record
 }
 
@@ -198,7 +199,7 @@ pub fn run_compare(args: CompareArgs) -> AppResult<miette::Report> {
             ));
         }
         for (index, (left, right)) in a.records.iter().zip(&b.records).enumerate() {
-            if without_duration(left) != without_duration(right) {
+            if normalized_record(left) != normalized_record(right) {
                 return Err(format!(
                     "records differ at index {index}:\n{}: {}\n{}: {}",
                     args.a.display(),

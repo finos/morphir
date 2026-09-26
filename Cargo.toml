@@ -54,6 +54,7 @@ regorus = { version = "=0.12.0", default-features = false, features = ["std"] }
 sha2 = "0.11"
 # `morphir mck run --filter` uses Rust regex syntax (spec/mck/cli-contract.md)
 regex = "1"
+similar = "3.2"
 # Kit archives from github:finos/morphir (morphir-mck)
 flate2 = "1"
 tar = { version = "0.4", default-features = false }

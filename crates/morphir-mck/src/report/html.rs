@@ -290,7 +290,11 @@ fn record_row(out: &mut String, index: usize, r: &Record) {
     };
     let path = r.path.map_or("unspecified", |p| p.as_str());
     write!(out, "<tr id=\"record-{index}\" data-case=\"{}\" data-outcome=\"{outcome}\" data-ir=\"{}\" data-profile=\"{profile}\" data-path=\"{path}\"><td><span class=\"badge {outcome}\">{outcome}</span></td><td>{}</td><td>{profile}</td><td>{role}</td><td>{}</td><td>{path}</td><td class=\"duration\">{} ms</td><td>", escape(&r.case_id), r.ir_version, r.ir_version, r.fence_index, r.duration_ms.0).unwrap();
-    if r.expected_diagnostic.is_none() && r.observed_diagnostic.is_none() && r.message.is_none() {
+    if r.expected_diagnostic.is_none()
+        && r.observed_diagnostic.is_none()
+        && r.message.is_none()
+        && r.diff.is_none()
+    {
         out.push_str("<span class=\"muted\">None recorded</span>");
     } else {
         out.push_str("<details class=\"diagnostic\"><summary>View details</summary><div class=\"detail-body\"><dl>");
@@ -324,7 +328,31 @@ fn record_row(out: &mut String, index: usize, r: &Record) {
             "Runner message",
             r.message.as_deref().unwrap_or("Not recorded"),
         );
-        out.push_str("</dl></div></details>");
+        field(
+            out,
+            "Check",
+            match r.check() {
+                super::Check::Spelling => "spelling",
+                super::Check::Semantic => "semantic",
+                super::Check::RoundTrip => "round-trip",
+            },
+        );
+        out.push_str("</dl>");
+        if let Some(diff) = &r.diff {
+            out.push_str("<pre class=\"unified-diff\" aria-label=\"Unified diff\">");
+            for line in diff.split_inclusive('\n') {
+                let class = if line.starts_with('+') && !line.starts_with("+++") {
+                    "diff-add"
+                } else if line.starts_with('-') && !line.starts_with("---") {
+                    "diff-remove"
+                } else {
+                    "diff-context"
+                };
+                write!(out, "<span class=\"{class}\">{}</span>", escape(line)).unwrap();
+            }
+            out.push_str("</pre>");
+        }
+        out.push_str("</div></details>");
     }
     out.push_str("</td></tr>");
 }

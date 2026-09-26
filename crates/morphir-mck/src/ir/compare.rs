@@ -6,6 +6,7 @@
 use std::sync::LazyLock;
 
 use regex::Regex;
+use similar::TextDiff;
 
 use crate::report::{Outcome, ReportDiagnostic};
 use crate::transport::protocol::{DecodeResponse, Diagnostic, Warning};
@@ -43,6 +44,31 @@ pub fn check_canonical(expected: &str, actual: &str) -> Option<String> {
         let al = a.get(i).copied().unwrap_or("<end>");
         (el != al).then(|| format!("line {} differs: expected {el} got {al}", i + 1))
     })
+}
+
+/// A bounded, three-context-line diff for canonicals already known to differ.
+pub fn canonical_diff(expected: &str, actual: &str, context: &str) -> String {
+    const MAX_LINES: usize = 200;
+    const MAX_BYTES: usize = 16 * 1024;
+    let expected = format!("{}\n", normalize_canonical(expected));
+    let actual = format!("{}\n", normalize_canonical(actual));
+    let old = format!("expected {context}");
+    let new = format!("actual {context}");
+    let full = TextDiff::from_lines(&expected, &actual)
+        .unified_diff()
+        .context_radius(3)
+        .header(&old, &new)
+        .to_string();
+    let lines: Vec<&str> = full.split_inclusive('\n').collect();
+    let mut out = String::new();
+    for (index, line) in lines.iter().enumerate() {
+        if index >= MAX_LINES || out.len() + line.len() > MAX_BYTES {
+            out.push_str(&format!("... {} diff lines omitted\n", lines.len() - index));
+            break;
+        }
+        out.push_str(line);
+    }
+    out
 }
 
 /// Checks the warnings against the one code a fence may declare.
@@ -163,6 +189,49 @@ mod tests {
             check_canonical("a", "a\nb").unwrap(),
             "line 2 differs: expected <end> got b"
         );
+    }
+
+    #[test]
+    fn unified_mismatch_names_the_fence_and_shows_context() {
+        let diff = canonical_diff(
+            "one\ntwo\nthree\nfour\nfive\n",
+            "one\ntwo\nchanged\nfour\nfive\n",
+            "types-0001 fence 2 profile yaml",
+        );
+        assert!(diff.starts_with("--- expected types-0001 fence 2 profile yaml\n+++ actual types-0001 fence 2 profile yaml\n"));
+        assert!(diff.contains("@@"));
+        assert!(diff.contains("-three\n+changed\n"));
+        assert!(diff.contains(" two\n"));
+    }
+
+    #[test]
+    fn unified_mismatch_is_bounded_and_announces_omitted_lines() {
+        let expected = (0..500)
+            .map(|i| format!("before-{i}\n"))
+            .collect::<String>();
+        let actual = (0..500).map(|i| format!("after-{i}\n")).collect::<String>();
+        let diff = canonical_diff(&expected, &actual, "large-0001 fence 0 profile json");
+        assert!(diff.len() <= 17_000);
+        assert!(diff.contains("diff lines omitted"));
+        let huge = canonical_diff(
+            &"x".repeat(20_000),
+            &"y".repeat(20_000),
+            "large-0002 fence 0 profile ion",
+        );
+        assert!(huge.len() <= 17_000);
+        assert!(huge.contains("diff lines omitted"));
+    }
+
+    #[test]
+    fn round_trip_ion_diff_names_the_answer_profile() {
+        let diff = canonical_diff(
+            "{a:1}\n",
+            "{a:2}\n",
+            "values-0003 step 2 round-trip via yaml",
+        );
+        assert!(diff.contains("--- expected values-0003 step 2 round-trip via yaml"));
+        assert!(diff.contains("+++ actual values-0003 step 2 round-trip via yaml"));
+        assert!(diff.contains("-{a:1}\n+{a:2}\n"));
     }
 
     #[test]
