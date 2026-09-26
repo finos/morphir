@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use super::{Outcome, Record, Summary};
-use crate::transport::protocol::{self, Capabilities, parse_capabilities};
+use crate::transport::protocol::{Capabilities, parse_capabilities};
 
 pub const CONTRACT_VERSION: &str = "2.0.0-draft.1";
 pub const SCHEMA: &str = include_str!("../../../../spec/ir/mck/report-draft.schema.json");
@@ -127,7 +127,7 @@ impl Serialize for NegotiatedCapabilities {
         use serde::ser::SerializeStruct;
         let c = &self.0;
         let mut out = serializer.serialize_struct("Capabilities", 9)?;
-        out.serialize_field("contractVersion", &protocol::CONTRACT_VERSION)?;
+        out.serialize_field("contractVersion", &c.contract_version.as_u64())?;
         out.serialize_field("binding", &c.binding)?;
         out.serialize_field("language", &c.language)?;
         out.serialize_field("formatVersions", &c.format_versions)?;

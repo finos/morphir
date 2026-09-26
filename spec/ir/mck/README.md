@@ -8,8 +8,8 @@ and kit version.
 
 The case files are plain Gherkin `*.feature` files. The kit driver contract is
 2; a CLI that reads the former Markdown case grammar must refuse a managed
-version-2 kit before starting an adapter. The adapter protocol remains integer
-contract version 1. Historical reports, transcripts and corpus inventories
+version-2 kit before starting an adapter. The adapter protocol accepts integer
+contract versions 1 and 2. Historical reports, transcripts and corpus inventories
 remain under [the baseline directory](../../mck/baseline/README.md).
 
 The kit states meaning by example. The semantic model lives in TypeScript; YAML
@@ -80,7 +80,15 @@ kind. For a document-tree set, the runner reads the files as one document and
 compares them with the single-file canonical document, then compares the files
 written back. Pending cases produce skips; an active case containing only
 rejected inputs still runs. The wire messages are defined by
-[protocol.schema.json](protocol.schema.json), contract version 1.
+[protocol.schema.json](protocol.schema.json), contract versions 1 and 2.
+
+The native runner requests adapter protocol v2 with
+`{"id":1,"op":"capabilities","contractVersion":2}`. A v2 response may
+advertise `ion`; a v1 response may advertise only `json` and `yaml`. If a
+responsive v1 adapter rejects the versioned request with `protocol_error`, the
+runner retries the unversioned v1 capabilities request. The other operations
+still use the JSON and YAML vocabulary until Ion cases are enabled. The
+[worked transcript](protocol.example.json) shows a v1 exchange.
 
 To add a case, choose the next unused ID in its topic file, explain the
 decision in scenario prose, add canonical YAML and JSON spellings where the

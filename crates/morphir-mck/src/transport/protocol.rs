@@ -1,4 +1,4 @@
-//! IR adapter protocol, contract version 1 (`spec/ir/mck/protocol.schema.json`).
+//! IR adapter protocol, contract versions 1 and 2 (`spec/ir/mck/protocol.schema.json`).
 //!
 //! An adapter is a foreign process, so nothing it sends is trusted until it is
 //! checked. Every guard rejects unknown members, matching the schema's
@@ -17,7 +17,22 @@ use serde_json::{Map, Value};
 
 use crate::format_version::{DOMAIN_FLOOR, SupportTable};
 
-pub const CONTRACT_VERSION: u64 = 1;
+pub const CONTRACT_VERSION: u64 = 2;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdapterContract {
+    V1,
+    V2,
+}
+
+impl AdapterContract {
+    pub fn as_u64(self) -> u64 {
+        match self {
+            Self::V1 => 1,
+            Self::V2 => 2,
+        }
+    }
+}
 
 /// A response or envelope that breaks the protocol.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +90,25 @@ macro_rules! closed_enum {
 }
 
 closed_enum!(Profile, "profile", { Json => "json", Yaml => "yaml" });
+closed_enum!(CapabilitiesProfile, "capabilities profile", { Json => "json", Yaml => "yaml", Ion => "ion" });
+
+impl From<Profile> for CapabilitiesProfile {
+    fn from(value: Profile) -> Self {
+        match value {
+            Profile::Json => Self::Json,
+            Profile::Yaml => Self::Yaml,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VersionTwo;
+
+impl Serialize for VersionTwo {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_u8(2)
+    }
+}
 closed_enum!(Layout, "layout", { Single => "single", Tree => "tree" });
 closed_enum!(PathMode, "path", { Current => "current", Pinned => "pinned" });
 closed_enum!(Stage, "stage", { Syntax => "syntax", Normalization => "normalization", Semantic => "semantic" });
@@ -82,13 +116,14 @@ closed_enum!(Stage, "stage", { Syntax => "syntax", Normalization => "normalizati
 /// What an adapter says it can do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Capabilities {
+    pub contract_version: AdapterContract,
     pub binding: String,
     pub language: String,
     /// The canonical spelling of `table`, as the adapter sent it.
     pub format_versions: String,
     pub table: SupportTable,
     pub versions: Vec<u32>,
-    pub profiles: Vec<Profile>,
+    pub profiles: Vec<CapabilitiesProfile>,
     pub layouts: Vec<Layout>,
     pub paths: Vec<PathMode>,
     /// Node kinds as the kit names them, aliases included.
@@ -113,6 +148,11 @@ pub struct WritePolicy {
 #[serde(tag = "op", rename_all = "camelCase")]
 pub enum Request {
     Capabilities,
+    #[serde(rename = "capabilities")]
+    CapabilitiesV2 {
+        #[serde(rename = "contractVersion")]
+        contract_version: VersionTwo,
+    },
     Decode {
         version: u32,
         profile: Profile,
@@ -139,6 +179,11 @@ pub enum Request {
 }
 
 impl Request {
+    pub fn capabilities_v2() -> Self {
+        Self::CapabilitiesV2 {
+            contract_version: VersionTwo,
+        }
+    }
     /// The request as one protocol line, without its trailing newline.
     pub fn line(&self, id: u64) -> String {
         let body = serde_json::to_string(self).expect("requests serialize");
@@ -214,7 +259,7 @@ fn string<'a>(o: &'a Object, key: &str) -> Result<&'a str, ProtocolError> {
 fn listed<T: Copy>(
     o: &Object,
     key: &str,
-    parse: fn(&str) -> Option<T>,
+    parse: impl Fn(&str) -> Option<T>,
     allowed: &str,
 ) -> Result<Vec<T>, ProtocolError> {
     let Some(items) = o.get(key).and_then(Value::as_array) else {
@@ -223,7 +268,7 @@ fn listed<T: Copy>(
     items
         .iter()
         .map(|item| {
-            item.as_str().and_then(parse).map_or_else(
+            item.as_str().and_then(&parse).map_or_else(
                 || {
                     fail(format!(
                         "\"{key}\" contains {item}, expected one of {allowed}"
@@ -281,13 +326,17 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
         ],
         "",
     )?;
-    if o.get("contractVersion").and_then(integer) != Some(CONTRACT_VERSION as i64) {
-        return fail(format!(
-            "unsupported contractVersion {}; this driver speaks {CONTRACT_VERSION}",
-            o.get("contractVersion")
-                .map_or_else(|| "undefined".to_owned(), Value::to_string)
-        ));
-    }
+    let contract_version = match o.get("contractVersion").and_then(integer) {
+        Some(1) => AdapterContract::V1,
+        Some(2) => AdapterContract::V2,
+        _ => {
+            return fail(format!(
+                "unsupported contractVersion {}; this driver speaks 1 and {CONTRACT_VERSION}",
+                o.get("contractVersion")
+                    .map_or_else(|| "undefined".to_owned(), Value::to_string)
+            ));
+        }
+    };
     let versions: Vec<u32> = match o.get("versions").and_then(Value::as_array) {
         Some(items) => items
             .iter()
@@ -380,13 +429,26 @@ pub fn parse_capabilities(value: &Value) -> Result<Capabilities, ProtocolError> 
             }
         }
     }
+    let allowed_profiles = match contract_version {
+        AdapterContract::V1 => Profile::allowed(),
+        AdapterContract::V2 => CapabilitiesProfile::allowed(),
+    };
     Ok(Capabilities {
+        contract_version,
         binding: binding.to_owned(),
         language: language.to_owned(),
         format_versions: format_versions.to_owned(),
         table,
         versions,
-        profiles: listed(o, "profiles", Profile::parse, &Profile::allowed())?,
+        profiles: listed(
+            o,
+            "profiles",
+            |profile| match contract_version {
+                AdapterContract::V1 => Profile::parse(profile).map(Into::into),
+                AdapterContract::V2 => CapabilitiesProfile::parse(profile),
+            },
+            &allowed_profiles,
+        )?,
         layouts: listed(o, "layouts", Layout::parse, &Layout::allowed())?,
         paths: listed(o, "paths", PathMode::parse, &PathMode::allowed())?,
         nodes,
@@ -537,13 +599,17 @@ pub fn parse_request(value: &Value) -> Result<Request, ProtocolError> {
             .map_or_else(|| fail("\"strip\" must be a boolean"), Ok)
     };
     match op {
-        "capabilities" | "exit" => {
+        "capabilities" => {
+            known_keys(o, &["op", "contractVersion"], "")?;
+            match o.get("contractVersion") {
+                None => Ok(Request::Capabilities),
+                Some(version) if integer(version) == Some(2) => Ok(Request::capabilities_v2()),
+                _ => fail("\"contractVersion\" must be 2 when present"),
+            }
+        }
+        "exit" => {
             known_keys(o, &["op"], "")?;
-            Ok(if op == "exit" {
-                Request::Exit
-            } else {
-                Request::Capabilities
-            })
+            Ok(Request::Exit)
         }
         "decode" => {
             known_keys(
@@ -641,16 +707,36 @@ mod tests {
         let parsed = parse_capabilities(&caps(json!({}))).unwrap();
         assert_eq!(parsed.format_versions, "[3.0.0,3.2.0),[4.0.0,4.1.0)");
         assert_eq!(parsed.versions, vec![3, 4]);
-        assert_eq!(parsed.profiles, vec![Profile::Json, Profile::Yaml]);
+        assert_eq!(
+            parsed.profiles,
+            vec![CapabilitiesProfile::Json, CapabilitiesProfile::Yaml]
+        );
         assert_eq!(parsed.nodes, vec!["Type", "Distribution"]);
+    }
+
+    #[test]
+    fn v2_capabilities_can_advertise_ion_but_v1_cannot() {
+        let v2 = caps(json!({"contractVersion": 2, "profiles": ["json", "yaml", "ion"]}));
+        let parsed = parse_capabilities(&v2).unwrap();
+        assert_eq!(parsed.contract_version, AdapterContract::V2);
+        assert!(parsed.profiles.contains(&CapabilitiesProfile::Ion));
+
+        refused(
+            caps(json!({"profiles": ["json", "ion"]})),
+            "expected one of json, yaml",
+        );
+        refused(
+            caps(json!({"contractVersion": 3})),
+            "unsupported contractVersion 3",
+        );
     }
 
     #[test]
     fn refuses_capabilities_that_break_the_contract() {
         refused(caps(json!({ "extra": true })), "unknown field \"extra\"");
         refused(
-            caps(json!({ "contractVersion": 2 })),
-            "unsupported contractVersion 2",
+            caps(json!({ "contractVersion": 3 })),
+            "unsupported contractVersion 3",
         );
         refused(
             caps(json!({ "contractVersion": null })),
@@ -842,5 +928,37 @@ mod tests {
         let (id, body) = parse_envelope(&write.line(9)).unwrap();
         assert_eq!(id, 9);
         assert_eq!(parse_request(&Value::Object(body)).unwrap(), write);
+    }
+
+    #[test]
+    fn v2_capabilities_request_names_its_contract_version() {
+        assert_eq!(
+            Request::capabilities_v2().line(1),
+            r#"{"id":1,"op":"capabilities","contractVersion":2}"#
+        );
+        let (id, body) = parse_envelope(&Request::capabilities_v2().line(1)).unwrap();
+        assert_eq!(id, 1);
+        assert_eq!(
+            parse_request(&Value::Object(body)).unwrap(),
+            Request::capabilities_v2()
+        );
+    }
+
+    #[test]
+    fn schema_accepts_v2_ion_capabilities_and_rejects_v1_ion() {
+        let schema: Value =
+            serde_json::from_str(include_str!("../../../../spec/ir/mck/protocol.schema.json"))
+                .unwrap();
+        let validator = jsonschema::options().build(&schema).unwrap();
+
+        let mut v2 = caps(json!({"contractVersion": 2, "profiles": ["ion"]}));
+        v2["id"] = json!(1);
+        assert!(validator.is_valid(&v2));
+        assert!(validator.is_valid(&json!({"id": 1, "op": "capabilities", "contractVersion": 2})));
+
+        let mut v1 = v2;
+        v1["contractVersion"] = json!(1);
+        assert!(!validator.is_valid(&v1));
+        assert!(!validator.is_valid(&json!({"id": 1, "op": "capabilities", "contractVersion": 1})));
     }
 }
