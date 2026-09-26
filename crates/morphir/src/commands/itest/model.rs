@@ -1,9 +1,11 @@
+//! The scenario model of a `scenarios.md` section: its metadata, and its commands with their
+//! assertions and golden checks, checked before anything runs.
 use super::golden::{LineEndings, Selection};
-pub use crate::notebook::relative_path;
-use crate::notebook::{CellKind, Notebook};
+use super::markdown::{CellRole, ParsedSection};
 use anyhow::{Context, Result, ensure};
 use morphir_evaluator::ProviderId;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashSet;
 
 #[derive(Debug, Deserialize)]
@@ -17,7 +19,7 @@ pub struct Metadata {
     pub workspace: Workspace,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Workspace {
     Directory {
@@ -25,8 +27,8 @@ pub enum Workspace {
         #[serde(default)]
         exclude: Vec<String>,
     },
-    #[serde(alias = "inline")]
-    Notebook {},
+    /// Only the scenario's own `morphir:file` blocks (or `yaml itest` files); no disk inputs.
+    Inline {},
 }
 
 impl Default for Workspace {
@@ -38,7 +40,22 @@ impl Default for Workspace {
     }
 }
 
-#[derive(Debug, Deserialize)]
+impl Workspace {
+    /// A directory workspace's path and exclusions must be portable relative paths.
+    pub fn validate(&self) -> Result<()> {
+        if let Workspace::Directory { path, exclude } = self {
+            if path != "." {
+                relative_path(path).context("invalid workspace directory")?;
+            }
+            for path in exclude {
+                relative_path(path).context("invalid workspace exclusion")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Capture {
     pub name: String,
@@ -118,7 +135,6 @@ pub struct Golden {
 #[derive(Debug)]
 pub struct Step {
     pub id: String,
-    pub name: String,
     pub args: Vec<String>,
     pub timeout_seconds: u64,
     pub stdout_json: bool,
@@ -126,22 +142,13 @@ pub struct Step {
     pub assertions: Vec<Assertion>,
 }
 
-pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
-    let profile = &notebook.document()["metadata"]["morphir"];
-    ensure!(
-        profile["version"] == 1,
-        "missing Morphir notebook profile version 1"
-    );
-    let metadata: Metadata =
-        serde_json::from_value(profile["itest"].clone()).context("invalid scenario metadata")?;
-    if let Workspace::Directory { path, exclude } = &metadata.workspace {
-        if path != "." {
-            relative_path(path).context("invalid workspace directory")?;
-        }
-        for path in exclude {
-            relative_path(path).context("invalid workspace exclusion")?;
-        }
-    }
+/// Reads a section's scenario metadata and its steps, and checks them: the metadata's title,
+/// description and tags, each command's literal `morphir` command line, timeout and captures, and
+/// that each assertion and golden check names an earlier command.
+pub fn parse(section: &ParsedSection) -> Result<(Metadata, Vec<Step>)> {
+    let metadata: Metadata = serde_json::from_value(Value::Object(section.metadata.clone()))
+        .context("invalid scenario metadata")?;
+    metadata.workspace.validate()?;
     ensure!(
         !metadata.title.trim().is_empty() && !metadata.description.trim().is_empty(),
         "scenario needs title and description"
@@ -160,22 +167,12 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
     }
     let mut steps: Vec<Step> = Vec::new();
     let mut names = HashSet::new();
-    for cell in notebook.cells() {
-        let Some(role) = cell.morphir().get("itest") else {
+    for cell in &section.cells {
+        if cell.role == CellRole::File {
             continue;
-        };
-        ensure!(
-            cell.kind() == CellKind::Code,
-            "cell {}: executable role requires code cell",
-            cell.id()
-        );
-        ensure!(
-            cell.morphir().get("file").is_none(),
-            "cell {} cannot be both workspace file and executable",
-            cell.id()
-        );
-        let role: Role = serde_json::from_value(role.clone())
-            .with_context(|| format!("cell {}: invalid itest role", cell.id()))?;
+        }
+        let role: Role = serde_json::from_value(Value::Object(cell.metadata.clone()))
+            .with_context(|| format!("cell {}: invalid itest role", cell.id))?;
         match role {
             Role::Command {
                 name,
@@ -191,12 +188,12 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
                     (1..=300).contains(&timeout_seconds),
                     "command timeout must be 1..300 seconds"
                 );
-                let arguments = shell_words::split(cell.source())
+                let arguments = shell_words::split(&cell.source)
                     .context("invalid literal CLI command quoting")?;
                 ensure!(
                     arguments.first().map(String::as_str) == Some("morphir") && arguments.len() > 1,
                     "cell {} must contain one literal morphir command",
-                    cell.id()
+                    cell.id
                 );
                 let mut capture_names = HashSet::new();
                 for capture in &captures {
@@ -207,8 +204,7 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
                     relative_path(&capture.path)?;
                 }
                 steps.push(Step {
-                    id: cell.id().to_owned(),
-                    name,
+                    id: cell.id.clone(),
                     args: arguments[1..].to_vec(),
                     timeout_seconds,
                     stdout_json,
@@ -229,13 +225,13 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
                     Some(path) => {
                         relative_path(&path).context("invalid golden expected path")?;
                         ensure!(
-                            cell.source().is_empty(),
+                            cell.source.is_empty(),
                             "golden {} cannot combine expected_file and inline source",
-                            cell.id()
+                            cell.id
                         );
                         ExpectedText::File(path)
                     }
-                    None => ExpectedText::Inline(cell.source().to_owned()),
+                    None => ExpectedText::Inline(cell.source.clone()),
                 };
                 let step = steps
                     .iter_mut()
@@ -243,11 +239,11 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
                     .with_context(|| {
                         format!(
                             "golden {} references missing or forward command {command:?}",
-                            cell.id()
+                            cell.id
                         )
                     })?;
                 step.assertions.push(Assertion {
-                    id: cell.id().to_owned(),
+                    id: cell.id.clone(),
                     kind: AssertionKind::Golden(Golden {
                         actual,
                         expected,
@@ -266,31 +262,31 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
                     .with_context(|| {
                         format!(
                             "assertion {} references missing or forward command {command:?}",
-                            cell.id()
+                            cell.id
                         )
                     })?;
                 ensure!(
                     !entrypoints.is_empty(),
                     "assertion {} needs entrypoints",
-                    cell.id()
+                    cell.id
                 );
                 let mut unique = HashSet::new();
                 for rule in &entrypoints {
                     ensure!(
                         rule.starts_with("data.") && unique.insert(rule),
                         "assertion {}: entrypoints must be unique named data rules",
-                        cell.id()
+                        cell.id
                     );
                 }
                 ensure!(
-                    !cell.source().trim().is_empty(),
+                    !cell.source.trim().is_empty(),
                     "assertion {} is empty",
-                    cell.id()
+                    cell.id
                 );
                 step.assertions.push(Assertion {
-                    id: cell.id().to_owned(),
+                    id: cell.id.clone(),
                     kind: AssertionKind::Rego {
-                        source: cell.source().to_owned(),
+                        source: cell.source.clone(),
                         entrypoints,
                     },
                 });
@@ -306,4 +302,143 @@ pub fn parse(notebook: &Notebook) -> Result<(Metadata, Vec<Step>)> {
         );
     }
     Ok((metadata, steps))
+}
+
+/// Checks that `value` is a normalized, portable path that stays inside the workspace: relative,
+/// with `/` separators, no `.` or `..` component, and no component that Windows refuses.
+pub fn relative_path(value: &str) -> Result<()> {
+    ensure!(
+        !value.is_empty() && !value.contains(['\\', ':']),
+        "expected a portable relative path: {value:?}"
+    );
+    ensure!(
+        value
+            .split('/')
+            .all(|part| !part.is_empty() && part != "." && part != ".."),
+        "path escapes the workspace or is not normalized: {value:?}"
+    );
+    for part in value.split('/') {
+        ensure!(
+            !part.ends_with(['.', ' '])
+                && !part
+                    .chars()
+                    .any(|ch| ch.is_control() || "<>\"|?*".contains(ch)),
+            "nonportable path component: {part:?}"
+        );
+        let stem = part
+            .split('.')
+            .next()
+            .unwrap_or_default()
+            .to_ascii_uppercase();
+        let device = matches!(
+            stem.as_str(),
+            "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+        ) || ["COM", "LPT"].iter().any(|prefix| {
+            stem.strip_prefix(prefix).is_some_and(|suffix| {
+                matches!(
+                    suffix,
+                    "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
+                )
+            })
+        });
+        ensure!(!device, "reserved device name in workspace path: {part:?}");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::markdown::Cell;
+    use super::*;
+
+    /// A Windows-reserved device name, in any component, is refused whatever its case or a
+    /// following extension.
+    #[test]
+    fn relative_path_rejects_windows_reserved_device_names() {
+        for path in [
+            "CON",
+            "con.txt",
+            "src/CONIN$",
+            "conout$",
+            "aux",
+            "PRN.log",
+            "nul",
+            "src/Lpt9.txt",
+            "COM1",
+            "com9.txt",
+        ] {
+            assert!(relative_path(path).is_err(), "accepted {path:?}");
+        }
+        // A prefix match alone is not a device name.
+        assert!(relative_path("LPT10").is_ok());
+        assert!(relative_path("console").is_ok());
+    }
+
+    /// A component that ends with `.` or a space, or holds a control character, is not portable
+    /// to Windows.
+    #[test]
+    fn relative_path_rejects_trailing_dot_or_space_and_control_characters() {
+        for path in ["src/name.", "src/name ", "src/a\nb", "src/a\tb", "a\u{7}b"] {
+            assert!(relative_path(path).is_err(), "accepted {path:?}");
+        }
+    }
+
+    /// `expected_file` and a non-empty inline source cannot both hold a golden check's
+    /// expectation. Neither `scenarios.md` (whose reader drops any source fence once
+    /// `expected_file` is set) nor a `.feature` step (whose two golden step texts are mutually
+    /// exclusive) can author this combination, so this constructs the section directly.
+    #[test]
+    fn golden_role_rejects_combining_expected_file_and_inline_source() {
+        let metadata = serde_json::json!({
+            "title": "Golden metadata",
+            "description": "Golden metadata is checked before any command runs.",
+            "tags": ["suite:offline"],
+            "provider": "rego",
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+        let section = ParsedSection {
+            id: "check".into(),
+            title: "Check".into(),
+            line: 1,
+            metadata,
+            cells: vec![
+                Cell {
+                    id: "run".into(),
+                    role: CellRole::Command,
+                    metadata: serde_json::json!({
+                        "kind": "command",
+                        "name": "Observe files",
+                        "timeout_seconds": 10,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+                    source: "morphir --version".into(),
+                    line: 2,
+                },
+                Cell {
+                    id: "golden".into(),
+                    role: CellRole::Golden,
+                    metadata: serde_json::json!({
+                        "kind": "golden",
+                        "command": "run",
+                        "actual": "actual.txt",
+                        "expected_file": "expected.txt",
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+                    source: "inline\n".into(),
+                    line: 3,
+                },
+            ],
+        };
+        let error = parse(&section).unwrap_err();
+        assert!(
+            format!("{error:#}").contains("cannot combine expected_file and inline source"),
+            "{error:#}"
+        );
+    }
 }

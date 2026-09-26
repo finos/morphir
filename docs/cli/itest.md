@@ -3,10 +3,10 @@
 
 - **Usage:** `morphir itest [FLAGS] [ROOT]`
 
-Run notebook or Markdown integration scenarios through real CLI processes
+Run Markdown and Gherkin example scenarios through real CLI processes
 
 ## Arguments
-- **`[ROOT]`** — Directory to search recursively for scenario.ipynb or scenarios.md files
+- **`[ROOT]`** — Directory to search recursively for scenarios.md, .feature and .feature.md files
 
   **Default:** `examples`
 

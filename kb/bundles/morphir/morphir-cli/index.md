@@ -11,7 +11,7 @@ The Rust morphir command line: its commands, behavior and design, as shipped fro
 ## Orientation
 
 * [Knowledge Base Tooling](/kb-tooling.md) - The morphir kb command manages the OKF knowledge base and the intent recorded in it, from the command line.
-* [Example-driven CLI validation](/example-driven-validation.md) - Notebook and Markdown scenarios with embedded Rego assertions turn documented Morphir CLI workflows into incremental regression coverage.
+* [Example-driven CLI validation](/example-driven-validation.md) - Markdown and Gherkin scenarios with embedded Rego assertions turn documented Morphir CLI workflows into incremental regression coverage.
 
 ## Design
 

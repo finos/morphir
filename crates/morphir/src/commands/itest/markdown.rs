@@ -1,14 +1,19 @@
-//! Markdown authoring adapter for the shared scenario and workspace validators.
-use crate::notebook::Notebook;
+//! The `scenarios.md` authoring format: YAML frontmatter, then one scenario for each `##`
+//! section, each made of Morphir blocks (a `yaml morphir:<role>` metadata fence and the source
+//! fence after it).
 use anyhow::{Context, Result, bail, ensure};
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::{collections::HashSet, ops::Range};
 
-enum Block {
+/// A `##` heading or a fence of the frontmatter-stripped body, in source order.
+enum Item {
     Scenario {
         title: String,
         id: Option<String>,
+        /// The byte offset of the heading's first character in the frontmatter-stripped body.
+        start: usize,
     },
     Fence {
         info: String,
@@ -17,15 +22,20 @@ enum Block {
     },
 }
 
-#[derive(Clone, Copy)]
-enum Role {
+/// What a Morphir block is, from the marker of its `yaml morphir:<role>` metadata fence.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum CellRole {
+    /// `morphir:command`: one literal `morphir` command line.
     Command,
+    /// `morphir:assertion`: a Rego policy over the last command's observation.
     Assertion,
+    /// `morphir:golden`: an expected text for a file the last command wrote.
     Golden,
+    /// `morphir:file`: a file written into the workspace before the commands run.
     File,
 }
 
-impl Role {
+impl CellRole {
     fn from_info(info: &str) -> Result<Option<Self>> {
         let words: Vec<_> = info.split_whitespace().collect();
         if !words.iter().any(|word| word.starts_with("morphir:")) {
@@ -45,10 +55,55 @@ impl Role {
     }
 }
 
-struct Section {
-    id: String,
-    title: String,
-    cells: Vec<Value>,
+/// One Morphir block of a section: its `yaml morphir:<role>` metadata fence and the source fence
+/// after it. A golden block with `expected_file` has no source fence, and its source is empty.
+#[derive(Debug)]
+pub(super) struct Cell {
+    /// The block's `id`, unique in its section.
+    pub(super) id: String,
+    /// What the block is, from its metadata fence marker.
+    pub(super) role: CellRole,
+    /// The metadata fence's fields without `id`. A command, assertion or golden block also has
+    /// `kind` (`command`, `assertion` or `golden`), and a file block also has `language`, the
+    /// source fence's language.
+    pub(super) metadata: Map<String, Value>,
+    /// The source fence's text, exactly as written.
+    pub(super) source: String,
+    /// The metadata fence's 1-based line in the source `scenarios.md` file, so that a reader can
+    /// point a failure at the block and not at the section heading.
+    pub(super) line: usize,
+}
+
+/// One `##` section of a `scenarios.md` file: its resolved id, its heading title and line, the
+/// scenario metadata `model::parse` reads, and its Morphir blocks in source order.
+#[derive(Debug)]
+pub(super) struct ParsedSection {
+    /// The section's id: explicit (`{#id}`) or derived from its title.
+    pub(super) id: String,
+    /// The section heading's text.
+    pub(super) title: String,
+    /// The section heading's 1-based line in the source `scenarios.md` file.
+    pub(super) line: usize,
+    /// The scenario metadata: the frontmatter's fields, with the heading's text as the `title`.
+    pub(super) metadata: Map<String, Value>,
+    /// The section's Morphir blocks, in source order.
+    pub(super) cells: Vec<Cell>,
+}
+
+impl ParsedSection {
+    /// The block whose id is `id`, if the section has one.
+    pub(super) fn cell(&self, id: &str) -> Option<&Cell> {
+        self.cells.iter().find(|cell| cell.id == id)
+    }
+}
+
+/// A `scenarios.md` file's frontmatter metadata and its `##` sections, in source order.
+pub(super) struct ParsedDocument {
+    /// The frontmatter's own metadata: its title (not a section heading's), description, tags,
+    /// provider and workspace.
+    pub(super) metadata: super::model::Metadata,
+    /// The document's sections, in source order.
+    pub(super) sections: Vec<ParsedSection>,
 }
 
 /// Heading IDs are usable as the fragment of an itest path filter.
@@ -64,7 +119,9 @@ pub(super) fn validate_id(id: &str) -> Result<()> {
     Ok(())
 }
 
-fn section_id(title: &str, explicit: Option<String>) -> Result<String> {
+/// A section's id: `explicit` when given, or else the title's lowercase ASCII words joined by
+/// hyphens.
+pub(super) fn section_id(title: &str, explicit: Option<String>) -> Result<String> {
     let id = explicit.unwrap_or_else(|| {
         title
             .to_ascii_lowercase()
@@ -81,7 +138,7 @@ fn yaml(text: &str) -> Result<Map<String, Value>> {
     serde_saphyr::from_str(text).context("invalid YAML metadata")
 }
 
-fn frontmatter(text: &str) -> Result<(Map<String, Value>, &str)> {
+fn frontmatter(text: &str) -> Result<(super::model::Metadata, Map<String, Value>, &str)> {
     let mut lines = text.split_inclusive('\n');
     let first = lines.next().context("missing YAML frontmatter")?;
     ensure!(
@@ -104,17 +161,17 @@ fn frontmatter(text: &str) -> Result<(Map<String, Value>, &str)> {
                 !context.title.trim().is_empty(),
                 "frontmatter needs a title"
             );
-            return Ok((metadata, &text[end + line.len()..]));
+            return Ok((context, metadata, &text[end + line.len()..]));
         }
         end += line.len();
     }
     bail!("unclosed YAML frontmatter")
 }
 
-fn blocks(text: &str) -> Vec<Block> {
-    let mut blocks = Vec::new();
+fn items(text: &str) -> Vec<Item> {
+    let mut items = Vec::new();
     let mut depth = 0;
-    let mut heading: Option<(String, Option<String>)> = None;
+    let mut heading: Option<(String, Option<String>, usize)> = None;
     for (event, range) in
         Parser::new_ext(text, Options::ENABLE_HEADING_ATTRIBUTES).into_offset_iter()
     {
@@ -126,9 +183,9 @@ fn blocks(text: &str) -> Vec<Block> {
                         id,
                         ..
                     } if depth == 0 => {
-                        heading = Some((String::new(), id.map(|id| id.into_string())));
+                        heading = Some((String::new(), id.map(|id| id.into_string()), range.start));
                     }
-                    Tag::CodeBlock(CodeBlockKind::Fenced(info)) => blocks.push(Block::Fence {
+                    Tag::CodeBlock(CodeBlockKind::Fenced(info)) => items.push(Item::Fence {
                         info: info.into_string(),
                         range,
                         top_level: depth == 0,
@@ -140,25 +197,25 @@ fn blocks(text: &str) -> Vec<Block> {
             Event::End(tag) => {
                 depth -= 1;
                 if tag == TagEnd::Heading(HeadingLevel::H2)
-                    && let Some((title, id)) = heading.take()
+                    && let Some((title, id, start)) = heading.take()
                 {
-                    blocks.push(Block::Scenario { title, id });
+                    items.push(Item::Scenario { title, id, start });
                 }
             }
             Event::Text(text) | Event::Code(text) => {
-                if let Some((title, _)) = &mut heading {
+                if let Some((title, _, _)) = &mut heading {
                     title.push_str(&text);
                 }
             }
             Event::SoftBreak | Event::HardBreak => {
-                if let Some((title, _)) = &mut heading {
+                if let Some((title, _, _)) = &mut heading {
                     title.push(' ');
                 }
             }
             _ => {}
         }
     }
-    blocks
+    items
 }
 
 /// Read source bytes rather than rendered Markdown text, retaining CRLF and indentation.
@@ -188,9 +245,18 @@ fn fenced_source<'a>(text: &'a str, range: &Range<usize>) -> Result<&'a str> {
     Ok(&remainder[..close])
 }
 
-fn cell(role: Role, mut metadata: Map<String, Value>, info: &str, source: &str) -> Result<Value> {
+fn cell(
+    role: CellRole,
+    mut metadata: Map<String, Value>,
+    info: &str,
+    source: &str,
+    line: usize,
+) -> Result<Cell> {
     let id = metadata.remove("id").context("Morphir block needs an id")?;
-    ensure!(id.is_string(), "Morphir block id must be a string");
+    let id = id
+        .as_str()
+        .context("Morphir block id must be a string")?
+        .to_owned();
     let language = info
         .split_whitespace()
         .next()
@@ -199,42 +265,88 @@ fn cell(role: Role, mut metadata: Map<String, Value>, info: &str, source: &str) 
         !metadata.contains_key("kind"),
         "block kind comes from the metadata fence marker"
     );
-    let profile = match role {
-        Role::File => {
+    match role {
+        CellRole::File => {
             ensure!(
                 !metadata.contains_key("language"),
                 "file language comes from the source fence"
             );
             metadata.insert("language".into(), json!(language));
-            json!({"file": metadata})
         }
-        Role::Golden => {
+        CellRole::Golden => {
             metadata.insert("kind".into(), json!("golden"));
-            json!({"itest":metadata})
         }
-        Role::Command | Role::Assertion => {
-            let kind = if matches!(role, Role::Command) {
+        CellRole::Command | CellRole::Assertion => {
+            let kind = if role == CellRole::Command {
                 "command"
             } else {
                 ensure!(language == "rego", "assertion source language must be rego");
                 "assertion"
             };
             metadata.insert("kind".into(), json!(kind));
-            json!({"itest": metadata})
         }
-    };
-    Ok(json!({"id": id, "cell_type": "code", "source": source,
-        "metadata": {"morphir": profile}, "outputs": [], "execution_count": null}))
+    }
+    Ok(Cell {
+        id,
+        role,
+        metadata,
+        source: source.to_owned(),
+        line,
+    })
 }
 
-pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
-    let (defaults, body) = frontmatter(text)?;
-    let mut sections: Vec<Section> = Vec::new();
+/// The metadata of a `morphir:file` block: its portable workspace path, and the language of its
+/// source fence.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileMetadata {
+    path: String,
+    language: String,
+}
+
+/// Checks the blocks of one section together: every id is well formed and unique, every file
+/// block has valid metadata, and the file paths form one portable workspace.
+fn check_cells(cells: &[Cell]) -> Result<()> {
+    let mut ids = HashSet::new();
+    let mut files = Vec::new();
+    for cell in cells {
+        let id = &cell.id;
+        ensure!(
+            !id.is_empty()
+                && id.len() <= 64
+                && id
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || b"-_".contains(&c)),
+            "invalid Morphir block id {id:?}"
+        );
+        ensure!(ids.insert(id.as_str()), "duplicate Morphir block id {id:?}");
+        if cell.role == CellRole::File {
+            let file: FileMetadata =
+                serde_json::from_value(Value::Object(cell.metadata.clone()))
+                    .with_context(|| format!("block {id}: invalid workspace file metadata"))?;
+            ensure!(
+                !file.language.trim().is_empty(),
+                "block {id}: file language is empty"
+            );
+            files.push(file.path);
+        }
+    }
+    super::workspace::validate_workspace_paths(files.iter().map(String::as_str), std::iter::empty())
+}
+
+/// Parses a `scenarios.md` file into its frontmatter metadata and its `##` sections. This is the
+/// single Markdown pass: [`super::reader::read_scenarios_md`] builds on it, so the file is never
+/// parsed twice.
+pub(super) fn parse_sections(text: &str) -> Result<ParsedDocument> {
+    let (frontmatter_metadata, defaults, body) = frontmatter(text)?;
+    let body_offset = text.len() - body.len();
+    let prefix_lines = text[..body_offset].bytes().filter(|c| *c == b'\n').count();
+    let mut sections: Vec<ParsedSection> = Vec::new();
     let mut ids = HashSet::new();
     let mut pending = None;
-    for block in blocks(body) {
-        match block {
-            Block::Scenario { title, id } => {
+    for item in items(body) {
+        match item {
+            Item::Scenario { title, id, start } => {
                 ensure!(
                     pending.is_none(),
                     "metadata needs a source fence before the next scenario heading"
@@ -242,20 +354,26 @@ pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
                 ensure!(!title.trim().is_empty(), "scenario heading needs a title");
                 let id = section_id(&title, id)?;
                 ensure!(ids.insert(id.clone()), "duplicate scenario id {id:?}");
-                sections.push(Section {
+                let line = prefix_lines + body[..start].bytes().filter(|c| *c == b'\n').count() + 1;
+                let mut metadata = defaults.clone();
+                metadata.insert("title".into(), json!(title));
+                sections.push(ParsedSection {
                     id,
                     title,
+                    line,
+                    metadata,
                     cells: Vec::new(),
                 });
             }
-            Block::Fence {
+            Item::Fence {
                 info,
                 range,
                 top_level,
             } => {
                 let line = body[..range.start].bytes().filter(|c| *c == b'\n').count() + 1;
-                let role =
-                    Role::from_info(&info).with_context(|| format!("Markdown body line {line}"))?;
+                let absolute_line = prefix_lines + line;
+                let role = CellRole::from_info(&info)
+                    .with_context(|| format!("Markdown body line {line}"))?;
                 if role.is_none() && pending.is_none() {
                     continue;
                 }
@@ -266,28 +384,31 @@ pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
                 let source = fenced_source(body, &range)
                     .with_context(|| format!("Markdown body line {line}"))?;
                 if let Some(role) = role {
-                    ensure!(
-                        !sections.is_empty(),
-                        "Morphir block needs a preceding level-two scenario heading"
-                    );
+                    let Some(section) = sections.last_mut() else {
+                        bail!("Morphir block needs a preceding level-two scenario heading");
+                    };
                     ensure!(
                         pending.is_none(),
                         "metadata needs a source fence before another metadata fence"
                     );
                     let metadata =
                         yaml(source).with_context(|| format!("Markdown body line {line}"))?;
-                    if matches!(role, Role::Golden) && metadata.contains_key("expected_file") {
+                    if role == CellRole::Golden && metadata.contains_key("expected_file") {
                         // A disk expectation has no inline source fence.
-                        let cell = cell(role, metadata, "text", "")
+                        let cell = cell(role, metadata, "text", "", absolute_line)
                             .with_context(|| format!("Markdown body line {line}"))?;
-                        sections.last_mut().unwrap().cells.push(cell);
+                        section.cells.push(cell);
                     } else {
-                        pending = Some((role, metadata));
+                        pending = Some((role, metadata, absolute_line));
                     }
-                } else if let Some((role, metadata)) = pending.take() {
-                    let cell = cell(role, metadata, &info, source)
+                } else if let Some((role, metadata, metadata_line)) = pending.take() {
+                    let cell = cell(role, metadata, &info, source, metadata_line)
                         .with_context(|| format!("Markdown body line {line}"))?;
-                    sections.last_mut().unwrap().cells.push(cell);
+                    sections
+                        .last_mut()
+                        .expect("a pending block has a section")
+                        .cells
+                        .push(cell);
                 }
             }
         }
@@ -297,16 +418,11 @@ pub(super) fn parse(text: &str) -> Result<Vec<(String, Notebook)>> {
         !sections.is_empty(),
         "Markdown document needs at least one level-two scenario heading"
     );
-    sections
-        .into_iter()
-        .map(|section| {
-            let mut metadata = defaults.clone();
-            metadata.insert("title".into(), json!(section.title));
-            let document = json!({"nbformat": 4, "nbformat_minor": 5,
-            "metadata": {"morphir": {"version": 1, "itest": metadata}}, "cells": section.cells});
-            let notebook = Notebook::parse(&document.to_string())
-                .with_context(|| format!("Markdown scenario {}", section.id))?;
-            Ok((section.id, notebook))
-        })
-        .collect()
+    for section in &sections {
+        check_cells(&section.cells).with_context(|| format!("Markdown scenario {}", section.id))?;
+    }
+    Ok(ParsedDocument {
+        metadata: frontmatter_metadata,
+        sections,
+    })
 }

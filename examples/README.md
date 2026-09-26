@@ -1,8 +1,8 @@
 # Morphir CLI examples
 
 These examples are projects you can read, copy and run with the consolidated
-`morphir` CLI. Categories can contain further subdirectories. A `scenario.ipynb`
-or `scenarios.md` file makes an example executable by `morphir itest`.
+`morphir` CLI. Categories can contain further subdirectories. A `scenarios.md`,
+`*.feature` or `*.feature.md` file makes an example executable by `morphir itest`.
 
 ```sh
 mise run test:examples -- --list
@@ -17,13 +17,14 @@ morphir itest examples --tag language:elm --tag frontend:elm-native
 ```
 
 Multiple tags require all listed tags. Every scenario declares its purpose and
-tags in notebook metadata or Markdown YAML frontmatter. Markdown `##` headings
+tags in Markdown YAML frontmatter or in a Gherkin feature. Markdown `##` headings
 separate independent scenarios; `--filter 'cli/basics#version'` selects one.
 Marked YAML fences describe the next source fence, with prose permitted between
-them. Both formats share execution and validation. Prose explains the workflow,
-command cells invoke the CLI, and Rego cells assert outcomes. Project files stay
-on disk by default; optional file cells can supply additional inputs or an entire
-workspace. The driver copies the scenario directory into a temporary workspace
+them. A `.feature.md` file writes the same scenario as Gherkin steps. All formats
+share execution and validation. Prose explains the workflow, commands invoke the
+CLI, and Rego assertions check outcomes. Project files stay on disk by default;
+optional declared files can supply additional inputs or an entire workspace.
+The driver copies the scenario directory into a temporary workspace
 and runs actual CLI processes with a separate Morphir home. The embedded Regorus
 provider evaluates assertions.
 
@@ -31,7 +32,7 @@ provider evaluates assertions.
 
 | Example | What its scenario proves | Prerequisites |
 | --- | --- | --- |
-| [Elm single file](elm/single-file/scenario.ipynb) | Native type compilation to v3 IR, public record/custom-type structure, task result and installation | Offline |
+| [Elm single file](elm/single-file/scenarios.feature.md) | Native type compilation to v3 IR, public record/custom-type structure, task result and installation | Offline |
 | [Elm single-file functions](elm/single-file-functions/scenarios.md) | Reference lowering of an annotated addition function, including SDK operator and arguments | Reference Elm 0.4.0 |
 | [Classic JSON Elm](elm/classic-json/scenarios.md) | Compilation from an on-disk `morphir.json` and source directory with explicit `--language elm` | Reference Elm 0.4.0 |
 | [TOML project](simple-project/scenarios.md) | Config discovery and two public native Elm type modules in v4 IR | Offline |

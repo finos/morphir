@@ -20,6 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `morphir mck convert` writes a kit case's `.feature` twin from its Markdown source; `morphir mck convert --check` checks an existing twin against that source without writing it (#946).
 - `morphir mck report compare` compares two kit reports, for example a Gherkin-engine report and a legacy-engine report. It fails when the record counts differ, and otherwise names the first record index where any field differs. It ignores `durationMs`, `startedAt` and `driverVersion`. A report with no `records` member is an error (#946).
 - CI runs a parity step that runs the kit under both engines and compares their reports (#946).
+- `morphir itest` reads `.feature` and `.feature.md` examples, beside `scenarios.md` (#946).
+
+### Changed
+- `morphir itest` runs on `morphir-bdd`'s `Suite`. Its `--tag`, `--filter`, `--list`, `--keep-temp` and positional `root` options, and its `PASS`, `FAIL` and summary line formats, are unchanged (#946).
+- `morphir itest` runs scenarios, and prints their PASS and FAIL lines, in document order; it used to run them sorted by id. `--list` is unchanged (#946).
+- A scenario document that cannot be read no longer fails a run when `--filter` leaves it out. Before, every document was checked before selection (#946).
+- The `scenarios.md` reader now refuses a `morphir:assertion` or `morphir:golden` block that does not check the command just before it (#946).
+- `morphir itest` writes its suite reports (`itest.json`, `itest.xml`) to a temporary directory that it removes after the run, or to `MORPHIR_BDD_OUT` when that is set. It writes nothing into the project it runs in (#946).
+- `morphir itest --tag @x` is now refused as an invalid tag. It used to match nothing (#946).
+- The converted `elm/single-file` example's id is now `elm/single-file#compile-and-install` (#946).
+
+### Removed
+- **Breaking**: notebook scenarios (`scenario.ipynb`) are no longer supported. Convert one to `scenarios.feature.md`; notebook support returns with the VFS work (#946).
+- **Breaking**: the workspace spelling `kind: notebook` is removed; write `kind: inline` (#946).
 
 ## [0.4.0-beta.9] - 2026-09-25
 

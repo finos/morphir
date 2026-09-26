@@ -1,13 +1,13 @@
 ---
 name: morphir-example-tests
-description: Use when adding, adopting, debugging or updating Morphir CLI examples and morphir itest scenarios, including nbformat notebooks, scenarios.md, scenario metadata, Rego assertions and integration coverage.
+description: Use when adding, adopting, debugging or updating Morphir CLI examples and morphir itest scenarios, including scenarios.md, .feature.md and .feature files, scenario metadata, Rego assertions and integration coverage.
 ---
 
 # Morphir example tests
 
 Read [the scenario contract](../../../docs/developers/example-integration-tests.md)
 and [the example catalog](../../../examples/README.md). Use
-[the single-file Elm notebook](../../../examples/elm/single-file/scenario.ipynb)
+[the single-file Elm scenario](../../../examples/elm/single-file/scenarios.feature.md)
 as the smallest working example. Keep the contract in the guide; do not create
 a second driver or copy MCK comparison logic.
 For Markdown authoring, use [CLI basics](../../../examples/cli/basics/scenarios.md).
@@ -36,13 +36,14 @@ source fixtures under `crates/morphir/tests/fixtures/itest/`.
 
 ## Author and verify
 
-1. Choose one document per example directory: `scenario.ipynb` or `scenarios.md`.
-   For notebooks, use nbformat 4.5. Put scenario
-   title, description, tags and `provider: "rego"` in notebook
-   `metadata.morphir.itest`, with `metadata.morphir.version: 1`.
-   Use Markdown cells for explanations. Keep valid unique cell IDs separate
-   from file paths. Preserve unrelated metadata and newlines.
-   For Markdown, use YAML frontmatter with version 1 and the same context/tags.
+1. Choose one document per example directory: `scenarios.md`, or a Gherkin
+   `scenarios.feature.md` (or `.feature`) file.
+   For a Gherkin file, put the title and tags on the `Feature`, the description
+   on the scenario, and `provider` and `workspace` in a `yaml itest` fence in the
+   feature description. Write commands, captures and Rego checks as the itest
+   steps in the guide. Use `@section:<id>` for a stable scenario ID.
+   For `scenarios.md`, use YAML frontmatter with version 1, a title, a
+   description, tags and `provider: rego`.
    Each top-level `##` heading starts an independent scenario; use `###` for
    steps. Explicit `{#id}` heading attributes keep filters stable across renames.
    Pair `yaml morphir:command`, `yaml morphir:assertion` and `yaml morphir:file`
@@ -56,22 +57,20 @@ source fixtures under `crates/morphir/tests/fixtures/itest/`.
    scenario directory is copied into an isolated workspace by default. Use
    `workspace: {kind: "directory", path: "project", exclude: ["installed"]}`
    in scenario metadata to choose a subdirectory or exclude custom outputs.
-   Optional file cells with `metadata.morphir.file` path and language add inputs;
-   conflicting disk and inline paths fail. Use `workspace: {kind: "inline"}`
+   Optional `yaml morphir:file` fences (or `files` in a `yaml itest` fence) add
+   inputs; conflicting disk and inline paths fail. Use `workspace: {kind: "inline"}`
    only for a self-contained scenario that ignores adjacent project files.
-   The existing `kind: "notebook"` spelling is also supported.
-   Commands are code cells containing literal `morphir ...` invocations;
-   case names, captures and timeouts belong to their `morphir.itest` metadata.
-3. Put complete Rego modules in assertion cells. Reference a preceding command
-   cell by ID and enumerate unique named rule entrypoints. Only boolean true
+   Commands contain literal `morphir ...` invocations; case names, captures and
+   timeouts belong to their metadata fence or their steps.
+3. Put complete Rego modules in assertions. Reference the most recent command
+   by ID and enumerate unique named rule entrypoints. Only boolean true
    passes. Check exit status plus meaningful artifacts/diagnostics. Request
    stdout JSON decoding and artifact captures explicitly. Missing files, JSON
    null, undefined rules and errors are distinct. Never derive expected values
    from the implementation during a run.
    For exact generated text, use `yaml morphir:golden` with `command`, `actual`
    and either a paired literal source fence or a standalone `expected_file`.
-   Notebook code cells use `kind: golden`; file expectations require empty
-   source. Expected file paths are relative to the scenario directory and are
+   Expected file paths are relative to the scenario directory and are
    frozen before commands; actual paths are relative to the temporary project.
    Use `select: {kind: lines, start: 3, end: 5}` for inclusive lines or
    `select: {kind: between, start: "BEGIN", end: "END"}` for unique literal
@@ -83,7 +82,7 @@ source fixtures under `crates/morphir/tests/fixtures/itest/`.
 4. Follow root checkout setup before testing. Run
    `mise run test:examples -- --filter <category/example>` before changing the
    CLI. Verify independent Markdown headings, prose between paired fences and
-   both authoring formats when changing the driver. Retain real CLI subprocesses for both workflow commands and evaluation;
+   every authoring format when changing the driver. Retain real CLI subprocesses for both workflow commands and evaluation;
    do not replace them with internal compiler calls or an external OPA binary.
 5. Diagnose with `--keep-temp`, inspecting command logs, `observation.json` and
    assertion request/report logs. Establish whether the source, expectation,

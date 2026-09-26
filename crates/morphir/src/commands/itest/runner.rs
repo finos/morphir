@@ -1,19 +1,14 @@
-use super::{
-    Scenario,
-    model::{Assertion, AssertionKind, CaptureFormat, ExpectedText, Step, relative_path},
-};
+use super::model::{CaptureFormat, Step, relative_path};
 use anyhow::{Context, Result, bail, ensure};
-use morphir_evaluator::{
-    CONTRACT_VERSION, EvaluationOutcome, EvaluationReport, EvaluationRequest, ProviderId,
-};
+use morphir_evaluator::{CONTRACT_VERSION, EvaluationOutcome, EvaluationReport, ProviderId};
 use serde_json::Value;
 use std::{
-    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     time::{Duration, Instant},
 };
+use tempfile::TempDir;
 
 #[derive(Debug)]
 pub struct ProcessOutput {
@@ -41,7 +36,16 @@ pub fn execute(mut command: Command, logs: &Path, timeout: Duration) -> Result<P
     let mut child = command.spawn().context("start CLI process")?;
     let start = Instant::now();
     let status = loop {
-        if let Some(status) = child.try_wait()? {
+        if has_exited(&mut child)? {
+            // On Unix the child is still unreaped here, so the process group it leads keeps its
+            // id while its descendants are signalled: the id cannot name an unrelated group yet.
+            #[cfg(unix)]
+            let tree_result = terminate_tree(&mut child);
+            let status = child.wait().context("reap CLI process")?;
+            #[cfg(windows)]
+            job.terminate()?;
+            #[cfg(unix)]
+            tree_result.context("clean up CLI descendants")?;
             break status;
         }
         if start.elapsed() >= timeout {
@@ -60,10 +64,6 @@ pub fn execute(mut command: Command, logs: &Path, timeout: Duration) -> Result<P
         }
         std::thread::sleep(Duration::from_millis(10));
     };
-    #[cfg(windows)]
-    job.terminate()?;
-    #[cfg(unix)]
-    terminate_tree(&mut child).context("clean up CLI descendants")?;
     Ok(ProcessOutput {
         code: status.code(),
         stdout: fs::read_to_string(stdout)?,
@@ -89,20 +89,47 @@ fn confined(root: &Path, relative: &str) -> Result<PathBuf> {
     Ok(path)
 }
 
-pub fn run(scenario: &Scenario, binary: &Path, keep: bool) -> Result<()> {
+/// Reads the UTF-8 file `relative` under `root`. The path must be a portable relative path that
+/// traverses no symlink ([`confined`]) and names a regular file.
+pub(crate) fn read_text(root: &Path, relative: &str) -> Result<String> {
+    let path = confined(root, relative)?;
+    ensure!(
+        path.is_file(),
+        "golden file {relative:?} is missing or is not a regular file"
+    );
+    fs::read_to_string(&path).with_context(|| format!("read UTF-8 golden file {relative:?}"))
+}
+
+/// A new temporary root for scenario `id`. With `keep`, the root outlives the run: its path is
+/// printed and no guard is returned. Otherwise the returned guard deletes it when dropped.
+pub(super) fn temporary_root(id: &str, keep: bool) -> Result<(PathBuf, Option<TempDir>)> {
     let temp = tempfile::Builder::new()
         .prefix("morphir-example-")
         .tempdir()?;
     if keep {
         let root = temp.keep();
-        eprintln!("{}: retained {}", scenario.id, root.display());
-        run_in_temporary(scenario, binary, &root)
+        eprintln!("{id}: retained {}", root.display());
+        Ok((root, None))
     } else {
-        run_in_temporary(scenario, binary, temp.path())
+        Ok((temp.path().to_owned(), Some(temp)))
     }
 }
 
-fn isolated_command(binary: &Path, workspace: &Path, root: &Path) -> Command {
+/// Create `root/project` and `root/home`, fill the project with `materialize`, then add the
+/// project's `.morphir` directory. Returns the project directory.
+pub(super) fn prepare_root(
+    root: &Path,
+    materialize: impl FnOnce(&Path) -> Result<()>,
+) -> Result<PathBuf> {
+    let project = root.join("project");
+    fs::create_dir_all(&project)?;
+    fs::create_dir_all(root.join("home"))?;
+    materialize(&project)?;
+    fs::create_dir_all(project.join(".morphir"))?;
+    Ok(project)
+}
+
+pub(super) fn isolated_command(binary: &Path, workspace: &Path, root: &Path) -> Command {
     let mut command = Command::new(binary);
     command.current_dir(workspace);
     for (key, _) in std::env::vars_os() {
@@ -157,182 +184,6 @@ pub(super) fn observation(step: &Step, output: &ProcessOutput, project: &Path) -
     Ok(input)
 }
 
-fn read_text(root: &Path, relative: &str) -> Result<String> {
-    let path = confined(root, relative)?;
-    ensure!(
-        path.is_file(),
-        "golden file {relative:?} is missing or is not a regular file"
-    );
-    fs::read_to_string(&path).with_context(|| format!("read UTF-8 golden file {relative:?}"))
-}
-
-fn expected_texts(scenario: &Scenario) -> Result<BTreeMap<&str, String>> {
-    scenario
-        .steps
-        .iter()
-        .flat_map(|step| &step.assertions)
-        .filter_map(|assertion| {
-            let AssertionKind::Golden(golden) = &assertion.kind else {
-                return None;
-            };
-            let expected = match &golden.expected {
-                ExpectedText::Inline(text) => Ok(text.clone()),
-                ExpectedText::File(path) => read_text(&scenario.directory, path),
-            };
-            Some(
-                expected
-                    .map(|text| (assertion.id.as_str(), text))
-                    .with_context(|| {
-                        format!(
-                            "{} golden {}: load expectation before commands",
-                            scenario.id, assertion.id
-                        )
-                    }),
-            )
-        })
-        .collect()
-}
-
-struct PreparedAssertion {
-    source: String,
-    entrypoints: Vec<String>,
-    input: Value,
-    mismatch: Option<String>,
-}
-
-fn prepare_assertion(
-    assertion: &Assertion,
-    input: &Value,
-    project: &Path,
-    expected: &BTreeMap<&str, String>,
-) -> Result<PreparedAssertion> {
-    match &assertion.kind {
-        AssertionKind::Rego {
-            source,
-            entrypoints,
-        } => Ok(PreparedAssertion {
-            source: source.clone(),
-            entrypoints: entrypoints.clone(),
-            input: input.clone(),
-            mismatch: None,
-        }),
-        AssertionKind::Golden(golden) => {
-            let actual = read_text(project, &golden.actual)?;
-            let selected = golden.select.select(&actual).with_context(|| {
-                format!(
-                    "golden file {:?}, selection {:?}",
-                    golden.actual, golden.select
-                )
-            })?;
-            let actual = golden.line_endings.normalize(selected);
-            let expected = golden.line_endings.normalize(
-                expected
-                    .get(assertion.id.as_str())
-                    .context("missing prepared golden expectation")?,
-            );
-            let mismatch = (actual != expected).then(|| {
-                format!(
-                    "golden mismatch: {:?}, selection {:?}, expected {:?}\n{}",
-                    golden.actual,
-                    golden.select,
-                    match &golden.expected {
-                        ExpectedText::File(path) => path.as_str(),
-                        ExpectedText::Inline(_) => "inline text",
-                    },
-                    super::golden::diff(&expected, &actual)
-                )
-            });
-            let mut input = input.clone();
-            input["golden"] = serde_json::json!({"actual":actual,"expected":expected});
-            Ok(PreparedAssertion {
-                source: "package morphir_golden\nimport rego.v1\ndefault matches := false\nmatches if { input.exitCode == 0; input.golden.actual == input.golden.expected }\n".into(),
-                entrypoints: vec!["data.morphir_golden.matches".into()], input, mismatch,
-            })
-        }
-    }
-}
-
-fn run_in_temporary(scenario: &Scenario, binary: &Path, root: &Path) -> Result<()> {
-    // Project and enclosing-workspace discovery both walk ancestors. A local
-    // .morphir directory only bounds outputs, not configuration discovery.
-    for ancestor in root.canonicalize()?.ancestors().skip(1) {
-        let config = morphir_devkit::config::discover_config_at(ancestor)
-            .context("itest cannot isolate temporary ancestor configuration")?;
-        ensure!(
-            config.is_none(),
-            "itest cannot isolate temporary ancestor configuration at {}; choose a clean TMPDIR/TEMP",
-            config.unwrap_or_default().display()
-        );
-    }
-    // Freeze authored expectations before any CLI command can change files.
-    let expected = expected_texts(scenario)?;
-    let project = root.join("project");
-    fs::create_dir_all(&project)?;
-    fs::create_dir_all(root.join("home"))?;
-    super::workspace::materialize(scenario, &project)?;
-    fs::create_dir_all(project.join(".morphir"))?;
-    for (index, step) in scenario.steps.iter().enumerate() {
-        let logs = root.join(format!("step-{}", index + 1));
-        fs::create_dir_all(&logs)?;
-        let mut command = isolated_command(binary, &project, root);
-        command.args(&step.args);
-        let context = format!(
-            "{} cell {} {:?}: morphir {:?}",
-            scenario.id, step.id, step.name, step.args
-        );
-        let output = execute(command, &logs, Duration::from_secs(step.timeout_seconds))
-            .with_context(|| context.clone())?;
-        let diagnostics = format!(
-            "{context}\nexit: {:?}\nstdout:\n{}\nstderr:\n{}",
-            output.code, output.stdout, output.stderr
-        );
-        let input = observation(step, &output, &project).with_context(|| diagnostics.clone())?;
-        fs::write(
-            logs.join("observation.json"),
-            serde_json::to_vec_pretty(&input)?,
-        )?;
-        for assertion in &step.assertions {
-            let harness = logs.join(&assertion.id);
-            fs::create_dir_all(&harness)?;
-            let prepared = prepare_assertion(assertion, &input, &project, &expected)
-                .with_context(|| format!("{diagnostics}\nassertion cell {}", assertion.id))?;
-            let request: EvaluationRequest = serde_json::from_value(serde_json::json!({
-                "version":1,"provider":scenario.metadata.provider,
-                "program":{"kind":"source","language":"rego","modules":[{"path":format!("{}.rego",assertion.id),"source":prepared.source}]},
-                "entrypoints":prepared.entrypoints,"input":prepared.input,"timeout_ms":step.timeout_seconds * 1000
-            }))?;
-            let request_path = harness.join("request.json");
-            fs::write(&request_path, serde_json::to_vec_pretty(&request)?)?;
-            let mut eval = isolated_command(binary, &harness, root);
-            eval.arg("eval")
-                .arg("--request")
-                .arg(&request_path)
-                .arg("--json");
-            let checked = execute(eval, &harness, Duration::from_secs(step.timeout_seconds))
-                .with_context(|| format!("{diagnostics}\nassertion cell {}", assertion.id))?;
-            let assertion_context = format!(
-                "{diagnostics}\nassertion cell {}\nevaluator stdout:\n{}\nevaluator stderr:\n{}",
-                assertion.id, checked.stdout, checked.stderr
-            );
-            ensure!(
-                checked.code == Some(0),
-                "{assertion_context}\nevaluator failed: {:?}",
-                checked.code
-            );
-            check_report(
-                &checked.stdout,
-                scenario.metadata.provider,
-                &prepared.entrypoints,
-            )
-            .with_context(|| match prepared.mismatch {
-                Some(diff) => format!("{assertion_context}\n{diff}"),
-                None => assertion_context,
-            })?;
-        }
-    }
-    Ok(())
-}
-
 pub(super) fn check_report(text: &str, provider: ProviderId, entrypoints: &[String]) -> Result<()> {
     let report: EvaluationReport =
         serde_json::from_str(text).context("invalid evaluator JSON report")?;
@@ -363,12 +214,44 @@ pub(super) fn check_report(text: &str, provider: ProviderId, entrypoints: &[Stri
     Ok(())
 }
 
+/// Whether `child` has exited, without reaping it: `waitid` with `WNOWAIT` leaves the child a
+/// zombie, so its pid, and the id of the process group it leads, stay reserved until
+/// `child.wait()`. That lets [`terminate_tree`] signal the group after the child exits without the
+/// risk that the id now names an unrelated group.
+#[cfg(unix)]
+pub(super) fn has_exited(child: &mut std::process::Child) -> Result<bool> {
+    use rustix::process::{Pid, WaitId, WaitIdOptions, waitid};
+    let pid = Pid::from_raw(child.id() as i32).context("invalid child process id")?;
+    let options = WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT;
+    loop {
+        match waitid(WaitId::Pid(pid), options) {
+            Ok(status) => return Ok(status.is_some()),
+            Err(rustix::io::Errno::INTR) => {}
+            Err(error) => return Err(anyhow::Error::from(error).context("poll CLI process")),
+        }
+    }
+}
+
+/// Whether `child` has exited. Off Unix there is no process group to protect, so this may reap.
+#[cfg(not(unix))]
+pub(super) fn has_exited(child: &mut std::process::Child) -> Result<bool> {
+    Ok(child.try_wait()?.is_some())
+}
+
+/// Kills the process group that `child` leads. Call it only while `child` is unreaped (running,
+/// or a zombie that [`has_exited`] saw), so that the group id is still the child's own.
+///
+/// `ESRCH` means that no member is left. On Apple platforms `killpg` also returns `EPERM` when
+/// every member left is a zombie, and the unreaped leader always is one after a normal exit. The
+/// leader still holds the group id, so that `EPERM` cannot come from an unrelated group.
 #[cfg(unix)]
 fn terminate_tree(child: &mut std::process::Child) -> Result<()> {
     use rustix::process::{Pid, Signal, kill_process_group};
     let pid = Pid::from_raw(child.id() as i32).context("invalid child process id")?;
     match kill_process_group(pid, Signal::KILL) {
         Ok(()) | Err(rustix::io::Errno::SRCH) => Ok(()),
+        #[cfg(target_vendor = "apple")]
+        Err(rustix::io::Errno::PERM) => Ok(()),
         Err(error) => Err(error.into()),
     }
 }

@@ -103,7 +103,7 @@ Update explicit dependency targets and write a new fully verified package lock
 Evaluate a program through a registered native provider
 .TP
 \fBitest\fR
-Run notebook or Markdown integration scenarios through real CLI processes
+Run Markdown and Gherkin example scenarios through real CLI processes
 .TP
 \fBcompile\fR
 Compile source code to Morphir IR
@@ -919,7 +919,7 @@ Path to a version 1 or native IR draft evaluation request JSON file
 \fB\-\-json\fR
 Print the versioned evaluation report as JSON
 .SH "MORPHIR ITEST"
-Run notebook or Markdown integration scenarios through real CLI processes
+Run Markdown and Gherkin example scenarios through real CLI processes
 .PP
 \fBUsage:\fR morphir itest [OPTIONS] [<ROOT>]
 .PP
@@ -941,7 +941,7 @@ Retain isolated projects, homes and per\-step logs for diagnosis
 .PP
 .TP
 \fB<ROOT>\fR
-Directory to search recursively for scenario.ipynb or scenarios.md files
+Directory to search recursively for scenarios.md, .feature and .feature.md files
 .RS
 \fIDefault: \fRexamples
 .RE

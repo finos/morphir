@@ -5,12 +5,12 @@ sidebar_label: Example integration tests
 
 # Example integration tests
 
-`morphir itest` discovers `scenario.ipynb` and `scenarios.md` recursively and exercises
-real Morphir CLI commands. Both formats define explanations, commands, Rego
-assertions and golden text comparisons for ordinary on-disk projects. They can also supply optional project
-files in cells, including entirely self-contained examples. Milestone 0 uses an embedded
-Regorus evaluator, so the baseline suite requires no OPA executable or downloaded
-extension. See [the evaluation architecture](evaluation.md) for the native
+`morphir itest` finds `scenarios.md`, `*.feature` and `*.feature.md` files recursively
+and runs real Morphir CLI commands. The scenarios run on a `morphir-bdd` suite. Each format
+defines explanations, commands, Rego assertions and golden text comparisons for ordinary
+on-disk projects. Each format can also supply optional project files, including entirely
+self-contained examples. Milestone 0 uses an embedded Regorus evaluator, so the baseline
+suite requires no OPA executable or downloaded extension. See [the evaluation architecture](evaluation.md) for the native
 Morphir evaluator and WASM follow-up design.
 
 ## Run and select scenarios
@@ -55,22 +55,29 @@ checking a current rejection, and record its follow-up issue in the prose. Such
 a pass is not successful feature coverage; replace it with positive expectations
 when support lands.
 
-The root defaults to `examples`. A notebook's scenario ID is its containing directory
-relative to the search root, or `.` for a notebook directly in that root.
-Markdown scenario IDs append `#heading-id`, such as `cli/basics#version` or
-`.#version` at the search root. Quote filters containing `#` in the shell.
+The root defaults to `examples`. A scenario ID is its directory relative to the
+search root, or `.` for the search root itself, followed by `#` and the scenario's
+section ID, such as `cli/basics#version` or `.#version` at the search root. In a
+`scenarios.md` file, the section ID comes from the `##` heading. In a `.feature` or
+`.feature.md` file, it is the value of the scenario's `@section:<id>` tag, or else
+the ID of the scenario name. Quote filters containing `#` in the shell.
 `--filter .` selects scenarios directly in the search root; `--filter root` selects a
 directory named `root` and its descendants. Other filters select an exact ID
 or directory category. Repeated `--tag` options
 require every tag. Empty suites and selections fail, including with `--list`.
 Scenario directories must have UTF-8 names that follow the portable path rules
 below; discovery rejects names that would produce ambiguous or unselectable IDs.
-All discovered document structures and scenario metadata are validated before
-selection; Rego compilation occurs when the selected assertions execute.
+Every discovered document is read before selection. A document that cannot be
+read fails the run, unless `--filter` leaves its directory out. Rego compilation
+occurs when the selected assertions execute.
 Listing prints the scenario's intent and tags without executing it.
-Use one supported document per directory. Having both `scenario.ipynb` and
-`scenarios.md` in one directory is an error. Scenario directory names cannot
-contain the reserved `#` separator.
+Use one scenario document per directory. Two documents in one directory are an
+error. Scenario directory names cannot contain the reserved `#` separator.
+
+`morphir itest` does not run Jupyter notebooks. A directory that holds a
+`scenario.ipynb` file gives the error `notebook scenarios are no longer supported;
+convert <path> to scenarios.feature.md`, and the run fails. Notebook support
+returns with the VFS work on document trees and workspaces.
 
 ## Host compatibility suite
 
@@ -108,8 +115,8 @@ mise run test:host-compatibility
 ## Markdown scenarios
 
 Use `scenarios.md` for ordinary Markdown authoring. YAML frontmatter provides
-document context and shared scenario defaults. The fields below are required;
-`workspace` is optional and has the same behavior as notebook workspace metadata.
+document context and shared scenario defaults. The fields below are required.
+`workspace` is optional; see [Workspace inputs](#workspace-inputs).
 
 ````markdown
 ---
@@ -178,9 +185,10 @@ heading or another metadata fence before the source is an error. Executable
 pairs must be top-level, with opening fences at column one, rather than nested
 in blockquotes or lists. Both backtick and tilde fences are supported.
 
-Metadata requires an `id` with the same rules as notebook cell IDs. Command and
-assertion fields match the corresponding notebook roles below, without `kind`,
-which comes from the marker. Commands contain literal `morphir ...` invocations;
+Metadata requires an `id` of 1–64 ASCII letters, digits, hyphens or underscores,
+unique in its scenario. The command, assertion and golden fields are in the
+sections below. The marker gives the kind, so the metadata has no `kind` field.
+Commands contain literal `morphir ...` invocations;
 assertion source fences use `rego`. Source fences must name their language.
 Unpaired ordinary fences are documentation and do not execute. Unknown Morphir
 markers, unknown metadata fields, duplicate YAML keys, unclosed paired fences,
@@ -204,47 +212,110 @@ type alias Name = String
 The language comes from the source fence. Source contents, including indentation
 and line endings, are preserved. Every file in a scenario is materialized before
 its first command. Use `workspace: {kind: inline}` in frontmatter to ignore
-adjacent disk inputs and use only that scenario's file fences. The `inline`
-spelling also works in notebooks; the existing `notebook` spelling remains valid.
+adjacent disk inputs and use only that scenario's file fences.
 
-Both authoring formats load into the same scenario validator and run through the
-same CLI subprocess and evaluator pipeline. Markdown does not create or rewrite
-a notebook on disk. See [CLI basics](https://github.com/finos/morphir/blob/main/examples/cli/basics/scenarios.md)
+`morphir itest` reads a `scenarios.md` file as a Gherkin feature: the frontmatter
+becomes the feature, and each `##` section becomes a scenario with the steps in
+[Gherkin scenarios](#gherkin-scenarios). All formats then run through the same
+CLI subprocess and evaluator pipeline. See
+[CLI basics](https://github.com/finos/morphir/blob/main/examples/cli/basics/scenarios.md)
 for a complete document containing two scenarios.
 
-## Notebook and scenario metadata
+## Gherkin scenarios
 
-Use nbformat **4.5** and the Morphir notebook profile version **1**. Standard
-cell IDs are unique strings of 1–64 ASCII letters, digits, hyphens or underscores.
-File paths belong in cell metadata, never in the cell ID. Source may be a string
-or a list of strings; line endings are retained. Unknown metadata outside the
-scenario's typed fields is preserved. Morphir reads the document without
-rewriting it or using stored notebook outputs as test results.
+Use a `.feature.md` file (Markdown with Gherkin) or a `.feature` file to write
+scenarios as Gherkin steps. Give the file a name such as `scenarios.feature.md`. A
+`.feature.md` file is Markdown first: a heading that starts with a Gherkin keyword
+opens that node, a bullet item that starts with a step keyword is a step, and a
+paragraph of `@` code spans is a tag line. Other Markdown is the description or the
+notes of the node before it.
 
-Notebook `metadata.morphir` contains:
+This excerpt comes from
+[the single-file Elm example](https://github.com/finos/morphir/blob/main/examples/elm/single-file/scenarios.feature.md):
 
-```json
-{
-  "version": 1,
-  "itest": {
-    "title": "Compile single-file Elm types",
-    "description": "Verify the public types and canonical v3 IR artifact.",
-    "tags": ["language:elm", "config:none", "area:compile", "suite:offline"],
-    "provider": "rego"
-  }
-}
+`````markdown
+# Feature: Compile and install types from one Elm file
+
+`@language:elm` `@frontend:elm-native` `@config:none` `@area:compile` `@suite:offline`
+
+The project source is the adjacent `Example.elm` file.
+
+```yaml itest
+provider: rego
+workspace: {kind: directory, path: ".", exclude: [installed]}
 ```
 
-These scenario-wide fields correspond to Markdown frontmatter. All fields shown are
-required. Title and description must explain what success proves. The `itest`
-object rejects unknown fields. The only evaluator provider in milestone 0 is
-`rego`; its implementation is the native `morphir-opa` crate using Regorus.
+## Scenario: Compile and install types from one Elm file
 
-Use standard Markdown cells for explanations. Code and raw cells can carry
-workspace files. Code cells carry commands and assertions. In a notebook editor,
-authors edit cell source directly. The JSON document remains readable on disk;
-nbformat support alone does not install a Jupyter kernel or guarantee per-cell
-language highlighting in every editor. Execute the notebook with `morphir itest`.
+`@section:compile-and-install` `@steps:2`
+
+The native Elm frontend compiles a single file without project configuration.
+
+* When I run "morphir compile --input Example.elm --extension morphir-elm-native --package-name examples/single-file --json" with a 30 second timeout
+* And I capture ".morphir/out/compile.dest/morphir-ir.json" as json named "ir"
+* And stdout is JSON
+* Then the result should satisfy the policy rules "data.step_1_test.test_exit_code, data.step_1_test.test_ir_format_version":
+
+  ```rego
+  package step_1_test
+
+  import rego.v1
+
+  test_exit_code if {
+      input.exitCode == 0
+  }
+
+  test_ir_format_version if {
+      input.artifacts["ir"].value["formatVersion"] == 3
+  }
+  ```
+`````
+
+The feature description can hold one `yaml itest` fence with these fields, which
+match the `scenarios.md` frontmatter:
+
+| Field | Value |
+| --- | --- |
+| `provider` | The evaluator provider. The default is `rego`. |
+| `workspace` | The workspace inputs. The default is the scenario directory. |
+| `files` | Files to write into the project: `[{path, content}]`. The default is none. |
+
+A scenario description can also hold one `yaml itest` fence, with only `files`.
+Those files are added for that scenario alone.
+
+The feature name and description, and the tags of the feature, rule and scenario,
+are what `--list` shows. `--tag` selects on the same tags. Two tags are for the
+runner and `--list` does not show them:
+
+- `@section:<id>` sets the scenario's section ID.
+- `@steps:<n>` sets the step count of the `PASS` line. Without it, the count is the
+  number of steps that ran.
+
+The itest steps are:
+
+| Step | Meaning |
+| --- | --- |
+| `When I run "<command>"` | Run one literal `morphir` command, with a 120 second timeout. |
+| `When I run "<command>" with a <n> second timeout` | Run the command with an `<n>` second timeout. |
+| `And I capture "<path>" as <json\|text\|exists> named "<name>"` | Capture a file of the last command. |
+| `And stdout is JSON` | Parse the last command's stdout as JSON. |
+| `Then the result should satisfy the policy rules "<rule>, <rule>":` | Check the last command with the Rego module in the doc string. |
+| `Then the file "<actual>" at "<select>" should match with <exact\|LF> line endings:` | Compare a file with the doc string. |
+| `Then the file "<actual>" at "<select>" should match the golden file "<path>" with <exact\|LF> line endings` | Compare a file with a checked-in golden file. |
+
+Inside the command text, write `\"` to group words that contain spaces. The command
+text cannot contain a literal `"`. Capture and `stdout is JSON` steps apply to the
+most recent `When I run` step. `<select>` is `all`, `lines <start> to <end>`, or
+`between '<start>' and '<end>'`. In a marker, write `\\`, `\'`, `\n`, `\r` and `\t`
+for a backslash, a quote, a newline, a carriage return and a tab.
+
+## Scenario metadata
+
+The frontmatter of `scenarios.md`, or the feature of a `.feature.md` file, gives
+the scenario's title, description and tags. Title and description must explain
+what success proves. The frontmatter rejects unknown fields. The only evaluator
+provider in milestone 0 is `rego`; its implementation is the native `morphir-opa`
+crate using Regorus.
 
 | Tag dimension | Examples |
 | --- | --- |
@@ -256,7 +327,7 @@ language highlighting in every editor. Execute the notebook with `morphir itest`
 | Expected behavior | `kind:positive`, `kind:negative` |
 | Prerequisites | `suite:offline`, `suite:elm-reference`, `suite:wasm-backends` |
 | Known gaps | `coverage:known-limitation` with `kind:negative` |
-| Workspace inputs | `workspace:directory`, `workspace:notebook` |
+| Workspace inputs | `workspace:directory`, `workspace:inline` |
 
 Tags are unique, nonempty strings of lowercase ASCII letters, digits, colon,
 hyphen, underscore or period. They select scenarios; they do not declare a
@@ -270,48 +341,45 @@ Keep normal project files on disk:
 ```text
 single-file/
   Example.elm
-  scenario.ipynb
+  scenarios.feature.md
 ```
 
 The driver copies the project into a temporary workspace before executing any
 commands. Source files and directories are preserved; command outputs remain in
-the temporary copy. File cells are optional additions to that copy.
+the temporary copy. File fences are optional additions to that copy.
 
-The optional `metadata.morphir.itest.workspace` field selects another source:
+The optional `workspace` field selects another source:
 
-```json
-{"kind": "directory", "path": "project", "exclude": ["installed"]}
+```yaml
+workspace: {kind: directory, path: project, exclude: [installed]}
 ```
 
 `path` is `.` or a portable relative subdirectory of the scenario directory.
-Omitting the entire field is equivalent to `{"kind":"directory","path":"."}`.
+Omitting the entire field is equivalent to `{kind: directory, path: .}`.
 The optional `exclude` list contains relative file or directory paths, not globs.
 Directory exclusions include descendants. Use it for custom generated outputs.
 
-The copy omits `scenario.ipynb`, `scenarios.md`, `.git`, `node_modules`, `target`, `elm-stuff`,
+The copy omits scenario documents (`scenarios.md`, `*.feature` and `*.feature.md`),
+`.git`, `node_modules`, `target`, `elm-stuff`,
 `dist` and `out` entries, plus `.morphir/cache`. Other `.morphir` inputs, including
 `.morphir/morphir.toml`, are preserved. Git ignore files are not interpreted.
 Symlinks and special files are rejected; ordinary files retain their bytes and
 permissions, and empty directories are copied.
 
-For a self-contained notebook that deliberately ignores adjacent project files,
-use `{"kind":"notebook"}`. Its project inputs come entirely from file cells.
-Both forms run through the CLI and need no Jupyter kernel.
+For a self-contained scenario that deliberately ignores adjacent project files,
+use `{kind: inline}`. Its project inputs come entirely from its files.
 
-### Optional file cells
+### Optional files
 
-A cell with `metadata.morphir.file` declares an input file:
-
-```json
-{"path": "Example.elm", "language": "elm"}
-```
-
-Its source is the literal file contents. JSON, TOML, YAML, Elm and other text
-files use the same convention. Every declared file is materialized before the
-first command, regardless of cell position. Disk files and notebook file cells
-can be combined. Duplicate files, portable-name collisions and file/directory
-conflicts fail rather than silently replacing inputs. Keep the assertion source
-in assertion cells, outside the project under test.
+In `scenarios.md`, a `yaml morphir:file` fence and its source fence declare an
+input file. In a `.feature.md` or `.feature` file, an entry of the `files` list of
+a `yaml itest` fence declares one. The source, or the `content`, is the literal
+file contents. JSON, TOML, YAML, Elm and other text files use the same convention.
+Every declared file is materialized before the first command, regardless of its
+position. Disk files and declared files can be combined. Duplicate files,
+portable-name collisions and file/directory conflicts fail rather than silently
+replacing inputs. Keep the assertion source in the assertions, outside the project
+under test.
 
 Paths are normalized, relative, slash-separated paths without empty components,
 `..`, backslashes or drive prefixes. Windows device names, reserved punctuation and trailing dots/spaces are rejected.
@@ -319,45 +387,43 @@ Duplicate paths, Unicode-normalization or case-fold collisions, and file/
 directory conflicts fail validation. Collision keys use NFKC, full case folding
 and NFC, while materialized filenames retain their authored spelling.
 Materialization refuses existing files
-and symlink ancestors. This shared notebook layer has no test-execution logic,
-so other Morphir workspace consumers can adopt it later.
+and symlink ancestors.
 
-## Command cells
+## Commands
 
-Command source is one literal invocation, such as:
+A command is one literal invocation, such as:
 
 ```sh
 morphir compile --input Example.elm --extension morphir-elm-native --package-name examples/single-file --json
 ```
 
-Its `metadata.morphir.itest` describes the case:
+In `scenarios.md`, its `yaml morphir:command` metadata describes the case:
 
-```json
-{
-  "kind": "command",
-  "name": "Compile public types",
-  "timeout_seconds": 30,
-  "stdout_json": true,
-  "captures": [
-    {"name": "ir", "path": ".morphir/out/compile.dest/morphir-ir.json", "format": "json"}
-  ]
-}
+```yaml
+id: compile
+name: Compile public types
+timeout_seconds: 30
+stdout_json: true
+captures:
+  - {name: ir, path: .morphir/out/compile.dest/morphir-ir.json, format: json}
 ```
 
 The name is nonempty and unique, and timeout is 1–300 seconds. `captures`
-defaults to empty and `stdout_json` to false. Arguments support shell-style
+defaults to empty and `stdout_json` to false. In a Gherkin scenario, the
+`When I run` step and the capture and `stdout is JSON` steps after it give the same
+information. Arguments support shell-style
 quoting, but the driver invokes the current Morphir executable directly:
 variables, substitutions, operators and pipelines have no shell semantics.
 
-Commands run in notebook order in a fresh shared scenario workspace. Each
-command must have at least one assertion cell. Observations are captured and
+Commands run in document order in a fresh shared scenario workspace. In
+`scenarios.md`, each command must have at least one assertion. Observations are captured and
 asserted before the next command runs, so later commands cannot overwrite an
 earlier result. A nonzero normal exit can be tested; a signal or timeout is a
 harness error.
 
-## Rego assertion cells
+## Rego assertions
 
-Use ordinary Rego v1 modules. For the command above, a cell can contain:
+Use ordinary Rego v1 modules. For the command above, an assertion can contain:
 
 ```rego
 package single_file_test
@@ -376,23 +442,24 @@ test_writes_v3_ir if {
 }
 ```
 
-Its `metadata.morphir.itest` identifies the command cell and named rules:
+In `scenarios.md`, its `yaml morphir:assertion` metadata identifies the command
+and the named rules. The command must be the last command before the assertion;
+the reader refuses an assertion or golden block that checks an earlier command:
 
-```json
-{
-  "kind": "assertion",
-  "command": "compile",
-  "entrypoints": [
-    "data.single_file_test.test_compile_succeeds",
-    "data.single_file_test.test_writes_v3_ir"
-  ]
-}
+```yaml
+id: check
+command: compile
+entrypoints:
+  - data.single_file_test.test_compile_succeeds
+  - data.single_file_test.test_writes_v3_ir
 ```
 
-Here `compile` is the command cell's ID. References must point to preceding
-commands. Entrypoints must be nonempty and unique within the cell. Each assertion
-cell is a complete module evaluated independently; it does not implicitly import
-another assertion cell. Module loading and rule semantics belong to Regorus.
+Here `compile` is the command's ID. The command must be the most recent command
+before the assertion. Entrypoints must be nonempty and unique within the
+assertion. In a Gherkin scenario, the `Then the result should satisfy the policy
+rules` step lists the rules, and its `rego` doc string holds the module. It checks
+the most recent command. Each assertion is a complete module evaluated
+independently; it does not implicitly import another assertion. Module loading and rule semantics belong to Regorus.
 The driver sends a versioned request to a real `morphir eval` subprocess and
 requires one matching result per entrypoint.
 
@@ -424,7 +491,7 @@ it does not become null. A decoded JSON null and an absent file stay distinct.
 
 Use golden assertions when the exact generated text is part of the expected
 behavior. They work alongside Rego assertions and reference a preceding command
-by its cell/block ID. A golden passes only when that command exits successfully
+by its block ID. A golden passes only when that command exits successfully
 and its selected text equals the authored expectation. The driver evaluates this
 rule through the same real `morphir eval` subprocess used for Rego assertions.
 Golden checks do not add another evaluator provider.
@@ -467,11 +534,9 @@ pub fn hello() {
 ```
 ````
 
-A notebook uses the same fields under a code cell's
-`metadata.morphir.itest`, plus `"kind": "golden"`. The cell source holds the
-inline expected text. When `expected_file` is supplied, the cell source must be
-empty; combining the two is an error. Golden cells are expectations, not
-workspace files, and do not require `entrypoints`.
+A Gherkin scenario uses the `Then the file … should match` steps. The doc string
+holds the inline expected text, or the step names the golden file. Golden checks
+are expectations, not workspace files, and do not require `entrypoints`.
 
 The optional `select` field selects **actual** contents only. The entire
 expected contents are compared against that selection:
@@ -523,12 +588,17 @@ canonical ancestors; choose a clean `TMPDIR`/`TEMP` when needed. A local
 Listing does not require a clean host. Missing prerequisites fail a selected
 scenario; the driver does not silently install or skip anything.
 
-Failures name the scenario, command and assertion cell, with stdout/stderr and
+Failures name the scenario, command and assertion, with stdout/stderr and
 rule outcomes. Timeouts terminate the process tree; descendant cleanup also
 runs after a normal child exit. `--keep-temp` retains each command's logs,
 `observation.json`, and assertion request/report logs. Otherwise the temporary
 workspace is removed. Set an outer scratch `MORPHIR_HOME` to contain the ordinary
 logs of the invoking CLI too.
+
+The run also writes JSON and JUnit suite reports, `itest.json` and `itest.xml`.
+By default they go to a temporary directory that the run removes, so `morphir
+itest` writes nothing into the project it runs in. Set `MORPHIR_BDD_OUT` to a
+directory to keep them there.
 
 ## Incremental coverage
 
@@ -543,7 +613,7 @@ logs of the invoking CLI too.
 5. Update the catalog and coverage notes. Track missing workflows and verified
    defects in Beads. Report the exact behavior established.
 
-The [single-file Elm notebook](https://github.com/finos/morphir/blob/main/examples/elm/single-file/scenario.ipynb)
+The [single-file Elm scenario](https://github.com/finos/morphir/blob/main/examples/elm/single-file/scenarios.feature.md)
 verifies native type compilation and installation. It does not establish Elm
 function lowering or native Morphir IR evaluation. The
 [example catalog](https://github.com/finos/morphir/blob/main/examples/README.md) also covers reference Elm functions,

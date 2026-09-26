@@ -414,21 +414,24 @@ Watch mode provides better responsiveness and resource efficiency by reacting to
 ### Executable CLI examples
 
 Use `morphir itest` to verify workflows through real CLI subprocesses. Runnable
-projects live under categorized `examples/` directories and carry `scenario.ipynb`
-or `scenarios.md`, one document per directory. Markdown uses YAML frontmatter,
+projects live under categorized `examples/` directories and carry `scenarios.md`,
+`*.feature` or `*.feature.md`, one document per directory. `scenarios.md` uses YAML frontmatter,
 `##` headings for independent scenarios and paired `yaml morphir:command`,
 `yaml morphir:assertion` or `yaml morphir:file` metadata and language source fences.
 Prose may separate paired fences; `###` headings organize steps.
 Golden assertions use `yaml morphir:golden` with inline expected text or a
-standalone `expected_file`; notebook cells use `kind: golden`. Whole-file,
+standalone `expected_file`. Whole-file,
 inclusive line-range and unique-marker comparisons share the CLI evaluator
 pipeline. Expectations are frozen before commands; exact text is the default. Select one
 Markdown scenario with `--filter 'category/example#heading-id'`.
-Keep scenario context and tags in frontmatter or notebook metadata, literal CLI commands in
-command cells and named Rego rules in assertion cells. Project source and config
+A `.feature.md` or `.feature` file writes the same scenario as Gherkin steps
+(`When I run "…"`, `Then the result should satisfy the policy rules "…":`), with a
+`yaml itest` fence in the feature description for the provider and workspace.
+Keep scenario context and tags in frontmatter or the feature, literal CLI commands in
+command steps and named Rego rules in assertions. Project source and config
 files stay on disk by default; the driver copies the scenario directory into a
-temporary workspace. Optional file cells can add inputs or provide an explicitly
-selected notebook-only workspace. The embedded evaluator is a native provider; native Morphir IR evaluation
+temporary workspace. Optional declared files can add inputs or provide an explicitly
+selected inline workspace. The embedded evaluator is a native provider; native Morphir IR evaluation
 and WASM hosts are fast-follow work described in
 [the evaluation architecture](docs/developers/evaluation.md). Start with one failing scenario, establish its cause, then
 make the smallest fix and retain the passing case as regression coverage.

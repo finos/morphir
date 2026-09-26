@@ -407,7 +407,7 @@ cmd eval display_order=7 args_override_self=#false help="Evaluate a program thro
     flag --json help="Print the versioned evaluation report as JSON"
     complete file type=path
 }
-cmd itest display_order=8 args_override_self=#false help="Run notebook or Markdown integration scenarios through real CLI processes" unknown_flags=error {
+cmd itest display_order=8 args_override_self=#false help="Run Markdown and Gherkin example scenarios through real CLI processes" unknown_flags=error {
     flag --filter help="Select an example path, category or Markdown path#scenario relative to the search root" {
         arg <FILTER>
     }
@@ -416,7 +416,7 @@ cmd itest display_order=8 args_override_self=#false help="Run notebook or Markdo
     }
     flag --list help="List matching scenarios and their purpose without executing commands"
     flag --keep-temp help="Retain isolated projects, homes and per-step logs for diagnosis"
-    arg "[ROOT]" help="Directory to search recursively for scenario.ipynb or scenarios.md files" required=#false default=examples
+    arg "[ROOT]" help="Directory to search recursively for scenarios.md, .feature and .feature.md files" required=#false default=examples
     complete root type=path
 }
 cmd compile display_order=9 args_override_self=#false help="Compile source code to Morphir IR" unknown_flags=error {
