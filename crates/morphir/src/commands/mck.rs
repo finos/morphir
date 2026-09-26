@@ -137,6 +137,8 @@ pub struct MckCheckArgs {
     pub json: bool,
 }
 
+/// The options of `morphir mck convert`: the kit directory, and whether to check the
+/// `.feature` twins instead of writing them.
 #[derive(Args, Clone, Debug)]
 pub struct MckConvertArgs {
     /// The kit directory whose Markdown case files to convert, for example spec/ir/mck
@@ -1356,6 +1358,12 @@ async fn run_gherkin(
     let feature_kit = load_feature_kit(kit.source.clone()).map_err(|error| {
         Outcome::Error(format!("cannot read the kit's .feature files: {error}"))
     })?;
+    if feature_kit.kit.files.is_empty() {
+        return Err(Outcome::Usage(
+            "the kit has no .feature files; run morphir mck convert, or use --engine legacy"
+                .to_owned(),
+        ));
+    }
 
     // A directory-backed kit source is already a real directory the `Suite` can scan; the
     // embedded kit (a `KitSource::Map`) has no filesystem home, so its top-level `.feature`

@@ -149,6 +149,7 @@ pub fn run_render(args: RenderArgs) -> AppResult<miette::Report> {
     })
 }
 
+/// The options of `morphir mck report compare`: the two report files to compare.
 #[derive(Args, Clone, Debug)]
 pub struct CompareArgs {
     /// The first report
@@ -160,10 +161,10 @@ pub struct CompareArgs {
 /// The part of a report `mck report compare` reads: only its `records`, in
 /// the shared v1 [`Record`] shape both the consolidated v1 report and the
 /// v2 draft report carry. Any other member is ignored, so this reads either
-/// format without requiring the draft schema's other, stricter members.
+/// format without requiring the draft schema's other, stricter members. A
+/// report with no `records` member is an error, not an empty report.
 #[derive(Deserialize)]
 struct Comparable {
-    #[serde(default)]
     records: Vec<Record>,
 }
 
@@ -179,6 +180,10 @@ fn without_duration(record: &Record) -> Record {
     record
 }
 
+/// `morphir mck report compare`: passes when both reports have the same number of records and
+/// every pair of records at the same index is equal apart from `durationMs`. Otherwise it fails
+/// and names the record counts or the first index where the records differ. Members other than
+/// `records`, for example `startedAt` and `driverVersion`, are not compared.
 pub fn run_compare(args: CompareArgs) -> AppResult<miette::Report> {
     let result = (|| {
         let a = read_comparable(&args.a)?;

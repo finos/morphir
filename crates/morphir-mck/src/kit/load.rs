@@ -3,7 +3,7 @@
 //! fixture cannot be used) live here; per-file checks live in the case parser.
 //!
 //! [`load_feature_kit`] loads the same directory's `.feature` twins with the
-//! same cross-file checks, sharing [`load_generic`] with [`load_kit`].
+//! same cross-file checks, sharing the private `load_generic` with [`load_kit`].
 
 use std::collections::{BTreeMap, HashMap};
 use std::io;
@@ -17,15 +17,19 @@ use super::syntax::case::{KitCase, KitError, KitFence, ParsedFile, parse_kit_fil
 use super::syntax::info_string::Language;
 use super::syntax::text::utf16_cmp;
 
+/// A loaded kit: its cases, the problems found while loading, its case files and their source.
 #[derive(Debug, Clone)]
 pub struct Kit {
+    /// Every case of every case file, in load order.
     pub cases: Vec<KitCase>,
     /// Fixed linked-metadata reference cases admitted for authoring checks.
     /// These are not executable IR adapter cases.
     pub metadata_reference_cases: usize,
+    /// Every problem found while loading, per file and across files.
     pub errors: Vec<KitError>,
     /// The case files, as repository-relative paths in load order.
     pub files: Vec<String>,
+    /// Where the kit's files were read from.
     pub source: KitSource,
 }
 
@@ -230,6 +234,8 @@ fn feature_read_error(display: &str, error: morphir_gherkin::ReadError) -> KitEr
 /// twins. Unlike `load_kit`, a source with no `.feature` files is not an error: during the parity
 /// window a kit directory may not carry the generated twins yet.
 pub struct FeatureKit {
+    /// The `.feature` cases, errors and files, in the same shape [`load_kit`] gives for the
+    /// Markdown kit. `kit.files` is empty when the source has no `.feature` files.
     pub kit: Kit,
     /// Each case file's step-to-fence map, as [`lower`] gives it. Keyed by the file's
     /// repository-relative path (`spec/ir/mck/<topic>.feature`, matching `Kit.files` and

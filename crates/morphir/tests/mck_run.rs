@@ -642,35 +642,43 @@ fn baseline_report(binding: &str) -> Value {
     read_json(&repo().join(format!("spec/mck/baseline/reports/{binding}.json")))
 }
 
+/// Runs `morphir mck run --engine <engine>` against this test binary as a replay adapter for
+/// `transcript`, with the kit checkout `spec/ir/mck`, and writes the report to `report`.
+fn replay_run(engine: &str, transcript: &Path, report: &Path) -> Output {
+    let exe = std::env::current_exe().unwrap();
+    morphir(&[
+        "mck",
+        "run",
+        "--engine",
+        engine,
+        "--adapter",
+        exe.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "replay",
+        "--adapter-arg",
+        transcript.to_str().unwrap(),
+        "--kit",
+        repo().join("spec/ir/mck").to_str().unwrap(),
+        "--report",
+        report.to_str().unwrap(),
+    ])
+}
+
 /// `--engine gherkin` replays each frozen transcript and must match its
 /// frozen report exactly, the same way the legacy engine does above (Task
 /// B6: the kit's `.feature` files, run through a `morphir_bdd::Suite`, must
 /// give the same records the legacy per-fence loop gives for the same
-/// adapter answers).
+/// adapter answers). Its terminal output must also equal the legacy
+/// engine's: stdout byte for byte, and stderr apart from the fresh
+/// `Operation ID` line.
 fn a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report() {
     for binding in ["morphir-typescript", "morphir-rust"] {
         let work = tempfile::tempdir().unwrap();
         let report = work.path().join("report.json");
-        let exe = std::env::current_exe().unwrap();
         let transcript = transcript_for(binding);
-        let output = morphir(&[
-            "mck",
-            "run",
-            "--engine",
-            "gherkin",
-            "--adapter",
-            exe.to_str().unwrap(),
-            "--adapter-arg",
-            ADAPTER_FLAG,
-            "--adapter-arg",
-            "replay",
-            "--adapter-arg",
-            transcript.to_str().unwrap(),
-            "--kit",
-            repo().join("spec/ir/mck").to_str().unwrap(),
-            "--report",
-            report.to_str().unwrap(),
-        ]);
+        let output = replay_run("gherkin", &transcript, &report);
         assert_eq!(
             output.status.code(),
             Some(0),
@@ -695,7 +703,82 @@ fn a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report() {
             without_volatile(expected),
             "{binding}: the gherkin engine's report does not match its frozen baseline"
         );
+
+        let legacy = replay_run("legacy", &transcript, &work.path().join("legacy.json"));
+        assert_eq!(
+            legacy.status.code(),
+            Some(0),
+            "{binding}: {}",
+            stderr(&legacy)
+        );
+        assert_eq!(
+            stdout(&output),
+            stdout(&legacy),
+            "{binding}: stdout must be identical between engines"
+        );
+        assert_eq!(
+            without_operation_id(&stderr(&output)),
+            without_operation_id(&stderr(&legacy)),
+            "{binding}: stderr must be identical between engines"
+        );
     }
+}
+
+/// An adapter that stops answering partway through the kit gives the same
+/// records and the same stderr under both engines. The TypeScript transcript
+/// is cut after its 149th exchange, so the replay adapter exits at request
+/// 150 and every later fence meets a dead session.
+fn a_transcript_cut_partway_gives_the_same_records_under_both_engines() {
+    let work = tempfile::tempdir().unwrap();
+    let full = std::fs::read_to_string(transcript()).unwrap();
+    let mut kept = String::new();
+    let mut requests = 0;
+    for line in full.lines() {
+        if line.starts_with("{\"dir\":\"request\"") {
+            requests += 1;
+            if requests == 150 {
+                break;
+            }
+        }
+        kept.push_str(line);
+        kept.push('\n');
+    }
+    assert_eq!(requests, 150, "the transcript has at least 150 requests");
+    let cut = work.path().join("cut.ndjson");
+    std::fs::write(&cut, kept).unwrap();
+
+    let legacy_report = work.path().join("legacy.json");
+    let gherkin_report = work.path().join("gherkin.json");
+    let legacy = replay_run("legacy", &cut, &legacy_report);
+    let gherkin = replay_run("gherkin", &cut, &gherkin_report);
+    assert_ne!(legacy.status.code(), Some(0), "{}", stderr(&legacy));
+    assert_eq!(
+        legacy.status.code(),
+        gherkin.status.code(),
+        "legacy: {}\ngherkin: {}",
+        stderr(&legacy),
+        stderr(&gherkin)
+    );
+    let records = |path: &Path| without_volatile(read_json(path))["records"].clone();
+    let legacy_records = records(&legacy_report);
+    assert!(
+        legacy_records
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["result"] == "kit-error"),
+        "the cut transcript makes later fences fail"
+    );
+    assert_eq!(
+        legacy_records,
+        records(&gherkin_report),
+        "the records must be identical between engines"
+    );
+    assert_eq!(
+        without_operation_id(&stderr(&legacy)),
+        without_operation_id(&stderr(&gherkin)),
+        "stderr must be identical between engines"
+    );
 }
 
 /// `--engine gherkin` with no `--kit` runs the kit embedded in this binary,
@@ -1001,6 +1084,82 @@ fn mck_report_compare_rejects_a_record_count_mismatch() {
     );
 }
 
+/// A report with no `records` member is an error, not a report with zero
+/// records, so `mck report compare` cannot pass two such files.
+fn mck_report_compare_rejects_a_report_without_records() {
+    let work = tempfile::tempdir().unwrap();
+    let mut report = read_json(&frozen_v1_report_path());
+    report.as_object_mut().unwrap().remove("records");
+    let a = work.path().join("a.json");
+    std::fs::write(&a, serde_json::to_vec(&report).unwrap()).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        a.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert!(
+        stderr(&output).contains("missing field `records`"),
+        "the missing member is named: {}",
+        stderr(&output)
+    );
+}
+
+/// `--engine gherkin` on a kit with no `.feature` files is a usage error
+/// that names the fix, not an empty run.
+fn a_gherkin_run_on_a_kit_without_feature_files_is_a_usage_error() {
+    let work = tempfile::tempdir().unwrap();
+    let kit = work.path().join("mck");
+    copy_tree(&repo().join("spec/ir/mck"), &kit);
+    for entry in std::fs::read_dir(&kit).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|e| e == "feature") {
+            std::fs::remove_file(path).unwrap();
+        }
+    }
+    let report = work.path().join("report.json");
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--engine",
+        "gherkin",
+        "--adapter",
+        "definitely-not-an-mck-adapter",
+        "--kit",
+        kit.to_str().unwrap(),
+        "--repo-root",
+        repo().to_str().unwrap(),
+        "--report",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
+    assert!(
+        stderr(&output).contains(
+            "error: the kit has no .feature files; run morphir mck convert, or use --engine legacy"
+        ),
+        "{}",
+        stderr(&output)
+    );
+    assert_eq!(stdout(&output), "");
+    assert!(!report.exists(), "no report for a usage error");
+}
+
+/// Copies the directory tree `from` to `to`.
+fn copy_tree(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for entry in std::fs::read_dir(from).unwrap() {
+        let entry = entry.unwrap();
+        let target = to.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            copy_tree(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), target).unwrap();
+        }
+    }
+}
+
 fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
@@ -1120,6 +1279,10 @@ fn main() {
             a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report,
         ),
         (
+            "a_transcript_cut_partway_gives_the_same_records_under_both_engines",
+            a_transcript_cut_partway_gives_the_same_records_under_both_engines,
+        ),
+        (
             "a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript",
             a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript,
         ),
@@ -1154,6 +1317,14 @@ fn main() {
         (
             "mck_report_compare_rejects_a_record_count_mismatch",
             mck_report_compare_rejects_a_record_count_mismatch,
+        ),
+        (
+            "mck_report_compare_rejects_a_report_without_records",
+            mck_report_compare_rejects_a_report_without_records,
+        ),
+        (
+            "a_gherkin_run_on_a_kit_without_feature_files_is_a_usage_error",
+            a_gherkin_run_on_a_kit_without_feature_files_is_a_usage_error,
         ),
     ];
     let filter = args.iter().skip(1).find(|a| !a.starts_with('-')).cloned();

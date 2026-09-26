@@ -234,16 +234,16 @@ fn located(world: &MorphirWorld) -> (KitRun, &ScenarioRef, String) {
     (kit_run, scenario, format!("{KIT_PATH}/{name}"))
 }
 
-/// Passes when no record is a `fail` or a `kit-error`, and prints each skip. Otherwise the error
-/// lists each failing record as `<path>: <message>`.
+/// Passes when no record is a `fail` or a `kit-error`. A skip passes silently, because the legacy
+/// engine prints nothing for it either. Otherwise the error lists each failing record as
+/// `<path>: <message>`.
 fn judge(records: &[Record]) -> Result<(), String> {
     let mut failures = Vec::new();
     for record in records {
-        let message = record.message.as_deref().unwrap_or(record.result.as_str());
         match record.result {
-            Outcome::Pass => {}
-            Outcome::Skipped => println!("skipped: {message}"),
+            Outcome::Pass | Outcome::Skipped => {}
             Outcome::Fail | Outcome::KitError => {
+                let message = record.message.as_deref().unwrap_or(record.result.as_str());
                 let path = record.path.map_or("-", |path| path.as_str());
                 failures.push(format!("{path}: {message}"));
             }
