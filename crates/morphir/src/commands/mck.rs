@@ -293,6 +293,15 @@ fn feature_sibling(md_file: &str) -> String {
 /// The `.feature` text `md_file`'s current cases convert to (`feature_title`, `feature_description`
 /// and `convert`), with its trailing newlines collapsed to exactly one, as the generated files
 /// carry.
+/// Whether `md_file` holds at least one kit case. A Markdown file with none,
+/// such as the metadata suite's prose `metadata-contract-draft.md`, has no
+/// `.feature` twin: `mck convert` skips it and the drift check does not ask for
+/// one.
+fn has_cases(kit: &Kit, md_file: &str) -> bool {
+    let display = kit.source.display(md_file);
+    kit.cases.iter().any(|c| c.file == display)
+}
+
 fn converted_feature_text(kit: &Kit, md_file: &str) -> Result<String, String> {
     let bytes = kit
         .source
@@ -352,7 +361,7 @@ fn drifted_feature_files(
     feature_files_present: bool,
 ) -> Result<Vec<(Drift, String)>, String> {
     let mut drifted = Vec::new();
-    for md_file in &kit.files {
+    for md_file in kit.files.iter().filter(|f| has_cases(kit, f)) {
         let feature_file = feature_sibling(md_file);
         let topic = topic_of(md_file).to_owned();
         let Some(committed) = kit
@@ -495,7 +504,7 @@ pub fn run_mck_convert(args: MckConvertArgs) -> AppResult<miette::Report> {
         }
     } else {
         let mut error = None;
-        for md_file in &kit.files {
+        for md_file in kit.files.iter().filter(|f| has_cases(&kit, f)) {
             let text = match converted_feature_text(&kit, md_file) {
                 Ok(text) => text,
                 Err(message) => {
