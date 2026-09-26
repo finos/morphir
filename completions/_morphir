@@ -1366,7 +1366,10 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
         flag --repo-root help="Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)" {
             arg <DIR>
         }
-        flag --report help="Write the version 1 report here, and its provenance beside it" {
+        flag --report help="Write the consolidated JSON report here" {
+            arg <FILE>
+        }
+        flag --html help="Write a standalone HTML view of this run here" {
             arg <FILE>
         }
         flag --strict help="Fail when any fence is skipped, not only when one fails"

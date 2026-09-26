@@ -33,7 +33,7 @@ not bare strings.
 ```text
 morphir mck check <dir> [--repo-root <dir>] [--json]
 morphir mck run --adapter <exe> [--adapter-arg <arg>]... [--kit <dir>] [--repo-root <dir>]
-                [--report <file>] [--strict] [--filter <regex>]
+                [--report <file>] [--html <file>] [--strict] [--filter <regex>]
                 [--timeout <ms>] [--session-timeout <ms>]
 morphir mck coverage [--kit <dir>] [--repo-root <dir>]
 morphir mck schema check [--kit <dir>] [--repo-root <dir>]
@@ -50,6 +50,13 @@ morphir mck kit update --kit <dir> [--source <source>] [--revision <commit>] [--
 ```
 
 All listed commands are implemented. Release and consumer adoption remain a separate milestone.
+
+`run --html <file>` writes the standalone offline view during the run. It may be used
+with or without `--report`; when both are given, the paths must differ. The
+JSON report remains authoritative for `report check`. The HTML view shows an
+Ion/YAML/JSON result matrix for each case and labels absent profiles as
+`not-pinned`. The CI gates upload the JSON, HTML, and adapter transcript and
+put bounded failure details in the job summary.
 
 For `kit vendor` and `kit update`, `--revision` is required with `--source github:finos/morphir` and
 is usage error 2 with any other source. `kit update --revision <commit>` without `--source` updates a

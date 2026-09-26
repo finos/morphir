@@ -150,21 +150,21 @@ class PathAwareCiTests(unittest.TestCase):
         self.assertIn("mise run package:check", job_body(self.ci, "package-mck"))
         self.assertIn("mise run mck:run-rust", job_body(self.ci, "rust-conformance"))
 
-    def test_failed_mck_runs_still_render_and_upload_fresh_reports(self) -> None:
-        for name, binding, task in [
-            ("docs", "morphir-typescript-adapter", "mck:run"),
-            ("rust-conformance", "morphir-rust", "mck:run-rust"),
+    def test_failed_mck_runs_still_summarize_and_upload_fresh_outputs(self) -> None:
+        for name, binding, task, label, artifact in [
+            ("docs", "morphir-typescript-adapter", "mck:run", "TypeScript", "mck-reports"),
+            ("rust-conformance", "morphir-rust", "mck:run-rust", "Rust", "mck-report-morphir-rust"),
         ]:
             job = job_body(self.ci, name)
             report = f".dev/out/mck/{binding}"
             clean = f"rm -f {report}.json {report}.html"
-            render = f"mck report render {report}.json --format html --output {report}.html"
+            summary = f"bun run tools/mck-ci-summary.ts {label} {report}.json {artifact}"
             self.assertIn(clean, job)
             self.assertLess(job.index(clean), job.index(f"mise run {task}\n"))
-            self.assertIn(render, job)
-            self.assertIn(f"if: ${{{{ !cancelled() && hashFiles('{report}.json') != '' }}}}", job)
+            self.assertIn(f"if: always()\n        run: {summary}", job)
             self.assertIn(f"            {report}.json\n", job)
             self.assertIn(f"            {report}.html\n", job)
+            self.assertIn(f"            {report}.ndjson\n", job)
             self.assertNotIn("continue-on-error:", job)
 
     def test_shared_actions_trigger_the_workflow_tests(self) -> None:
