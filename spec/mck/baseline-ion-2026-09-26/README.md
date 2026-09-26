@@ -36,3 +36,9 @@ A second capture matched byte for byte; the earlier exchanges remain intact.
 spelling/semantic cases (`values-0013`, `0021`, and `0037` through `0040`).
 The pinned Rust adapter reported 44 passes, no failures, kit errors or skips.
 A second capture matched byte for byte; the earlier exchanges remain intact.
+
+`values-float-hole-rust.ndjson` separately captures finite float and
+unresolved-reference hole spelling/semantic cases (`values-0009`, `0012`, and
+`0041` through `0043`). The pinned Rust adapter reported 32 passes, no
+failures, kit errors or skips. A second capture matched byte for byte; the
+earlier exchanges remain intact.

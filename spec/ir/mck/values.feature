@@ -237,10 +237,20 @@ Feature: Values
     And a reader of JSON accepts { "List": { "items": [1, 2, 3] } }
     And a reader of JSON accepts { "List": { "attributes": {}, "items": [1, 2, 3] } }
 
-  Scenario: values-0009 Hole
+  @spelling
+  Scenario: values-0009 Hole spelling
     Decision 0008: Hole stays a value expression with an optional `expectedType`; the Native and External expressions are removed, and a reader refuses them as unknown nodes. Native and external operations are definition bodies (definitions-0007).
 
-    Then its canonical YAML spelling is:
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        hole
+        unresolvedReference::  {
+          target: "my-org/project:module#deleted",
+        }
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       Hole:
         reason:
@@ -248,9 +258,22 @@ Feature: Values
             target: my-org/project:module#deleted
       """
     And its canonical JSON spelling is { "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } } } }
-    And a reader of JSON accepts { "Hole": { "attributes": {}, "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } } } }
 
-  Scenario Outline: values-0009 Hole
+  @semantic
+  Scenario: values-0041 Hole expanded reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        hole
+        unresolvedReference::  {
+          target: "my-org/project:module#deleted",
+        }
+      )
+      """
+    Then a reader of JSON accepts { "Hole": { "attributes": {}, "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } } } }
+
+  @semantic
+  Scenario Outline: values-0042 Removed native and external Value nodes
     Then a reader of <format> rejects <input> with <diagnostic>
 
     Examples:
@@ -297,14 +320,32 @@ Feature: Values
       """
     Then a reader of JSON accepts true
 
-  Scenario: values-0012 Bare number lexemes
-    Then its canonical YAML spelling is:
+  @spelling
+  Scenario: values-0012 Float literal spelling
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        float
+        "4.0"
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       Literal:
         FloatLiteral: 4.0
       """
     And its canonical JSON spelling is { "Literal": { "FloatLiteral": 4.0 } }
-    And a reader of JSON accepts 4.0
+
+  @semantic
+  Scenario: values-0043 Bare float lexeme reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        float
+        "4.0"
+      )
+      """
+    Then a reader of JSON accepts 4.0
 
   @spelling
   Scenario: values-0013 Record spelling

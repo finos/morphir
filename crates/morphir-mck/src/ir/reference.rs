@@ -30,6 +30,9 @@ pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<Stri
                 ValueReference::Integer(number) => {
                     Ok(format!("Literal:\n  IntegerLiteral: {number}\n"))
                 }
+                ValueReference::Float(lexeme) => {
+                    Ok(format!("Literal:\n  FloatLiteral: {lexeme}\n"))
+                }
                 ValueReference::Boolean(value) => Ok(format!("Literal:\n  BoolLiteral: {value}\n")),
                 // JSON flow syntax is valid YAML 1.2. Semantic checks need a
                 // readable YAML document; spelling cases pin the YAML writer.
@@ -107,8 +110,10 @@ enum ValueReference {
     FieldFunction(String),
     Unit,
     Integer(i64),
+    Float(String),
     Boolean(bool),
     String(String),
+    UnresolvedHole(String),
     Tuple(Vec<ValueReference>),
     List(Vec<ValueReference>),
     Apply(Box<ValueReference>, Box<ValueReference>),
@@ -190,8 +195,14 @@ impl ValueReference {
             Self::FieldFunction(name) => json!({"FieldFunction": name}),
             Self::Unit => json!({"Unit": {}}),
             Self::Integer(number) => json!({"Literal": {"IntegerLiteral": number}}),
+            Self::Float(lexeme) => {
+                json!({"Literal": {"FloatLiteral": float_number(lexeme).expect("validated float")}})
+            }
             Self::Boolean(value) => json!({"Literal": {"BoolLiteral": value}}),
             Self::String(value) => json!({"Literal": {"StringLiteral": value}}),
+            Self::UnresolvedHole(target) => {
+                json!({"Hole": {"reason": {"UnresolvedReference": {"target": target}}}})
+            }
             Self::Tuple(items) => {
                 json!({"Tuple": items.iter().map(Self::canonical_json).collect::<Vec<_>>()})
             }
@@ -242,8 +253,18 @@ impl ValueReference {
             ),
             Self::Unit => Element::from(Sequence::builder().build_sexp()),
             Self::Integer(number) => Element::from(ion_rs::Int::from(*number)),
+            Self::Float(lexeme) => sexp_element("float", [Element::string(lexeme.as_str())]),
             Self::Boolean(value) => Element::from(*value),
             Self::String(value) => sexp_element("string", [Element::string(value.as_str())]),
+            Self::UnresolvedHole(target) => sexp_element(
+                "hole",
+                [Element::from(
+                    ion_rs::Struct::builder()
+                        .with_field("target", target.as_str())
+                        .build(),
+                )
+                .with_annotations(["unresolvedReference"])],
+            ),
             Self::Tuple(items) => collection_element("tuple", items),
             Self::List(items) => collection_element("list", items),
             Self::Apply(function, argument) => {
@@ -275,6 +296,21 @@ fn canonical_fields(fields: &[(String, ValueReference)]) -> Value {
         map.insert(name.clone(), value.canonical_json());
     }
     Value::Object(map)
+}
+
+fn float_number(lexeme: &str) -> Result<serde_json::Number, String> {
+    let number = lexeme
+        .parse::<serde_json::Number>()
+        .map_err(|error| error.to_string())?;
+    if !number.as_f64().is_some_and(f64::is_finite) {
+        return Err("a FloatLiteral holds a finite JSON number".to_owned());
+    }
+    Ok(number)
+}
+
+fn float(lexeme: &str) -> Result<ValueReference, String> {
+    float_number(lexeme)?;
+    Ok(ValueReference::Float(lexeme.to_owned()))
 }
 
 fn ion_fields(fields: &[(String, ValueReference)]) -> impl Iterator<Item = Element> {
@@ -423,10 +459,11 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
     match value {
         Value::String(name) => variable(name),
         Value::Array(items) => read_items(items).map(ValueReference::List),
-        Value::Number(number) => number
-            .as_i64()
-            .map(ValueReference::Integer)
-            .ok_or("a Value integer fits i64".to_owned()),
+        Value::Number(number) => match number.as_i64() {
+            Some(integer) => Ok(ValueReference::Integer(integer)),
+            None if number.is_f64() => float(&number.to_string()),
+            None => Err("a Value integer fits i64".to_owned()),
+        },
         Value::Bool(value) => Ok(ValueReference::Boolean(*value)),
         Value::Object(fields) if fields.len() == 1 => {
             let (kind, payload) = fields.iter().next().expect("one member");
@@ -440,6 +477,31 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
                     .and_then(|name| variable(&name).map(|_| ValueReference::FieldFunction(name))),
                 "Unit" if empty_attributes(payload) => Ok(ValueReference::Unit),
                 "Literal" => read_literal(payload),
+                "Hole" => {
+                    let Value::Object(members) = payload else {
+                        return Err("a Hole has an object payload".to_owned());
+                    };
+                    if members.len() != 1
+                        && !(members.len() == 2
+                            && matches!(members.get("attributes"), Some(Value::Object(attrs)) if attrs.is_empty()))
+                    {
+                        return Err("a Hole has a reason and optional empty attributes".to_owned());
+                    }
+                    let Some(Value::Object(reason)) = members.get("reason") else {
+                        return Err("a Hole has a reason".to_owned());
+                    };
+                    let Some(Value::Object(details)) = reason.get("UnresolvedReference") else {
+                        return Err("an admitted Hole has an UnresolvedReference reason".to_owned());
+                    };
+                    if reason.len() != 1 || details.len() != 1 {
+                        return Err("an UnresolvedReference has one target".to_owned());
+                    }
+                    let target = details
+                        .get("target")
+                        .and_then(Value::as_str)
+                        .ok_or("an UnresolvedReference has a target string")?;
+                    fqname(target).map(ValueReference::UnresolvedHole)
+                }
                 "Tuple" => read_collection(payload, "elements").map(ValueReference::Tuple),
                 "List" => read_collection(payload, "items").map(ValueReference::List),
                 "Apply" => {
@@ -659,6 +721,10 @@ fn read_literal(value: &Value) -> Result<ValueReference, String> {
                     .as_bool()
                     .map(ValueReference::Boolean)
                     .ok_or("a BoolLiteral needs a boolean".to_owned()),
+                "FloatLiteral" => payload
+                    .as_f64()
+                    .ok_or("a FloatLiteral needs a number".to_owned())
+                    .and_then(|_| float(&payload.to_string())),
                 "StringLiteral" => payload
                     .as_str()
                     .map(|text| ValueReference::String(text.to_owned()))
@@ -780,6 +846,37 @@ fn read_sexp(element: &Element) -> Result<ValueReference, String> {
             text.as_string()
                 .map(|text| ValueReference::String(text.to_owned()))
                 .ok_or("a StringLiteral has a string argument".to_owned())
+        }
+        "float" => {
+            let [lexeme] = rest else {
+                return Err("a FloatLiteral has one argument".to_owned());
+            };
+            let lexeme = lexeme
+                .as_string()
+                .ok_or("a FloatLiteral has a string lexeme")?;
+            float(lexeme)
+        }
+        "hole" => {
+            let [reason] = rest else {
+                return Err("an admitted Hole has one reason".to_owned());
+            };
+            let annotations = reason
+                .annotations()
+                .iter()
+                .map(|symbol| symbol.text())
+                .collect::<Vec<_>>();
+            if annotations != [Some("unresolvedReference")] {
+                return Err("an admitted Hole has an UnresolvedReference reason".to_owned());
+            }
+            let structure = reason.as_struct().ok_or("a Hole reason is a struct")?;
+            if structure.len() != 1 {
+                return Err("an UnresolvedReference has one target".to_owned());
+            }
+            let target = structure
+                .get("target")
+                .and_then(Element::as_string)
+                .ok_or("an UnresolvedReference target is a string")?;
+            fqname(target).map(ValueReference::UnresolvedHole)
         }
         "record" => read_ion_fields(rest).map(ValueReference::Record),
         "update" => {
@@ -1126,6 +1223,48 @@ mod tests {
         for profile in [Profile::Json, Profile::Yaml] {
             let encoded = to_profile("Value", &ion, profile).unwrap();
             assert_eq!(to_ion("Value", profile, &encoded).unwrap(), ion);
+        }
+    }
+
+    #[test]
+    fn float_and_hole_values_round_trip_across_profiles() {
+        for (json, expected_ion) in [
+            (
+                r#"{"Literal":{"FloatLiteral":4.0}}"#,
+                "(\n  float\n  \"4.0\"\n)\n",
+            ),
+            (
+                r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"my-org/project:module#deleted"}}}}"#,
+                "(\n  hole\n  unresolvedReference::  {\n    target: \"my-org/project:module#deleted\",\n  }\n)\n",
+            ),
+        ] {
+            let ion = to_ion("Value", Profile::Json, json).unwrap();
+            assert_eq!(ion, expected_ion);
+            assert_eq!(to_ion("Value", Profile::Ion, &ion).unwrap(), ion);
+            for profile in [Profile::Json, Profile::Yaml] {
+                let text = to_profile("Value", &ion, profile).unwrap();
+                assert_eq!(to_ion("Value", profile, &text).unwrap(), ion);
+            }
+        }
+    }
+
+    #[test]
+    fn float_and_hole_reference_shapes_are_bounded() {
+        for json in [
+            r#"{"Literal":{"FloatLiteral":"4.0"}}"#,
+            r#"{"Literal":{"FloatLiteral":1e400}}"#,
+            "18446744073709551616",
+            r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"bad_name:mod#x"}}}}"#,
+            r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}},"expectedType":"pkg:mod#type"}}"#,
+        ] {
+            assert!(to_ion("Value", Profile::Json, json).is_err(), "{json}");
+        }
+        for ion in [
+            "(float \"NaN\")",
+            "(hole unresolvedReference::{target: \"bad_name:mod#x\"})",
+            "(hole unresolvedReference::{target: \"pkg:mod#x\", target: \"pkg:mod#y\"})",
+        ] {
+            assert!(to_profile("Value", ion, Profile::Json).is_err(), "{ion}");
         }
     }
 }
