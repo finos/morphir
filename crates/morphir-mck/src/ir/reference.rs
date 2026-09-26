@@ -113,7 +113,7 @@ enum ValueReference {
     Float(String),
     Boolean(bool),
     String(String),
-    UnresolvedHole(String),
+    UnresolvedHole(String, Option<String>),
     Tuple(Vec<ValueReference>),
     List(Vec<ValueReference>),
     Apply(Box<ValueReference>, Box<ValueReference>),
@@ -200,8 +200,16 @@ impl ValueReference {
             }
             Self::Boolean(value) => json!({"Literal": {"BoolLiteral": value}}),
             Self::String(value) => json!({"Literal": {"StringLiteral": value}}),
-            Self::UnresolvedHole(target) => {
-                json!({"Hole": {"reason": {"UnresolvedReference": {"target": target}}}})
+            Self::UnresolvedHole(target, expected_type) => {
+                let mut hole = Map::new();
+                hole.insert(
+                    "reason".to_owned(),
+                    json!({"UnresolvedReference": {"target": target}}),
+                );
+                if let Some(name) = expected_type {
+                    hole.insert("expectedType".to_owned(), Value::String(name.clone()));
+                }
+                json!({"Hole": hole})
             }
             Self::Tuple(items) => {
                 json!({"Tuple": items.iter().map(Self::canonical_json).collect::<Vec<_>>()})
@@ -256,14 +264,21 @@ impl ValueReference {
             Self::Float(lexeme) => sexp_element("float", [Element::string(lexeme.as_str())]),
             Self::Boolean(value) => Element::from(*value),
             Self::String(value) => sexp_element("string", [Element::string(value.as_str())]),
-            Self::UnresolvedHole(target) => sexp_element(
+            Self::UnresolvedHole(target, expected_type) => sexp_element(
                 "hole",
-                [Element::from(
-                    ion_rs::Struct::builder()
-                        .with_field("target", target.as_str())
-                        .build(),
+                std::iter::once(
+                    Element::from(
+                        ion_rs::Struct::builder()
+                            .with_field("target", target.as_str())
+                            .build(),
+                    )
+                    .with_annotations(["unresolvedReference"]),
                 )
-                .with_annotations(["unresolvedReference"])],
+                .chain(
+                    expected_type
+                        .iter()
+                        .map(|name| Element::string(name.as_str())),
+                ),
             ),
             Self::Tuple(items) => collection_element("tuple", items),
             Self::List(items) => collection_element("list", items),
@@ -481,11 +496,13 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
                     let Value::Object(members) = payload else {
                         return Err("a Hole has an object payload".to_owned());
                     };
-                    if members.len() != 1
-                        && !(members.len() == 2
-                            && matches!(members.get("attributes"), Some(Value::Object(attrs)) if attrs.is_empty()))
+                    if members.keys().any(|name| {
+                        !matches!(name.as_str(), "reason" | "attributes" | "expectedType")
+                    }) || members
+                        .get("attributes")
+                        .is_some_and(|value| !empty_attributes(value))
                     {
-                        return Err("a Hole has a reason and optional empty attributes".to_owned());
+                        return Err("a Hole has a reason, optional empty attributes, and optional expectedType".to_owned());
                     }
                     let Some(Value::Object(reason)) = members.get("reason") else {
                         return Err("a Hole has a reason".to_owned());
@@ -500,7 +517,19 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
                         .get("target")
                         .and_then(Value::as_str)
                         .ok_or("an UnresolvedReference has a target string")?;
-                    fqname(target).map(ValueReference::UnresolvedHole)
+                    let expected_type = members
+                        .get("expectedType")
+                        .map(|value| {
+                            value
+                                .as_str()
+                                .ok_or_else(|| "a Hole expectedType is a name".to_owned())
+                                .and_then(fqname)
+                        })
+                        .transpose()?;
+                    Ok(ValueReference::UnresolvedHole(
+                        fqname(target)?,
+                        expected_type,
+                    ))
                 }
                 "Tuple" => read_collection(payload, "elements").map(ValueReference::Tuple),
                 "List" => read_collection(payload, "items").map(ValueReference::List),
@@ -857,8 +886,14 @@ fn read_sexp(element: &Element) -> Result<ValueReference, String> {
             float(lexeme)
         }
         "hole" => {
-            let [reason] = rest else {
-                return Err("an admitted Hole has one reason".to_owned());
+            let (reason, expected_type) = match rest {
+                [reason] => (reason, None),
+                [reason, expected] => (reason, Some(expected)),
+                _ => {
+                    return Err(
+                        "an admitted Hole has a reason and optional expected type".to_owned()
+                    );
+                }
             };
             let annotations = reason
                 .annotations()
@@ -876,7 +911,18 @@ fn read_sexp(element: &Element) -> Result<ValueReference, String> {
                 .get("target")
                 .and_then(Element::as_string)
                 .ok_or("an UnresolvedReference target is a string")?;
-            fqname(target).map(ValueReference::UnresolvedHole)
+            let expected_type = expected_type
+                .map(|element| {
+                    element
+                        .as_string()
+                        .ok_or_else(|| "a Hole expected type is a string".to_owned())
+                        .and_then(fqname)
+                })
+                .transpose()?;
+            Ok(ValueReference::UnresolvedHole(
+                fqname(target)?,
+                expected_type,
+            ))
         }
         "record" => read_ion_fields(rest).map(ValueReference::Record),
         "update" => {
@@ -1249,13 +1295,25 @@ mod tests {
     }
 
     #[test]
+    fn unresolved_hole_preserves_expected_type_across_profiles() {
+        let json = r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"my-org/project:module#deleted"}},"expectedType":"morphir/SDK:string#string"}}"#;
+        let ion = to_ion("Value", Profile::Json, json).unwrap();
+        assert!(ion.contains("\"morphir/SDK:string#string\""));
+        assert_eq!(to_ion("Value", Profile::Ion, &ion).unwrap(), ion);
+        for profile in [Profile::Json, Profile::Yaml] {
+            let text = to_profile("Value", &ion, profile).unwrap();
+            assert_eq!(to_ion("Value", profile, &text).unwrap(), ion);
+        }
+    }
+
+    #[test]
     fn float_and_hole_reference_shapes_are_bounded() {
         for json in [
             r#"{"Literal":{"FloatLiteral":"4.0"}}"#,
             r#"{"Literal":{"FloatLiteral":1e400}}"#,
             "18446744073709551616",
             r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"bad_name:mod#x"}}}}"#,
-            r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}},"expectedType":"pkg:mod#type"}}"#,
+            r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}},"expectedType":"bad_name"}}"#,
         ] {
             assert!(to_ion("Value", Profile::Json, json).is_err(), "{json}");
         }

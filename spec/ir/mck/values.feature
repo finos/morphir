@@ -273,6 +273,21 @@ Feature: Values
     Then a reader of JSON accepts { "Hole": { "attributes": {}, "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } } } }
 
   @semantic
+  Scenario: values-0044 Hole keeps its expected type
+    Given a Value whose canonical form is:
+      """ion
+      (
+        hole
+        unresolvedReference::  {
+          target: "my-org/project:module#deleted",
+        }
+        "morphir/SDK:string#string"
+      )
+      """
+    Then a reader of JSON accepts { "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } }, "expectedType": "morphir/SDK:string#string" } }
+    And a reader of JSON accepts { "Hole": { "attributes": {}, "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } }, "expectedType": "morphir/SDK:string#string" } }
+
+  @semantic
   Scenario Outline: values-0042 Removed native and external Value nodes
     Then a reader of <format> rejects <input> with <diagnostic>
 

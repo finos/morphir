@@ -42,3 +42,9 @@ unresolved-reference hole spelling/semantic cases (`values-0009`, `0012`, and
 `0041` through `0043`). The pinned Rust adapter reported 32 passes, no
 failures, kit errors or skips. A second capture matched byte for byte; the
 earlier exchanges remain intact.
+
+`values-hole-expected-rust.ndjson` separately captures `values-0044`, an
+unresolved-reference hole whose optional expected type is a canonical type
+reference. The pinned Rust adapter reported 10 passes, no failures, kit errors
+or skips. A second capture matched byte for byte; earlier exchanges remain
+intact.
