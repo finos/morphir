@@ -41,12 +41,26 @@ pub(super) fn to_ion(node: &str, profile: Profile, text: &str) -> Result<String,
     let Value::Object(fields) = value else {
         return Err("a Value reference is an object".to_owned());
     };
-    let Some(Value::String(name)) = fields.get("Reference") else {
-        return Err("a Value reference needs a Reference string".to_owned());
-    };
     if fields.len() != 1 {
         return Err("a Value reference has only Reference".to_owned());
     }
+    let name = match fields.get("Reference") {
+        Some(Value::String(name)) => name.as_str(),
+        Some(Value::Object(reference)) => {
+            if reference.len() != 2
+                || !matches!(reference.get("attributes"), Some(Value::Object(attrs)) if attrs.is_empty())
+            {
+                return Err(
+                    "an expanded Value reference has empty attributes and a fqname".to_owned(),
+                );
+            }
+            reference
+                .get("fqname")
+                .and_then(Value::as_str)
+                .ok_or("an expanded Value reference needs a fqname string")?
+        }
+        _ => return Err("a Value reference needs a Reference string or object".to_owned()),
+    };
     canonical_reference(name)
 }
 
@@ -107,6 +121,15 @@ mod tests {
         let yaml = to_profile("Value", ION, Profile::Yaml).unwrap();
         assert_eq!(to_ion("Value", Profile::Json, &json).unwrap(), ION);
         assert_eq!(to_ion("Value", Profile::Yaml, &yaml).unwrap(), ION);
+        assert_eq!(
+            to_ion(
+                "Value",
+                Profile::Json,
+                r##"{"Reference":{"attributes":{},"fqname":"morphir/SDK:basics#add"}}"##,
+            )
+            .unwrap(),
+            ION
+        );
         assert_eq!(to_profile("Value", ION, Profile::Ion).unwrap(), ION);
     }
 
@@ -117,5 +140,13 @@ mod tests {
         assert!(to_profile("Value", "(ref 'x') 42", Profile::Json).is_err());
         assert!(to_profile("Type", ION, Profile::Json).is_err());
         assert!(to_ion("Value", Profile::Json, "{}").is_err());
+        assert!(
+            to_ion(
+                "Value",
+                Profile::Json,
+                r##"{"Reference":{"attributes":{"x":1},"fqname":"morphir/SDK:basics#add"}}"##,
+            )
+            .is_err()
+        );
     }
 }
