@@ -42,12 +42,16 @@ fn read(path: &Path) -> Result<Document> {
     let mut files = Vec::new();
     for section in &parsed.sections {
         check_command_order(path, section)?;
-        files.push(overlay_files(section)?);
+        files.push(
+            overlay_files(section)
+                .with_context(|| format!("{}: scenario {}", path.display(), section.id))?,
+        );
         let (_, steps) = model::parse(section)
             .with_context(|| format!("{}: scenario {}", path.display(), section.id))?;
         scenarios.push((section, steps));
     }
-    let text = feature_text(&parsed.metadata, &files, &scenarios)?;
+    let text = feature_text(&parsed.metadata, &files, &scenarios)
+        .with_context(|| format!("scenario document {}", path.display()))?;
     // `read_str` picks Feature or Markdown-with-Gherkin by the path's extension; the real
     // `scenarios.md` extension matches neither, so a synthetic `.feature` name is used to parse,
     // then the document's own path is restored below.

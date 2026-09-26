@@ -18,7 +18,7 @@
 //! string or to a golden file that `MaterializeExample` froze in [`FrozenGoldens`] before the
 //! first step. Every failure names the command, with its exit code, stdout and stderr.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
@@ -33,7 +33,7 @@ use serde_json::json;
 use crate::commands::itest::golden::{self, LineEndings, Selection};
 use crate::commands::itest::model;
 use crate::commands::itest::reader;
-use crate::commands::itest::runner::{ProcessOutput, check_report, observation};
+use crate::commands::itest::runner::{ProcessOutput, check_report, observation, read_text};
 
 use super::runner::run_isolated;
 use super::{DEFAULT_TIMEOUT, ExampleSpec, FrozenGoldens, ItestDirs};
@@ -368,21 +368,11 @@ fn parse_line_endings(text: &str) -> LineEndings {
     }
 }
 
-/// `actual`, resolved against [`ItestDirs::project`] and checked as a portable relative path.
-fn actual_path(world: &MorphirWorld, actual: &str) -> PathBuf {
-    model::relative_path(actual)
-        .unwrap_or_else(|error| panic!("invalid golden actual path {actual:?}: {error:#}"));
-    dirs(world).project.join(actual)
-}
-
-/// Reads `path` (the file named by `relative`, for the panic message), panicking if it is missing,
-/// not a regular file, or not UTF-8, with the text `runner::read_text` uses.
-fn read_golden(path: &Path, relative: &str) -> String {
-    if !path.is_file() {
-        panic!("golden file {relative:?} is missing or is not a regular file");
-    }
-    std::fs::read_to_string(path)
-        .unwrap_or_else(|error| panic!("read UTF-8 golden file {relative:?}: {error}"))
+/// Reads the golden actual file `actual` under [`ItestDirs::project`] with `runner::read_text`, as
+/// legacy itest did: the path must be a portable relative path that traverses no symlink and
+/// names a regular UTF-8 file. Panics with legacy's error text otherwise.
+fn read_actual(world: &MorphirWorld, actual: &str) -> String {
+    read_text(&dirs(world).project, actual).unwrap_or_else(|error| panic!("{error:#}"))
 }
 
 /// Panics unless the scenario's most recent command exited 0: a golden check never passes over a
@@ -416,8 +406,7 @@ fn check_golden(
     let diagnostics = || command_diagnostics(world);
     let selection = parse_selection(select).unwrap_or_else(|error| panic!("{error}"));
     let line_endings = parse_line_endings(line_endings);
-    let path = actual_path(world, actual);
-    let actual_text = read_golden(&path, actual);
+    let actual_text = read_actual(world, actual);
     let selected = selection.select(&actual_text).unwrap_or_else(|error| {
         panic!(
             "{}\ngolden file {actual:?}, selection {selection:?}: {error:#}",
@@ -668,6 +657,46 @@ mod tests {
         // Reading `last_command` again for the same `seq` (as the policy or golden step does right
         // after a capture step) must not reset it.
         assert_eq!(last_command(&mut world, 7).captures.len(), 1);
+    }
+
+    /// A golden check never reads its actual file through a symlink, even one a command wrote:
+    /// it fails with legacy itest's `confined` text instead of reading the file outside.
+    #[cfg(unix)]
+    #[test]
+    fn check_golden_refuses_an_actual_file_that_is_a_symlink_out_of_the_project() {
+        let temp = tempfile::tempdir().unwrap();
+        let dirs = ItestDirs::new(temp.path());
+        std::fs::create_dir_all(&dirs.project).unwrap();
+        let outside = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(outside.path(), "outside\n").unwrap();
+        std::os::unix::fs::symlink(outside.path(), dirs.project.join("actual.txt")).unwrap();
+        let mut world = MorphirWorld::new();
+        world.context.insert(dirs);
+        world.context.insert(LastOutput {
+            stdout: String::new(),
+            stderr: String::new(),
+            status: Some(0),
+        });
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            check_golden(
+                &world,
+                "actual.txt",
+                "all",
+                "exact",
+                "outside\n",
+                "inline text",
+            )
+        }))
+        .expect_err("a symlinked actual file must fail the golden check");
+        let message = panic
+            .downcast_ref::<String>()
+            .cloned()
+            .or_else(|| panic.downcast_ref::<&str>().map(|s| (*s).to_owned()))
+            .unwrap_or_default();
+        assert!(
+            message.contains("assertion traverses a symlink"),
+            "{message}"
+        );
     }
 
     #[test]

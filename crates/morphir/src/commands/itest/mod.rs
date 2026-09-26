@@ -424,10 +424,11 @@ fn find_documents(root: &Path) -> Result<Vec<Found>> {
 }
 
 /// The scenarios of the document at `path`, in the directory whose id is `directory`, or why the
-/// document cannot be read. The reason has the same text the suite gives for the same file.
+/// document cannot be read. A `scenarios.md` reason is the reader's own text, which already names
+/// the document (`scenario document <path>: …`), as legacy itest gave it.
 fn read_listed(path: &Path, directory: &str) -> std::result::Result<Vec<Listed>, String> {
     let document = if path.file_name() == Some(OsStr::new(SCENARIOS_MD)) {
-        read_scenarios_md(path).map_err(|message| format!("{}: {message}", path.display()))?
+        read_scenarios_md(path)?
     } else {
         morphir_gherkin::read_document(path)
             .map(|(document, _)| document)
@@ -684,11 +685,17 @@ fn run_suite(args: ItestArgs) -> Result<()> {
         let ran = run.passed + run.failed;
         if ran < expected {
             missing = expected - ran;
-            eprintln!(
-                "error: {missing} selected scenario(s) did not run, and no error says why; \
-                 see the suite report in {}",
-                run.reports.display()
-            );
+            match &run.reports {
+                Some(reports) => eprintln!(
+                    "error: {missing} selected scenario(s) did not run, and no error says why; \
+                     see the suite report in {}",
+                    reports.display()
+                ),
+                None => eprintln!(
+                    "error: {missing} selected scenario(s) did not run, and no error says why; \
+                     set MORPHIR_BDD_OUT to keep the suite report"
+                ),
+            }
         }
     }
     println!(
@@ -775,8 +782,8 @@ struct SuiteRun {
     passed: usize,
     failed: usize,
     error_messages: Vec<String>,
-    /// Where the suite wrote its JSON report.
-    reports: PathBuf,
+    /// Where the suite wrote its JSON report, when `MORPHIR_BDD_OUT` keeps it after the run.
+    reports: Option<PathBuf>,
 }
 
 /// The name of the thread the suite runs on.
@@ -791,7 +798,11 @@ fn run_scenarios(
 ) -> Result<SuiteRun> {
     steps::link();
     let binary = std::env::current_exe().context("locate the running Morphir CLI")?;
-    let (reports, _reports) = report_dir()?;
+    let reports = report_dir()?;
+    let out_dir = match &reports {
+        ReportDir::Kept => None,
+        ReportDir::Temporary(temp) => Some(temp.path().to_owned()),
+    };
     let root = args.root.clone();
     let filter = args.filter.clone();
     let keep = KeepTemp(args.keep_temp);
@@ -842,10 +853,14 @@ fn run_scenarios(
                 })
                 .max_concurrent_scenarios(1)
                 .console(Console::Off)
-                .out_dir(&reports)
                 .on_scenario_finished(move |outcome| {
                     report_outcome(&outcome_root, outcome, &counts.0, &counts.1);
                 });
+            // With `MORPHIR_BDD_OUT` set, the suite's own default already reads it.
+            let suite = match out_dir {
+                Some(dir) => suite.out_dir(dir),
+                None => suite,
+            };
             Ok(runtime.block_on(suite.run()))
         })
         .context("start the itest suite thread")?
@@ -855,7 +870,10 @@ fn run_scenarios(
         passed: passed.load(Ordering::SeqCst),
         failed: failed.load(Ordering::SeqCst),
         error_messages: result.error_messages,
-        reports: result.json,
+        reports: match reports {
+            ReportDir::Kept => Some(result.json),
+            ReportDir::Temporary(_) => None,
+        },
     })
 }
 
@@ -923,7 +941,10 @@ fn report_documents_that_did_not_run(
                         .any(|(refused, _)| refused.path == document.path);
                 if selected {
                     reported.insert(document.path.clone());
-                    tally.fail(&document.directory, message);
+                    // A document that cannot be read fails with its own reason, the same text
+                    // `--list` gives. The suite's message puts the path in front of it again.
+                    let reason = document.scenarios.as_ref().err().unwrap_or(message);
+                    tally.fail(&document.directory, reason);
                 }
             }
             None => tally.fail(&root.display().to_string(), message),
@@ -937,21 +958,32 @@ fn report_documents_that_did_not_run(
     reported
 }
 
-/// Where the suite writes its JSON and JUnit reports: `MORPHIR_BDD_OUT` when set, else
-/// `.dev/out/bdd` under the repository root (the nearest ancestor of the working directory with a
-/// `Cargo.lock`). Outside a repository they go to a temporary directory that is removed after the
-/// run, so an installed CLI leaves no files behind.
-fn report_dir() -> Result<(PathBuf, Option<TempDir>)> {
+/// Where the suite writes its JSON and JUnit reports.
+enum ReportDir {
+    /// `MORPHIR_BDD_OUT`, which the suite reads by itself. The reports stay there after the run.
+    Kept,
+    /// A temporary directory, removed when this value drops, so that `morphir itest` writes
+    /// nothing into the project it runs in.
+    Temporary(TempDir),
+}
+
+/// The directory for the suite's reports: `MORPHIR_BDD_OUT` when it is set, created here so that
+/// a bad path is a readable error and not a panic inside the suite; else a new temporary
+/// directory.
+fn report_dir() -> Result<ReportDir> {
     if let Some(dir) = std::env::var_os("MORPHIR_BDD_OUT") {
-        return Ok((PathBuf::from(dir), None));
-    }
-    let cwd = std::env::current_dir().context("read the working directory")?;
-    if let Some(repository) = cwd.ancestors().find(|dir| dir.join("Cargo.lock").is_file()) {
-        return Ok((repository.join(".dev/out/bdd"), None));
+        let dir = PathBuf::from(dir);
+        std::fs::create_dir_all(&dir).with_context(|| {
+            format!(
+                "create the itest report directory {} (MORPHIR_BDD_OUT)",
+                dir.display()
+            )
+        })?;
+        return Ok(ReportDir::Kept);
     }
     let temp = tempfile::Builder::new()
         .prefix("morphir-itest-reports-")
         .tempdir()
         .context("create a directory for the itest reports")?;
-    Ok((temp.path().to_owned(), Some(temp)))
+    Ok(ReportDir::Temporary(temp))
 }

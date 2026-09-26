@@ -86,7 +86,7 @@ fn confined(root: &Path, relative: &str) -> Result<PathBuf> {
 
 /// Reads the UTF-8 file `relative` under `root`. The path must be a portable relative path that
 /// traverses no symlink ([`confined`]) and names a regular file.
-pub(super) fn read_text(root: &Path, relative: &str) -> Result<String> {
+pub(crate) fn read_text(root: &Path, relative: &str) -> Result<String> {
     let path = confined(root, relative)?;
     ensure!(
         path.is_file(),

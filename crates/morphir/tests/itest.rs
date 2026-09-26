@@ -553,6 +553,43 @@ fn itest_golden_whole_file_lines_and_markers() {
     }
 }
 
+/// An itest run inside a Rust project writes no suite reports into it: with no `MORPHIR_BDD_OUT`
+/// the reports go to a temporary directory that the run removes.
+#[test]
+fn itest_writes_no_suite_reports_into_the_project_it_runs_in() {
+    let project = tempfile::tempdir().unwrap();
+    fs::write(project.path().join("Cargo.lock"), "version = 3\n").unwrap();
+    let root = project.path().join("examples");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("actual.txt"), "same\n").unwrap();
+    fs::write(root.join("expected.txt"), "same\n").unwrap();
+    fs::write(
+        root.join("scenarios.md"),
+        golden_md(
+            "morphir --version",
+            "actual: actual.txt\nexpected_file: expected.txt\n",
+            None,
+        ),
+    )
+    .unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .current_dir(project.path())
+        .arg("itest")
+        .arg(&root)
+        .env("MORPHIR_HOME", home.path())
+        .env("MORPHIR_LOG_FILE", "false")
+        .env_remove("MORPHIR_BDD_OUT")
+        .output()
+        .unwrap();
+    assert_golden_output(&output, true, "1 passed");
+    assert!(
+        !project.path().join(".dev").exists(),
+        "itest wrote into the project: {:?}",
+        fs::read_dir(project.path().join(".dev")).map(|d| d.count())
+    );
+}
+
 #[test]
 fn itest_golden_expected_file_and_explicit_line_endings() {
     let root = tempfile::tempdir().unwrap();
@@ -1079,6 +1116,9 @@ fn itest_fails_a_scenarios_md_the_reader_refuses_and_runs_the_rest() {
     assert!(!output.status.success(), "stdout={stdout} stderr={stderr}");
     assert!(stderr.contains("FAIL cli/refused\n"), "{stderr}");
     assert!(stderr.contains("which is not the last command"), "{stderr}");
+    // The reason names the document once, not once from the suite and again from the reader.
+    let document = bad.join("scenarios.md").display().to_string();
+    assert_eq!(stderr.matches(&document).count(), 1, "{stderr}");
     assert!(
         stdout.contains("PASS cli/good#first: First (1 steps)\n"),
         "{stdout}"
@@ -1087,6 +1127,13 @@ fn itest_fails_a_scenarios_md_the_reader_refuses_and_runs_the_rest() {
         stdout.ends_with("2 passed; 1 failed; 0 not selected\n"),
         "{stdout}"
     );
+    // `--list` gives the same reason as an error, which the terminal report may wrap, so count
+    // the directory part of the path.
+    let listed = run(temp.path(), &["--list"]);
+    let (_, stderr) = text(&listed);
+    assert!(!listed.status.success(), "{stderr}");
+    assert!(stderr.contains("checks command \"first\""), "{stderr}");
+    assert_eq!(stderr.matches("/cli/refused/").count(), 1, "{stderr}");
 }
 
 #[test]
