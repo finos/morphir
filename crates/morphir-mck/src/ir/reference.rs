@@ -746,8 +746,8 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
                     let Some(Value::Object(details)) = reason.get("UnresolvedReference") else {
                         return Err("an admitted Hole has an UnresolvedReference reason".to_owned());
                     };
-                    if reason.len() != 1 || details.len() != 1 {
-                        return Err("an UnresolvedReference has one target".to_owned());
+                    if reason.len() != 1 {
+                        return Err("a Hole reason has one kind".to_owned());
                     }
                     let target = details
                         .get("target")
@@ -1146,9 +1146,6 @@ fn read_sexp(element: &Element) -> Result<ValueReference, String> {
                 return Err("an admitted Hole has an UnresolvedReference reason".to_owned());
             }
             let structure = reason.as_struct().ok_or("a Hole reason is a struct")?;
-            if structure.len() != 1 {
-                return Err("an UnresolvedReference has one target".to_owned());
-            }
             let target = structure
                 .get("target")
                 .and_then(Element::as_string)
@@ -1578,6 +1575,15 @@ mod tests {
             let text = to_profile("Value", &ion, profile).unwrap();
             assert_eq!(to_ion("Value", profile, &text).unwrap(), ion);
         }
+    }
+
+    #[test]
+    fn unresolved_hole_ignores_unknown_reason_members() {
+        let baseline = r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x"}}}}"#;
+        let extended =
+            r#"{"Hole":{"reason":{"UnresolvedReference":{"target":"pkg:mod#x","future":true}}}}"#;
+        let ion = to_ion("Value", Profile::Json, baseline).unwrap();
+        assert_eq!(to_ion("Value", Profile::Json, extended).unwrap(), ion);
     }
 
     #[test]
