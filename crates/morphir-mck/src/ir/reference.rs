@@ -4,7 +4,9 @@
 //! implementation's IR codec, so adapter output cannot define the expected
 //! result. Unsupported node shapes fail as kit errors until admitted here.
 
+use indexmap::IndexMap;
 use ion_rs::{Element, Sequence, TextFormat};
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use super::compare::normalize_canonical;
@@ -21,7 +23,7 @@ pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<Stri
     match profile {
         Profile::Ion => canonical_ion(&value),
         Profile::Json => {
-            serde_json::to_string(&value.canonical_json()).map_err(|error| error.to_string())
+            serde_json::to_string(&value.canonical_ordered()).map_err(|error| error.to_string())
         }
         Profile::Yaml => {
             match &value {
@@ -37,8 +39,12 @@ pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<Stri
                 | ValueReference::List(_)
                 | ValueReference::Apply(_, _)
                 | ValueReference::IfThenElse(_, _, _)
-                | ValueReference::Field(_, _) => serde_json::to_string(&value.canonical_json())
-                    .map_err(|error| error.to_string()),
+                | ValueReference::Field(_, _)
+                | ValueReference::Record(_)
+                | ValueReference::UpdateRecord(_, _) => {
+                    serde_json::to_string(&value.canonical_ordered())
+                        .map_err(|error| error.to_string())
+                }
                 _ => serde_saphyr::to_string(&value.canonical_json())
                     .map_err(|error| error.to_string()),
             }
@@ -50,12 +56,47 @@ pub(super) fn to_ion(node: &str, profile: Profile, text: &str) -> Result<String,
     if node != "Value" {
         return Err(format!("reference codec does not support {node}"));
     }
-    let value: Value = match profile {
+    let value: OrderedValue = match profile {
         Profile::Json => serde_json::from_str(text).map_err(|error| error.to_string())?,
         Profile::Yaml => serde_saphyr::from_str(text).map_err(|error| error.to_string())?,
         Profile::Ion => return canonical_ion(&read_ion(node, text)?),
     };
-    canonical_ion(&read_profile_value(&value)?)
+    canonical_ion(&read_ordered_profile_value(&value)?)
+}
+
+// Record fields are ordered in v4. Keep source member order here instead of
+// enabling serde_json's preserve_order feature across unrelated MCK contracts.
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum OrderedValue {
+    Null,
+    Bool(bool),
+    Number(serde_json::Number),
+    String(String),
+    Array(Vec<OrderedValue>),
+    Object(IndexMap<String, OrderedValue>),
+}
+
+impl From<Value> for OrderedValue {
+    fn from(value: Value) -> Self {
+        match value {
+            Value::Null => Self::Null,
+            Value::Bool(value) => Self::Bool(value),
+            Value::Number(value) => Self::Number(value),
+            Value::String(value) => Self::String(value),
+            Value::Array(values) => Self::Array(values.into_iter().map(Self::from).collect()),
+            Value::Object(fields) => Self::Object(
+                fields
+                    .into_iter()
+                    .map(|(name, value)| (name, Self::from(value)))
+                    .collect(),
+            ),
+        }
+    }
+}
+
+fn ordered_object(fields: impl IntoIterator<Item = (String, OrderedValue)>) -> OrderedValue {
+    OrderedValue::Object(fields.into_iter().collect())
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -67,6 +108,7 @@ enum ValueReference {
     Unit,
     Integer(i64),
     Boolean(bool),
+    String(String),
     Tuple(Vec<ValueReference>),
     List(Vec<ValueReference>),
     Apply(Box<ValueReference>, Box<ValueReference>),
@@ -76,9 +118,70 @@ enum ValueReference {
         Box<ValueReference>,
     ),
     Field(Box<ValueReference>, String),
+    Record(Vec<(String, ValueReference)>),
+    UpdateRecord(Box<ValueReference>, Vec<(String, ValueReference)>),
 }
 
 impl ValueReference {
+    fn canonical_ordered(&self) -> OrderedValue {
+        let node = |kind: &str, payload| ordered_object([(kind.to_owned(), payload)]);
+        let members = |fields: Vec<(&str, OrderedValue)>| {
+            ordered_object(
+                fields
+                    .into_iter()
+                    .map(|(name, value)| (name.to_owned(), value)),
+            )
+        };
+        let fields = |fields: &[(String, ValueReference)]| {
+            ordered_object(
+                fields
+                    .iter()
+                    .map(|(name, value)| (name.clone(), value.canonical_ordered())),
+            )
+        };
+        match self {
+            Self::Tuple(items) => node(
+                "Tuple",
+                OrderedValue::Array(items.iter().map(Self::canonical_ordered).collect()),
+            ),
+            Self::List(items) => node(
+                "List",
+                OrderedValue::Array(items.iter().map(Self::canonical_ordered).collect()),
+            ),
+            Self::Apply(function, argument) => node(
+                "Apply",
+                members(vec![
+                    ("function", function.canonical_ordered()),
+                    ("argument", argument.canonical_ordered()),
+                ]),
+            ),
+            Self::IfThenElse(condition, then_branch, else_branch) => node(
+                "IfThenElse",
+                members(vec![
+                    ("condition", condition.canonical_ordered()),
+                    ("then", then_branch.canonical_ordered()),
+                    ("else", else_branch.canonical_ordered()),
+                ]),
+            ),
+            Self::Field(target, name) => node(
+                "Field",
+                members(vec![
+                    ("target", target.canonical_ordered()),
+                    ("name", OrderedValue::String(name.clone())),
+                ]),
+            ),
+            Self::Record(entries) => node("Record", members(vec![("fields", fields(entries))])),
+            Self::UpdateRecord(target, entries) => node(
+                "UpdateRecord",
+                members(vec![
+                    ("target", target.canonical_ordered()),
+                    ("fields", fields(entries)),
+                ]),
+            ),
+            _ => self.canonical_json().into(),
+        }
+    }
+
     fn canonical_json(&self) -> Value {
         match self {
             Self::Reference(name) => json!({"Reference": name}),
@@ -88,6 +191,7 @@ impl ValueReference {
             Self::Unit => json!({"Unit": {}}),
             Self::Integer(number) => json!({"Literal": {"IntegerLiteral": number}}),
             Self::Boolean(value) => json!({"Literal": {"BoolLiteral": value}}),
+            Self::String(value) => json!({"Literal": {"StringLiteral": value}}),
             Self::Tuple(items) => {
                 json!({"Tuple": items.iter().map(Self::canonical_json).collect::<Vec<_>>()})
             }
@@ -106,6 +210,11 @@ impl ValueReference {
             Self::Field(target, name) => json!({"Field": {
                 "target": target.canonical_json(),
                 "name": name,
+            }}),
+            Self::Record(fields) => json!({"Record": {"fields": canonical_fields(fields)}}),
+            Self::UpdateRecord(target, fields) => json!({"UpdateRecord": {
+                "target": target.canonical_json(),
+                "fields": canonical_fields(fields),
             }}),
         }
     }
@@ -134,6 +243,7 @@ impl ValueReference {
             Self::Unit => Element::from(Sequence::builder().build_sexp()),
             Self::Integer(number) => Element::from(ion_rs::Int::from(*number)),
             Self::Boolean(value) => Element::from(*value),
+            Self::String(value) => sexp_element("string", [Element::string(value.as_str())]),
             Self::Tuple(items) => collection_element("tuple", items),
             Self::List(items) => collection_element("list", items),
             Self::Apply(function, argument) => {
@@ -150,8 +260,32 @@ impl ValueReference {
             Self::Field(target, name) => {
                 sexp_element("field", [target.ion_element(), Element::symbol(name)])
             }
+            Self::Record(fields) => sexp_element("record", ion_fields(fields)),
+            Self::UpdateRecord(target, fields) => sexp_element(
+                "update",
+                std::iter::once(target.ion_element()).chain(ion_fields(fields)),
+            ),
         }
     }
+}
+
+fn canonical_fields(fields: &[(String, ValueReference)]) -> Value {
+    let mut map = Map::new();
+    for (name, value) in fields {
+        map.insert(name.clone(), value.canonical_json());
+    }
+    Value::Object(map)
+}
+
+fn ion_fields(fields: &[(String, ValueReference)]) -> impl Iterator<Item = Element> {
+    fields.iter().map(|(name, value)| {
+        Element::from(
+            Sequence::builder()
+                .push(Element::symbol(name))
+                .push(value.ion_element())
+                .build_sexp(),
+        )
+    })
 }
 
 fn collection_element(head: &str, items: &[ValueReference]) -> Element {
@@ -167,6 +301,122 @@ fn sexp_element(head: &str, rest: impl IntoIterator<Item = Element>) -> Element 
             )
             .build_sexp(),
     )
+}
+
+fn read_ordered_profile_value(raw: &OrderedValue) -> Result<ValueReference, String> {
+    // Reuse the strict shape checks, then rebuild ordered fields from the
+    // source tree. serde_json::Value otherwise sorts object keys.
+    let generic = serde_json::to_value(raw).map_err(|error| error.to_string())?;
+    let value = read_profile_value(&generic)?;
+    restore_record_order(value, raw)
+}
+
+fn restore_record_order(
+    value: ValueReference,
+    raw: &OrderedValue,
+) -> Result<ValueReference, String> {
+    let payload = |kind: &str| match raw {
+        OrderedValue::Object(node) => node.get(kind),
+        _ => None,
+    };
+    let member = |kind: &str, name: &str| match payload(kind) {
+        Some(OrderedValue::Object(fields)) => fields.get(name),
+        _ => None,
+    };
+    let children = |items: &[OrderedValue]| {
+        items
+            .iter()
+            .map(read_ordered_profile_value)
+            .collect::<Result<Vec<_>, _>>()
+    };
+    match value {
+        ValueReference::Record(_) => {
+            let Some(OrderedValue::Object(node)) = payload("Record") else {
+                return Err("a Record has an object payload".to_owned());
+            };
+            let fields = match node.get("fields") {
+                Some(OrderedValue::Object(fields)) => fields,
+                _ => node,
+            };
+            Ok(ValueReference::Record(ordered_fields(fields)?))
+        }
+        ValueReference::UpdateRecord(_, _) => {
+            let Some(OrderedValue::Object(fields)) = payload("UpdateRecord") else {
+                return Err("an UpdateRecord has an object payload".to_owned());
+            };
+            let target = fields.get("target").ok_or("an UpdateRecord has a target")?;
+            let Some(OrderedValue::Object(entries)) = fields.get("fields") else {
+                return Err("an UpdateRecord has fields".to_owned());
+            };
+            Ok(ValueReference::UpdateRecord(
+                Box::new(read_ordered_profile_value(target)?),
+                ordered_fields(entries)?,
+            ))
+        }
+        ValueReference::Tuple(_) | ValueReference::List(_) => {
+            let (kind, key) = if matches!(value, ValueReference::Tuple(_)) {
+                ("Tuple", "elements")
+            } else {
+                ("List", "items")
+            };
+            let items = if let OrderedValue::Array(items) = raw {
+                Some(items)
+            } else {
+                match payload(kind) {
+                    Some(OrderedValue::Array(items)) => Some(items),
+                    Some(OrderedValue::Object(fields)) => fields.get(key).and_then(|value| {
+                        if let OrderedValue::Array(items) = value {
+                            Some(items)
+                        } else {
+                            None
+                        }
+                    }),
+                    _ => None,
+                }
+            }
+            .ok_or("a collection has items")?;
+            if kind == "Tuple" {
+                children(items).map(ValueReference::Tuple)
+            } else {
+                children(items).map(ValueReference::List)
+            }
+        }
+        ValueReference::Apply(_, _) => Ok(ValueReference::Apply(
+            Box::new(read_ordered_profile_value(
+                member("Apply", "function").ok_or("Apply function")?,
+            )?),
+            Box::new(read_ordered_profile_value(
+                member("Apply", "argument").ok_or("Apply argument")?,
+            )?),
+        )),
+        ValueReference::IfThenElse(_, _, _) => Ok(ValueReference::IfThenElse(
+            Box::new(read_ordered_profile_value(
+                member("IfThenElse", "condition").ok_or("If condition")?,
+            )?),
+            Box::new(read_ordered_profile_value(
+                member("IfThenElse", "then").ok_or("If then")?,
+            )?),
+            Box::new(read_ordered_profile_value(
+                member("IfThenElse", "else").ok_or("If else")?,
+            )?),
+        )),
+        ValueReference::Field(_, name) => Ok(ValueReference::Field(
+            Box::new(read_ordered_profile_value(
+                member("Field", "target").ok_or("Field target")?,
+            )?),
+            name,
+        )),
+        other => Ok(other),
+    }
+}
+
+fn ordered_fields(
+    fields: &IndexMap<String, OrderedValue>,
+) -> Result<Vec<(String, ValueReference)>, String> {
+    fields
+        .iter()
+        .map(|(name, value)| Ok((name.clone(), read_ordered_profile_value(value)?)))
+        .collect()
 }
 
 fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
@@ -218,11 +468,53 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
                         name.to_owned(),
                     ))
                 }
+                "Record" => read_record_payload(payload).map(ValueReference::Record),
+                "UpdateRecord" => {
+                    let members = read_members(payload, &["target", "fields"])?;
+                    Ok(ValueReference::UpdateRecord(
+                        Box::new(read_profile_value(&members["target"])?),
+                        read_profile_fields(&members["fields"])?,
+                    ))
+                }
                 _ => Err(format!("unsupported Value reference shape {kind}")),
             }
         }
         _ => Err("a Value reference has one supported shape".to_owned()),
     }
+}
+
+fn read_record_payload(payload: &Value) -> Result<Vec<(String, ValueReference)>, String> {
+    let Value::Object(members) = payload else {
+        return Err("a Record has an object payload".to_owned());
+    };
+    if let Some(fields) = members.get("fields") {
+        let allowed = members.len() == 1
+            || (members.len() == 2
+                && ["attributes", "attrs"].iter().any(|name| {
+                    matches!(members.get(*name), Some(Value::Object(attrs)) if attrs.is_empty())
+                }));
+        if !allowed {
+            return Err("a Record has fields and optional empty attributes".to_owned());
+        }
+        read_profile_fields(fields)
+    } else {
+        read_profile_fields(payload)
+    }
+}
+
+fn read_profile_fields(value: &Value) -> Result<Vec<(String, ValueReference)>, String> {
+    let Value::Object(fields) = value else {
+        return Err("record fields are an object".to_owned());
+    };
+    fields
+        .iter()
+        .map(|(name, value)| {
+            if !canonical_name(name) {
+                return Err(format!("a Record field name is not canonical: {name}"));
+            }
+            Ok((name.clone(), read_profile_value(value)?))
+        })
+        .collect()
 }
 
 fn read_members<'a>(payload: &'a Value, names: &[&str]) -> Result<&'a Map<String, Value>, String> {
@@ -367,6 +659,10 @@ fn read_literal(value: &Value) -> Result<ValueReference, String> {
                     .as_bool()
                     .map(ValueReference::Boolean)
                     .ok_or("a BoolLiteral needs a boolean".to_owned()),
+                "StringLiteral" => payload
+                    .as_str()
+                    .map(|text| ValueReference::String(text.to_owned()))
+                    .ok_or("a StringLiteral needs a string".to_owned()),
                 _ => Err(format!("unsupported Literal reference shape {kind}")),
             }
         }
@@ -477,8 +773,51 @@ fn read_sexp(element: &Element) -> Result<ValueReference, String> {
                 name.to_owned(),
             ))
         }
+        "string" => {
+            let [text] = rest else {
+                return Err("a StringLiteral has one argument".to_owned());
+            };
+            text.as_string()
+                .map(|text| ValueReference::String(text.to_owned()))
+                .ok_or("a StringLiteral has a string argument".to_owned())
+        }
+        "record" => read_ion_fields(rest).map(ValueReference::Record),
+        "update" => {
+            let Some((target, fields)) = rest.split_first() else {
+                return Err("an UpdateRecord has a target".to_owned());
+            };
+            Ok(ValueReference::UpdateRecord(
+                Box::new(read_element(target)?),
+                read_ion_fields(fields)?,
+            ))
+        }
         _ => Err(format!("unsupported Value reference head {head}")),
     }
+}
+
+fn read_ion_fields(parts: &[&Element]) -> Result<Vec<(String, ValueReference)>, String> {
+    let mut fields = Vec::new();
+    for part in parts {
+        let pair = part
+            .as_sexp()
+            .ok_or("a Record field is a pair")?
+            .iter()
+            .collect::<Vec<_>>();
+        let [name, value] = pair.as_slice() else {
+            return Err("a Record field has a name and value".to_owned());
+        };
+        let name = name
+            .as_symbol()
+            .and_then(|symbol| symbol.text())
+            .ok_or("a Record field name is a symbol")?;
+        if !canonical_name(name) || fields.iter().any(|(existing, _)| existing == name) {
+            return Err(format!(
+                "a Record field name is invalid or repeated: {name}"
+            ));
+        }
+        fields.push((name.to_owned(), read_element(value)?));
+    }
+    Ok(fields)
 }
 
 fn canonical_ion(value: &ValueReference) -> Result<String, String> {
@@ -735,6 +1074,58 @@ mod tests {
             r#"{"Field":{"attributes":{"x":1},"target":{"Variable":"record"},"name":"field-name"}}"#,
         ] {
             assert!(to_ion("Value", Profile::Json, json).is_err(), "{json}");
+        }
+    }
+
+    #[test]
+    fn record_values_preserve_field_order_across_profiles() {
+        for (ion, json) in [
+            (
+                "(\n  record\n  (\n    name\n    x\n  )\n  (\n    age\n    25\n  )\n)\n",
+                r#"{"Record":{"fields":{"name":{"Variable":"x"},"age":{"Literal":{"IntegerLiteral":25}}}}}"#,
+            ),
+            (
+                "(\n  update\n  record\n  (\n    name\n    (\n      string\n      \"new\"\n    )\n  )\n)\n",
+                r#"{"UpdateRecord":{"target":{"Variable":"record"},"fields":{"name":{"Literal":{"StringLiteral":"new"}}}}}"#,
+            ),
+        ] {
+            assert_eq!(to_ion("Value", Profile::Json, json).unwrap(), ion);
+            let canonical_json = to_profile("Value", ion, Profile::Json).unwrap();
+            assert_eq!(
+                to_ion("Value", Profile::Json, &canonical_json).unwrap(),
+                ion
+            );
+            let yaml = to_profile("Value", ion, Profile::Yaml).unwrap();
+            assert_eq!(to_ion("Value", Profile::Yaml, &yaml).unwrap(), ion);
+        }
+    }
+
+    #[test]
+    fn record_values_reject_duplicate_or_invalid_fields() {
+        for ion in [
+            "(record (name x) (name y))",
+            "(record (bad_name x))",
+            "(update record (name x y))",
+        ] {
+            assert!(to_profile("Value", ion, Profile::Json).is_err(), "{ion}");
+        }
+        for json in [
+            r#"{"Record":{"fields":{"bad_name":{"Variable":"x"}}}}"#,
+            r#"{"Record":{"fields":{},"unexpected":1}}"#,
+            r#"{"UpdateRecord":{"target":{"Variable":"record"},"fields":{"name":{"Variable":"x"}},"extra":0}}"#,
+        ] {
+            assert!(to_ion("Value", Profile::Json, json).is_err(), "{json}");
+        }
+    }
+
+    #[test]
+    fn nested_records_keep_order_when_transcoded() {
+        let json = r#"{"Apply":{"function":{"Variable":"f"},"argument":{"Record":{"fields":{"name":{"Variable":"x"},"age":{"Literal":{"IntegerLiteral":25}}}}}}}"#;
+        let ion = to_ion("Value", Profile::Json, json).unwrap();
+        assert!(ion.find("name").unwrap() < ion.find("age").unwrap());
+        for profile in [Profile::Json, Profile::Yaml] {
+            let encoded = to_profile("Value", &ion, profile).unwrap();
+            assert_eq!(to_ion("Value", profile, &encoded).unwrap(), ion);
         }
     }
 }

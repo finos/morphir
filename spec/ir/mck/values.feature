@@ -306,10 +306,25 @@ Feature: Values
     And its canonical JSON spelling is { "Literal": { "FloatLiteral": 4.0 } }
     And a reader of JSON accepts 4.0
 
-  Scenario: values-0013 Record value
+  @spelling
+  Scenario: values-0013 Record spelling
     Decision 0004 applies to record values too; the direct field map is accepted for the window of decision 0006, and so is the Rust encoder's `attrs` spelling of `attributes`, a row of decision 0006's window table, which this case pins for values as types-0005 pins it for type expressions.
 
-    Then its canonical YAML spelling is:
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        record
+        (
+          name
+          x
+        )
+        (
+          age
+          25
+        )
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       Record:
         fields:
@@ -320,15 +335,60 @@ Feature: Values
               IntegerLiteral: 25
       """
     And its canonical JSON spelling is { "Record": { "fields": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } } }
-    And a reader of JSON accepts { "Record": { "attributes": {}, "fields": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } } }
 
-  Scenario Outline: values-0013 Record value
-    Then a reader of <format> accepts <input> with warning <warning>
+  @semantic
+  Scenario: values-0037 Record expanded reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        record
+        (
+          name
+          x
+        )
+        (
+          age
+          25
+        )
+      )
+      """
+    Then a reader of JSON accepts { "Record": { "attributes": {}, "fields": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } } }
 
-    Examples:
-      | format | input                                                                                                                    | warning         |
-      | JSON   | { "Record": { "attrs": {}, "fields": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } } } | legacy_spelling |
-      | JSON   | { "Record": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } }                            | legacy_spelling |
+  @semantic
+  Scenario: values-0038 Record attrs reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        record
+        (
+          name
+          x
+        )
+        (
+          age
+          25
+        )
+      )
+      """
+    Then a reader of JSON accepts { "Record": { "attrs": {}, "fields": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } } } with warning legacy_spelling
+
+  @semantic
+  Scenario: values-0040 Record direct fields reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        record
+        (
+          name
+          x
+        )
+        (
+          age
+          25
+        )
+      )
+      """
+    Then a reader of JSON accepts { "Record": { "name": { "Variable": "x" }, "age": { "Literal": { "IntegerLiteral": 25 } } } } with warning legacy_spelling
 
   @spelling
   Scenario: values-0014 Constructor spelling
@@ -470,8 +530,23 @@ Feature: Values
     And its canonical JSON spelling is { "PatternMatch": { "value": { "Variable": "x" }, "cases": [{ "pattern": { "LiteralPattern": { "IntegerLiteral": 0 } }, "body": { "Literal": { "BoolLiteral": true } } }, { "pattern": { "WildcardPattern": {} }, "body": { "Literal": { "BoolLiteral": false } } }] } }
     And a reader of JSON accepts { "PatternMatch": { "attributes": {}, "value": { "Variable": "x" }, "cases": [{ "pattern": { "LiteralPattern": { "IntegerLiteral": 0 } }, "body": { "Literal": { "BoolLiteral": true } } }, { "pattern": { "WildcardPattern": {} }, "body": { "Literal": { "BoolLiteral": false } } }] } }
 
-  Scenario: values-0021 Update record
-    Then its canonical YAML spelling is:
+  @spelling
+  Scenario: values-0021 Update record spelling
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        update
+        record
+        (
+          name
+          (
+            string
+            "new"
+          )
+        )
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       UpdateRecord:
         target:
@@ -482,7 +557,24 @@ Feature: Values
               StringLiteral: new
       """
     And its canonical JSON spelling is { "UpdateRecord": { "target": { "Variable": "record" }, "fields": { "name": { "Literal": { "StringLiteral": "new" } } } } }
-    And a reader of JSON accepts { "UpdateRecord": { "attributes": {}, "target": { "Variable": "record" }, "fields": { "name": { "Literal": { "StringLiteral": "new" } } } } }
+
+  @semantic
+  Scenario: values-0039 Update record expanded reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        update
+        record
+        (
+          name
+          (
+            string
+            "new"
+          )
+        )
+      )
+      """
+    Then a reader of JSON accepts { "UpdateRecord": { "attributes": {}, "target": { "Variable": "record" }, "fields": { "name": { "Literal": { "StringLiteral": "new" } } } } }
 
   @compare:attributes
   Scenario: values-0022 Attributes are kept when compared with them
