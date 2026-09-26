@@ -363,6 +363,26 @@ Feature: Values
     Then a reader of JSON accepts 4.0
     And a reader of JSON accepts { "Literal": { "FloatLiteral": { "value": 4.0 } } }
 
+  @semantic
+  Scenario: values-0045 YAML float lexeme normalization
+    Given a Value whose canonical form is:
+      """ion
+      (
+        float
+        "0.5"
+      )
+      """
+    Then a reader of YAML accepts:
+      """yaml
+      Literal:
+        FloatLiteral: .5
+      """
+    And a reader of YAML accepts:
+      """yaml
+      Literal:
+        FloatLiteral: +0.5
+      """
+
   @spelling
   Scenario: values-0013 Record spelling
     Decision 0004 applies to record values too; the direct field map is accepted for the window of decision 0006, and so is the Rust encoder's `attrs` spelling of `attributes`, a row of decision 0006's window table, which this case pins for values as types-0005 pins it for type expressions.

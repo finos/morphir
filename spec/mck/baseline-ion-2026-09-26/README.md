@@ -53,3 +53,8 @@ intact.
 `values-0043` reader case, including the expanded `FloatLiteral.value` JSON
 form. The pinned Rust adapter reported 10 passes, no failures, kit errors or
 skips. A second capture matched byte for byte; earlier exchanges remain intact.
+
+`values-yaml-float-rust.ndjson` separately captures `values-0045`, where YAML
+float spellings `.5` and `+0.5` normalize to the same JSON lexeme. The pinned
+Rust adapter reported 10 passes, no failures, kit errors or skips. A second
+capture matched byte for byte; earlier exchanges remain intact.

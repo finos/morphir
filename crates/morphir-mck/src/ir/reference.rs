@@ -7,7 +7,8 @@
 use granit_parser::{Event, Parser, ScalarStyle};
 use indexmap::IndexMap;
 use ion_rs::{Element, Sequence, TextFormat};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::de::Visitor;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::value::RawValue;
 use serde_json::{Map, Value, json};
 
@@ -101,9 +102,34 @@ enum OrderedValue {
 
 // serde_json::Number normalizes an integer-looking -0 to 0. Keep the source
 // token for explicit FloatLiteral payloads, including nested values.
-#[derive(Debug, Deserialize)]
-#[serde(from = "serde_json::Number")]
+#[derive(Debug)]
 struct RawNumber(String);
+
+impl<'de> Deserialize<'de> for RawNumber {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct NumberVisitor;
+        impl Visitor<'_> for NumberVisitor {
+            type Value = RawNumber;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a numeric scalar")
+            }
+
+            fn visit_i64<E: serde::de::Error>(self, value: i64) -> Result<Self::Value, E> {
+                Ok(RawNumber(value.to_string()))
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, value: u64) -> Result<Self::Value, E> {
+                Ok(RawNumber(value.to_string()))
+            }
+
+            fn visit_f64<E: serde::de::Error>(self, value: f64) -> Result<Self::Value, E> {
+                Ok(RawNumber(value.to_string()))
+            }
+        }
+        deserializer.deserialize_any(NumberVisitor)
+    }
+}
 
 impl From<serde_json::Number> for RawNumber {
     fn from(number: serde_json::Number) -> Self {
@@ -176,11 +202,31 @@ fn yaml_float_lexemes(text: &str) -> Result<Vec<String>, String> {
             _ => None,
         };
         if let Some(value) = value {
-            float_number(value)?;
-            lexemes.push(value.to_owned());
+            let normalized = yaml_json_number_lexeme(value);
+            float_number(&normalized)?;
+            lexemes.push(normalized);
         }
     }
     Ok(lexemes)
+}
+
+// The YAML profile rewrites only source spellings JSON cannot parse; a JSON
+// spelling such as 1.5E3 retains its exact exponent text.
+fn yaml_json_number_lexeme(text: &str) -> String {
+    let (sign, unsigned) = match text.strip_prefix('-') {
+        Some(rest) => ("-", rest),
+        None => ("", text.strip_prefix('+').unwrap_or(text)),
+    };
+    let (mantissa, exponent) = match unsigned.find(['e', 'E']) {
+        Some(index) => (&unsigned[..index], &unsigned[index..]),
+        None => (unsigned, ""),
+    };
+    let mantissa = match mantissa.split_once('.') {
+        Some(("", fraction)) => format!("0.{fraction}"),
+        Some((integer, "")) => format!("{integer}.0"),
+        _ => mantissa.to_owned(),
+    };
+    format!("{sign}{mantissa}{exponent}")
 }
 
 fn yaml_expanded_float_lexeme<'a>(events: &'a [Event<'_>], start: usize) -> Option<&'a str> {
@@ -1557,6 +1603,20 @@ mod tests {
             to_ion("Value", Profile::Yaml, yaml).unwrap(),
             "(\n  float\n  \"4.0\"\n)\n"
         );
+    }
+
+    #[test]
+    fn yaml_float_scalars_normalize_to_json_lexemes() {
+        for (source, lexeme) in [
+            (".5", "0.5"),
+            ("5.", "5.0"),
+            ("+1.5", "1.5"),
+            ("+.5e3", "0.5e3"),
+        ] {
+            let yaml = format!("Literal:\n  FloatLiteral: {source}\n");
+            let ion = to_ion("Value", Profile::Yaml, &yaml).unwrap();
+            assert_eq!(ion, format!("(\n  float\n  \"{lexeme}\"\n)\n"));
+        }
     }
 
     #[test]
