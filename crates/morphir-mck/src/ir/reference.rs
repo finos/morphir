@@ -5,7 +5,7 @@
 //! result. Unsupported node shapes fail as kit errors until admitted here.
 
 use ion_rs::{Element, Sequence, TextFormat};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 use super::compare::normalize_canonical;
 use crate::transport::protocol::Profile;
@@ -23,22 +23,26 @@ pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<Stri
         Profile::Json => {
             serde_json::to_string(&value.canonical_json()).map_err(|error| error.to_string())
         }
-        Profile::Yaml => match &value {
-            ValueReference::Integer(number) => {
-                Ok(format!("Literal:\n  IntegerLiteral: {number}\n"))
+        Profile::Yaml => {
+            match &value {
+                ValueReference::Integer(number) => {
+                    Ok(format!("Literal:\n  IntegerLiteral: {number}\n"))
+                }
+                ValueReference::Boolean(value) => Ok(format!("Literal:\n  BoolLiteral: {value}\n")),
+                // JSON flow syntax is valid YAML 1.2. Semantic checks need a
+                // readable YAML document; spelling cases pin the YAML writer.
+                // This also avoids serde_saphyr exposing serde_json's private
+                // arbitrary-precision number wrapper in nested literals.
+                ValueReference::Tuple(_)
+                | ValueReference::List(_)
+                | ValueReference::Apply(_, _)
+                | ValueReference::IfThenElse(_, _, _)
+                | ValueReference::Field(_, _) => serde_json::to_string(&value.canonical_json())
+                    .map_err(|error| error.to_string()),
+                _ => serde_saphyr::to_string(&value.canonical_json())
+                    .map_err(|error| error.to_string()),
             }
-            ValueReference::Boolean(value) => Ok(format!("Literal:\n  BoolLiteral: {value}\n")),
-            // JSON flow syntax is valid YAML 1.2. Semantic checks need a
-            // readable YAML document; spelling cases pin the YAML writer.
-            // This also avoids serde_saphyr exposing serde_json's private
-            // arbitrary-precision number wrapper in nested literals.
-            ValueReference::Tuple(_) | ValueReference::List(_) => {
-                serde_json::to_string(&value.canonical_json()).map_err(|error| error.to_string())
-            }
-            _ => {
-                serde_saphyr::to_string(&value.canonical_json()).map_err(|error| error.to_string())
-            }
-        },
+        }
     }
 }
 
@@ -65,6 +69,13 @@ enum ValueReference {
     Boolean(bool),
     Tuple(Vec<ValueReference>),
     List(Vec<ValueReference>),
+    Apply(Box<ValueReference>, Box<ValueReference>),
+    IfThenElse(
+        Box<ValueReference>,
+        Box<ValueReference>,
+        Box<ValueReference>,
+    ),
+    Field(Box<ValueReference>, String),
 }
 
 impl ValueReference {
@@ -83,6 +94,19 @@ impl ValueReference {
             Self::List(items) => {
                 json!({"List": items.iter().map(Self::canonical_json).collect::<Vec<_>>()})
             }
+            Self::Apply(function, argument) => json!({"Apply": {
+                "function": function.canonical_json(),
+                "argument": argument.canonical_json(),
+            }}),
+            Self::IfThenElse(condition, then_branch, else_branch) => json!({"IfThenElse": {
+                "condition": condition.canonical_json(),
+                "then": then_branch.canonical_json(),
+                "else": else_branch.canonical_json(),
+            }}),
+            Self::Field(target, name) => json!({"Field": {
+                "target": target.canonical_json(),
+                "name": name,
+            }}),
         }
     }
 
@@ -112,15 +136,31 @@ impl ValueReference {
             Self::Boolean(value) => Element::from(*value),
             Self::Tuple(items) => collection_element("tuple", items),
             Self::List(items) => collection_element("list", items),
+            Self::Apply(function, argument) => {
+                sexp_element("apply", [function.ion_element(), argument.ion_element()])
+            }
+            Self::IfThenElse(condition, then_branch, else_branch) => sexp_element(
+                "if",
+                [
+                    condition.ion_element(),
+                    then_branch.ion_element(),
+                    else_branch.ion_element(),
+                ],
+            ),
+            Self::Field(target, name) => {
+                sexp_element("field", [target.ion_element(), Element::symbol(name)])
+            }
         }
     }
 }
 
 fn collection_element(head: &str, items: &[ValueReference]) -> Element {
+    sexp_element(head, items.iter().map(ValueReference::ion_element))
+}
+
+fn sexp_element(head: &str, rest: impl IntoIterator<Item = Element>) -> Element {
     Element::from(
-        items
-            .iter()
-            .map(ValueReference::ion_element)
+        rest.into_iter()
             .fold(
                 Sequence::builder().push(Element::symbol(head)),
                 |builder, item| builder.push(item),
@@ -152,11 +192,57 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
                 "Literal" => read_literal(payload),
                 "Tuple" => read_collection(payload, "elements").map(ValueReference::Tuple),
                 "List" => read_collection(payload, "items").map(ValueReference::List),
+                "Apply" => {
+                    let members = read_members(payload, &["function", "argument"])?;
+                    Ok(ValueReference::Apply(
+                        Box::new(read_profile_value(&members["function"])?),
+                        Box::new(read_profile_value(&members["argument"])?),
+                    ))
+                }
+                "IfThenElse" => {
+                    let members = read_members(payload, &["condition", "then", "else"])?;
+                    Ok(ValueReference::IfThenElse(
+                        Box::new(read_profile_value(&members["condition"])?),
+                        Box::new(read_profile_value(&members["then"])?),
+                        Box::new(read_profile_value(&members["else"])?),
+                    ))
+                }
+                "Field" => {
+                    let members = read_members(payload, &["target", "name"])?;
+                    let name = members["name"].as_str().ok_or("a Field name is a string")?;
+                    if !canonical_name(name) {
+                        return Err(format!("a Field name is not canonical: {name}"));
+                    }
+                    Ok(ValueReference::Field(
+                        Box::new(read_profile_value(&members["target"])?),
+                        name.to_owned(),
+                    ))
+                }
                 _ => Err(format!("unsupported Value reference shape {kind}")),
             }
         }
         _ => Err("a Value reference has one supported shape".to_owned()),
     }
+}
+
+fn read_members<'a>(payload: &'a Value, names: &[&str]) -> Result<&'a Map<String, Value>, String> {
+    let Value::Object(members) = payload else {
+        return Err("a Value node has an object payload".to_owned());
+    };
+    let attributes = match members.get("attributes") {
+        None => 0,
+        Some(Value::Object(attrs)) if attrs.is_empty() => 1,
+        _ => return Err("a Value node has empty attributes".to_owned()),
+    };
+    if members.len() != names.len() + attributes
+        || names.iter().any(|name| !members.contains_key(*name))
+    {
+        return Err(format!(
+            "a Value node has exactly {} required members",
+            names.len()
+        ));
+    }
+    Ok(members)
 }
 
 fn read_items(items: &[Value]) -> Result<Vec<ValueReference>, String> {
@@ -356,6 +442,41 @@ fn read_sexp(element: &Element) -> Result<ValueReference, String> {
                 Ok(ValueReference::List(items))
             }
         }
+        "apply" => {
+            let [function, argument] = rest else {
+                return Err("an Apply has a function and argument".to_owned());
+            };
+            Ok(ValueReference::Apply(
+                Box::new(read_element(function)?),
+                Box::new(read_element(argument)?),
+            ))
+        }
+        "if" => {
+            let [condition, then_branch, else_branch] = rest else {
+                return Err("an IfThenElse has a condition and two branches".to_owned());
+            };
+            Ok(ValueReference::IfThenElse(
+                Box::new(read_element(condition)?),
+                Box::new(read_element(then_branch)?),
+                Box::new(read_element(else_branch)?),
+            ))
+        }
+        "field" => {
+            let [target, name] = rest else {
+                return Err("a Field has a target and name".to_owned());
+            };
+            let name = name
+                .as_symbol()
+                .and_then(|symbol| symbol.text())
+                .ok_or("a Field name is a symbol")?;
+            if !canonical_name(name) {
+                return Err(format!("a Field name is not canonical: {name}"));
+            }
+            Ok(ValueReference::Field(
+                Box::new(read_element(target)?),
+                name.to_owned(),
+            ))
+        }
         _ => Err(format!("unsupported Value reference head {head}")),
     }
 }
@@ -510,7 +631,11 @@ mod tests {
                 r#"{"List":[{"Literal":{"IntegerLiteral":1}},{"Literal":{"IntegerLiteral":2}},{"Literal":{"IntegerLiteral":3}}]}"#,
             ),
         ] {
-            assert_eq!(to_profile("Value", ion, Profile::Json).unwrap(), json);
+            assert_eq!(
+                serde_json::from_str::<Value>(&to_profile("Value", ion, Profile::Json).unwrap())
+                    .unwrap(),
+                serde_json::from_str::<Value>(json).unwrap(),
+            );
             assert_eq!(to_ion("Value", Profile::Json, json).unwrap(), ion);
             let yaml = to_profile("Value", ion, Profile::Yaml).unwrap();
             assert_eq!(to_ion("Value", Profile::Yaml, &yaml).unwrap(), ion);
@@ -571,6 +696,45 @@ mod tests {
                 let json = format!(r#"{{"{kind}":"{invalid}"}}"#);
                 assert!(to_ion("Value", Profile::Json, &json).is_err());
             }
+        }
+    }
+
+    #[test]
+    fn control_values_convert_between_profiles() {
+        for (ion, json) in [
+            (
+                "(\n  apply\n  (\n    ref\n    'morphir/SDK:basics#negate'\n  )\n  1\n)\n",
+                r#"{"Apply":{"function":{"Reference":"morphir/SDK:basics#negate"},"argument":{"Literal":{"IntegerLiteral":1}}}}"#,
+            ),
+            (
+                "(\n  if\n  true\n  1\n  2\n)\n",
+                r#"{"IfThenElse":{"condition":{"Literal":{"BoolLiteral":true}},"then":{"Literal":{"IntegerLiteral":1}},"else":{"Literal":{"IntegerLiteral":2}}}}"#,
+            ),
+            (
+                "(\n  field\n  record\n  'field-name'\n)\n",
+                r#"{"Field":{"target":{"Variable":"record"},"name":"field-name"}}"#,
+            ),
+        ] {
+            assert_eq!(
+                serde_json::from_str::<Value>(&to_profile("Value", ion, Profile::Json).unwrap())
+                    .unwrap(),
+                serde_json::from_str::<Value>(json).unwrap(),
+            );
+            assert_eq!(to_ion("Value", Profile::Json, json).unwrap(), ion);
+            let yaml = to_profile("Value", ion, Profile::Yaml).unwrap();
+            assert_eq!(to_ion("Value", Profile::Yaml, &yaml).unwrap(), ion);
+        }
+    }
+
+    #[test]
+    fn control_values_reject_bad_members_and_names() {
+        for json in [
+            r#"{"Apply":{"function":{"Variable":"f"}}}"#,
+            r#"{"IfThenElse":{"condition":true,"then":1,"else":2,"extra":0}}"#,
+            r#"{"Field":{"target":{"Variable":"record"},"name":"bad_name"}}"#,
+            r#"{"Field":{"attributes":{"x":1},"target":{"Variable":"record"},"name":"field-name"}}"#,
+        ] {
+            assert!(to_ion("Value", Profile::Json, json).is_err(), "{json}");
         }
     }
 }

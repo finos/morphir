@@ -43,8 +43,20 @@ Feature: Values
     Then a reader of JSON accepts "x"
     And a reader of JSON accepts { "Variable": { "attributes": {}, "name": "x" } }
 
-  Scenario: values-0004 Apply
-    Then its canonical YAML spelling is:
+  @spelling
+  Scenario: values-0004 Apply spelling
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        apply
+        (
+          ref
+          'morphir/SDK:basics#negate'
+        )
+        1
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       Apply:
         function:
@@ -54,12 +66,36 @@ Feature: Values
             IntegerLiteral: 1
       """
     And its canonical JSON spelling is { "Apply": { "function": { "Reference": "morphir/SDK:basics#negate" }, "argument": { "Literal": { "IntegerLiteral": 1 } } } }
-    And a reader of JSON accepts { "Apply": { "attributes": {}, "function": { "Reference": "morphir/SDK:basics#negate" }, "argument": { "Literal": { "IntegerLiteral": 1 } } } }
 
-  Scenario: values-0005 If-then-else member names
+  @semantic
+  Scenario: values-0034 Apply reader form
+    Given a Value whose canonical form is:
+      """ion
+      (
+        apply
+        (
+          ref
+          'morphir/SDK:basics#negate'
+        )
+        1
+      )
+      """
+    Then a reader of JSON accepts { "Apply": { "attributes": {}, "function": { "Reference": "morphir/SDK:basics#negate" }, "argument": { "Literal": { "IntegerLiteral": 1 } } } }
+
+  @spelling
+  Scenario: values-0005 If-then-else spelling
     Decision 0006: the schema's `then` and `else` are canonical; the Rust encoder's `thenBranch` and `elseBranch` are accepted for one release. Bead morphir-ir-v4-stabilize.3.
 
-    Then its canonical YAML spelling is:
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        if
+        true
+        1
+        2
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       IfThenElse:
         condition:
@@ -73,13 +109,34 @@ Feature: Values
             IntegerLiteral: 2
       """
     And its canonical JSON spelling is { "IfThenElse": { "condition": { "Literal": { "BoolLiteral": true } }, "then": { "Literal": { "IntegerLiteral": 1 } }, "else": { "Literal": { "IntegerLiteral": 2 } } } }
-    And a reader of JSON accepts { "IfThenElse": { "attributes": {}, "condition": { "Literal": { "BoolLiteral": true } }, "then": { "Literal": { "IntegerLiteral": 1 } }, "else": { "Literal": { "IntegerLiteral": 2 } } } }
+
+  @semantic
+  Scenario: values-0035 If-then-else reader forms
+    Given a Value whose canonical form is:
+      """ion
+      (
+        if
+        true
+        1
+        2
+      )
+      """
+    Then a reader of JSON accepts { "IfThenElse": { "attributes": {}, "condition": { "Literal": { "BoolLiteral": true } }, "then": { "Literal": { "IntegerLiteral": 1 } }, "else": { "Literal": { "IntegerLiteral": 2 } } } }
     And a reader of JSON accepts { "IfThenElse": { "condition": { "Literal": { "BoolLiteral": true } }, "thenBranch": { "Literal": { "IntegerLiteral": 1 } }, "elseBranch": { "Literal": { "IntegerLiteral": 2 } } } } with warning legacy_spelling
 
-  Scenario: values-0006 Field access member names
+  @spelling
+  Scenario: values-0006 Field access spelling
     Decision 0006: `target` and `name`; the older `subject` and `fieldName` are accepted for one release.
 
-    Then its canonical YAML spelling is:
+    Then its canonical Ion spelling is:
+      """ion
+      (
+        field
+        record
+        'field-name'
+      )
+      """
+    And its canonical YAML spelling is:
       """yaml
       Field:
         target:
@@ -87,7 +144,18 @@ Feature: Values
         name: field-name
       """
     And its canonical JSON spelling is { "Field": { "target": { "Variable": "record" }, "name": "field-name" } }
-    And a reader of JSON accepts { "Field": { "attributes": {}, "target": { "Variable": "record" }, "name": "field-name" } }
+
+  @semantic
+  Scenario: values-0036 Field access reader forms
+    Given a Value whose canonical form is:
+      """ion
+      (
+        field
+        record
+        'field-name'
+      )
+      """
+    Then a reader of JSON accepts { "Field": { "attributes": {}, "target": { "Variable": "record" }, "name": "field-name" } }
     And a reader of JSON accepts { "Field": { "subject": { "Variable": "record" }, "fieldName": "field-name" } } with warning legacy_spelling
 
   @spelling

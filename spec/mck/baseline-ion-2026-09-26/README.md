@@ -26,3 +26,8 @@ field-function, tuple and list spelling/semantic cases (`values-0007`, `0008`,
 `0014`, `0015`, and `0029` through `0033`). The pinned Rust adapter reported
 66 passes, no failures, kit errors or skips. A second capture matched byte for
 byte. The earlier exchanges remain unchanged.
+
+`values-control-rust.ndjson` separately captures apply, conditional and field
+access spelling/semantic cases (`values-0004` to `0006` and `0034` to `0036`).
+The pinned Rust adapter reported 46 passes, no failures, kit errors or skips.
+A second capture matched byte for byte; the earlier exchanges remain intact.
