@@ -83,7 +83,7 @@ windows-sys = { version = "0.61", features = [
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 # Offline draft MCK report validation; no HTTP or filesystem reference retrieval.
-jsonschema = { version = "=0.26.2", default-features = false }
+jsonschema = { version = "=0.58.0", default-features = false }
 serde-saphyr = { version = "1", default-features = false, features = ["deserialize", "serialize"] }
 # The IR YAML profile reader in `morphir-core` walks this parser's event stream. `morphir-core`
 # takes it from the workspace, and a path dependency on it inherits from this root, so the pin

@@ -47,7 +47,7 @@ tempfile.workspace = true
 ed25519-dalek.workspace = true
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["io"] }
-tuf = { version = "=0.3.0-beta14", default-features = false }
+tuf = { version = "=0.3.0-beta9", default-features = false }
 ring = "0.17"
 # The BDD link test's `main` runs a `Suite` in a Tokio runtime.
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
