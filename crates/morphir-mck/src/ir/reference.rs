@@ -85,7 +85,7 @@ impl ValueReference {
 
 fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
     match value {
-        Value::String(name) => Ok(ValueReference::Variable(name.clone())),
+        Value::String(name) => variable(name),
         Value::Number(number) => number
             .as_i64()
             .map(ValueReference::Integer)
@@ -95,7 +95,7 @@ fn read_profile_value(value: &Value) -> Result<ValueReference, String> {
             let (kind, payload) = fields.iter().next().expect("one member");
             match kind.as_str() {
                 "Reference" => read_named(payload, "fqname").map(ValueReference::Reference),
-                "Variable" => read_named(payload, "name").map(ValueReference::Variable),
+                "Variable" => read_named(payload, "name").and_then(|name| variable(&name)),
                 "Unit" if empty_attributes(payload) => Ok(ValueReference::Unit),
                 "Literal" => read_literal(payload),
                 _ => Err(format!("unsupported Value reference shape {kind}")),
@@ -126,6 +126,23 @@ fn read_named(value: &Value, member: &str) -> Result<String, String> {
         _ => Err(format!(
             "a Value reference needs a string or an expanded {member}"
         )),
+    }
+}
+
+fn variable(name: &str) -> Result<ValueReference, String> {
+    let canonical = name.split('-').all(|segment| {
+        !segment.is_empty()
+            && (segment
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+                || segment
+                    .bytes()
+                    .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit()))
+    });
+    if canonical {
+        Ok(ValueReference::Variable(name.to_owned()))
+    } else {
+        Err(format!("a Value variable name is not canonical: {name}"))
     }
 }
 
@@ -176,7 +193,7 @@ fn read_ion(node: &str, text: &str) -> Result<ValueReference, String> {
     }
     let element = Element::read_one(text.as_bytes()).map_err(|error| error.to_string())?;
     let value = if let Some(name) = element.as_symbol().and_then(|symbol| symbol.text()) {
-        ValueReference::Variable(name.to_owned())
+        variable(name)?
     } else if let Some(number) = element.as_i64() {
         ValueReference::Integer(number)
     } else if let Some(value) = element.as_bool() {
@@ -313,6 +330,34 @@ mod tests {
             r#"{"Literal":{"BoolLiteral":1}}"#,
         ] {
             assert!(to_ion("Value", Profile::Json, bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn variable_names_follow_the_v4_canonical_name_grammar() {
+        for valid in ["x", "value-in-USD", "IO-error", "123"] {
+            let ion = canonical_ion(&ValueReference::Variable(valid.to_owned())).unwrap();
+            assert!(to_profile("Value", &ion, Profile::Json).is_ok());
+            assert!(
+                to_ion(
+                    "Value",
+                    Profile::Json,
+                    &format!(r#"{{"Variable":"{valid}"}}"#)
+                )
+                .is_ok()
+            );
+        }
+        for invalid in ["foo_bar", "Usd", "mixedCase", "a--b", "-a", "a-", "café"] {
+            let ion = canonical_ion(&ValueReference::Variable(invalid.to_owned())).unwrap();
+            assert!(to_profile("Value", &ion, Profile::Json).is_err());
+            assert!(
+                to_ion(
+                    "Value",
+                    Profile::Json,
+                    &format!(r#"{{"Variable":"{invalid}"}}"#)
+                )
+                .is_err()
+            );
         }
     }
 }
