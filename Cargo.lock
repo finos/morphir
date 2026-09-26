@@ -4899,7 +4899,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-config"
-version = "0.4.0-beta.9"
+version = "0.0.1"
 dependencies = [
  "secrecy",
  "serde",
@@ -4911,7 +4911,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-core"
-version = "0.4.0-beta.9"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bigdecimal",
@@ -5040,7 +5040,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-extension-sdk"
-version = "0.4.0-beta.9"
+version = "0.2.0"
 dependencies = [
  "extism-pdk",
  "morphir-workspace",
@@ -5288,7 +5288,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-workspace"
-version = "0.4.0-beta.9"
+version = "0.2.0"
 dependencies = [
  "globset",
  "morphir-config",
