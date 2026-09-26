@@ -10,6 +10,7 @@
 //! managed snapshots. [`ir`] provides adapter execution and vocabulary coverage;
 //! [`schema`] validates the offline schema catalog and examples. [`report`]
 //! validates and adjudicates consolidated reports and renders optional offline HTML.
+//! [`steps`] holds the cucumber steps that run the kit's `.feature` cases.
 
 pub mod format_version;
 pub mod ir;
@@ -21,6 +22,7 @@ pub mod package;
 pub mod provenance;
 pub mod report;
 pub mod schema;
+pub mod steps;
 pub mod transport;
 
 /// The runner's interpretation of a kit, as an integer a vendored kit's

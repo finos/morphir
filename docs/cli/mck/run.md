@@ -24,3 +24,8 @@ Run the kit against an implementation's adapter and report the results
 - **`--session-timeout <MS>`** — How long the whole adapter session may last, in milliseconds
 
   **Default:** `1800000`
+- **`--engine <ENGINE>`** — Which engine runs the kit: `legacy` runs its Markdown case files through the per-fence run loop; `gherkin` runs its `.feature` case files through a `morphir_bdd::Suite`. Both give the same report, terminal output and exit code for the same inputs
+
+  **Choices:** `legacy`, `gherkin`
+
+  **Default:** `legacy`

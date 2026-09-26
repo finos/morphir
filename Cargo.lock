@@ -1809,6 +1809,7 @@ dependencies = [
  "humantime",
  "inventory",
  "itertools 0.14.0",
+ "junit-report",
  "linked-hash-map",
  "mime",
  "pin-project",
@@ -2082,6 +2083,17 @@ name = "deranged"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
+
+[[package]]
+name = "derive-getters"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74ef43543e701c01ad77d3a5922755c6a1d71b22d942cb8042be4994b380caff"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
 
 [[package]]
 name = "derive_more"
@@ -4278,6 +4290,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "junit-report"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb201fc2964416320139f702d888df6a39685e648f68e3c910a77cfda99ce44d"
+dependencies = [
+ "derive-getters",
+ "quick-xml",
+ "time",
+]
+
+[[package]]
 name = "jupyter-protocol"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4745,6 +4768,7 @@ dependencies = [
  "indexmap",
  "jsonschema 0.26.2",
  "miette",
+ "morphir-bdd",
  "morphir-common",
  "morphir-core",
  "morphir-daemon",
@@ -4816,6 +4840,19 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "morphir-bdd"
+version = "0.4.0-beta.9"
+dependencies = [
+ "cucumber",
+ "futures",
+ "morphir-gherkin",
+ "serde_json",
+ "similar",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -5015,6 +5052,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "morphir-gherkin"
+version = "0.4.0-beta.9"
+dependencies = [
+ "gherkin",
+ "pulldown-cmark",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "morphir-gleam-binding"
 version = "0.3.0"
 dependencies = [
@@ -5115,11 +5161,14 @@ version = "0.4.0-beta.9"
 dependencies = [
  "base64 0.23.1",
  "chrono",
+ "cucumber",
  "ed25519-dalek",
  "flate2",
  "futures-executor",
  "futures-util",
  "jsonschema 0.26.2",
+ "morphir-bdd",
+ "morphir-gherkin",
  "regex",
  "ring",
  "rustix 1.1.5",
@@ -5129,6 +5178,7 @@ dependencies = [
  "sha2 0.11.0",
  "tar",
  "tempfile",
+ "tokio",
  "tuf",
  "unicode-normalization",
  "url",
@@ -7698,6 +7748,15 @@ name = "simdutf8"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
+
+[[package]]
+name = "similar"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f66ca1f7aca2474dc10c942eb22feffc897735f54cd1db90138c2fddb490987"
+dependencies = [
+ "bstr",
+]
 
 [[package]]
 name = "siphasher"

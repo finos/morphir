@@ -1,25 +1,35 @@
 //! Loads a kit: every top-level `*.md` of the kit directory except README.md,
 //! in name order. Cross-file checks (an id in two files, a `text` fence whose
 //! fixture cannot be used) live here; per-file checks live in the case parser.
+//!
+//! [`load_feature_kit`] loads the same directory's `.feature` twins with the
+//! same cross-file checks, sharing the private `load_generic` with [`load_kit`].
 
 use std::collections::{BTreeMap, HashMap};
 use std::io;
 
+use morphir_gherkin::NodePath;
+
+use super::gherkin::lower::{FenceRef, lower};
 use super::hash::{ContentDigest, content_hash};
 use super::source::{KIT_PATH, KitSource};
-use super::syntax::case::{KitCase, KitError, KitFence, parse_kit_file};
+use super::syntax::case::{KitCase, KitError, KitFence, ParsedFile, parse_kit_file};
 use super::syntax::info_string::Language;
 use super::syntax::text::utf16_cmp;
 
+/// A loaded kit: its cases, the problems found while loading, its case files and their source.
 #[derive(Debug, Clone)]
 pub struct Kit {
+    /// Every case of every case file, in load order.
     pub cases: Vec<KitCase>,
     /// Fixed linked-metadata reference cases admitted for authoring checks.
     /// These are not executable IR adapter cases.
     pub metadata_reference_cases: usize,
+    /// Every problem found while loading, per file and across files.
     pub errors: Vec<KitError>,
     /// The case files, as repository-relative paths in load order.
     pub files: Vec<String>,
+    /// Where the kit's files were read from.
     pub source: KitSource,
 }
 
@@ -54,6 +64,13 @@ fn is_case_file(path: &str) -> bool {
         .is_some_and(|name| !name.contains('/') && name.ends_with(".md") && name != "README.md")
 }
 
+/// Whether `path` is a top-level `.feature` case file of the kit directory.
+fn is_feature_file(path: &str) -> bool {
+    path.strip_prefix(KIT_PATH)
+        .and_then(|rest| rest.strip_prefix('/'))
+        .is_some_and(|name| !name.contains('/') && name.ends_with(".feature"))
+}
+
 fn decode(bytes: &[u8]) -> Result<&str, &'static str> {
     match std::str::from_utf8(bytes) {
         Ok(text) if text.starts_with('\u{FEFF}') => Err("starts with a byte-order mark"),
@@ -62,17 +79,31 @@ fn decode(bytes: &[u8]) -> Result<&str, &'static str> {
     }
 }
 
-pub fn load_kit(source: KitSource) -> io::Result<Kit> {
+/// Loads every top-level file under the kit source that `is_target` accepts, in name order: reads
+/// and decodes each, turns its text into cases with `parse(file, display, text)`, and folds the
+/// errors, including an id owned by two files becoming an error against the second. `file` is the
+/// file's repository-relative path (as `Kit.files` carries it); `display` is what the source
+/// wants named in messages (the same path for a map source, the real filesystem path for a
+/// directory source). Shared by [`load_kit`] (`*.md`, [`parse_kit_file`]) and
+/// [`load_feature_kit`] (`*.feature`, [`lower`]), which differ only in which files they select
+/// and how they turn one file's text into cases.
+fn load_generic(
+    source: KitSource,
+    what: &str,
+    is_target: impl Fn(&str) -> bool,
+    empty_is_error: bool,
+    mut parse: impl FnMut(&str, &str, &str) -> ParsedFile,
+) -> io::Result<Kit> {
     let mut files: Vec<String> = source
         .list()?
         .into_iter()
-        .filter(|p| is_case_file(p))
+        .filter(|p| is_target(p))
         .collect();
     files.sort_by(|a, b| utf16_cmp(a, b));
-    if files.is_empty() {
+    if files.is_empty() && empty_is_error {
         let label = source.label();
         let errors = vec![KitError {
-            message: format!("no MCK case files (*.md) in {label}"),
+            message: format!("no MCK case files ({what}) in {label}"),
             file: label,
             line: 0,
         }];
@@ -122,7 +153,7 @@ pub fn load_kit(source: KitSource) -> io::Result<Kit> {
             });
             continue;
         };
-        let parsed = parse_kit_file(&display, text);
+        let parsed = parse(file, &display, text);
         errors.extend(parsed.errors);
         for case in parsed.cases {
             let first = owner
@@ -165,6 +196,82 @@ pub fn load_kit(source: KitSource) -> io::Result<Kit> {
     let fixtures = kit.fixture_errors();
     kit.errors.extend(fixtures);
     Ok(kit)
+}
+
+pub fn load_kit(source: KitSource) -> io::Result<Kit> {
+    load_generic(
+        source,
+        "*.md",
+        is_case_file,
+        true,
+        |_file, display, text| parse_kit_file(display, text),
+    )
+}
+
+/// A `morphir_gherkin::ReadError` as a `KitError`, at the file and line it names: a syntax error
+/// keeps its position, everything else (an I/O error that cannot happen for text already in
+/// memory, or a path this loader never hands it) is reported at line 0.
+fn feature_read_error(display: &str, error: morphir_gherkin::ReadError) -> KitError {
+    match error {
+        morphir_gherkin::ReadError::Syntax {
+            position, message, ..
+        } => KitError {
+            file: display.to_owned(),
+            line: position.line,
+            message,
+        },
+        other => KitError {
+            file: display.to_owned(),
+            line: 0,
+            message: other.to_string(),
+        },
+    }
+}
+
+/// A kit of `.feature` case files: every top-level `*.feature` of the kit directory, in name
+/// order, with the same cross-file checks [`load_kit`] runs (an id in two files, a `text`
+/// fixture that cannot be used), and cases in the same order `load_kit` gives for their Markdown
+/// twins. Unlike `load_kit`, a source with no `.feature` files is not an error: during the parity
+/// window a kit directory may not carry the generated twins yet.
+pub struct FeatureKit {
+    /// The `.feature` cases, errors and files, in the same shape [`load_kit`] gives for the
+    /// Markdown kit. `kit.files` is empty when the source has no `.feature` files.
+    pub kit: Kit,
+    /// Each case file's step-to-fence map, as [`lower`] gives it. Keyed by the file's
+    /// repository-relative path (`spec/ir/mck/<topic>.feature`, matching `Kit.files` and
+    /// [`KIT_PATH`]), whichever `KitSource` variant loaded the kit — unlike `KitCase.file`, this
+    /// key is never the real filesystem path of a directory-sourced kit, so a caller with only a
+    /// case's repository-relative file name (Task B5's lookup) can still find its fences.
+    pub fences: HashMap<String, FileFences>,
+}
+
+/// One case file's step-to-fence map, as [`lower`] gives it in `LoweredFile::fences`.
+pub type FileFences = HashMap<(NodePath, Option<usize>, usize), FenceRef>;
+
+/// Loads the kit's `.feature` case files: see [`FeatureKit`].
+pub fn load_feature_kit(source: KitSource) -> io::Result<FeatureKit> {
+    let mut fences = HashMap::new();
+    let kit = load_generic(
+        source,
+        "*.feature",
+        is_feature_file,
+        false,
+        |file, display, text| {
+            let doc = match morphir_gherkin::read_str(display, text) {
+                Ok((doc, _)) => doc,
+                Err(error) => {
+                    return ParsedFile {
+                        cases: Vec::new(),
+                        errors: vec![feature_read_error(display, error)],
+                    };
+                }
+            };
+            let lowered = lower(display, &doc);
+            fences.insert(file.to_owned(), lowered.fences);
+            lowered.parsed
+        },
+    )?;
+    Ok(FeatureKit { kit, fences })
 }
 
 impl Kit {
@@ -274,6 +381,14 @@ mod tests {
         load_kit(KitSource::map("test kit", files)).unwrap()
     }
 
+    fn source_of(files: &[(&str, &str)]) -> KitSource {
+        let files = files
+            .iter()
+            .map(|(p, t)| ((*p).to_owned(), Cow::Owned(t.as_bytes().to_vec())))
+            .collect();
+        KitSource::map("test kit", files)
+    }
+
     const CASE: &str = "```yaml canonical\na: 1\n```\n";
 
     #[test]
@@ -294,6 +409,77 @@ mod tests {
         );
         let ids: Vec<_> = kit.cases.iter().map(|c| c.id.as_str()).collect();
         assert_eq!(ids, vec!["types-0001", "values-0001"]);
+    }
+
+    /// The round trip again, through the loaders this time: a map source with a Markdown case
+    /// file and its `.feature` twin gives equal cases from `load_kit` and `load_feature_kit`.
+    /// README.md and a nested file are ignored by both, whichever extension they carry.
+    #[test]
+    fn load_kit_and_load_feature_kit_agree_on_a_markdown_file_and_its_feature_twin() {
+        let markdown = "## values-0001: v\n\n```yaml canonical\na: 1\n```\n\n```json canonical\n{ \"a\": 1 }\n```\n";
+        let md_only = kit(&[("spec/ir/mck/values.md", markdown)]);
+        assert_eq!(md_only.errors, vec![]);
+        let title = super::super::gherkin::convert::feature_title("values", markdown);
+        let description = super::super::gherkin::convert::feature_description(markdown);
+        let feature_text =
+            super::super::gherkin::convert::convert(&title, &description, &md_only.cases);
+
+        let source = source_of(&[
+            ("spec/ir/mck/values.md", markdown),
+            ("spec/ir/mck/values.feature", &feature_text),
+            ("spec/ir/mck/README.md", "# not a case file\n"),
+            ("spec/ir/mck/documents/nested.md", "## nested-0001: n\n"),
+            (
+                "spec/ir/mck/documents/nested.feature",
+                "Feature: nested\n\n  Scenario: nested-0001 n\n    Then a reader of JSON accepts 1\n",
+            ),
+        ]);
+        let md = load_kit(source.clone()).unwrap();
+        let feature = load_feature_kit(source).unwrap();
+        assert_eq!(md.errors, vec![]);
+        assert_eq!(feature.kit.errors, vec![]);
+        assert_eq!(md.files, vec!["spec/ir/mck/values.md"]);
+        assert_eq!(feature.kit.files, vec!["spec/ir/mck/values.feature"]);
+
+        assert_eq!(md.cases.len(), feature.kit.cases.len());
+        for (md_case, feature_case) in md.cases.iter().zip(&feature.kit.cases) {
+            assert_eq!(
+                (
+                    md_case.id.as_str(),
+                    md_case.topic.as_str(),
+                    md_case.number,
+                    md_case.title.as_str(),
+                    md_case.node.as_deref(),
+                    md_case.version,
+                    md_case.status,
+                    md_case.compare,
+                    &md_case.prose,
+                ),
+                (
+                    feature_case.id.as_str(),
+                    feature_case.topic.as_str(),
+                    feature_case.number,
+                    feature_case.title.as_str(),
+                    feature_case.node.as_deref(),
+                    feature_case.version,
+                    feature_case.status,
+                    feature_case.compare,
+                    &feature_case.prose,
+                ),
+                "cases must agree except for `file` and `line`, which differ by format"
+            );
+            let md_fences: Vec<_> = md_case
+                .fences
+                .iter()
+                .map(|f| (f.info.language, f.info.role, f.body.as_str()))
+                .collect();
+            let feature_fences: Vec<_> = feature_case
+                .fences
+                .iter()
+                .map(|f| (f.info.language, f.info.role, f.body.as_str()))
+                .collect();
+            assert_eq!(md_fences, feature_fences);
+        }
     }
 
     /// A listed case file the source cannot hand over must fail the check: an
@@ -508,5 +694,39 @@ mod tests {
                 "baseline path {path} left the corpus"
             );
         }
+    }
+
+    /// Ruling R-B5: `FeatureKit.fences` is keyed by the repository-relative path, not the real
+    /// filesystem path a `KitSource::directory` kit's cases carry as `file` (`--kit DIR` is
+    /// always a directory source), so a caller holding only a case's repository-relative file
+    /// name can still find its fences.
+    #[test]
+    fn feature_kit_fences_are_keyed_by_the_repository_relative_path_for_a_directory_source() {
+        let kit_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/ir/mck");
+        let feature = load_feature_kit(KitSource::directory(&kit_dir, None)).unwrap();
+        assert_eq!(feature.kit.errors, vec![]);
+        let mut keys: Vec<&str> = feature.fences.keys().map(String::as_str).collect();
+        keys.sort_unstable();
+        assert_eq!(keys.len(), 8, "{keys:?}");
+        for key in &keys {
+            assert!(
+                key.starts_with("spec/ir/mck/") && key.ends_with(".feature"),
+                "{key}"
+            );
+        }
+    }
+
+    /// `load_kit` and `load_feature_kit` give the same sequence of case ids over the checkout's
+    /// own kit, not only over a small hand-built fixture.
+    #[test]
+    fn load_kit_and_load_feature_kit_give_the_same_case_id_sequence_over_the_checkout_kit() {
+        let kit_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/ir/mck");
+        let md = load_kit(KitSource::directory(&kit_dir, None)).unwrap();
+        let feature = load_feature_kit(KitSource::directory(&kit_dir, None)).unwrap();
+        assert_eq!(md.errors, vec![]);
+        assert_eq!(feature.kit.errors, vec![]);
+        let md_ids: Vec<&str> = md.cases.iter().map(|c| c.id.as_str()).collect();
+        let feature_ids: Vec<&str> = feature.kit.cases.iter().map(|c| c.id.as_str()).collect();
+        assert_eq!(md_ids, feature_ids);
     }
 }

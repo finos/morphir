@@ -8,4 +8,5 @@ Check compatibility evidence or render a saved report as offline HTML
 ## Subcommands
 
 - [`morphir mck report check [FLAGS] <REPORT> <ALLOWED_FAILING>`](../mck/report/check.md)
+- [`morphir mck report compare <A> <B>`](../mck/report/compare.md)
 - [`morphir mck report render [--format <FORMAT>] <-o --output <OUTPUT>> <REPORT>`](../mck/report/render.md)

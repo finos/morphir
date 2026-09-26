@@ -631,6 +631,293 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
     assert!(checked.status.success(), "{}", stderr(&checked));
 }
 
+/// The frozen transcript for `binding`, replayed by this test binary itself
+/// (`ADAPTER_FLAG replay <transcript>`).
+fn transcript_for(binding: &str) -> PathBuf {
+    repo().join(format!("spec/mck/baseline/transcripts/{binding}.ndjson"))
+}
+
+/// The frozen consolidated-v1-shaped report `binding` recorded.
+fn baseline_report(binding: &str) -> Value {
+    read_json(&repo().join(format!("spec/mck/baseline/reports/{binding}.json")))
+}
+
+/// Runs `morphir mck run --engine <engine>` against this test binary as a replay adapter for
+/// `transcript`, with the kit checkout `spec/ir/mck`, and writes the report to `report`.
+fn replay_run(engine: &str, transcript: &Path, report: &Path) -> Output {
+    let exe = std::env::current_exe().unwrap();
+    morphir(&[
+        "mck",
+        "run",
+        "--engine",
+        engine,
+        "--adapter",
+        exe.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "replay",
+        "--adapter-arg",
+        transcript.to_str().unwrap(),
+        "--kit",
+        repo().join("spec/ir/mck").to_str().unwrap(),
+        "--report",
+        report.to_str().unwrap(),
+    ])
+}
+
+/// `--engine gherkin` replays each frozen transcript and must match its
+/// frozen report exactly, the same way the legacy engine does above (Task
+/// B6: the kit's `.feature` files, run through a `morphir_bdd::Suite`, must
+/// give the same records the legacy per-fence loop gives for the same
+/// adapter answers). Its terminal output must also equal the legacy
+/// engine's: stdout byte for byte, and stderr apart from the fresh
+/// `Operation ID` line.
+fn a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report() {
+    for binding in ["morphir-typescript", "morphir-rust"] {
+        let work = tempfile::tempdir().unwrap();
+        let report = work.path().join("report.json");
+        let transcript = transcript_for(binding);
+        let output = replay_run("gherkin", &transcript, &report);
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "{binding}: {}",
+            stderr(&output)
+        );
+
+        let produced = read_json(&report);
+        assert_eq!(produced["execution"]["session"]["status"], "finished");
+        let mut expected = baseline_report(binding);
+        // A --kit checkout reports its own revision, as the legacy engine does.
+        expected["kitVersion"] = produced["kit"]["version"].clone();
+        let caps = &produced["adapter"]["negotiation"]["capabilities"];
+        assert_eq!(caps["binding"], binding);
+        let projected = serde_json::json!({
+            "contractVersion":1, "binding":caps["binding"], "language":caps["language"],
+            "formatVersions":caps["formatVersions"], "kitVersion":produced["kit"]["version"],
+            "records":produced["records"]
+        });
+        assert_eq!(
+            without_volatile(projected),
+            without_volatile(expected),
+            "{binding}: the gherkin engine's report does not match its frozen baseline"
+        );
+
+        let legacy = replay_run("legacy", &transcript, &work.path().join("legacy.json"));
+        assert_eq!(
+            legacy.status.code(),
+            Some(0),
+            "{binding}: {}",
+            stderr(&legacy)
+        );
+        assert_eq!(
+            stdout(&output),
+            stdout(&legacy),
+            "{binding}: stdout must be identical between engines"
+        );
+        assert_eq!(
+            without_operation_id(&stderr(&output)),
+            without_operation_id(&stderr(&legacy)),
+            "{binding}: stderr must be identical between engines"
+        );
+    }
+}
+
+/// An adapter that stops answering partway through the kit gives the same
+/// records and the same stderr under both engines. The TypeScript transcript
+/// is cut after its 149th exchange, so the replay adapter exits at request
+/// 150 and every later fence meets a dead session.
+fn a_transcript_cut_partway_gives_the_same_records_under_both_engines() {
+    let work = tempfile::tempdir().unwrap();
+    let full = std::fs::read_to_string(transcript()).unwrap();
+    let mut kept = String::new();
+    let mut requests = 0;
+    for line in full.lines() {
+        if line.starts_with("{\"dir\":\"request\"") {
+            requests += 1;
+            if requests == 150 {
+                break;
+            }
+        }
+        kept.push_str(line);
+        kept.push('\n');
+    }
+    assert_eq!(requests, 150, "the transcript has at least 150 requests");
+    let cut = work.path().join("cut.ndjson");
+    std::fs::write(&cut, kept).unwrap();
+
+    let legacy_report = work.path().join("legacy.json");
+    let gherkin_report = work.path().join("gherkin.json");
+    let legacy = replay_run("legacy", &cut, &legacy_report);
+    let gherkin = replay_run("gherkin", &cut, &gherkin_report);
+    assert_ne!(legacy.status.code(), Some(0), "{}", stderr(&legacy));
+    assert_eq!(
+        legacy.status.code(),
+        gherkin.status.code(),
+        "legacy: {}\ngherkin: {}",
+        stderr(&legacy),
+        stderr(&gherkin)
+    );
+    let records = |path: &Path| without_volatile(read_json(path))["records"].clone();
+    let legacy_records = records(&legacy_report);
+    assert!(
+        legacy_records
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["result"] == "kit-error"),
+        "the cut transcript makes later fences fail"
+    );
+    assert_eq!(
+        legacy_records,
+        records(&gherkin_report),
+        "the records must be identical between engines"
+    );
+    assert_eq!(
+        without_operation_id(&stderr(&legacy)),
+        without_operation_id(&stderr(&gherkin)),
+        "stderr must be identical between engines"
+    );
+}
+
+/// `--engine gherkin` with no `--kit` runs the kit embedded in this binary,
+/// materializing its `.feature` files into a temp dir (`write_feature_files`
+/// in `commands/mck.rs`) before the `Suite` scans them. The other replay
+/// tests always pass `--kit spec/ir/mck` (the checkout), so this is the only
+/// test that exercises that materialization against a real adapter exchange.
+///
+/// The embedded kit is built from the same `spec/ir/mck` checkout
+/// (`crates/morphir-mck`'s `the_embedded_kit_is_the_checkout_kit_with_its_fixtures`
+/// test pins this), so it must replay the frozen transcript identically to
+/// the `--kit` checkout run above, once `kitVersion` (which differs: the
+/// embedded kit reports its own build-time revision, not `git rev-parse
+/// HEAD` of a checkout) is normalized away the same way.
+fn a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript() {
+    let binding = "morphir-typescript";
+    let work = tempfile::tempdir().unwrap();
+    let report = work.path().join("report.json");
+    let exe = std::env::current_exe().unwrap();
+    let transcript = transcript_for(binding);
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--engine",
+        "gherkin",
+        "--adapter",
+        exe.to_str().unwrap(),
+        "--adapter-arg",
+        ADAPTER_FLAG,
+        "--adapter-arg",
+        "replay",
+        "--adapter-arg",
+        transcript.to_str().unwrap(),
+        "--report",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "the embedded kit could not replay {binding}'s frozen transcript through --engine \
+         gherkin with no --kit; if the embedded kit has drifted from the spec/ir/mck checkout \
+         that recorded the transcript, that is the reason, not a defect in this test: {}",
+        stderr(&output)
+    );
+
+    let produced = read_json(&report);
+    assert_eq!(produced["execution"]["session"]["status"], "finished");
+    assert_eq!(produced["kit"]["source"], "embedded");
+    let mut expected = baseline_report(binding);
+    // The embedded kit reports its own build-time revision, not a checkout's `git rev-parse
+    // HEAD`; the other replay test above normalizes this the same way.
+    expected["kitVersion"] = produced["kit"]["version"].clone();
+    let caps = &produced["adapter"]["negotiation"]["capabilities"];
+    assert_eq!(caps["binding"], binding);
+    let projected = serde_json::json!({
+        "contractVersion":1, "binding":caps["binding"], "language":caps["language"],
+        "formatVersions":caps["formatVersions"], "kitVersion":produced["kit"]["version"],
+        "records":produced["records"]
+    });
+    assert_eq!(
+        without_volatile(projected),
+        without_volatile(expected),
+        "the embedded kit's gherkin report does not match {binding}'s frozen baseline; if the \
+         embedded kit has drifted from the checkout that recorded the transcript, the diff above \
+         is that drift, not a bug in the gherkin engine"
+    );
+}
+
+/// `stderr`, without its final `Operation ID: <uuid>` line: that id is fresh
+/// every run and carries no engine-specific meaning.
+fn without_operation_id(text: &str) -> String {
+    text.lines()
+        .filter(|line| !line.starts_with("Operation ID: "))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// `--filter` matching no case gives the legacy `NothingSelected` verdict,
+/// not a `Suite` "empty run" error (Task B6, global constraint "Filters and
+/// tags that select nothing"): the exit code and stderr must be identical
+/// between `--engine legacy` and `--engine gherkin`.
+/// The gherkin engine runs the IR suite only: asking it for the metadata suite
+/// is a usage error, found before any adapter starts.
+fn the_gherkin_engine_refuses_the_metadata_suite() {
+    let out = morphir(&[
+        "mck",
+        "run",
+        "--suite",
+        "metadata",
+        "--engine",
+        "gherkin",
+        "--adapter",
+        "definitely-not-an-mck-adapter",
+    ]);
+    assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("--engine gherkin runs the IR suite only"),
+        "{}",
+        stderr(&out)
+    );
+}
+
+fn a_filter_matching_nothing_is_identical_between_engines() {
+    let run = |engine: &str| {
+        morphir(&[
+            "mck",
+            "run",
+            "--engine",
+            engine,
+            "--adapter",
+            "definitely-not-an-mck-adapter",
+            "--filter",
+            "^nothing-0000$",
+        ])
+    };
+    let legacy = run("legacy");
+    let gherkin = run("gherkin");
+    assert_eq!(legacy.status.code(), Some(1), "{}", stderr(&legacy));
+    assert_eq!(
+        legacy.status.code(),
+        gherkin.status.code(),
+        "legacy: {} {}\ngherkin: {} {}",
+        legacy.status,
+        stderr(&legacy),
+        gherkin.status,
+        stderr(&gherkin)
+    );
+    assert_eq!(
+        without_operation_id(&stderr(&legacy)),
+        without_operation_id(&stderr(&gherkin)),
+        "stderr must be identical between engines"
+    );
+    assert_eq!(
+        stdout(&legacy),
+        stdout(&gherkin),
+        "stdout must be identical between engines"
+    );
+}
+
 fn a_run_without_an_adapter_is_a_usage_error_that_writes_nothing() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
@@ -743,6 +1030,157 @@ fn an_empty_selection_is_never_a_success() {
     );
 }
 
+/// The frozen v1-shaped TypeScript report: `mck report compare` must read it
+/// without requiring the draft v2 format's other members.
+fn frozen_v1_report_path() -> PathBuf {
+    repo().join("spec/mck/baseline/reports/morphir-typescript.json")
+}
+
+fn mck_report_compare_accepts_two_copies_of_a_frozen_report() {
+    let work = tempfile::tempdir().unwrap();
+    let text = std::fs::read_to_string(frozen_v1_report_path()).unwrap();
+    let a = work.path().join("a.json");
+    let b = work.path().join("b.json");
+    std::fs::write(&a, &text).unwrap();
+    std::fs::write(&b, &text).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+}
+
+fn mck_report_compare_rejects_a_changed_record_result_and_names_its_index() {
+    let work = tempfile::tempdir().unwrap();
+    let mut report = read_json(&frozen_v1_report_path());
+    let a = work.path().join("a.json");
+    std::fs::write(&a, serde_json::to_vec(&report).unwrap()).unwrap();
+    let records = report["records"].as_array_mut().unwrap();
+    assert!(
+        records.len() > 1,
+        "the frozen report has more than one record"
+    );
+    assert_eq!(records[1]["result"], "pass");
+    records[1]["result"] = Value::String("fail".into());
+    let b = work.path().join("b.json");
+    std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert!(
+        stderr(&output).contains("index 1"),
+        "the differing record's index is named: {}",
+        stderr(&output)
+    );
+}
+
+fn mck_report_compare_rejects_a_record_count_mismatch() {
+    let work = tempfile::tempdir().unwrap();
+    let mut report = read_json(&frozen_v1_report_path());
+    let a = work.path().join("a.json");
+    std::fs::write(&a, serde_json::to_vec(&report).unwrap()).unwrap();
+    report["records"].as_array_mut().unwrap().pop();
+    let b = work.path().join("b.json");
+    std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert!(
+        stderr(&output).contains("counts differ"),
+        "the count mismatch is reported: {}",
+        stderr(&output)
+    );
+}
+
+/// A report with no `records` member is an error, not a report with zero
+/// records, so `mck report compare` cannot pass two such files.
+fn mck_report_compare_rejects_a_report_without_records() {
+    let work = tempfile::tempdir().unwrap();
+    let mut report = read_json(&frozen_v1_report_path());
+    report.as_object_mut().unwrap().remove("records");
+    let a = work.path().join("a.json");
+    std::fs::write(&a, serde_json::to_vec(&report).unwrap()).unwrap();
+    let output = morphir(&[
+        "mck",
+        "report",
+        "compare",
+        a.to_str().unwrap(),
+        a.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert!(
+        stderr(&output).contains("missing field `records`"),
+        "the missing member is named: {}",
+        stderr(&output)
+    );
+}
+
+/// `--engine gherkin` on a kit with no `.feature` files is a usage error
+/// that names the fix, not an empty run.
+fn a_gherkin_run_on_a_kit_without_feature_files_is_a_usage_error() {
+    let work = tempfile::tempdir().unwrap();
+    let kit = work.path().join("mck");
+    copy_tree(&repo().join("spec/ir/mck"), &kit);
+    for entry in std::fs::read_dir(&kit).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|e| e == "feature") {
+            std::fs::remove_file(path).unwrap();
+        }
+    }
+    let report = work.path().join("report.json");
+    let output = morphir(&[
+        "mck",
+        "run",
+        "--engine",
+        "gherkin",
+        "--adapter",
+        "definitely-not-an-mck-adapter",
+        "--kit",
+        kit.to_str().unwrap(),
+        "--repo-root",
+        repo().to_str().unwrap(),
+        "--report",
+        report.to_str().unwrap(),
+    ]);
+    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
+    assert!(
+        stderr(&output).contains(
+            "error: the kit has no .feature files; run morphir mck convert, or use --engine legacy"
+        ),
+        "{}",
+        stderr(&output)
+    );
+    assert_eq!(stdout(&output), "");
+    assert!(!report.exists(), "no report for a usage error");
+}
+
+/// Copies the directory tree `from` to `to`.
+fn copy_tree(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for entry in std::fs::read_dir(from).unwrap() {
+        let entry = entry.unwrap();
+        let target = to.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            copy_tree(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), target).unwrap();
+        }
+    }
+}
+
 fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
@@ -797,6 +1235,10 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "the_gherkin_engine_refuses_the_metadata_suite",
+            the_gherkin_engine_refuses_the_metadata_suite,
+        ),
         (
             "metadata_cli_accepts_reordered_fact_object_members",
             metadata_cli_accepts_reordered_fact_object_members,
@@ -858,6 +1300,22 @@ fn main() {
             a_full_run_against_recorded_answers_reproduces_the_typescript_report,
         ),
         (
+            "a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report",
+            a_gherkin_run_against_recorded_answers_reproduces_each_frozen_report,
+        ),
+        (
+            "a_transcript_cut_partway_gives_the_same_records_under_both_engines",
+            a_transcript_cut_partway_gives_the_same_records_under_both_engines,
+        ),
+        (
+            "a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript",
+            a_gherkin_run_with_no_kit_replays_the_embedded_kit_against_one_frozen_transcript,
+        ),
+        (
+            "a_filter_matching_nothing_is_identical_between_engines",
+            a_filter_matching_nothing_is_identical_between_engines,
+        ),
+        (
             "a_run_without_an_adapter_is_a_usage_error_that_writes_nothing",
             a_run_without_an_adapter_is_a_usage_error_that_writes_nothing,
         ),
@@ -872,6 +1330,26 @@ fn main() {
         (
             "an_empty_selection_is_never_a_success",
             an_empty_selection_is_never_a_success,
+        ),
+        (
+            "mck_report_compare_accepts_two_copies_of_a_frozen_report",
+            mck_report_compare_accepts_two_copies_of_a_frozen_report,
+        ),
+        (
+            "mck_report_compare_rejects_a_changed_record_result_and_names_its_index",
+            mck_report_compare_rejects_a_changed_record_result_and_names_its_index,
+        ),
+        (
+            "mck_report_compare_rejects_a_record_count_mismatch",
+            mck_report_compare_rejects_a_record_count_mismatch,
+        ),
+        (
+            "mck_report_compare_rejects_a_report_without_records",
+            mck_report_compare_rejects_a_report_without_records,
+        ),
+        (
+            "a_gherkin_run_on_a_kit_without_feature_files_is_a_usage_error",
+            a_gherkin_run_on_a_kit_without_feature_files_is_a_usage_error,
         ),
     ];
     let filter = args.iter().skip(1).find(|a| !a.starts_with('-')).cloned();

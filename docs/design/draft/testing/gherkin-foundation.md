@@ -287,36 +287,36 @@ Reference: morphir/SDK:basics#add
 ```
 ````
 
-The same case in `spec/ir/mck/values.feature` (sketch). A scenario outline states one check over several formats or inputs, and each `Examples` row runs as its own scenario:
+The same case, in the real `spec/ir/mck/values.feature`. A case's canonical checks and its accepted-input checks are different fence roles, so they become two scenarios, both named `<id> <title>`; each holds a run of one-line fences of one role, so each becomes a scenario outline with one `Examples` row per fence:
 
 ```gherkin
-@node:Value @version:4
+@node:Value
 Feature: Values
 
   Scenario Outline: values-0003 Reference shorthand
     Then its canonical <format> spelling is <spelling>
-    And a reader of <format> accepts <accepted>
 
     Examples:
-      | format | spelling                                  | accepted                          |
-      | YAML   | Reference: morphir/SDK:basics#add         | Reference: morphir/SDK:basics#add |
-      | JSON   | { "Reference": "morphir/SDK:basics#add" } | "morphir/SDK:basics#add"          |
+      | format | spelling                                  |
+      | YAML   | Reference: morphir/SDK:basics#add         |
+      | JSON   | { "Reference": "morphir/SDK:basics#add" } |
 
-  Scenario Outline: values-0003 A malformed reference is refused
-    Then a reader of <format> rejects <input> with <diagnostic>
+  Scenario Outline: values-0003 Reference shorthand
+    Then a reader of <format> accepts <input>
 
     Examples:
-      | format | input                                             | diagnostic     |
-      | JSON   | { "Reference": "morphir/SDK:basics#add", "x": 1 } | unknown_member |
+      | format | input                                                                     |
+      | JSON   | "morphir/SDK:basics#add"                                                  |
+      | JSON   | { "Reference": { "attributes": {}, "fqname": "morphir/SDK:basics#add" } } |
 ```
 
-Accepted and rejected inputs are separate outlines, because their steps differ. The full step vocabulary, including warnings, a different node kind and document-tree sets, is in the [kit draft](./mck-ion-reference.md#two-kinds-of-case).
+`@node:Value` sits on the `Feature` line, not on either scenario, because every case in `values.feature` shares it; a file whose cases carry different node kinds, such as `versions.feature`, keeps `@node:` on each scenario instead. The full step vocabulary, including warnings, a different node kind and document-tree sets, is in the [kit draft](./mck-ion-reference.md#two-kinds-of-case).
 
-- **Mapping:** a case is a scenario, and the case id starts the scenario name. A case file is a feature. Heading keys become tags: `node=` → `@node:<Kind>`, `version=` → `@version:<n>`, `status=pending` → `@pending`, `compare=attributes` → `@compare:attributes`. Fence roles become steps: canonical, accepted (with an optional warning), rejected with a diagnostic or an expected node, and document-tree file sets (`Given the tree file "<path>":`, with `set` and `mode` in the step text). The converter writes a scenario outline where a case has one-line documents, with a row per format or per input, and a plain scenario with doc strings where a document spans several lines.
-- **Steps:** the kit's steps are a step library in `morphir-mck`. Each step sends its request to the adapter over the existing protocol, so adapters do not change.
+- **Mapping:** a case becomes one or more scenarios, each named `<id> <title>`; a case file is a feature. Heading keys become tags: `node=` → `@node:<Kind>`, `version=` → `@version:<n>`, `status=pending` → `@pending`, `compare=attributes` → `@compare:attributes`. A `@node:`, `@version:` or `@compare:` tag that every scenario of the file shares moves to the `Feature` line instead of repeating on each one. Fence order is kept within a case, so the parity replay sends the same requests in the same order the legacy engine did. A run of two or more consecutive one-line fences of the same role and the same keys becomes one `Scenario Outline`, one `Examples` row per fence; a single one-line fence, or a fence whose document spans several lines, becomes a step of a plain scenario instead, in fence order. A document-tree case's fences become `Given the tree file "<path>" in set "<set>":` steps, one per file, followed by `Then the "<set>" tree reads back as the canonical form` and the outline or plain-scenario steps for its own canonical and accepted checks.
+- **Steps:** the kit's steps are a step library in `morphir-mck`. The first step of a case runs the whole case once: it sends each of the case's requests to the adapter over the existing protocol, in fence order, so adapters do not change. Each step then checks the records of its own fence, one record for each path mode.
 - **Commands:**
   - `morphir mck run` becomes a `Suite` over `spec/ir/mck/*.feature`. It adds the kit step library and the adapter, as a component started from `--adapter`.
-  - It still writes the MCK report (v1 and v2) and the HTML report. Each step result maps to one report record.
+  - It still writes the MCK report (v1 and v2) and the HTML report. The report records come from the case runs, one for each fence and path mode, in the same order as the legacy engine; a step passes or fails on the records of its fence.
   - `morphir mck check` validates the cases with the `morphir-gherkin` model alone, without an adapter.
 - **Conversion:** a one-off converter rewrites every case file.
   - The old and the new engines then run side by side in CI until the new engine gives the same report records as the old one for every case and both adapters.
@@ -343,7 +343,7 @@ Accepted and rejected inputs are separate outlines, because their steps differ. 
   - A failing scenario that prints a unified diff.
   - The CLI base steps in an isolated environment.
 - **The kit:**
-  - The converter's output: every case of every file becomes one scenario, with the same checks.
+  - The converter's output: every case of every file becomes one or more scenarios, in fence order, with the same checks; a run of same-role one-line fences becomes a scenario outline.
   - Parity: the new engine gives the same report records as the old one for every case, against the Rust and TypeScript adapters.
   - `mck check` finds each rule violation in a `.feature` case file, with its span.
 - **itest:**

@@ -90,6 +90,29 @@ pub struct FenceInfo {
 }
 
 impl FenceInfo {
+    /// A fence info built from its parts, for a fence read from another format
+    /// than Markdown (the `.feature` lowering). The caller keeps the role's key
+    /// rules; nothing here checks them.
+    pub(crate) fn from_parts<K: Into<String>, V: Into<String>>(
+        language: Language,
+        role: Role,
+        keys: impl IntoIterator<Item = (K, V)>,
+    ) -> Self {
+        Self {
+            language,
+            role,
+            keys: keys
+                .into_iter()
+                .map(|(key, value)| (key.into(), value.into()))
+                .collect(),
+        }
+    }
+
+    /// Every key and its value, in key order.
+    pub fn keys(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.keys.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+    }
+
     pub fn key(&self, name: &str) -> Option<&str> {
         self.keys.get(name).map(String::as_str)
     }

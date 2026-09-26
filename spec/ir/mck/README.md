@@ -15,6 +15,13 @@ The kit states meaning by example. The semantic model lives in TypeScript; the Y
 text form; JSON is the second profile. When a spec page and a kit case disagree, the case wins and the page is
 corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabilization.md`.
 
+Each case file has a generated `.feature` twin (plain Gherkin) for a parity window while a second engine
+lowers `.feature` cases directly: `names.feature` beside `names.md`, and so on. The twin is generated, never
+hand-edited; regenerate every twin with `morphir mck convert --kit spec/ir/mck` after editing a `.md` file, and
+commit the result. `morphir mck check spec/ir/mck` fails when a twin has drifted from its `.md` file, naming it
+and pointing back at `mck convert`. The Markdown grammar remains the kit's source of truth for this window; a
+later change removes it under a follow-up bead, at which point the kit manifest's `driverContract` moves to `2`.
+
 ## Files
 
 | File | Holds |
@@ -27,6 +34,7 @@ corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabiliza
 | `distributions.md` | whole Library, Specs, and Application documents |
 | `document-tree.md` | manifest, module, and node files; layout equivalence |
 | `versions.md` | cross-version reading and writing |
+| `*.feature` | generated Gherkin twin of the `.md` file of the same name; run `mck convert` to regenerate |
 | `documents/` | large fixtures referenced by path |
 | `report-draft.schema.json`, `report-draft.example.json` | production consolidated report `2.0.0-draft.1` and example |
 | `report.schema.json`, `report.example.json` | historical version 1 evidence for parity only |

@@ -20,6 +20,12 @@ impl CaseId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// The id `<topic>-<digits>`, for a case read from another format than
+    /// Markdown (the `.feature` lowering). `digits` is the case's four digits.
+    pub(crate) fn from_parts(topic: &str, digits: &str) -> Self {
+        Self(format!("{topic}-{digits}"))
+    }
 }
 
 impl fmt::Display for CaseId {
@@ -170,89 +176,7 @@ impl Parser<'_> {
         let Some(current) = self.draft.take() else {
             return;
         };
-        let mut errors = Vec::new();
-
-        let mut canonicals: BTreeMap<&str, usize> = BTreeMap::new();
-        for fence in current
-            .fences
-            .iter()
-            .filter(|f| f.info.role == Role::Canonical)
-        {
-            let count = canonicals.entry(fence.profile()).or_default();
-            *count += 1;
-            if *count == 2 {
-                errors.push((
-                    fence.line,
-                    format!(
-                        "more than one canonical {} fence in {}",
-                        fence.profile(),
-                        current.id
-                    ),
-                ));
-            }
-        }
-
-        // A set's own rules. `mode=read` is a property of the set, not of one
-        // file in it: the runner either runs the write half for the whole set
-        // or for none of it, so a set that says both is a kit error rather
-        // than a silent choice. A repeated path is a kit error too, because
-        // the tree a set denotes is a map from logical path to text.
-        let mut modes: BTreeMap<&str, Option<&str>> = BTreeMap::new();
-        let mut paths: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
-        for fence in current.fences.iter().filter(|f| f.info.role == Role::File) {
-            let set = fence.info.set();
-            let mode = fence.info.key("mode");
-            if *modes.entry(set).or_insert(mode) != mode {
-                errors.push((
-                    fence.line,
-                    format!("set {} mixes mode=read and default fences", set_label(set)),
-                ));
-            }
-            let logical = fence.info.key("path").unwrap_or("");
-            if !paths.entry(set).or_default().insert(logical) {
-                errors.push((
-                    fence.line,
-                    format!("set {} repeats path {logical}", set_label(set)),
-                ));
-            }
-        }
-
-        match current.status {
-            Status::Pending => {
-                if let Some(bad) = current
-                    .fences
-                    .iter()
-                    .find(|f| f.info.role != Role::Rejected)
-                {
-                    errors.push((
-                        bad.line,
-                        format!(
-                            "pending case may not carry canonical, accepted, or file fences ({})",
-                            current.id
-                        ),
-                    ));
-                }
-            }
-            Status::Active => {
-                let accepted_or_file = current
-                    .fences
-                    .iter()
-                    .any(|f| matches!(f.info.role, Role::Accepted | Role::File));
-                if canonicals.is_empty() && accepted_or_file {
-                    errors.push((
-                        current.line,
-                        format!("active case has no canonical fence ({})", current.id),
-                    ));
-                } else if current.fences.is_empty() {
-                    errors.push((
-                        current.line,
-                        format!("case has no data fences ({})", current.id),
-                    ));
-                }
-            }
-        }
-
-        for (line, message) in errors {
+        for (line, message) in case_errors(&current) {
             self.fail(line, message);
         }
         self.out.cases.push(current);
@@ -365,6 +289,90 @@ impl Parser<'_> {
             },
         }
     }
+}
+
+/// The per-case structural checks every case file format shares: at most one
+/// canonical fence per profile, a set's own rules (one mode, no repeated
+/// path), what a pending case may carry, and that an active case has data and
+/// a canonical fence where it needs one. Each error is a line and a message;
+/// the line is a fence's line or the case's line.
+pub(crate) fn case_errors(case: &KitCase) -> Vec<(usize, String)> {
+    let mut errors = Vec::new();
+
+    let mut canonicals: BTreeMap<&str, usize> = BTreeMap::new();
+    for fence in case
+        .fences
+        .iter()
+        .filter(|f| f.info.role == Role::Canonical)
+    {
+        let count = canonicals.entry(fence.profile()).or_default();
+        *count += 1;
+        if *count == 2 {
+            errors.push((
+                fence.line,
+                format!(
+                    "more than one canonical {} fence in {}",
+                    fence.profile(),
+                    case.id
+                ),
+            ));
+        }
+    }
+
+    // A set's own rules. `mode=read` is a property of the set, not of one
+    // file in it: the runner either runs the write half for the whole set
+    // or for none of it, so a set that says both is a kit error rather
+    // than a silent choice. A repeated path is a kit error too, because
+    // the tree a set denotes is a map from logical path to text.
+    let mut modes: BTreeMap<&str, Option<&str>> = BTreeMap::new();
+    let mut paths: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for fence in case.fences.iter().filter(|f| f.info.role == Role::File) {
+        let set = fence.info.set();
+        let mode = fence.info.key("mode");
+        if *modes.entry(set).or_insert(mode) != mode {
+            errors.push((
+                fence.line,
+                format!("set {} mixes mode=read and default fences", set_label(set)),
+            ));
+        }
+        let logical = fence.info.key("path").unwrap_or("");
+        if !paths.entry(set).or_default().insert(logical) {
+            errors.push((
+                fence.line,
+                format!("set {} repeats path {logical}", set_label(set)),
+            ));
+        }
+    }
+
+    match case.status {
+        Status::Pending => {
+            if let Some(bad) = case.fences.iter().find(|f| f.info.role != Role::Rejected) {
+                errors.push((
+                    bad.line,
+                    format!(
+                        "pending case may not carry canonical, accepted, or file fences ({})",
+                        case.id
+                    ),
+                ));
+            }
+        }
+        Status::Active => {
+            let accepted_or_file = case
+                .fences
+                .iter()
+                .any(|f| matches!(f.info.role, Role::Accepted | Role::File));
+            if canonicals.is_empty() && accepted_or_file {
+                errors.push((
+                    case.line,
+                    format!("active case has no canonical fence ({})", case.id),
+                ));
+            } else if case.fences.is_empty() {
+                errors.push((case.line, format!("case has no data fences ({})", case.id)));
+            }
+        }
+    }
+
+    errors
 }
 
 pub fn parse_kit_file(file: &str, source: &str) -> ParsedFile {

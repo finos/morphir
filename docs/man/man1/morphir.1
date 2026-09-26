@@ -348,6 +348,9 @@ Morphir Compatibility Kit: validate, vendor and run compatibility kits
 \fBmck check\fR
 Validate a kit directory without running an adapter
 .TP
+\fBmck convert\fR
+Write, or check, the kit's generated `.feature` twins of its Markdown case files
+.TP
 \fBmck coverage\fR
 Check that every IR vocabulary variant and member has a kit case
 .TP
@@ -394,6 +397,9 @@ Verify report inventory and the binding's allowed\-failing baseline
 .TP
 \fBmck report render\fR
 Render a consolidated JSON report as a standalone offline HTML file
+.TP
+\fBmck report compare\fR
+Compare two reports' records, ignoring duration and timing
 .TP
 \fBmck kit\fR
 Inspect, vendor and update kit data
@@ -2411,6 +2417,22 @@ Print the files, case ids and errors as JSON on stdout
 .TP
 \fB<DIR>\fR
 The kit directory to validate, for example spec/ir/mck, or a vendored snapshot's root
+.SH "MORPHIR MCK CONVERT"
+Write, or check, the kit's generated `.feature` twins of its Markdown case files
+.PP
+\fBUsage:\fR morphir mck convert [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+The kit directory whose Markdown case files to convert, for example spec/ir/mck
+.RS
+\fIDefault: \fRspec/ir/mck
+.RE
+.TP
+\fB\-\-check\fR
+Check that every committed `.feature` file matches its `.md` twin's conversion, writing nothing, instead of writing the files
 .SH "MORPHIR MCK COVERAGE"
 Check that every IR vocabulary variant and member has a kit case
 
@@ -2484,6 +2506,12 @@ How long one request may wait for its answer, in milliseconds
 How long the whole adapter session may last, in milliseconds
 .RS
 \fIDefault: \fR1800000
+.RE
+.TP
+\fB\-\-engine\fR \fI<ENGINE>\fR
+Which engine runs the kit: `legacy` runs its Markdown case files through the per\-fence run loop; `gherkin` runs its `.feature` case files through a `morphir_bdd::Suite`. Both give the same report, terminal output and exit code for the same inputs
+.RS
+\fIDefault: \fRlegacy
 .RE
 .SH "MORPHIR MCK PACKAGE INSPECT"
 Inspect draft.3 candidate definitions and pending assets without running restore
@@ -2666,6 +2694,19 @@ Destination for the standalone report; cannot overwrite the JSON input
 .TP
 \fB<REPORT>\fR
 Consolidated JSON report to display
+.SH "MORPHIR MCK REPORT COMPARE"
+Compare two reports' records, ignoring duration and timing
+.PP
+\fBUsage:\fR morphir mck report compare <A> <B>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<A>\fR
+The first report
+.TP
+\fB<B>\fR
+The second report
 .SH "MORPHIR MCK KIT STATUS"
 Identify a kit: source, revision, corpus hash and whether it is modified
 .PP

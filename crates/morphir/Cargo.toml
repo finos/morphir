@@ -54,6 +54,8 @@ morphir-evaluator = { path = "../morphir-evaluator" }
 morphir-opa = { path = "../morphir-opa", optional = true }
 morphir-mck = { path = "../morphir-mck" }
 morphir-package = { path = "../../ecosystem/morphir-rust/crates/morphir-package" }
+# `mck run --engine gherkin` runs the kit's `.feature` files through a `morphir_bdd::Suite`.
+morphir-bdd = { path = "../../ecosystem/morphir-rust/crates/morphir-bdd" }
 # `mck kit vendor --source github:finos/morphir` downloads one commit archive over HTTPS.
 reqwest.workspace = true
 # `mck run --filter` takes a Rust regular expression
