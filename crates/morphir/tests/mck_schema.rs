@@ -27,7 +27,7 @@ fn embedded_source_and_vendored_schema_gates_work_without_other_tools() {
     );
     assert!(
         String::from_utf8_lossy(&embedded.stdout)
-            .contains("184 ok, 13 rejected as expected, 0 failed, 0 skipped")
+            .contains("186 ok, 13 rejected as expected, 0 failed, 0 skipped")
     );
     let raw = cli(
         work.path(),

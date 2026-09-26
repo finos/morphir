@@ -383,6 +383,25 @@ Feature: Values
         FloatLiteral: +0.5
       """
 
+  @semantic
+  Scenario: values-0046 Expanded float ignores unknown members
+    Given a Value whose canonical form is:
+      """ion
+      (
+        float
+        "4.0"
+      )
+      """
+    Then a reader of JSON accepts { "Literal": { "FloatLiteral": { "future": true, "value": 4.0 } } }
+
+  @semantic
+  Scenario: values-0047 Expanded integer ignores unknown members
+    Given a Value whose canonical form is:
+      """ion
+      42
+      """
+    Then a reader of JSON accepts { "Literal": { "IntegerLiteral": { "future": true, "value": 42 } } }
+
   @spelling
   Scenario: values-0013 Record spelling
     Decision 0004 applies to record values too; the direct field map is accepted for the window of decision 0006, and so is the Rust encoder's `attrs` spelling of `attributes`, a row of decision 0006's window table, which this case pins for values as types-0005 pins it for type expressions.
