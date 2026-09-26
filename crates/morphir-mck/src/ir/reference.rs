@@ -172,12 +172,7 @@ fn yaml_float_lexemes(text: &str) -> Result<Vec<String>, String> {
         }
         let value = match events.get(index + 1) {
             Some(Event::Scalar(value, ScalarStyle::Plain, _, _)) => Some(value.as_ref()),
-            Some(Event::MappingStart(..)) if matches!(events.get(index + 2), Some(Event::Scalar(name, _, _, _)) if name == "value") => {
-                match events.get(index + 3) {
-                    Some(Event::Scalar(value, ScalarStyle::Plain, _, _)) => Some(value.as_ref()),
-                    _ => None,
-                }
-            }
+            Some(Event::MappingStart(..)) => yaml_expanded_float_lexeme(&events, index + 2),
             _ => None,
         };
         if let Some(value) = value {
@@ -186,6 +181,29 @@ fn yaml_float_lexemes(text: &str) -> Result<Vec<String>, String> {
         }
     }
     Ok(lexemes)
+}
+
+fn yaml_expanded_float_lexeme<'a>(events: &'a [Event<'_>], start: usize) -> Option<&'a str> {
+    let mut depth = 1;
+    for index in start..events.len() {
+        match &events[index] {
+            Event::MappingStart(..) | Event::SequenceStart(..) => depth += 1,
+            Event::MappingEnd | Event::SequenceEnd => {
+                depth -= 1;
+                if depth == 0 {
+                    break;
+                }
+            }
+            Event::Scalar(name, _, _, _) if depth == 1 && name == "value" => {
+                if let Some(Event::Scalar(value, ScalarStyle::Plain, _, _)) = events.get(index + 1)
+                {
+                    return Some(value.as_ref());
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn restore_yaml_float_lexemes(
@@ -910,7 +928,7 @@ fn read_literal(value: &Value) -> Result<ValueReference, String> {
             match kind.as_str() {
                 "IntegerLiteral" | "WholeNumberLiteral" => {
                     let number = match payload {
-                        Value::Object(inner) if inner.len() == 1 => inner.get("value"),
+                        Value::Object(inner) => inner.get("value"),
                         other => Some(other),
                     };
                     number
@@ -924,7 +942,7 @@ fn read_literal(value: &Value) -> Result<ValueReference, String> {
                     .ok_or("a BoolLiteral needs a boolean".to_owned()),
                 "FloatLiteral" => {
                     let number = match payload {
-                        Value::Object(inner) if inner.len() == 1 => inner.get("value"),
+                        Value::Object(inner) => inner.get("value"),
                         other => Some(other),
                     };
                     number
@@ -1462,6 +1480,10 @@ mod tests {
                 "(\n  float\n  \"4.0\"\n)\n",
             ),
             (
+                r#"{"Literal":{"FloatLiteral":{"future":true,"value":4.0}}}"#,
+                "(\n  float\n  \"4.0\"\n)\n",
+            ),
+            (
                 r#"{"Literal":{"FloatLiteral":-0}}"#,
                 "(\n  float\n  \"-0\"\n)\n",
             ),
@@ -1526,6 +1548,15 @@ mod tests {
                 "{profile:?}: {text}"
             );
         }
+    }
+
+    #[test]
+    fn expanded_yaml_float_ignores_unknown_members() {
+        let yaml = "Literal:\n  FloatLiteral:\n    future: true\n    value: 4.0\n";
+        assert_eq!(
+            to_ion("Value", Profile::Yaml, yaml).unwrap(),
+            "(\n  float\n  \"4.0\"\n)\n"
+        );
     }
 
     #[test]
