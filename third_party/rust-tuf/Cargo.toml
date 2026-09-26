@@ -70,10 +70,10 @@ version = "0.3.31"
 features = ["io"]
 
 [dependencies.http]
-version = "0.2.4"
+version = "1.0.0"
 
 [dependencies.hyper]
-version = "0.14.19"
+version = "1.0.0"
 features = [
     "stream",
     "client",
