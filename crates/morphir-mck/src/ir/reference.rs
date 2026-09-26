@@ -10,6 +10,12 @@ use serde_json::{Value, json};
 use super::compare::normalize_canonical;
 use crate::transport::protocol::Profile;
 
+/// Check an Ion expectation while the kit is loaded, before baseline rules
+/// can adjudicate any execution record as an allowed failure.
+pub(crate) fn validate(node: &str, ion: &str) -> Result<(), String> {
+    reference_name(node, ion).map(|_| ())
+}
+
 pub(super) fn to_profile(node: &str, ion: &str, profile: Profile) -> Result<String, String> {
     let name = reference_name(node, ion)?;
     match profile {

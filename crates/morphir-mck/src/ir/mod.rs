@@ -2,7 +2,7 @@
 
 pub mod compare;
 pub mod coverage;
-mod reference;
+pub(crate) mod reference;
 pub mod run;
 
 pub use run::{Run, RunOptions, RunVerdict, Testee, run_kit, verdict};

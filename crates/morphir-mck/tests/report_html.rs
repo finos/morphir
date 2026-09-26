@@ -170,6 +170,7 @@ fn offline_document_has_labeled_filters_and_full_static_content() {
         assert!(output.contains(&format!("id=\"{id}\"")));
     }
     assert!(output.contains("Browser filters only change this view"));
+    assert!(output.contains("<option value=\"ion\">ion</option>"));
     assert!(output.contains("JSON report remains authoritative"));
     assert!(output.contains("Showing 1 of 1 records"));
     assert!(output.contains("@media print"));

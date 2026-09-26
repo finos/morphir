@@ -364,16 +364,20 @@ pub(crate) fn case_errors(case: &KitCase) -> Vec<(usize, String)> {
             if let Some(fence) = case.fences.iter().find(|f| f.info.role == Role::Canonical) {
                 errors.push((fence.line, "semantic case has a spelling step".to_owned()));
             }
-            let needs_reference = case
-                .fences
-                .iter()
-                .any(|f| matches!(f.info.role, Role::Accepted | Role::File));
+            let file_fence = case.fences.iter().find(|f| f.info.role == Role::File);
+            if let Some(fence) = file_fence {
+                errors.push((
+                    fence.line,
+                    "semantic tree steps are not supported by the Ion reference codec".to_owned(),
+                ));
+            }
+            let needs_reference = case.fences.iter().any(|f| f.info.role == Role::Accepted);
             if needs_reference && case.reference.is_none() {
                 errors.push((
                     case.line,
                     format!("semantic case needs one Ion reference ({})", case.id),
                 ));
-            } else if !needs_reference && case.reference.is_some() {
+            } else if !needs_reference && file_fence.is_none() && case.reference.is_some() {
                 errors.push((
                     case.line,
                     "reject-only semantic case has an Ion reference".to_owned(),
@@ -385,6 +389,12 @@ pub(crate) fn case_errors(case: &KitCase) -> Vec<(usize, String)> {
                 errors.push((case.line, "an Ion reference needs @semantic".to_owned()));
             }
         }
+    }
+
+    if let Some(reference) = &case.reference
+        && let Err(error) = crate::ir::reference::validate(&reference.node, &reference.body)
+    {
+        errors.push((reference.line, format!("Ion reference: {error}")));
     }
 
     // A set's own rules. `mode=read` is a property of the set, not of one

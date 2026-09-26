@@ -952,7 +952,10 @@ Feature: Values
   Scenario: values-0031 A reference is read from JSON
     Given a Value whose canonical form is:
       """ion
-      (ref 'morphir/SDK:basics#add')
+      (
+        ref
+        'morphir/SDK:basics#add'
+      )
       """
     Then a reader of JSON accepts "morphir/SDK:basics#add"
 "#;
@@ -993,6 +996,29 @@ Feature: Values
       (ref 'morphir/SDK:basics#add')
       """
     Then a reader of JSON rejects 1 with invalid_type
+
+  @semantic
+  Scenario: values-0006 Malformed Ion reference
+    Given a Value whose canonical form is:
+      """ion
+      (ref 42)
+      """
+    Then a reader of JSON accepts 1
+
+  @semantic
+  Scenario: values-0007 Unsupported semantic tree
+    Given a Value whose canonical form is:
+      """ion
+      (
+        ref
+        'morphir/SDK:basics#add'
+      )
+      """
+    Given the tree file "manifest" in set "test":
+      """json
+      {}
+      """
+    Then the "test" tree reads back as the canonical form
 "#;
         let actual = errors(&lowered(text));
         assert!(
@@ -1025,6 +1051,18 @@ Feature: Values
                 .iter()
                 .any(|(_, message)| message
                     .contains("reject-only semantic case has an Ion reference")),
+            "{actual:?}"
+        );
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message.contains("Ion reference") && message.contains("symbol")),
+            "{actual:?}"
+        );
+        assert!(
+            actual
+                .iter()
+                .any(|(_, message)| message.contains("semantic tree steps are not supported")),
             "{actual:?}"
         );
     }

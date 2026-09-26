@@ -247,7 +247,12 @@ fn filters(out: &mut String, report: &DraftReport) {
         "IR version",
         &versions.iter().map(String::as_str).collect::<Vec<_>>(),
     );
-    select(out, "profile-filter", "Profile", &["json", "yaml", "tree"]);
+    select(
+        out,
+        "profile-filter",
+        "Profile",
+        &["ion", "json", "yaml", "tree"],
+    );
     select(
         out,
         "path-filter",
