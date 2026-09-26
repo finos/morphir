@@ -55,14 +55,25 @@ outline rows; multiline inputs use doc strings with a format content type.
 ```gherkin
 @node:Value
 Feature: Values
-  Scenario Outline: values-0003 Reference shorthand
+  @spelling
+  Scenario Outline: values-0002 Variable spelling
     Then its canonical <format> spelling is <spelling>
 
     Examples:
-      | format | spelling                                  |
-      | YAML   | Reference: morphir/SDK:basics#add         |
-      | JSON   | { "Reference": "morphir/SDK:basics#add" } |
+      | format | spelling            |
+      | Ion    | x                   |
+      | YAML   | Variable: x         |
+      | JSON   | { "Variable": "x" } |
 ```
+
+The currently pinned v4 `Value` spelling rules are reference
+(`values-0023`), bare variable (`values-0002`), bare integer
+(`values-0001`), bare boolean (`values-0011`), and unit (`values-0010`).
+Each has one Ion, YAML and JSON spelling check. Their accepted reader
+aliases live in separate `@semantic` cases (`values-0024` through
+`values-0028`). Other cases still use the original dual-profile form until
+their node shapes and profile rules are admitted by the independent reference
+codec.
 
 A reader step may require a specific warning or rejection diagnostic. Tree
 steps group files by set and compare both the decoded document and written
@@ -75,7 +86,9 @@ The runner first asks the adapter for its supported IR versions, profiles,
 layouts, paths and node kinds. It skips a record whose requirement the adapter
 does not claim. It decodes each canonical and accepted input and compares the
 adapter's canonical output with the case's canonical spelling, allowing one
-trailing newline. A rejected input must produce its named diagnostic or node
+trailing newline. A `@spelling` case pins writer bytes in each listed profile.
+A `@semantic` case compares every supported profile through its canonical Ion
+reference. A rejected input must produce its named diagnostic or node
 kind. For a document-tree set, the runner reads the files as one document and
 compares them with the single-file canonical document, then compares the files
 written back. Pending cases produce skips; an active case containing only
@@ -90,13 +103,16 @@ runner retries the unversioned v1 capabilities request. The other operations
 use the same envelope. Optional v2 `profileLimits` narrow a profile's
 versions, nodes and layouts; the Rust adapter currently limits Ion to v4
 `Value` in the `single` layout. A semantic case's Ion reference is transcoded
-by the kit's independent reference codec. This first codec admits canonical
-Ion `Value` references; other shapes require an explicit codec extension. The
+by the kit's independent reference codec. The codec currently admits v4
+`Value` references, variables, units, integers that fit i64, and booleans;
+other shapes require an explicit codec extension. The
 [worked transcript](protocol.example.json) shows a v1 exchange.
 
-To add a case, choose the next unused ID in its topic file, explain the
-decision in scenario prose, add canonical YAML and JSON spellings where the
-profile supports both, then add accepted and rejected spellings. A temporary
+To add a case, choose the next unused ID in its topic file and explain the
+decision in scenario prose. Add one `@spelling` case for each written profile
+rule that needs byte-level coverage. Put accepted, rejected and read-as
+checks in separate `@semantic` cases, with one Ion reference whenever an
+accepted check needs a canonical meaning. A temporary
 legacy spelling carries a `legacy_spelling` warning until its release window
 closes. Run `mise run mck:check` and record a decision bead when the case
 settles an open contract question.
