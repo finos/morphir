@@ -1,196 +1,108 @@
-# Morphir Compatibility Kit (MCK): IR suite
+# Morphir Compatibility Kit: IR suite
 
-This directory is the IR suite of the [Morphir Compatibility Kit](https://github.com/finos/morphir/blob/main/spec/mck/README.md): the executable contract for the Morphir IR serialization profiles.
-The native `morphir mck` runner drives each binding through an explicit external adapter. Parent CI
-runs the TypeScript and Rust adapters. An IR compatibility claim names the kit version and required capabilities; every required case must pass.
-Unsupported capabilities can be reported as skipped, so a successful driver exit alone does not prove complete coverage.
-The MCK package suite has its own operations and compatibility requirements.
+This directory holds the executable IR serialization contract. The native
+`morphir mck` runner drives each binding through an explicit external adapter.
+Parent CI runs the TypeScript and Rust adapters. A passing run can contain
+capability skips, so a compatibility claim must name its required capabilities
+and kit version.
 
-Ownership of the driver moved to this repository on 2026-09-18. The Rust CLI now implements kit
-checking, vendoring, runs, vocabulary coverage, offline schema gates, draft report checking and optional
-HTML rendering. Historical parity evidence remains frozen. Package integrity and resolution suites also use the native runner under #852. TypeScript retains its independent adapter and draft.3 assurance/publisher helpers. See the
-[MCK overview](https://github.com/finos/morphir/blob/main/spec/mck/README.md#ownership-and-transition).
+The case files are plain Gherkin `*.feature` files. The kit driver contract is
+2; a CLI that reads the former Markdown case grammar must refuse a managed
+version-2 kit before starting an adapter. The adapter protocol remains integer
+contract version 1. Historical reports, transcripts and corpus inventories
+remain under [the baseline directory](../../mck/baseline/README.md).
 
-The kit states meaning by example. The semantic model lives in TypeScript; the YAML profile is the reference
-text form; JSON is the second profile. When a spec page and a kit case disagree, the case wins and the page is
-corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabilization.md`.
-
-Each case file has a generated `.feature` twin (plain Gherkin) for a parity window while a second engine
-lowers `.feature` cases directly: `names.feature` beside `names.md`, and so on. The twin is generated, never
-hand-edited; regenerate every twin with `morphir mck convert --kit spec/ir/mck` after editing a `.md` file, and
-commit the result. `morphir mck check spec/ir/mck` fails when a twin has drifted from its `.md` file, naming it
-and pointing back at `mck convert`. The Markdown grammar remains the kit's source of truth for this window; a
-later change removes it under a follow-up bead, at which point the kit manifest's `driverContract` moves to `2`.
+The kit states meaning by example. The semantic model lives in TypeScript; YAML
+is the current reference text form and JSON is the second profile. If a spec
+page and an executable case disagree, correct the page or the case explicitly.
+Ion as a reference encoding is specified in
+[the next kit draft](../../../docs/design/draft/testing/mck-ion-reference.md).
 
 ## Files
 
 | File | Holds |
 | --- | --- |
-| `names.md` | canonical strings, legacy arrays, document-tree escapes |
-| `types.md` | type expressions |
-| `values.md` | value expressions |
-| `patterns-and-literals.md` | patterns and literals |
-| `definitions.md` | type and value specifications and definitions, access, docs, annotations |
-| `distributions.md` | whole Library, Specs, and Application documents |
-| `document-tree.md` | manifest, module, and node files; layout equivalence |
-| `versions.md` | cross-version reading and writing |
-| `*.feature` | generated Gherkin twin of the `.md` file of the same name; run `mck convert` to regenerate |
-| `documents/` | large fixtures referenced by path |
-| `report-draft.schema.json`, `report-draft.example.json` | production consolidated report `2.0.0-draft.1` and example |
-| `report.schema.json`, `report.example.json` | historical version 1 evidence for parity only |
-| `allowed-failing.json` | empty parent baseline for the TypeScript adapter gate |
-| [`metadata-contract-draft.json`](metadata-contract-draft.json) | fixed reference expectations for future linked metadata; not yet executable support |
-| [`protocol.schema.json`](protocol.schema.json) | the JSON Schema of the adapter protocol, contract version 1 |
+| `names.feature` | Canonical strings, accepted legacy names, document-tree escapes |
+| `types.feature` | Type expressions |
+| `values.feature` | Value expressions |
+| `patterns-and-literals.feature` | Patterns and literals |
+| `definitions.feature` | Definitions, specifications, access and annotations |
+| `distributions.feature` | Complete Library, Specs and Application documents |
+| `document-tree.feature` | Manifest, module and node files; layout equivalence |
+| `versions.feature` | Cross-version reading and writing |
+| `documents/` | Large fixtures referenced by cases |
+| `allowed-failing.json` | Parent TypeScript adapter gate baseline |
+| `protocol.schema.json` | Closed version-1 IR adapter protocol |
+| `report-draft.schema.json` | Consolidated report contract |
 
-The [draft node-address reference corpus](../../../docs/spec/ir/fixtures/node-addresses-draft.json)
-records V3/V4 URI parsing, legacy sidecar-key conversion, sidecar roundtrips,
-layout equivalence and resolution expectations for [#957](https://github.com/finos/morphir/issues/957).
-The separate [executable node-address corpus](node-address-draft.json) runs fixed
-V3/V4 JSON artifacts through the draft `node-address` adapter suite and checks
-both outcomes and resolved semantic nodes. The version-1 IR adapter protocol is
-unchanged. The shared `morphir mck` runner remains the sole compatibility runner;
-reference-only cases do not count as executable evidence.
+The linked-metadata reference corpus, node-address draft corpus, and package
+suite have separate contracts and gates. They do not add IR adapter cases to
+these feature files.
 
-## A case
+## Authoring a case
 
-An H2 is one case. The heading is `## <topic>-<NNNN>: <title>` with optional keys in braces:
+Name a scenario `<topic>-<NNNN> <title>`, where the topic matches its file.
+Keep an assigned ID stable. A case may span consecutive scenarios with the
+same ID. An outline row makes one report record. Use a `Feature` or
+`Scenario` description for the reason behind the case.
 
-```markdown
-## types-0007: Type reference with one argument {node=Type version=4}
+Tags carry case options: `@node:Value`, `@version:4`, `@pending`, and
+`@compare:attributes`. Put a shared tag on the feature or a local tag on a
+scenario. The runner's step library accepts canonical spellings, accepted
+inputs, rejected inputs, and document-tree files. One-line inputs can be
+outline rows; multiline inputs use doc strings with a format content type.
+
+```gherkin
+@node:Value
+Feature: Values
+  Scenario Outline: values-0003 Reference shorthand
+    Then its canonical <format> spelling is <spelling>
+
+    Examples:
+      | format | spelling                                  |
+      | YAML   | Reference: morphir/SDK:basics#add         |
+      | JSON   | { "Reference": "morphir/SDK:basics#add" } |
 ```
 
-- `<topic>` is the file's name without `.md`. `NNNN` is four digits, zero-padded. An ID is assigned once and is
-  never reused or renumbered; gaps are fine. Beads, decision records, and reports cite cases by ID.
-- Keys: `node=<Kind>` names the model type the fences decode to. `version=<N>` pins the IR version (default: the
-  current version). `status=pending` marks a case whose canonical spelling is not decided yet. `compare=attributes`
-  compares values with attributes instead of after `stripAttributes`.
-- Text after the heading is prose. Say why the case exists and which decision or bead it closes.
+A reader step may require a specific warning or rejection diagnostic. Tree
+steps group files by set and compare both the decoded document and written
+files. `morphir mck check spec/ir/mck` validates Gherkin syntax, case IDs,
+tags, step shapes, fixture paths and cross-file duplicates.
 
-## Fences
+## What a run checks
 
-Fences are the data. The info string is `<language> <role> [key=value ...]`.
+The runner first asks the adapter for its supported IR versions, profiles,
+layouts, paths and node kinds. It skips a record whose requirement the adapter
+does not claim. It decodes each canonical and accepted input and compares the
+adapter's canonical output with the case's canonical spelling, allowing one
+trailing newline. A rejected input must produce its named diagnostic or node
+kind. For a document-tree set, the runner reads the files as one document and
+compares them with the single-file canonical document, then compares the files
+written back. Pending cases produce skips; an active case containing only
+rejected inputs still runs. The wire messages are defined by
+[protocol.schema.json](protocol.schema.json), contract version 1.
 
-| Role | Meaning | Keys |
-| --- | --- | --- |
-| `canonical` | The spelling a writer must emit for this profile. At most one per language per case. | none |
-| `accepted` | A spelling a reader must normalize to the same value as `canonical`. With `warning=<code>` the reader must also report exactly that warning diagnostic (the one-release window of decision 0006); without it the reader must accept silently. | optional `warning=<code>` |
-| `rejected` | A spelling a reader must refuse with the named diagnostic, or decode as a different node. | exactly one of `diagnostic=<code>` or `expect=<Kind>` |
-| `file` | One document of a multi-file input (a document tree). | `path=<logical path>` required; `set=<name>` groups files; `mode=read` optional |
+To add a case, choose the next unused ID in its topic file, explain the
+decision in scenario prose, add canonical YAML and JSON spellings where the
+profile supports both, then add accepted and rejected spellings. A temporary
+legacy spelling carries a `legacy_spelling` warning until its release window
+closes. Run `mise run mck:check` and record a decision bead when the case
+settles an open contract question.
 
-A `file` set may be written in either profile: every fence of a set is `yaml` or every fence is `json`, and the
-set is read and written back in that profile. A set's logical paths carry no extension; the profile supplies
-`.yaml` or `.json` at the physical boundary. The driver stays profile-agnostic about one value it needs before
-decoding anything: it reads `pathBudget` **lexically** out of the set's `manifest` fence, with one expression
-that matches both spellings (`"pathBudget": 4000` and `pathBudget: 4000`). A `file` set whose manifest has no
-readable budget is a `kit-error`.
-
-`mode=read`: the set is read and compared, never written back; every fence of a set carries it or none. It marks
-a set whose input a conforming writer never reproduces — `document-tree-0005`, whose files carry `$meta` members
-that readers ignore and writers never emit.
-
-Languages are `yaml`, `json`, and `text` (a list of paths, one per line, relative to the repository root; the
-kit's own fixtures live under `spec/ir/mck/documents/`). In a report, a text fence takes the profile of the
-file's extension: `.json` is `json`, `.yaml` or `.yml` is `yaml`. A fence with any other info string, such as a
-`ts` illustration, is prose and is ignored.
-
-A fence whose info string is only a language, such as a bare `yaml` or `json` block, is an illustration and is
-ignored by the parser. Pending cases use these to show the spellings under discussion.
-
-```yaml canonical
-Reference: ["morphir/SDK:list#list", a]
-```
-
-```json accepted
-{ "Reference": { "fqname": "morphir/SDK:list#list", "args": ["a"] } }
-```
-
-```yaml rejected expect=Tuple
-["morphir/SDK:list#list", a]
-```
-
-## What the driver does with a case
-
-Run `morphir mck run --kit spec/ir/mck --adapter <exe>` against a binding. There is no implicit binding
-or in-process fallback. The runner performs these steps against the cases:
-
-1. Decodes `canonical` and every `accepted` fence; every result re-encoded canonically must be byte-equal to the
-   others and to the `canonical` fence of the same profile (one trailing newline allowed).
-2. Decodes every `rejected` fence and requires the named diagnostic, or the named node kind for `expect=`.
-3. Builds each `file` set into a document tree, reads it, and compares with the case's `canonical` single-file
-   document; writes it back and compares the emitted files with the fences.
-4. Reports a `pending` case as `skipped`. A case whose fences are all `rejected` is active and is checked normally.
-
-Before any of that, the driver asks the testee for its `capabilities`: its `formatVersions`, the binding's
-support table in canonical interval notation (see the format-version page, Recognition and compatibility), and
-the IR versions, profiles, layouts, paths, and node kinds it supports. A fence whose case needs a version, profile, layout, path, or node the
-testee did not declare is reported `skipped` rather than run; an adapter that never learned YAML, for example,
-skips every YAML fence without failing the run. The wire shape of `capabilities` and every other exchange is
-the adapter protocol, `protocol.schema.json`, contract version 1.
-
-## Running the driver against a binding
-
-From the parent checkout, run the native CLI and check the resulting JSON:
+## Run and inspect
 
 ```sh
+morphir mck check spec/ir/mck
+morphir mck schema check --kit spec/ir/mck
 morphir mck run --kit spec/ir/mck --adapter ./my-adapter --report report.json
 morphir mck report check report.json allowed-failing.json --kit spec/ir/mck
 morphir mck report render report.json --format html --output report.html
 ```
 
-`mise run mck:run` and `mise run mck:run-rust` build and use the native runner for the two parent CI
-adapters, with native coverage and report checking. Use `morphir mck schema check --kit spec/ir/mck`
-for the offline schema/example gate. A binding adopting a released CLI
-can use `morphir mck kit vendor` to pin a kit snapshot; release and binding CI cutover is tracked in
-[the migration plan](../../mck/migration.md), separately from parent authoring-gate adoption.
-
-The consolidated JSON contains provenance, complete negotiated capabilities, explicit selection,
-session outcome and ordered records. It is authoritative. HTML is an optional standalone view
-that opens offline without a server or CDN. Rendering a report successfully does not establish
-passing tests or a valid compatibility claim.
-
-The draft semantic node-address contract has a separate executable suite at
-[`node-address-draft.json`](node-address-draft.json). Run it with
-`morphir mck node-address run --adapter ./mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address`.
-It uses `0.1.0-draft.1` capabilities and fixed V3/V4 resolve outcomes, leaving this IR
-decode protocol's numeric version 1 unchanged. The adapter decodes IR and builds its
-index; the shared MCK runner only reads fixture bytes and compares answers.
-Resolved cases compare the full normalized semantic node with a fixed corpus
-value, as well as its kind and canonical URI; a same-kind wrong target fails.
-The [closed wire schema](node-address-protocol.schema.json) describes its JSON-lines
-`capabilities`, `resolve`, and `exit` requests and resolved/failure responses.
-`resolve.input` is the exact UTF-8 text of one V3 or V4 single-file JSON artifact;
-`resolve.uri` is a portable Morphir node URI. A successful response contains a
-node kind, canonical URI, and normalized semantic node. A failure contains one
-specific resolver outcome. The first suite covers JSON artifact inputs; the
-core index separately tests equivalent V4 JSON, YAML, and document-tree layouts.
-
-`report check` strictly validates the draft schema without remote references, then independently
-loads the kit and verifies the snapshot digest and exact record inventory. Missing digest or a
-failed adapter session cannot pass. By default it requires a full-kit report; checking a filtered
-report requires the same independently supplied `--filter` pattern. Failure allowances are checked
-in both directions, so regressions and stale allowances fail. A development baseline is not a
-compatibility certificate, and capability skips still limit the claim with an empty baseline.
-
-The report version is the string `2.0.0-draft.1`; the adapter protocol remains integer version 1.
-Stable `2.0.0` needs an explicit stabilization decision, without an indefinite old-draft support
-promise. The legacy report and provenance-sidecar schemas remain only for historical evidence.
-
-## Errors the parser reports
-
-Running `morphir mck check spec/ir/mck` fails on: a malformed or duplicate ID; an ID whose topic does not
-match the file; an unknown heading key or value; a data fence before the first case; more than one `canonical` per
-language in a case; an active case that has `accepted` or `file` fences but no `canonical`; a case with no data
-fences at all; a `pending` case carrying anything but `rejected` fences; an unknown language, role, or key; a
-`rejected` fence without exactly one of `diagnostic` and `expect`; a `file` fence without `path`; an unterminated
-fence; a fence key without a value or with a duplicate key. Nothing is skipped silently.
-
-## Adding a case
-
-1. Pick the file by topic and the next unused number in that file.
-2. Write the prose: why the case exists, and the decision or bead it belongs to.
-3. Write the YAML `canonical` fence first, then the JSON one, then every `accepted` spelling the profile allows,
-   then `rejected` spellings with their diagnostic.
-   A legacy spelling that decision 0006 keeps for one release is an `accepted` fence with `warning=legacy_spelling`; at the release that closes the window it becomes `rejected diagnostic=unknown_member`.
-4. Run `mise run mck:check`.
-5. If the case decides something that was open, record the decision in
-   `kb/bundles/morphir/morphir-ir/decisions/` and close its bead.
+`mise run mck:run` and `mise run mck:run-rust` exercise the TypeScript and
+Rust adapters and check full-kit coverage and reports. A filtered report
+requires the same explicit `--filter` at report check time. The consolidated
+JSON report is authoritative; HTML is a standalone offline view.
+`report check` independently verifies the kit digest, record inventory and
+allowances. A failed adapter session or missing digest cannot pass. Capability
+skips and a development allowance limit any compatibility claim.

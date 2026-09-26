@@ -1,7 +1,6 @@
 //! The kit's Gherkin step vocabulary: parsing one step's text, with its
 //! optional doc string, into a [`KitStep`], and printing a `KitStep` back as
-//! step text. Later work lowers `.feature` files into kit cases and writes
-//! `.feature` text from the Markdown cases, both built on this vocabulary.
+//! step text. The feature loader and step library share this vocabulary.
 
 use std::sync::LazyLock;
 

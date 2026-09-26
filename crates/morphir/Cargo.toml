@@ -54,7 +54,7 @@ morphir-evaluator = { path = "../morphir-evaluator" }
 morphir-opa = { path = "../morphir-opa", optional = true }
 morphir-mck = { path = "../morphir-mck" }
 morphir-package = { path = "../../ecosystem/morphir-rust/crates/morphir-package" }
-# `mck run --engine gherkin` runs the kit's `.feature` files through a `morphir_bdd::Suite`.
+# `mck run` runs the kit's `.feature` files through a `morphir_bdd::Suite`.
 morphir-bdd = { path = "../../ecosystem/morphir-rust/crates/morphir-bdd" }
 # itest's `.feature` cases are read through the Morphir Gherkin model.
 morphir-gherkin = { path = "../../ecosystem/morphir-rust/crates/morphir-gherkin" }

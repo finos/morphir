@@ -1,6 +1,4 @@
-//! Lowers a `.feature` case file into the engine's kit cases, so a `.feature`
-//! case runs through the same engine, and gives the same report records, as
-//! its Markdown twin.
+//! Lowers a `.feature` file into the kit case model used by the step library.
 //!
 //! - **Cases:** a scenario whose name starts with `<topic>-<NNNN> ` belongs to
 //!   that case, and consecutive scenarios with the same id form one case. The
@@ -52,7 +50,7 @@ pub struct LoweredFile {
     /// morphir-bdd's `ScenarioRef` fields and `gherkin::Step::position.line`.
     pub fences: HashMap<(NodePath, Option<usize>, usize), FenceRef>,
     /// The feature's description: the file's introduction, its paragraphs joined by a blank
-    /// line, as the converter's `feature_description` gives it for a Markdown file.
+    /// line, preserving the feature's introductory prose.
     pub description: String,
 }
 

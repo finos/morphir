@@ -162,7 +162,7 @@ description = "Check morphir-rust embeds the generated configuration schema byte
 run = "node website/scripts/check-config-schema-sync.js"
 
 [tasks."mck:check"]
-description = "Check MCK cases, schemas, protocol examples and IR fences with the native engine, including that the kit's .feature twins are up to date"
+description = "Check Gherkin MCK cases, schemas, protocol examples and IR fences with the native engine"
 depends = ["mck:vocabulary-check"]
 run = [
     "cargo run --locked -p morphir -- mck check spec/ir/mck",
@@ -216,48 +216,6 @@ run = [
     "cargo run --locked -p morphir -- mck node-address run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address --report .dev/out/mck/node-address-rust.json",
     "cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck",
 ]
-
-[tasks."mck:parity"]
-description = "Run the kit's gherkin engine against every adapter that already has a legacy report, and require the same records"
-# Reuses whichever legacy reports mck:run and mck:run-rust already wrote,
-# instead of running the legacy engine again, so a binding whose legacy
-# report is missing here (a different CI job ran it) is skipped rather than
-# failed. The adapter command line matches mck:run / mck:run-rust exactly,
-# so the only difference between the compared reports is --engine.
-run = """
-#!/usr/bin/env bash
-set -uo pipefail
-status=0
-ran=0
-
-typescript_report=.dev/out/mck/morphir-typescript-adapter.json
-if [[ -f "$typescript_report" ]]; then
-    ran=1
-    bun install --frozen-lockfile --cwd ecosystem/morphir-typescript
-    if ! bun run tools/run-mck-gate.ts parity "$typescript_report" .dev/out/mck/morphir-typescript-adapter.gherkin.json spec/ir/mck bun ecosystem/morphir-typescript/packages/mck/src/adapter.ts; then
-        status=1
-    fi
-else
-    echo "mck:parity: no TypeScript legacy report at $typescript_report; run mck:run first. Skipping."
-fi
-
-rust_report=.dev/out/mck/morphir-rust.json
-rust_adapter=ecosystem/morphir-rust/target/debug/mck-adapter-rust
-if [[ -f "$rust_report" && -x "$rust_adapter" ]]; then
-    ran=1
-    if ! bun run tools/run-mck-gate.ts parity "$rust_report" .dev/out/mck/morphir-rust.gherkin.json spec/ir/mck "$rust_adapter"; then
-        status=1
-    fi
-else
-    echo "mck:parity: no Rust legacy report or adapter binary ($rust_report, $rust_adapter); run mck:run-rust first. Skipping."
-fi
-
-if [[ $ran -eq 0 ]]; then
-    echo "mck:parity: no adapter reports available to compare; run mck:run and/or mck:run-rust first" >&2
-    exit 1
-fi
-exit $status
-"""
 
 [tasks."migrate:validate"]
 description = "Migrate the published v3 example to v4 and validate the output against the v4 JSON Schema"

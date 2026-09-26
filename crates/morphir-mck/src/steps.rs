@@ -6,7 +6,7 @@
 //! in the step-to-fence map of the lowered kit ([`FeatureKit::fences`]). The first step of a case
 //! runs the whole case through the engine's per-case code ([`run_case`]), exactly once, through
 //! the [`KitRun`] component every scenario shares. Each step then checks only the records of its
-//! own fence, one per path mode, so the records equal what the legacy engine writes for the same
+//! own fence, one per path mode, so the records follow the established MCK contract for the same
 //! kit and adapter.
 //!
 //! A step fails when one of its records is a `fail` or a `kit-error`. A `pass` or a `skipped`
@@ -63,7 +63,7 @@ pub struct KitRunState {
 
 impl KitRun {
     /// A run of `kit` against `testee`. It asks the testee for its capabilities first, as the
-    /// legacy engine's run does, so the adapter sees the same requests in the same order.
+    /// established run order, so the adapter sees requests in case order.
     pub fn new(
         kit: FeatureKit,
         mut testee: Box<dyn Testee + Send>,

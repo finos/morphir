@@ -21,14 +21,14 @@ const VOCABULARY: &str = r#"{
         {"node":"Type", "variant":"Function", "members":[]}
     ]
 }"#;
-const UNIT_CASE: &str = "## types-0001: Unit {node=Type}\n```json canonical\n{\"Unit\":{}}\n```\n";
+const UNIT_CASE: &str = "@node:Type\nFeature: Types\n  Scenario: types-0001 Unit\n    Then its canonical JSON spelling is {\"Unit\":{}}\n";
 
 fn repository() -> (TempDir, PathBuf) {
     let root = TempDir::new().unwrap();
     let kit = root.path().join("spec/ir/mck");
     std::fs::create_dir_all(&kit).unwrap();
     std::fs::create_dir_all(root.path().join("spec/mck")).unwrap();
-    std::fs::write(kit.join("types.md"), UNIT_CASE).unwrap();
+    std::fs::write(kit.join("types.feature"), UNIT_CASE).unwrap();
     std::fs::write(root.path().join("spec/mck/vocabulary.json"), VOCABULARY).unwrap();
     (root, kit)
 }
@@ -119,7 +119,7 @@ fn missing_or_invalid_vocabulary_is_an_operational_error() {
 #[test]
 fn kit_parse_errors_are_reported_before_coverage() {
     let (_root, kit) = repository();
-    std::fs::write(kit.join("types.md"), "## types-1: invalid identifier\n").unwrap();
+    std::fs::write(kit.join("types.feature"), "Feature: Types\n  Scenario: types-1 invalid identifier\n    Then its canonical JSON spelling is {}\n").unwrap();
     let output = morphir(&["mck", "coverage", "--kit", kit.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());

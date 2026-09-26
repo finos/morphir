@@ -29,9 +29,9 @@ fn change_json(
 }
 fn single_case(text: &str) -> Kit {
     let mut files = files();
-    files.retain(|path, _| !(path.starts_with("spec/ir/mck/") && path.ends_with(".md")));
+    files.retain(|path, _| !(path.starts_with("spec/ir/mck/") && path.ends_with(".feature")));
     files.insert(
-        "spec/ir/mck/types.md".into(),
+        "spec/ir/mck/types.feature".into(),
         Cow::Owned(text.as_bytes().to_vec()),
     );
     kit(files)
@@ -50,21 +50,25 @@ fn fixed_corpus_preserves_all_schema_gate_outcomes() {
 
 #[test]
 fn canonical_shapes_and_unknown_targets_cannot_silently_pass() {
-    let good =
-        single_case("## types-0001: Unit {node=Type}\n```json canonical\n{\"Unit\":{}}\n```\n");
+    let good = single_case(
+        "@node:Type\nFeature: Types\n  Scenario: types-0001 Unit\n    Then its canonical JSON spelling is {\"Unit\":{}}\n",
+    );
     assert!(check(&good).unwrap().is_success());
-    let bad =
-        single_case("## types-0001: Unit {node=Type}\n```json canonical\n{\"Unit\":7}\n```\n");
+    let bad = single_case(
+        "@node:Type\nFeature: Types\n  Scenario: types-0001 Unit\n    Then its canonical JSON spelling is {\"Unit\":7}\n",
+    );
     let report = check(&bad).unwrap();
     assert!(!report.is_success());
     assert!(report.to_string().contains("types-0001"));
-    assert!(report.to_string().contains("spec/ir/mck/types.md:2"));
-    let unknown = single_case("## types-0001: Unit {node=NewNode}\n```json canonical\n{}\n```\n");
+    assert!(report.to_string().contains("spec/ir/mck/types.feature:4"));
+    let unknown = single_case(
+        "@node:NewNode\nFeature: Types\n  Scenario: types-0001 Unit\n    Then its canonical JSON spelling is {}\n",
+    );
     assert!(
         check(&unknown)
-            .unwrap()
+            .unwrap_err()
             .to_string()
-            .contains("no schema target")
+            .contains("unknown node kind")
     );
 }
 

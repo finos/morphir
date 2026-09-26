@@ -3,6 +3,14 @@
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
 Parent tracking is [#849](https://github.com/finos/morphir/issues/849).
 
+**Gherkin kit cutover, 2026-09-26.** After the TypeScript and Rust adapter
+parity gates passed, `.feature` files became the sole executable IR kit cases.
+The Markdown case files, converter, `--engine` option and `mck:parity` task
+retired. Managed kits now require driver contract 2. The adapter protocol stays
+at version 1 and reports stay at `2.0.0-draft.1`. The historical Markdown
+reports, transcripts and corpus inventories remain frozen under
+[`baseline/`](baseline/README.md).
+
 **IR cutover, 2026-09-21.** Parent and audited binding IR gates use the Rust
 `morphir mck` commands. Native `v0.4.0-beta.2` is published and qualified on
 all six supported targets. Reports remain consolidated `2.0.0-draft.1` JSON

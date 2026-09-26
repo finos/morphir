@@ -81,15 +81,14 @@ Validates a kit directory without an adapter. Output formats are kept:
 `<file>:<line>: <message>` per error on stderr, then `N case(s) in M file(s), K error(s)` on
 stdout. `--json` prints `{files, cases, errors}`. Exit 1 when any error exists.
 
-The case grammar, fence roles, pending cases, duplicate-id detection, ignored prose illustrations
-and `text` fixture confinement are those of the [IR suite README](../ir/mck/README.md). The Rust
-parser must produce the same diagnostics, with the same source locations, for the same input.
-[baseline/kit-cases.json](baseline/kit-cases.json) freezes the TypeScript parser's reading of the
-corpus, and a Rust test compares itself with it case by case.
+The Gherkin scenario grammar, tags, case IDs, duplicate-id detection and external fixture
+confinement are described in the [IR suite README](../ir/mck/README.md).
+[baseline/kit-cases.json](baseline/kit-cases.json) preserves the retired Markdown parser's
+reading of the historical corpus for migration evidence.
 
-**Fixtures (hardened).** `check` also resolves every `text` fence against the repository root
+**Fixtures (hardened).** `check` also resolves every external text fixture against the repository root
 (`--repo-root`, or the root inferred when the path ends in `spec/ir/mck`) and reports, at the
-fence's line, a fixture that is missing, escapes the root, is neither `.json` nor `.yaml`, is not
+step's line, a fixture that is missing, escapes the root, is neither `.json` nor `.yaml`, is not
 valid UTF-8, or starts with a byte-order mark. The TypeScript `check` never opened fixtures, so a
 broken one surfaced only during `run`. A case file that is not valid UTF-8 is a kit error too,
 where the old driver substituted U+FFFD. This is departure 12 in
@@ -294,8 +293,8 @@ CLI version; `kit.version` retains the old `kitVersion` meaning. See the
 `--report <file>` writes one JSON file. Production runs no longer write a provenance sidecar.
 The unchanged [`report.schema.json`](../ir/mck/report.schema.json) and
 [`provenance.schema.json`](provenance.schema.json) describe historical version 1 evidence only.
-The engine retains its internal legacy report for frozen transcript replay until parity cutover;
-it is not a second production output mode.
+The frozen transcript replay tests retain their historical report evidence;
+production runs emit only the consolidated draft report.
 
 A build from a dirty tree or a source archive reports `dirty: true` or `commit: null`. It never
 claims a clean commit it cannot prove. The digests identify the bytes that actually ran. A `local`
@@ -313,7 +312,7 @@ kit is a raw authoring checkout and is never reported as matching an upstream sn
   diagnostics stay off stdout; paths and piping work on Windows as well as Unix shells.
 - JSON Schema validation of every emitted draft report; legacy baseline reports retain their own schema gate.
 - Report reader, inventory, selection, baseline and session-failure tests, plus offline HTML escaping
-  and CLI tests. New draft-only fields have separate tests; legacy parity cannot validate them.
+  and CLI tests. New draft-only fields have separate tests.
 
 ## `package inspect` (PKG-2)
 

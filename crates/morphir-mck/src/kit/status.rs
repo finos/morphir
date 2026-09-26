@@ -149,8 +149,8 @@ mod tests {
         let kit_dir = copy.path().join(KIT_PATH);
         std::fs::create_dir_all(&kit_dir).unwrap();
         std::fs::write(
-            kit_dir.join("types.md"),
-            "## types-0001: t\n```yaml canonical\na: 1\n```\n",
+            kit_dir.join("types.feature"),
+            "@node:Type\nFeature: Types\n  Scenario: types-0001 t\n    Then its canonical YAML spelling is a\n",
         )
         .unwrap();
         let edited =

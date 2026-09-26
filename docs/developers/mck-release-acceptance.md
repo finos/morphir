@@ -18,13 +18,15 @@ repository records `kit/`, its manifest, and an attribute rule preserving every 
 The acquisition home, temporary files, and downloaded archive are removed before
 runtime acceptance.
 
-Before isolation, every matrix target also runs the native `runner_parity` and
-`transport` integration suites. Tags with package support, starting at beta.3, also
+Before isolation, every matrix target runs `transport` and the kit test available
+in that source tag: historical tags use `runner_parity`; Gherkin-only tags use
+`kit_steps`. Tags with package support, starting at beta.3, also
 run `package_corpus`, `package_protocol` and `package_runner`. Preparation selects
 these targets from the checked-out tag's Cargo metadata and rejects a partial
 package test inventory. Older tags retain their original IR-only qualification.
-These source tests exercise corpus validation, transcript replay and hostile
-adapter behavior on each platform; their log is retained separately from the
+These source tests exercise kit steps and hostile adapter behavior on each
+platform; historical tags also replay transcripts in `runner_parity`. Their
+log is retained separately from the
 published executable's runtime evidence.
 
 The runtime copies the installed CLI, replay adapter, transcript and acquired kit

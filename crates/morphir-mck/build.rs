@@ -1,21 +1,12 @@
-//! Embeds the IR kit: every file under `spec/ir/mck`, every fixture a `text`
-//! fence names, and the fixed inputs every snapshot carries, so the packaged CLI checks and runs the kit offline
-//! with no checkout. The closure is computed with the crate's own parser,
-//! included by path; a kit that does not parse fails the build.
+//! Embeds the IR kit and its external text fixture so the packaged CLI can
+//! check and run it offline. The embedded-kit test checks this inventory.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-#[allow(dead_code)]
-#[path = "src/kit/syntax/mod.rs"]
-mod syntax;
-
 #[path = "src/kit/closure.rs"]
 mod closure;
-
-use syntax::case::parse_kit_file;
-use syntax::info_string::Language;
 
 const KIT_PATH: &str = "spec/ir/mck";
 
@@ -63,45 +54,11 @@ fn main() {
     let mut keys = Vec::new();
     walk(&repo.join(KIT_PATH), KIT_PATH, &mut keys);
 
-    let case_files: Vec<String> = keys
-        .iter()
-        .filter(|key| {
-            let name = &key[KIT_PATH.len() + 1..];
-            !name.contains('/') && name.ends_with(".md") && name != "README.md"
-        })
-        .cloned()
-        .collect();
-    for key in &case_files {
-        let source = std::fs::read_to_string(repo.join(key))
-            .unwrap_or_else(|e| panic!("cannot read {key}: {e}"));
-        let parsed = parse_kit_file(key, &source);
-        if let Some(error) = parsed.errors.first() {
-            panic!(
-                "the kit does not parse, so it cannot be embedded: {}:{}: {}",
-                error.file, error.line, error.message
-            );
-        }
-        for fence in parsed
-            .cases
-            .iter()
-            .flat_map(|case| &case.fences)
-            .filter(|f| f.info.language == Language::Text)
-        {
-            let target = fence.text_target();
-            let confined = !target.starts_with('/')
-                && !target.contains('\\')
-                && !target.contains(':')
-                && target
-                    .split('/')
-                    .all(|segment| !segment.is_empty() && segment != "." && segment != "..");
-            assert!(
-                confined,
-                "{key}:{}: text fence names {target}, which is not a repository-relative path",
-                fence.line
-            );
-            if !keys.iter().any(|existing| existing == target) {
-                keys.push(target.to_owned());
-            }
+    // `distributions.feature` names this repository fixture outside the kit.
+    // The embedded-kit test fails if a new text target is omitted here.
+    for target in ["website/static/ir/examples/v4/complete-example.json"] {
+        if !keys.iter().any(|existing| existing == target) {
+            keys.push(target.to_owned());
         }
     }
 

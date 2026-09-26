@@ -7,10 +7,15 @@ function metadata(names) {
 }
 
 const ir = ["runner_parity", "transport"];
+const gherkinIr = ["kit_steps", "transport"];
 const packages = ["package_corpus", "package_protocol", "package_runner"];
 
 test("older IR-only tags retain their existing qualification tests", () => {
   assert.deepEqual(sourceQualificationTargets(metadata(ir)), ir);
+});
+
+test("Gherkin-only tags qualify the current kit step test", () => {
+  assert.deepEqual(sourceQualificationTargets(metadata(gherkinIr)), gherkinIr);
 });
 
 test("package-capable tags require all package source checks", () => {

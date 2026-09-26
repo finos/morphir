@@ -256,7 +256,7 @@ CI already renders the HTML and uploads the JSON and HTML reports on every run: 
 
 ### Frozen baselines
 
-The parity tests replay recorded transcripts (`crates/morphir-mck/tests/runner_parity.rs`). New checks send new requests. Each change records the Rust transcript again under the append-only rule in `spec/mck/baseline/README.md`: earlier records and exchanges stay unchanged and in order. The TypeScript transcript changes only when TypeScript receives new requests. With transcoding, the TypeScript adapter now runs semantic cases instead of skipping them, so its transcript grows too.
+The replay tests in `crates/morphir/tests/mck_run.rs` use recorded transcripts. New checks send new requests. Each change records the Rust transcript again under the append-only rule in `spec/mck/baseline/README.md`: earlier records and exchanges stay unchanged and in order. The TypeScript transcript changes only when TypeScript receives new requests. With transcoding, the TypeScript adapter now runs semantic cases instead of skipping them, so its transcript grows too.
 
 ## Testing
 
