@@ -58,3 +58,9 @@ skips. A second capture matched byte for byte; earlier exchanges remain intact.
 float spellings `.5` and `+0.5` normalize to the same JSON lexeme. The pinned
 Rust adapter reported 10 passes, no failures, kit errors or skips. A second
 capture matched byte for byte; earlier exchanges remain intact.
+
+`values-forward-rust.ndjson` separately captures `values-0046` and `0047`,
+expanded FloatLiteral and IntegerLiteral reader forms with an ignored unknown
+member. The updated Rust adapter reported 16 passes, no failures, kit errors
+or skips. A second capture matched byte for byte; earlier exchanges remain
+intact.
