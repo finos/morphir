@@ -87,6 +87,61 @@ pub(super) fn to_ion(node: &str, profile: Profile, text: &str) -> Result<String,
     canonical_ion(&read_ordered_profile_value(&value)?)
 }
 
+/// Compare admitted Ion references by v4 value identity. A float's source
+/// lexeme is retained for spelling checks, but is not part of its identity.
+pub(super) fn same_meaning(node: &str, expected: &str, actual: &str) -> Result<bool, String> {
+    let expected = read_ion(node, expected)?;
+    let actual = read_ion(node, actual)?;
+    Ok(same_value(&expected, &actual))
+}
+
+fn same_value(left: &ValueReference, right: &ValueReference) -> bool {
+    let same_items = |left: &[ValueReference], right: &[ValueReference]| {
+        left.len() == right.len()
+            && left
+                .iter()
+                .zip(right)
+                .all(|(left, right)| same_value(left, right))
+    };
+    let same_fields = |left: &[(std::string::String, ValueReference)],
+                       right: &[(std::string::String, ValueReference)]| {
+        left.len() == right.len()
+            && left
+                .iter()
+                .zip(right)
+                .all(|((left_name, left), (right_name, right))| {
+                    left_name == right_name && same_value(left, right)
+                })
+    };
+    use ValueReference::*;
+    match (left, right) {
+        (Float(left), Float(right)) => {
+            left.parse::<f64>().expect("validated float")
+                == right.parse::<f64>().expect("validated float")
+        }
+        (Tuple(left), Tuple(right)) | (List(left), List(right)) => same_items(left, right),
+        (Apply(left_fun, left_arg), Apply(right_fun, right_arg)) => {
+            same_value(left_fun, right_fun) && same_value(left_arg, right_arg)
+        }
+        (
+            IfThenElse(left_if, left_then, left_else),
+            IfThenElse(right_if, right_then, right_else),
+        ) => {
+            same_value(left_if, right_if)
+                && same_value(left_then, right_then)
+                && same_value(left_else, right_else)
+        }
+        (Field(left, left_name), Field(right, right_name)) => {
+            left_name == right_name && same_value(left, right)
+        }
+        (Record(left), Record(right)) => same_fields(left, right),
+        (UpdateRecord(left_target, left_fields), UpdateRecord(right_target, right_fields)) => {
+            same_value(left_target, right_target) && same_fields(left_fields, right_fields)
+        }
+        _ => left == right,
+    }
+}
+
 // Record fields are ordered in v4. Keep source member order here instead of
 // enabling serde_json's preserve_order feature across unrelated MCK contracts.
 #[derive(Debug, Deserialize, Serialize)]
@@ -1599,6 +1654,23 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn semantic_float_equality_uses_numeric_values() {
+        let four = "(\n  float\n  \"4.0\"\n)\n";
+        let exponent = "(\n  float\n  \"4e0\"\n)\n";
+        let five = "(\n  float\n  \"5.0\"\n)\n";
+        assert!(same_meaning("Value", four, exponent).unwrap());
+        assert!(!same_meaning("Value", four, five).unwrap());
+        assert!(
+            same_meaning(
+                "Value",
+                "(\n  list\n  (\n    float\n    \"-0.0\"\n  )\n)\n",
+                "(\n  list\n  (\n    float\n    \"0.0\"\n  )\n)\n"
+            )
+            .unwrap()
+        );
     }
 
     #[test]

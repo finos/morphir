@@ -64,3 +64,9 @@ expanded FloatLiteral and IntegerLiteral reader forms with an ignored unknown
 member. The updated Rust adapter reported 16 passes, no failures, kit errors
 or skips. A second capture matched byte for byte; earlier exchanges remain
 intact.
+
+`values-float-equality-rust.ndjson` separately captures `values-0048`, where
+JSON and YAML float lexemes differ from the reference Ion lexeme but have the
+same finite numeric value. The Rust adapter reported 10 passes, no failures,
+kit errors or skips. A second capture matched byte for byte; earlier exchanges
+remain intact.

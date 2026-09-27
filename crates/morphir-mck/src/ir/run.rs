@@ -532,6 +532,14 @@ fn judge_semantic(
     };
     let want = normalize_canonical(reference);
     let got = normalize_canonical(&actual);
+    if want == got {
+        return Verdict::pass();
+    }
+    match reference::same_meaning(node, want, got) {
+        Ok(true) => return Verdict::pass(),
+        Ok(false) => {}
+        Err(error) => return Verdict::fail(format!("answer-not-readable: {error}")),
+    }
     match check_canonical(want, got) {
         None => Verdict::pass(),
         Some(reason) => Verdict {

@@ -168,8 +168,15 @@ The outline rules for kit cases:
 
 For each profile P that the adapter declares:
 
-- **P is Ion:** the runner sends the Ion canonical fence and requires the answer to equal it byte for byte.
-- **P is another format:** the runner transcodes the Ion reference to P and sends it. It then transcodes the adapter's P answer back to Ion, and requires the result to equal the Ion canonical byte for byte.
+- **P is Ion:** the runner sends the Ion canonical fence and compares the answer with it as a Value.
+- **P is another format:** the runner transcodes the Ion reference to P and sends it. It then transcodes the adapter's P answer back to Ion and compares the two Values.
+
+For semantic cases, admitted v4 `FloatLiteral` values compare by finite numeric
+value at any depth. Their retained source lexemes are not identity: `(float
+"4.0")` and `(float "4e+0")` mean the same value, as do positive and negative
+zero. Other admitted Value parts keep their existing equality rules, including
+field order. Spelling cases still compare every profile's canonical text byte
+for byte. A semantic failure's diff shows the original Ion texts.
 
 ```mermaid
 sequenceDiagram
@@ -181,7 +188,7 @@ sequenceDiagram
     alt adapter declares ion
         R->>A: decode (ion, fence)
         A-->>R: ion canonical answer
-        R->>R: compare bytes with the fence
+        R->>R: compare Value meaning with the fence
     else adapter declares only P (json or yaml)
         R->>C: transcode fence to P
         C-->>R: P input
@@ -189,7 +196,7 @@ sequenceDiagram
         A-->>R: P canonical answer
         R->>C: transcode answer to ion
         C-->>R: ion text
-        R->>R: compare bytes with the fence
+        R->>R: compare Value meaning with the fence
     end
 ```
 
