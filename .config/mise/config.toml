@@ -150,6 +150,15 @@ description = "Validate schemas against metaschema"
 # because a Windows box may carry only the WSL launcher.
 run = "bun run tools/validate-schemas.ts"
 
+[tasks."workbench:schema-check"]
+description = "Validate draft Workbench value schemas and examples, not semantic MCK compatibility"
+run = [
+    "jsonschema fmt spec/workbench/schemas --check",
+    "jsonschema lint spec/workbench/schemas -r spec/workbench/schemas",
+    "jsonschema metaschema spec/workbench/schemas",
+    "jsonschema test spec/workbench/tests -r spec/workbench/schemas",
+]
+
 # Not part of `check`: website:build-schemas depends on website:install, whose
 # npm postinstall rebuilds website/static/validation-inline.worker.js, and
 # `check` installs no website dependencies today. CI runs it in the docs job.
@@ -402,6 +411,7 @@ depends = [
     "fixtures:naming-corpus-check",
     "fixtures:format-version-corpus-check",
     "schema:validate",
+    "workbench:schema-check",
     "check:config-schema-sync",
     "mck:check",
     "package:schema-check",

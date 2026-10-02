@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/invocations.schema.json",
+  "title": "Existing Morphir invocation JSON projection",
+  "description": "The frozen morphir-invocations-v1 invocation suite JSON projection. This draft schema package adds no members to the payload or methods to connected protocol v1",
+  "$comment": "Schema package 0.1.0-draft.1 documents frozen codec ID morphir-invocations-v1. It does not replace protocolVersion 1, introduce formatVersion into this payload, advertise capabilities or define RPC methods. Unique call IDs, encoded byte limits, Ion binary extension validity and public manifest admission require semantic validation.",
+  "examples": [
+    {
+      "profile": "morphir-invocations-v1",
+      "calls": [
+        {
+          "id": "difference",
+          "entry": "calls:main#subtract",
+          "arguments": [
+            {
+              "type": "int",
+              "value": "9007199254741035"
+            },
+            {
+              "type": "int",
+              "value": "9007199254740993"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "profile", "calls" ],
+  "properties": {
+    "profile": {
+      "const": "morphir-invocations-v1"
+    },
+    "calls": {
+      "type": "array",
+      "maxItems": 1000,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "entry", "arguments" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "entry": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1
+          },
+          "arguments": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/value.schema.json"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "required": [ "format", "bytes" ],
+      "properties": {
+        "format": {
+          "const": "ion-binary"
+        },
+        "bytes": {
+          "type": "array",
+          "maxItems": 65536,
+          "items": {
+            "type": "integer",
+            "maximum": 255,
+            "minimum": 0
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
