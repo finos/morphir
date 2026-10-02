@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub const VERSION: &str = "0.1.0-draft.1";
+pub const ADMISSION_VERSION: &str = "0.1.0-draft.2";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -36,8 +37,12 @@ pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize
 
 pub(super) fn version(text: &str) -> Result<(), String> {
     let parsed = Version::parse(text).map_err(|e| e.to_string())?;
-    let supported = VersionReq::parse("=0.1.0-draft.1").expect("fixed draft requirement");
-    if parsed.to_string() != text || !parsed.build.is_empty() || !supported.matches(&parsed) {
+    let supported = ["=0.1.0-draft.1", "=0.1.0-draft.2"]
+        .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
+    if parsed.to_string() != text
+        || !parsed.build.is_empty()
+        || !supported.iter().any(|v| v.matches(&parsed))
+    {
         return Err(format!("unsupported Workbench draft {text}"));
     }
     Ok(())
@@ -55,6 +60,14 @@ pub enum Format {
 pub enum Operation {
     #[serde(rename = "decode-value")]
     DecodeValue,
+    #[serde(rename = "validate-value")]
+    ValidateValue,
+}
+
+pub(super) fn present_operation<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Operation>, D::Error> {
+    Operation::deserialize(deserializer).map(Some)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,9 +89,12 @@ pub(super) fn identity(value: &str, limit: usize) -> Result<(), String> {
 }
 
 impl Capabilities {
-    pub(super) fn parse(value: Value) -> Result<Self, String> {
+    pub(super) fn parse(value: Value, expected_version: &str) -> Result<Self, String> {
         let caps: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
         caps.validate()?;
+        if caps.contract_version != expected_version {
+            return Err("adapter returned a different Workbench draft".into());
+        }
         Ok(caps)
     }
 
@@ -86,6 +102,9 @@ impl Capabilities {
         version(&self.contract_version)?;
         if self.suite != "workbench" {
             return Err("Workbench capabilities required".into());
+        }
+        if self.contract_version == VERSION && self.operations.contains(&Operation::ValidateValue) {
+            return Err("draft.1 does not define validate-value".into());
         }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
@@ -97,8 +116,8 @@ impl Capabilities {
         Ok(())
     }
 
-    pub fn supports(&self, format: Format) -> bool {
-        self.operations.contains(&Operation::DecodeValue) && self.formats.contains(&format)
+    pub fn supports(&self, operation: Operation, format: Format) -> bool {
+        self.operations.contains(&operation) && self.formats.contains(&format)
     }
 }
 
@@ -121,6 +140,16 @@ impl Observation {
             Self::Ok { value } => projection(value).map(|_| ()),
             Self::Invalid { code } => identity(code, 128),
         }
+    }
+
+    pub(super) fn validate_for(&self, operation: Operation) -> Result<(), String> {
+        self.validate()?;
+        if operation == Operation::ValidateValue
+            && matches!(self, Self::Ok { value } if value["type"] == "model-error")
+        {
+            return Err("argument admission cannot succeed with a model-error".into());
+        }
+        Ok(())
     }
 
     pub(super) fn matches(&self, other: &Self) -> Result<bool, String> {

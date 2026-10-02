@@ -386,3 +386,238 @@ fn workbench_output_encoded_size_and_total_retained_observations_are_bounded() {
     assert!(report.to_json().len() <= MAX_REPORT_BYTES);
     check_report(root.path(), &report).unwrap();
 }
+
+fn admission_source() -> tempfile::TempDir {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("cases.json"), serde_json::to_vec(&json!({
+        "formatVersion":"0.1.0-draft.2", "cases":[{
+            "id":"declared-int", "operation":"validate-value", "format":"json",
+            "input":{"value":{"type":"int","value":"0007"},"type":{"type":"int"},"definitions":[]},
+            "expected":{"status":"ok","value":{"type":"int","value":"7"}}
+        }]
+    })).unwrap()).unwrap();
+    root
+}
+fn admission_caps() -> Value {
+    json!({"suite":"workbench","contractVersion":"0.1.0-draft.2","binding":"fixture","language":"test",
+        "operations":["decode-value","validate-value"],"formats":["json","ion-text"]})
+}
+#[test]
+fn workbench_admission_negotiates_exact_draft_and_dispatches_without_goldens() {
+    let root = admission_source();
+    let corpus = load(root.path()).unwrap();
+    let mut adapter = Fake {
+        replies: vec![
+            Ok(admission_caps()),
+            Ok(json!({"status":"ok","value":{"type":"int","value":"7"}})),
+        ],
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(report.qualified);
+    assert_eq!(adapter.requests[0]["contractVersion"], "0.1.0-draft.2");
+    assert_eq!(adapter.requests[1]["op"], "validate-value");
+    assert!(adapter.requests.iter().all(|r| r.get("expected").is_none()
+        && r.get("id").is_none()
+        && r.get("caseId").is_none()));
+    assert_eq!(
+        serde_json::to_value(&report).unwrap()["records"][0]["operation"],
+        "validate-value"
+    );
+    check_report(root.path(), &report).unwrap();
+    let mut forged = serde_json::to_value(&report).unwrap();
+    forged["records"][0]["operation"] = json!("decode-value");
+    assert!(
+        check_report(
+            root.path(),
+            &Report::from_json(&forged.to_string()).unwrap()
+        )
+        .is_err()
+    );
+}
+#[test]
+fn workbench_admission_requires_operation_inventory_and_exact_caps() {
+    let root = admission_source();
+    let corpus = load(root.path()).unwrap();
+    let mut adapter = Fake {
+        replies: vec![Ok(caps())],
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(!report.qualified);
+    assert_eq!(report.errors[0].phase, Phase::Capabilities);
+    check_report(root.path(), &report).unwrap();
+    let mut doc: Value =
+        serde_json::from_slice(&std::fs::read(root.path().join("cases.json")).unwrap()).unwrap();
+    doc["cases"][0].as_object_mut().unwrap().remove("operation");
+    std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
+    assert!(load(root.path()).is_err());
+}
+#[test]
+fn workbench_admission_success_cannot_be_an_output_error() {
+    let root = admission_source();
+    let mut doc: Value =
+        serde_json::from_slice(&std::fs::read(root.path().join("cases.json")).unwrap()).unwrap();
+    doc["cases"][0]["expected"] =
+        json!({"status":"ok","value":{"type":"model-error","code":"sdk.division_by_zero"}});
+    std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
+    assert!(load(root.path()).is_err());
+}
+
+#[test]
+fn workbench_admission_published_corpus_has_independent_operation_format_inventory() {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.2");
+    let corpus = load(&root).unwrap();
+    assert_eq!(corpus.case_count(), 162);
+    assert_eq!(
+        corpus
+            .cases
+            .iter()
+            .filter(|c| c.operation() == Operation::DecodeValue)
+            .count(),
+        64
+    );
+    for format in [Format::Json, Format::IonText] {
+        for successful in [true, false] {
+            assert!(
+                corpus
+                    .cases
+                    .iter()
+                    .any(|c| c.operation() == Operation::ValidateValue
+                        && c.format == format
+                        && matches!(c.expected, Observation::Ok { .. }) == successful)
+            );
+        }
+    }
+    // A fake adapter sends the fixed observations solely to exercise report evidence admission;
+    // it is not an implementation qualification or a source for corpus goldens.
+    let mut adapter = Fake {
+        replies: std::iter::once(Ok(admission_caps()))
+            .chain(
+                corpus
+                    .cases
+                    .iter()
+                    .map(|c| Ok(serde_json::to_value(&c.expected).unwrap())),
+            )
+            .collect(),
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(report.qualified);
+    check_report(&root, &report).unwrap();
+    let mut changed = report.clone();
+    changed.records[64].operation = Some(Operation::DecodeValue);
+    assert!(check_report(&root, &changed).is_err());
+    let mut changed = serde_json::to_value(&report).unwrap();
+    changed["records"][64]
+        .as_object_mut()
+        .unwrap()
+        .remove("operation");
+    assert!(check_report(&root, &Report::from_json(&changed.to_string()).unwrap()).is_err());
+}
+#[test]
+fn workbench_admission_unsupported_operation_never_reaches_adapter() {
+    let root = admission_source();
+    let mut caps = admission_caps();
+    caps["operations"] = json!(["decode-value"]);
+    let mut adapter = Fake {
+        replies: vec![Ok(caps)],
+        requests: vec![],
+    };
+    let report = execute(&load(root.path()).unwrap(), &mut adapter);
+    assert_eq!(report.records[0].result, ResultKind::Unsupported);
+    assert_eq!(adapter.requests.len(), 1);
+    check_report(root.path(), &report).unwrap();
+}
+#[test]
+fn workbench_admission_corpus_envelope_and_legacy_inventory_are_closed() {
+    for mutate in [0, 1, 2, 3] {
+        let root = admission_source();
+        let mut doc: Value =
+            serde_json::from_slice(&std::fs::read(root.path().join("cases.json")).unwrap())
+                .unwrap();
+        match mutate {
+            0 => {
+                doc["cases"][0]["input"]["output"] = json!(true);
+            }
+            1 => {
+                doc["cases"][0]["format"] = json!("ion-text");
+            }
+            2 => {
+                doc["cases"][0]["input"]["value"] = json!("x".repeat(1024 * 1024));
+            }
+            _ => {
+                doc["cases"][0]["operation"] = json!("unknown");
+            }
+        }
+        std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
+        assert!(load(root.path()).is_err());
+    }
+    let mut cases = one();
+    cases[0]["operation"] = json!("decode-value");
+    assert!(load(source(cases).path()).is_err());
+}
+#[test]
+fn workbench_admission_capability_and_success_forgery_is_rejected() {
+    let root = admission_source();
+    let corpus = load(root.path()).unwrap();
+    let mut adapter = Fake {
+        replies: vec![
+            Ok(admission_caps()),
+            Ok(json!({"status":"ok","value":{"type":"model-error","code":"sdk.division_by_zero"}})),
+        ],
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(!report.qualified);
+    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    check_report(root.path(), &report).unwrap();
+    let mut adapter = Fake {
+        replies: vec![
+            Ok(admission_caps()),
+            Ok(json!({"status":"ok","value":{"type":"int","value":"7"}})),
+        ],
+        requests: vec![],
+    };
+    let mut report = execute(&corpus, &mut adapter);
+    report.capabilities.as_mut().unwrap().contract_version = VERSION.into();
+    assert!(check_report(root.path(), &report).is_err());
+}
+
+#[test]
+fn workbench_explicit_null_operation_cannot_relax_legacy_or_admission_contracts() {
+    for root in [source(one()), admission_source()] {
+        let mut doc: Value =
+            serde_json::from_slice(&std::fs::read(root.path().join("cases.json")).unwrap())
+                .unwrap();
+        doc["cases"][0]["operation"] = Value::Null;
+        std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
+        assert!(load(root.path()).is_err());
+    }
+    let root = source(one());
+    let report = execute(
+        &load(root.path()).unwrap(),
+        &mut fake(one()[0]["expected"].clone()),
+    );
+    let mut wire = serde_json::to_value(report).unwrap();
+    wire["records"][0]["operation"] = Value::Null;
+    assert!(Report::from_json(&wire.to_string()).is_err());
+}
+
+#[test]
+fn workbench_admission_draft_bounds_compact_ion_inputs_without_changing_legacy() {
+    for draft in [VERSION, ADMISSION_VERSION] {
+        let root = tempfile::tempdir().unwrap();
+        let mut case = json!({"id":"escaped-ion","format":"ion-text","input":"\"".repeat(700_000),"expected":{"status":"invalid","code":"workbench.invalid_ion"}});
+        if draft == ADMISSION_VERSION {
+            case["operation"] = json!("decode-value");
+        }
+        std::fs::write(
+            root.path().join("cases.json"),
+            json!({"formatVersion":draft,"cases":[case]}).to_string(),
+        )
+        .unwrap();
+        assert_eq!(load(root.path()).is_ok(), draft == VERSION);
+    }
+}

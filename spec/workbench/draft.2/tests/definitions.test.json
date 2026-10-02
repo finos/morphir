@@ -1,0 +1,5688 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/definitions.schema.json",
+  "tests": [
+    {
+      "description": "empty registry",
+      "data": [],
+      "valid": true
+    },
+    {
+      "description": "constructor registry",
+      "data": [
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "valid": true
+    },
+    {
+      "description": "unknown member",
+      "data": [
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ],
+          "extra": 1
+        }
+      ],
+      "valid": false
+    },
+    {
+      "description": "missing inputs",
+      "data": [
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "x"
+            }
+          ]
+        }
+      ],
+      "valid": false
+    },
+    {
+      "description": "constructor inputs limit",
+      "data": [
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "x",
+              "inputs": [
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                },
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "valid": false
+    },
+    {
+      "description": "definition limit",
+      "data": [
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "valid": false
+    },
+    {
+      "description": "constructor limit",
+      "data": [
+        {
+          "name": "example:tree#tree",
+          "constructors": [
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            },
+            {
+              "name": "example:tree#leaf",
+              "inputs": [
+                {
+                  "type": "int"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "valid": false
+    }
+  ]
+}

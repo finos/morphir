@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::contract::{
-    Capabilities, Format, Observation, VERSION, encoded_size, identity, version,
+    Capabilities, Format, Observation, Operation, encoded_size, identity, version,
 };
 use super::corpus::{Corpus, load};
 
@@ -60,6 +60,12 @@ impl Failure {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Record {
     pub case_id: String,
+    #[serde(
+        default,
+        deserialize_with = "super::contract::present_operation",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub operation: Option<Operation>,
     pub format: Format,
     pub result: ResultKind,
     #[serde(deserialize_with = "required_option")]
@@ -94,6 +100,7 @@ impl Report {
             .iter()
             .map(|c| Record {
                 case_id: c.id.clone(),
+                operation: c.operation,
                 format: c.format,
                 result: ResultKind::Error,
                 observed: None,
@@ -103,7 +110,7 @@ impl Report {
     }
     pub(super) fn new(corpus: &Corpus) -> Self {
         Self {
-            format_version: VERSION.into(),
+            format_version: corpus.version.clone(),
             suite: "workbench".into(),
             corpus_hash: corpus.hash.clone(),
             capabilities: None,
@@ -149,7 +156,10 @@ impl Report {
 pub fn check_report(root: &Path, report: &Report) -> Result<(), String> {
     let corpus = load(root)?;
     version(&report.format_version)?;
-    if report.suite != "workbench" || report.corpus_hash != corpus.hash {
+    if report.suite != "workbench"
+        || report.corpus_hash != corpus.hash
+        || report.format_version != corpus.version
+    {
         return Err("Workbench suite/corpus identity differs".into());
     }
     if report.records.len() != corpus.cases.len() {
@@ -170,18 +180,24 @@ pub fn check_report(root: &Path, report: &Report) -> Result<(), String> {
     }
     if let Some(caps) = &report.capabilities {
         caps.validate()?;
+        if caps.contract_version != corpus.version {
+            return Err("report capabilities draft differs from corpus".into());
+        }
     }
     let exchange_failed = report.errors.iter().any(|e| e.phase == Phase::Exchange);
     let mut seen_exchange_error = false;
     let mut observation_budget = MAX_OBSERVATION_BYTES;
     for (case, record) in corpus.cases.iter().zip(&report.records) {
-        if case.id != record.case_id || case.format != record.format {
+        if case.id != record.case_id
+            || case.format != record.format
+            || case.operation != record.operation
+        {
             return Err("report record identity/order differs".into());
         }
         let supported = report
             .capabilities
             .as_ref()
-            .is_some_and(|c| c.supports(case.format));
+            .is_some_and(|c| c.supports(case.operation(), case.format));
         let expected = if negotiation_failed {
             if record.observed.is_some() {
                 return Err("failed negotiation contains an observation".into());
@@ -193,6 +209,7 @@ pub fn check_report(root: &Path, report: &Report) -> Result<(), String> {
             }
             ResultKind::Unsupported
         } else if let Some(observed) = &record.observed {
+            observed.validate_for(case.operation())?;
             let bytes = encoded_size(observed, observation_budget)?;
             observation_budget -= bytes;
             if seen_exchange_error {

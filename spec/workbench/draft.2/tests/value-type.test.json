@@ -1,0 +1,3275 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json",
+  "tests": [
+    {
+      "description": "int descriptor",
+      "data": {
+        "type": "int"
+      },
+      "valid": true
+    },
+    {
+      "description": "bool descriptor",
+      "data": {
+        "type": "bool"
+      },
+      "valid": true
+    },
+    {
+      "description": "unit descriptor",
+      "data": {
+        "type": "unit"
+      },
+      "valid": true
+    },
+    {
+      "description": "decimal descriptor",
+      "data": {
+        "type": "decimal"
+      },
+      "valid": true
+    },
+    {
+      "description": "float64 descriptor",
+      "data": {
+        "type": "float64"
+      },
+      "valid": true
+    },
+    {
+      "description": "text descriptor",
+      "data": {
+        "type": "text"
+      },
+      "valid": true
+    },
+    {
+      "description": "character descriptor",
+      "data": {
+        "type": "character"
+      },
+      "valid": true
+    },
+    {
+      "description": "function descriptor",
+      "data": {
+        "type": "function"
+      },
+      "valid": true
+    },
+    {
+      "description": "list item",
+      "data": {
+        "type": "list",
+        "item": {
+          "type": "int"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "list missing item",
+      "data": {
+        "type": "list"
+      },
+      "valid": false
+    },
+    {
+      "description": "maybe item",
+      "data": {
+        "type": "maybe",
+        "item": {
+          "type": "int"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "maybe missing item",
+      "data": {
+        "type": "maybe"
+      },
+      "valid": false
+    },
+    {
+      "description": "recursive custom",
+      "data": {
+        "type": "custom",
+        "name": "example:tree#tree"
+      },
+      "valid": true
+    },
+    {
+      "description": "record shape",
+      "data": {
+        "type": "record",
+        "fields": [
+          {
+            "name": "x",
+            "type": {
+              "type": "int"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "tuple shape",
+      "data": {
+        "type": "tuple",
+        "items": [
+          {
+            "type": "int"
+          },
+          {
+            "type": "bool"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "result branches",
+      "data": {
+        "type": "result",
+        "ok": {
+          "type": "int"
+        },
+        "err": {
+          "type": "text"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "unknown member",
+      "data": {
+        "type": "int",
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "description": "missing custom name",
+      "data": {
+        "type": "custom"
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown type",
+      "data": {
+        "type": "unknown"
+      },
+      "valid": false
+    },
+    {
+      "description": "wrong record descriptor",
+      "data": {
+        "type": "record",
+        "fields": [
+          {
+            "name": "x",
+            "value": {
+              "type": "int"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "too many tuple fields",
+      "data": {
+        "type": "tuple",
+        "items": [
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          },
+          {
+            "type": "int"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "oversized identity",
+      "data": {
+        "type": "custom",
+        "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "valid": false
+    }
+  ]
+}

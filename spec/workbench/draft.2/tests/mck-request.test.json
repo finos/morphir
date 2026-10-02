@@ -1,0 +1,122 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-request.schema.json",
+  "tests": [
+    {
+      "description": "JSON admission",
+      "data": {
+        "id": 2,
+        "op": "validate-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "format": "json",
+        "input": {
+          "value": {
+            "type": "unit"
+          },
+          "type": {
+            "type": "unit"
+          },
+          "definitions": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Ion admission",
+      "data": {
+        "id": 2,
+        "op": "validate-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "format": "ion-text",
+        "input": {
+          "value": "morphir_unit::null",
+          "type": {
+            "type": "unit"
+          },
+          "definitions": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Ion requires text value",
+      "data": {
+        "id": 2,
+        "op": "validate-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "format": "ion-text",
+        "input": {
+          "value": {
+            "type": "unit"
+          },
+          "type": {
+            "type": "unit"
+          },
+          "definitions": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "closed input envelope",
+      "data": {
+        "id": 2,
+        "op": "validate-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "format": "json",
+        "input": {
+          "value": {
+            "type": "unit"
+          },
+          "type": {
+            "type": "unit"
+          },
+          "definitions": [],
+          "output": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "malformed descriptor reaches adapter",
+      "data": {
+        "id": 2,
+        "op": "validate-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "format": "json",
+        "input": {
+          "value": {
+            "type": "unit"
+          },
+          "type": 12,
+          "definitions": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "wrong exact version",
+      "data": {
+        "id": 2,
+        "op": "validate-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1",
+        "format": "json",
+        "input": {
+          "value": {
+            "type": "unit"
+          },
+          "type": {
+            "type": "unit"
+          },
+          "definitions": []
+        }
+      },
+      "valid": false
+    }
+  ]
+}
