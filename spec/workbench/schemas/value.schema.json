@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/value.schema.json",
+  "title": "Draft Workbench typed model value",
+  "description": "A structural JSON projection of existing Morphir typed argument values. Semantic admission remains the responsibility of the decoder, public manifest and execution engine",
+  "$comment": "Schema package 0.1.0-draft.1. Adopts the existing morphir-invocations-v1 JSON projection without adding payload fields. Structural validation only. Decimal normalization, numeric Float64 bounds, UTF-16 string-length budgets, duplicate field names, declared type/constructor admission and aggregate depth/node budgets require semantic validation. Model errors cannot be typed argument values.",
+  "examples": [
+    {
+      "type": "tuple",
+      "items": [
+        {
+          "type": "decimal",
+          "coefficient": "1200",
+          "exponent": -3
+        },
+        {
+          "type": "float64",
+          "bits": "9223372036854775808"
+        },
+        {
+          "type": "float64",
+          "bits": "9221120237041090561"
+        },
+        {
+          "type": "text",
+          "units": [ 65, 55296, 56320 ]
+        },
+        {
+          "type": "result",
+          "case": "err",
+          "value": {
+            "type": "character",
+            "units": [ 83, 83 ]
+          }
+        }
+      ]
+    }
+  ],
+  "$ref": "#/$defs/Value",
+  "$defs": {
+    "IntegerString": {
+      "type": "string",
+      "pattern": "^-?[0-9]+$",
+      "maxLength": 10000,
+      "minLength": 1
+    },
+    "Identity": {
+      "type": "string",
+      "maxLength": 1024,
+      "minLength": 1
+    },
+    "Units": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "type": "integer",
+        "maximum": 65535,
+        "minimum": 0
+      }
+    },
+    "Value": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "type", "value" ],
+          "properties": {
+            "type": {
+              "const": "int"
+            },
+            "value": {
+              "$ref": "#/$defs/IntegerString"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "value" ],
+          "properties": {
+            "type": {
+              "const": "bool"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type" ],
+          "properties": {
+            "type": {
+              "const": "unit"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "coefficient", "exponent" ],
+          "properties": {
+            "type": {
+              "const": "decimal"
+            },
+            "coefficient": {
+              "$ref": "#/$defs/IntegerString"
+            },
+            "exponent": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": -10000
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "bits" ],
+          "properties": {
+            "type": {
+              "const": "float64"
+            },
+            "bits": {
+              "$comment": "The decoder checks the numeric upper bound 18446744073709551615. Leading zeroes and negative zero spellings follow the existing decoder; serialization emits canonical decimal digits.",
+              "type": "string",
+              "pattern": "^([0-9]+|-0+)$",
+              "maxLength": 10000,
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "units" ],
+          "properties": {
+            "type": {
+              "const": "text"
+            },
+            "units": {
+              "$ref": "#/$defs/Units"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "units" ],
+          "properties": {
+            "type": {
+              "const": "character"
+            },
+            "units": {
+              "$ref": "#/$defs/Units"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "items" ],
+          "properties": {
+            "type": {
+              "const": "list"
+            },
+            "items": {
+              "type": "array",
+              "maxItems": 100000,
+              "items": {
+                "$ref": "#/$defs/Value"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "items" ],
+          "properties": {
+            "type": {
+              "const": "tuple"
+            },
+            "items": {
+              "type": "array",
+              "maxItems": 100000,
+              "items": {
+                "$ref": "#/$defs/Value"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "fields" ],
+          "properties": {
+            "type": {
+              "const": "record"
+            },
+            "fields": {
+              "type": "array",
+              "maxItems": 100000,
+              "items": {
+                "type": "object",
+                "required": [ "name", "value" ],
+                "properties": {
+                  "name": {
+                    "$ref": "#/$defs/Identity"
+                  },
+                  "value": {
+                    "$ref": "#/$defs/Value"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "owner", "tag", "items" ],
+          "properties": {
+            "type": {
+              "const": "custom"
+            },
+            "owner": {
+              "$ref": "#/$defs/Identity"
+            },
+            "tag": {
+              "$ref": "#/$defs/Identity"
+            },
+            "items": {
+              "type": "array",
+              "maxItems": 100000,
+              "items": {
+                "$ref": "#/$defs/Value"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "case" ],
+          "properties": {
+            "type": {
+              "const": "maybe"
+            },
+            "case": {
+              "const": "nothing"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "case", "value" ],
+          "properties": {
+            "type": {
+              "const": "maybe"
+            },
+            "case": {
+              "const": "just"
+            },
+            "value": {
+              "$ref": "#/$defs/Value"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "type", "case", "value" ],
+          "properties": {
+            "type": {
+              "const": "result"
+            },
+            "case": {
+              "enum": [ "ok", "err" ]
+            },
+            "value": {
+              "$ref": "#/$defs/Value"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/mck-request.schema.json",
+  "tests": [
+    {
+      "description": "exact draft capabilities",
+      "data": {
+        "id": 1,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1"
+      },
+      "valid": true
+    },
+    {
+      "description": "JSON unit decode",
+      "data": {
+        "id": 2,
+        "op": "decode-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1",
+        "format": "json",
+        "input": {
+          "type": "unit"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Ion text decode",
+      "data": {
+        "id": 2,
+        "op": "decode-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1",
+        "format": "ion-text",
+        "input": "morphir_unit::null"
+      },
+      "valid": true
+    },
+    {
+      "description": "wrong draft",
+      "data": {
+        "id": 1,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2"
+      },
+      "valid": false
+    },
+    {
+      "description": "noncanonical version",
+      "data": {
+        "id": 1,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.01.0-draft.1"
+      },
+      "valid": false
+    },
+    {
+      "description": "no expected values in request",
+      "data": {
+        "id": 1,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1",
+        "expected": {
+          "status": "ok",
+          "value": {
+            "type": "unit"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "fractional identifier",
+      "data": {
+        "id": 1.5,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1"
+      },
+      "valid": false
+    },
+    {
+      "description": "missing identifier",
+      "data": {
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1"
+      },
+      "valid": false
+    },
+    {
+      "description": "transport exit has no response",
+      "data": {
+        "id": 3,
+        "op": "exit"
+      },
+      "valid": true
+    }
+  ]
+}

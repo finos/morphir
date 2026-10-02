@@ -1,0 +1,413 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/value.schema.json",
+  "tests": [
+    {
+      "description": "exact integer beyond JavaScript precision",
+      "data": {
+        "type": "int",
+        "value": "9007199254741035"
+      },
+      "valid": true
+    },
+    {
+      "description": "signed integer",
+      "data": {
+        "type": "int",
+        "value": "-42"
+      },
+      "valid": true
+    },
+    {
+      "description": "decoder accepts leading zeroes",
+      "data": {
+        "type": "int",
+        "value": "00042"
+      },
+      "valid": true
+    },
+    {
+      "description": "decimal retains coefficient and exponent",
+      "data": {
+        "type": "decimal",
+        "coefficient": "1200",
+        "exponent": -3
+      },
+      "valid": true
+    },
+    {
+      "description": "decimal normalizes before precision admission",
+      "data": {
+        "type": "decimal",
+        "coefficient": "10",
+        "exponent": -33
+      },
+      "valid": true
+    },
+    {
+      "description": "negative zero Float64 bits",
+      "data": {
+        "type": "float64",
+        "bits": "9223372036854775808"
+      },
+      "valid": true
+    },
+    {
+      "description": "NaN payload bits",
+      "data": {
+        "type": "float64",
+        "bits": "9221120237041090561"
+      },
+      "valid": true
+    },
+    {
+      "description": "unsigned Float64 upper bound",
+      "data": {
+        "type": "float64",
+        "bits": "18446744073709551615"
+      },
+      "valid": true
+    },
+    {
+      "description": "UTF-16 isolated surrogates",
+      "data": {
+        "type": "text",
+        "units": [
+          65,
+          55296,
+          56320,
+          65535
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "empty text",
+      "data": {
+        "type": "text",
+        "units": []
+      },
+      "valid": true
+    },
+    {
+      "description": "SDK Character may expand to multiple units",
+      "data": {
+        "type": "character",
+        "units": [
+          83,
+          83
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "boolean",
+      "data": {
+        "type": "bool",
+        "value": true
+      },
+      "valid": true
+    },
+    {
+      "description": "unit",
+      "data": {
+        "type": "unit"
+      },
+      "valid": true
+    },
+    {
+      "description": "empty list",
+      "data": {
+        "type": "list",
+        "items": []
+      },
+      "valid": true
+    },
+    {
+      "description": "tuple",
+      "data": {
+        "type": "tuple",
+        "items": [
+          {
+            "type": "int",
+            "value": "42"
+          },
+          {
+            "type": "bool",
+            "value": false
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "record fields retain names",
+      "data": {
+        "type": "record",
+        "fields": [
+          {
+            "name": "amount",
+            "value": {
+              "type": "decimal",
+              "coefficient": "42",
+              "exponent": 0
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "custom owner and constructor",
+      "data": {
+        "type": "custom",
+        "owner": "pricing:domain#currency",
+        "tag": "usd",
+        "items": []
+      },
+      "valid": true
+    },
+    {
+      "description": "Maybe Nothing",
+      "data": {
+        "type": "maybe",
+        "case": "nothing"
+      },
+      "valid": true
+    },
+    {
+      "description": "Maybe Just",
+      "data": {
+        "type": "maybe",
+        "case": "just",
+        "value": {
+          "type": "int",
+          "value": "42"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Result Err is a model value",
+      "data": {
+        "type": "result",
+        "case": "err",
+        "value": {
+          "type": "text",
+          "units": [
+            69
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Result Ok",
+      "data": {
+        "type": "result",
+        "case": "ok",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "JSON number cannot encode exact Int",
+      "data": {
+        "type": "int",
+        "value": 9007199254740992
+      },
+      "valid": false
+    },
+    {
+      "description": "integer exponent spelling is rejected",
+      "data": {
+        "type": "int",
+        "value": "1e3"
+      },
+      "valid": false
+    },
+    {
+      "description": "integer plus sign is rejected",
+      "data": {
+        "type": "int",
+        "value": "+42"
+      },
+      "valid": false
+    },
+    {
+      "description": "float value cannot replace raw bits",
+      "data": {
+        "type": "float64",
+        "value": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "negative Float64 bits are rejected",
+      "data": {
+        "type": "float64",
+        "bits": "-1"
+      },
+      "valid": false
+    },
+    {
+      "description": "UTF-16 unit above range",
+      "data": {
+        "type": "text",
+        "units": [
+          65536
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "negative UTF-16 unit",
+      "data": {
+        "type": "text",
+        "units": [
+          -1
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "noninteger UTF-16 unit",
+      "data": {
+        "type": "text",
+        "units": [
+          1.5
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "text cannot use a Unicode string",
+      "data": {
+        "type": "text",
+        "value": "hello"
+      },
+      "valid": false
+    },
+    {
+      "description": "missing custom owner",
+      "data": {
+        "type": "custom",
+        "tag": "usd",
+        "items": []
+      },
+      "valid": false
+    },
+    {
+      "description": "empty constructor identity",
+      "data": {
+        "type": "custom",
+        "owner": "pricing:domain#currency",
+        "tag": "",
+        "items": []
+      },
+      "valid": false
+    },
+    {
+      "description": "missing Maybe payload",
+      "data": {
+        "type": "maybe",
+        "case": "just"
+      },
+      "valid": false
+    },
+    {
+      "description": "Nothing cannot contain a payload",
+      "data": {
+        "type": "maybe",
+        "case": "nothing",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown Result case",
+      "data": {
+        "type": "result",
+        "case": "error",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "model error is not a typed argument",
+      "data": {
+        "type": "model-error",
+        "code": "sdk.division_by_zero"
+      },
+      "valid": false
+    },
+    {
+      "description": "nested model error is not a typed argument",
+      "data": {
+        "type": "list",
+        "items": [
+          {
+            "type": "model-error",
+            "code": "sdk.division_by_zero"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown members remain forbidden by frozen codec",
+      "data": {
+        "type": "unit",
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown value tag",
+      "data": {
+        "type": "function",
+        "value": "closure"
+      },
+      "valid": false
+    },
+    {
+      "description": "empty record field name",
+      "data": {
+        "type": "record",
+        "fields": [
+          {
+            "name": "",
+            "value": {
+              "type": "unit"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "decimal input exponent out of range",
+      "data": {
+        "type": "decimal",
+        "coefficient": "1",
+        "exponent": 10001
+      },
+      "valid": false
+    },
+    {
+      "description": "exact difference value",
+      "dataPath": "../examples/exact-difference.value.json",
+      "valid": true
+    },
+    {
+      "description": "exact rich value example",
+      "dataPath": "../examples/exact-values.json",
+      "valid": true
+    }
+  ]
+}

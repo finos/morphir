@@ -1,0 +1,57 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "closed corpus",
+      "data": {
+        "formatVersion": "0.1.0-draft.1",
+        "cases": [
+          {
+            "id": "unit-json",
+            "format": "json",
+            "input": {
+              "type": "unit"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "empty corpus",
+      "data": {
+        "formatVersion": "0.1.0-draft.1",
+        "cases": []
+      },
+      "valid": false
+    },
+    {
+      "description": "Ion input must be text",
+      "data": {
+        "formatVersion": "0.1.0-draft.1",
+        "cases": [
+          {
+            "id": "unit-json",
+            "format": "ion-text",
+            "input": {
+              "type": "unit"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

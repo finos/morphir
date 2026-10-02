@@ -1,0 +1,102 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/mck-response.schema.json",
+  "tests": [
+    {
+      "description": "exact capabilities",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1",
+        "binding": "morphir-moonbit",
+        "language": "moonbit",
+        "operations": [
+          "decode-value"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "negative observation",
+      "data": {
+        "id": 2,
+        "status": "invalid",
+        "code": "execution.float_bits"
+      },
+      "valid": true
+    },
+    {
+      "description": "model error outcome",
+      "data": {
+        "id": 2,
+        "status": "ok",
+        "value": {
+          "type": "model-error",
+          "code": "sdk.division_by_zero"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "duplicate format claim",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1",
+        "binding": "morphir-moonbit",
+        "language": "moonbit",
+        "operations": [
+          "decode-value"
+        ],
+        "formats": [
+          "json",
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown operation claim",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1",
+        "binding": "morphir-moonbit",
+        "language": "moonbit",
+        "operations": [
+          "evaluate"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "no invalid message payload",
+      "data": {
+        "id": 2,
+        "status": "invalid",
+        "code": "execution.float_bits",
+        "message": "unbounded"
+      },
+      "valid": false
+    },
+    {
+      "description": "provider crash is not a model error",
+      "data": {
+        "id": 2,
+        "status": "ok",
+        "value": {
+          "type": "model-error",
+          "code": "provider.crash"
+        }
+      },
+      "valid": false
+    }
+  ]
+}

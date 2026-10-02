@@ -381,6 +381,15 @@ Compare every report record with the independently admitted MVP inventory
 \fBmck package mvp\-report render\fR
 Render a standalone offline HTML view of a versioned MVP report
 .TP
+\fBmck workbench\fR
+Run Workbench value codecs or check their independently recomputed evidence
+.TP
+\fBmck workbench run\fR
+Run the explicit Workbench codec corpus against an explicit adapter
+.TP
+\fBmck workbench check\fR
+Recompute qualification from every saved observation and the independent corpus
+.TP
 \fBmck node\-address\fR
 Run the draft V3/V4 semantic node\-address corpus
 .TP
@@ -2605,6 +2614,50 @@ Standalone HTML output file; cannot overwrite the JSON input
 .TP
 \fB<REPORT>\fR
 Versioned local Library MVP JSON report
+.SH "MORPHIR MCK WORKBENCH RUN"
+Run the explicit Workbench codec corpus against an explicit adapter
+.PP
+\fBUsage:\fR morphir mck workbench run [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+Workbench corpus directory containing cases.json; no embedded IR kit is used
+.TP
+\fB\-\-adapter\fR \fI<PROGRAM>\fR
+Adapter executable, launched directly without a shell
+.TP
+\fB\-\-adapter\-arg\fR \fI<ARG>\fR
+An argument for the adapter; repeat for more
+.TP
+\fB\-\-report\fR \fI<FILE>\fR
+Write versioned JSON evidence, including adapter and qualification failures
+.TP
+\fB\-\-timeout\fR \fI<MS>\fR
+Maximum duration of one adapter exchange, in milliseconds
+.RS
+\fIDefault: \fR30000
+.RE
+.TP
+\fB\-\-session\-timeout\fR \fI<MS>\fR
+Maximum duration of the adapter session, in milliseconds
+.RS
+\fIDefault: \fR1800000
+.RE
+.SH "MORPHIR MCK WORKBENCH CHECK"
+Recompute qualification from every saved observation and the independent corpus
+.PP
+\fBUsage:\fR morphir mck workbench check [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<DIR>\fR
+Independent Workbench corpus directory containing cases.json
+.TP
+\fB\-\-report\fR \fI<FILE>\fR
+Saved Workbench JSON evidence; its claimed results are independently recomputed
 .SH "MORPHIR MCK NODE-ADDRESS RUN"
 \fBUsage:\fR morphir mck node\-address run [OPTIONS]
 .PP

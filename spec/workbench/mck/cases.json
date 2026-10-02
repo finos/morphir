@@ -1,0 +1,1266 @@
+{
+  "formatVersion": "0.1.0-draft.1",
+  "cases": [
+    {
+      "id": "json-int-above-js-safe",
+      "format": "json",
+      "input": {
+        "type": "int",
+        "value": "9007199254740993"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "int",
+          "value": "9007199254740993"
+        }
+      }
+    },
+    {
+      "id": "json-int-leading-zero",
+      "format": "json",
+      "input": {
+        "type": "int",
+        "value": "0009007199254740993"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "int",
+          "value": "9007199254740993"
+        }
+      }
+    },
+    {
+      "id": "json-int-negative-zero",
+      "format": "json",
+      "input": {
+        "type": "int",
+        "value": "-000"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "int",
+          "value": "0"
+        }
+      }
+    },
+    {
+      "id": "json-int-negative-exact",
+      "format": "json",
+      "input": {
+        "type": "int",
+        "value": "-9007199254740993"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "int",
+          "value": "-9007199254740993"
+        }
+      }
+    },
+    {
+      "id": "json-bool",
+      "format": "json",
+      "input": {
+        "type": "bool",
+        "value": false
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "bool",
+          "value": false
+        }
+      }
+    },
+    {
+      "id": "json-unit",
+      "format": "json",
+      "input": {
+        "type": "unit"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "id": "json-decimal-preserve-scale",
+      "format": "json",
+      "input": {
+        "type": "decimal",
+        "coefficient": "1200",
+        "exponent": -3
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "decimal",
+          "coefficient": "1200",
+          "exponent": -3
+        }
+      }
+    },
+    {
+      "id": "json-decimal-admitted-after-normalization",
+      "format": "json",
+      "input": {
+        "type": "decimal",
+        "coefficient": "10",
+        "exponent": -33
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "decimal",
+          "coefficient": "10",
+          "exponent": -33
+        }
+      }
+    },
+    {
+      "id": "json-decimal-zero-extreme-scale",
+      "format": "json",
+      "input": {
+        "type": "decimal",
+        "coefficient": "0",
+        "exponent": -10000
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "decimal",
+          "coefficient": "0",
+          "exponent": -10000
+        }
+      }
+    },
+    {
+      "id": "json-float-negative-zero",
+      "format": "json",
+      "input": {
+        "type": "float64",
+        "bits": "9223372036854775808"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "float64",
+          "bits": "9223372036854775808"
+        }
+      }
+    },
+    {
+      "id": "json-float-nan-payload",
+      "format": "json",
+      "input": {
+        "type": "float64",
+        "bits": "9221120237041090626"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "float64",
+          "bits": "9221120237041090626"
+        }
+      }
+    },
+    {
+      "id": "json-float-subnormal",
+      "format": "json",
+      "input": {
+        "type": "float64",
+        "bits": "1"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "float64",
+          "bits": "1"
+        }
+      }
+    },
+    {
+      "id": "json-float-positive-infinity",
+      "format": "json",
+      "input": {
+        "type": "float64",
+        "bits": "9218868437227405312"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "float64",
+          "bits": "9218868437227405312"
+        }
+      }
+    },
+    {
+      "id": "json-float-unsigned-max",
+      "format": "json",
+      "input": {
+        "type": "float64",
+        "bits": "18446744073709551615"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "float64",
+          "bits": "18446744073709551615"
+        }
+      }
+    },
+    {
+      "id": "json-float-leading-zero",
+      "format": "json",
+      "input": {
+        "type": "float64",
+        "bits": "0001"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "float64",
+          "bits": "1"
+        }
+      }
+    },
+    {
+      "id": "json-text-isolated-surrogates",
+      "format": "json",
+      "input": {
+        "type": "text",
+        "units": [
+          0,
+          55296,
+          65,
+          57343
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "text",
+          "units": [
+            0,
+            55296,
+            65,
+            57343
+          ]
+        }
+      }
+    },
+    {
+      "id": "json-character-expansion",
+      "format": "json",
+      "input": {
+        "type": "character",
+        "units": [
+          83,
+          83
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "character",
+          "units": [
+            83,
+            83
+          ]
+        }
+      }
+    },
+    {
+      "id": "json-list-empty",
+      "format": "json",
+      "input": {
+        "type": "list",
+        "items": []
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "list",
+          "items": []
+        }
+      }
+    },
+    {
+      "id": "json-tuple",
+      "format": "json",
+      "input": {
+        "type": "tuple",
+        "items": [
+          {
+            "type": "int",
+            "value": "42"
+          },
+          {
+            "type": "bool",
+            "value": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "tuple",
+          "items": [
+            {
+              "type": "int",
+              "value": "42"
+            },
+            {
+              "type": "bool",
+              "value": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "json-record-order",
+      "format": "json",
+      "input": {
+        "type": "record",
+        "fields": [
+          {
+            "name": "z",
+            "value": {
+              "type": "int",
+              "value": "2"
+            }
+          },
+          {
+            "name": "a",
+            "value": {
+              "type": "maybe",
+              "case": "nothing"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "a",
+              "value": {
+                "type": "maybe",
+                "case": "nothing"
+              }
+            },
+            {
+              "name": "z",
+              "value": {
+                "type": "int",
+                "value": "2"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "json-custom-owner-tag",
+      "format": "json",
+      "input": {
+        "type": "custom",
+        "owner": "pricing:quotes#status",
+        "tag": "pricing:quotes#approved",
+        "items": [
+          {
+            "type": "decimal",
+            "coefficient": "375",
+            "exponent": -1
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "custom",
+          "owner": "pricing:quotes#status",
+          "tag": "pricing:quotes#approved",
+          "items": [
+            {
+              "type": "decimal",
+              "coefficient": "375",
+              "exponent": -1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "json-maybe-just",
+      "format": "json",
+      "input": {
+        "type": "maybe",
+        "case": "just",
+        "value": {
+          "type": "int",
+          "value": "42"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "maybe",
+          "case": "just",
+          "value": {
+            "type": "int",
+            "value": "42"
+          }
+        }
+      }
+    },
+    {
+      "id": "json-result-err-value",
+      "format": "json",
+      "input": {
+        "type": "result",
+        "case": "err",
+        "value": {
+          "type": "character",
+          "units": [
+            83,
+            83
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "result",
+          "case": "err",
+          "value": {
+            "type": "character",
+            "units": [
+              83,
+              83
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "json-result-ok",
+      "format": "json",
+      "input": {
+        "type": "result",
+        "case": "ok",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "result",
+          "case": "ok",
+          "value": {
+            "type": "unit"
+          }
+        }
+      }
+    },
+    {
+      "id": "json-model-error-outcome",
+      "format": "json",
+      "input": {
+        "type": "model-error",
+        "code": "sdk.division_by_zero"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "model-error",
+          "code": "sdk.division_by_zero"
+        }
+      }
+    },
+    {
+      "id": "json-integer-number",
+      "format": "json",
+      "input": {
+        "type": "int",
+        "value": 9007199254740992
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.expected_string"
+      }
+    },
+    {
+      "id": "json-integer-plus",
+      "format": "json",
+      "input": {
+        "type": "int",
+        "value": "+1"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.invalid_integer"
+      }
+    },
+    {
+      "id": "json-integer-empty",
+      "format": "json",
+      "input": {
+        "type": "int",
+        "value": ""
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.invalid_integer"
+      }
+    },
+    {
+      "id": "json-decimal-too-precise",
+      "format": "json",
+      "input": {
+        "type": "decimal",
+        "coefficient": "1",
+        "exponent": -33
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.decimal_precision"
+      }
+    },
+    {
+      "id": "json-decimal-input-limit",
+      "format": "json",
+      "input": {
+        "type": "decimal",
+        "coefficient": "1",
+        "exponent": 10001
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.decimal_limit"
+      }
+    },
+    {
+      "id": "json-float-overflow",
+      "format": "json",
+      "input": {
+        "type": "float64",
+        "bits": "18446744073709551616"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.float_bits"
+      }
+    },
+    {
+      "id": "json-float-negative",
+      "format": "json",
+      "input": {
+        "type": "float64",
+        "bits": "-1"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.float_bits"
+      }
+    },
+    {
+      "id": "json-utf16-overflow",
+      "format": "json",
+      "input": {
+        "type": "text",
+        "units": [
+          65536
+        ]
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.utf16_units"
+      }
+    },
+    {
+      "id": "json-record-duplicate",
+      "format": "json",
+      "input": {
+        "type": "record",
+        "fields": [
+          {
+            "name": "duplicate",
+            "value": {
+              "type": "unit"
+            }
+          },
+          {
+            "name": "duplicate",
+            "value": {
+              "type": "unit"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.record_field"
+      }
+    },
+    {
+      "id": "json-constructor-empty-owner",
+      "format": "json",
+      "input": {
+        "type": "custom",
+        "owner": "",
+        "tag": "tag",
+        "items": []
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.constructor_identity"
+      }
+    },
+    {
+      "id": "json-model-error-unknown",
+      "format": "json",
+      "input": {
+        "type": "model-error",
+        "code": "provider.crash"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.model_error_code"
+      }
+    },
+    {
+      "id": "json-frozen-extra-field",
+      "format": "json",
+      "input": {
+        "type": "unit",
+        "extra": true
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.invalid_field"
+      }
+    },
+    {
+      "id": "json-maybe-invalid-case",
+      "format": "json",
+      "input": {
+        "type": "maybe",
+        "case": "unknown",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.maybe_case"
+      }
+    },
+    {
+      "id": "json-depth-limit",
+      "format": "json",
+      "input": {
+        "type": "maybe",
+        "case": "just",
+        "value": {
+          "type": "maybe",
+          "case": "just",
+          "value": {
+            "type": "maybe",
+            "case": "just",
+            "value": {
+              "type": "maybe",
+              "case": "just",
+              "value": {
+                "type": "maybe",
+                "case": "just",
+                "value": {
+                  "type": "maybe",
+                  "case": "just",
+                  "value": {
+                    "type": "maybe",
+                    "case": "just",
+                    "value": {
+                      "type": "maybe",
+                      "case": "just",
+                      "value": {
+                        "type": "maybe",
+                        "case": "just",
+                        "value": {
+                          "type": "maybe",
+                          "case": "just",
+                          "value": {
+                            "type": "maybe",
+                            "case": "just",
+                            "value": {
+                              "type": "maybe",
+                              "case": "just",
+                              "value": {
+                                "type": "maybe",
+                                "case": "just",
+                                "value": {
+                                  "type": "maybe",
+                                  "case": "just",
+                                  "value": {
+                                    "type": "maybe",
+                                    "case": "just",
+                                    "value": {
+                                      "type": "maybe",
+                                      "case": "just",
+                                      "value": {
+                                        "type": "maybe",
+                                        "case": "just",
+                                        "value": {
+                                          "type": "maybe",
+                                          "case": "just",
+                                          "value": {
+                                            "type": "maybe",
+                                            "case": "just",
+                                            "value": {
+                                              "type": "maybe",
+                                              "case": "just",
+                                              "value": {
+                                                "type": "maybe",
+                                                "case": "just",
+                                                "value": {
+                                                  "type": "maybe",
+                                                  "case": "just",
+                                                  "value": {
+                                                    "type": "maybe",
+                                                    "case": "just",
+                                                    "value": {
+                                                      "type": "maybe",
+                                                      "case": "just",
+                                                      "value": {
+                                                        "type": "maybe",
+                                                        "case": "just",
+                                                        "value": {
+                                                          "type": "maybe",
+                                                          "case": "just",
+                                                          "value": {
+                                                            "type": "maybe",
+                                                            "case": "just",
+                                                            "value": {
+                                                              "type": "maybe",
+                                                              "case": "just",
+                                                              "value": {
+                                                                "type": "maybe",
+                                                                "case": "just",
+                                                                "value": {
+                                                                  "type": "maybe",
+                                                                  "case": "just",
+                                                                  "value": {
+                                                                    "type": "maybe",
+                                                                    "case": "just",
+                                                                    "value": {
+                                                                      "type": "maybe",
+                                                                      "case": "just",
+                                                                      "value": {
+                                                                        "type": "maybe",
+                                                                        "case": "just",
+                                                                        "value": {
+                                                                          "type": "maybe",
+                                                                          "case": "just",
+                                                                          "value": {
+                                                                            "type": "maybe",
+                                                                            "case": "just",
+                                                                            "value": {
+                                                                              "type": "maybe",
+                                                                              "case": "just",
+                                                                              "value": {
+                                                                                "type": "maybe",
+                                                                                "case": "just",
+                                                                                "value": {
+                                                                                  "type": "maybe",
+                                                                                  "case": "just",
+                                                                                  "value": {
+                                                                                    "type": "maybe",
+                                                                                    "case": "just",
+                                                                                    "value": {
+                                                                                      "type": "maybe",
+                                                                                      "case": "just",
+                                                                                      "value": {
+                                                                                        "type": "maybe",
+                                                                                        "case": "just",
+                                                                                        "value": {
+                                                                                          "type": "maybe",
+                                                                                          "case": "just",
+                                                                                          "value": {
+                                                                                            "type": "maybe",
+                                                                                            "case": "just",
+                                                                                            "value": {
+                                                                                              "type": "maybe",
+                                                                                              "case": "just",
+                                                                                              "value": {
+                                                                                                "type": "maybe",
+                                                                                                "case": "just",
+                                                                                                "value": {
+                                                                                                  "type": "maybe",
+                                                                                                  "case": "just",
+                                                                                                  "value": {
+                                                                                                    "type": "maybe",
+                                                                                                    "case": "just",
+                                                                                                    "value": {
+                                                                                                      "type": "maybe",
+                                                                                                      "case": "just",
+                                                                                                      "value": {
+                                                                                                        "type": "maybe",
+                                                                                                        "case": "just",
+                                                                                                        "value": {
+                                                                                                          "type": "maybe",
+                                                                                                          "case": "just",
+                                                                                                          "value": {
+                                                                                                            "type": "maybe",
+                                                                                                            "case": "just",
+                                                                                                            "value": {
+                                                                                                              "type": "maybe",
+                                                                                                              "case": "just",
+                                                                                                              "value": {
+                                                                                                                "type": "maybe",
+                                                                                                                "case": "just",
+                                                                                                                "value": {
+                                                                                                                  "type": "maybe",
+                                                                                                                  "case": "just",
+                                                                                                                  "value": {
+                                                                                                                    "type": "maybe",
+                                                                                                                    "case": "just",
+                                                                                                                    "value": {
+                                                                                                                      "type": "maybe",
+                                                                                                                      "case": "just",
+                                                                                                                      "value": {
+                                                                                                                        "type": "maybe",
+                                                                                                                        "case": "just",
+                                                                                                                        "value": {
+                                                                                                                          "type": "maybe",
+                                                                                                                          "case": "just",
+                                                                                                                          "value": {
+                                                                                                                            "type": "maybe",
+                                                                                                                            "case": "just",
+                                                                                                                            "value": {
+                                                                                                                              "type": "maybe",
+                                                                                                                              "case": "just",
+                                                                                                                              "value": {
+                                                                                                                                "type": "maybe",
+                                                                                                                                "case": "just",
+                                                                                                                                "value": {
+                                                                                                                                  "type": "maybe",
+                                                                                                                                  "case": "just",
+                                                                                                                                  "value": {
+                                                                                                                                    "type": "maybe",
+                                                                                                                                    "case": "just",
+                                                                                                                                    "value": {
+                                                                                                                                      "type": "maybe",
+                                                                                                                                      "case": "just",
+                                                                                                                                      "value": {
+                                                                                                                                        "type": "maybe",
+                                                                                                                                        "case": "just",
+                                                                                                                                        "value": {
+                                                                                                                                          "type": "unit"
+                                                                                                                                        }
+                                                                                                                                      }
+                                                                                                                                    }
+                                                                                                                                  }
+                                                                                                                                }
+                                                                                                                              }
+                                                                                                                            }
+                                                                                                                          }
+                                                                                                                        }
+                                                                                                                      }
+                                                                                                                    }
+                                                                                                                  }
+                                                                                                                }
+                                                                                                              }
+                                                                                                            }
+                                                                                                          }
+                                                                                                        }
+                                                                                                      }
+                                                                                                    }
+                                                                                                  }
+                                                                                                }
+                                                                                              }
+                                                                                            }
+                                                                                          }
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.value_limit"
+      }
+    },
+    {
+      "id": "ion-int-above-js-safe",
+      "format": "ion-text",
+      "input": "9007199254740993",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "int",
+          "value": "9007199254740993"
+        }
+      }
+    },
+    {
+      "id": "ion-bool",
+      "format": "ion-text",
+      "input": "false",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "bool",
+          "value": false
+        }
+      }
+    },
+    {
+      "id": "ion-unit",
+      "format": "ion-text",
+      "input": "morphir_unit::null",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "id": "ion-decimal-preserve-scale",
+      "format": "ion-text",
+      "input": "1.200d0",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "decimal",
+          "coefficient": "1200",
+          "exponent": -3
+        }
+      }
+    },
+    {
+      "id": "ion-decimal-admitted-after-normalization",
+      "format": "ion-text",
+      "input": "10d-33",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "decimal",
+          "coefficient": "10",
+          "exponent": -33
+        }
+      }
+    },
+    {
+      "id": "ion-float-negative-zero",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"float64\",\"bits\":\"9223372036854775808\"}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "float64",
+          "bits": "9223372036854775808"
+        }
+      }
+    },
+    {
+      "id": "ion-float-nan-payload",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"float64\",\"bits\":\"9221120237041090626\"}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "float64",
+          "bits": "9221120237041090626"
+        }
+      }
+    },
+    {
+      "id": "ion-text-isolated-surrogates",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"text\",\"units\":[0,55296,65,57343]}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "text",
+          "units": [
+            0,
+            55296,
+            65,
+            57343
+          ]
+        }
+      }
+    },
+    {
+      "id": "ion-character-expansion",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"character\",\"units\":[83,83]}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "character",
+          "units": [
+            83,
+            83
+          ]
+        }
+      }
+    },
+    {
+      "id": "ion-list-empty",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"list\",\"items\":[]}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "list",
+          "items": []
+        }
+      }
+    },
+    {
+      "id": "ion-tuple",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"tuple\",\"items\":[{\"type\":\"int\",\"value\":\"42\"},{\"type\":\"bool\",\"value\":true}]}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "tuple",
+          "items": [
+            {
+              "type": "int",
+              "value": "42"
+            },
+            {
+              "type": "bool",
+              "value": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ion-custom-owner-tag",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"custom\",\"owner\":\"pricing:quotes#status\",\"tag\":\"pricing:quotes#approved\",\"items\":[{\"type\":\"decimal\",\"coefficient\":\"375\",\"exponent\":-1}]}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "custom",
+          "owner": "pricing:quotes#status",
+          "tag": "pricing:quotes#approved",
+          "items": [
+            {
+              "type": "decimal",
+              "coefficient": "375",
+              "exponent": -1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ion-maybe-just",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"maybe\",\"case\":\"just\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "maybe",
+          "case": "just",
+          "value": {
+            "type": "int",
+            "value": "42"
+          }
+        }
+      }
+    },
+    {
+      "id": "ion-result-err-value",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"result\",\"case\":\"err\",\"value\":{\"type\":\"character\",\"units\":[83,83]}}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "result",
+          "case": "err",
+          "value": {
+            "type": "character",
+            "units": [
+              83,
+              83
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "ion-model-error-outcome",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"model-error\",\"code\":\"sdk.division_by_zero\"}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "model-error",
+          "code": "sdk.division_by_zero"
+        }
+      }
+    },
+    {
+      "id": "ion-record-order",
+      "format": "ion-text",
+      "input": "morphir_value::{\"type\":\"record\",\"fields\":[{\"name\":\"z\",\"value\":{\"type\":\"int\",\"value\":\"2\"}},{\"name\":\"a\",\"value\":{\"type\":\"maybe\",\"case\":\"nothing\"}}]}",
+      "expected": {
+        "status": "ok",
+        "value": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "a",
+              "value": {
+                "type": "maybe",
+                "case": "nothing"
+              }
+            },
+            {
+              "name": "z",
+              "value": {
+                "type": "int",
+                "value": "2"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ion-native-float",
+      "format": "ion-text",
+      "input": "1e0",
+      "expected": {
+        "status": "invalid",
+        "code": "execution.unsupported_value"
+      }
+    },
+    {
+      "id": "ion-native-string",
+      "format": "ion-text",
+      "input": "\"hello\"",
+      "expected": {
+        "status": "invalid",
+        "code": "execution.unsupported_value"
+      }
+    },
+    {
+      "id": "ion-untyped-null",
+      "format": "ion-text",
+      "input": "null",
+      "expected": {
+        "status": "invalid",
+        "code": "execution.unsupported_value"
+      }
+    },
+    {
+      "id": "ion-unexpected-annotation",
+      "format": "ion-text",
+      "input": "other::1",
+      "expected": {
+        "status": "invalid",
+        "code": "execution.value_annotation"
+      }
+    },
+    {
+      "id": "ion-multiple-annotations",
+      "format": "ion-text",
+      "input": "morphir_value::other::{type:\"unit\"}",
+      "expected": {
+        "status": "invalid",
+        "code": "execution.value_annotation"
+      }
+    },
+    {
+      "id": "ion-nested-annotation",
+      "format": "ion-text",
+      "input": "morphir_value::{type:\"maybe\",case:\"just\",value:morphir_value::{type:\"unit\"}}",
+      "expected": {
+        "status": "invalid",
+        "code": "execution.unexpected_annotation"
+      }
+    },
+    {
+      "id": "ion-duplicate-member",
+      "format": "ion-text",
+      "input": "morphir_value::{type:\"unit\",type:\"unit\"}",
+      "expected": {
+        "status": "invalid",
+        "code": "execution.invalid_field"
+      }
+    },
+    {
+      "id": "ion-decimal-too-precise",
+      "format": "ion-text",
+      "input": "1d-33",
+      "expected": {
+        "status": "invalid",
+        "code": "execution.decimal_precision"
+      }
+    },
+    {
+      "id": "ion-malformed-text",
+      "format": "ion-text",
+      "input": "[",
+      "expected": {
+        "status": "invalid",
+        "code": "workbench.invalid_ion"
+      }
+    }
+  ]
+}

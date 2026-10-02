@@ -1464,7 +1464,41 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             }
         }
     }
-    cmd node-address display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run the draft V3/V4 semantic node-address corpus" unknown_flags=error {
+    cmd workbench display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run Workbench value codecs or check their independently recomputed evidence" unknown_flags=error {
+        cmd run display_order=0 args_override_self=#false help="Run the explicit Workbench codec corpus against an explicit adapter" unknown_flags=value {
+            flag --kit help="Workbench corpus directory containing cases.json; no embedded IR kit is used" required=#true {
+                arg <DIR>
+            }
+            flag --adapter help="Adapter executable, launched directly without a shell" required=#true {
+                arg <PROGRAM>
+            }
+            flag --adapter-arg help="An argument for the adapter; repeat for more" var=#true allow_hyphen_values=#true {
+                arg <ARG>… var=#true
+            }
+            flag --report help="Write versioned JSON evidence, including adapter and qualification failures" required=#true {
+                arg <FILE>
+            }
+            flag --timeout help="Maximum duration of one adapter exchange, in milliseconds" default="30000" {
+                arg <MS>
+            }
+            flag --session-timeout help="Maximum duration of the adapter session, in milliseconds" default="1800000" {
+                arg <MS>
+            }
+            complete dir type=path
+            complete file type=path
+        }
+        cmd check display_order=1 args_override_self=#false help="Recompute qualification from every saved observation and the independent corpus" unknown_flags=error {
+            flag --kit help="Independent Workbench corpus directory containing cases.json" required=#true {
+                arg <DIR>
+            }
+            flag --report help="Saved Workbench JSON evidence; its claimed results are independently recomputed" required=#true {
+                arg <FILE>
+            }
+            complete dir type=path
+            complete file type=path
+        }
+    }
+    cmd node-address display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run the draft V3/V4 semantic node-address corpus" unknown_flags=error {
         cmd run display_order=0 args_override_self=#false unknown_flags=value {
             flag --kit help="Fixed V3/V4 node-address case file" default="spec/ir/mck/node-address-draft.json" {
                 arg <KIT>
@@ -1485,7 +1519,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete report type=path
         }
     }
-    cmd report display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
+    cmd report display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
         cmd check display_order=0 args_override_self=#false help="Verify report inventory and the binding's allowed-failing baseline" unknown_flags=error {
             flag --kit help="Independent kit, defaulting to the embedded kit" {
                 arg <KIT>
@@ -1523,7 +1557,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete b type=path
         }
     }
-    cmd kit display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
+    cmd kit display_order=8 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
         cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {
             flag --kit help="A kit directory or a vendored snapshot's root; the kit embedded in this CLI when omitted" {
                 arg <DIR>

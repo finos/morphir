@@ -1,0 +1,37 @@
+{
+  "type": "tuple",
+  "items": [
+    {
+      "type": "decimal",
+      "coefficient": "1200",
+      "exponent": -3
+    },
+    {
+      "type": "float64",
+      "bits": "9223372036854775808"
+    },
+    {
+      "type": "float64",
+      "bits": "9221120237041090561"
+    },
+    {
+      "type": "text",
+      "units": [
+        65,
+        55296,
+        56320
+      ]
+    },
+    {
+      "type": "result",
+      "case": "err",
+      "value": {
+        "type": "character",
+        "units": [
+          83,
+          83
+        ]
+      }
+    }
+  ]
+}

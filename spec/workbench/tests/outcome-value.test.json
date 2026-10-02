@@ -1,0 +1,73 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json",
+  "tests": [
+    {
+      "description": "Result Err is an ordinary outcome value",
+      "data": {
+        "type": "result",
+        "case": "err",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "sdk.division_by_zero",
+      "data": {
+        "type": "model-error",
+        "code": "sdk.division_by_zero"
+      },
+      "valid": true
+    },
+    {
+      "description": "sdk.invalid_number",
+      "data": {
+        "type": "model-error",
+        "code": "sdk.invalid_number"
+      },
+      "valid": true
+    },
+    {
+      "description": "sdk.out_of_range",
+      "data": {
+        "type": "model-error",
+        "code": "sdk.out_of_range"
+      },
+      "valid": true
+    },
+    {
+      "description": "sdk.invalid_comparison",
+      "data": {
+        "type": "model-error",
+        "code": "sdk.invalid_comparison"
+      },
+      "valid": true
+    },
+    {
+      "description": "sdk.unrepresentable_text",
+      "data": {
+        "type": "model-error",
+        "code": "sdk.unrepresentable_text"
+      },
+      "valid": true
+    },
+    {
+      "description": "provider failure is not a model error",
+      "data": {
+        "type": "model-error",
+        "code": "provider.crashed"
+      },
+      "valid": false
+    },
+    {
+      "description": "model error has no arbitrary payload",
+      "data": {
+        "type": "model-error",
+        "code": "sdk.invalid_number",
+        "message": "x"
+      },
+      "valid": false
+    }
+  ]
+}

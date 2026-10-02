@@ -745,6 +745,11 @@ enum MckAction {
         #[command(subcommand)]
         action: MckPackageAction,
     },
+    /// Run Workbench value codecs or check their independently recomputed evidence
+    Workbench {
+        #[command(subcommand)]
+        action: MckWorkbenchAction,
+    },
     /// Run the draft V3/V4 semantic node-address corpus
     NodeAddress {
         #[command(subcommand)]
@@ -760,6 +765,14 @@ enum MckAction {
         #[command(subcommand)]
         action: MckKitAction,
     },
+}
+
+#[derive(Clone, Subcommand)]
+enum MckWorkbenchAction {
+    /// Run the explicit Workbench codec corpus against an explicit adapter
+    Run(commands::mck::workbench::RunArgs),
+    /// Recompute qualification from every saved observation and the independent corpus
+    Check(commands::mck::workbench::CheckArgs),
 }
 
 #[derive(Clone, Subcommand)]
@@ -1276,6 +1289,14 @@ impl AppSession for MorphirSession {
                     }
                 },
                 MckAction::Run(args) => run_mck_run(args.clone()).await,
+                MckAction::Workbench { action } => match action {
+                    MckWorkbenchAction::Run(args) => {
+                        commands::mck::workbench::run(args.clone()).await
+                    }
+                    MckWorkbenchAction::Check(args) => {
+                        commands::mck::workbench::check(args.clone())
+                    }
+                },
                 MckAction::NodeAddress { action } => match action {
                     MckNodeAddressAction::Run(args) => {
                         commands::mck::node_address::run(args.clone())
@@ -1640,6 +1661,122 @@ async fn run() -> starbase::MainResult {
     }
     .instrument(operation_span)
     .await
+}
+
+#[cfg(test)]
+mod workbench_cli_tests {
+    use super::Cli;
+    use clap::Parser;
+
+    #[test]
+    fn workbench_cli_accepts_explicit_corpus_and_adapter() {
+        let parsed = Cli::try_parse_from([
+            "morphir",
+            "mck",
+            "workbench",
+            "run",
+            "--kit",
+            "spec/workbench/mck",
+            "--adapter",
+            "node",
+            "--adapter-arg",
+            "--no-warnings",
+            "--report",
+            "report.json",
+            "--timeout",
+            "100",
+            "--session-timeout",
+            "1000",
+        ]);
+        assert!(parsed.is_ok(), "{}", parsed.err().unwrap());
+        assert!(
+            Cli::try_parse_from([
+                "morphir",
+                "mck",
+                "workbench",
+                "check",
+                "--kit",
+                "spec/workbench/mck",
+                "--report",
+                "report.json",
+            ])
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn workbench_cli_requires_explicit_inputs_and_positive_timeouts() {
+        for args in [
+            vec![
+                "morphir",
+                "mck",
+                "workbench",
+                "run",
+                "--adapter",
+                "node",
+                "--report",
+                "report.json",
+            ],
+            vec![
+                "morphir",
+                "mck",
+                "workbench",
+                "run",
+                "--kit",
+                "kit",
+                "--report",
+                "report.json",
+            ],
+            vec![
+                "morphir",
+                "mck",
+                "workbench",
+                "run",
+                "--kit",
+                "kit",
+                "--adapter",
+                "node",
+            ],
+            vec![
+                "morphir",
+                "mck",
+                "workbench",
+                "run",
+                "--kit",
+                "kit",
+                "--adapter",
+                "node",
+                "--report",
+                "report.json",
+                "--timeout",
+                "0",
+            ],
+            vec![
+                "morphir",
+                "mck",
+                "workbench",
+                "run",
+                "--kit",
+                "kit",
+                "--adapter",
+                "node",
+                "--report",
+                "report.json",
+                "--session-timeout",
+                "0",
+            ],
+            vec![
+                "morphir",
+                "mck",
+                "workbench",
+                "check",
+                "--report",
+                "report.json",
+            ],
+        ] {
+            assert!(Cli::try_parse_from(args.clone()).is_err(), "{args:?}");
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1,0 +1,415 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/invocations.schema.json",
+  "tests": [
+    {
+      "description": "existing frozen invocation document",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "difference",
+            "entry": "calls:main#subtract",
+            "arguments": [
+              {
+                "type": "int",
+                "value": "9007199254741035"
+              },
+              {
+                "type": "int",
+                "value": "9007199254740993"
+              }
+            ]
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "explicit Ion binary metadata projection",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "difference",
+            "entry": "calls:main#subtract",
+            "arguments": [
+              {
+                "type": "int",
+                "value": "9007199254741035"
+              },
+              {
+                "type": "int",
+                "value": "9007199254740993"
+              }
+            ]
+          }
+        ],
+        "extensions": {
+          "format": "ion-binary",
+          "bytes": [
+            224,
+            1,
+            0,
+            234,
+            15
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "at least one call",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": []
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown codec ID",
+      "data": {
+        "profile": "morphir-invocations-v2",
+        "calls": [
+          {
+            "id": "difference",
+            "entry": "calls:main#subtract",
+            "arguments": [
+              {
+                "type": "int",
+                "value": "9007199254741035"
+              },
+              {
+                "type": "int",
+                "value": "9007199254740993"
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "empty call identity",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "",
+            "entry": "calls:main#subtract",
+            "arguments": [
+              {
+                "type": "int",
+                "value": "9007199254741035"
+              },
+              {
+                "type": "int",
+                "value": "9007199254740993"
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "missing argument array",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "one",
+            "entry": "calls:main#subtract"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "65 arguments exceeds the per-call boundary",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "difference",
+            "entry": "calls:main#subtract",
+            "arguments": [
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              },
+              {
+                "type": "unit"
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "outcome error cannot be supplied as input",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "difference",
+            "entry": "calls:main#subtract",
+            "arguments": [
+              {
+                "type": "model-error",
+                "code": "sdk.out_of_range"
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown suite members remain forbidden",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "difference",
+            "entry": "calls:main#subtract",
+            "arguments": [
+              {
+                "type": "int",
+                "value": "9007199254741035"
+              },
+              {
+                "type": "int",
+                "value": "9007199254740993"
+              }
+            ]
+          }
+        ],
+        "formatVersion": "0.1.0-draft.1"
+      },
+      "valid": false
+    },
+    {
+      "description": "binary extension byte range",
+      "data": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "difference",
+            "entry": "calls:main#subtract",
+            "arguments": [
+              {
+                "type": "int",
+                "value": "9007199254741035"
+              },
+              {
+                "type": "int",
+                "value": "9007199254740993"
+              }
+            ]
+          }
+        ],
+        "extensions": {
+          "format": "ion-binary",
+          "bytes": [
+            256
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "exact-difference invocation example",
+      "dataPath": "../examples/exact-difference.invocations.json",
+      "valid": true
+    }
+  ]
+}

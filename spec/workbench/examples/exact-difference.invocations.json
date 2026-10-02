@@ -1,0 +1,19 @@
+{
+  "profile": "morphir-invocations-v1",
+  "calls": [
+    {
+      "id": "difference",
+      "entry": "calls:main#subtract",
+      "arguments": [
+        {
+          "type": "int",
+          "value": "9007199254741035"
+        },
+        {
+          "type": "int",
+          "value": "9007199254740993"
+        }
+      ]
+    }
+  ]
+}
