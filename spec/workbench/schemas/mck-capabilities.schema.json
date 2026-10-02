@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/mck-capabilities.schema.json",
+  "title": "Draft Workbench MCK capabilities",
+  "description": "Closed capability claims for the explicitly supported codec draft and input formats",
+  "examples": [
+    {
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.1",
+      "binding": "morphir-moonbit",
+      "language": "moonbit",
+      "operations": [ "decode-value" ],
+      "formats": [ "json", "ion-text" ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "binding",
+    "language",
+    "operations",
+    "formats"
+  ],
+  "properties": {
+    "suite": {
+      "const": "workbench"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "binding": {
+      "type": "string",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "type": "array",
+      "maxItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "const": "decode-value"
+      }
+    },
+    "formats": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [ "json", "ion-text" ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

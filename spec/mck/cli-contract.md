@@ -8,6 +8,12 @@ The IR commands retain their approved contract. The package addition under
 Ownership is recorded in
 [decision 0003](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md).
 
+The proposed [Workbench codec slice](../workbench/mck/README.md) adds `workbench run`
+and `workbench check`, using the same bounded transport and a separate
+`0.1.0-draft.1` corpus/report contract. The explicit adapter produces observations;
+parent-owned goldens determine verdicts. The approved IR command/report contract
+and connected-host protocol remain unchanged. Workbench adoption is pending review.
+
 Each behaviour below is marked **kept** (same as the TypeScript driver at the
 [baseline](baseline/README.md)), **hardened** (a deliberate, stricter departure) or **new**.
 
@@ -44,6 +50,9 @@ morphir mck package run --kit <dir> --adapter <exe> [--adapter-arg <arg>]...
                         [--contract <version>] [--report <file>]
                         [--timeout <ms>] [--session-timeout <ms>]
 morphir mck package inspect --source <repository-root> --contract 0.1.0-draft.3
+morphir mck workbench run --kit <dir> --adapter <exe> [--adapter-arg <arg>]...
+                          --report <file> [--timeout <ms>] [--session-timeout <ms>]
+morphir mck workbench check --kit <dir> --report <file>
 morphir mck kit status [--kit <dir>] [--json]
 morphir mck kit vendor --source <source> [--revision <commit>] [--expect-digest <digest>] --dest <dir>
 morphir mck kit update --kit <dir> [--source <source>] [--revision <commit>] [--expect-digest <digest>]

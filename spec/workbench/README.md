@@ -12,7 +12,7 @@ Morphir's SemVer contract rules and explicitly map these existing codec IDs.
 
 The existing Rust connected host stays at `protocolVersion: 1`, with its existing
 compile, generate and workspace methods. This contribution defines no RPC method,
-job receipt or capability claim. Clients must keep connected evaluation and server
+job receipt or connected-host capability claim. Clients must keep connected evaluation and server
 cancellation unavailable until the host implements and advertises an agreed
 extension. Compile output and generation must use the same negotiated IR version,
 even when a client migrates a copy for local inspection.
@@ -115,9 +115,12 @@ After structural validation, a decoder and the execution engine must enforce:
   arity; recursive registry and declared argument types.
 - At most 64 KiB of extensions, containing a valid Ion binary value.
 
-The accepted and rejected structural fixtures are language-neutral. Semantic
-fixtures, Ion/JSON roundtrip goldens, comparisons and execution receipts belong in
-the shared Rust `morphir mck` runner through explicit implementation adapters.
+The accepted and rejected structural fixtures are language-neutral. The
+[codec compatibility slice](mck/README.md) adds independent JSON/Ion text decode
+goldens through the shared Rust `morphir mck workbench` commands and explicit
+implementation adapters. Its test negotiation does not change host capabilities.
+Ion binary/reverse-encode goldens, declared-type admission, SDK comparison and
+execution receipts remain pending in the shared runner.
 There is no second compatibility checker here. Complete the shared fixture
 intersection and connected host acceptance before advertising an extension.
 
@@ -129,6 +132,7 @@ The source is finos/morphir-moonbit at merged PR #36 revision
 - [Invocation codec and limits](https://github.com/finos/morphir-moonbit/blob/fd4026eff313ed0d94f7e9ccb3ec79a63864f1e0/pkgs/morphir-execution/values.mbt)
 - [Typed value codec and manifest admission](https://github.com/finos/morphir-moonbit/blob/fd4026eff313ed0d94f7e9ccb3ec79a63864f1e0/pkgs/morphir-execution/rich_values.mbt)
 - [Execution contract documentation](https://github.com/finos/morphir-moonbit/blob/fd4026eff313ed0d94f7e9ccb3ec79a63864f1e0/pkgs/morphir-execution/README.md)
+- [MoonBit MCK adapter and acceptance gate](https://github.com/finos/morphir-moonbit/tree/d81eeaf0ae0123ffd76c98d7563318abd4e07c2f/apps/morphir-workbench/mck)
 
 Local Workbench
 input controls and result display trees are private UI projections and are not
@@ -137,7 +141,8 @@ part of the profile. The parent connected-protocol inventory was inspected at
 execution also requires the corresponding model and public entry manifest.
 
 The next slice maps full invocation manifests, outcomes and lifecycle receipts,
-then adds shared MCK fixtures and Rust/TypeScript/MoonBit adapter acceptance.
+extends MCK with declared-type/binary/reverse-encode fixtures and adds independent
+Rust/TypeScript adapters alongside the current MoonBit codec adapter.
 Model/revision handles, worksheet source maps, job query/cancellation/recovery,
 artifact publication and provider availability require coordinated host and UI
 contracts. Required results remain separate from observational telemetry.

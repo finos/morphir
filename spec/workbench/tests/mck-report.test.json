@@ -1,0 +1,185 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "complete structural report",
+      "data": {
+        "formatVersion": "0.1.0-draft.1",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.1",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "required nullable observation",
+      "data": {
+        "formatVersion": "0.1.0-draft.1",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.1",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "error"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "qualified is a boolean",
+      "data": {
+        "formatVersion": "0.1.0-draft.1",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.1",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": "yes"
+      },
+      "valid": false
+    },
+    {
+      "description": "hash must be lowercase SHA-256",
+      "data": {
+        "formatVersion": "0.1.0-draft.1",
+        "suite": "workbench",
+        "corpusHash": "ABC",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.1",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "closed report",
+      "data": {
+        "formatVersion": "0.1.0-draft.1",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.1",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true,
+        "success": true
+      },
+      "valid": false
+    }
+  ]
+}

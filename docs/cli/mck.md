@@ -15,3 +15,4 @@ Morphir Compatibility Kit: validate, vendor and run compatibility kits
 - [`morphir mck report <SUBCOMMAND>`](mck/report.md)
 - [`morphir mck run <FLAGS>`](mck/run.md)
 - [`morphir mck schema <SUBCOMMAND>`](mck/schema.md)
+- [`morphir mck workbench <SUBCOMMAND>`](mck/workbench.md)

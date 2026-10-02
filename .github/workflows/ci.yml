@@ -123,6 +123,7 @@ jobs:
               - '**/*.md'
               - 'spec/ir/**'
               - 'spec/package/**'
+              - 'spec/workbench/**'
               # the tracked IR fixtures and the corpus generator are validated
               # in the docs job, and the mise tasks define what that job runs
               - 'tests/bdd/fixtures/**'
@@ -149,6 +150,7 @@ jobs:
               - 'spec/ir/mck/**'
               # parent-owned kit data and contracts mck:check validates
               - 'spec/mck/**'
+              - 'spec/workbench/**'
               - 'website/static/schemas/morphir-ir-v4.json'
               - 'website/static/schemas/morphir-ir-v4-document-tree-files.json'
               - 'website/static/schemas/morphir-ir-v4.yaml'
@@ -501,6 +503,9 @@ jobs:
 
       - name: Validate draft package schemas and examples
         run: mise run package:schema-check
+
+      - name: Validate draft Workbench schemas and codec corpus
+        run: mise run workbench:schema-check
 
       # The package suite itself runs in the package-mck job, whose filter
       # covers every input of `package:check`.

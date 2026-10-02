@@ -39,6 +39,7 @@ use starbase::AppResult;
 pub mod node_address;
 pub mod package;
 pub mod report;
+pub mod workbench;
 
 #[derive(Args, Clone, Debug)]
 pub struct MckSchemaCheckArgs {

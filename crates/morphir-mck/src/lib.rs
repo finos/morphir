@@ -24,6 +24,7 @@ pub mod report;
 pub mod schema;
 pub mod steps;
 pub mod transport;
+pub mod workbench;
 
 /// The runner's interpretation of a kit, as an integer a vendored kit's
 /// manifest can bound (`driverContract`). It increases only when that

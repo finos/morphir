@@ -151,12 +151,13 @@ description = "Validate schemas against metaschema"
 run = "bun run tools/validate-schemas.ts"
 
 [tasks."workbench:schema-check"]
-description = "Validate draft Workbench value schemas and examples, not semantic MCK compatibility"
+description = "Validate draft Workbench value and MCK schemas, examples and corpus structure"
 run = [
     "jsonschema fmt spec/workbench/schemas --check",
     "jsonschema lint spec/workbench/schemas -r spec/workbench/schemas",
     "jsonschema metaschema spec/workbench/schemas",
     "jsonschema test spec/workbench/tests -r spec/workbench/schemas",
+    "jsonschema validate spec/workbench/schemas/mck-corpus.schema.json spec/workbench/mck/cases.json -r spec/workbench/schemas",
 ]
 
 # Not part of `check`: website:build-schemas depends on website:install, whose
