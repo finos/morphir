@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/definitions.schema.json",
+  "title": "Bounded Workbench constructor registry",
+  "description": "Closed custom type and constructor declarations; uniqueness, UTF-16 identity and aggregate graph limits require semantic admission",
+  "examples": [
+    [
+      {
+        "name": "example:tree#tree",
+        "constructors": [
+          {
+            "name": "example:tree#leaf",
+            "inputs": [
+              {
+                "type": "int"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  ],
+  "type": "array",
+  "maxItems": 256,
+  "items": {
+    "type": "object",
+    "required": [ "name", "constructors" ],
+    "properties": {
+      "name": {
+        "type": "string",
+        "maxLength": 1024,
+        "minLength": 1
+      },
+      "constructors": {
+        "type": "array",
+        "maxItems": 256,
+        "items": {
+          "type": "object",
+          "required": [ "name", "inputs" ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            "inputs": {
+              "type": "array",
+              "maxItems": 64,
+              "items": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "additionalProperties": false
+  }
+}

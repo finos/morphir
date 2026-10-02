@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-observation.schema.json",
+  "title": "Draft Workbench MCK observation",
+  "description": "A closed value observation with a typed projection or a bounded rejection code; argument admission forbids successful model-error observations",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "type": "unit"
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "status", "value" ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "status", "code" ],
+      "properties": {
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

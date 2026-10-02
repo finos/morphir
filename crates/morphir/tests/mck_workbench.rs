@@ -125,3 +125,47 @@ fn report_output_cannot_replace_the_independent_corpus() {
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(std::fs::read(path).unwrap(), before);
 }
+
+#[test]
+fn admission_report_retains_operation_and_rejects_forged_dispatch() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    std::fs::write(
+        kit.join("cases.json"),
+        json!({"formatVersion":"0.1.0-draft.2","cases":[{
+            "id":"typed-int","operation":"validate-value","format":"json",
+            "input":{"value":{"type":"int","value":"7"},"type":{"type":"int"},"definitions":[]},
+            "expected":{"status":"ok","value":{"type":"int","value":"7"}}
+        }]})
+        .to_string(),
+    )
+    .unwrap();
+    let report = root.path().join("report.json");
+    let run = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(1));
+    let mut saved: Value = serde_json::from_slice(&std::fs::read(&report).unwrap()).unwrap();
+    assert_eq!(saved["formatVersion"], "0.1.0-draft.2");
+    assert_eq!(saved["records"][0]["operation"], "validate-value");
+    assert_eq!(check(&kit, &report).status.code(), Some(1));
+    saved["capabilities"] = json!({"suite":"workbench","contractVersion":"0.1.0-draft.2","binding":"transcript","language":"fixture","operations":["validate-value"],"formats":["json"]});
+    saved["errors"] = json!([]);
+    saved["qualified"] = json!(true);
+    saved["records"][0]["result"] = json!("pass");
+    saved["records"][0]["observed"] = json!({"status":"ok","value":{"type":"int","value":"7"}});
+    std::fs::write(&report, saved.to_string()).unwrap();
+    assert_eq!(check(&kit, &report).status.code(), Some(0));
+    saved["records"][0]["operation"] = json!("decode-value");
+    std::fs::write(&report, saved.to_string()).unwrap();
+    let forged = check(&kit, &report);
+    assert_eq!(forged.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&forged.stderr).contains("identity/order"));
+}

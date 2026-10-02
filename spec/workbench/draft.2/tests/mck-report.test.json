@@ -1,0 +1,156 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "explicit operation report",
+      "data": {
+        "formatVersion": "0.1.0-draft.2",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.2",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            },
+            "operation": "decode-value"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "missing record operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.2",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.2",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "null record operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.2",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.2",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            },
+            "operation": null
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "same draft capabilities required",
+      "data": {
+        "formatVersion": "0.1.0-draft.2",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.1",
+          "binding": "morphir-moonbit",
+          "language": "moonbit",
+          "operations": [
+            "decode-value"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "unit-json",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            },
+            "operation": "decode-value"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    }
+  ]
+}

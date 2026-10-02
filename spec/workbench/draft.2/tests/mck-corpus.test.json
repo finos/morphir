@@ -1,0 +1,73 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "explicit decode case",
+      "data": {
+        "formatVersion": "0.1.0-draft.2",
+        "cases": [
+          {
+            "id": "unit-json",
+            "format": "json",
+            "input": {
+              "type": "unit"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            },
+            "operation": "decode-value"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "missing operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.2",
+        "cases": [
+          {
+            "id": "unit-json",
+            "format": "json",
+            "input": {
+              "type": "unit"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.2",
+        "cases": [
+          {
+            "id": "unit-json",
+            "format": "json",
+            "input": {
+              "type": "unit"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            },
+            "operation": "evaluate"
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "both operation formats",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "decode-value",
+          "validate-value"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "unknown operation",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "evaluate"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "duplicate operation",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-value",
+          "validate-value"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "historical draft is separate",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.1",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "decode-value",
+          "validate-value"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "unsupported capability set",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [],
+        "formats": []
+      },
+      "valid": true
+    }
+  ]
+}

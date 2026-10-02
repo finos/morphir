@@ -1,6 +1,8 @@
 # Workbench typed value profile
 
-Schema package version: `0.1.0-draft.1`. Status: proposed adoption of the MoonBit
+Codec schema package version: `0.1.0-draft.1`. The separately negotiated
+[declared-value admission contract](draft.2/README.md) uses `0.1.0-draft.2` and
+preserves the original codec schemas and kit. These profiles adopt the MoonBit
 execution codecs. Draft readers support only an explicitly listed exact draft.
 Schema identifiers identify this draft package; they are not an announcement of
 deployed URLs or runtime support.
@@ -119,8 +121,9 @@ The accepted and rejected structural fixtures are language-neutral. The
 [codec compatibility slice](mck/README.md) adds independent JSON/Ion text decode
 goldens through the shared Rust `morphir mck workbench` commands and explicit
 implementation adapters. Its test negotiation does not change host capabilities.
-Ion binary/reverse-encode goldens, declared-type admission, SDK comparison and
-execution receipts remain pending in the shared runner.
+The separate draft.2 kit adds declared-type admission with bounded constructor
+registry closure. Ion binary/reverse-encode goldens, SDK comparison and execution
+receipts remain pending in the shared runner.
 There is no second compatibility checker here. Complete the shared fixture
 intersection and connected host acceptance before advertising an extension.
 
@@ -141,7 +144,7 @@ part of the profile. The parent connected-protocol inventory was inspected at
 execution also requires the corresponding model and public entry manifest.
 
 The next slice maps full invocation manifests, outcomes and lifecycle receipts,
-extends MCK with declared-type/binary/reverse-encode fixtures and adds independent
+extends MCK with binary/reverse-encode fixtures and adds independent
 Rust/TypeScript adapters alongside the current MoonBit codec adapter.
 Model/revision handles, worksheet source maps, job query/cancellation/recovery,
 artifact publication and provider availability require coordinated host and UI

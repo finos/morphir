@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json",
+  "title": "Declared Workbench value type",
+  "description": "Closed declared types, including named recursive references; semantic admission rejects functions and unresolved registry names",
+  "examples": [
+    {
+      "type": "int"
+    },
+    {
+      "type": "list",
+      "item": {
+        "type": "custom",
+        "name": "example:tree#tree"
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "type" ],
+      "properties": {
+        "type": {
+          "const": "int"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type" ],
+      "properties": {
+        "type": {
+          "const": "bool"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type" ],
+      "properties": {
+        "type": {
+          "const": "unit"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type" ],
+      "properties": {
+        "type": {
+          "const": "decimal"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type" ],
+      "properties": {
+        "type": {
+          "const": "float64"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type" ],
+      "properties": {
+        "type": {
+          "const": "text"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type" ],
+      "properties": {
+        "type": {
+          "const": "character"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type" ],
+      "properties": {
+        "type": {
+          "const": "function"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type", "item" ],
+      "properties": {
+        "type": {
+          "const": "list"
+        },
+        "item": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type", "item" ],
+      "properties": {
+        "type": {
+          "const": "maybe"
+        },
+        "item": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type", "items" ],
+      "properties": {
+        "type": {
+          "const": "tuple"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type", "fields" ],
+      "properties": {
+        "type": {
+          "const": "record"
+        },
+        "fields": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "type": "object",
+            "required": [ "name", "type" ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 1024,
+                "minLength": 1
+              },
+              "type": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type", "name" ],
+      "properties": {
+        "type": {
+          "const": "custom"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "type", "ok", "err" ],
+      "properties": {
+        "type": {
+          "const": "result"
+        },
+        "ok": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json"
+        },
+        "err": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/value-type.schema.json"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -5,7 +5,9 @@ mod corpus;
 mod report;
 mod run;
 
-pub use contract::{Capabilities, Format, MAX_VALUE_BYTES, Observation, Operation, VERSION};
+pub use contract::{
+    ADMISSION_VERSION, Capabilities, Format, MAX_VALUE_BYTES, Observation, Operation, VERSION,
+};
 pub use corpus::{Corpus, load};
 pub use report::{
     Failure, MAX_OBSERVATION_BYTES, MAX_REPORT_BYTES, Phase, Record, Report, ResultKind,

@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-corpus.schema.json",
+  "title": "Draft Workbench MCK corpus",
+  "description": "Independent operation inputs and expected projections; only inputs and operation context are sent to adapters",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.2",
+      "cases": [
+        {
+          "id": "unit-json",
+          "format": "json",
+          "input": {
+            "type": "unit"
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "type": "unit"
+            }
+          },
+          "operation": "decode-value"
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.2"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "json"
+              },
+              "input": true,
+              "expected": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-observation.schema.json"
+              },
+              "operation": {
+                "const": "decode-value"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "ion-text"
+              },
+              "input": {
+                "type": "string"
+              },
+              "expected": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-observation.schema.json"
+              },
+              "operation": {
+                "const": "decode-value"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "json"
+              },
+              "input": {
+                "type": "object",
+                "required": [ "value", "type", "definitions" ],
+                "properties": {
+                  "value": true,
+                  "type": true,
+                  "definitions": true
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-observation.schema.json"
+              },
+              "operation": {
+                "const": "validate-value"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "ion-text"
+              },
+              "input": {
+                "type": "object",
+                "required": [ "value", "type", "definitions" ],
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "type": true,
+                  "definitions": true
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.2/mck-observation.schema.json"
+              },
+              "operation": {
+                "const": "validate-value"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

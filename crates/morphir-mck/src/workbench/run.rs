@@ -3,7 +3,7 @@ use std::path::Path;
 
 use serde_json::{Value, json};
 
-use super::contract::{Capabilities, Observation, VERSION, encoded_size};
+use super::contract::{Capabilities, Observation, encoded_size};
 use super::corpus::{Corpus, load};
 use super::report::{Failure, MAX_OBSERVATION_BYTES, Phase, Record, Report, ResultKind};
 use crate::transport::{Limits, Session};
@@ -50,8 +50,10 @@ pub fn run_with_session(corpus: &Corpus, mut session: Session) -> Report {
 pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
     let mut report = Report::new(corpus);
     let negotiated = adapter
-        .exchange(&json!({"op":"capabilities","suite":"workbench","contractVersion":VERSION}))
-        .and_then(Capabilities::parse);
+        .exchange(
+            &json!({"op":"capabilities","suite":"workbench","contractVersion":corpus.version}),
+        )
+        .and_then(|value| Capabilities::parse(value, &corpus.version));
     match negotiated {
         Ok(caps) => report.capabilities = Some(caps),
         Err(message) => report
@@ -63,6 +65,7 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
     for case in &corpus.cases {
         let mut record = Record {
             case_id: case.id.clone(),
+            operation: case.operation,
             format: case.format,
             result: ResultKind::Error,
             observed: None,
@@ -70,17 +73,18 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
         if report
             .capabilities
             .as_ref()
-            .is_some_and(|c| !c.supports(case.format))
+            .is_some_and(|c| !c.supports(case.operation(), case.format))
         {
             record.result = ResultKind::Unsupported;
         } else if !broken {
             let observed = adapter
                 .exchange(
-                    &json!({"op":"decode-value","suite":"workbench","contractVersion":VERSION,
+                    &json!({"op":case.operation(),"suite":"workbench","contractVersion":corpus.version,
                 "format":case.format,"input":case.input}),
                 )
                 .and_then(Observation::parse)
                 .and_then(|observation| {
+                    observation.validate_for(case.operation())?;
                     let bytes = encoded_size(&observation, observation_budget)?;
                     observation_budget -= bytes;
                     case.expected
