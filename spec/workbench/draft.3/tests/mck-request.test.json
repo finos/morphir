@@ -1,0 +1,245 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-request.schema.json",
+  "tests": [
+    {
+      "description": "JSON suite",
+      "data": {
+        "id": 2,
+        "op": "validate-invocations",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "format": "json",
+        "input": {
+          "suite": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "c",
+                "entry": "demo:main#entry",
+                "arguments": []
+              }
+            ]
+          },
+          "manifest": {
+            "entries": [
+              {
+                "name": "demo:main#entry",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Ion suite",
+      "data": {
+        "id": 2,
+        "op": "validate-invocations",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "format": "ion-text",
+        "input": {
+          "suite": "{profile:\"morphir-invocations-v1\",calls:[{id:\"c\",entry:\"demo:main#entry\",arguments:[]}]}",
+          "manifest": {
+            "entries": [
+              {
+                "name": "demo:main#entry",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "negative manifest reaches adapter",
+      "data": {
+        "id": 2,
+        "op": "validate-invocations",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "format": "json",
+        "input": {
+          "suite": null,
+          "manifest": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "missing manifest",
+      "data": {
+        "id": 2,
+        "op": "validate-invocations",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "format": "json",
+        "input": {
+          "suite": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "c",
+                "entry": "demo:main#entry",
+                "arguments": []
+              }
+            ]
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "extra envelope",
+      "data": {
+        "id": 2,
+        "op": "validate-invocations",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "format": "json",
+        "input": {
+          "suite": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "c",
+                "entry": "demo:main#entry",
+                "arguments": []
+              }
+            ]
+          },
+          "manifest": {
+            "entries": [
+              {
+                "name": "demo:main#entry",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          },
+          "extra": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Ion suite must be text",
+      "data": {
+        "id": 2,
+        "op": "validate-invocations",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "format": "ion-text",
+        "input": {
+          "suite": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "c",
+                "entry": "demo:main#entry",
+                "arguments": []
+              }
+            ]
+          },
+          "manifest": {
+            "entries": [
+              {
+                "name": "demo:main#entry",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "old draft",
+      "data": {
+        "id": 2,
+        "op": "validate-invocations",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.2",
+        "format": "json",
+        "input": {
+          "suite": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "c",
+                "entry": "demo:main#entry",
+                "arguments": []
+              }
+            ]
+          },
+          "manifest": {
+            "entries": [
+              {
+                "name": "demo:main#entry",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown operation",
+      "data": {
+        "id": 2,
+        "op": "evaluate",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "format": "json",
+        "input": {
+          "suite": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "c",
+                "entry": "demo:main#entry",
+                "arguments": []
+              }
+            ]
+          },
+          "manifest": {
+            "entries": [
+              {
+                "name": "demo:main#entry",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    }
+  ]
+}

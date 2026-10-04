@@ -149,3 +149,8 @@ Rust/TypeScript adapters alongside the current MoonBit codec adapter.
 Model/revision handles, worksheet source maps, job query/cancellation/recovery,
 artifact publication and provider availability require coordinated host and UI
 contracts. Required results remain separate from observational telemetry.
+
+[Draft.3 invocation admission](draft.3/README.md) adds bounded public-entry allowlist,
+argument arity and declared invocation-value checks with an explicit
+[242-case kit](mck/draft.3/README.md). It preserves the historical drafts and frozen
+payload IDs. Output-value admission and connected execution remain separate work.

@@ -169,3 +169,31 @@ fn admission_report_retains_operation_and_rejects_forged_dispatch() {
     assert_eq!(forged.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&forged.stderr).contains("identity/order"));
 }
+
+#[test]
+fn invocation_report_requires_operation_specific_suite_projection() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    let suite = json!({"profile":"morphir-invocations-v1","calls":[{"id":"c","entry":"demo:main#id","arguments":[]}]});
+    std::fs::write(kit.join("cases.json"),json!({"formatVersion":"0.1.0-draft.3","cases":[{"id":"invoke","operation":"validate-invocations","format":"json","input":{"suite":suite,"manifest":{"entries":[{"name":"demo:main#id","inputs":[],"output":{"type":"unit"}}],"definitions":[]}},"expected":{"status":"ok","value":suite}}]}).to_string()).unwrap();
+    let hash = morphir_mck::workbench::load(&kit)
+        .unwrap()
+        .corpus_hash()
+        .to_owned();
+    let mut saved = json!({"formatVersion":"0.1.0-draft.3","suite":"workbench","corpusHash":hash,"capabilities":{"suite":"workbench","contractVersion":"0.1.0-draft.3","binding":"transcript","language":"fixture","operations":["validate-invocations"],"formats":["json"]},"records":[{"caseId":"invoke","operation":"validate-invocations","format":"json","result":"pass","observed":{"status":"ok","value":suite}}],"errors":[],"qualified":true});
+    let report = root.path().join("report.json");
+    std::fs::write(&report, saved.to_string()).unwrap();
+    let result = check(&kit, &report);
+    assert_eq!(
+        result.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    saved["records"][0]["observed"]["value"] = json!({"type":"unit"});
+    std::fs::write(&report, saved.to_string()).unwrap();
+    let result = check(&kit, &report);
+    assert_eq!(result.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&result.stderr).contains("invocation projection"));
+}

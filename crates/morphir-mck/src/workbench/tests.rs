@@ -621,3 +621,210 @@ fn workbench_admission_draft_bounds_compact_ion_inputs_without_changing_legacy()
         assert_eq!(load(root.path()).is_ok(), draft == VERSION);
     }
 }
+
+fn invocation_source() -> tempfile::TempDir {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("cases.json"), json!({
+        "formatVersion":"0.1.0-draft.3", "cases":[{
+            "id":"invoke-int", "operation":"validate-invocations", "format":"json",
+            "input":{"suite":{"profile":"morphir-invocations-v1","calls":[{"id":"c","entry":"demo:main#id","arguments":[{"type":"int","value":"007"}]}]},"manifest":{"entries":[{"name":"demo:main#id","inputs":[{"type":"int"}],"output":{"type":"int"}}],"definitions":[]}},
+            "expected":{"status":"ok","value":{"profile":"morphir-invocations-v1","calls":[{"id":"c","entry":"demo:main#id","arguments":[{"type":"int","value":"7"}]}]}}
+        }]
+    }).to_string()).unwrap();
+    root
+}
+fn invocation_caps() -> Value {
+    json!({"suite":"workbench","contractVersion":"0.1.0-draft.3","binding":"fixture","language":"test","operations":["decode-value","validate-value","validate-invocations"],"formats":["json","ion-text"]})
+}
+#[test]
+fn workbench_invocation_dispatch_and_report_context_are_bound() {
+    let root = invocation_source();
+    let corpus = load(root.path()).unwrap();
+    let expected = serde_json::to_value(&corpus.cases[0].expected).unwrap();
+    let mut adapter = Fake {
+        replies: vec![Ok(invocation_caps()), Ok(expected)],
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(report.qualified);
+    assert_eq!(adapter.requests[1]["op"], "validate-invocations");
+    assert!(
+        adapter
+            .requests
+            .iter()
+            .all(|r| r.get("expected").is_none() && r.get("caseId").is_none())
+    );
+    check_report(root.path(), &report).unwrap();
+    let mut forged = serde_json::to_value(report).unwrap();
+    forged["records"][0]["operation"] = json!("validate-value");
+    assert!(
+        check_report(
+            root.path(),
+            &Report::from_json(&forged.to_string()).unwrap()
+        )
+        .is_err()
+    );
+}
+#[test]
+fn workbench_invocation_projection_rejects_argument_errors_and_duplicate_calls() {
+    let root = invocation_source();
+    let corpus = load(root.path()).unwrap();
+    for mutate in 0..4 {
+        let mut observation = serde_json::to_value(&corpus.cases[0].expected).unwrap();
+        match mutate {
+            0 => {
+                observation["value"]["calls"][0]["arguments"][0] =
+                    json!({"type":"model-error","code":"sdk.division_by_zero"})
+            }
+            1 => {
+                observation["value"]["calls"][0]["arguments"][0] = json!({"type":"list","items":[{"type":"model-error","code":"sdk.division_by_zero"}]})
+            }
+            2 => {
+                let call = observation["value"]["calls"][0].clone();
+                observation["value"]["calls"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(call);
+            }
+            _ => observation["value"]["calls"][0]["arguments"][0]["value"] = json!("007"),
+        }
+        let mut adapter = Fake {
+            replies: vec![Ok(invocation_caps()), Ok(observation)],
+            requests: vec![],
+        };
+        let report = execute(&corpus, &mut adapter);
+        assert!(!report.qualified);
+        assert_eq!(report.errors[0].phase, Phase::Exchange);
+        check_report(root.path(), &report).unwrap();
+    }
+}
+#[test]
+fn workbench_invocation_operation_is_rejected_by_older_drafts() {
+    for version in [VERSION, ADMISSION_VERSION] {
+        let mut caps = invocation_caps();
+        caps["contractVersion"] = json!(version);
+        assert!(Capabilities::parse(caps, version).is_err());
+        let root = invocation_source();
+        let mut doc: Value =
+            serde_json::from_slice(&std::fs::read(root.path().join("cases.json")).unwrap())
+                .unwrap();
+        doc["formatVersion"] = json!(version);
+        std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
+        assert!(load(root.path()).is_err());
+    }
+}
+
+#[test]
+fn workbench_invocation_projection_budgets_are_per_call_not_per_argument() {
+    let root = invocation_source();
+    let mut doc: Value =
+        serde_json::from_slice(&std::fs::read(root.path().join("cases.json")).unwrap()).unwrap();
+    let text = |n| json!({"type":"text","units":vec![0;n]});
+    let call = json!({"id":"first","entry":"demo:main#id","arguments":[text(50_000),text(49_998)]});
+    let mut second = call.clone();
+    second["id"] = json!("second");
+    doc["cases"][0]["expected"]["value"] =
+        json!({"profile":"morphir-invocations-v1","calls":[call,second]});
+    std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
+    let corpus = load(root.path()).unwrap();
+    let mut adapter = Fake {
+        replies: vec![
+            Ok(invocation_caps()),
+            Ok(serde_json::to_value(&corpus.cases[0].expected).unwrap()),
+        ],
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(report.qualified);
+    check_report(root.path(), &report).unwrap();
+    doc["cases"][0]["expected"]["value"]["calls"][0]["arguments"][1] = text(49_999);
+    std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
+    assert!(load(root.path()).is_err());
+}
+#[test]
+fn workbench_invocation_records_compare_by_name_but_calls_and_extensions_stay_ordered() {
+    let root = invocation_source();
+    let mut doc: Value =
+        serde_json::from_slice(&std::fs::read(root.path().join("cases.json")).unwrap()).unwrap();
+    let record = json!({"type":"record","fields":[{"name":"b","value":{"type":"int","value":"2"}},{"name":"a","value":{"type":"int","value":"1"}}]});
+    let first = json!({"id":"first","entry":"demo:main#id","arguments":[record]});
+    let mut second = first.clone();
+    second["id"] = json!("second");
+    doc["cases"][0]["expected"]["value"] = json!({"profile":"morphir-invocations-v1","calls":[first,second],"extensions":{"format":"ion-binary","bytes":[224,1,0,234,15]}});
+    std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
+    let corpus = load(root.path()).unwrap();
+    for mutate in 0..3 {
+        let mut observed = serde_json::to_value(&corpus.cases[0].expected).unwrap();
+        match mutate {
+            0 => {
+                for call in observed["value"]["calls"].as_array_mut().unwrap() {
+                    call["arguments"][0]["fields"]
+                        .as_array_mut()
+                        .unwrap()
+                        .reverse();
+                }
+            }
+            1 => observed["value"]["calls"].as_array_mut().unwrap().reverse(),
+            _ => observed["value"]["extensions"]["bytes"]
+                .as_array_mut()
+                .unwrap()
+                .reverse(),
+        }
+        let mut adapter = Fake {
+            replies: vec![Ok(invocation_caps()), Ok(observed)],
+            requests: vec![],
+        };
+        let report = execute(&corpus, &mut adapter);
+        assert_eq!(report.qualified, mutate == 0);
+        assert_eq!(
+            report.records[0].result,
+            if mutate == 0 {
+                ResultKind::Pass
+            } else {
+                ResultKind::Fail
+            }
+        );
+        check_report(root.path(), &report).unwrap();
+    }
+}
+#[test]
+fn workbench_invocation_published_corpus_is_fixed_and_complete() {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.3");
+    let corpus = load(&root).unwrap();
+    assert_eq!(corpus.case_count(), 242);
+    let counts = [
+        Operation::DecodeValue,
+        Operation::ValidateValue,
+        Operation::ValidateInvocations,
+    ]
+    .map(|op| corpus.cases.iter().filter(|c| c.operation() == op).count());
+    assert_eq!(counts, [64, 98, 80]);
+    for format in [Format::Json, Format::IonText] {
+        for successful in [true, false] {
+            assert!(
+                corpus
+                    .cases
+                    .iter()
+                    .any(|c| c.operation() == Operation::ValidateInvocations
+                        && c.format == format
+                        && matches!(c.expected, Observation::Ok { .. }) == successful)
+            );
+        }
+    }
+    // Replaying fixed observations tests evidence, not an implementation or golden authoring.
+    let mut adapter = Fake {
+        replies: std::iter::once(Ok(invocation_caps()))
+            .chain(
+                corpus
+                    .cases
+                    .iter()
+                    .map(|c| Ok(serde_json::to_value(&c.expected).unwrap())),
+            )
+            .collect(),
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(report.qualified);
+    check_report(&root, &report).unwrap();
+}

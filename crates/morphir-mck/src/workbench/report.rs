@@ -215,7 +215,7 @@ pub fn check_report(root: &Path, report: &Report) -> Result<(), String> {
             if seen_exchange_error {
                 return Err("observation follows failed exchange".into());
             }
-            if case.expected.matches(observed)? {
+            if case.expected.matches(observed, case.operation())? {
                 ResultKind::Pass
             } else {
                 ResultKind::Fail

@@ -7,6 +7,7 @@ use serde_json::Value;
 
 pub const VERSION: &str = "0.1.0-draft.1";
 pub const ADMISSION_VERSION: &str = "0.1.0-draft.2";
+pub const INVOCATION_VERSION: &str = "0.1.0-draft.3";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -37,7 +38,7 @@ pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize
 
 pub(super) fn version(text: &str) -> Result<(), String> {
     let parsed = Version::parse(text).map_err(|e| e.to_string())?;
-    let supported = ["=0.1.0-draft.1", "=0.1.0-draft.2"]
+    let supported = ["=0.1.0-draft.1", "=0.1.0-draft.2", "=0.1.0-draft.3"]
         .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
         || !parsed.build.is_empty()
@@ -62,6 +63,19 @@ pub enum Operation {
     DecodeValue,
     #[serde(rename = "validate-value")]
     ValidateValue,
+    #[serde(rename = "validate-invocations")]
+    ValidateInvocations,
+}
+
+impl Operation {
+    pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if (version == VERSION && self != Self::DecodeValue)
+            || (version == ADMISSION_VERSION && self == Self::ValidateInvocations)
+        {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
+        Ok(())
+    }
 }
 
 pub(super) fn present_operation<'de, D: serde::Deserializer<'de>>(
@@ -103,8 +117,8 @@ impl Capabilities {
         if self.suite != "workbench" {
             return Err("Workbench capabilities required".into());
         }
-        if self.contract_version == VERSION && self.operations.contains(&Operation::ValidateValue) {
-            return Err("draft.1 does not define validate-value".into());
+        for operation in &self.operations {
+            operation.validate_version(&self.contract_version)?;
         }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
@@ -131,19 +145,16 @@ pub enum Observation {
 impl Observation {
     pub(super) fn parse(value: Value) -> Result<Self, String> {
         let observation: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
-        observation.validate()?;
         Ok(observation)
     }
 
-    pub(super) fn validate(&self) -> Result<(), String> {
-        match self {
-            Self::Ok { value } => projection(value).map(|_| ()),
-            Self::Invalid { code } => identity(code, 128),
-        }
-    }
-
     pub(super) fn validate_for(&self, operation: Operation) -> Result<(), String> {
-        self.validate()?;
+        match self {
+            Self::Ok { value } => {
+                projection_for(value, operation)?;
+            }
+            Self::Invalid { code } => identity(code, 128)?,
+        }
         if operation == Operation::ValidateValue
             && matches!(self, Self::Ok { value } if value["type"] == "model-error")
         {
@@ -152,16 +163,74 @@ impl Observation {
         Ok(())
     }
 
-    pub(super) fn matches(&self, other: &Self) -> Result<bool, String> {
-        self.validate()?;
-        other.validate()?;
+    pub(super) fn matches(&self, other: &Self, operation: Operation) -> Result<bool, String> {
+        self.validate_for(operation)?;
+        other.validate_for(operation)?;
         match (self, other) {
             (Self::Ok { value: left }, Self::Ok { value: right }) => {
-                Ok(projection(left)? == projection(right)?)
+                Ok(projection_for(left, operation)? == projection_for(right, operation)?)
             }
             _ => Ok(self == other),
         }
     }
+}
+
+fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
+    if operation == Operation::ValidateInvocations {
+        invocation_projection(value)
+    } else {
+        projection(value)
+    }
+}
+
+/// Validate only the published invocation projection. Inputs/manifests are never
+/// decoded here. Extension bytes are opaque ordered evidence, not re-serialized Ion.
+fn invocation_projection(value: &Value) -> Result<Value, String> {
+    encoded_size(value, MAX_VALUE_BYTES)?;
+    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
+    let validator = VALIDATOR.get_or_init(|| {
+        let value_schema: Value = serde_json::from_str(include_str!(
+            "../../../../spec/workbench/schemas/value.schema.json"
+        ))
+        .expect("Workbench value schema JSON");
+        let schema: Value = serde_json::from_str(include_str!(
+            "../../../../spec/workbench/schemas/invocations.schema.json"
+        ))
+        .expect("Workbench invocation schema JSON");
+        jsonschema::options()
+            .with_retriever(OfflineOnly)
+            .with_resource(
+                value_schema["$id"].as_str().expect("value schema id"),
+                jsonschema::Resource::from_contents(value_schema.clone()).expect("schema resource"),
+            )
+            .build(&schema)
+            .expect("Workbench invocation schema")
+    });
+    validator
+        .validate(value)
+        .map_err(|e| format!("invalid invocation projection at {}: {e}", e.instance_path))?;
+    let mut projected = value.clone();
+    let mut ids = BTreeSet::new();
+    for call in projected["calls"]
+        .as_array_mut()
+        .expect("schema-checked calls")
+    {
+        let id = call["id"].as_str().expect("schema-checked call id");
+        identity(id, 128)?;
+        identity(call["entry"].as_str().expect("schema-checked entry"), 1024)?;
+        if !ids.insert(id.to_owned()) {
+            return Err("duplicate invocation call id".into());
+        }
+        let mut budget = 100_000_usize;
+        for argument in call["arguments"]
+            .as_array_mut()
+            .expect("schema-checked arguments")
+        {
+            check_projection_limits(argument, 0, &mut budget)?;
+            sort_records(argument, 0, &mut 0)?;
+        }
+    }
+    Ok(projected)
 }
 
 /// Validate the canonical output projection. The kit never decodes input values or derives

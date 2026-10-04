@@ -1,0 +1,77 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-response.schema.json",
+  "tests": [
+    {
+      "description": "all claims",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "decode-value",
+          "validate-value",
+          "validate-invocations"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "suite response",
+      "data": {
+        "id": 2,
+        "status": "ok",
+        "value": {
+          "profile": "morphir-invocations-v1",
+          "calls": [
+            {
+              "id": "c",
+              "entry": "e",
+              "arguments": []
+            }
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "typed response",
+      "data": {
+        "id": 2,
+        "status": "ok",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "forbidden argument model error",
+      "data": {
+        "id": 2,
+        "status": "ok",
+        "value": {
+          "profile": "morphir-invocations-v1",
+          "calls": [
+            {
+              "id": "c",
+              "entry": "e",
+              "arguments": [
+                {
+                  "type": "model-error",
+                  "code": "sdk.division_by_zero"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "valid": false
+    }
+  ]
+}
