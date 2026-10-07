@@ -168,6 +168,11 @@ run = [
     "jsonschema metaschema spec/workbench/draft.3/schemas",
     "jsonschema test spec/workbench/draft.3/tests -r spec/workbench/schemas -r spec/workbench/draft.3/schemas",
     "jsonschema validate spec/workbench/draft.3/schemas/mck-corpus.schema.json spec/workbench/mck/draft.3/cases.json -r spec/workbench/schemas -r spec/workbench/draft.3/schemas",
+    "jsonschema fmt spec/workbench/draft.4/schemas --check",
+    "jsonschema lint spec/workbench/draft.4/schemas -r spec/workbench/schemas -r spec/workbench/draft.4/schemas",
+    "jsonschema metaschema spec/workbench/draft.4/schemas",
+    "jsonschema test spec/workbench/draft.4/tests -r spec/workbench/schemas -r spec/workbench/draft.4/schemas",
+    "jsonschema validate spec/workbench/draft.4/schemas/mck-corpus.schema.json spec/workbench/mck/draft.4/cases.json -r spec/workbench/schemas -r spec/workbench/draft.4/schemas",
 ]
 
 # Not part of `check`: website:build-schemas depends on website:install, whose

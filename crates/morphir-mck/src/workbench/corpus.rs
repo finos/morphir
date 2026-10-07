@@ -113,7 +113,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
                 return Err("Ion invocation suite must be a string".into());
             }
             encoded_size(&case.input, MAX_INPUT_BYTES)?
-        } else if case.operation() == Operation::ValidateValue {
+        } else if matches!(
+            case.operation(),
+            Operation::ValidateValue | Operation::ValidateOutput
+        ) {
             let envelope = case
                 .input
                 .as_object()

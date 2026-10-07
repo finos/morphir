@@ -1,0 +1,512 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/mck-corpus.schema.json",
+  "title": "Draft Workbench MCK corpus",
+  "description": "Independent operation inputs and expected projections; only inputs and operation context are sent to adapters; draft.4 adds declared output admission",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.4",
+      "cases": [
+        {
+          "id": "unit-json",
+          "format": "json",
+          "input": {
+            "type": "unit"
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "type": "unit"
+            }
+          },
+          "operation": "decode-value"
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.4"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "json"
+              },
+              "input": true,
+              "expected": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "status", "value" ],
+                    "properties": {
+                      "status": {
+                        "const": "ok"
+                      },
+                      "value": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "status", "code" ],
+                    "properties": {
+                      "status": {
+                        "const": "invalid"
+                      },
+                      "code": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "operation": {
+                "const": "decode-value"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "ion-text"
+              },
+              "input": {
+                "type": "string"
+              },
+              "expected": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "status", "value" ],
+                    "properties": {
+                      "status": {
+                        "const": "ok"
+                      },
+                      "value": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "status", "code" ],
+                    "properties": {
+                      "status": {
+                        "const": "invalid"
+                      },
+                      "code": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "operation": {
+                "const": "decode-value"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "json"
+              },
+              "input": {
+                "type": "object",
+                "required": [ "value", "type", "definitions" ],
+                "properties": {
+                  "value": true,
+                  "type": true,
+                  "definitions": true
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "status", "value" ],
+                    "properties": {
+                      "status": {
+                        "const": "ok"
+                      },
+                      "value": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "status", "code" ],
+                    "properties": {
+                      "status": {
+                        "const": "invalid"
+                      },
+                      "code": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "operation": {
+                "const": "validate-value"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "ion-text"
+              },
+              "input": {
+                "type": "object",
+                "required": [ "value", "type", "definitions" ],
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "type": true,
+                  "definitions": true
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "status", "value" ],
+                    "properties": {
+                      "status": {
+                        "const": "ok"
+                      },
+                      "value": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "status", "code" ],
+                    "properties": {
+                      "status": {
+                        "const": "invalid"
+                      },
+                      "code": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "operation": {
+                "const": "validate-value"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "json"
+              },
+              "input": {
+                "type": "object",
+                "required": [ "suite", "manifest" ],
+                "properties": {
+                  "suite": true,
+                  "manifest": true
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "status", "value" ],
+                    "properties": {
+                      "status": {
+                        "const": "ok"
+                      },
+                      "value": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/invocations.schema.json"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "status", "code" ],
+                    "properties": {
+                      "status": {
+                        "const": "invalid"
+                      },
+                      "code": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "operation": {
+                "const": "validate-invocations"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "ion-text"
+              },
+              "input": {
+                "type": "object",
+                "required": [ "suite", "manifest" ],
+                "properties": {
+                  "suite": {
+                    "type": "string"
+                  },
+                  "manifest": true
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "status", "value" ],
+                    "properties": {
+                      "status": {
+                        "const": "ok"
+                      },
+                      "value": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/invocations.schema.json"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "status", "code" ],
+                    "properties": {
+                      "status": {
+                        "const": "invalid"
+                      },
+                      "code": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "operation": {
+                "const": "validate-invocations"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "json"
+              },
+              "input": {
+                "type": "object",
+                "required": [ "value", "type", "definitions" ],
+                "properties": {
+                  "value": true,
+                  "type": true,
+                  "definitions": true
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "status", "value" ],
+                    "properties": {
+                      "status": {
+                        "const": "ok"
+                      },
+                      "value": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "status", "code" ],
+                    "properties": {
+                      "status": {
+                        "const": "invalid"
+                      },
+                      "code": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "operation": {
+                "const": "validate-output"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "format", "input", "expected", "operation" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "format": {
+                "const": "ion-text"
+              },
+              "input": {
+                "type": "object",
+                "required": [ "value", "type", "definitions" ],
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "type": true,
+                  "definitions": true
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "status", "value" ],
+                    "properties": {
+                      "status": {
+                        "const": "ok"
+                      },
+                      "value": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "status", "code" ],
+                    "properties": {
+                      "status": {
+                        "const": "invalid"
+                      },
+                      "code": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "operation": {
+                "const": "validate-output"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

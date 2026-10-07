@@ -1,0 +1,60 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Four operation claims",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.4",
+        "binding": "morphir-moonbit",
+        "language": "moonbit",
+        "operations": [
+          "decode-value",
+          "validate-value",
+          "validate-invocations",
+          "validate-output"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Duplicate output claim",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.4",
+        "binding": "morphir-moonbit",
+        "language": "moonbit",
+        "operations": [
+          "validate-output",
+          "validate-output"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown operation",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.4",
+        "binding": "morphir-moonbit",
+        "language": "moonbit",
+        "operations": [
+          "run"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

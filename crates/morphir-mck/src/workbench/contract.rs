@@ -8,6 +8,7 @@ use serde_json::Value;
 pub const VERSION: &str = "0.1.0-draft.1";
 pub const ADMISSION_VERSION: &str = "0.1.0-draft.2";
 pub const INVOCATION_VERSION: &str = "0.1.0-draft.3";
+pub const OUTPUT_VERSION: &str = "0.1.0-draft.4";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -38,8 +39,13 @@ pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize
 
 pub(super) fn version(text: &str) -> Result<(), String> {
     let parsed = Version::parse(text).map_err(|e| e.to_string())?;
-    let supported = ["=0.1.0-draft.1", "=0.1.0-draft.2", "=0.1.0-draft.3"]
-        .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
+    let supported = [
+        "=0.1.0-draft.1",
+        "=0.1.0-draft.2",
+        "=0.1.0-draft.3",
+        "=0.1.0-draft.4",
+    ]
+    .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
         || !parsed.build.is_empty()
         || !supported.iter().any(|v| v.matches(&parsed))
@@ -65,12 +71,16 @@ pub enum Operation {
     ValidateValue,
     #[serde(rename = "validate-invocations")]
     ValidateInvocations,
+    #[serde(rename = "validate-output")]
+    ValidateOutput,
 }
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
         if (version == VERSION && self != Self::DecodeValue)
-            || (version == ADMISSION_VERSION && self == Self::ValidateInvocations)
+            || (version == ADMISSION_VERSION
+                && !matches!(self, Self::DecodeValue | Self::ValidateValue))
+            || (version != OUTPUT_VERSION && self == Self::ValidateOutput)
         {
             return Err("operation is not defined by this Workbench draft".into());
         }
