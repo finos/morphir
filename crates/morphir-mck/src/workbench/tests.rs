@@ -828,3 +828,99 @@ fn workbench_invocation_published_corpus_is_fixed_and_complete() {
     assert!(report.qualified);
     check_report(&root, &report).unwrap();
 }
+
+#[test]
+fn output_operation_is_exact_draft_and_model_outcomes_remain_distinct() {
+    let caps = json!({"suite":"workbench","contractVersion":"0.1.0-draft.4",
+        "binding":"fixture","language":"test",
+        "operations":["decode-value","validate-value","validate-invocations","validate-output"],
+        "formats":["json","ion-text"]});
+    let admitted = Capabilities::parse(caps.clone(), "0.1.0-draft.4").unwrap();
+    let operation: Operation = serde_json::from_value(json!("validate-output")).unwrap();
+    assert!(admitted.supports(operation, Format::Json));
+    for draft in [VERSION, ADMISSION_VERSION, INVOCATION_VERSION] {
+        let mut old = caps.clone();
+        old["contractVersion"] = json!(draft);
+        assert!(Capabilities::parse(old, draft).is_err());
+    }
+    let outcome = Observation::Ok {
+        value: json!({"type":"model-error","code":"sdk.division_by_zero"}),
+    };
+    assert!(outcome.validate_for(operation).is_ok());
+    assert!(outcome.validate_for(Operation::ValidateValue).is_err());
+    let provider = Observation::Ok {
+        value: json!({"type":"model-error","code":"provider.crash"}),
+    };
+    assert!(provider.validate_for(operation).is_err());
+    let nested = Observation::Ok {
+        value: json!({"type":"list","items":[{"type":"model-error","code":"sdk.division_by_zero"}]}),
+    };
+    assert!(nested.validate_for(operation).is_err());
+}
+
+#[test]
+fn workbench_output_corpus_retains_history_and_binds_report_evidence() {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.4");
+    let old = load(&root.join("../draft.3")).unwrap();
+    let corpus = load(&root).unwrap();
+    assert_eq!(corpus.case_count(), 291);
+    for (before, after) in old.cases.iter().zip(&corpus.cases) {
+        assert_eq!(before.id, after.id);
+        assert_eq!(before.operation(), after.operation());
+        assert_eq!(before.format, after.format);
+        assert_eq!(before.input, after.input);
+        assert_eq!(before.expected, after.expected);
+    }
+    let operation = Operation::ValidateOutput;
+    assert_eq!(
+        corpus
+            .cases
+            .iter()
+            .filter(|c| c.operation() == operation)
+            .count(),
+        49
+    );
+    for format in [Format::Json, Format::IonText] {
+        for successful in [true, false] {
+            assert!(corpus.cases.iter().any(|c| c.operation() == operation
+                && c.format == format
+                && matches!(c.expected, Observation::Ok { .. }) == successful));
+        }
+    }
+    let caps = json!({"suite":"workbench","contractVersion":OUTPUT_VERSION,
+        "binding":"fixture","language":"test",
+        "operations":["decode-value","validate-value","validate-invocations","validate-output"],
+        "formats":["json","ion-text"]});
+    // Fixed observation replay tests evidence admission, not implementation behavior.
+    let mut adapter = Fake {
+        replies: std::iter::once(Ok(caps))
+            .chain(
+                corpus
+                    .cases
+                    .iter()
+                    .map(|c| Ok(serde_json::to_value(&c.expected).unwrap())),
+            )
+            .collect(),
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(report.qualified);
+    check_report(&root, &report).unwrap();
+    assert!(
+        adapter
+            .requests
+            .iter()
+            .all(|r| r.get("expected").is_none() && r.get("caseId").is_none())
+    );
+    let index = corpus
+        .cases
+        .iter()
+        .position(|c| c.id == "output-sdk.division_by_zero-json")
+        .unwrap();
+    for replacement in [json!("validate-value"), json!("decode-value")] {
+        let mut forged = serde_json::to_value(&report).unwrap();
+        forged["records"][index]["operation"] = replacement;
+        assert!(check_report(&root, &Report::from_json(&forged.to_string()).unwrap()).is_err());
+    }
+}

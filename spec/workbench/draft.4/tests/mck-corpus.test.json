@@ -1,0 +1,67 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "Output operation corpus",
+      "data": {
+        "formatVersion": "0.1.0-draft.4",
+        "cases": [
+          {
+            "id": "output-exact-int-json",
+            "operation": "validate-output",
+            "format": "json",
+            "input": {
+              "value": {
+                "type": "int",
+                "value": "009007199254740993"
+              },
+              "type": {
+                "type": "int"
+              },
+              "definitions": []
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "type": "int",
+                "value": "9007199254740993"
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Model output golden",
+      "data": {
+        "formatVersion": "0.1.0-draft.4",
+        "cases": [
+          {
+            "id": "output-sdk.division_by_zero-json",
+            "operation": "validate-output",
+            "format": "json",
+            "input": {
+              "value": {
+                "type": "model-error",
+                "code": "sdk.division_by_zero"
+              },
+              "type": {
+                "type": "int"
+              },
+              "definitions": []
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "type": "model-error",
+                "code": "sdk.division_by_zero"
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    }
+  ]
+}

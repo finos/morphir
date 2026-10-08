@@ -6,8 +6,8 @@ mod report;
 mod run;
 
 pub use contract::{
-    ADMISSION_VERSION, Capabilities, Format, INVOCATION_VERSION, MAX_VALUE_BYTES, Observation,
-    Operation, VERSION,
+    ADMISSION_VERSION, Capabilities, Format, INVOCATION_VERSION, MAX_VALUE_BYTES, OUTPUT_VERSION,
+    Observation, Operation, VERSION,
 };
 pub use corpus::{Corpus, load};
 pub use report::{

@@ -1,0 +1,111 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/mck-request.schema.json",
+  "tests": [
+    {
+      "description": "JSON declared output",
+      "data": {
+        "id": 1,
+        "op": "validate-output",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.4",
+        "format": "json",
+        "input": {
+          "value": {
+            "type": "model-error",
+            "code": "sdk.division_by_zero"
+          },
+          "type": {
+            "type": "int"
+          },
+          "definitions": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Ion declared output",
+      "data": {
+        "id": 1,
+        "op": "validate-output",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.4",
+        "format": "ion-text",
+        "input": {
+          "value": "morphir_value::{type:\"model-error\",code:\"sdk.division_by_zero\"}",
+          "type": {
+            "type": "int"
+          },
+          "definitions": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Missing output declaration",
+      "data": {
+        "id": 1,
+        "op": "validate-output",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.4",
+        "format": "json",
+        "input": {
+          "value": {
+            "type": "model-error",
+            "code": "sdk.division_by_zero"
+          },
+          "definitions": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Leaked expectation",
+      "data": {
+        "id": 1,
+        "op": "validate-output",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.4",
+        "format": "json",
+        "input": {
+          "value": {
+            "type": "model-error",
+            "code": "sdk.division_by_zero"
+          },
+          "type": {
+            "type": "int"
+          },
+          "definitions": []
+        },
+        "expected": {
+          "status": "ok",
+          "value": {
+            "type": "model-error",
+            "code": "sdk.division_by_zero"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Different exact draft",
+      "data": {
+        "id": 1,
+        "op": "validate-output",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "format": "json",
+        "input": {
+          "value": {
+            "type": "model-error",
+            "code": "sdk.division_by_zero"
+          },
+          "type": {
+            "type": "int"
+          },
+          "definitions": []
+        }
+      },
+      "valid": false
+    }
+  ]
+}

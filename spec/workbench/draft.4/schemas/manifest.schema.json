@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/manifest.schema.json",
+  "title": "Workbench public entry allowlist",
+  "description": "Closed declarations only; uniqueness, UTF-16 identity, depth, aggregate node budgets and complete reference closure require semantic admission; draft.4 adds declared output admission",
+  "examples": [
+    {
+      "entries": [],
+      "definitions": []
+    }
+  ],
+  "type": "object",
+  "required": [ "entries", "definitions" ],
+  "properties": {
+    "entries": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "required": [ "name", "inputs", "output" ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1
+          },
+          "inputs": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/value-type.schema.json"
+            }
+          },
+          "output": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/value-type.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "definitions": {
+      "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/definitions.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

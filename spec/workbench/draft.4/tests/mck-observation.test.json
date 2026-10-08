@@ -1,0 +1,58 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.4/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Top-level model outcome",
+      "data": {
+        "status": "ok",
+        "value": {
+          "type": "model-error",
+          "code": "sdk.division_by_zero"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Ordinary Result Err",
+      "data": {
+        "status": "ok",
+        "value": {
+          "type": "result",
+          "case": "err",
+          "value": {
+            "type": "bool",
+            "value": false
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Provider error cannot be a model outcome",
+      "data": {
+        "status": "ok",
+        "value": {
+          "type": "model-error",
+          "code": "provider.crash"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Nested model error",
+      "data": {
+        "status": "ok",
+        "value": {
+          "type": "list",
+          "items": [
+            {
+              "type": "model-error",
+              "code": "sdk.division_by_zero"
+            }
+          ]
+        }
+      },
+      "valid": false
+    }
+  ]
+}
