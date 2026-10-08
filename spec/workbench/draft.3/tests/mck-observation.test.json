@@ -1,0 +1,85 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "suite projection",
+      "data": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir-invocations-v1",
+          "calls": [
+            {
+              "id": "c",
+              "entry": "demo:main#entry",
+              "arguments": []
+            }
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "value projection",
+      "data": {
+        "status": "ok",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "nested model errors forbidden in suite",
+      "data": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir-invocations-v1",
+          "calls": [
+            {
+              "id": "c",
+              "entry": "demo:main#entry",
+              "arguments": [
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "type": "model-error",
+                      "code": "sdk.division_by_zero"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "failure",
+      "data": {
+        "status": "invalid",
+        "code": "execution.wrong_arity"
+      },
+      "valid": true
+    },
+    {
+      "description": "extra observation field",
+      "data": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir-invocations-v1",
+          "calls": [
+            {
+              "id": "c",
+              "entry": "demo:main#entry",
+              "arguments": []
+            }
+          ]
+        },
+        "evaluation": true
+      },
+      "valid": false
+    }
+  ]
+}

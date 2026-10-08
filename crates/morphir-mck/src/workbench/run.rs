@@ -88,7 +88,7 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                     let bytes = encoded_size(&observation, observation_budget)?;
                     observation_budget -= bytes;
                     case.expected
-                        .matches(&observation)
+                        .matches(&observation, case.operation())
                         .map(|matches| (observation, matches))
                 });
             match observed {

@@ -1,0 +1,252 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "explicit invocation inventory",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "cases": [
+          {
+            "id": "invocation-int-json",
+            "operation": "validate-invocations",
+            "format": "json",
+            "input": {
+              "suite": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "demo:main#entry",
+                    "arguments": [
+                      {
+                        "type": "int",
+                        "value": "007"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "manifest": {
+                "entries": [
+                  {
+                    "name": "demo:main#entry",
+                    "inputs": [
+                      {
+                        "type": "int"
+                      }
+                    ],
+                    "output": {
+                      "type": "int"
+                    }
+                  }
+                ],
+                "definitions": []
+              }
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "demo:main#entry",
+                    "arguments": [
+                      {
+                        "type": "int",
+                        "value": "7"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "suite projection on decode",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "cases": [
+          {
+            "id": "invocation-int-json",
+            "operation": "decode-value",
+            "format": "json",
+            "input": {
+              "suite": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "demo:main#entry",
+                    "arguments": [
+                      {
+                        "type": "int",
+                        "value": "007"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "manifest": {
+                "entries": [
+                  {
+                    "name": "demo:main#entry",
+                    "inputs": [
+                      {
+                        "type": "int"
+                      }
+                    ],
+                    "output": {
+                      "type": "int"
+                    }
+                  }
+                ],
+                "definitions": []
+              }
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "demo:main#entry",
+                    "arguments": [
+                      {
+                        "type": "int",
+                        "value": "7"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "value projection on invocation",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "cases": [
+          {
+            "id": "invocation-int-json",
+            "operation": "validate-invocations",
+            "format": "json",
+            "input": {
+              "suite": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "demo:main#entry",
+                    "arguments": [
+                      {
+                        "type": "int",
+                        "value": "007"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "manifest": {
+                "entries": [
+                  {
+                    "name": "demo:main#entry",
+                    "inputs": [
+                      {
+                        "type": "int"
+                      }
+                    ],
+                    "output": {
+                      "type": "int"
+                    }
+                  }
+                ],
+                "definitions": []
+              }
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "missing operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "cases": [
+          {
+            "id": "invocation-int-json",
+            "format": "json",
+            "input": {
+              "suite": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "demo:main#entry",
+                    "arguments": [
+                      {
+                        "type": "int",
+                        "value": "007"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "manifest": {
+                "entries": [
+                  {
+                    "name": "demo:main#entry",
+                    "inputs": [
+                      {
+                        "type": "int"
+                      }
+                    ],
+                    "output": {
+                      "type": "int"
+                    }
+                  }
+                ],
+                "definitions": []
+              }
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "demo:main#entry",
+                    "arguments": [
+                      {
+                        "type": "int",
+                        "value": "7"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

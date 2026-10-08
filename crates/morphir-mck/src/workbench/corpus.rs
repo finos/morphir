@@ -87,13 +87,33 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     let mut ids = BTreeSet::new();
     for case in &document.cases {
         if (document.format_version == VERSION) != case.operation.is_none() {
-            return Err("case operation must be absent in draft.1 and present in draft.2".into());
+            return Err(
+                "case operation must be absent in draft.1 and present in later drafts".into(),
+            );
         }
+        case.operation()
+            .validate_version(&document.format_version)?;
         identity(&case.id, 128)?;
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::ValidateValue {
+        let input_len = if case.operation() == Operation::ValidateInvocations {
+            let envelope = case
+                .input
+                .as_object()
+                .ok_or("invocation input must be an object")?;
+            if envelope.len() != 2
+                || !["suite", "manifest"]
+                    .iter()
+                    .all(|key| envelope.contains_key(*key))
+            {
+                return Err("invocation input requires exactly suite and manifest".into());
+            }
+            if case.format == Format::IonText && !case.input["suite"].is_string() {
+                return Err("Ion invocation suite must be a string".into());
+            }
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::ValidateValue {
             let envelope = case
                 .input
                 .as_object()

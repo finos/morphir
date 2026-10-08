@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-report.schema.json",
+  "title": "Draft Workbench MCK report",
+  "description": "Bounded observations and verdicts tied to the SHA-256 of the exact corpus bytes; report checking recomputes qualification",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.3",
+      "suite": "workbench",
+      "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "capabilities": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "binding": "morphir-moonbit",
+        "language": "moonbit",
+        "operations": [ "decode-value" ],
+        "formats": [ "json", "ion-text" ]
+      },
+      "records": [
+        {
+          "caseId": "unit-json",
+          "format": "json",
+          "result": "pass",
+          "observed": {
+            "status": "ok",
+            "value": {
+              "type": "unit"
+            }
+          },
+          "operation": "decode-value"
+        }
+      ],
+      "errors": [],
+      "qualified": true
+    }
+  ],
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "suite",
+    "corpusHash",
+    "capabilities",
+    "records",
+    "errors",
+    "qualified"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.3"
+    },
+    "suite": {
+      "const": "workbench"
+    },
+    "corpusHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capabilities": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-capabilities.schema.json"
+        }
+      ]
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "if": {
+          "properties": {
+            "operation": {
+              "const": "validate-invocations"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "observed": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [ "status", "value" ],
+                      "properties": {
+                        "status": {
+                          "const": "ok"
+                        },
+                        "value": {
+                          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/invocations.schema.json"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": [ "status", "code" ],
+                      "properties": {
+                        "status": {
+                          "const": "invalid"
+                        },
+                        "code": {
+                          "type": "string",
+                          "maxLength": 128,
+                          "minLength": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "observed": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [ "status", "value" ],
+                      "properties": {
+                        "status": {
+                          "const": "ok"
+                        },
+                        "value": {
+                          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": [ "status", "code" ],
+                      "properties": {
+                        "status": {
+                          "const": "invalid"
+                        },
+                        "code": {
+                          "type": "string",
+                          "maxLength": 128,
+                          "minLength": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "required": [ "caseId", "format", "result", "observed", "operation" ],
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "format": {
+            "enum": [ "json", "ion-text" ]
+          },
+          "result": {
+            "enum": [ "pass", "fail", "unsupported", "error" ]
+          },
+          "observed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-observation.schema.json"
+              }
+            ]
+          },
+          "operation": {
+            "enum": [ "decode-value", "validate-value", "validate-invocations" ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "phase", "message" ],
+        "properties": {
+          "phase": {
+            "enum": [ "spawn", "capabilities", "exchange", "shutdown" ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 16384,
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "qualified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

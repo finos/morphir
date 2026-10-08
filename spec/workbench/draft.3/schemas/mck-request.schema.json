@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-request.schema.json",
+  "title": "Draft Workbench MCK request",
+  "description": "Explicit capability, value decode, declared-value or public-entry invocation admission request with transport correlation",
+  "examples": [
+    {
+      "id": 1,
+      "op": "capabilities",
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.3"
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "capabilities"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.3"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "decode-value"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.3"
+        },
+        "format": {
+          "const": "json"
+        },
+        "input": true
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "decode-value"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.3"
+        },
+        "format": {
+          "const": "ion-text"
+        },
+        "input": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "exit"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "validate-value"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.3"
+        },
+        "format": {
+          "const": "json"
+        },
+        "input": {
+          "type": "object",
+          "required": [ "value", "type", "definitions" ],
+          "properties": {
+            "value": true,
+            "type": true,
+            "definitions": true
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "validate-value"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.3"
+        },
+        "format": {
+          "const": "ion-text"
+        },
+        "input": {
+          "type": "object",
+          "required": [ "value", "type", "definitions" ],
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "type": true,
+            "definitions": true
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "validate-invocations"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.3"
+        },
+        "format": {
+          "const": "json"
+        },
+        "input": {
+          "type": "object",
+          "required": [ "suite", "manifest" ],
+          "properties": {
+            "suite": true,
+            "manifest": true
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "validate-invocations"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.3"
+        },
+        "format": {
+          "const": "ion-text"
+        },
+        "input": {
+          "type": "object",
+          "required": [ "suite", "manifest" ],
+          "properties": {
+            "suite": {
+              "type": "string"
+            },
+            "manifest": true
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

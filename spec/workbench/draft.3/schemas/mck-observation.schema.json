@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-observation.schema.json",
+  "title": "Draft Workbench MCK observation",
+  "description": "A closed observation carrying a value or invocation suite projection, or a bounded rejection code; operation context chooses the projection",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "type": "unit"
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "status", "value" ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "oneOf": [
+            {
+              "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+            },
+            {
+              "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/invocations.schema.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "status", "code" ],
+      "properties": {
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

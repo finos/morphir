@@ -1,0 +1,352 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "invocation evidence",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.3",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "c",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "e",
+                    "arguments": []
+                  }
+                ]
+              }
+            },
+            "operation": "validate-invocations"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "invocation value cannot be plain value",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.3",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "c",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            },
+            "operation": "validate-invocations"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "codec value cannot be suite",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.3",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "c",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "e",
+                    "arguments": []
+                  }
+                ]
+              }
+            },
+            "operation": "decode-value"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "declared value cannot be suite",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.3",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "c",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "e",
+                    "arguments": []
+                  }
+                ]
+              }
+            },
+            "operation": "validate-value"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "invalid invocation observation",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.3",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "c",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "invalid",
+              "code": "execution.wrong_arity"
+            },
+            "operation": "validate-invocations"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "nullable lost transport",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.3",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "c",
+            "format": "json",
+            "result": "error",
+            "observed": null,
+            "operation": "validate-invocations"
+          }
+        ],
+        "errors": [],
+        "qualified": false
+      },
+      "valid": true
+    },
+    {
+      "description": "missing operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.3",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "c",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "e",
+                    "arguments": []
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "old capabilities rejected",
+      "data": {
+        "formatVersion": "0.1.0-draft.3",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.2",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "c",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "c",
+                    "entry": "e",
+                    "arguments": []
+                  }
+                ]
+              }
+            },
+            "operation": "validate-invocations"
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    }
+  ]
+}

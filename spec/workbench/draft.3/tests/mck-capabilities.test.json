@@ -1,0 +1,41 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "all operations",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "decode-value",
+          "validate-value",
+          "validate-invocations"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "duplicate operations",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.3",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-invocations",
+          "validate-invocations"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}
