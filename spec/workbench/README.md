@@ -4,6 +4,9 @@ Codec schema package version: `0.1.0-draft.1`. The separately negotiated
 [declared-value admission contract](draft.2/README.md) uses `0.1.0-draft.2` and
 preserves the original codec schemas and kit. These profiles adopt the MoonBit
 execution codecs. Draft readers support only an explicitly listed exact draft.
+The additive [invocation admission contract](draft.3/README.md) uses
+`0.1.0-draft.3`; [declared output admission](draft.4/README.md) uses
+`0.1.0-draft.4`. Each has its own exact offline MCK negotiation and kit.
 Schema identifiers identify this draft package; they are not an announcement of
 deployed URLs or runtime support.
 
@@ -143,7 +146,7 @@ part of the profile. The parent connected-protocol inventory was inspected at
 `90f7df0a125acc27db45a4b98d2b2883ba0ec471`. The JSON examples are codec documents;
 execution also requires the corresponding model and public entry manifest.
 
-The next slice maps full invocation manifests, outcomes and lifecycle receipts,
+The next slice maps complete outcome envelopes and lifecycle receipts,
 extends MCK with binary/reverse-encode fixtures and adds independent
 Rust/TypeScript adapters alongside the current MoonBit codec adapter.
 Model/revision handles, worksheet source maps, job query/cancellation/recovery,
@@ -153,4 +156,11 @@ contracts. Required results remain separate from observational telemetry.
 [Draft.3 invocation admission](draft.3/README.md) adds bounded public-entry allowlist,
 argument arity and declared invocation-value checks with an explicit
 [242-case kit](mck/draft.3/README.md). It preserves the historical drafts and frozen
-payload IDs. Output-value admission and connected execution remain separate work.
+payload IDs.
+
+[Draft.4 output admission](draft.4/README.md) adds declared returned-value checks
+and recognized top-level SDK model-error admission with an independent
+[291-case kit](mck/draft.4/README.md). It preserves strict declaration closure,
+historical drafts and frozen payload IDs. This offline operation does not execute
+functions or qualify complete outcome envelopes, lifecycle receipts or connected
+execution. Those remain separate work before a host advertises an extension.
