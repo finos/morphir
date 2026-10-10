@@ -97,7 +97,7 @@ indexmap = { version = "2", features = ["serde"] }
 getrandom = "0.4"
 subtle = "2"
 webbrowser = "1"
-usage-lib = { version = "6", features = ["clap", "docs"] }
+usage-lib = { version = "7", features = ["clap", "docs"] }
 unicode-casefold = { workspace = true }
 unicode-normalization = { workspace = true }
 
