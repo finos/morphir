@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/mck-report.schema.json",
   "title": "Draft Workbench MCK report",
-  "description": "Bounded observations and verdicts tied to the SHA-256 of the exact corpus bytes; report checking recomputes qualification; draft.4 adds declared output admission",
+  "description": "Bounded operation-specific value, invocation and terminal observations tied to the exact corpus SHA-256; report checking recomputes qualification",
   "examples": [
     {
       "formatVersion": "0.1.0-draft.5",
@@ -122,45 +122,97 @@
           }
         },
         "else": {
-          "properties": {
-            "observed": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "required": [ "status", "value" ],
-                      "properties": {
-                        "status": {
-                          "const": "ok"
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "validate-outcomes"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "observed": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "required": [ "status", "value" ],
+                        "properties": {
+                          "status": {
+                            "const": "ok"
+                          },
+                          "value": {
+                            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json"
+                          }
                         },
-                        "value": {
-                          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
-                        }
+                        "additionalProperties": false
                       },
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "required": [ "status", "code" ],
-                      "properties": {
-                        "status": {
-                          "const": "invalid"
+                      {
+                        "type": "object",
+                        "required": [ "status", "code" ],
+                        "properties": {
+                          "status": {
+                            "const": "invalid"
+                          },
+                          "code": {
+                            "type": "string",
+                            "maxLength": 128,
+                            "minLength": 1
+                          }
                         },
-                        "code": {
-                          "type": "string",
-                          "maxLength": 128,
-                          "minLength": 1
-                        }
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "observed": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "required": [ "status", "value" ],
+                        "properties": {
+                          "status": {
+                            "const": "ok"
+                          },
+                          "value": {
+                            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+                          }
+                        },
+                        "additionalProperties": false
                       },
-                      "additionalProperties": false
-                    }
-                  ]
-                }
-              ]
+                      {
+                        "type": "object",
+                        "required": [ "status", "code" ],
+                        "properties": {
+                          "status": {
+                            "const": "invalid"
+                          },
+                          "code": {
+                            "type": "string",
+                            "maxLength": 128,
+                            "minLength": 1
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                ]
+              }
             }
           }
         },

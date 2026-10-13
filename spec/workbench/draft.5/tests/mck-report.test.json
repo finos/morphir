@@ -1,0 +1,159 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "Terminal observation bound to its operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.5",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.5",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations",
+            "validate-output",
+            "validate-outcomes"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "terminal",
+            "operation": "validate-outcomes",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "c",
+                    "outcome": {
+                      "status": "cancelled"
+                    }
+                  }
+                ],
+                "cleanup": {
+                  "stage": "cleanup",
+                  "code": "provider.dispose",
+                  "message": "Disposal failed"
+                },
+                "extensions": null
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "Bare value cannot become terminal evidence",
+      "data": {
+        "formatVersion": "0.1.0-draft.5",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.5",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations",
+            "validate-output",
+            "validate-outcomes"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "terminal",
+            "operation": "validate-outcomes",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Terminal evidence cannot become output value",
+      "data": {
+        "formatVersion": "0.1.0-draft.5",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.5",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "decode-value",
+            "validate-value",
+            "validate-invocations",
+            "validate-output",
+            "validate-outcomes"
+          ],
+          "formats": [
+            "json",
+            "ion-text"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "terminal",
+            "operation": "validate-output",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "c",
+                    "outcome": {
+                      "status": "cancelled"
+                    }
+                  }
+                ],
+                "cleanup": {
+                  "stage": "cleanup",
+                  "code": "provider.dispose",
+                  "message": "Disposal failed"
+                },
+                "extensions": null
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    }
+  ]
+}

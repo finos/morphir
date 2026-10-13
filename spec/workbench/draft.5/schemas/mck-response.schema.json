@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/mck-response.schema.json",
   "title": "Draft Workbench MCK response",
-  "description": "Adapter capability claims or value/invocation observations; operation-specific engine admission binds the projection; draft.4 adds declared output admission",
+  "description": "Adapter capability claims or value, invocation and terminal observations; operation-specific engine admission binds each projection",
   "examples": [
     {
       "id": 1,
@@ -50,14 +50,15 @@
         },
         "operations": {
           "type": "array",
-          "maxItems": 4,
+          "maxItems": 5,
           "uniqueItems": true,
           "items": {
             "enum": [
               "decode-value",
               "validate-value",
               "validate-invocations",
-              "validate-output"
+              "validate-output",
+              "validate-outcomes"
             ]
           }
         },
@@ -91,6 +92,9 @@
             },
             {
               "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/invocations.schema.json"
+            },
+            {
+              "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json"
             }
           ]
         }
