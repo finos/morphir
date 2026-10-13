@@ -66,6 +66,9 @@ test "history is bounded and messages are truncated" {
       message: "problem",
       location: "",
       coordinates: "",
+      related: [],
+      fix: "",
+      stage: "",
     },
   )
   let reported = state.report("12:00:02", "Compile", 3, "source", 4, many)
@@ -85,6 +88,9 @@ test "reports are current only for the newest run on the current revision" {
     message: "Recursion is outside this profile",
     location: "line 1, column 1",
     coordinates: "",
+    related: [],
+    fix: "",
+    stage: "",
   }
   let state = @bottom_panel.State::new()
     .report("12:00:00", "Compile", 1, "source", 4, [error])
@@ -149,4 +155,42 @@ test "reply diagnostics keep codes, severities and locations" {
     @bottom_panel.reply_diagnostics(@json.parse("{\"success\":true}")).length(),
     0,
   )
+}
+
+///|
+test "naming diagnostics retain related declarations as one scoped warning" {
+  let reply = @json.parse(
+    (
+      #|{"success":true,"sourceWarnings":[{"code":"collision","stage":"frontend","message":"Recovered","fix":"Rename is_ready","coordinateProfile":"moonbit-parser-position-v1","locations":[{"owner":"value:ready","original":"isReady","allocated":"is-ready","source":{"startLine":2,"startColumn":7,"endLine":2,"endColumn":14}},{"owner":"value:ready-2","original":"is_ready","allocated":"is-ready-source","source":null}]}],"generationWarnings":[{"code":"backend-recovery","message":"Allocated","fix":"Choose a name","locations":[]},"Old warning"]}
+    ),
+  )
+  let found = @bottom_panel.reply_diagnostics(reply)
+  assert_eq(found.length(), 3)
+  assert_true(found[0].severity == @bottom_panel.Warning)
+  assert_eq(found[0].related.length(), 2)
+  assert_eq(found[0].fix, "Rename is_ready")
+  assert_eq(found[0].stage, "frontend")
+  assert_eq(found[0].related[0].original, "isReady")
+  assert_eq(found[0].related[0].allocated, "is-ready")
+  assert_eq(found[0].related[0].location, "line 2, column 8")
+  assert_eq(
+    found[0].related[0].coordinates,
+    "moonbit-parser-position-v1 2:7–2:14",
+  )
+  assert_eq(found[0].related[1].location, "")
+  assert_eq(found[1].code, "backend-recovery")
+  assert_eq(found[2].message, "Old warning")
+  let reported = @bottom_panel.State::new().report(
+    "12:00:00", "Compile", 1, "source", 3, found,
+  )
+  assert_eq(reported.problem_count(Map([("source", 3)])), 3)
+  assert_eq(reported.problem_count(Map([("source", 4)])), 0)
+  let many = Array::make(25, found[0].related[0])
+  let bounded = reported.report("12:01:00", "Compile", 2, "source", 4, [
+    { ..found[0], related: many, fix: "x".repeat(5000), },
+  ])
+  let stored = bounded.reports.last().unwrap().diagnostics[0]
+  assert_eq(stored.related.length(), 20)
+  assert_true(stored.message.contains("5 more related locations not retained"))
+  assert_true(stored.fix.has_suffix("… (truncated)"))
 }

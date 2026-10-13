@@ -8,6 +8,7 @@ import {
   "finos/morphir-scheme/frontend",
   "finos/morphir-scheme/backend",
   "finos/morphir-execution" @protocol,
+  "finos/morphir-execution/diagnostics",
   "finos/morphir-engine/execution" @typed_engine,
   "finos/morphir-engine/data",
   "finos/morphir-engine" @engine,
@@ -25,3 +26,7 @@ import {
   "finos/morphir-moonbit/fixtures",
   "moonbitlang/core/json",
 } for "test"
+
+import {
+  "finos/morphir-moonbit/fixtures",
+} for "wbtest"

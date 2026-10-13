@@ -291,7 +291,11 @@ does not capture the browser console or add host capabilities.
   current errors and warnings only. MoonBit frontend diagnostics keep their code
   and show an editor position; the original coordinates
   (`moonbit-parser-position-v1`, one-based lines, zero-based columns) appear in
-  the tooltip. Generator refusals keep their IR node path. When a connected v1
+  the tooltip. Frontend and backend naming warnings retain their stage, code,
+  related declaration owners, authored and allocated spellings, and suggested
+  fix. A compact disclosure shows the details. A warning counts once even when
+  it has several related declarations; at most 20 related locations are retained.
+  Generator refusals keep their IR node path. When a connected v1
   compile fails, the panel keeps the host's diagnostic severity, code and
   zero-based range; this adds no RPC method or field.
 - **Output** keeps the last 50 outcomes: run values, worksheet expressions and

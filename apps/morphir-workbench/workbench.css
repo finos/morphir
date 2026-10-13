@@ -269,3 +269,9 @@ main > .experience { flex:1 1 0; min-height:0; overflow:auto; }
   .tool-diagnostic { grid-template-columns:auto minmax(0,1fr); }
   .tool-diagnostic .tool-message,.tool-diagnostic .tool-location { grid-column:1 / -1; }
 }
+
+.tool-related { grid-column:2 / -1; min-width:0; font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+.tool-related summary { cursor:pointer; color:var(--link); }
+.tool-related li { display:flex; flex-direction:column; gap:2px; margin:8px 0; overflow-wrap:anywhere; }
+.tool-fix { white-space:pre-wrap; overflow-wrap:anywhere; }
+.severity-warning .tool-code { color:var(--warn-ink); }

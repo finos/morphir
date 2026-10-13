@@ -312,6 +312,9 @@ fn input_problem(model : Model, message : String) -> Model {
         message,
         location: entry_label(model, model.selected),
         coordinates: "",
+        related: [],
+        fix: "",
+        stage: "",
       },
     ],
   )
@@ -1430,6 +1433,9 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
               message: refusal.1,
               location: "",
               coordinates: "",
+              related: [],
+              fix: "",
+              stage: "",
             },
           ])
           return (

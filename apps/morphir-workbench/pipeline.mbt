@@ -105,6 +105,7 @@ pub fn execute(request : Json) -> Json {
     ]
     if compiled is Some(output) {
       source_ui(result, output.unit.metadata)
+      result.push(("sourceWarnings", source_warnings(output.unit.provenance)))
     }
     let generator_input = match compiled {
       Some(output) => {

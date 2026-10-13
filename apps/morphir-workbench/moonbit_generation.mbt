@@ -4,6 +4,7 @@ fn moonbit_output(input : @moonbit.Input) -> Json {
   try {
     let output = @moonbit.generate(input)
     @wire.obj([
+      ("generationWarnings", Json::array(output.warnings.map(naming_warning))),
       (
         "artifacts",
         Json::array(

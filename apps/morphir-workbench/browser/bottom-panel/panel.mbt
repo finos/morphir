@@ -48,12 +48,27 @@ pub extend Log with Eq::{equal, not_equal}
 ///|
 /// `location` is the editor-style position; `coordinates` keeps the original
 /// coordinate profile and values exactly as the reporter supplied them.
+pub(all) struct Related {
+  owner : String
+  original : String
+  allocated : String
+  location : String
+  coordinates : String
+} derive(Eq)
+
+///|
+pub extend Related with Eq::{equal, not_equal}
+
+///|
 pub(all) struct Diagnostic {
   severity : Severity
   code : String
   message : String
   location : String
   coordinates : String
+  related : Array[Related]
+  fix : String
+  stage : String
 } derive(Eq)
 
 ///|
@@ -254,6 +269,40 @@ pub fn State::log(
 }
 
 ///|
+
+///|
+fn bounded_diagnostic(d : Diagnostic) -> Diagnostic {
+  let count = if d.related.length() < 20 { d.related.length() } else { 20 }
+  {
+    ..d,
+    code: bounded(d.code),
+    location: bounded(d.location),
+    coordinates: bounded(d.coordinates),
+    fix: bounded(d.fix),
+    stage: bounded(d.stage),
+    message: bounded(
+      d.message +
+      (if d.related.length() > count {
+        " · " +
+        (d.related.length() - count).to_string() +
+        " more related locations not retained"
+      } else {
+        ""
+      }),
+    ),
+    related: d.related[:count]
+    .to_owned()
+    .map(r => {
+      owner: bounded(r.owner),
+      original: bounded(r.original),
+      allocated: bounded(r.allocated),
+      location: bounded(r.location),
+      coordinates: bounded(r.coordinates),
+    }),
+  }
+}
+
+///|
 pub fn State::report(
   self : State,
   time : String,
@@ -269,7 +318,7 @@ pub fn State::report(
       max_diagnostics
     }]
     .to_owned()
-    .map(diagnostic => { ..diagnostic, message: bounded(diagnostic.message), })
+    .map(bounded_diagnostic)
   if diagnostics.length() > max_diagnostics {
     kept.push({
       severity: Info,
@@ -278,6 +327,9 @@ pub fn State::report(
       " more diagnostics were not retained.",
       location: "",
       coordinates: "",
+      related: [],
+      fix: "",
+      stage: "",
     })
   }
   let entry = {
@@ -433,6 +485,9 @@ fn frontend_diagnostic(value : Json) -> Diagnostic {
     message: text(value, "detail"),
     location,
     coordinates,
+    related: [],
+    fix: "",
+    stage: "",
   }
 }
 
@@ -477,12 +532,45 @@ fn host_diagnostic(value : Json) -> Diagnostic {
     message: text(value, "message"),
     location,
     coordinates,
+    related: [],
+    fix: "",
+    stage: "",
   }
 }
 
 ///|
 /// Diagnostics carried by a workbench host reply. A failure without structured
 /// diagnostics becomes one error with the host's message.
+
+///|
+fn naming_diagnostic(value : Json) -> Diagnostic {
+  let related = items(field(value, "locations")).map(loc => {
+    let position = frontend_diagnostic({
+      "source": field(loc, "source"),
+      "coordinateProfile": field(value, "coordinateProfile"),
+    })
+    Related::{
+      owner: text(loc, "owner"),
+      original: text(loc, "original"),
+      allocated: text(loc, "allocated"),
+      location: position.location,
+      coordinates: position.coordinates,
+    }
+  })
+  let first = related.get(0)
+  {
+    severity: Warning,
+    code: text(value, "code"),
+    message: text(value, "message"),
+    location: first.map(r => r.location).unwrap_or(""),
+    coordinates: first.map(r => r.coordinates).unwrap_or(""),
+    related,
+    fix: text(value, "fix"),
+    stage: text(value, "stage"),
+  }
+}
+
+///|
 pub fn reply_diagnostics(reply : Json) -> Array[Diagnostic] {
   let found : Array[Diagnostic] = []
   let failed = field(reply, "success") != Json::boolean(true)
@@ -499,6 +587,9 @@ pub fn reply_diagnostics(reply : Json) -> Array[Diagnostic] {
       message: text(reply, "message"),
       location: "",
       coordinates: "",
+      related: [],
+      fix: "",
+      stage: "",
     })
   }
   let generation = items(field(reply, "generationDiagnostics"))
@@ -513,6 +604,9 @@ pub fn reply_diagnostics(reply : Json) -> Array[Diagnostic] {
         "IR node " + text(problem, "nodePath")
       },
       coordinates: text(problem, "nodePath"),
+      related: [],
+      fix: "",
+      stage: "",
     })
   }
   if generation.is_empty() && text(reply, "generationMessage") != "" {
@@ -522,9 +616,20 @@ pub fn reply_diagnostics(reply : Json) -> Array[Diagnostic] {
       message: text(reply, "generationMessage"),
       location: "",
       coordinates: "",
+      related: [],
+      fix: "",
+      stage: "",
     })
   }
+  for warning in items(field(reply, "sourceWarnings")) {
+    if warning is Object(_) {
+      found.push(naming_diagnostic(warning))
+    }
+  }
   for warning in items(field(reply, "generationWarnings")) {
+    if warning is Object(_) {
+      found.push(naming_diagnostic(warning))
+    }
     if warning is String(message) {
       found.push({
         severity: Warning,
@@ -532,6 +637,9 @@ pub fn reply_diagnostics(reply : Json) -> Array[Diagnostic] {
         message,
         location: "",
         coordinates: "",
+        related: [],
+        fix: "",
+        stage: "",
       })
     }
   }
@@ -543,6 +651,9 @@ pub fn reply_diagnostics(reply : Json) -> Array[Diagnostic] {
       text(reply, "inspectionMessage"),
       location: "",
       coordinates: "",
+      related: [],
+      fix: "",
+      stage: "",
     })
   }
   found
@@ -698,6 +809,31 @@ fn diagnostics_view(
                   hidden=d.location == "",
                   title=d.coordinates,
                   d.location,
+                ),
+                @html.details(
+                  class="tool-related",
+                  hidden=d.related.is_empty() && d.fix == "",
+                  [
+                    @html.summary(
+                      (if d.stage == "" { "" } else { d.stage + " · " }) +
+                      "Related declarations and suggested fix",
+                    ),
+                    @html.ul(
+                      d.related.map(r => {
+                        @html.li([
+                          @html.code(r.owner),
+                          @html.span(
+                            "Authored: " +
+                            r.original +
+                            " · Allocated: " +
+                            r.allocated,
+                          ),
+                          @html.span(title=r.coordinates, r.location),
+                        ])
+                      }),
+                    ),
+                    @html.p(class="tool-fix", hidden=d.fix == "", d.fix),
+                  ],
                 ),
               ])
             }),
