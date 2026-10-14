@@ -6,7 +6,7 @@
 bun = "1.4.3"
 
 # Node.js and npm for the CLI package and target smoke tests
-node = "24.21.0"
+node = "24.22.0"
 
 # YAML linting
 yamllint = "latest"
