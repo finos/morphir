@@ -22,6 +22,13 @@ This repository contains the Moonbit implementation of Morphir, organized as a m
 - **@morphir/morphir**: CLI application in [`apps/morphir`](apps/morphir/README.md)
 - **Morphir Workbench**: shared Rabbita [browser UI](apps/morphir-workbench/README.md) and [Proton desktop host](apps/morphir-workbench-desktop/README.md)
 
+## Project site
+
+The project site at <https://finos.github.io/morphir-moonbit/> publishes the docs, the design records, the blog
+and the Morphir Workbench. It is built from `docs/`, `site/` and package READMEs by
+[`apps/morphir-site`](apps/morphir-site/README.md) and deployed on every push to `main`. To write for it, read
+[Writing for the site](docs/WRITING_FOR_THE_SITE.md).
+
 ## Prerequisites
 
 - [mise](https://mise.jdx.dev/) - Development environment manager

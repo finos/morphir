@@ -27,7 +27,9 @@ let packages : Array[String] = [
 ///|
 /// Modules whose root directory is not a package: they need `moon.mod` and a `moon.work` entry, but no
 /// `moon.pkg`.
-let modules : Array[String] = ["pkgs/morphir-elm", "pkgs/morphir-typing-tools"]
+let modules : Array[String] = [
+  "pkgs/morphir-elm", "pkgs/morphir-typing-tools", "apps/morphir-site",
+]
 
 ///|
 /// Whether `path` is an active member of the workspace manifest `work`.

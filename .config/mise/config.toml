@@ -85,6 +85,32 @@ run = "moon run scripts/native-telemetry-check.mbtx"
 description = "Opt-in JSON/Ion value and invocation admission through the shared parent Rust MCK"
 run = "moon run scripts/workbench-mck.mbtx"
 
+[tasks."setup:site"]
+description = "Install site build dependencies and Chromium for the smoke test"
+run = [
+  "npm ci --prefix apps/morphir-site",
+  "npm ci --prefix apps/morphir-workbench",
+  "npm exec --prefix apps/morphir-site -- playwright install chromium",
+]
+
+[tasks."build:site"]
+description = "Build the project site into _site/ (SITE_MAIN=1 fails on draft pages)"
+run = "node apps/morphir-site/scripts/build.js"
+
+[tasks."dev:site"]
+description = "Serve _site/ at http://127.0.0.1:4173/morphir-moonbit/ and rebuild on content changes"
+depends = ["build:site"]
+run = "node apps/morphir-site/scripts/serve.js --watch"
+
+[tasks."test:site"]
+description = "Site unit tests, highlight tests and the browser smoke test against _site/"
+run = [
+  "moon test --target native -p finos/morphir-site/model finos/morphir-site/content finos/morphir-site/views finos/morphir-site/site finos/morphir-site/generate",
+  "moon test --target js -p finos/morphir-site/model",
+  "npm test --prefix apps/morphir-site",
+  "npm run test:browser --prefix apps/morphir-site",
+]
+
 [hooks]
 # Automatically setup git hooks when entering the directory
 enter = "mise run setup:hooks"
@@ -92,3 +118,8 @@ enter = "mise run setup:hooks"
 [settings]
 # Enable experimental features
 experimental = true
+
+[tasks."check:site"]
+description = "Check links, titles, the Atom feed and forbidden paths in the built _site/"
+dir = "apps/morphir-site"
+run = "moon run --target native check -- --dir ../../_site"

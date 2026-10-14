@@ -11,6 +11,7 @@ website/.docusaurus
 .cache-loader
 
 # Moonbit build artifacts
+/_site/
 target
 **/target/
 **/*.mi

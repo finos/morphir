@@ -59,6 +59,16 @@ This document provides a reference for all available mise tasks in the Morphir M
 | `mise run setup:workbench` | Install workbench npm dependencies and Chromium; `--ci` adds Linux system dependencies | All |
 | `mise run setup:hooks` | Install git hooks for pre-push validation (idempotent, auto-runs on directory entry) | All |
 
+### Site Tasks
+
+| Task | Description | Platform |
+|------|-------------|----------|
+| `mise run setup:site` | Install site build dependencies and Chromium for the smoke test | All |
+| `SITE_MAIN=1 mise run build:site` | Build the project site into `_site/` (`SITE_MAIN=1` fails on draft pages) | All |
+| `mise run dev:site` | Serve `_site/` at http://127.0.0.1:4173/morphir-moonbit/ and rebuild on content changes | All |
+| `mise run check:site` | Check links, titles, the Atom feed and forbidden paths in the built `_site/` | All |
+| `mise run test:site` | Site unit tests, highlight tests and the browser smoke test against `_site/` | All |
+
 ### Beads Tasks
 
 | Task | Description | Platform |

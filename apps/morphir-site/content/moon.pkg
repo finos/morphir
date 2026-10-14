@@ -1,0 +1,13 @@
+import {
+  "finos/morphir-site/model",
+  "moonbit-community/cmark/cmark_html",
+  "bobzhang/beautiful_mermaid" @mermaid,
+  "moonbitlang/core/debug",
+}
+
+import {
+  "finos/morphir-site/content",
+  "finos/morphir-site/model",
+} for "test"
+
+supported_targets = "native"

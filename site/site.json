@@ -1,0 +1,11 @@
+{
+  "title": "Morphir MoonBit",
+  "description": "Morphir tools, IR and the Morphir Workbench, written in MoonBit.",
+  "base_path": "/morphir-moonbit/",
+  "site_url": "https://finos.github.io/morphir-moonbit/",
+  "repo_url": "https://github.com/finos/morphir-moonbit",
+  "packages": [
+    "morphir-ir", "morphir-scheme", "morphir-engine", "morphir-elm", "morphir-moonbit", "morphir-sdk",
+    "morphir-workbench"
+  ]
+}

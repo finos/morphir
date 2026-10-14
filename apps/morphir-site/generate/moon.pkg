@@ -1,0 +1,13 @@
+import {
+  "finos/morphir-site/model",
+  "finos/morphir-site/site",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/core/env",
+  "moonbitlang/x/sys",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

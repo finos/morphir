@@ -1,0 +1,15 @@
+import {
+  "finos/morphir-site/model",
+  "moonbit-community/rabbita",
+  "moonbit-community/rabbita/html",
+}
+
+import {
+  "finos/morphir-site/views",
+  "finos/morphir-site/model",
+  "moonbitlang/async",
+} for "test"
+
+supported_targets = "native"
+
+warnings = "-alert_experimental-alert_xss_vulnerable"

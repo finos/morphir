@@ -1,0 +1,8 @@
+{
+  "title": "Fixture site",
+  "description": "A fixture for the generator test",
+  "base_path": "/fixture/",
+  "site_url": "https://example.org/fixture/",
+  "repo_url": "https://github.com/finos/morphir-moonbit",
+  "packages": []
+}

@@ -1,0 +1,13 @@
+import {
+  "finos/morphir-site/model",
+  "moonbit-community/rabbita",
+  "moonbit-community/rabbita/html",
+  "moonbit-community/rabbita/http",
+  "moonbit-community/rabbita/nav",
+  "moonbit-community/rabbita/common",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "js"
+
+pkgtype(kind: "executable")

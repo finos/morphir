@@ -2,6 +2,7 @@ members = [
   ".",
   "./apps/morphir",
   "./apps/morphir-workbench",
+  "./apps/morphir-site",
   "./pkgs/morphir-core",
   "./pkgs/morphir-ir",
   "./pkgs/morphir-scheme",

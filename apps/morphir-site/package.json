@@ -1,0 +1,18 @@
+{
+  "name": "@morphir/moonbit-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "node scripts/serve.js --watch",
+    "test": "node --test scripts/highlight.test.js",
+    "test:browser": "node scripts/browser-test.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "mermaid": "12.2.0",
+    "playwright": "1.58.2",
+    "shiki": "4.5.0"
+  }
+}
