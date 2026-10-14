@@ -6,7 +6,8 @@ preserves the original codec schemas and kit. These profiles adopt the MoonBit
 execution codecs. Draft readers support only an explicitly listed exact draft.
 The additive [invocation admission contract](draft.3/README.md) uses
 `0.1.0-draft.3`; [declared output admission](draft.4/README.md) uses
-`0.1.0-draft.4`. Each has its own exact offline MCK negotiation and kit.
+`0.1.0-draft.4`; [terminal outcome admission](draft.5/README.md) uses
+`0.1.0-draft.5`. Each has its own exact offline MCK negotiation and kit.
 Schema identifiers identify this draft package; they are not an announcement of
 deployed URLs or runtime support.
 
@@ -164,3 +165,9 @@ and recognized top-level SDK model-error admission with an independent
 historical drafts and frozen payload IDs. This offline operation does not execute
 functions or qualify complete outcome envelopes, lifecycle receipts or connected
 execution. Those remain separate work before a host advertises an extension.
+
+[Draft.5 terminal outcome admission](draft.5/README.md) binds complete ordered
+terminal evidence to an admitted invocation suite and public manifest. Its
+[377-case kit](mck/draft.5/README.md) preserves returned values, SDK model errors,
+primary failures, cancellation and separate cleanup failures. Offline admission
+does not establish actual host execution or authoritative job cancellation.

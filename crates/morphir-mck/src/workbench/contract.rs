@@ -9,6 +9,7 @@ pub const VERSION: &str = "0.1.0-draft.1";
 pub const ADMISSION_VERSION: &str = "0.1.0-draft.2";
 pub const INVOCATION_VERSION: &str = "0.1.0-draft.3";
 pub const OUTPUT_VERSION: &str = "0.1.0-draft.4";
+pub const OUTCOMES_VERSION: &str = "0.1.0-draft.5";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -44,6 +45,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.2",
         "=0.1.0-draft.3",
         "=0.1.0-draft.4",
+        "=0.1.0-draft.5",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -73,6 +75,8 @@ pub enum Operation {
     ValidateInvocations,
     #[serde(rename = "validate-output")]
     ValidateOutput,
+    #[serde(rename = "validate-outcomes")]
+    ValidateOutcomes,
 }
 
 impl Operation {
@@ -80,7 +84,9 @@ impl Operation {
         if (version == VERSION && self != Self::DecodeValue)
             || (version == ADMISSION_VERSION
                 && !matches!(self, Self::DecodeValue | Self::ValidateValue))
-            || (version != OUTPUT_VERSION && self == Self::ValidateOutput)
+            || (!matches!(version, OUTPUT_VERSION | OUTCOMES_VERSION)
+                && self == Self::ValidateOutput)
+            || (version != OUTCOMES_VERSION && self == Self::ValidateOutcomes)
         {
             return Err("operation is not defined by this Workbench draft".into());
         }
@@ -186,10 +192,10 @@ impl Observation {
 }
 
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
-    if operation == Operation::ValidateInvocations {
-        invocation_projection(value)
-    } else {
-        projection(value)
+    match operation {
+        Operation::ValidateInvocations => invocation_projection(value),
+        Operation::ValidateOutcomes => super::outcomes::projection(value),
+        _ => projection(value),
     }
 }
 
@@ -281,7 +287,7 @@ pub(super) fn projection(value: &Value) -> Result<Value, String> {
     Ok(projected)
 }
 
-struct OfflineOnly;
+pub(super) struct OfflineOnly;
 impl jsonschema::Retrieve for OfflineOnly {
     fn retrieve(
         &self,

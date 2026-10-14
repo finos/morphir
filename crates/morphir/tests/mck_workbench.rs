@@ -197,3 +197,39 @@ fn invocation_report_requires_operation_specific_suite_projection() {
     assert_eq!(result.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&result.stderr).contains("invocation projection"));
 }
+
+#[test]
+fn terminal_report_retains_cleanup_and_rejects_value_or_operation_substitution() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    let suite = json!({"profile":"morphir-invocations-v1","calls":[{"id":"c","entry":"run","arguments":[]}]});
+    let outcomes = json!({"contractVersion":"0.1.0-draft.5","calls":[{"id":"c","outcome":{"status":"cancelled"}}],"cleanup":{"stage":"cleanup","code":"provider.dispose","message":"Disposal failed"},"extensions":null});
+    std::fs::write(kit.join("cases.json"),json!({"formatVersion":"0.1.0-draft.5","cases":[{"id":"terminal","operation":"validate-outcomes","format":"json","input":{"suite":suite,"manifest":{"entries":[{"name":"run","inputs":[],"output":{"type":"unit"}}],"definitions":[]},"outcomes":outcomes},"expected":{"status":"ok","value":outcomes}}]}).to_string()).unwrap();
+    let hash = morphir_mck::workbench::load(&kit)
+        .unwrap()
+        .corpus_hash()
+        .to_owned();
+    // A saved fixed transcript checks CLI evidence handling, not an implementation.
+    let saved = json!({"formatVersion":"0.1.0-draft.5","suite":"workbench","corpusHash":hash,"capabilities":{"suite":"workbench","contractVersion":"0.1.0-draft.5","binding":"transcript","language":"fixture","operations":["validate-outcomes"],"formats":["json"]},"records":[{"caseId":"terminal","operation":"validate-outcomes","format":"json","result":"pass","observed":{"status":"ok","value":outcomes}}],"errors":[],"qualified":true});
+    let report = root.path().join("report.json");
+    std::fs::write(&report, saved.to_string()).unwrap();
+    let admitted = check(&kit, &report);
+    assert_eq!(
+        admitted.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&admitted.stderr)
+    );
+    for change in ["cleanup", "value", "operation"] {
+        let mut forged = saved.clone();
+        match change {
+            "cleanup" => forged["records"][0]["observed"]["value"]["cleanup"] = json!(null),
+            "value" => forged["records"][0]["observed"]["value"] = json!({"type":"unit"}),
+            "operation" => forged["records"][0]["operation"] = json!("validate-output"),
+            _ => unreachable!(),
+        }
+        std::fs::write(&report, forged.to_string()).unwrap();
+        assert_eq!(check(&kit, &report).status.code(), Some(1));
+    }
+}

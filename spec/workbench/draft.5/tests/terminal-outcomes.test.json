@@ -1,0 +1,218 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json",
+  "tests": [
+    {
+      "description": "Returned typed value",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "returned",
+              "value": {
+                "type": "int",
+                "value": "42"
+              }
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Primary failure and cleanup remain distinct",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "failed",
+              "failure": {
+                "stage": "invoke",
+                "code": "provider.crash",
+                "message": "Invocation failed"
+              }
+            }
+          }
+        ],
+        "cleanup": {
+          "stage": "cleanup",
+          "code": "provider.dispose",
+          "message": "Disposal failed"
+        },
+        "extensions": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Terminal cancellation",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "cancelled"
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Enumerated model error",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "model-error",
+              "code": "sdk.invalid_number"
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Contradictory failure value",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "failed",
+              "failure": {
+                "stage": "invoke",
+                "code": "provider.crash",
+                "message": "Invocation failed"
+              },
+              "value": {
+                "type": "int",
+                "value": "42"
+              }
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Running state is not terminal evidence",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "running"
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Cleanup cannot carry invocation stage",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "returned",
+              "value": {
+                "type": "int",
+                "value": "42"
+              }
+            }
+          }
+        ],
+        "cleanup": {
+          "stage": "invoke",
+          "code": "provider.crash",
+          "message": "Invocation failed"
+        },
+        "extensions": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Model errors cannot hide in returned values",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "returned",
+              "value": {
+                "type": "model-error",
+                "code": "sdk.division_by_zero"
+              }
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong draft",
+      "data": {
+        "contractVersion": "0.1.0-draft.4",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "returned",
+              "value": {
+                "type": "int",
+                "value": "42"
+              }
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure fields cannot be omitted",
+      "data": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "failed",
+              "failure": {
+                "stage": "invoke",
+                "code": "provider.crash"
+              }
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "valid": false
+    }
+  ]
+}

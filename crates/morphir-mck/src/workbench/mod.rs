@@ -2,12 +2,13 @@
 
 mod contract;
 mod corpus;
+mod outcomes;
 mod report;
 mod run;
 
 pub use contract::{
-    ADMISSION_VERSION, Capabilities, Format, INVOCATION_VERSION, MAX_VALUE_BYTES, OUTPUT_VERSION,
-    Observation, Operation, VERSION,
+    ADMISSION_VERSION, Capabilities, Format, INVOCATION_VERSION, MAX_VALUE_BYTES, OUTCOMES_VERSION,
+    OUTPUT_VERSION, Observation, Operation, VERSION,
 };
 pub use corpus::{Corpus, load};
 pub use report::{
@@ -23,3 +24,6 @@ use run::{Testee, execute};
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod outcomes_tests;

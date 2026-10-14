@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json",
+  "title": "Draft Workbench terminal outcomes",
+  "description": "Complete ordered terminal evidence with typed returned values, enumerated model errors, primary failures, cancellation and separate cleanup failure",
+  "$comment": "Offline admission does not authenticate a producer or prove live execution or authoritative daemon cancellation. Codes and identities also have semantic UTF-16 limits. Opaque Ion extension bytes must exactly echo the admitted suite.",
+  "examples": [
+    {
+      "contractVersion": "0.1.0-draft.5",
+      "calls": [
+        {
+          "id": "first",
+          "outcome": {
+            "status": "returned",
+            "value": {
+              "type": "int",
+              "value": "42"
+            }
+          }
+        }
+      ],
+      "cleanup": null,
+      "extensions": null
+    }
+  ],
+  "type": "object",
+  "required": [ "contractVersion", "calls", "cleanup", "extensions" ],
+  "properties": {
+    "contractVersion": {
+      "const": "0.1.0-draft.5"
+    },
+    "calls": {
+      "type": "array",
+      "maxItems": 1000,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "outcome" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "outcome": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [ "status", "value" ],
+                "properties": {
+                  "status": {
+                    "const": "returned"
+                  },
+                  "value": {
+                    "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/value.schema.json"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [ "status", "code" ],
+                "properties": {
+                  "status": {
+                    "const": "model-error"
+                  },
+                  "code": {
+                    "enum": [
+                      "sdk.division_by_zero",
+                      "sdk.invalid_number",
+                      "sdk.out_of_range",
+                      "sdk.invalid_comparison",
+                      "sdk.unrepresentable_text"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [ "status", "failure" ],
+                "properties": {
+                  "status": {
+                    "const": "failed"
+                  },
+                  "failure": {
+                    "$ref": "#/$defs/primaryFailure"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [ "status" ],
+                "properties": {
+                  "status": {
+                    "const": "cancelled"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cleanup": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/cleanupFailure"
+        }
+      ]
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [ "format", "bytes" ],
+          "properties": {
+            "format": {
+              "const": "ion-binary"
+            },
+            "bytes": {
+              "type": "array",
+              "maxItems": 65536,
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "maximum": 255,
+                "minimum": 0
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "primaryFailure": {
+      "type": "object",
+      "required": [ "stage", "code", "message" ],
+      "properties": {
+        "stage": {
+          "enum": [ "acquire", "build", "invoke", "evaluate", "compare" ]
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512
+        }
+      },
+      "additionalProperties": false
+    },
+    "cleanupFailure": {
+      "type": "object",
+      "required": [ "stage", "code", "message" ],
+      "properties": {
+        "stage": {
+          "const": "cleanup"
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

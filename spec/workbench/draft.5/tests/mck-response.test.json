@@ -1,0 +1,99 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/mck-response.schema.json",
+  "tests": [
+    {
+      "description": "All five capability operations in wire response",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.5",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "decode-value",
+          "validate-value",
+          "validate-invocations",
+          "validate-output",
+          "validate-outcomes"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Terminal evidence in successful wire response",
+      "data": {
+        "id": 2,
+        "status": "ok",
+        "value": {
+          "contractVersion": "0.1.0-draft.5",
+          "calls": [
+            {
+              "id": "c",
+              "outcome": {
+                "status": "cancelled"
+              }
+            }
+          ],
+          "cleanup": {
+            "stage": "cleanup",
+            "code": "provider.dispose",
+            "message": "Disposal failed"
+          },
+          "extensions": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown operation still rejected",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.5",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "decode-value",
+          "validate-value",
+          "validate-invocations",
+          "validate-output",
+          "future-operation"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong terminal envelope draft rejected",
+      "data": {
+        "id": 2,
+        "status": "ok",
+        "value": {
+          "contractVersion": "0.1.0-draft.4",
+          "calls": [
+            {
+              "id": "c",
+              "outcome": {
+                "status": "cancelled"
+              }
+            }
+          ],
+          "cleanup": {
+            "stage": "cleanup",
+            "code": "provider.dispose",
+            "message": "Disposal failed"
+          },
+          "extensions": null
+        }
+      },
+      "valid": false
+    }
+  ]
+}

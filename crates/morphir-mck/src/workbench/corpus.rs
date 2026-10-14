@@ -97,7 +97,23 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::ValidateInvocations {
+        let input_len = if case.operation() == Operation::ValidateOutcomes {
+            let envelope = case
+                .input
+                .as_object()
+                .ok_or("outcomes input must be an object")?;
+            if envelope.len() != 3
+                || !["suite", "manifest", "outcomes"]
+                    .iter()
+                    .all(|key| envelope.contains_key(*key))
+            {
+                return Err("outcomes input requires exactly suite, manifest and outcomes".into());
+            }
+            if case.format == Format::IonText && !case.input["outcomes"].is_string() {
+                return Err("Ion outcomes must be a string".into());
+            }
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::ValidateInvocations {
             let envelope = case
                 .input
                 .as_object()
