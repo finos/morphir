@@ -106,6 +106,8 @@ pub struct Engine {
   priv metadata_policies : Map[String, @data.MetadataPolicy]
   priv data_formats : Map[String, DataFormat]
   priv limits : @scheme.Limits
+  priv static_metadata_authority : Bool
+  priv mut project_metadata_provider : ((ProjectMetadataScope) -> @linked_metadata.Capabilities raise)?
 }
 
 ///|
@@ -114,6 +116,10 @@ pub fn Engine::new(
   metadata_capabilities? : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
 ) -> Engine {
   let engine = {
+    static_metadata_authority: metadata_capabilities.restore_library is Some(_) ||
+    metadata_capabilities.load_context is Some(_) ||
+    metadata_capabilities.target_names_interpreter,
+    project_metadata_provider: None,
     frontends: Map([]),
     source_providers: Map([]),
     components: Map::from_array([

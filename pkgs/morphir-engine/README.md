@@ -431,3 +431,64 @@ backend captures them at registration. Default capabilities are unavailable; nei
 metadata nor configuration supplies provider trust. Known requests fail before artifacts
 are returned when admission or required interpretation is missing. Rich Ion checkpoints
 retain the authored payload, and Morphir JSON retains its checked loss boundary.
+
+### Project-scoped metadata providers
+
+Applications can call `Engine::register_project_metadata_provider(bind)` to bind
+separate metadata capabilities to each planned MoonBit project. `bind` receives a
+`ProjectMetadataScope` containing the workspace root, project root/name and an
+immutable `configuration.MetadataProviderRequest`. The engine binds once per
+selected MoonBit project and captures the returned capabilities in that project's
+jobs. Identical predicate or IR unit names do not share authority across projects.
+
+Binding must perform no I/O, restoration or resource allocation requiring cleanup.
+Restoration belongs in the returned `restore_library` callback, which interpretation
+calls only when it encounters a required naming fact. `list_projects` does not
+bind providers. Constructing a plan binds selections but does not restore providers;
+projects without naming facts perform no restoration. Each new plan binds again.
+The host owns approval of paths, confinement, authentication and later session
+lifecycle. Host failures should raise `morphir-metadata.Invalid` with a stable code,
+owner and repair so generation retains their diagnostic details.
+
+The existing `Engine::new(metadata_capabilities=...)` remains the static embedding
+API. An active static capability and a project binder, or two binder registrations,
+fail with `metadata.ambiguous_authority`. Unavailable static defaults grant no
+additional authority. Custom generation backends keep their existing callback ABI;
+this binder applies to the built-in MoonBit generator.
+
+Configuration selects a service; it cannot install a callback. The pure
+`Document::metadata_provider_request()` parser accepts disabled defaults or this
+explicit request:
+
+```toml
+[metadata]
+provider = "shared-local-restore"
+service = "tools/morphir-provider-host"
+policy = "trust/policy.json"
+lock = "morphir.lock"
+registry = "registry"
+state = "trust/state"
+assurance = "portable"
+
+[metadata.naming]
+release = "morphir/naming@1.0.0"
+```
+
+Every path retains its winning configuration origin for host resolution. Parsing
+preserves the selected strings and performs no filesystem access. The host must
+resolve paths from their owning documents, or the invocation for CLI selections,
+and enforce its grants. The parser requires all shown fields, canonical stable
+naming-release syntax and explicit portable assurance. Unsupported providers,
+hardened assurance, incomplete requests and non-string selections fail with
+`metadata.invalid_configuration`, naming the key and origin. `provider = "none"`
+is the explicit disabled selection; service selections cannot accompany it.
+Unrelated metadata configuration remains available to its own consumers. A disabled
+request means configuration requests no service; an embedding may still grant
+capabilities explicitly, as with the existing static constructor API.
+
+This contract does not install a signature verifier or shared restore service.
+The installed CLI still supplies unavailable capabilities; configuration alone
+does not enable authenticated generation. Shared-service snapshot export,
+checked native projection, scoped host sessions and installed authenticated
+qualification are separate integration work. A trusted-validation summary or
+stored receipt cannot substitute for freshly authenticated provider bytes.

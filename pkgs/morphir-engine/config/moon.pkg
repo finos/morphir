@@ -1,6 +1,7 @@
 import {
   "moonbit-community/toml",
   "moonbitlang/core/json",
+  "moonbitlang/core/debug",
 }
 
 import {

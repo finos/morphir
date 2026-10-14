@@ -29,6 +29,8 @@ import {
 
 import {
   "finos/morphir-host" @host,
+  "finos/morphir-metadata/fixtures" @metadata_fixtures,
+  "finos/morphir-metadata" @linked_metadata,
   "finos/morphir-moonbit/fixtures",
 } for "test"
 

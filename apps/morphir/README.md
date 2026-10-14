@@ -695,3 +695,14 @@ strict_naming = true
 New-source entry IDs change from `#source-<hex>` to readable canonical names.
 Use the returned public entry list when constructing invocation suites. Loading an
 existing checkpoint keeps its entry IDs unchanged.
+
+### Declared naming providers
+
+The engine exposes project-scoped metadata-provider binding to embedding hosts.
+`[metadata] provider = "shared-local-restore"` describes an explicit service request
+and is validated with configuration provenance, but this CLI does not yet integrate
+that service. Configuration cannot grant authentication or install host callbacks.
+Known naming facts therefore continue to fail with `metadata.provider_unavailable`
+during generation; Ion checkpoints retain their authored metadata. Ordinary naming
+and projects without those facts continue to work. See the
+[engine host contract](../../pkgs/morphir-engine/README.md#project-scoped-metadata-providers).

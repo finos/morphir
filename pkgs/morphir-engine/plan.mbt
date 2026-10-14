@@ -458,6 +458,12 @@ pub fn Engine::plan(
         )
       e => raise e
     }
+    let generator = self.bind_project_metadata(settings.backend, generator, {
+      workspace_root: workspace.root,
+      project_root: selected.root,
+      project_name: selected.name,
+      request: effective.metadata_provider_request(),
+    })
     jobs.push({
       root: selected.root,
       source_root,

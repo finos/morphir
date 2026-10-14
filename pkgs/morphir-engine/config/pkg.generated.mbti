@@ -3,6 +3,7 @@ package "finos/morphir-engine/config"
 
 import {
   "moonbit-community/toml",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -30,10 +31,40 @@ pub fn Document::boolean(Self, String, Bool) -> Bool raise
 pub fn Document::encode(Self) -> String
 pub fn Document::get(Self, String) -> @toml.TomlValue?
 pub fn Document::json(Self, String) -> Json? raise
+pub fn Document::metadata_provider_request(Self) -> MetadataProviderRequest raise
 pub fn Document::shared(Self) -> Self
 pub fn Document::strings(Self, String) -> Array[String] raise
 pub fn Document::text(Self, String, String) -> String raise
 pub fn Document::validate(Self) -> Unit raise
+
+pub(all) struct MetadataPath {
+  path : String
+  origin : String
+} derive(Eq, @debug.Debug)
+pub fn MetadataPath::equal(Self, Self) -> Bool
+pub fn MetadataPath::not_equal(Self, Self) -> Bool
+pub fn MetadataPath::to_repr(Self) -> @debug.Repr
+
+pub(all) enum MetadataProviderRequest {
+  Disabled
+  SharedLocalRestore(MetadataRestoreConfig)
+} derive(Eq, @debug.Debug)
+pub fn MetadataProviderRequest::equal(Self, Self) -> Bool
+pub fn MetadataProviderRequest::not_equal(Self, Self) -> Bool
+pub fn MetadataProviderRequest::to_repr(Self) -> @debug.Repr
+
+pub(all) struct MetadataRestoreConfig {
+  service : MetadataPath
+  policy : MetadataPath
+  lock : MetadataPath
+  registry : MetadataPath
+  state : MetadataPath
+  release : String
+  assurance : String
+} derive(Eq, @debug.Debug)
+pub fn MetadataRestoreConfig::equal(Self, Self) -> Bool
+pub fn MetadataRestoreConfig::not_equal(Self, Self) -> Bool
+pub fn MetadataRestoreConfig::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

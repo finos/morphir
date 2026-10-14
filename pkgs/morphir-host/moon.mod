@@ -9,6 +9,7 @@ repository = "https://github.com/finos/morphir-moonbit"
 readme = "README.md"
 
 import {
+  "finos/morphir-metadata@0.1.0",
   "finos/morphir-moonbit@0.1.0",
   "finos/morphir-execution@0.1.0",
   "finos/morphir-ir@0.1.0",

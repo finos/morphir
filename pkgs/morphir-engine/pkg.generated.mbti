@@ -104,6 +104,7 @@ pub fn Engine::register_data_format(Self, String, DataFormat) -> Unit raise
 pub fn Engine::register_frontend(Self, String, Array[String], (Source) -> @v4.IRFile raise) -> Unit
 pub fn Engine::register_generation_backend(Self, String, GenerationBackend) -> Unit raise
 pub fn Engine::register_metadata_policy(Self, String, @data.MetadataPolicy) -> Unit raise
+pub fn Engine::register_project_metadata_provider(Self, (ProjectMetadataScope) -> @morphir-metadata.Capabilities raise) -> Unit raise
 pub fn Engine::register_source_provider(Self, SourceProvider) -> Unit raise
 pub fn Engine::register_unit_frontend(Self, String, Array[String], (Source, String, () -> Bool) -> @data.IRUnit raise, profile? : String?, dependencies? : Map[String, String], limits? : @data.Limits) -> Unit raise
 pub fn Engine::run(Self, Host, Input, config? : String, bind_runtime? : (@morphir-scheme.Runtime) -> Unit raise) -> Report
@@ -194,6 +195,16 @@ pub(all) struct ProjectInfo {
   error : String?
 }
 pub fn ProjectInfo::to_json(Self) -> Json
+
+pub(all) struct ProjectMetadataScope {
+  workspace_root : String
+  project_root : String
+  project_name : String
+  request : @config.MetadataProviderRequest
+} derive(Eq, @debug.Debug)
+pub fn ProjectMetadataScope::equal(Self, Self) -> Bool
+pub fn ProjectMetadataScope::not_equal(Self, Self) -> Bool
+pub fn ProjectMetadataScope::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Report {
   artifacts : Array[Artifact]
