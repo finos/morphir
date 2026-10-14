@@ -17,7 +17,10 @@ fn Infer::field_types(
 ) -> Map[String, Ty] raise Located {
   let out : Map[String, Ty] = Map([])
   for name, field in fields {
-    out[name.to_canonical()] = self.value(field, path_field(path, name))
+    out[name.to_canonical()] = self.value(
+      field,
+      @identities.path_field(path, name),
+    )
   }
   out
 }
@@ -30,7 +33,7 @@ fn Infer::value_field(
   name : @ir.Name,
   path : String,
 ) -> Ty raise Located {
-  let rt = self.value(record, path_record(path))
+  let rt = self.value(record, @identities.path_record(path))
   let field = self.fresh()
   self.unify(
     path,
@@ -56,7 +59,7 @@ fn Infer::value_update(
   fields : Map[@ir.Name, @ir.Value],
   path : String,
 ) -> Ty raise Located {
-  let rt = self.value(record, path_record(path))
+  let rt = self.value(record, @identities.path_record(path))
   let updates = self.field_types(fields, path)
   self.unify(path, Rec(updates, Some(self.fresh())), rt)
   rt

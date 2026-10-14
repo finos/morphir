@@ -6,15 +6,15 @@ fn Infer::value_case(
   cases : Array[(@ir.Pattern, @ir.Value)],
   path : String,
 ) -> Ty raise Located {
-  let st = self.value(subject, path_subject(path))
+  let st = self.value(subject, @identities.path_subject(path))
   let result = self.fresh()
   for i, case_ in cases {
     let (p, body) = case_
     self.scoped(() => {
-      let pt = self.pattern(p, path_case_pattern(path, i))
-      self.unify(path_case_pattern(path, i), st, pt)
-      let bt = self.value(body, path_case_body(path, i))
-      self.unify(path_case_body(path, i), result, bt)
+      let pt = self.pattern(p, @identities.path_case_pattern(path, i))
+      self.unify(@identities.path_case_pattern(path, i), st, pt)
+      let bt = self.value(body, @identities.path_case_body(path, i))
+      self.unify(@identities.path_case_body(path, i), result, bt)
     })
   }
   result
@@ -31,7 +31,7 @@ fn Infer::pattern(
   let t = match p {
     WildcardPattern(_) => self.fresh()
     AsPattern(_, inner, name) => {
-      let t = self.pattern(inner, path_pattern(path))
+      let t = self.pattern(inner, @identities.path_pattern(path))
       self.bind(name, t)
       t
     }
@@ -39,7 +39,7 @@ fn Infer::pattern(
     TuplePattern(_, items) => {
       let types = []
       for i, item in items {
-        types.push(self.pattern(item, path_item(path, i)))
+        types.push(self.pattern(item, @identities.path_item(path, i)))
       }
       Tup(types)
     }
@@ -47,13 +47,14 @@ fn Infer::pattern(
       self.pattern_constructor(name, args, path)
     EmptyListPattern(_) => Con(LIST, [self.fresh()])
     HeadTailPattern(_, head, tail) => {
-      let ht = self.pattern(head, path_head(path))
-      let tt = self.pattern(tail, path_tail(path))
+      let ht = self.pattern(head, @identities.path_head(path))
+      let tt = self.pattern(tail, @identities.path_tail(path))
       self.unify(path, Con(LIST, [ht]), tt)
       tt
     }
     LiteralPattern(_, lit) => self.pattern_literal(lit)
   }
+  self.fact(pattern_attributes(p).inferred_type, t, path)
   self.types[path] = t
   t
 }
@@ -84,7 +85,7 @@ fn Infer::pattern_constructor(
   let ct = self.global(poly, path)
   let types = []
   for i, arg in args {
-    types.push(self.pattern(arg, path_arg(path, i)))
+    types.push(self.pattern(arg, @identities.path_arg(path, i)))
   }
   let result = self.fresh()
   let found = curry(types, result)

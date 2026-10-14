@@ -53,11 +53,11 @@ fn definition_parts(
 }
 
 ///|
-/// Infers a definition at the current level. Its body is at `path_body(path)`. The declared input and output
-/// types constrain it: marked variables are metas, and other variables are rigid and belong to the current
-/// declaration. A rigid variable that is not yet in `rigid_scope` is declared here, with a unique key: it is
-/// added to the scope and returned. The result is the curried type of the definition. A `typeclass` that is not one of
-/// the four classes is `unsupported` at `path`, and a type reference that does not resolve fails at `path`.
+/// Infers a definition at the current level. Its body is at `path_body(path)`. The declared input and output types
+/// constrain it: marked variables are metas, and other variables are rigid and belong to the current declaration.
+/// A rigid variable that is not yet in `rigid_scope` is declared here, with a unique key: it is added to the scope
+/// and returned. The result is the curried type of the definition. A `typeclass` that is not one of the four
+/// classes is `unsupported` at `path`, and a type reference that does not resolve fails at `path`.
 fn Infer::definition(
   self : Infer,
   def : @ir.ValueDefinition,
@@ -99,8 +99,8 @@ fn Infer::definition(
       for i, input in inputs {
         self.bind(input.0, ins[i])
       }
-      let bt = self.value(body, path_body(path))
-      self.unify(path_body(path), out, bt)
+      let bt = self.value(body, @identities.path_body(path))
+      self.unify(@identities.path_body(path), out, bt)
     })
   }
   (curry(ins, out), owned)
@@ -166,13 +166,15 @@ fn Infer::value_let(
   rest : @ir.Value,
   path : String,
 ) -> Ty raise Located {
-  let (t, owned) = self.deeper().definition(def, path_definition(path))
+  let (t, owned) = self
+    .deeper()
+    .definition(def, @identities.path_definition(path))
   self.check_escape(owned, path)
   let poly = self.solver.generalize_with(t, self.level, owned.map(rigid_of))
   self.release(owned)
   self.scoped(() => {
     self.locals[name.to_canonical()] = poly
-    self.value(rest, path_in(path))
+    self.value(rest, @identities.path_in(path))
   })
 }
 
@@ -190,7 +192,7 @@ fn Infer::value_let_recursion(
 ) -> Ty raise Located {
   for name, def in defs {
     if unknown_class(signature_types(def)) is Some(class) {
-      raise ClassAt(path_definitions(path, name), class)
+      raise ClassAt(@identities.path_definitions(path, name), class)
     }
   }
   let inner = self.deeper()
@@ -211,11 +213,14 @@ fn Infer::value_let_recursion(
       inner.locals[name.to_canonical()] = p
     }
     for name, def in defs {
-      let (t, own) = inner.definition(def, path_definitions(path, name))
+      let (t, own) = inner.definition(
+        def,
+        @identities.path_definitions(path, name),
+      )
       owned.append(own)
       inner.release(own)
       if monos.get(name) is Some(mono) {
-        inner.unify(path_definitions_body(path, name), mono, t)
+        inner.unify(@identities.path_definitions_body(path, name), mono, t)
       }
     }
   })
@@ -234,7 +239,7 @@ fn Infer::value_let_recursion(
     for item in polys {
       self.locals[item.0.to_canonical()] = item.1
     }
-    self.value(rest, path_in(path))
+    self.value(rest, @identities.path_in(path))
   })
 }
 
@@ -278,10 +283,10 @@ fn Infer::value_destructure(
   rest : @ir.Value,
   path : String,
 ) -> Ty raise Located {
-  let vt = self.value(value, path_value(path))
+  let vt = self.value(value, @identities.path_value(path))
   self.scoped(() => {
-    let pt = self.pattern(p, path_pattern(path))
-    self.unify(path_pattern(path), pt, vt)
-    self.value(rest, path_in(path))
+    let pt = self.pattern(p, @identities.path_pattern(path))
+    self.unify(@identities.path_pattern(path), pt, vt)
+    self.value(rest, @identities.path_in(path))
   })
 }

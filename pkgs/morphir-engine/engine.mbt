@@ -31,6 +31,7 @@ pub fn Engine::run(
         output: "dist",
         package_name: "user",
         source: "",
+        inference: "off",
         transforms: [],
       }
       if project_manifest {
@@ -49,6 +50,11 @@ pub fn Engine::run(
       }
       if config != "" {
         settings.apply(runtime, config)
+      }
+      if settings.inference != "off" {
+        raise @scheme.Invalid(
+          "pipeline.inference needs the planned pipeline (Engine::plan)",
+        )
       }
       let frontend = match self.select_source_frontend(settings) {
         Some(value) => value

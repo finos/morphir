@@ -3,4 +3,9 @@ import {
   "finos/morphir-ir" @ir,
   "finos/morphir-ir/json" @ir_json,
   "finos/morphir-ir/versions/v4/json" @codec,
+  "moonbitlang/core/debug",
 }
+
+import {
+  "finos/morphir-ir/identities",
+} for "test"

@@ -1,0 +1,21 @@
+///|
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn main {
+  let install = @process.run(
+    "npm", ["ci", "--prefix", "pkgs/morphir-elm/scripts"],
+    stdout=@stdio.stdout, stderr=@stdio.stderr,
+  )
+  if install != 0 { @sys.exit(if install > 0 { install } else { 1 }) }
+  let code = @process.run(
+    "node", ["pkgs/morphir-engine/scripts/test-scheme-inference.mjs", "elm"],
+    stdout=@stdio.stdout, stderr=@stdio.stderr,
+  )
+  if code != 0 { @sys.exit(if code > 0 { code } else { 1 }) }
+}

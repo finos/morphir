@@ -1,5 +1,6 @@
 import {
   "finos/morphir-ir" @ir,
+  "finos/morphir-ir/identities",
   "moonbitlang/core/debug",
 }
 

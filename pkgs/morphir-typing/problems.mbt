@@ -13,6 +13,17 @@ pub(all) struct InferenceProblem {
 } derive(Eq, Debug)
 
 ///|
+/// The problem as one line: `<code> at <node>: <message>`, and the source span when it is known.
+pub fn InferenceProblem::display(self : InferenceProblem) -> String {
+  let span = match self.source {
+    Some(s) =>
+      " (\{s.start_line}:\{s.start_column}-\{s.end_line}:\{s.end_column})"
+    None => ""
+  }
+  "\{self.code} at \{self.node}: \{self.message}\{span}"
+}
+
+///|
 pub extend InferenceProblem with Eq::{equal, not_equal}
 
 ///|

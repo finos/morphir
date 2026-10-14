@@ -59,12 +59,10 @@ They walk only what inference walks: expression bodies and external fallbacks of
 trusts the packages that an `Application` bundles and does not infer the value of an `IncompleteBody`, so the
 helpers do not walk these either. The test "C2" pins this.
 
-- `strip_node_types(file)` sets every node `inferred_type` to `None`. It marks the let placeholders (below). It
-  keeps the top-level signatures. Criterion B uses it.
+- `strip_node_types(file)` sets every node `inferred_type` to `None`. It keeps the signatures. Criterion B uses
+  it.
 - `strip_full(file)` is `strip_node_types`, and it also replaces every top-level signature type with an unknown
   variable: `t-0`, `t-1`, … for each declaration. Criterion A uses it.
-- `mark_classic_let_placeholders(file)` puts the unknown marker on each let-signature variable whose canonical
-  name is `t-<digits>`.
 - `compare_types(original, filled)` compares every node type and every signature type. It expands aliases from
   the SDK, the file's dependencies and the file's own package. Then it compares the types of each declaration in
   that declaration's `@typing.TypeScope`, made from the declaration in `original`. It writes one line per
@@ -107,11 +105,11 @@ signature keeps the type variables that the frontend made before inference: `t` 
 `let discount = originalPrice * (discountPercent / 100)` with the output type `t8`.
 
 Classic IR has no unknown markers, so inference would check `t8` as a rigid annotation and report
-`rigid_variable`. The oracle therefore marks these variables before `Fill` and before `Check`, with
-`mark_classic_let_placeholders`. The marker is the one that `@typing.unknown_type` writes. In criterion B,
+`rigid_variable`. Migration from classic IR marks the morphir-elm let placeholders (`t-<digits>`), so every caller
+gets the same IR. The marker is the one that `@typing.unknown_type` writes. In criterion B,
 `compare_types` compares a let-signature type that has a placeholder only outside the placeholder: each placeholder
 position becomes `()` on both sides, and a placeholder row compares only the fields that the signature lists. So
 `List t8` still has to be a list.
 
-This rule lives in the oracle only. Inference and the classic migration do not change. A let annotation that a
-user wrote as `t8` would also be marked, but classic IR cannot tell the two apart.
+Inference does not change. A let annotation that a user wrote as `t8` would also be marked, but classic IR cannot
+tell the two apart.

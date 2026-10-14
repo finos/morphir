@@ -354,7 +354,7 @@ pub fn Document::validate(self : Document) -> Unit raise {
       "workspace.name", "workspace.root", "workspace.out_dir", "workspace.default_member",
       "project.name", "project.version", "project.source_directory", "project.module_prefix",
       "frontend.language", "frontend.provider", "frontend.profile", "ir.layout",
-      "ir.format", "ir.mode", "pipeline.backend", "pipeline.checkpoint_format",
+      "ir.format", "ir.mode", "pipeline.backend", "pipeline.checkpoint_format", "pipeline.inference",
     ] {
     ignore(self.text(path, ""))
   }

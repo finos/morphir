@@ -1,10 +1,11 @@
 ///|
-/// Migrate to the current model. Unrepresentable data is an error.
+/// Migrate to the current model. Unrepresentable data is an error. Classic let placeholders
+/// (`is_classic_placeholder`) get the unknown marker.
 pub fn to_current(file : @versioned.IRFile) -> @current.IRFile raise {
   match file {
-    V1(file) => @m1.to_current(file)
-    V2(file) => @m2.to_current(file)
-    V3(file) => @m3.to_current(file)
+    V1(file) => mark_classic_let_placeholders(@m1.to_current(file))
+    V2(file) => mark_classic_let_placeholders(@m2.to_current(file))
+    V3(file) => mark_classic_let_placeholders(@m3.to_current(file))
     V4(file) => file
   }
 }

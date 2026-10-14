@@ -65,6 +65,14 @@ run = "moon run scripts/sdk-spec-check.mbtx"
 description = "Check generated Elm projects with elm make"
 run = "moon run scripts/elm-make-check.mbtx"
 
+[tasks."e2e:scheme-moonbit"]
+description = "Scheme with inference fill to MoonBit: moon build accepts the libraries"
+run = "moon run scripts/scheme-moonbit-check.mbtx"
+
+[tasks."e2e:scheme-elm"]
+description = "Scheme with inference fill to Elm: elm make accepts the projects"
+run = "moon run scripts/scheme-elm-check.mbtx"
+
 [tasks."setup:llvm"]
 description = "Acquire the hash-pinned darwin/arm64 LLVM toolchain separately"
 run = "moon run scripts/llvm-setup.mbtx"

@@ -125,7 +125,11 @@ fn apply(function : @ir.Value, argument : @ir.Value) -> @ir.Value {
 ///|
 fn literal(datum : @scheme.Datum) -> @ir.Value raise {
   let value = match datum {
-    Number(Integer(n)) => @ir.Literal::IntegerLiteral(n.to_string())
+    Number(Integer(n)) =>
+      return @ir.Value::Literal(
+        int_fact(),
+        @ir.Literal::IntegerLiteral(n.to_string()),
+      )
     Number(Real(n)) => @ir.Literal::FloatLiteral(n)
     Number(Rational(_, _)) =>
       raise @scheme.Unsupported(
@@ -403,6 +407,93 @@ fn definition(value : @ir.Value) -> @ir.ValueDefinition raise {
 }
 
 ///|
+/// Scheme integers are exact, so an integer literal is an `Int`. The frontend states it as a fact for inference.
+fn int_fact() -> @ir.ValueAttributes raise {
+  {
+    source: None,
+    inferred_type: Some(type_ref("morphir/SDK:basics#int")),
+    extensions: Map([]),
+  }
+}
+
+///|
+/// `t` with each `scheme-value` placeholder replaced by the next `t-<n>` with the unknown marker.
+fn number_type(t : @ir.Type, next : Ref[Int]) -> @ir.Type {
+  if t == unknown_type() {
+    let name = @ir.Name::from_words(["t", next.val.to_string()])
+    next.val += 1
+    return @ir.Type::Variable(
+      @ir.TypeAttributes::default().with_unknown(),
+      name,
+    )
+  }
+  match t {
+    Function(a, x, y) => {
+      let x = number_type(x, next)
+      @ir.Type::Function(a, x, number_type(y, next))
+    }
+    _ => t
+  }
+}
+
+///|
+/// The definition with its placeholders numbered: its inputs, then its output, then its body.
+fn number_definition(
+  def : @ir.ValueDefinition,
+  next : Ref[Int],
+) -> @ir.ValueDefinition {
+  match def {
+    ExpressionBody(inputs, output, body) => {
+      let inputs = inputs.map(i => (i.0, number_type(i.1, next)))
+      let output = number_type(output, next)
+      @ir.ValueDefinition::ExpressionBody(
+        inputs,
+        output,
+        number_value(body, next),
+      )
+    }
+    _ => def
+  }
+}
+
+///|
+/// The value with the placeholders of every let signature in it numbered, in pre-order.
+fn number_value(v : @ir.Value, next : Ref[Int]) -> @ir.Value {
+  match v {
+    LetDefinition(a, n, def, rest) => {
+      let def = number_definition(def, next)
+      @ir.Value::LetDefinition(a, n, def, number_value(rest, next))
+    }
+    LetRecursion(a, defs, rest) => {
+      let out : Map[@ir.Name, @ir.ValueDefinition] = Map([])
+      for n, def in defs {
+        out[n] = number_definition(def, next)
+      }
+      @ir.Value::LetRecursion(a, out, number_value(rest, next))
+    }
+    Apply(a, f, x) => {
+      let f = number_value(f, next)
+      @ir.Value::Apply(a, f, number_value(x, next))
+    }
+    Lambda(a, p, body) => @ir.Value::Lambda(a, p, number_value(body, next))
+    IfThenElse(a, c, t, e) => {
+      let c = number_value(c, next)
+      let t = number_value(t, next)
+      @ir.Value::IfThenElse(a, c, t, number_value(e, next))
+    }
+    List(a, items) => @ir.Value::List(a, items.map(i => number_value(i, next)))
+    _ => v
+  }
+}
+
+///|
+/// The definition with each `scheme-value` placeholder replaced by `t-<n>` with the unknown marker, numbered
+/// from 0 in traversal order. One name is one variable for inference, so each position gets its own name.
+fn number_placeholders(def : @ir.ValueDefinition) -> @ir.ValueDefinition {
+  number_definition(def, Ref(0))
+}
+
+///|
 pub fn compile_expression(source : String) -> @ir.Value raise {
   let forms = @scheme.parse_program(source)
   if forms.length() != 1 {
@@ -478,7 +569,9 @@ pub fn compile_file(
       access: @ir.Access::Public,
       value: {
         doc: None,
-        value: definition(compiler.lower(expression, scope)),
+        value: number_placeholders(
+          definition(compiler.lower(expression, scope)),
+        ),
       },
     }
   }
@@ -487,7 +580,9 @@ pub fn compile_file(
       access: @ir.Access::Public,
       value: {
         doc: None,
-        value: definition(compiler.body(expressions, scope)),
+        value: number_placeholders(
+          definition(compiler.body(expressions, scope)),
+        ),
       },
     }
   }

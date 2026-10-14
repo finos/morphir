@@ -111,6 +111,33 @@ test "host and configuration paths cannot escape roots" {
 }
 
 ///|
+test "run refuses pipeline.inference other than off" {
+  let engine = @engine.Engine::new()
+  let host = host([("main.scm", "42")])
+  for value in ["fill", "check"] {
+    let report = engine.run(
+      host,
+      @engine.Directory(""),
+      config="(pipeline (inference \"" + value + "\"))",
+    )
+    assert_eq(report.processed, 0)
+    assert_eq(report.diagnostics[0].stage, "configuration")
+    assert_true(
+      report.diagnostics[0].message.contains(
+        "pipeline.inference needs the planned pipeline (Engine::plan)",
+      ),
+      msg=report.diagnostics[0].message,
+    )
+  }
+  let report = engine.run(
+    host,
+    @engine.Directory(""),
+    config="(pipeline (inference \"off\"))",
+  )
+  assert_true(report.successful())
+}
+
+///|
 test "custom frontends and backends share the engine pipeline" {
   let engine = @engine.Engine::new()
   engine.register_frontend("constant", [".txt"], fn(source) raise {

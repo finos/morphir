@@ -204,6 +204,12 @@ jobs:
         if: matrix.target == 'native'
         run: mise run test:elm
 
+      - name: Scheme with inference to MoonBit and Elm
+        if: matrix.target == 'native'
+        run: |
+          mise run e2e:scheme-moonbit
+          mise run e2e:scheme-elm
+
       - name: Check the SDK specification
         if: matrix.target == 'native'
         run: mise run sdk-spec:check

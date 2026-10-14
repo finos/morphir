@@ -130,7 +130,9 @@ as the `config` argument to `run`:
               node))))))
 ```
 
-Options: `frontend`, `frontend-provider`, `frontend-profile`, `backend`, `output`, `source`, `package-name` and `transform`.
+Options: `frontend`, `frontend-provider`, `frontend-profile`, `backend`, `output`, `source`, `package-name`,
+`inference` and `transform`. `run` refuses an `inference` other than `"off"`, because the inference stage needs the
+planned pipeline (`Engine::plan`).
 Defaults are Scheme → IR JSON, output `dist`, package `user`, and the input directory
 as source (project manifests default to `src`). `source` applies to discovery,
 not explicit `File` inputs. Output paths are relative to the input/project root.
@@ -226,6 +228,37 @@ one source document per invocation; a provider's broader document capability doe
 not create project linking. Profile diagnostics keep their code and span and add
 the captured provider/profile context. Project listing continues to report language
 and configured target, without requiring compiler registration.
+
+### Type inference
+
+`pipeline.inference` runs the language-neutral type inference of
+[`morphir-typing`](../morphir-typing/README.md) on each unit. Set it in `morphir.toml` or with
+`(inference "fill")` in a `pipeline` script.
+
+| Value | Effect |
+| --- | --- |
+| `off` (default) | No inference. The IR is unchanged. |
+| `fill` | Writes the solved types into the IR: an `inferred_type` on each node, and the solutions of the signature types that have the unknown marker. |
+| `check` | Checks the IR and does not change it. |
+
+The stage runs after the transforms and before the backend. It uses the Morphir SDK specification as a dependency.
+On the checkpoint and generation paths, `fill` changes the unit through `data.fill_lineage` with the
+`no_derived` metadata policy, so metadata stays on its logical nodes and a written type gets no metadata.
+Each inference problem is a diagnostic at stage `inference`, in the form `<code> at <node>: <message>`.
+A value other than `off`, `fill` or `check` stops planning and names the file that set it.
+
+On Scheme input, a call from one top-level `define` to another, or a top-level `define` that calls itself,
+fails `fill` with `unknown_reference`, because the Scheme frontend lowers that reference as a local variable. Bead
+`morphir-ukvn.5.22.8` tracks the frontend fix.
+
+**End to end.** `mise run e2e:scheme-moonbit` and `mise run e2e:scheme-elm` compile the Scheme corpus in
+`acceptance/inference`, fill its types and generate code. `moon build` must accept each MoonBit library, and
+`elm make` must accept each Elm project. The MoonBit task uses `MOON_HOME`, or the pinned toolchain from
+`mise where http:moonbit` when it is not set; to set it yourself, run
+`MOON_HOME=$(mise where http:moonbit) mise run e2e:scheme-moonbit`. The corpus
+holds monomorphic programs only, because the MoonBit generator has no specialization: a generic value, such as
+`(define (id x) x)`, needs the specialization follow-up. `moonbit_gaps` names the corpus programs that the MoonBit
+generator does not support yet, with the error that it must raise; Elm checks them all.
 
 ### Typed checkpoints
 

@@ -1,17 +1,10 @@
 ///|
-/// The marker key and value of a variable that inference may solve to any type.
-const INFERENCE_KEY = "morphir.inference"
-
-///|
-const UNKNOWN = "unknown"
-
-///|
 const TYPECLASS = "typeclass"
 
 ///|
 /// Whether a variable carries the unknown marker.
 fn is_unknown(attrs : @ir.TypeAttributes) -> Bool {
-  attrs.extensions.get(INFERENCE_KEY) is Some(Text(UNKNOWN))
+  attrs.is_unknown()
 }
 
 ///|

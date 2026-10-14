@@ -1,0 +1,11 @@
+pkgtype(kind: "executable")
+
+import {
+  "finos/morphir-engine" @engine,
+  "finos/morphir-engine/data",
+  "finos/morphir-scheme/frontend",
+  "finos/morphir-moonbit" @generator,
+  "finos/morphir-elm/backend" @elm,
+  "finos/morphir-typing" @typing,
+  "moonbitlang/core/debug",
+}

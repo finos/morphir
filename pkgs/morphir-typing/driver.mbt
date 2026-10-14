@@ -16,14 +16,7 @@ pub extend Mode with @debug.Debug::{to_repr}
 ///|
 /// A type variable that inference may solve to any type. It carries the unknown marker.
 pub fn unknown_type(name : @ir.Name) -> @ir.Type {
-  Variable(
-    {
-      source: None,
-      constraints: Map([]),
-      extensions: Map([(INFERENCE_KEY, Text(UNKNOWN))]),
-    },
-    name,
-  )
+  Variable(@ir.TypeAttributes::default().with_unknown(), name)
 }
 
 ///|
@@ -34,8 +27,12 @@ pub fn unknown_type(name : @ir.Name) -> @ir.Type {
 ///   infers. Signature types that carry the unknown marker are replaced by their solutions.
 /// - `Check` returns the file unchanged.
 ///
-/// In both modes an existing `inferred_type` that disagrees with inference is `annotation_mismatch`. The problems
-/// of every binding group are collected, and `InferenceFailed` holds them in the order of their logical paths.
+/// In both modes, an existing `inferred_type` on a node is a fact: it is unified with the node's type before the
+/// binding group generalizes, by the hole rule, and a conflict is `annotation_mismatch` at the node. So a frontend
+/// fact, such as `Int` on a Scheme integer literal, narrows a `number` variable in Check too. In Check, an existing
+/// `inferred_type` that is not equivalent to the solution is also `annotation_mismatch`, and every Check
+/// `annotation_mismatch` has the inferred type as expected and the node's type as found. The problems of every
+/// binding group are collected, and `InferenceFailed` holds them in the order of their logical paths.
 /// Every type reference in a signature, a let signature, a hole type or a type definition body must resolve:
 /// `missing_dependency` when its package has no specification or definition, else `unknown_reference`.
 /// A `Specs` file has no bodies: `Fill` returns it, and `Check` only checks that its references resolve.
@@ -50,7 +47,7 @@ pub fn infer(
     }
     return file
   }
-  let driver = Driver::new(Env::from(deps, file), file)
+  let driver = Driver::new(Env::from(deps, file), file, mode)
   driver.report_cyclic_aliases()
   driver.check_type_definitions(file)
   driver.declare_signatures()
@@ -113,6 +110,7 @@ priv struct Decl {
 /// The state of one call to `infer`.
 priv struct Driver {
   env : Env
+  mode : Mode
   decls : Array[Decl]
   /// The index of each declaration in `decls`, by canonical FQName.
   index : Map[String, Int]
@@ -122,13 +120,13 @@ priv struct Driver {
 }
 
 ///|
-fn Driver::new(env : Env, file : @ir.IRFile) -> Driver {
+fn Driver::new(env : Env, file : @ir.IRFile, mode : Mode) -> Driver {
   let decls = collect_declarations(file)
   let index : Map[String, Int] = Map([])
   for i, d in decls {
     index[d.key] = i
   }
-  { env, decls, index, problems: [], solved: Map([]), }
+  { env, mode, decls, index, problems: [], solved: Map([]), }
 }
 
 ///|
@@ -187,7 +185,7 @@ fn Driver::declare_signatures(self : Driver) -> Unit {
 /// A `typeclass` that is not one of the four classes, in the signature of any member, fails the group before
 /// inference starts, whatever the order of the members.
 fn Driver::solve(self : Driver, group : Array[Int]) -> Unit {
-  let infer = Infer::new(self.env, 1)
+  let infer = Infer::new(self.env, 1, facts=true)
   for i in group {
     let d = self.decls[i]
     if unknown_class(signature_types(d.def)) is Some(class) {
@@ -209,7 +207,15 @@ fn Driver::solve(self : Driver, group : Array[Int]) -> Unit {
     infer.enter(d)
     infer.top_level(d, signatures[k]) catch {
       err => {
-        self.problems.push(problem_of(d, err, infer.solver))
+        let problem = problem_of(d, err, infer.solver)
+        // Check reports the inferred type as expected and the node's type as found, as its comparison does.
+        self.problems.push(
+          if self.mode is Check && problem.code == "annotation_mismatch" {
+            { ..problem, expected: problem.found, found: problem.expected, }
+          } else {
+            problem
+          },
+        )
         failed = true
         break
       }
@@ -291,8 +297,8 @@ fn Infer::enter(self : Infer, d : Decl) -> Unit {
 
 ///|
 /// Infers the body of a top-level declaration against its signature. The body is at `path_body(d.root)`. A type
-/// reference in the signature that does not resolve is `unknown_reference` or `missing_dependency` at
-/// `d.root`. `solve` has already checked the classes of the signature.
+/// reference in the signature that does not resolve is `unknown_reference` or `missing_dependency` at `d.root`.
+/// `solve` has already checked the classes of the signature.
 fn Infer::top_level(
   self : Infer,
   d : Decl,
@@ -307,8 +313,8 @@ fn Infer::top_level(
     for i, input in inputs {
       self.bind(input.0, ins[i])
     }
-    let bt = self.value(body, path_body(d.root))
-    self.unify(path_body(d.root), out, bt)
+    let bt = self.value(body, @identities.path_body(d.root))
+    self.unify(@identities.path_body(d.root), out, bt)
   })
 }
 

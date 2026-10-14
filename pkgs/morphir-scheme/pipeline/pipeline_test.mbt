@@ -104,3 +104,128 @@ test "rewriting preserves explicit attributes" {
   )
   assert_eq(runtime.lookup("input").as_ir(), value)
 }
+
+///|
+fn signature_variables(t : @ir.Type, out : Array[(String, Bool)]) -> Unit {
+  match t {
+    Variable(a, n) => out.push((n.to_canonical(), a.is_unknown()))
+    Function(_, x, y) => {
+      signature_variables(x, out)
+      signature_variables(y, out)
+    }
+    _ => ()
+  }
+}
+
+///|
+fn definition_variables(
+  def : @ir.ValueDefinition,
+  out : Array[(String, Bool)],
+) -> Unit {
+  guard def is ExpressionBody(inputs, output, body) else { return }
+  inputs.each(i => signature_variables(i.1, out))
+  signature_variables(output, out)
+  body_variables(body, out)
+}
+
+///|
+fn body_variables(v : @ir.Value, out : Array[(String, Bool)]) -> Unit {
+  match v {
+    LetDefinition(_, _, def, rest) => {
+      definition_variables(def, out)
+      body_variables(rest, out)
+    }
+    LetRecursion(_, defs, rest) => {
+      for _, def in defs {
+        definition_variables(def, out)
+      }
+      body_variables(rest, out)
+    }
+    Apply(_, f, x) => {
+      body_variables(f, out)
+      body_variables(x, out)
+    }
+    Lambda(_, _, body) => body_variables(body, out)
+    IfThenElse(_, c, t, e) => {
+      body_variables(c, out)
+      body_variables(t, out)
+      body_variables(e, out)
+    }
+    _ => ()
+  }
+}
+
+///|
+/// The variable names and markers of every signature type of `name`, in traversal order: inputs, then output,
+/// then the let signatures of the body.
+fn placeholder_names(file : @ir.IRFile, name : String) -> Array[(String, Bool)] {
+  guard file.distribution is Library(_, _, def) else { panic() }
+  let out = []
+  for _, m in def.modules {
+    for n, v in m.value.values {
+      if n.to_canonical() == name {
+        definition_variables(v.value.value, out)
+      }
+    }
+  }
+  out
+}
+
+///|
+fn body_of(file : @ir.IRFile, name : String) -> @ir.Value {
+  guard file.distribution is Library(_, _, def) else { panic() }
+  for _, m in def.modules {
+    for n, v in m.value.values {
+      if n.to_canonical() == name && v.value.value is ExpressionBody(_, _, body) {
+        return body
+      }
+    }
+  }
+  panic()
+}
+
+///|
+test "each placeholder has its own marked name in a declaration" {
+  let file = @frontend.compile_file("(define (f x y) (+ x y))")
+  assert_eq(placeholder_names(file, "f"), [
+    ("t-0", true),
+    ("t-1", true),
+    ("t-2", true),
+  ])
+}
+
+///|
+test "placeholder numbers restart for each declaration" {
+  let file = @frontend.compile_file("(define (f x) x)\n(define (g y) y)")
+  assert_eq(placeholder_names(file, "f")[0], ("t-0", true))
+  assert_eq(placeholder_names(file, "g")[0], ("t-0", true))
+}
+
+///|
+test "let signatures get their own placeholders" {
+  let file = @frontend.compile_file("(define (f x) (let ((y x)) y))")
+  let names = placeholder_names(file, "f")
+  assert_true(names.length() > 2)
+  assert_true(names.all(n => n.1))
+  let distinct : Map[String, Bool] = Map([])
+  names.each(n => distinct[n.0] = true)
+  assert_eq(distinct.length(), names.length())
+}
+
+///|
+test "integer literals carry the fact Int" {
+  let file = @frontend.compile_file("(define answer 42)")
+  guard body_of(file, "answer") is Literal(a, IntegerLiteral(_)) else {
+    fail("literal")
+  }
+  guard a.inferred_type is Some(Reference(_, name, [])) else { fail("type") }
+  assert_eq(name.to_canonical(), "morphir/SDK:basics#int")
+}
+
+///|
+test "no scheme-value variable remains" {
+  let file = @frontend.compile_file(
+    "(define (f x) (let ((y x)) (lambda (z) (+ y z))))",
+  )
+  assert_false(@ir_json.write(file).contains("scheme-value"))
+}

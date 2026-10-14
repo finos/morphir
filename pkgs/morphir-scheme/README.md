@@ -111,8 +111,14 @@ curried lambdas and calls, boolean `if`, `begin`, `let`/`let*`/`letrec`, lists,
 arithmetic, binary comparisons, and leading file definitions. It rejects mutation,
 zero-argument lambdas/calls, named `let`, rational literals, vectors and quoted
 symbols. Local names use Morphir's canonical naming rules; qualified names can
-refer to other modules. Signatures use `scheme-value` type variables where types
-are unknown. This is structural lowering, not type inference or type checking.
+refer to other modules. Signatures use `t-<n>` type variables with the unknown marker
+(`morphir.inference = unknown`), one for each position, and integer literals carry the type `Int`. With
+`pipeline.inference = "fill"`, the engine solves them. This is structural lowering, not type inference or type checking.
+`fill` has two limits on Scheme input. A call from one top-level `define` to another, or a top-level `define`
+that calls itself, fails with `unknown_reference`, because the frontend lowers that reference as a local variable; bead
+`morphir-ukvn.5.22.8` tracks the fix. Integer literals always have the type `Int`, so Float arithmetic must use a
+decimal literal: write `(* 2.5 2.0)`, because `(* 2.5 2)` fails with `type_mismatch` (expected `Float`, found
+`Int`).
 IR conditions must be boolean, so programs relying on Scheme truthiness are
 outside the portable frontend subset. First-class primitives use Morphir's
 curried SDK signatures; variadic arithmetic is lowered at direct call sites.

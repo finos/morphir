@@ -47,10 +47,12 @@ priv struct Infer {
   rigid_scope : Map[String, Ty]
   /// The number of let-annotation rigids made so far. Each one gets a unique key (see `let_rigid_key`).
   let_rigids : Ref[Int]
+  /// When set, an existing `inferred_type` on a node is a fact: it is unified with the node's type.
+  facts : Bool
 }
 
 ///|
-fn Infer::new(env : Env, level : Int) -> Infer {
+fn Infer::new(env : Env, level : Int, facts? : Bool = false) -> Infer {
   {
     solver: Solver::new((name, args) => env.expand(name, args)),
     env,
@@ -62,6 +64,7 @@ fn Infer::new(env : Env, level : Int) -> Infer {
     owner: { val: "", },
     rigid_scope: Map([]),
     let_rigids: { val: 0, },
+    facts,
   }
 }
 
@@ -163,6 +166,7 @@ fn Infer::value(self : Infer, v : @ir.Value, path : String) -> Ty raise Located 
     Unit(_) => UnitTy
     Hole(_, _, declared) => self.value_hole(declared, path)
   }
+  self.fact(value_attributes(v).inferred_type, t, path)
   self.types[path] = t
   t
 }
@@ -249,8 +253,8 @@ fn Infer::value_apply(
   a : @ir.Value,
   path : String,
 ) -> Ty raise Located {
-  let ft = self.value(f, path_function(path))
-  let at = self.value(a, path_argument(path))
+  let ft = self.value(f, @identities.path_function(path))
+  let at = self.value(a, @identities.path_argument(path))
   let result = self.fresh()
   let expected = Fun(at, result)
   match self.expand_all(ft) {
@@ -258,7 +262,7 @@ fn Infer::value_apply(
       raise MismatchAt(path, Mismatch("arity", expected, t))
     _ => ()
   }
-  self.unify(path_argument(path), ft, expected)
+  self.unify(@identities.path_argument(path), ft, expected)
   result
 }
 
@@ -280,8 +284,8 @@ fn Infer::value_lambda(
   path : String,
 ) -> Ty raise Located {
   self.scoped(() => {
-    let pt = self.pattern(p, path_pattern(path))
-    let bt = self.value(body, path_body(path))
+    let pt = self.pattern(p, @identities.path_pattern(path))
+    let bt = self.value(body, @identities.path_body(path))
     Fun(pt, bt)
   })
 }
@@ -294,11 +298,11 @@ fn Infer::value_if(
   e : @ir.Value,
   path : String,
 ) -> Ty raise Located {
-  let ct = self.value(c, path_condition(path))
-  self.unify(path_condition(path), Con(BOOL, []), ct)
-  let tt = self.value(t, path_then(path))
-  let et = self.value(e, path_else(path))
-  self.unify(path_else(path), tt, et)
+  let ct = self.value(c, @identities.path_condition(path))
+  self.unify(@identities.path_condition(path), Con(BOOL, []), ct)
+  let tt = self.value(t, @identities.path_then(path))
+  let et = self.value(e, @identities.path_else(path))
+  self.unify(@identities.path_else(path), tt, et)
   tt
 }
 
@@ -310,8 +314,8 @@ fn Infer::value_list(
 ) -> Ty raise Located {
   let element = self.fresh()
   for i, item in items {
-    let t = self.value(item, path_item(path, i))
-    self.unify(path_item(path, i), element, t)
+    let t = self.value(item, @identities.path_item(path, i))
+    self.unify(@identities.path_item(path, i), element, t)
   }
   Con(LIST, [element])
 }
@@ -328,42 +332,107 @@ fn Infer::value_tuple(
   }
   let types = []
   for i, item in items {
-    types.push(self.value(item, path_item(path, i)))
+    types.push(self.value(item, @identities.path_item(path, i)))
   }
   Tup(types)
 }
 
 ///|
-/// A hole is a todo: it stands for code that is not written yet, so it must not fail the run by itself. A variable
-/// of its declared type that is in scope is that rigid variable. Any other variable is a fresh meta for this
-/// occurrence, with the classes of its `typeclass` or its name prefix; one name is one meta within the type.
-/// Without a declared type, the hole is a fresh meta.
+/// A hole is a todo: it stands for code that is not written yet, so it must not fail the run by itself. Its
+/// declared type is converted by the rule of `todo_type`. Without a declared type, the hole is a fresh meta.
 fn Infer::value_hole(
   self : Infer,
   declared : @ir.Type?,
   path : String,
 ) -> Ty raise Located {
   match declared {
-    Some(t) if unknown_class([t]) is Some(class) => raise ClassAt(path, class)
-    Some(t) => {
-      self.check_types([t], path)
-      let owner = self.owner.val
-      let vars : Map[String, Ty] = Map([])
-      to_ty(t, (name, attrs) => {
-        match vars.get(name) {
-          Some(v) => v
-          None => {
-            let key = rigid_key(owner, name)
-            let v = match self.rigid_scope.get(key) {
-              Some(rigid) if !is_unknown(attrs) => rigid
-              _ => self.solver.fresh(self.level, classes_of(name, attrs))
-            }
-            vars[name] = v
-            v
-          }
-        }
-      })
-    }
+    Some(t) => self.todo_type(t, path)
     None => self.fresh()
+  }
+}
+
+///|
+/// A declared type as a `Ty`, by the hole rule: a variable in scope is that rigid variable; any other variable is
+/// a fresh meta for this occurrence, with the classes of its `typeclass` or its name prefix; a marked variable is
+/// a meta. One name is one meta within the type.
+fn Infer::todo_type(
+  self : Infer,
+  t : @ir.Type,
+  path : String,
+) -> Ty raise Located {
+  if unknown_class([t]) is Some(class) {
+    raise ClassAt(path, class)
+  }
+  self.check_types([t], path)
+  let owner = self.owner.val
+  let vars : Map[String, Ty] = Map([])
+  to_ty(t, (name, attrs) => {
+    match vars.get(name) {
+      Some(v) => v
+      None => {
+        let key = rigid_key(owner, name)
+        let v = match self.rigid_scope.get(key) {
+          Some(rigid) if !is_unknown(attrs) => rigid
+          _ => self.solver.fresh(self.level, classes_of(name, attrs))
+        }
+        vars[name] = v
+        v
+      }
+    }
+  })
+}
+
+///|
+/// When facts are on, unifies the fact `fact` of the node at `path` with its inferred type `t`. A failure is
+/// `annotation_mismatch`, with the fact as expected and the inferred type as found.
+fn Infer::fact(
+  self : Infer,
+  fact : @ir.Type?,
+  t : Ty,
+  path : String,
+) -> Unit raise Located {
+  guard self.facts && fact is Some(declared) else { return }
+  let f = self.todo_type(declared, path)
+  self.solver.unify(f, t) catch {
+    _ => raise MismatchAt(path, Mismatch("annotation_mismatch", f, t))
+  }
+}
+
+///|
+fn value_attributes(v : @ir.Value) -> @ir.ValueAttributes {
+  match v {
+    Literal(a, _)
+    | Constructor(a, _)
+    | Tuple(a, _)
+    | List(a, _)
+    | Record(a, _)
+    | Variable(a, _)
+    | Reference(a, _)
+    | Field(a, _, _)
+    | FieldFunction(a, _)
+    | Apply(a, _, _)
+    | Lambda(a, _, _)
+    | LetDefinition(a, _, _, _)
+    | LetRecursion(a, _, _)
+    | Destructure(a, _, _, _)
+    | IfThenElse(a, _, _, _)
+    | PatternMatch(a, _, _)
+    | UpdateRecord(a, _, _)
+    | Unit(a)
+    | Hole(a, _, _) => a
+  }
+}
+
+///|
+fn pattern_attributes(p : @ir.Pattern) -> @ir.ValueAttributes {
+  match p {
+    WildcardPattern(a)
+    | AsPattern(a, _, _)
+    | TuplePattern(a, _)
+    | ConstructorPattern(a, _, _)
+    | EmptyListPattern(a)
+    | HeadTailPattern(a, _, _)
+    | LiteralPattern(a, _)
+    | UnitPattern(a) => a
   }
 }

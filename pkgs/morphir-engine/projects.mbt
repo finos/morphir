@@ -104,6 +104,7 @@ fn Engine::resolve_project_config(
     } else {
       "src"
     },
+    inference: "off",
     transforms: [],
   }
   settings.overlay(project.document)
@@ -121,7 +122,7 @@ fn Engine::resolve_project_config(
       [root_script, project_script]
     }) {
     if (host.exists)(path) {
-      settings.apply(runtime, (host.read)(path))
+      settings.apply(runtime, (host.read)(path), origin=path)
     }
   }
   if script != "" {

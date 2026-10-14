@@ -16,7 +16,7 @@ fn collect_declarations(file : @ir.IRFile) -> Array[Decl] {
       let def = v.value.value
       out.push({
         key: fq.to_canonical(),
-        root: value_root(fq),
+        root: @identities.value_root(fq),
         def,
         declared: is_declared(def),
       })

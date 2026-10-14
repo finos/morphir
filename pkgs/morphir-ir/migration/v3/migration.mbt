@@ -287,13 +287,13 @@ fn up_package_specification(
 ///|
 fn down_type(value : @current.Type) -> @old.Type[Unit] raise {
   match value {
-    Variable(a, p0) => @old.Type::Variable(down_ta(a), p0)
+    Variable(a, p0) => @old.Type::Variable(down_variable_ta(a, p0), p0)
     Reference(a, p0, p1) =>
       @old.Type::Reference(down_ta(a), p0, p1.map(down_type))
     Tuple(a, p0) => @old.Type::Tuple(down_ta(a), p0.map(down_type))
     Record(a, p0) => @old.Type::Record(down_ta(a), down_fields(p0))
     ExtensibleRecord(a, p0, p1) =>
-      @old.Type::ExtensibleRecord(down_ta(a), p0, down_fields(p1))
+      @old.Type::ExtensibleRecord(down_variable_ta(a, p0), p0, down_fields(p1))
     Function(a, p0, p1) =>
       @old.Type::Function(down_ta(a), down_type(p0), down_type(p1))
     Unit(a) => @old.Type::Unit(down_ta(a))
@@ -421,6 +421,23 @@ fn down_pattern_literal(value : @current.PatternLiteral) -> @old.Literal {
 fn down_ta(value : @current.TypeAttributes) -> Unit raise {
   if value != @current.TypeAttributes::default() {
     raise @wire.Invalid("unsupported_attributes_downgrade", "Type attributes")
+  }
+}
+
+///|
+/// The attributes of a type variable, or of an extensible record, whose variable is `name`. Classic IR has no type
+/// attributes. The unknown marker alone is dropped only when `name` is a classic placeholder (`t-<digits>`): the
+/// name carries the same meaning. Other attributes are refused as in `down_ta`.
+fn down_variable_ta(
+  value : @current.TypeAttributes,
+  name : @current.Name,
+) -> Unit raise {
+  let marker_only = value.source is None &&
+    value.constraints.is_empty() &&
+    value.extensions.length() == 1 &&
+    value.is_unknown()
+  if !(marker_only && @current.is_classic_placeholder_name(name)) {
+    down_ta(value)
   }
 }
 

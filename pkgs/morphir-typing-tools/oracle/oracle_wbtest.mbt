@@ -17,9 +17,9 @@ fn classic() -> Array[(String, @ir.IRFile)] {
 ///|
 /// `strip_node_types` keeps the top-level signatures. Classic IR does not separate annotated top-level signatures
 /// from inferred ones, so stripping them would give types that are correctly more general than the Elm annotations,
-/// for example `comparable` for an `Int` parameter. `strip_node_types` clears every node type and marks morphir-elm's let
-/// placeholders (`mark_classic_let_placeholders`). Inference must then give every node type and every
-/// signature type that is not a placeholder, up to variable renaming and alias expansion.
+/// for example `comparable` for an `Int` parameter. `strip_node_types` clears every node type. morphir-elm's let
+/// placeholders already have the unknown marker from the migration to v4. Inference must then give every node type
+/// and every signature type that is not a placeholder, up to variable renaming and alias expansion.
 test "criterion B: stripped classic IR infers the morphir-elm types" {
   for entry in classic() {
     let (name, original) = entry
@@ -39,11 +39,31 @@ test "criterion B: stripped classic IR infers the morphir-elm types" {
 }
 
 ///|
-/// Classic IR is checked strictly, after morphir-elm's let placeholders are marked: they are not annotations.
+/// Fill over fully typed classic IR: every node, patterns included, has a type, and each one is a fact during
+/// inference. The fill must succeed and give the same types.
+test "fill over fully typed classic IR keeps its types" {
+  for entry in classic() {
+    let (name, original) = entry
+    let filled = @typing.infer(original, deps(), Fill) catch {
+      InferenceFailed(problems) =>
+        fail(
+          name +
+          ": " +
+          problems
+          .map(p => p.code + " at " + p.node + ": " + p.message)
+          .join("; "),
+        )
+    }
+    assert_eq(compare_types(original, filled), [], msg=name)
+  }
+}
+
+///|
+/// Classic IR is checked strictly. The migration to v4 marks morphir-elm's let placeholders: they are not
+/// annotations.
 test "criterion C: classic IR passes check unchanged, and a mutation is found" {
   for entry in classic() {
     let (name, original) = entry
-    let original = mark_classic_let_placeholders(original)
     assert_eq(@typing.infer(original, deps(), Check), original, msg=name)
     let (mutated, path) = mutate_first_literal_type(original)
     let codes = try {
@@ -172,17 +192,19 @@ test "placeholders: only t-<digits> variables of let signatures are marked" {
   assert_false(is_placeholder(@ir.Name::from_words(["comparable"])))
   // classic-greeting has exactly one placeholder signature type: the output of the `discount` let.
   let greeting = @elm_fixtures.classic_greeting()
-  let all = typed_entries(greeting)
   assert_eq(placeholder_paths(greeting), [
     "value:elm-compat:main#apply-discount/body/definition:output",
   ])
-  // Marking changes only that let signature.
-  let marked = mark_classic_let_placeholders(greeting)
-  assert_true(marked != greeting)
+  // The migration marks only that let signature.
+  assert_eq(marked_signatures(greeting), [
+    "value:elm-compat:main#apply-discount/body/definition:output",
+  ])
   // A top-level signature path has no `/body` step.
-  let top_level = typed_entries(marked).filter(e => !e.0.contains("/body"))
+  let top_level = typed_entries(greeting).filter(e => !e.0.contains("/body"))
   assert_true(top_level.length() > 0)
-  assert_eq(top_level, all.filter(e => !e.0.contains("/body")))
+  assert_true(
+    top_level.iter().all(e => !(e.1 is Some(t) && has_marked_variable(t))),
+  )
 }
 
 ///|

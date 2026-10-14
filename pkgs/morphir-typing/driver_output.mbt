@@ -15,13 +15,17 @@ fn Walker::definition(
 ) -> @ir.ValueDefinition {
   match (self.signature)(def, path) {
     ExpressionBody(inputs, output, body) =>
-      ExpressionBody(inputs, output, self.value(body, path_body(path)))
+      ExpressionBody(
+        inputs,
+        output,
+        self.value(body, @identities.path_body(path)),
+      )
     ExternalBody(inputs, output, bindings, Some(fallback)) =>
       ExternalBody(
         inputs,
         output,
         bindings,
-        Some(self.value(fallback, path_body(path))),
+        Some(self.value(fallback, @identities.path_body(path))),
       )
     other => other
   }
@@ -39,11 +43,17 @@ fn Walker::value(self : Walker, v : @ir.Value, path : String) -> @ir.Value {
     Hole(a, reason, t) => Hole((self.node)(a, path), reason, t)
     Tuple(a, items) => {
       let a = (self.node)(a, path)
-      Tuple(a, items.mapi((i, x) => self.value(x, path_item(path, i))))
+      Tuple(
+        a,
+        items.mapi((i, x) => self.value(x, @identities.path_item(path, i))),
+      )
     }
     List(a, items) => {
       let a = (self.node)(a, path)
-      List(a, items.mapi((i, x) => self.value(x, path_item(path, i))))
+      List(
+        a,
+        items.mapi((i, x) => self.value(x, @identities.path_item(path, i))),
+      )
     }
     Record(a, fields) => {
       let a = (self.node)(a, path)
@@ -51,11 +61,11 @@ fn Walker::value(self : Walker, v : @ir.Value, path : String) -> @ir.Value {
     }
     Field(a, record, name) => {
       let a = (self.node)(a, path)
-      Field(a, self.value(record, path_record(path)), name)
+      Field(a, self.value(record, @identities.path_record(path)), name)
     }
     UpdateRecord(a, record, fields) => {
       let a = (self.node)(a, path)
-      let record = self.value(record, path_record(path))
+      let record = self.value(record, @identities.path_record(path))
       UpdateRecord(a, record, self.fields(fields, path))
     }
     _ => self.compound(v, path)
@@ -70,7 +80,7 @@ fn Walker::fields(
 ) -> Map[@ir.Name, @ir.Value] {
   let out : Map[@ir.Name, @ir.Value] = Map([])
   for name, field in fields {
-    out[name] = self.value(field, path_field(path, name))
+    out[name] = self.value(field, @identities.path_field(path, name))
   }
   out
 }
@@ -81,45 +91,48 @@ fn Walker::compound(self : Walker, v : @ir.Value, path : String) -> @ir.Value {
   match v {
     Apply(a, f, x) => {
       let a = (self.node)(a, path)
-      let f = self.value(f, path_function(path))
-      Apply(a, f, self.value(x, path_argument(path)))
+      let f = self.value(f, @identities.path_function(path))
+      Apply(a, f, self.value(x, @identities.path_argument(path)))
     }
     Lambda(a, p, body) => {
       let a = (self.node)(a, path)
-      let p = self.pattern(p, path_pattern(path))
-      Lambda(a, p, self.value(body, path_body(path)))
+      let p = self.pattern(p, @identities.path_pattern(path))
+      Lambda(a, p, self.value(body, @identities.path_body(path)))
     }
     LetDefinition(a, name, def, rest) => {
       let a = (self.node)(a, path)
-      let def = self.definition(def, path_definition(path))
-      LetDefinition(a, name, def, self.value(rest, path_in(path)))
+      let def = self.definition(def, @identities.path_definition(path))
+      LetDefinition(a, name, def, self.value(rest, @identities.path_in(path)))
     }
     LetRecursion(a, defs, rest) => {
       let a = (self.node)(a, path)
       let out : Map[@ir.Name, @ir.ValueDefinition] = Map([])
       for name, def in defs {
-        out[name] = self.definition(def, path_definitions(path, name))
+        out[name] = self.definition(
+          def,
+          @identities.path_definitions(path, name),
+        )
       }
-      LetRecursion(a, out, self.value(rest, path_in(path)))
+      LetRecursion(a, out, self.value(rest, @identities.path_in(path)))
     }
     Destructure(a, p, value, rest) => {
       let a = (self.node)(a, path)
-      let p = self.pattern(p, path_pattern(path))
-      let value = self.value(value, path_value(path))
-      Destructure(a, p, value, self.value(rest, path_in(path)))
+      let p = self.pattern(p, @identities.path_pattern(path))
+      let value = self.value(value, @identities.path_value(path))
+      Destructure(a, p, value, self.value(rest, @identities.path_in(path)))
     }
     IfThenElse(a, c, t, e) => {
       let a = (self.node)(a, path)
-      let c = self.value(c, path_condition(path))
-      let t = self.value(t, path_then(path))
-      IfThenElse(a, c, t, self.value(e, path_else(path)))
+      let c = self.value(c, @identities.path_condition(path))
+      let t = self.value(t, @identities.path_then(path))
+      IfThenElse(a, c, t, self.value(e, @identities.path_else(path)))
     }
     PatternMatch(a, subject, cases) => {
       let a = (self.node)(a, path)
-      let subject = self.value(subject, path_subject(path))
+      let subject = self.value(subject, @identities.path_subject(path))
       let cases = cases.mapi((i, c) => {
-        let p = self.pattern(c.0, path_case_pattern(path, i))
-        (p, self.value(c.1, path_case_body(path, i)))
+        let p = self.pattern(c.0, @identities.path_case_pattern(path, i))
+        (p, self.value(c.1, @identities.path_case_body(path, i)))
       })
       PatternMatch(a, subject, cases)
     }
@@ -140,21 +153,26 @@ fn Walker::pattern(
     LiteralPattern(a, lit) => LiteralPattern((self.node)(a, path), lit)
     AsPattern(a, inner, name) => {
       let a = (self.node)(a, path)
-      AsPattern(a, self.pattern(inner, path_pattern(path)), name)
+      AsPattern(a, self.pattern(inner, @identities.path_pattern(path)), name)
     }
     TuplePattern(a, items) => {
       let a = (self.node)(a, path)
-      TuplePattern(a, items.mapi((i, x) => self.pattern(x, path_item(path, i))))
+      TuplePattern(
+        a,
+        items.mapi((i, x) => self.pattern(x, @identities.path_item(path, i))),
+      )
     }
     ConstructorPattern(a, name, args) => {
       let a = (self.node)(a, path)
-      let args = args.mapi((i, x) => self.pattern(x, path_arg(path, i)))
+      let args = args.mapi((i, x) => {
+        self.pattern(x, @identities.path_arg(path, i))
+      })
       ConstructorPattern(a, name, args)
     }
     HeadTailPattern(a, head, tail) => {
       let a = (self.node)(a, path)
-      let head = self.pattern(head, path_head(path))
-      HeadTailPattern(a, head, self.pattern(tail, path_tail(path)))
+      let head = self.pattern(head, @identities.path_head(path))
+      HeadTailPattern(a, head, self.pattern(tail, @identities.path_tail(path)))
     }
   }
 }
@@ -177,7 +195,7 @@ fn source_at(d : Decl, path : String) -> @ir.SourceLocation? {
 }
 
 ///|
-/// The new definition of each declaration whose group succeeded, by canonical FQName. An existing
+/// The new definition of each declaration whose group succeeded, by canonical FQName. In Check, an existing
 /// `inferred_type` that is not equivalent to the inferred type in the declaration's `TypeScope` is
 /// `annotation_mismatch`.
 fn Driver::output(self : Driver) -> Map[String, @ir.ValueDefinition] {
@@ -216,8 +234,8 @@ fn Driver::fill(self : Driver, d : Decl, infer : Infer) -> @ir.ValueDefinition {
 }
 
 ///|
-/// Sets the inferred type of one node, and compares it with the type that the node had. Every node of one
-/// declaration is compared in the declaration's `scope`.
+/// Sets the inferred type of one node. The old type was a fact during inference in both modes. In Check, also
+/// compares the solution with the old type. Every node of one declaration is compared in the declaration's `scope`.
 fn Driver::fill_node(
   self : Driver,
   infer : Infer,
@@ -228,7 +246,8 @@ fn Driver::fill_node(
 ) -> @ir.ValueAttributes {
   guard infer.types.get(path) is Some(t) else { return a }
   let inferred = namer.to_ir(infer.solver, t)
-  if a.inferred_type is Some(old) &&
+  if self.mode is Check &&
+    a.inferred_type is Some(old) &&
     !scope.equivalent(self.env.expand_ir(old), self.env.expand_ir(inferred)) {
     let (old_text, inferred_text) = distinct_texts(old, inferred)
     self.problems.push({

@@ -9,10 +9,12 @@ import {
   "finos/morphir-ir/versions/v4",
   "finos/morphir-metadata",
   "finos/morphir-scheme",
+  "finos/morphir-typing",
   "moonbitlang/core/debug",
 }
 
 // Values
+pub fn infer_unit(@data.IRUnit, @morphir-typing.Mode, Bool) -> @data.IRUnit raise
 
 // Errors
 pub(all) suberror SourceFrontendError {

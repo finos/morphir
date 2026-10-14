@@ -31,6 +31,7 @@ pub(all) struct InferenceProblem {
   found : @v4.Type?
   source : @v4.SourceLocation?
 } derive(Eq, @debug.Debug)
+pub fn InferenceProblem::display(Self) -> String
 pub fn InferenceProblem::equal(Self, Self) -> Bool
 pub fn InferenceProblem::not_equal(Self, Self) -> Bool
 pub fn InferenceProblem::to_repr(Self) -> @debug.Repr

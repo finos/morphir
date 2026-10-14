@@ -42,6 +42,7 @@ priv struct Job {
   build_policy : BuildPolicy
   components : Array[ComponentStep]
   strict_naming : Bool
+  inference : @typing.Mode?
 }
 
 ///|
@@ -72,6 +73,7 @@ fn Config::overlay(
   self.backend = values.text("pipeline.backend", self.backend)
   self.source = normalize(values.text("project.source_directory", self.source))
   self.package_name = values.text("project.name", self.package_name)
+  self.inference = values.text("pipeline.inference", self.inference)
 }
 
 ///|
@@ -449,6 +451,13 @@ pub fn Engine::plan(
       )
     }
     destinations.push(destination)
+    let inference = inference_mode(settings.inference) catch {
+      @configuration.Invalid(message) =>
+        raise @configuration.Invalid(
+          message + option_origin(effective, "pipeline", message),
+        )
+      e => raise e
+    }
     jobs.push({
       root: selected.root,
       source_root,
@@ -468,6 +477,7 @@ pub fn Engine::plan(
       build_policy,
       components,
       strict_naming: effective.boolean("pipeline.strict_naming", false),
+      inference,
     })
   }
   { jobs, consumed: false, sources, destinations, output_root, }
@@ -619,6 +629,19 @@ pub fn Engine::execute_content(
           }
           ir = job.runtime.call(transform, [@scheme.IRFile(ir)]).as_file()
         }
+        stage = "inference"
+        if job.inference is Some(mode) {
+          let checkpoint = job.boundary is Some(_) || job.generator is Some(_)
+          let unit = match checkpoint_unit {
+            Some(unit) if checkpoint => unit
+            _ => @data.IRUnit::new(unit_id, ir)
+          }
+          let result = infer_unit(unit, mode, checkpoint)
+          ir = result.distribution
+          if checkpoint {
+            checkpoint_unit = Some(result)
+          }
+        }
         stage = "backend"
         if cancelled() {
           raise @configuration.Invalid("Cancelled")
@@ -699,6 +722,15 @@ pub fn Engine::execute_content(
           },
         })
       } catch {
+        @typing.InferenceFailed(problems) =>
+          for problem in problems {
+            diagnostics.push({
+              path,
+              stage: "inference",
+              message: problem.display(),
+              details: None,
+            })
+          }
         e =>
           diagnostics.push({
             path,

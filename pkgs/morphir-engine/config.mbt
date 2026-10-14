@@ -7,6 +7,7 @@ priv struct Config {
   mut output : String
   mut package_name : String
   mut source : String
+  mut inference : String
   transforms : Array[@scheme.Value]
 }
 
@@ -16,7 +17,7 @@ fn config_runtime(limits : @scheme.Limits) -> @scheme.Runtime raise {
   for
     name in [
       "frontend", "frontend-provider", "frontend-profile", "backend", "output", "package-name",
-      "source",
+      "source", "inference",
     ] {
     runtime.define_native(name, fn(_rt, args) raise {
       @scheme.arity(args, 1, name)
@@ -36,10 +37,12 @@ fn config_runtime(limits : @scheme.Limits) -> @scheme.Runtime raise {
 }
 
 ///|
+/// `origin` is the file of `script`, which an invalid `inference` value names.
 fn Config::apply(
   self : Config,
   runtime : @scheme.Runtime,
   script : String,
+  origin? : String = "",
 ) -> Unit raise {
   let entries = runtime.eval(script).to_array()
   for entry in entries {
@@ -69,6 +72,21 @@ fn Config::apply(
         "package-name" => self.package_name = value.as_text()
         "source" => self.source = normalize(value.as_text())
         "transform" => self.transforms.push(value)
+        "inference" => {
+          let text = value.as_text()
+          let _ = inference_mode(text) catch {
+            @configuration.Invalid(message) =>
+              raise @configuration.Invalid(
+                if origin == "" {
+                  message
+                } else {
+                  message + " (set in " + origin + ")"
+                },
+              )
+            e => raise e
+          }
+          self.inference = text
+        }
         _ => raise @scheme.Invalid("Unknown pipeline option: " + name)
       }
     }

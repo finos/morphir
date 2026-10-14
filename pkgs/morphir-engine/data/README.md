@@ -151,6 +151,24 @@ metadata on derived nodes; `copy-single-origin` copies one annotated origin and
 refuses implicit merges. Ordered unknown annotations remain intact. Removed
 metadata is recorded in an Ion provenance event instead of disappearing.
 
+`fill_lineage(before, after)` builds the lineage of a rewrite that changes only
+attributes and the variables of `before` that carry the unknown marker, such as
+an inference fill. It joins nodes by logical path
+(`@identities.logical_nodes`), so a node keeps its identity when its compact
+JSON form becomes expanded:
+
+- A node with the same logical path in both files is retained. A replaced
+  marker variable is retained, because its replacement has its logical path.
+- A node only in `after` is derived from the nearest node above it that
+  `before` has: a new attribute node from its owner, a node under a replaced
+  marker from the marker.
+- A node only in `before` is removed.
+
+Any other difference raises `data.not_attribute_only` with the logical path.
+`MetadataPolicy::no_derived()` attaches no metadata to a derived node. Inference
+uses it, because a type that a fill writes has no metadata of its own; the
+`retain` policy would refuse the derived nodes of an annotated owner.
+
 The optional `provenance` list in the pipeline profile preserves native Ion
 rewrite records through checkpoints and into generated symbol files. Existing
 profile files without it remain supported. `finos/morphir-ir/identities` supplies

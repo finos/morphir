@@ -12,6 +12,8 @@ pub const PROFILE : String = "morphir-pipeline-v1"
 
 pub fn apply_rewrite(IRUnit, Rewrite, String, String, MetadataPolicy) -> IRUnit raise
 
+pub fn fill_lineage(IRUnit, @v4.IRFile) -> Lineage raise
+
 pub fn semantic_json(IRUnit) -> String raise
 
 // Errors
@@ -68,6 +70,7 @@ pub(all) struct MetadataPolicy {
   propagate : (String, Array[NodeMetadata]) -> @ion.IonValue? raise
 }
 pub fn MetadataPolicy::copy_single_origin() -> Self
+pub fn MetadataPolicy::no_derived() -> Self
 pub fn MetadataPolicy::retain() -> Self
 
 pub(all) struct NodeMetadata {

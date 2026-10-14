@@ -74,6 +74,10 @@ fn mismatch_message(
     "no_instance" => class_message(s, e, f, expected, found)
     "missing_field" => field_message(s, e, f)
     "arity" => Some(arity_message(e, f, found))
+    "annotation_mismatch" =>
+      Some(
+        "the node has the type \{elm_text(expected)}, but inference gives \{elm_text(found)}",
+      )
     _ => None
   }
   message.unwrap_or(fallback)

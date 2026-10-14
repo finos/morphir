@@ -252,7 +252,7 @@ fn visit(
 
 ///|
 /// `file` with no node types for inference to use, for criterion B. Every `inferred_type` that inference walks is
-/// `None`, and the let placeholders are marked with `mark_classic_let_placeholders`. Top-level signatures stay.
+/// `None`. Signatures stay: the let placeholders of a classic fixture already have the marker from the migration.
 /// Classic IR does not separate annotated signatures from inferred ones, so a stripped top-level signature would
 /// give a type that is correctly more general than the Elm annotation.
 pub fn strip_node_types(file : @ir.IRFile) -> @ir.IRFile {
@@ -260,9 +260,7 @@ pub fn strip_node_types(file : @ir.IRFile) -> @ir.IRFile {
     node: (a, _, _) => { ..a, inferred_type: None, },
     signature: (def, _) => def,
   }
-  mark_classic_let_placeholders(
-    map_declarations(file, (def, root) => walker.definition(def, root)),
-  )
+  map_declarations(file, (def, root) => walker.definition(def, root))
 }
 
 ///|
@@ -303,54 +301,9 @@ pub fn strip_full(file : @ir.IRFile) -> @ir.IRFile {
 }
 
 ///|
-/// Whether `name` is a morphir-elm placeholder: `t-` followed by digits, as in `t-8`.
+/// Whether `name` is a morphir-elm placeholder: `t-` followed by digits, as in `t-8`. The migration decides.
 fn is_placeholder(name : @ir.Name) -> Bool {
-  match name.to_canonical() {
-    [.. "t-", .. rest] if rest.length() > 0 =>
-      rest.iter().all(c => c >= '0' && c <= '9')
-    _ => false
-  }
-}
-
-///|
-/// `attrs` with the unknown marker of `@typing.unknown_type`.
-fn with_marker(attrs : @ir.TypeAttributes) -> @ir.TypeAttributes {
-  let extensions = attrs.extensions.copy()
-  guard @typing.unknown_type(@ir.Name::from_words(["t"])) is Variable(marked, _) else {
-    abort("unknown_type is a variable")
-  }
-  for key, value in marked.extensions {
-    extensions[key] = value
-  }
-  { ..attrs, extensions, }
-}
-
-///|
-/// `t` with the unknown marker on each placeholder variable. A placeholder row variable marks its record, because
-/// inference reads a row variable's marker from the record's attributes.
-fn mark_placeholders(t : @ir.Type) -> @ir.Type {
-  let go_fields = fn(fields : Map[@ir.Name, @ir.Type]) {
-    let out : Map[@ir.Name, @ir.Type] = Map([])
-    for name, field in fields {
-      out[name] = mark_placeholders(field)
-    }
-    out
-  }
-  match t {
-    Variable(attrs, name) if is_placeholder(name) =>
-      Variable(with_marker(attrs), name)
-    Variable(_, _) | Unit(_) => t
-    Reference(attrs, name, args) =>
-      Reference(attrs, name, args.map(mark_placeholders))
-    Tuple(attrs, items) => Tuple(attrs, items.map(mark_placeholders))
-    Record(attrs, fields) => Record(attrs, go_fields(fields))
-    ExtensibleRecord(attrs, row, fields) => {
-      let attrs = if is_placeholder(row) { with_marker(attrs) } else { attrs }
-      ExtensibleRecord(attrs, row, go_fields(fields))
-    }
-    Function(attrs, input, output) =>
-      Function(attrs, mark_placeholders(input), mark_placeholders(output))
-  }
+  @migration.is_classic_placeholder(name)
 }
 
 ///|
@@ -367,49 +320,6 @@ fn has_placeholder(t : @ir.Type) -> Bool {
     Function(_, input, output) =>
       has_placeholder(input) || has_placeholder(output)
   }
-}
-
-///|
-/// `file` with the unknown marker on each placeholder variable of a let-definition signature.
-///
-/// morphir-elm writes a signature for every let definition. When the Elm source has no annotation for the let,
-/// the signature keeps the type variables that the frontend made before inference, named `t` and a number
-/// (`t8`, canonical `t-8`). The solved types are only on the nodes. Without a marker, inference would check such
-/// a variable as a rigid annotation and report `rigid_variable`. The marker tells inference that it may solve
-/// the variable. Top-level signatures are not changed.
-pub fn mark_classic_let_placeholders(file : @ir.IRFile) -> @ir.IRFile {
-  let mark_inputs = fn(xs : Array[(@ir.Name, @ir.Type)]) {
-    xs.map(x => (x.0, mark_placeholders(x.1)))
-  }
-  map_declarations(file, (def, root) => {
-    let walker : Walker = {
-      node: (a, _, _) => a,
-      signature: (def, path) => {
-        guard path != root else { return def }
-        match def {
-          ExpressionBody(xs, out, body) =>
-            ExpressionBody(mark_inputs(xs), mark_placeholders(out), body)
-          NativeBody(xs, out, info) =>
-            NativeBody(mark_inputs(xs), mark_placeholders(out), info)
-          ExternalBody(xs, out, bindings, fallback) =>
-            ExternalBody(
-              mark_inputs(xs),
-              mark_placeholders(out),
-              bindings,
-              fallback,
-            )
-          IncompleteBody(xs, out, why, value) =>
-            IncompleteBody(
-              mark_inputs(xs),
-              out.map(mark_placeholders),
-              why,
-              value,
-            )
-        }
-      },
-    }
-    walker.definition(def, root)
-  })
 }
 
 ///|
@@ -716,7 +626,7 @@ fn scopes_of(file : @ir.IRFile) -> Map[String, @typing.TypeScope] {
 /// `<path>: expected <t1>, found <t2>`. Types are compared after alias expansion, in the `@typing.TypeScope` of
 /// their declaration in `original`: one renaming for the whole declaration, with its signature variables fixed
 /// and classes compared. A path that `original` has and `filled` lacks is a difference too. A let-signature type
-/// of `original` that has a morphir-elm placeholder (see `mark_classic_let_placeholders`) is compared outside its
+/// of `original` that has a morphir-elm placeholder (see `is_placeholder`) is compared outside its
 /// placeholders (see `mask_placeholders`).
 pub fn compare_types(
   original : @ir.IRFile,

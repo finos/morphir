@@ -1819,3 +1819,136 @@ test "C1: type references in a bundled public interface must resolve" {
   assert_eq(problems(() => fill(file)), expected)
   assert_eq(problems(() => check(file)), expected)
 }
+
+///|
+fn fact(t : @ir.Type) -> @ir.ValueAttributes {
+  { ..va(), inferred_type: Some(t), }
+}
+
+///|
+fn fact_int(text : String) -> @ir.Value {
+  Literal(fact(t_int()), IntegerLiteral(text))
+}
+
+///|
+test "Q4: an integer literal with the fact Int fills as Int" {
+  // inc x = x + 1, where the literal has the fact Int and the signature is unknown.
+  let body = v_apply(v_ref("morphir/SDK:basics#add"), [
+    v_var("x"),
+    fact_int("1"),
+  ])
+  let file = library([
+    (
+      "m",
+      [
+        (
+          "inc",
+          ExpressionBody([(nm("x"), tmarked("t-0"))], tmarked("t-1"), body),
+        ),
+      ],
+    ),
+  ])
+  let (inputs, output) = signature_in(fill(file), "m", "inc")
+  assert_true(@typing.types_equivalent(inputs[0], t_int()))
+  assert_true(@typing.types_equivalent(output, t_int()))
+}
+
+///|
+test "Q4: a conflicting fact is annotation_mismatch at the node" {
+  let body : @ir.Value = Literal(fact(t_string()), IntegerLiteral("1"))
+  let file = library([("m", [("c", ExpressionBody([], tmarked("t-0"), body))])])
+  assert_eq(problems(() => fill(file)), [
+    ("annotation_mismatch", "value:acme/app:m#c/body"),
+  ])
+}
+
+///|
+test "Q4: a partial fact is a constraint, and the node gets its solution" {
+  // xs = [1], where the list has the fact `List a` and `a` is not in scope.
+  let body : @ir.Value = List(fact(t_list(tv("a"))), [fact_int("1")])
+  let file = library([("m", [("xs", ExpressionBody([], tmarked("t-0"), body))])])
+  guard definition_in(fill(file), "m", "xs") is ExpressionBody(_, _, List(a, _)) else {
+    fail("not a list")
+  }
+  assert_true(
+    @typing.types_equivalent(a.inferred_type.unwrap(), t_list(t_int())),
+  )
+}
+
+///|
+test "Q4: a fact variable in scope is rigid" {
+  // k : a -> Int; k x = 1, where the literal has the fact `a`. The signature's `a` is in scope, so the fact's
+  // `a` is that rigid variable, and a number cannot be it. With a fresh meta, the run would succeed.
+  let body : @ir.Value = Literal(fact(tv("a")), IntegerLiteral("1"))
+  let file = library([
+    ("m", [("k", ExpressionBody([(nm("x"), tv("a"))], t_int(), body))]),
+  ])
+  assert_eq(problems(() => fill(file)), [
+    ("annotation_mismatch", "value:acme/app:m#k/body"),
+  ])
+}
+
+///|
+test "Q4: check mode still compares node types after inference" {
+  let body : @ir.Value = Literal(fact(t_string()), IntegerLiteral("1"))
+  let file = library([("m", [("c", ExpressionBody([], t_int(), body))])])
+  assert_eq(problems(() => check(file)), [
+    ("annotation_mismatch", "value:acme/app:m#c/body"),
+  ])
+}
+
+///|
+test "Q4: check uses facts, so an Int literal fact narrows a number variable" {
+  // inc x = x + 1 and pick c = if c then 1 else 2, with unknown signatures and the fact Int on each literal, as
+  // the Scheme frontend writes them. Without the facts, each literal is `number a` and is not equivalent to Int.
+  let inc = v_apply(v_ref("morphir/SDK:basics#add"), [v_var("x"), fact_int("1")])
+  let pick : @ir.Value = IfThenElse(
+    va(),
+    v_var("c"),
+    fact_int("1"),
+    fact_int("2"),
+  )
+  let file = library([
+    (
+      "m",
+      [
+        (
+          "inc",
+          ExpressionBody([(nm("x"), tmarked("t-0"))], tmarked("t-1"), inc),
+        ),
+        (
+          "pick",
+          ExpressionBody([(nm("c"), tmarked("t-2"))], tmarked("t-3"), pick),
+        ),
+      ],
+    ),
+  ])
+  assert_true(check(file) == file)
+}
+
+///|
+test "Q4: check reports a fact that is more general than the solution" {
+  // xs = [1], where the list has the fact `List a` and `a` is not in scope. The fact unifies, but the solution
+  // `List Int` is not equivalent to `List a`.
+  let body : @ir.Value = List(fact(t_list(tv("a"))), [fact_int("1")])
+  let file = library([("m", [("xs", ExpressionBody([], tmarked("t-0"), body))])])
+  assert_eq(problems(() => check(file)), [
+    ("annotation_mismatch", "value:acme/app:m#xs/body"),
+  ])
+}
+
+///|
+test "display names the code, the node and the source" {
+  let p : @typing.InferenceProblem = {
+    code: "type_mismatch",
+    node: "value:p:m#f/body",
+    message: "expected Int, found String",
+    expected: None,
+    found: None,
+    source: Some({ start_line: 2, start_column: 3, end_line: 2, end_column: 9, }),
+  }
+  assert_eq(
+    p.display(),
+    "type_mismatch at value:p:m#f/body: expected Int, found String (2:3-2:9)",
+  )
+}

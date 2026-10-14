@@ -27,9 +27,21 @@ There are two modes:
 | `Fill` | The file with an `inferred_type` on every `Value` and `Pattern` of every body that inference walks. Each signature type that has a marked variable is replaced by its solution. |
 | `Check` | The input file, unchanged. Use it to check the types that a file already has. |
 
-In both modes, an existing `inferred_type` that does not agree with inference is `annotation_mismatch`. `Fill` does
-not overwrite it silently. The existing types of one declaration are compared in its `TypeScope` (below), so a
-node that has the wrong signature variable, or a variable without its class, is `annotation_mismatch`.
+In both modes, an existing `inferred_type` is a fact (below). In `Check`, an existing `inferred_type` that does
+not agree with the solution is also `annotation_mismatch`. The existing types of one declaration are compared in its
+`TypeScope` (below), so a node that has the wrong signature variable, or a variable without its class, is
+`annotation_mismatch`.
+
+### Facts
+
+In `Fill` and `Check`, an existing `inferred_type` on a `Value` or `Pattern` node is a fact. Inference unifies it
+with the type of the node before the binding group generalizes. The fact is converted by the hole rule (see "Other
+bodies"): a variable in scope is that rigid variable, any other variable is a fresh variable, and a marked
+variable stays flexible. So a partial fact such as `List a` is only a constraint, and the node gets the solution.
+A fact that does not unify is `annotation_mismatch` at the node. In `Fill`, the fact is `expected` and the
+inferred type is `found`; `Check` swaps them, as its comparison does. `Fill` does not overwrite an existing type
+silently. Because `Check` uses facts too, the `Int` fact that the Scheme frontend writes on an integer literal
+narrows the `number` variable of the literal, so `(define (inc x) (+ x 1))` checks.
 
 A `Specs` file has no bodies. `Fill` returns it unchanged. `Check` checks that every type reference in its
 signatures and type bodies resolves.
@@ -121,10 +133,9 @@ Inference reads every unmarked signature variable as rigid, so it reads these pl
 that needs a narrower type then fails with `rigid_variable`. For example, `let discount = price * 0.1` with the
 output `t8` fails, because the body needs `Float`.
 
-A caller must put the unknown marker on these variables before `Fill` or `Check`. The oracle in
-`finos/morphir-typing-tools` does this with `mark_classic_let_placeholders`: it marks each `t-<digits>` variable of
-a let signature, and it leaves top-level signatures as they are. Marking during the classic migration is a planned
-follow-up.
+These variables must have the unknown marker before `Fill` or `Check`. Migration from classic IR
+(`@migration.to_current`) marks each `t-<digits>` variable of a let signature, and it leaves top-level signatures
+as they are.
 
 ## How inference works
 

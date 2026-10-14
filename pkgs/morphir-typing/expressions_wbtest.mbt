@@ -545,7 +545,7 @@ test "11. a hole uses its declared type" {
 ///|
 test "12. the types map holds the exact logical paths" {
   let i = new_infer()
-  let root = value_root(fq("acme/app:m#f"))
+  let root = @identities.value_root(fq("acme/app:m#f"))
   assert_eq(root, "value:acme/app:m#f")
   let body = v_apply(v_lambda(p_var("x"), v_var("x")), v_int("1"))
   i.definition(expr(body), root) |> ignore
@@ -623,15 +623,21 @@ test "12b. the path grammar for every construct" {
 
 ///|
 test "path steps" {
-  assert_eq(path_body("r"), "r/body")
-  assert_eq(path_definitions_body("r", nm("go")), "r/definitions/go/body")
-  assert_eq(path_case_pattern("r", 2), "r/cases/2/pattern")
-  assert_eq(path_case_body("r", 2), "r/cases/2/body")
-  assert_eq(path_item("r", 0), "r/items/0")
-  assert_eq(path_field("r", nm("total-amount")), "r/fields/total-amount")
-  assert_eq(path_arg("r", 1), "r/args/1")
+  assert_eq(@identities.path_body("r"), "r/body")
   assert_eq(
-    value_root(fq("morphir/SDK:list#map-2")),
+    @identities.path_definitions_body("r", nm("go")),
+    "r/definitions/go/body",
+  )
+  assert_eq(@identities.path_case_pattern("r", 2), "r/cases/2/pattern")
+  assert_eq(@identities.path_case_body("r", 2), "r/cases/2/body")
+  assert_eq(@identities.path_item("r", 0), "r/items/0")
+  assert_eq(
+    @identities.path_field("r", nm("total-amount")),
+    "r/fields/total-amount",
+  )
+  assert_eq(@identities.path_arg("r", 1), "r/args/1")
+  assert_eq(
+    @identities.value_root(fq("morphir/SDK:list#map-2")),
     "value:morphir/SDK:list#map-2",
   )
 }

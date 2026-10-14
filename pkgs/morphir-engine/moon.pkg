@@ -19,6 +19,8 @@ import {
   "finos/morphir-scheme/frontend",
   "finos/morphir-scheme/backend",
   "finos/morphir-scheme/pipeline",
+  "finos/morphir-typing" @typing,
+  "finos/morphir-sdk-spec" @sdk_spec,
 }
 
 import {
