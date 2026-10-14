@@ -18,6 +18,7 @@ import {
   "moonbitlang/core/encoding/base64",
   "finos/morphir-elm/backend" @elm,
   "finos/morphir-workbench/arguments",
+  "finos/morphir-workbench/outcomes",
   "moonrockz/ion/ion",
 }
 

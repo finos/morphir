@@ -135,7 +135,8 @@ export async function toolPanelWorkflow(page, { resize = true } = {}) {
   await page.getByRole('status').filter({ hasText: 'Function evaluated' }).waitFor();
   const evaluated = body.locator('.tool-outcome').first();
   assert.match(await evaluated.textContent(), /Evaluate eligible · scheme-portable-v1\/shared-sdk\/bounded/);
-  assert.match(await evaluated.locator('.tool-lines').textContent(), /^Result: \{"type":"bool","value":true\}$/);
+  assert.equal(await evaluated.locator('.terminal-kind').textContent(), 'Returned');
+  assert.deepEqual(JSON.parse(await evaluated.locator('.terminal-preview').textContent()), {type:'bool',value:true});
   // An input error belongs to its model: replacing the model makes it previous.
   await page.getByRole('button', { name: 'JSON inputs', exact: true }).click();
   await page.getByRole('textbox', { name: 'Function arguments', exact: true }).fill('not json');
@@ -210,4 +211,123 @@ export async function toolPanelWorkflow(page, { resize = true } = {}) {
   assert.equal(await tab('Diagnostics').locator('.tool-count').isVisible(), false);
   await page.getByRole('button', { name: 'Collapse panel', exact: true }).click();
   console.log(JSON.stringify({ toolPanel: true, namingWarnings: true, collapsedDefault: true, realLogs: true, scopedDiagnostics: true, output: true, keyboardTabs: true, preventsScroll: true, retainedAcrossExperiences: true, undoPreserved: true, resized: sizes.length > 0 }));
+}
+
+// The local producer genuinely returns a value. Cleanup/failure/cancellation
+// combinations below are explicit evidence fixtures, not claims of host execution.
+export async function terminalOutcomeWorkflow(page, { resize = true, screenshot } = {}) {
+  const body = page.locator('#tool-panel-body');
+  const output = page.getByRole('tab', { name: /^Output/ });
+  const diagnostics = page.getByRole('tab', { name: /^Diagnostics/ });
+  const open = async tab => {
+    if (!await body.isVisible() || await tab.getAttribute('aria-selected') !== 'true') await tab.click();
+    await body.waitFor();
+  };
+  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+  await page.getByRole('heading', {name:'Try Morphir',exact:true}).waitFor();
+  if (!await page.getByRole('button', { name: 'MoonBit library', exact: true }).isVisible()) await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
+  await page.getByRole('button', { name: 'MoonBit library', exact: true }).click();
+  await page.getByRole('button', { name: 'Compile', exact: true }).click();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForFunction(() => ![...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Compile')?.disabled && document.querySelector('.statusbar')?.textContent === 'Model ready');
+  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await page.locator('.model-tree .tree-item').filter({ hasText: 'eligible' }).click();
+  await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
+  await page.getByRole('button', { name: 'Input fields', exact: true }).click();
+  await page.getByRole('combobox', { name: 'activeUser', exact: true }).selectOption('true');
+  await page.getByRole('combobox', { name: 'vipMember', exact: true }).selectOption('false');
+  await open(output);
+  await page.getByRole('button', { name: 'Clear output', exact: true }).click();
+  const evaluate = page.getByRole('button', { name: 'Evaluate', exact: true });
+  await evaluate.click();
+  await page.getByRole('status').filter({ hasText: 'Function evaluated' }).waitFor();
+  assert.equal(await page.locator('.evaluation-result .terminal-kind').textContent(), 'Returned');
+  assert.deepEqual(JSON.parse(await body.locator('.terminal-preview').textContent()), {type:'bool',value:true});
+  await page.getByRole('button', { name: 'Result JSON', exact: true }).click();
+
+  await page.evaluate(() => {
+    const request = globalThis.morphirWorkbench.request.bind(globalThis.morphirWorkbench);
+    globalThis.morphirWorkbench.request = (data, receive) => {
+      if (data.operation === 'evaluate' && globalThis.terminalFixture) queueMicrotask(() => receive(JSON.stringify(globalThis.terminalFixture)));
+      else request(data, reply => {
+        if (data.operation === 'evaluate' && globalThis.holdTerminalReply) {
+          delete globalThis.holdTerminalReply;
+          globalThis.releaseTerminalReply = () => { delete globalThis.releaseTerminalReply; receive(reply); };
+        } else receive(reply);
+      });
+    };
+    globalThis.restoreTerminalRequests = () => { globalThis.morphirWorkbench.request = request; delete globalThis.terminalFixture; };
+  });
+  const fixture = async (outcome, cleanup = null, id = 'workbench') => {
+    await page.evaluate(({outcome,cleanup,id}) => {
+      globalThis.terminalFixture = {success:true,profile:'explicit-evidence-fixture',typed:{type:'int',value:'999'},value:'forged legacy value',terminalOutcomes:{contractVersion:'0.1.0-draft.5',calls:[{id,outcome}],cleanup,extensions:null}};
+    }, {outcome,cleanup,id});
+    await evaluate.click();
+  };
+  const cleanup = {stage:'cleanup',code:'provider.dispose',message:'Fixture disposal failed'};
+  const viewport = page.viewportSize();
+  try {
+    await page.evaluate(() => { globalThis.holdTerminalReply = true; });
+    await evaluate.click();
+    await page.waitForFunction(() => typeof globalThis.releaseTerminalReply === 'function');
+    await page.getByRole('combobox', {name:'activeUser',exact:true}).selectOption('false');
+    await page.evaluate(() => globalThis.releaseTerminalReply());
+    await page.getByRole('status').filter({hasText:'Finished for earlier inputs'}).waitFor();
+    assert.equal(await page.locator('.evaluation-result.stale .terminal-kind').textContent(), 'Returned');
+    assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => e.value)), {type:'bool',value:true});
+    await page.evaluate(() => { globalThis.holdTerminalReply = true; });
+    await evaluate.click();
+    await page.waitForFunction(() => typeof globalThis.releaseTerminalReply === 'function');
+    await page.getByRole('button', {name:'Cancel',exact:true}).click();
+    await page.getByRole('status').filter({hasText:'Cancelled'}).waitFor();
+    await page.evaluate(() => globalThis.releaseTerminalReply());
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => e.value)), {type:'bool',value:true}, 'A cancelled UI job ignores its late terminal evidence');
+    await page.getByRole('combobox', {name:'activeUser',exact:true}).selectOption('true');
+    await fixture({status:'returned',value:{type:'bool',value:true}}, cleanup);
+    await page.getByRole('status').filter({hasText:'Returned · Cleanup failed'}).waitFor();
+    const result = page.locator('.evaluation-result');
+    assert.equal(await result.locator('.terminal-kind').textContent(), 'Returned');
+    assert.equal(await result.evaluate(e => e.classList.contains('failed')), false, 'Cleanup does not paint the returned value as failed');
+    assert.match(await result.locator('.terminal-cleanup').textContent(), /provider.dispose.*Fixture disposal failed/);
+    await page.waitForFunction(() => document.querySelector('#evaluation-output')?.value === '{\n  "type": "bool",\n  "value": true\n}');
+    assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => e.value)), {type:'bool',value:true}, 'Cleanup failure preserves the admitted value and ignores forged legacy fields');
+    await open(output);
+    const latest = body.locator('.tool-outcome').first();
+    assert.equal(await latest.locator('.terminal-kind').textContent(), 'Returned');
+    assert.match(await latest.locator('.terminal-cleanup').textContent(), /provider.dispose/);
+    if (screenshot) await page.screenshot({path:screenshot,fullPage:false});
+    if (resize) {
+      await page.setViewportSize({width:390,height:844});
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Outcome and cleanup fit narrow windows');
+      await page.setViewportSize(viewport);
+    }
+    await fixture({status:'failed',failure:{stage:'evaluate',code:'execution.evaluate',message:'Fixture evaluation failed'}}, cleanup);
+    await result.locator('.terminal-call.failed').waitFor();
+    assert.equal(await result.locator('.terminal-kind').textContent(), 'Failed');
+    assert.equal(await result.locator(':scope > p').textContent(), 'Failed · Cleanup failed');
+    assert.equal(await page.locator('#evaluation-output').count(), 0, 'A failed terminal has no invented value editor');
+    await open(diagnostics);
+    const causes = body.locator('.tool-report.current').filter({hasText:'execution.evaluate'});
+    await causes.waitFor();
+    assert.deepEqual(await causes.locator('.tool-code').allTextContents(), ['provider.dispose','execution.evaluate']);
+    await fixture({status:'cancelled'}, cleanup);
+    await result.locator('.terminal-call.cancelled').waitFor();
+    assert.equal(await result.locator('.terminal-kind').textContent(), 'Cancelled');
+    assert.equal(await result.locator(':scope > p').textContent(), 'Cancelled · Cleanup failed');
+    assert.match(await result.locator('.terminal-cleanup').textContent(), /provider.dispose/);
+    await fixture({status:'returned',value:{type:'bool',value:true}}, null, 'wrong-call');
+    await result.locator('.terminal-invalid').waitFor();
+    assert.match(await result.locator('.terminal-invalid').textContent(), /execution.call_identity/);
+    assert.equal(await result.locator('.terminal-kind').count(), 0, 'Mismatched evidence does not fall back to success');
+    assert.equal(await page.locator('#evaluation-output').count(), 0);
+  } finally {
+    if (resize && viewport) await page.setViewportSize(viewport);
+    await page.evaluate(() => { globalThis.restoreTerminalRequests(); delete globalThis.restoreTerminalRequests; });
+  }
+  await evaluate.click();
+  await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
+  await open(output);
+  assert.equal(await body.locator('.tool-outcome').first().locator('.terminal-kind').textContent(), 'Returned', 'Real local producer restored');
+  await page.getByRole('button', {name:'Collapse panel',exact:true}).click();
 }

@@ -92,7 +92,7 @@ test "typed presentation truncates without changing canonical values" {
       ({ "type": "int", "value": "9007199254740993" } : Json),
     ),
   }
-  let tree = typed_result_node(canonical, 0, Ref(500))
+  let tree = @outcomes.value_tree(canonical)
   let items = @wire.array(@wire.field(tree, "items"))
   assert_eq(items.length(), 500)
   assert_eq(@wire.field(items[499], "kind"), Json::string("truncated"))

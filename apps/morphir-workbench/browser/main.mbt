@@ -115,6 +115,7 @@ struct Model {
   result_mode : @result.Mode
   evaluation_arguments : String
   evaluation_result : Json
+  evaluation_terminal : @outcomes.Projection
   evaluation_revision : Int
   evaluation_result_revision : Int
   evaluation_entry : String
@@ -220,6 +221,7 @@ fn initial() -> Model {
     result_mode: @result.Value,
     evaluation_arguments: "[]",
     evaluation_result: Json::null(),
+    evaluation_terminal: @outcomes.Absent,
     evaluation_revision: 0,
     evaluation_result_revision: -1,
     evaluation_entry: "",
@@ -500,6 +502,7 @@ fn select(model : Model, selected : String) -> Model {
       model.evaluation_typed,
     ),
     evaluation_result: Json::null(),
+    evaluation_terminal: @outcomes.Absent,
     evaluation_revision: model.evaluation_revision + 1,
   }
 }
@@ -616,6 +619,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             evaluation_typed,
           ),
           evaluation_result: Json::null(),
+          evaluation_terminal: @outcomes.Absent,
           evaluation_revision: model.evaluation_revision + 1,
           job: model.job + 1,
           busy: false,
@@ -706,6 +710,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
                   Json::string("Arguments must be a valid JSON array"),
                 ),
               ]),
+              evaluation_terminal: @outcomes.Absent,
               status: "Invalid evaluation inputs",
               evaluation_result_revision: model.evaluation_revision,
             },
@@ -991,6 +996,11 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             ("message", Json::string("Invalid host response")),
           ])
       }
+      let (result, terminal) = if operation == "evaluate" {
+        @outcomes.prepare(result, expected_ids=Some(["workbench"]))
+      } else {
+        (result, @outcomes.Absent)
+      }
       let label = operation_label(operation)
       let took = elapsed(model)
       let succeeded = field(result, "success") == Json::boolean(true)
@@ -1020,42 +1030,70 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           "Evaluate " + name,
           "inputs",
           revision,
-          if succeeded {
-            []
-          } else {
-            @bottom_panel.reply_diagnostics(result)
+          match terminal {
+            Valid(_) | Invalid(_) =>
+              @bottom_panel.terminal_diagnostics(terminal)
+            Absent =>
+              if succeeded {
+                []
+              } else {
+                @bottom_panel.reply_diagnostics(result)
+              }
           },
         )
-        let model = produced(
-          model,
-          label,
-          if !succeeded {
-            @bottom_panel.Error
-          } else if text(result, "outcome") == "model-error" {
-            @bottom_panel.Warning
-          } else {
-            @bottom_panel.Info
-          },
-          "Evaluate " +
-          name +
-          (if !succeeded {
-            " failed"
-          } else if text(result, "profile") != "" {
-            " · " + text(result, "profile")
-          } else {
-            " · local runtime"
-          }) +
-          (if text(result, "outcome") == "model-error" {
-            " · model error"
-          } else {
-            ""
-          }),
-          if succeeded {
-            ["Result: " + text(result, "value")]
-          } else {
-            [text(result, "message")]
-          },
-        )
+        let model = match terminal {
+          Valid(summary) =>
+            {
+              ..model,
+              panel: model.panel.outcome(
+                clock(),
+                label,
+                @bottom_panel.terminal_severity(summary),
+                "Evaluate " +
+                name +
+                (if text(result, "profile") == "" {
+                  ""
+                } else {
+                  " · " + text(result, "profile")
+                }) +
+                " · " +
+                summary.heading(),
+                [],
+                terminal=Some(summary),
+              ),
+            }
+          _ =>
+            produced(
+              model,
+              label,
+              if !succeeded {
+                @bottom_panel.Error
+              } else if text(result, "outcome") == "model-error" {
+                @bottom_panel.Warning
+              } else {
+                @bottom_panel.Info
+              },
+              "Evaluate " +
+              name +
+              (if !succeeded {
+                " failed"
+              } else if text(result, "profile") != "" {
+                " · " + text(result, "profile")
+              } else {
+                " · local runtime"
+              }) +
+              (if text(result, "outcome") == "model-error" {
+                " · model error"
+              } else {
+                ""
+              }),
+              if succeeded {
+                ["Result: " + text(result, "value")]
+              } else {
+                [text(result, "message")]
+              },
+            )
+        }
         let model = note(
           model,
           label,
@@ -1068,8 +1106,16 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           },
           "Job " +
           job.to_string() +
-          (if succeeded { " finished in " } else { " failed in " }) +
+          (if terminal is Valid(_) || succeeded {
+            " finished in "
+          } else {
+            " failed in "
+          }) +
           took +
+          (match terminal {
+            Valid(summary) => " · " + summary.heading()
+            _ => ""
+          }) +
           (if revision != model.evaluation_revision {
             " for earlier inputs"
           } else {
@@ -1081,9 +1127,16 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             ..model,
             busy: false,
             evaluation_result: result,
+            evaluation_terminal: terminal,
             evaluation_result_revision: revision,
             status: if revision != model.evaluation_revision {
               "Finished for earlier inputs"
+            } else if terminal is Valid(summary) &&
+              summary.level() == @outcomes.Error {
+              summary.heading()
+            } else if terminal is Valid(summary) &&
+              summary.calls.any(c => c.kind == @outcomes.Cancelled) {
+              "Evaluation cancelled"
             } else if field(result, "success") == Json::boolean(true) {
               "Function evaluated"
             } else {
@@ -2091,6 +2144,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           model.evaluation_typed.to_string(),
           arguments: model.evaluation_arguments,
           result: model.evaluation_result,
+          terminal: model.evaluation_terminal,
           stale: model.evaluation_result_revision != model.evaluation_revision,
           busy: model.busy,
           connected: model.connected,

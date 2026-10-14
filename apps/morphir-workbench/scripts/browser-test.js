@@ -8,7 +8,7 @@ import { createWorkbenchServer } from './server.js';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { elmWorkflow, moonbitWorkflow, libraryWorkflow } from './elm-workflow.js';
-import { toolPanelWorkflow } from './tool-panel-workflow.js';
+import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.js';
 import { unzipSync, strFromU8 } from 'fflate';
 
 // Opt-in acceptance uses a real Rust binary and an isolated provider/workspace.
@@ -495,6 +495,7 @@ try {
   await moonbitWorkflow(page);
   await libraryWorkflow(page);
   await toolPanelWorkflow(page);
+  await terminalOutcomeWorkflow(page, { resize: true, screenshot: process.env.MORPHIR_WORKBENCH_OUTCOME_SCREENSHOT });
   await page.goto(`${url}/?mode=connected`);
   await page.getByRole('status').filter({ hasText: 'launch URL' }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Compile', exact: true }).isEnabled(), false);
@@ -546,7 +547,10 @@ try {
   assert.deepEqual(await connectedLanguage.locator('option').evaluateAll(options=>options.map(option=>option.value)),['scheme','gleam'],'Connected choices come only from the host catalog');
   await connectedLanguage.selectOption('gleam');
   await page.getByText('main.gleam',{exact:true}).waitFor();
-  await page.waitForFunction(()=>document.querySelector('#source')?.value === '');
+  await page.waitForFunction(()=>document.querySelector('#source')?.value === '').catch(async error => {
+    console.error('Connected source draft state', await page.locator('#source').evaluate(e => ({value:e.value, language:e.dataset.language, document:e.dataset.document})), await connectedLanguage.inputValue());
+    throw error;
+  });
   await page.getByRole('textbox',{name:'Source editor',exact:true}).fill('// retained host-language draft');
   await connectedLanguage.selectOption('scheme');
   await page.waitForFunction(()=>document.querySelector('#source')?.value === '(total 3)');

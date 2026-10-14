@@ -466,3 +466,23 @@ Rust 1.98.1 and Chromium. The v1 `morphir.workspace.open` result wraps the works
 in `snapshot`; malformed envelopes now report a diagnostic while keeping compiler
 capabilities available. Other installed providers, connected evaluation,
 workspace watching and durable daemon recovery need their own acceptance.
+
+## Typed terminal outcomes
+
+Local typed function evaluation emits admitted Workbench `0.1.0-draft.5` terminal
+evidence after strict invocation planning. A shared outcome component shows
+returned values, SDK model errors, evaluation failures and separate cleanup
+evidence in the result area and bottom Output/Diagnostics panels. Ordinary
+`Result.Err` remains returned data. Cleanup errors leave the value editor visible.
+
+The receiver decodes bounded evidence once, binds it to the expected call identity
+and prepares canonical value/structured views independently of a legacy success
+flag. Invalid evidence rejects; history retains at most 50 call previews with
+4,000 UTF-16 units each, while the current Result JSON retains the exact value.
+Input errors, stale results and late replies keep their existing handling.
+
+The browser and packaged Proton share the same component and acceptance workflow.
+Tests exercise actual typed values/SDK errors and explicit failure, cleanup and
+cancellation evidence fixtures. Connected v1 has no new job or cancellation RPC;
+local cancellation still stops/discards the worker operation. Native provider
+acquisition/disposal and authoritative daemon job transitions are subsequent work.

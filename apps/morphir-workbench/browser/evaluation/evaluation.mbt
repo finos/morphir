@@ -14,6 +14,7 @@ pub(all) struct Props {
   document_key : String
   arguments : String
   result : Json
+  terminal : @outcomes.Projection
   stale : Bool
   busy : Bool
   connected : Bool
@@ -516,6 +517,11 @@ pub fn view(
         @html.div(
           class=if props.stale {
             "evaluation-result stale"
+          } else if props.terminal is Valid(summary) && summary.has_value() {
+            "evaluation-result"
+          } else if props.terminal is Valid(summary) &&
+            summary.calls.all(c => c.kind == @outcomes.Cancelled) {
+            "evaluation-result cancelled"
           } else if field(props.result, "success") != Json::boolean(true) {
             "evaluation-result failed"
           } else {
@@ -526,6 +532,11 @@ pub fn view(
               class="small muted",
               if props.stale {
                 "Inputs changed · evaluate again"
+              } else if props.terminal is Valid(summary) && !summary.has_value() {
+                summary.heading()
+              } else if props.terminal is Valid(summary) &&
+                summary.cleanup != None {
+                "Result · " + text(props.result, "profile")
               } else if field(props.result, "success") == Json::boolean(true) {
                 if props.typed {
                   "Result · " +
@@ -542,9 +553,11 @@ pub fn view(
                 "Evaluation failed"
               },
             ),
+            @terminal_view.view(props.terminal),
             @result.view(
               {
                 result: props.result,
+                terminal: props.terminal,
                 document_key: props.document_key + "-result",
                 mode: props.result_mode,
               },

@@ -11,6 +11,7 @@ pub extend Mode with Eq::{equal, not_equal}
 ///|
 pub(all) struct Props {
   result : Json
+  terminal : @outcomes.Projection
   document_key : String
   mode : Mode
 }
@@ -100,7 +101,14 @@ fn tree(value : Json, label : String, depth : Int) -> @html.Html {
 ///|
 /// Results stay separate from the argument document and source editor.
 pub fn view(props : Props, on_mode : @cmd.Emit[Mode]) -> @html.Html {
-  if field(props.result, "success") != Json::boolean(true) {
+  if props.terminal is Invalid(_) {
+    return @html.div(hidden=true, "")
+  }
+  if props.terminal is Valid(summary) && !summary.has_value() {
+    return @html.div(hidden=true, "")
+  }
+  let retained_value = props.terminal is Valid(summary) && summary.has_value()
+  if !retained_value && field(props.result, "success") != Json::boolean(true) {
     return @html.pre(text(props.result, "message"))
   }
   let structured = field(props.result, "structured")

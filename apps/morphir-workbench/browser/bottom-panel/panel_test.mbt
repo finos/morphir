@@ -24,6 +24,51 @@ test "tabs open, switch and collapse the panel" {
 }
 
 ///|
+test "terminal diagnostics retain primary and cleanup as separate causes" {
+  let (_reply, projection) = @outcomes.prepare({
+    "terminalOutcomes": {
+      "contractVersion": "0.1.0-draft.5",
+      "calls": [
+        {
+          "id": "workbench",
+          "outcome": {
+            "status": "failed",
+            "failure": {
+              "stage": "evaluate",
+              "code": "execution.evaluate",
+              "message": "Evaluate failed",
+            },
+          },
+        },
+      ],
+      "cleanup": {
+        "stage": "cleanup",
+        "code": "provider.dispose",
+        "message": "Dispose failed",
+      },
+      "extensions": Json::null(),
+    },
+  })
+  let diagnostics = @bottom_panel.terminal_diagnostics(projection)
+  assert_eq(diagnostics.length(), 2)
+  assert_eq(diagnostics[0].stage, "cleanup")
+  assert_eq(diagnostics[0].code, "provider.dispose")
+  assert_eq(diagnostics[1].stage, "evaluate")
+  assert_eq(diagnostics[1].code, "execution.evaluate")
+  guard projection is Valid(summary) else { fail("valid evidence") }
+  let history = @bottom_panel.State::new().outcome(
+    "12:00:00",
+    "Evaluate",
+    @bottom_panel.Error,
+    summary.heading(),
+    [],
+    terminal=Some(summary),
+  )
+  assert_true(history.outcomes[0].terminal == Some(summary))
+  assert_true(history.outcomes[0].lines.is_empty())
+}
+
+///|
 test "arrow keys move the selected tab and return the tab to focus" {
   let state = @bottom_panel.State::new()
   let (next, focus) = state.update(@bottom_panel.Key("ArrowLeft"))

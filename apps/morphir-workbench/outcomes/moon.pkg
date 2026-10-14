@@ -1,0 +1,9 @@
+import {
+  "finos/morphir-execution" @execution,
+  "finos/morphir-ir/wire",
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "finos/morphir-workbench/outcomes",
+} for "test"

@@ -61,6 +61,15 @@ fn typed_profiles(file : @ir.IRFile) -> Json {
 
 ///|
 fn evaluate_typed(file : @ir.IRFile, request : Json) -> Json raise {
+  evaluate_typed_with(file, request, @typed_engine.Evaluator::scheme())
+}
+
+///|
+fn evaluate_typed_with(
+  file : @ir.IRFile,
+  request : Json,
+  evaluator : @typed_engine.Evaluator,
+) -> Json raise {
   let raw = match @wire.optional(request, "argumentsIon") {
     Some(String(source)) =>
       @wire.array(@arguments.ion_arguments(Json::null(), source, true))
@@ -77,116 +86,47 @@ fn evaluate_typed(file : @ir.IRFile, request : Json) -> Json raise {
   let unit = @data.IRUnit::new("workbench", file)
   let plan = @typed_engine.plan(unit, suite)
   let manifest = plan.library.invocations.filter(e => e.fqname == entry)[0]
-  let evaluator = @typed_engine.Evaluator::scheme()
-  let value = (evaluator.evaluate)(
-    unit,
-    suite.calls[0],
-    manifest.output,
+  let terminal : @protocol.TerminalOutcome = try {
+    let value = (evaluator.evaluate)(
+      unit,
+      suite.calls[0],
+      manifest.output,
+      plan.library.invocation_types,
+    )
+    match value {
+      ModelError(code) => ModelError(code)
+      _ => Returned(value)
+    }
+  } catch {
+    error =>
+      Failed({
+        stage: Evaluate,
+        code: "execution.evaluate",
+        message: @outcomes.bounded(@scheme.error_message(error), 480),
+      })
+  }
+  let evidence : @protocol.Outcomes = {
+    calls: [{ id: suite.calls[0].id, outcome: terminal, }],
+    cleanup: None,
+    extensions: suite.extensions,
+  }
+  @protocol.validate_outcomes(
+    evidence,
+    suite,
+    plan.library.invocations.map(e => @protocol.PublicEntry::{
+      name: e.fqname,
+      inputs: e.inputs,
+      output: e.output,
+    }),
     plan.library.invocation_types,
   )
-  let canonical = value.to_json()
-  let tree = typed_result_node(canonical, 0, Ref(500))
-  @wire.obj([
-    ("success", Json::boolean(true)),
-    ("typed", canonical),
-    ("structured", tree),
-    ("value", @wire.text(canonical.stringify())),
-    ("profile", @wire.text(evaluator.profile)),
-    (
-      "outcome",
-      @wire.text(if value is ModelError(_) { "model-error" } else { "value" }),
-    ),
-  ])
-}
-
-///|
-/// Presentation is bounded independently of the lossless canonical result.
-fn typed_result_node(value : Json, depth : Int, budget : Ref[Int]) -> Json {
-  fn omitted() -> Json {
-    { "kind": "truncated", "text": "Result display limit reached" }
+  let reply : Json = {
+    "profile": evaluator.profile,
+    "terminalOutcomes": evidence.to_json(),
+    "message": match terminal {
+      Failed(failure) => failure.code + ": " + failure.message
+      _ => ""
+    },
   }
-  if budget.val <= 0 {
-    return omitted()
-  }
-  budget.val -= 1
-  if depth > 32 {
-    return omitted()
-  }
-  let kind = node_text(value, "type")
-  fn children(values : Array[Json]) -> Array[Json] {
-    let result = []
-    for child in values {
-      if budget.val <= 0 {
-        result.push(omitted())
-        break
-      }
-      result.push(typed_result_node(child, depth + 1, budget))
-    }
-    result
-  }
-  match kind {
-    "list" | "tuple" =>
-      {
-        "kind": kind,
-        "items": children(
-          @wire.array(@wire.field(value, "items")) catch {
-            _ => []
-          },
-        ),
-      }
-    "record" => {
-      let fields : Array[Json] = []
-      let entries = @wire.array(@wire.field(value, "fields")) catch { _ => [] }
-      for field in entries {
-        if budget.val <= 0 {
-          fields.push({ "name": "…", "value": omitted() })
-          break
-        }
-        fields.push({
-          "name": node_text(field, "name"),
-          "value": typed_result_node(
-            @wire.field(field, "value") catch {
-              _ => Json::null()
-            },
-            depth + 1,
-            budget,
-          ),
-        })
-      }
-      { "kind": "record", "fields": fields }
-    }
-    "custom" =>
-      {
-        "kind": "constructor",
-        "tag": node_text(value, "owner") + " / " + node_text(value, "tag"),
-        "items": children(
-          @wire.array(@wire.field(value, "items")) catch {
-            _ => []
-          },
-        ),
-      }
-    "maybe" | "result" => {
-      let values = match (@wire.optional(value, "value") catch { _ => None }) {
-        Some(v) => [v]
-        None => []
-      }
-      {
-        "kind": "constructor",
-        "tag": kind + " / " + node_text(value, "case"),
-        "items": children(values),
-      }
-    }
-    _ => {
-      let text = if kind == "int" {
-        node_text(value, "value")
-      } else {
-        value.stringify()
-      }
-      if text.length() > 16384 {
-        omitted()
-      } else {
-        { "kind": kind, "text": text }
-      }
-    }
-  }
+  @outcomes.prepare(reply, expected_ids=Some(["workbench"])).0
 }

@@ -278,3 +278,23 @@ main > .experience { flex:1 1 0; min-height:0; overflow:auto; }
 .tool-related li { display:flex; flex-direction:column; gap:2px; margin:8px 0; overflow-wrap:anywhere; }
 .tool-fix { white-space:pre-wrap; overflow-wrap:anywhere; }
 .severity-warning .tool-code { color:var(--warn-ink); }
+
+/* Qualified terminal evidence is separate from value editors and cleanup. */
+.terminal-outcomes { min-width:0; margin:8px 0; }
+.terminal-calls { margin:0; padding:0; list-style:none; display:grid; gap:6px; }
+.terminal-call { min-width:0; border-left:3px solid var(--link); padding:5px 10px; }
+.terminal-heading,.terminal-cause { display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline; min-width:0; }
+.terminal-kind { color:var(--link-strong); }
+.terminal-id,.terminal-stage { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+.terminal-code,.terminal-cause span { overflow-wrap:anywhere; min-width:0; }
+.terminal-call.model-error,.terminal-call.cancelled { border-color:var(--brand-orange); }
+.terminal-call.model-error .terminal-kind,.terminal-call.cancelled .terminal-kind { color:var(--warn-ink); }
+.terminal-call.failed { border-color:var(--danger-ink); }
+.terminal-call.failed .terminal-kind { color:var(--danger-ink); }
+.terminal-preview { margin:4px 0 0; font:12px/1.5 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+.terminal-cleanup { display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:8px; padding:8px 10px; border:1px solid var(--danger-ink); border-radius:6px; background:var(--danger-bg); overflow-wrap:anywhere; }
+.terminal-cleanup strong,.terminal-invalid strong { color:var(--danger-ink); }
+.terminal-invalid { display:flex; flex-wrap:wrap; gap:8px; overflow-wrap:anywhere; }
+.terminal-omitted { color:var(--muted); font-size:12px; margin:6px 0; }
+
+.evaluation-result.cancelled { border-color:var(--brand-orange); background:var(--warn-bg); }

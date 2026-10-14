@@ -1,6 +1,8 @@
 supported_targets = "js"
 
 import {
+  "finos/morphir-workbench/outcomes",
+  "finos/morphir-workbench/browser/outcomes" @terminal_view,
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/cmd",
 }

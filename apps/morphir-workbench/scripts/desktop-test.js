@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { elmWorkflow, moonbitWorkflow, libraryWorkflow } from './elm-workflow.js';
-import { toolPanelWorkflow } from './tool-panel-workflow.js';
+import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.js';
 
 if (!process.argv[2]) throw new Error('Usage: node scripts/desktop-test.js http://127.0.0.1:<cdp-port>');
 const browser = await chromium.connectOverCDP(process.argv[2]);
@@ -98,6 +98,7 @@ try {
   await moonbitWorkflow(page, { nativeDownloads: false });
   await libraryWorkflow(page, { nativeDownloads: false });
   await toolPanelWorkflow(page, { resize: false });
+  await terminalOutcomeWorkflow(page, { resize: false, screenshot: process.env.MORPHIR_WORKBENCH_OUTCOME_SCREENSHOT });
   assert.deepEqual(errors, []);
   console.log('Packaged Proton smoke passed: shared UI, secure assets, worker compile/run, model import/reference/back navigation, typed function evaluation with fields/Ion and structured/JSON/printed result views.');
 } finally { await browser.close(); }

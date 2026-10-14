@@ -168,6 +168,49 @@ test "typed validation rejects invalid inputs and separates domain errors from r
 }
 
 ///|
+test "typed evaluation emits complete admitted terminal evidence" {
+  let file = @fixtures.pricing()
+  let returned = typed_request(file, "pricing:boundaries#result", [
+    {
+      "type": "result",
+      "case": "err",
+      "value": { "type": "text", "units": [69] },
+    },
+  ])
+  assert_eq(@wire.field(returned, "terminalOutcomes"), {
+    "contractVersion": "0.1.0-draft.5",
+    "calls": [
+      {
+        "id": "workbench",
+        "outcome": {
+          "status": "returned",
+          "value": {
+            "type": "result",
+            "case": "err",
+            "value": { "type": "text", "units": [69] },
+          },
+        },
+      },
+    ],
+    "cleanup": Json::null(),
+    "extensions": Json::null(),
+  })
+  let model_error = typed_request(file, "pricing:results#failure", [])
+  let terminal = @wire.field(model_error, "terminalOutcomes")
+  assert_eq(@wire.field(terminal, "calls"), [
+    {
+      "id": "workbench",
+      "outcome": { "status": "model-error", "code": "sdk.division_by_zero" },
+    },
+  ])
+  let invalid = typed_request(file, "pricing:boundaries#result", [
+    { "type": "bool", "value": false },
+  ])
+  assert_eq(@wire.field(invalid, "success"), Json::boolean(false))
+  assert_eq(@wire.optional(invalid, "terminalOutcomes"), None)
+}
+
+///|
 test "Ion values evaluate real typed and local functions" {
   let file = @fixtures.pricing()
   let result = @pipeline.execute({

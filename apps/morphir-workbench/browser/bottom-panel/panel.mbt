@@ -97,6 +97,7 @@ pub(all) struct Outcome {
   severity : Severity
   title : String
   lines : Array[String]
+  terminal : @outcomes.Summary?
 } derive(Eq)
 
 ///|
@@ -356,8 +357,10 @@ pub fn State::outcome(
   severity : Severity,
   title : String,
   lines : Array[String],
+  terminal? : @outcomes.Summary? = None,
 ) -> State {
   let entry = {
+    terminal,
     id: self.next,
     time,
     operation,
@@ -397,6 +400,97 @@ pub fn State::is_current(
   .get(report.scope)
   .map(revision => revision == report.revision)
   .unwrap_or(true)
+}
+
+///|
+pub fn terminal_severity(summary : @outcomes.Summary) -> Severity {
+  match summary.level() {
+    Info => Info
+    Warning => Warning
+    Error => Error
+  }
+}
+
+///|
+pub fn terminal_diagnostics(
+  projection : @outcomes.Projection,
+) -> Array[Diagnostic] {
+  fn problem(
+    severity : Severity,
+    code : String,
+    message : String,
+    location : String,
+    stage : String,
+  ) -> Diagnostic {
+    {
+      severity,
+      code,
+      message,
+      location,
+      stage,
+      coordinates: "",
+      related: [],
+      fix: "",
+    }
+  }
+  match projection {
+    Absent => []
+    Invalid(code) =>
+      [
+        problem(
+          Error,
+          "workbench.invalid_terminal_evidence",
+          "Terminal evidence rejected: " + code,
+          "",
+          "admission",
+        ),
+      ]
+    Valid(summary) => {
+      let diagnostics = []
+      // Keep separate cleanup evidence visible even if the report reaches its cap.
+      if summary.cleanup is Some(cleanup) {
+        diagnostics.push(
+          problem(Error, cleanup.code, cleanup.message, "Cleanup", "cleanup"),
+        )
+      }
+      for call in summary.calls {
+        match call.kind {
+          Returned => ()
+          ModelError =>
+            diagnostics.push(
+              problem(
+                Warning,
+                call.code,
+                call.message,
+                "Call " + call.id,
+                "model",
+              ),
+            )
+          Failed =>
+            diagnostics.push(
+              problem(
+                Error,
+                call.code,
+                call.message,
+                "Call " + call.id,
+                call.stage,
+              ),
+            )
+          Cancelled =>
+            diagnostics.push(
+              problem(
+                Warning,
+                "execution.cancelled",
+                call.message,
+                "Call " + call.id,
+                "cancel",
+              ),
+            )
+        }
+      }
+      diagnostics
+    }
+  }
 }
 
 ///|
@@ -861,7 +955,11 @@ fn output_view(state : State) -> Array[@html.Html] {
         @html.span(class="tool-time", outcome.time),
         @html.strong(outcome.title),
       ]),
-      @html.pre(class="tool-lines", outcome.lines.join("\n")),
+      match outcome.terminal {
+        Some(summary) =>
+          @terminal_view.view(@outcomes.Valid(summary), show_values=true)
+        None => @html.pre(class="tool-lines", outcome.lines.join("\n"))
+      },
     ])
   })
 }
