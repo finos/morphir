@@ -496,6 +496,9 @@ try {
   await libraryWorkflow(page);
   await toolPanelWorkflow(page);
   await terminalOutcomeWorkflow(page, { resize: true, screenshot: process.env.MORPHIR_WORKBENCH_OUTCOME_SCREENSHOT });
+  await page.locator('.connection a', { hasText: 'Connect' }).click();
+  await page.waitForURL(u => new URL(u).search === '?mode=connected', { timeout: 5000 }).catch(() => {});
+  assert.equal(new URL(page.url()).search, '?mode=connected', 'The Connect link opens connected mode');
   await page.goto(`${url}/?mode=connected`);
   await page.getByRole('status').filter({ hasText: 'launch URL' }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Compile', exact: true }).isEnabled(), false);

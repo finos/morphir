@@ -2263,6 +2263,7 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
               } else {
                 "Connect"
               },
+              escape=true,
             ),
           ]),
         ]),

@@ -16,17 +16,49 @@ priv struct SearchModel {
 ///|
 priv enum SearchMsg {
   Query(String)
-  Loaded(Result[String, Error])
+  Loaded(Array[@model.SearchEntry]?)
   Key(@common.Keyboard)
 }
 
 ///|
-fn parse_index(text : String) -> Index {
-  let json = @json.parse(text) catch { _ => return Failed }
-  match json {
-    Array(items) => Ready(items.filter_map(@model.SearchEntry::from_json))
-    _ => Failed
-  }
+/// Loads `search-index.json` with the browser's `fetch` and `JSON.parse`, and passes each
+/// entry as `[route, title, section, summary, text, ...headings]`. Entries with a field of
+/// the wrong type are dropped. The island does not use `rabbita/http` or `@json`: together
+/// they would triple the size of `islands.js`.
+extern "js" fn fetch_search_index(
+  url : String,
+  done : (Array[Array[String]]) -> Unit,
+  failed : () -> Unit,
+) -> Unit =
+  #| (url, done, failed) => {
+  #|   const text = (v) => typeof v === "string";
+  #|   fetch(url)
+  #|     .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+  #|     .then((items) => {
+  #|       if (!Array.isArray(items)) throw new Error("not an array");
+  #|       done(items
+  #|         .filter((e) => e && ["route", "title", "section", "summary", "text"].every((k) => text(e[k]))
+  #|           && Array.isArray(e.headings) && e.headings.every(text))
+  #|         .map((e) => [e.route, e.title, e.section, e.summary, e.text, ...e.headings]));
+  #|     })
+  #|     .catch(() => failed());
+  #| }
+
+///|
+/// Opens a page. `rabbita/nav` would do the same, but adds its runtime to `islands.js`.
+extern "js" fn open_page(url : String) -> Unit = "(url) => location.assign(url)"
+
+///|
+fn entry_of(fields : Array[String]) -> @model.SearchEntry? {
+  guard fields.length() >= 5 else { return None }
+  Some(@model.SearchEntry::{
+    route: fields[0],
+    title: fields[1],
+    section: fields[2],
+    summary: fields[3],
+    text: fields[4],
+    headings: fields[5:].to_owned(),
+  })
 }
 
 ///|
@@ -48,17 +80,23 @@ fn search_box(base : String) -> @rabbita.Val[@html.Html] {
           if model.index == NotLoaded {
             (
               { ..next, index: Loading, },
-              @http.get(base + "search-index.json").expect_text(
-                emit.map(r => Loaded(r)),
-              ),
+              @cmd.custom_cmd(scheduler => {
+                fetch_search_index(
+                  base + "search-index.json",
+                  rows => {
+                    scheduler.add(emit(Loaded(Some(rows.filter_map(entry_of)))))
+                  },
+                  () => scheduler.add(emit(Loaded(None))),
+                )
+              }),
             )
           } else {
             (next, @rabbita.none)
           }
         }
-        Loaded(Ok(text)) =>
-          ({ ..model, index: parse_index(text), }, @rabbita.none)
-        Loaded(Err(_)) => ({ ..model, index: Failed, }, @rabbita.none)
+        Loaded(Some(entries)) =>
+          ({ ..model, index: Ready(entries), }, @rabbita.none)
+        Loaded(None) => ({ ..model, index: Failed, }, @rabbita.none)
         Key(key) => {
           let found = results(model)
           match key.key() {
@@ -78,7 +116,9 @@ fn search_box(base : String) -> @rabbita.Val[@html.Html] {
             "Enter" if found.length() > 0 =>
               (
                 model,
-                @nav.load(base + found[model.selected].route[1:].to_owned()),
+                @cmd.custom_cmd(_ => {
+                  open_page(base + found[model.selected].route[1:].to_owned())
+                }),
               )
             "Escape" => ({ ..model, query: "", selected: 0, }, @rabbita.none)
             _ => (model, @rabbita.none)

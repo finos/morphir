@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node scripts/build.js",
     "dev": "node scripts/serve.js --watch",
-    "test": "node --test scripts/highlight.test.js scripts/try-page.test.js",
+    "test": "node --test scripts/highlight.test.js scripts/try-page.test.js scripts/link-escape.test.js",
     "test:browser": "node scripts/browser-test.js"
   },
   "devDependencies": {

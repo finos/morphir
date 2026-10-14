@@ -23,6 +23,11 @@ buildSync({
   minify: true, format: 'esm', target: 'es2022', legalComments: 'eof',
 });
 const islandsSize = gzipSync(readFileSync(`${out}/assets/islands.js`)).length;
+// The islands load on every page. Keep them small: the target is 25 KB gzip, and the build fails above 27 KB.
+if (islandsSize > 27 * 1024) {
+  console.error(`error: assets/islands.js is ${islandsSize} bytes gzip, above the 27 KB limit`);
+  process.exit(1);
+}
 if (islandsSize > 25 * 1024) console.warn(`warning: assets/islands.js is ${islandsSize} bytes gzip, above the 25 KB target`);
 
 // 2. Pages, feed, search index and static assets (native target).
