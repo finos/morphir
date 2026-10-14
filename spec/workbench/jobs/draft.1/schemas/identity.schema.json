@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/identity.schema.json",
+  "title": "Snapshot-bound job identity",
+  "description": "Immutable host, session, provider, job and model snapshot binding. Identity strings also require bounded UTF-16 units in the reducer",
+  "examples": [
+    {
+      "hostId": "host",
+      "sessionId": "session",
+      "providerId": "provider",
+      "jobId": "job",
+      "snapshotId": "snapshot"
+    }
+  ],
+  "type": "object",
+  "required": [ "hostId", "sessionId", "providerId", "jobId", "snapshotId" ],
+  "properties": {
+    "hostId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "sessionId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "providerId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "jobId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "snapshotId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
