@@ -7,5 +7,11 @@
   "packages": [
     "morphir-ir", "morphir-scheme", "morphir-engine", "morphir-elm", "morphir-moonbit", "morphir-sdk",
     "morphir-workbench"
+  ],
+  "nav": [
+    { "group": "Get started", "items": ["QUICK_START.md", "ARCHITECTURE.md"] },
+    { "group": "Packages", "items": ["packages/"] },
+    { "group": "Design and decisions", "items": ["adr/", "design/", "specs/"] },
+    { "group": "Contribute", "items": ["MISE_TASKS.md", "WRITING_FOR_THE_SITE.md"] }
   ]
 }

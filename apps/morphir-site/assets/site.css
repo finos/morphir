@@ -100,6 +100,7 @@ figure.diagram { margin: 1.5rem 0; overflow-x: auto; } figure.diagram svg { max-
 }
 .docs-sidebar li { padding: .15rem 0; } .docs-sidebar a { color: var(--muted); text-decoration: none; }
 .docs-sidebar a.current { color: var(--fg); font-weight: 600; }
+.docs-sidebar li:has(> .nav-label):not(:first-child) { margin-top: 1rem; }
 .docs-sidebar .depth-1 { padding-left: 1rem; } .docs-sidebar .depth-2 { padding-left: 2rem; }
 .nav-label { font-weight: 600; font-size: .85rem; text-transform: uppercase; color: var(--muted); }
 .page-source { margin-top: 3rem; font-size: .9rem; }

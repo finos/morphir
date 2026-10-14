@@ -169,3 +169,26 @@ test "a package without a README is a problem" {
     "site/site.json: package `morphir-ir` in site/site.json has no README.md in pkgs/morphir-ir/ or apps/morphir-ir/",
   ])
 }
+
+///|
+test "nav groups that miss a page fail the build" {
+  let grouped = {
+    ..bare,
+    nav: Some([{ group: "Start", items: ["QUICK_START.md", "GONE.md"], }]),
+  }
+  let sources = [
+    text("docs/QUICK_START.md", "# Quick start\n"),
+    text("docs/adr/README.md", "# Decision records\n"),
+  ]
+  assert_eq(
+    problems_of(() => ignore(@site.prepare(grouped, sources, main_build=true))),
+    [
+      "site/site.json: `nav` entry `GONE.md` matches no page", "site/site.json: docs directory `adr/` is not in `nav`",
+    ],
+  )
+  let fixed = {
+    ..bare,
+    nav: Some([{ group: "Start", items: ["QUICK_START.md", "*/"], }]),
+  }
+  ignore(@site.prepare(fixed, sources, main_build=true))
+}

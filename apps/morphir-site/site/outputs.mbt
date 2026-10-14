@@ -39,12 +39,11 @@ pub async fn build(
 ) -> Built {
   let prepared = prepare(config, sources, main_build~)
   let pages = prepared.pages
-  let docs = pages.filter(p => {
-    p.kind is (Doc(_) | Package(_)) && !p.full && p.route != "/docs/"
-  })
-  let nav = build_nav(
-    docs.map(p => { route: p.route, title: p.title, order: p.order, }),
-  )
+  let entries = nav_entries(pages)
+  let nav = match config.nav {
+    None => build_nav(entries)
+    Some(groups) => build_grouped_nav(groups, entries).0
+  }
   let posts = newest_first(pages.filter(p => p.kind is Post(_)))
   let summaries = posts.map(p => @model.PostSummary::{
     route: p.route,

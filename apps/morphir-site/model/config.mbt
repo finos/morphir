@@ -6,7 +6,24 @@ pub(all) struct SiteConfig {
   site_url : String
   repo_url : String
   packages : Array[String]
+  /// Docs sidebar groups. `None` sorts the sidebar by `order` and title.
+  nav : Array[NavGroup]?
 } derive(Eq, Debug)
+
+///|
+/// One labelled group of the docs sidebar. An item is a top-level page (`NAME.md` or
+/// `NAME.html`) or directory (`NAME/`) below `docs/`, or a glob of one: `*` and `?`
+/// match any characters and one character, but never `/`.
+pub(all) struct NavGroup {
+  group : String
+  items : Array[String]
+} derive(Eq, Debug)
+
+///|
+pub extend NavGroup with Eq::{equal, not_equal}
+
+///|
+pub extend NavGroup with @debug.Debug::{to_repr}
 
 ///|
 pub extend SiteConfig with Eq::{equal, not_equal}
@@ -59,10 +76,102 @@ pub fn SiteConfig::parse(
   if site_url != "" && !site_url.has_suffix("/") {
     problems.push(problem(file, "`site_url` must end with `/`"))
   }
+  let nav = match fields.get("nav") {
+    None => None
+    Some(value) => Some(parse_nav(file, value, problems))
+  }
   if problems.length() > 0 {
     raise Invalid(problems)
   }
-  { title, description, base_path, site_url, repo_url, packages, }
+  { title, description, base_path, site_url, repo_url, packages, nav, }
+}
+
+///|
+/// A top-level page (`NAME.md` or `NAME.html`) or directory (`NAME/`), where `NAME`
+/// has no `/`.
+fn is_top_level_item(item : String) -> Bool {
+  let name = if item.has_suffix("/") {
+    item[:item.length() - 1].to_owned()
+  } else if item.has_suffix(".md") {
+    item[:item.length() - 3].to_owned()
+  } else if item.has_suffix(".html") {
+    item[:item.length() - 5].to_owned()
+  } else {
+    return false
+  }
+  name != "" && !name.contains("/")
+}
+
+///|
+fn parse_nav(
+  file : String,
+  value : Json,
+  problems : Array[Problem],
+) -> Array[NavGroup] {
+  guard value is Array(entries) else {
+    problems.push(problem(file, "`nav` must be an array of groups"))
+    return []
+  }
+  let groups : Array[NavGroup] = []
+  let seen : Array[String] = []
+  for i, entry in entries {
+    guard entry is Object(fields) else {
+      problems.push(
+        problem(
+          file,
+          "`nav` group \{i + 1} must be an object with `group` and `items`",
+        ),
+      )
+      continue
+    }
+    let label = match fields.get("group") {
+      Some(String(label)) if label != "" => label
+      _ => {
+        problems.push(
+          problem(file, "`nav` group \{i + 1} needs a non-empty `group` label"),
+        )
+        ""
+      }
+    }
+    let name = if label == "" { "\{i + 1}" } else { "`\{label}`" }
+    let items : Array[String] = []
+    match fields.get("items") {
+      Some(Array(values)) => {
+        if values.is_empty() {
+          problems.push(problem(file, "`nav` group \{name} has no items"))
+        }
+        if values.iter().any(v => !(v is String(_))) {
+          problems.push(
+            problem(file, "`nav` group \{name}: every item must be a string"),
+          )
+        }
+        for v in values {
+          guard v is String(item) else { continue }
+          if !is_top_level_item(item) {
+            problems.push(
+              problem(
+                file,
+                "`nav` item `\{item}` must be a top-level page (`NAME.md` or `NAME.html`) or directory (`NAME/`)",
+              ),
+            )
+          } else if seen.contains(item) {
+            problems.push(
+              problem(file, "`nav` item `\{item}` is listed more than once"),
+            )
+          } else {
+            seen.push(item)
+            items.push(item)
+          }
+        }
+      }
+      _ =>
+        problems.push(
+          problem(file, "`nav` group \{name} needs an `items` array"),
+        )
+    }
+    groups.push({ group: label, items, })
+  }
+  groups
 }
 
 ///|

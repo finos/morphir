@@ -45,11 +45,31 @@ In an HTML file, put the same block in a comment: `<!-- ---` on the first line a
 
 A blog post does not repeat its title as a `#` heading: the site prints the title.
 
-## Sidebar order
+## Sidebar
 
-The docs sidebar sorts the pages and sections at each level by `order`, then by title. A section gets its position
-from the `order` in its `README.md`. A page or section without `order` comes after all entries that have one. The
-values have gaps, so that you can put a new page between two entries without a change to the others.
+The `nav` key in `site/site.json` puts the top-level docs entries into labelled groups:
+
+```json
+"nav": [
+  { "group": "Get started", "items": ["QUICK_START.md", "ARCHITECTURE.md"] },
+  { "group": "Packages", "items": ["packages/"] }
+]
+```
+
+- An item is a page directly in `docs/` (`NAME.md` or `NAME.html`) or a directory (`NAME/`). `packages/` holds the
+  package pages.
+- An item can be a glob: `*` matches any characters and `?` matches one character, but neither matches `/`. For
+  example, `*.md` matches every top-level page and `*/` every directory.
+- Exact items take their entry first. Then globs take the entries that are left, in `nav` order. Thus a catch-all
+  group such as `{ "group": "More", "items": ["*.md"] }` gets only the pages that no other item lists.
+- A directory with a `README.md` shows as a link with its pages below it. A directory without one puts its pages
+  directly in the group.
+- **When you add a top-level page or directory, add it to `nav`.** The build fails for an entry that no item
+  matches, and for an exact item that matches no page. Pages inside a listed directory need no change.
+
+Inside a directory, and on a site without `nav`, the sidebar sorts entries by `order`, then by title. A directory
+gets its position from the `order` in its `README.md`. An entry without `order` comes after all entries that have
+one. Leave gaps between the values, so that you can put a new page between two entries.
 
 On a wide screen, a docs page with two or more `##` or `###` headings also gets an "On this page" list of them.
 

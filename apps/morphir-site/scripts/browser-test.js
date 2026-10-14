@@ -47,7 +47,8 @@ try {
   await page.goto(`${origin}docs/`);
   check(await page.locator('.docs-sidebar a').count() > 0, 'docs index has a sidebar');
   const sidebar = (await page.locator('.docs-sidebar li').allTextContents()).map((t) => t.trim());
-  check(sidebar[0] === 'Quick Start Guide', `Quick start is the first sidebar entry: ${sidebar.slice(0, 3).join(', ')}`);
+  check(sidebar[0] === 'Get started' && sidebar[1] === 'Quick Start Guide',
+    `the sidebar starts with the Get started group and Quick start: ${sidebar.slice(0, 3).join(', ')}`);
 
   const wide = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await wide.goto(`${origin}docs/architecture/`);

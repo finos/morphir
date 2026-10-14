@@ -277,8 +277,31 @@ pub fn prepare(
       )
     }
   }
+  // Sidebar groups.
+  if config.nav is Some(groups) {
+    for message in build_grouped_nav(groups, nav_entries(linked)).1 {
+      problems.push(@model.problem("site/site.json", message))
+    }
+  }
   if problems.length() > 0 {
     raise @model.Invalid(problems)
   }
   { pages: linked, copies, warnings, }
+}
+
+///|
+/// The pages of the docs sidebar: docs and package pages, except `/docs/` itself.
+fn nav_entries(pages : Array[Page]) -> Array[NavEntry] {
+  pages.filter_map(p => {
+    let source = match p.kind {
+      Doc(rel) => rel
+      Package(name) => "packages/\{name}/README.md"
+      _ => return None
+    }
+    if p.full || p.route == "/docs/" {
+      None
+    } else {
+      Some({ route: p.route, source, title: p.title, order: p.order, })
+    }
+  })
 }
