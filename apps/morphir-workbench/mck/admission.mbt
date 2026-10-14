@@ -185,7 +185,28 @@ fn admit_invocations(input : Json, format : Json) -> @execution.Suite raise {
   ignore(
     closed_fields(input, ["suite", "manifest"], "workbench.invalid_request"),
   )
-  let manifest = field(input, "manifest")
+  let (entries, definitions) = admit_manifest(field(input, "manifest"))
+  let suite = match format {
+    String("json") => @execution.Suite::from_json(field(input, "suite"))
+    String("ion-text") => {
+      guard field(input, "suite") is String(source) else {
+        raise @execution.Invalid("workbench.invalid_request")
+      }
+      let value = @text.read_ion(source[:]) catch {
+        _ => raise @execution.Invalid("workbench.invalid_ion")
+      }
+      @execution.Suite::from_ion(value)
+    }
+    _ => raise @execution.Invalid("workbench.invalid_request")
+  }
+  @execution.validate_invocations(suite, entries, definitions)
+  suite
+}
+
+///|
+fn admit_manifest(
+  manifest : Json,
+) -> (Array[@execution.PublicEntry], Array[@execution.CustomType]) raise {
   let code = "workbench.invalid_manifest"
   ignore(closed_fields(manifest, ["entries", "definitions"], code))
   let budget = Ref(10000)
@@ -210,19 +231,34 @@ fn admit_invocations(input : Json, format : Json) -> @execution.Suite raise {
     budget,
     references,
   )
-  let suite = match format {
-    String("json") => @execution.Suite::from_json(field(input, "suite"))
+  (entries, definitions)
+}
+
+///|
+fn admit_outcomes(input : Json, format : Json) -> @execution.Outcomes raise {
+  ignore(
+    closed_fields(
+      input,
+      ["suite", "manifest", "outcomes"],
+      "workbench.invalid_request",
+    ),
+  )
+  let (entries, definitions) = admit_manifest(field(input, "manifest"))
+  let suite = @execution.Suite::from_json(field(input, "suite"))
+  @execution.validate_invocations(suite, entries, definitions)
+  let outcomes = match format {
+    String("json") => @execution.Outcomes::from_json(field(input, "outcomes"))
     String("ion-text") => {
-      guard field(input, "suite") is String(source) else {
+      guard field(input, "outcomes") is String(source) else {
         raise @execution.Invalid("workbench.invalid_request")
       }
       let value = @text.read_ion(source[:]) catch {
         _ => raise @execution.Invalid("workbench.invalid_ion")
       }
-      @execution.Suite::from_ion(value)
+      @execution.Outcomes::from_ion(value)
     }
     _ => raise @execution.Invalid("workbench.invalid_request")
   }
-  @execution.validate_invocations(suite, entries, definitions)
-  suite
+  @execution.validate_outcomes(outcomes, suite, entries, definitions)
+  outcomes
 }

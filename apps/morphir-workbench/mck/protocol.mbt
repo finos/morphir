@@ -77,7 +77,8 @@ pub fn handle(request : Json) -> Json {
   let version = field(request, "contractVersion")
   let draft2 = version == Json::string("0.1.0-draft.2")
   let draft3 = version == Json::string("0.1.0-draft.3")
-  let draft4 = version == Json::string("0.1.0-draft.4")
+  let draft5 = version == Json::string("0.1.0-draft.5")
+  let draft4 = version == Json::string("0.1.0-draft.4") || draft5
   guard fields.length() == allowed.length() &&
     fields.keys().all(name => allowed.contains(name)) &&
     field(request, "suite") == Json::string("workbench") &&
@@ -91,7 +92,12 @@ pub fn handle(request : Json) -> Json {
       "contractVersion": version,
       "binding": "morphir-moonbit",
       "language": "moonbit",
-      "operations": if draft4 {
+      "operations": if draft5 {
+        [
+          "decode-value", "validate-value", "validate-invocations", "validate-output",
+          "validate-outcomes",
+        ]
+      } else if draft4 {
         [
           "decode-value", "validate-value", "validate-invocations", "validate-output",
         ]
@@ -108,7 +114,8 @@ pub fn handle(request : Json) -> Json {
   guard op == Json::string("decode-value") ||
     ((draft2 || draft3 || draft4) && op == Json::string("validate-value")) ||
     ((draft3 || draft4) && op == Json::string("validate-invocations")) ||
-    (draft4 && op == Json::string("validate-output")) else {
+    (draft4 && op == Json::string("validate-output")) ||
+    (draft5 && op == Json::string("validate-outcomes")) else {
     return invalid(id, "workbench.invalid_request")
   }
   try {
@@ -117,7 +124,9 @@ pub fn handle(request : Json) -> Json {
       @utf8.encode(input.stringify()).length() > 1024 * 1024 {
       return invalid(id, "workbench.input_limit")
     }
-    let observation = if op == Json::string("validate-invocations") {
+    let observation = if op == Json::string("validate-outcomes") {
+      admit_outcomes(input, field(request, "format")).to_json()
+    } else if op == Json::string("validate-invocations") {
       admit_invocations(input, field(request, "format")).to_json()
     } else {
       let value = if op == Json::string("validate-value") ||

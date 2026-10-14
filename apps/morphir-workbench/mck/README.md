@@ -2,10 +2,10 @@
 
 This component exposes the shipped `finos/morphir-execution` value codec and
 validator to the shared Rust MCK. It supports exact contracts
-`0.1.0-draft.1`, `0.1.0-draft.2`, `0.1.0-draft.3` and `0.1.0-draft.4`. It has no goldens, evaluator or separate
+`0.1.0-draft.1`, `0.1.0-draft.2`, `0.1.0-draft.3`, `0.1.0-draft.4` and `0.1.0-draft.5`. It has no goldens, evaluator or separate
 conformance runner. The parent `finos/morphir` repository owns the specification,
 corpora and verdict calculation. Draft.1/.2 are merged; draft.3 adds invocation
-admission; draft.4 adds output admission on the current continuation.
+admission; draft.4 adds output admission; draft.5 adds terminal outcome admission.
 
 `protocol.mbt` handles capabilities and `decode-value`, echoes correlation IDs
 and rejects unknown/duplicate JSON members. Draft.1 capabilities and its original
@@ -94,7 +94,7 @@ earlier corpora. The gate
 builds Node/native debug and release adapters, rechecks every saved report through
 the parent command and writes evidence beneath `.dev/workbench-mck/`. Pure
 protocol tests run on JS, native, Wasm and Wasm GC. No upstream checkout, model or
-toolchain is downloaded. Full outcomes envelopes, evaluation, SDK comparison,
+toolchain is downloaded. Live execution, SDK comparison,
 general Ion binary or reverse encoding remain separate work. These offline
 operations advertise no connected-host protocol extension.
 
@@ -109,4 +109,24 @@ provider/cancellation/cleanup codes reject. Argument admission remains unchanged
 The new operation is unavailable under earlier drafts. The parent owns independent
 goldens, corpus inventory and report rechecking; no connected RPC is advertised.
 Select `spec/workbench/mck/draft.4` with the existing gate to qualify this draft.
-Full outcomes envelopes and lifecycle/cleanup qualification remain separate.
+Live job lifecycle and authoritative cleanup behavior remain separate.
+
+## Terminal outcome admission
+
+Exact draft.5 adds `validate-outcomes` with closed `{suite,manifest,outcomes}`
+input. Suite and manifest stay JSON in both formats; outcomes is a tagged JSON
+envelope or Ion-text string. Strict declaration and argument admission precede
+outcome decoding. The portable `Outcomes` codec preserves ordered call IDs and
+`returned`, enumerated `model-error`, primary `failed`, or `cancelled` evidence,
+with a separate optional cleanup failure. It validates returned values against
+entry outputs and requires exact opaque extension-byte echo. Typed Result.Err
+remains returned data. Contradictory/nonterminal shapes, wrong inventory/order,
+invalid stages, reserved failure codes and resource violations reject.
+
+Select `spec/workbench/mck/draft.5` with the existing gate for the upstream
+377-case corpus. The parent owns the specification, independent expectations
+and all verdicts. Pure codec tests cover round trips, duplicate fields, typed
+null/annotations, UTF-16 and value budgets. Earlier exact drafts remain supported.
+Admission of failed/cancelled evidence means valid evidence, not successful or
+authenticated execution. UI adoption, live daemon jobs, acknowledged cancellation
+and connected protocol extensions remain subsequent work.

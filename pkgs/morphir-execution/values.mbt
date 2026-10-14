@@ -288,26 +288,7 @@ fn json_ion_suite(value : @ion.IonValue) -> Suite raise {
   }
   let extensions = match f.get("extensions") {
     None => None
-    Some(v) => {
-      if v.has_annotations() {
-        raise Invalid("execution.unexpected_annotation")
-      }
-      let fields = fields(v, ["format", "bytes"])
-      if string(required(fields, "format")) != "ion-binary" {
-        raise Invalid("execution.extension_format")
-      }
-      let bytes = Bytes::from_array(
-        list(required(fields, "bytes")).map(v => {
-          let n = small_integer(v)
-          if n < 0 || n > 255 {
-            raise Invalid("execution.extension_byte")
-          }
-          n.to_byte()
-        }),
-      )
-      ignore(@binary.read_binary_value(bytes[:]))
-      Some(bytes)
-    }
+    Some(v) => Some(json_extension(v))
   }
   let suite = Suite::{
     extensions,
@@ -322,6 +303,28 @@ fn json_ion_suite(value : @ion.IonValue) -> Suite raise {
   }
   suite.validate()
   suite
+}
+
+///|
+fn json_extension(value : @ion.IonValue) -> Bytes raise {
+  if value.has_annotations() {
+    raise Invalid("execution.unexpected_annotation")
+  }
+  let f = fields(value, ["format", "bytes"])
+  if string(required(f, "format")) != "ion-binary" {
+    raise Invalid("execution.extension_format")
+  }
+  let bytes = Bytes::from_array(
+    list(required(f, "bytes")).map(v => {
+      let n = small_integer(v)
+      if n < 0 || n > 255 {
+        raise Invalid("execution.extension_byte")
+      }
+      n.to_byte()
+    }),
+  )
+  ignore(@binary.read_binary_value(bytes[:]))
+  bytes
 }
 
 ///|

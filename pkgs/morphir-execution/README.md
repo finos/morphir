@@ -118,3 +118,20 @@ of optional observation sinks. Decoding validates records marked with
 source coordinates keep their original meaning and do not become checkpoint
 coordinates. This diagnostic contract does not authenticate producers or implement
 native IR linked-metadata semantics.
+
+## Offline Workbench terminal evidence
+
+`Outcomes` and `TerminalOutcome` describe exact Workbench `0.1.0-draft.5`
+evidence independently of the frozen generated-driver receipt. JSON and Ion-text
+codecs preserve ordered call IDs, ordinary returned values including typed
+Result.Err, five SDK model errors, primary failures, cancellation and a separate
+cleanup failure. Failure stages are typed; codes/messages have UTF-16 bounds.
+Opaque extension bytes use the existing JSON binary wrapper or an Ion blob.
+
+`validate_outcomes` binds evidence to an admitted Suite and public entries, checks
+complete call inventory/order and declared outputs, and requires exact metadata
+echo. Callers must admit the whole declaration graph before decoding evidence;
+the MCK adapter does so. Successful admission includes well-formed failure and
+cancellation claims. It does not run/authenticate a job or prove cancellation.
+The parent finos/morphir specification and single Rust MCK own independent
+expectations and report checking; UI and live-host adoption are separate.
