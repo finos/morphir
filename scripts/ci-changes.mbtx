@@ -1,0 +1,139 @@
+///|
+/// Decide which CI jobs a change needs. CI runs it as
+/// `moonx scripts/ci-changes.mbtx BASE HEAD`; it prints two lines for `$GITHUB_OUTPUT`:
+///
+/// - `code=false` when every changed file is documentation or project-site work, so the long
+///   CI jobs can be skipped. `code=true` otherwise.
+/// - `site=true` when a changed file is an input of the project site, so CI builds and tests it.
+///
+/// Renames count as a deletion and an addition, so a code file moved into `docs/` still counts
+/// as code. No changed files gives `true` for both, rather than a guess.
+///
+/// `moonx scripts/ci-changes.mbtx --self-test` checks the path rules.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+fn starts_with_any(path : String, prefixes : Array[String]) -> Bool {
+  prefixes.iter().any(p => path.has_prefix(p))
+}
+
+///|
+/// Documentation and project-site files. `*.mbt.md` files hold MoonBit tests.
+fn is_docs_like(path : String) -> Bool {
+  if path.has_suffix(".mbt.md") {
+    return false
+  }
+  starts_with_any(path, ["docs/", "site/", "apps/morphir-site/"]) ||
+  path == ".github/workflows/site.yml" ||
+  path == ".github/workflows/site-build.yml" ||
+  path.has_suffix(".md")
+}
+
+///|
+/// Inputs of the project site build: its sources, the workbench at /try/, the packages that
+/// the workbench and the package pages use, and the workflows that build it.
+fn is_site_input(path : String) -> Bool {
+  starts_with_any(path, [
+    "docs/", "site/", "apps/morphir-site/", "apps/morphir-workbench/", "pkgs/",
+    ".config/mise/",
+  ]) ||
+  (path.has_prefix("apps/") && path.has_suffix("/README.md")) ||
+  path == "moon.work" ||
+  path == ".github/workflows/site.yml" ||
+  path == ".github/workflows/site-build.yml" ||
+  path == ".github/workflows/ci.yml"
+}
+
+///|
+/// `(code, site)` for a list of changed paths.
+fn classify(paths : Array[String]) -> (Bool, Bool) {
+  let paths = paths.filter(p => p != "")
+  if paths.is_empty() {
+    return (true, true)
+  }
+  (
+    paths.iter().any(p => !is_docs_like(p)),
+    paths.iter().any(is_site_input),
+  )
+}
+
+///|
+fn self_test() -> Int {
+  let cases : Array[(Array[String], Bool, Bool)] = [
+    (["docs/ARCHITECTURE.md"], false, true),
+    (["site/site.json", "site/blog/2026-10-13-post.md"], false, true),
+    (["apps/morphir-site/views/pages.mbt"], false, true),
+    ([".github/workflows/site.yml"], false, true),
+    (["README.md", "AGENTS.md", ".github/AGENTS.md"], false, false),
+    (["pkgs/morphir-ir/README.md"], false, true),
+    (["pkgs/morphir-ir/README.mbt.md"], true, true),
+    (["pkgs/morphir-ir/ir.mbt"], true, true),
+    (["apps/morphir/main.mbt"], true, false),
+    (["apps/morphir/README.md"], false, true),
+    (["docs/ARCHITECTURE.md", "apps/morphir/main.mbt"], true, true),
+    ([".github/workflows/ci.yml"], true, true),
+    (["scripts/ci-changes.mbtx"], true, false),
+    (["moon.work"], true, true),
+    (["apps/morphir-sitex/main.mbt"], true, false),
+    // A rename from code to docs lists both paths.
+    (["src/main.mbt", "docs/main.md"], true, true),
+    ([], true, true),
+    ([""], true, true),
+  ]
+  let mut failures = 0
+  for case in cases {
+    let (paths, code, site) = case
+    let got = classify(paths)
+    if got != (code, site) {
+      println(
+        "FAIL: \{paths.join(", ")}: expected code=\{code} site=\{site}, got code=\{got.0} site=\{got.1}",
+      )
+      failures += 1
+    }
+  }
+  if failures == 0 {
+    println("ci-changes: \{cases.length()} cases pass")
+  }
+  failures
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  if args == ["--self-test"] {
+    if self_test() > 0 {
+      @sys.exit(1)
+    }
+    return
+  }
+  guard args is [base, head] else {
+    @stdio.stderr.write(
+      "usage: moonx scripts/ci-changes.mbtx BASE HEAD | --self-test\n",
+    )
+    @sys.exit(2)
+    return
+  }
+  let (status, out, err) = @process.collect_output("git", [
+    "diff", "--name-only", "--no-renames", "\{base}...\{head}",
+  ])
+  if status != 0 {
+    @stdio.stderr.write("ci-changes: git diff failed: \{err.text()}\n")
+    @sys.exit(1)
+  }
+  let paths = out.text().split("\n").map(p => p.trim().to_owned()).collect()
+  println("Changed files:")
+  for path in paths {
+    if path != "" {
+      println("  \{path}")
+    }
+  }
+  let (code, site) = classify(paths)
+  println("code=\{code}")
+  println("site=\{site}")
+}

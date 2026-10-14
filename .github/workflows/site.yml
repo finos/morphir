@@ -1,21 +1,9 @@
 name: Site
 
+# Pull requests and the merge queue build and test the site through CI (site-build.yml).
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    paths:
-      - 'docs/**'
-      - 'site/**'
-      - 'apps/morphir-site/**'
-      - 'apps/morphir-workbench/**'
-      - 'pkgs/*/README.md'
-      - 'apps/*/README.md'
-      - 'pkgs/**'
-      - 'moon.work'
-      - '.config/mise/**'
-      - '.github/workflows/site.yml'
   workflow_dispatch:
 
 permissions:
@@ -23,73 +11,13 @@ permissions:
 
 jobs:
   build:
-    name: Build site
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      SITE_MAIN: '1'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install pinned MoonBit
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          curl -fsSL https://mise.run | sh
-          export PATH="$HOME/.local/bin:$PATH"
-          mise install http:moonbit node
-          moonbit_dir="$(mise where http:moonbit)"
-          moonbit_version="$(mise current http:moonbit)"
-          # The binary archive omits core; install the matching complete toolchain.
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
-            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
-          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
-          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
-
-      - name: Install Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24.21.0'
-
-      - name: Update Mooncakes registry
-        run: moon update
-
-      - name: Install site dependencies
-        run: |
-          npm ci --prefix apps/morphir-site
-          npm ci --prefix apps/morphir-workbench
-          npm exec --prefix apps/morphir-site -- playwright install --with-deps chromium
-
-      - name: Build site
-        run: node apps/morphir-site/scripts/build.js
-
-      - name: Check site
-        working-directory: apps/morphir-site
-        run: moon run --target native check -- --dir ../../_site
-
-      - name: Test site
-        run: |
-          (cd apps/morphir-site && moon test --target native \
-            -p finos/morphir-site/model finos/morphir-site/content finos/morphir-site/views \
-            finos/morphir-site/site finos/morphir-site/generate)
-          npm test --prefix apps/morphir-site
-          npm run test:browser --prefix apps/morphir-site
-
-      - name: Upload Pages artifact
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: _site
+    uses: ./.github/workflows/site-build.yml
+    with:
+      pages: ${{ github.ref == 'refs/heads/main' }}
 
   deploy:
     name: Deploy site
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10

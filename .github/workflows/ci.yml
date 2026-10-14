@@ -10,9 +10,81 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Docs and project-site changes skip the long jobs below; lint, format-check and validate-config
+  # always run. `site` builds and tests the project site when a site input changes. Pushes to main
+  # and manual runs run every job; on main the Site workflow builds the site. The path rules are
+  # in `scripts/ci-changes.mbtx`.
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      code: ${{ steps.detect.outputs.code }}
+      site: ${{ steps.detect.outputs.site }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned MoonBit
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          mise install http:moonbit
+          moonbit_dir="$(mise where http:moonbit)"
+          moonbit_version="$(mise current http:moonbit)"
+          # The binary archive omits core; install the matching complete toolchain.
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
+          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+
+      - name: Update Mooncakes registry
+        run: moon update
+
+      - name: Test the change rules
+        run: moonx scripts/ci-changes.mbtx --self-test
+
+      - name: Detect code changes
+        id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
+          QUEUE_HEAD: ${{ github.event.merge_group.head_sha }}
+        run: |
+          set -euo pipefail
+          case "$EVENT" in
+            pull_request) base="$PR_BASE" head="$PR_HEAD" ;;
+            merge_group) base="$QUEUE_BASE" head="$QUEUE_HEAD" ;;
+            push)
+              # The Site workflow builds and deploys main.
+              printf 'code=true\nsite=false\n' >> "$GITHUB_OUTPUT"
+              echo "push runs every job; the Site workflow builds the site"
+              exit 0
+              ;;
+            *)
+              printf 'code=true\nsite=true\n' >> "$GITHUB_OUTPUT"
+              echo "$EVENT runs every job"
+              exit 0
+              ;;
+          esac
+          moonx scripts/ci-changes.mbtx "$base" "$head" | tee changes.txt
+          grep -E '^(code|site)=(true|false)$' changes.txt >> "$GITHUB_OUTPUT"
+          test "$(grep -cE '^(code|site)=' changes.txt)" -eq 2
+
   supervision:
     name: Process supervision (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -36,6 +108,8 @@ jobs:
   embedding:
     name: Embedded Toolchain
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     timeout-minutes: 15
     steps:
       - name: Checkout code
@@ -112,7 +186,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, format-check]
+    needs: [changes, lint, format-check]
+    if: needs.changes.outputs.code == 'true'
     timeout-minutes: 45
     strategy:
       matrix:
@@ -227,7 +302,8 @@ jobs:
   installed-lifecycle:
     name: Installed lifecycle (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: [lint, format-check]
+    needs: [changes, lint, format-check]
+    if: needs.changes.outputs.code == 'true'
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -289,7 +365,8 @@ jobs:
   native-telemetry:
     name: Native telemetry (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: [lint, format-check]
+    needs: [changes, lint, format-check]
+    if: needs.changes.outputs.code == 'true'
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -341,7 +418,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: [lint, format-check]
+    needs: [changes, lint, format-check]
+    if: needs.changes.outputs.code == 'true'
     timeout-minutes: 20
     strategy:
       matrix:
@@ -385,6 +463,12 @@ jobs:
   # Moved from validate-config.yml, which ran only when configuration paths changed. A required
   # check from a path-filtered workflow stays pending on every other PR, so this job always runs
   # (it takes under a minute) and ci-ok covers it.
+  site:
+    name: Site
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
+    uses: ./.github/workflows/site-build.yml
+
   validate-config:
     name: Validate Configuration Files
     runs-on: ubuntu-latest
@@ -446,6 +530,8 @@ jobs:
     timeout-minutes: 5
     if: always()
     needs:
+      - changes
+      - site
       - supervision
       - embedding
       - lint
