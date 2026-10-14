@@ -1,3 +1,6 @@
+---
+order: 8
+---
 # Morphir Moonbit Architecture
 
 ## Overview

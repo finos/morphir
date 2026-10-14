@@ -313,6 +313,10 @@ The workbench follows [Morphir's site](https://morphir.finos.org/): blue
 selected labels and focus outlines use the site's darker blue `#00729e`.
 Primary actions pair orange with dark `#1c1e21` text.
 
+A page that hosts the workbench can add `<meta name="morphir-site-home" content="<url>">`. The breadcrumb then
+starts with a **Morphir** link to that URL, and the logo links there too. The project site does this at `/try/`;
+the desktop host and the development server do not.
+
 Each screen has one primary action. Try Morphir promotes the run action when
 the layout can run and **Compile** otherwise; Cancel appears only while a job
 runs. Secondary actions, such as source-unit, project and IR downloads, use

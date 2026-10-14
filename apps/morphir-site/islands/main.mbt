@@ -33,4 +33,8 @@ fn main {
   if element_exists("site-nav") {
     @rabbita.new(menu_toggle).mount("site-nav")
   }
+  add_copy_buttons(".prose pre, .code-window pre")
+  if element_exists("site-toc") {
+    track_toc("site-toc")
+  }
 }

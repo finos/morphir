@@ -1,3 +1,6 @@
+---
+order: 35
+---
 # Mise Tasks Reference
 
 This document provides a reference for all available mise tasks in the Morphir Moonbit monorepo.

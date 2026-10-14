@@ -26,6 +26,7 @@ pub fn docs_page(
   nav : Array[@model.NavItem],
   body : String,
   source_url : String?,
+  toc? : Array[@model.TocEntry] = [],
 ) -> Html {
   let source = match source_url {
     Some(url) =>
@@ -36,14 +37,41 @@ pub fn docs_page(
       ]
     None => []
   }
-  @html.div(class="docs-layout", [
-    @html.aside(class="docs-sidebar", [
-      @html.nav(attrs=@html.Attrs::build().aria_label("Documentation"), [
-        @html.ul(nav.map(item => nav_entry(meta, item))),
+  let rail = if toc.is_empty() {
+    []
+  } else {
+    [
+      @html.aside(class="docs-rail", [
+        @html.nav(
+          id="site-toc",
+          class="docs-toc",
+          attrs=@html.Attrs::build().aria_label("On this page"),
+          [
+            @html.p(class="nav-label", "On this page"),
+            @html.ul(
+              toc.map(e => {
+                @html.li(class="depth-\{e.depth}", [
+                  @html.a(href="#\{e.id}", e.text),
+                ])
+              }),
+            ),
+          ],
+        ),
       ]),
-    ]),
-    @html.article(class="docs-article", [raw(body)] + source),
-  ])
+    ]
+  }
+  @html.div(
+    class="docs-layout",
+    [
+      @html.aside(class="docs-sidebar", [
+        @html.nav(attrs=@html.Attrs::build().aria_label("Documentation"), [
+          @html.ul(nav.map(item => nav_entry(meta, item))),
+        ]),
+      ]),
+      @html.article(class="docs-article", [raw(body)] + source),
+    ] +
+    rail,
+  )
 }
 
 ///|

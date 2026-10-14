@@ -139,6 +139,7 @@ struct Model {
   projects : Array[Json]
   panel : @bottom_panel.State
   started : Double
+  site_home : String?
 } derive(Eq)
 
 ///|
@@ -181,6 +182,11 @@ enum Msg {
 
 ///|
 extern "js" fn connected_mode() -> Bool = "() => globalThis.morphirWorkbench.connected"
+
+///|
+/// The site that hosts this copy of the workbench, from `<meta name="morphir-site-home">`; empty when there is none.
+extern "js" fn site_home_href() -> String =
+  #|() => document.querySelector('meta[name="morphir-site-home"]')?.getAttribute("content") ?? ""
 
 ///|
 extern "js" fn clock() -> String = "() => new Date().toTimeString().slice(0, 8)"
@@ -247,6 +253,10 @@ fn initial() -> Model {
       },
     ),
     started: now_ms(),
+    site_home: match site_home_href() {
+      "" => None
+      href => Some(href)
+    },
   }
 }
 
@@ -1644,14 +1654,7 @@ fn sidebar(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
     )
   }
   @html.aside(id="sidebar", [
-    @html.div(class="brand", [
-      @html.img(class="brand-mark", src="./morphir-mark.svg", alt="Morphir"),
-      @html.img(
-        class="brand-logo nav-label",
-        src="./morphir-logo.svg",
-        alt="Morphir",
-      ),
-    ]),
+    brand(model.site_home),
     @html.nav(attrs=@html.Attrs::build().aria_label("Experiences"), [
       nav_button(
         emit,
@@ -2104,6 +2107,50 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 }
 
 ///|
+/// The Morphir logo. It links to the hosting site when there is one.
+/// The site links use `escape=true`: the workbench has no router, and Rabbita drops captured link clicks without one.
+fn brand(site_home : String?) -> @html.Html {
+  let logos = [
+    @html.img(class="brand-mark", src="./morphir-mark.svg", alt="Morphir"),
+    @html.img(
+      class="brand-logo nav-label",
+      src="./morphir-logo.svg",
+      alt="Morphir",
+    ),
+  ]
+  match site_home {
+    Some(href) =>
+      @html.a(
+        class="brand",
+        href~,
+        title="Morphir home",
+        attrs=@html.Attrs::build().aria_label("Morphir home"),
+        logos,
+        escape=true,
+      )
+    None => @html.div(class="brand", logos)
+  }
+}
+
+///|
+/// The breadcrumb starts with a link to the hosting site when there is one.
+fn breadcrumb(model : Model) -> @html.Html {
+  let trail = if model.explorer {
+    "Workbench / Model Explorer"
+  } else {
+    "Workbench / Try Morphir"
+  }
+  match model.site_home {
+    Some(href) =>
+      @html.span(class="breadcrumb", [
+        @html.a(class="breadcrumb-home", href~, "Morphir", escape=true),
+        @html.text(" / \{trail}"),
+      ])
+    None => @html.span(class="breadcrumb", trail)
+  }
+}
+
+///|
 fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   let collapsed = if model.explorer {
     model.explorer_collapsed
@@ -2135,14 +2182,7 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
                 "",
               ),
             ),
-            @html.span(
-              class="breadcrumb",
-              if model.explorer {
-                "Workbench / Model Explorer"
-              } else {
-                "Workbench / Try Morphir"
-              },
-            ),
+            breadcrumb(model),
           ]),
           @html.div(class="connection", [
             @html.span(

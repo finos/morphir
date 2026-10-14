@@ -1,25 +1,42 @@
 <!-- ---
-title: Morphir MoonBit
+title: Morphir
 --- -->
 <section class="hero">
-  <h1>Morphir, in MoonBit</h1>
-  <p class="lede">Compile, inspect and run Morphir models in the browser, on the desktop and on the command line.
-    One MoonBit code base targets JavaScript, WebAssembly and native code.</p>
-  <p class="actions">
-    <a class="button primary" href="/try/">Try Morphir</a>
-    <a class="button" href="/docs/">Read the docs</a>
-  </p>
+  <div class="hero-text">
+    <h1>Morphir, in <span class="hero-accent">MoonBit</span></h1>
+    <p class="lede">Compile, inspect and run Morphir models in the browser, on the desktop and on the command line.
+      One MoonBit code base targets JavaScript, WebAssembly and native code.</p>
+    <p class="actions">
+      <a class="button primary" href="/try/">Try Morphir</a>
+      <a class="button" href="/docs/">Read the docs</a>
+    </p>
+  </div>
+  <figure class="code-window" aria-label="A Morphir Scheme model">
+    <figcaption><span class="code-dot" aria-hidden="true"></span>main.scm <span class="code-note">compiles to Morphir IR</span></figcaption>
+    <pre><code><span class="tok-comment">; A small, portable Morphir model</span>
+(<span class="tok-keyword">define</span> (<span class="tok-name">price</span> quantity) (* quantity <span class="tok-number">12</span>))
+(<span class="tok-keyword">define</span> (<span class="tok-name">total</span> quantity) (+ (price quantity) <span class="tok-number">5</span>))
+(total <span class="tok-number">3</span>)</code></pre>
+  </figure>
 </section>
+<ol class="pipeline" aria-label="How Morphir works">
+  <li class="step-source">Scheme, Elm or MoonBit source</li>
+  <li class="step-ir">Morphir IR</li>
+  <li class="step-target">Elm and MoonBit code, or a result</li>
+</ol>
 <section class="features">
-  <article>
+  <article class="feature feature-blue">
+    <span class="feature-icon icon-ir" aria-hidden="true"></span>
     <h2>Morphir IR, every version</h2>
     <p>Explicit models and JSON codecs for IR v1 to v4, with migrations that refuse what they cannot represent.</p>
   </article>
-  <article>
+  <article class="feature feature-orange">
+    <span class="feature-icon icon-run" aria-hidden="true"></span>
     <h2>Workbench in the browser</h2>
     <p>Write a model, compile it to Morphir IR, explore it and evaluate it, all on the client.</p>
   </article>
-  <article>
+  <article class="feature feature-blue">
+    <span class="feature-icon icon-code" aria-hidden="true"></span>
     <h2>Generate Elm and MoonBit</h2>
     <p>Backends turn Morphir IR into readable Elm and MoonBit libraries.</p>
   </article>

@@ -91,6 +91,26 @@ async test "docs page has sidebar with current page and source link" {
 }
 
 ///|
+async test "docs page lists the page headings in an On this page rail" {
+  let m = meta("/docs/a/", "A", Docs)
+  let toc : Array[@model.TocEntry] = [
+    { id: "overview", text: "Overview", depth: 0, },
+    { id: "details", text: "Details & more", depth: 1, },
+  ]
+  let out = @views.render(m, @views.docs_page(m, [], "<h1>A</h1>", None, toc~))
+  inspect(
+    out[out.find("<nav aria-label=\"On this page\"").unwrap():out
+    .find("</aside></div>")
+    .unwrap()],
+    content=(
+      #|<nav aria-label="On this page" class="docs-toc" id="site-toc"><p class="nav-label">On this page</p><ul><li class="depth-0"><a href="#overview" target="_self">Overview</a></li><li class="depth-1"><a href="#details" target="_self">Details &amp; more</a></li></ul></nav>
+    ),
+  )
+  let bare = @views.render(m, @views.docs_page(m, [], "<h1>A</h1>", None))
+  assert_false(bare.contains("docs-toc"))
+}
+
+///|
 async test "post page and blog index" {
   let m = meta("/blog/hello/", "Hello", Blog)
   let page = @views.render(m, @views.post_page(m, post, "<p>body</p>"))

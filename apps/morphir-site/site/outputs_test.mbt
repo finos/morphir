@@ -36,4 +36,6 @@ async test "build writes every route, feed, index and copies" {
   guard built.outputs[2] is Text(_, home) else { fail("home is not text") }
   assert_true(home.contains("Hero"))
   assert_true(home.contains("href=\"/m/blog/hello/\""))
+  guard built.outputs[4] is Text(_, blog) else { fail("blog is not text") }
+  assert_true(blog.contains("content=\"Posts about T\""))
 }

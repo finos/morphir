@@ -8,6 +8,7 @@ import {
 
 import {
   "finos/morphir-site/site",
+  "finos/morphir-site/content",
   "finos/morphir-site/model",
   "moonbitlang/async",
   "moonbitlang/core/json",

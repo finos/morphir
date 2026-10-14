@@ -52,3 +52,14 @@ test "generated heading ids avoid ids already in the html" {
   assert_eq(doc.headings.map(h => h.id), ["hero-2"])
   assert_eq(doc.ids, ["hero", "hero-2"])
 }
+
+///|
+test "heading text keeps inline markup tight" {
+  let doc = @content.analyse_html(
+    "<h3>WASI Target (<code>wasm</code>)</h3><h2>A <em>b</em>c</h2>",
+  )
+  assert_eq(doc.headings.map(h => (h.id, h.text)), [
+    ("wasi-target-wasm", "WASI Target (wasm)"),
+    ("a-bc", "A bc"),
+  ])
+}

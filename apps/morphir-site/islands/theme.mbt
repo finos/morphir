@@ -1,6 +1,9 @@
 ///|
 extern "js" fn stored_theme() -> String =
-  #| () => { try { return localStorage.getItem("site-theme") ?? "system" } catch (e) { return "system" } }
+  #| () => {
+  #|   try { const t = localStorage.getItem("site-theme"); return t === "light" || t === "dark" ? t : "system" }
+  #|   catch (e) { return "system" }
+  #| }
 
 ///|
 extern "js" fn apply_theme(theme : String) -> Unit =
@@ -31,11 +34,16 @@ fn theme_toggle() -> @rabbita.Val[@html.Html] {
   })
   theme.view(t => {
     @html.button(
-      class="theme-toggle",
+      class="theme-toggle icon-button",
       type_="button",
+      title="Theme: \{t}",
       on_click=emit(()),
-      attrs=@html.Attrs::build().aria_label("Colour theme: \{t}"),
-      "Theme: \{t}",
+      attrs=@html.Attrs::build().aria_label("Theme: \{t}"),
+      @html.span(
+        class="theme-icon theme-\{t}",
+        attrs=@html.Attrs::build().aria_hidden("true"),
+        "",
+      ),
     )
   })
 }

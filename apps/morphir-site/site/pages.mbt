@@ -13,6 +13,8 @@ pub(all) struct Page {
   html : String
   ids : Array[String]
   headings : Array[String]
+  /// The "On this page" rail; empty for a full page.
+  toc : Array[@model.TocEntry]
   text : String
   mermaid : Bool
 }
@@ -154,6 +156,11 @@ fn build_page(
       doc.ids
     },
     headings: doc.headings.map(h => h.text),
+    toc: if full {
+      []
+    } else {
+      toc_entries(doc.headings)
+    },
     text: doc.text,
     mermaid: mermaid.needs_client,
   })

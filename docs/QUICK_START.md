@@ -1,3 +1,6 @@
+---
+order: 5
+---
 # Quick Start Guide
 
 Get up and running with Morphir Moonbit development in minutes.

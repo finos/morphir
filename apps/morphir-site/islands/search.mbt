@@ -100,10 +100,12 @@ fn search_box(base : String) -> @rabbita.Val[@html.Html] {
         class="search-results",
         found.mapi((i, e) => {
           @html.li(class=if i == m.selected { "selected" } else { "" }, [
-            @html.a(href=base + e.route[1:].to_owned(), [
-              @html.span(e.title),
-              @html.small(e.section),
-            ]),
+            // Islands have no router, and Rabbita drops captured link clicks without one.
+            @html.a(
+              href=base + e.route[1:].to_owned(),
+              [@html.span(e.title), @html.small(e.section)],
+              escape=true,
+            ),
           ])
         }),
       )

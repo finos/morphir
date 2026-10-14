@@ -68,7 +68,7 @@ pub fn analyse_html(source : String) -> Document {
     let close = "</h\{level}>"
     guard after.find(close) is Some(end) else { break }
     let inner = after[4:end].to_owned()
-    let text = plain_text(inner)
+    let text = inline_text(inner)
     let id = unique_id(slug(text), used)
     used.set(id, true)
     headings.push({ level, id, text, })

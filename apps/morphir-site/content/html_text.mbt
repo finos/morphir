@@ -29,6 +29,18 @@ pub fn unescape(text : String) -> String {
 ///|
 /// The text of an HTML fragment: tags removed, entities decoded, white space collapsed.
 pub fn plain_text(html : String) -> String {
+  text_of(html, tag_gap=" ")
+}
+
+///|
+/// The text of inline HTML, such as a heading: like `plain_text`, but a tag adds no
+/// space, so `A (<code>b</code>)` is `A (b)`.
+pub fn inline_text(html : String) -> String {
+  text_of(html, tag_gap="")
+}
+
+///|
+fn text_of(html : String, tag_gap~ : String) -> String {
   let out = StringBuilder()
   let mut in_tag = false
   for c in html {
@@ -36,7 +48,7 @@ pub fn plain_text(html : String) -> String {
       '<' => in_tag = true
       '>' if in_tag => {
         in_tag = false
-        out.write_char(' ')
+        out.write_string(tag_gap)
       }
       _ if !in_tag => out.write_char(c)
       _ => ()

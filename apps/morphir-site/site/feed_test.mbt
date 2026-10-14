@@ -13,6 +13,7 @@ fn post(slug : String, date : String) -> @site.Page {
     html: "<p>a &amp; b</p>",
     ids: [],
     headings: ["H"],
+    toc: [],
     text: "a & b",
     mermaid: false,
   }

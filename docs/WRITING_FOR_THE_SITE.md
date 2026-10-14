@@ -45,6 +45,14 @@ In an HTML file, put the same block in a comment: `<!-- ---` on the first line a
 
 A blog post does not repeat its title as a `#` heading: the site prints the title.
 
+## Sidebar order
+
+The docs sidebar sorts the pages and sections at each level by `order`, then by title. A section gets its position
+from the `order` in its `README.md`. A page or section without `order` comes after all entries that have one. The
+values have gaps, so that you can put a new page between two entries without a change to the others.
+
+On a wide screen, a docs page with two or more `##` or `###` headings also gets an "On this page" list of them.
+
 ## Links
 
 Link to other Markdown files with relative paths, as on GitHub: `[Architecture](ARCHITECTURE.md#overview)`. The build

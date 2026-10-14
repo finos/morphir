@@ -39,3 +39,17 @@ pub extend NavItem with Eq::{equal, not_equal}
 
 ///|
 pub extend NavItem with @debug.Debug::{to_repr}
+
+///|
+/// One link of the "On this page" rail. `depth` is 0 for `h2` and 1 for `h3`.
+pub(all) struct TocEntry {
+  id : String
+  text : String
+  depth : Int
+} derive(Eq, Debug)
+
+///|
+pub extend TocEntry with Eq::{equal, not_equal}
+
+///|
+pub extend TocEntry with @debug.Debug::{to_repr}

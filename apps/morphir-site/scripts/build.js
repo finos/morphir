@@ -1,9 +1,10 @@
 import { buildSync } from 'esbuild';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { highlightDir } from './highlight.js';
+import { withSiteHome } from './try-page.js';
 
 const app = fileURLToPath(new URL('../', import.meta.url));
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -48,4 +49,5 @@ if (/(?:src|href)="\//.test(index)) {
   process.exit(1);
 }
 cpSync(workbench, `${out}/try`, { recursive: true });
+writeFileSync(`${out}/try/index.html`, withSiteHome(index, '../'));
 console.log(`site: built ${out}`);

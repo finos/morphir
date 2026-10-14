@@ -137,6 +137,7 @@ try {
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   const back = page.getByRole('button', { name: 'Back', exact: true });
   assert.equal(await back.isEnabled(), false, 'Fresh session has no navigation history');
+  assert.equal(await page.locator('.breadcrumb a, a.brand').count(), 0, 'Without a site home the workbench has no home links');
   assert.equal(await page.locator('#tool-panel-body').isVisible(), false, 'The tool panel starts collapsed');
   assert.equal(await page.getByRole('tab', { name: 'Logs', exact: true }).getAttribute('aria-selected'), 'true');
   await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
