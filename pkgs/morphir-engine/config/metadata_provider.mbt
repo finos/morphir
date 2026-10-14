@@ -90,12 +90,35 @@ fn metadata_path(document : Document, key : String) -> MetadataPath raise {
 }
 
 ///|
-fn exact_naming_release(text : String) -> Bool {
-  let prefix = "morphir/naming@"
-  if !text.has_prefix(prefix) {
+fn metadata_release_segment(text : StringView) -> Bool {
+  text != "" &&
+  text
+  .split("-")
+  .collect()
+  .all(part => {
+    part != "" &&
+    part
+    .to_owned()
+    .to_array()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+  })
+}
+
+///|
+fn exact_provider_release(text : String) -> Bool {
+  let selection = text.split("@").collect()
+  if selection.length() != 2 {
     return false
   }
-  let parts = text[prefix.length():].split(".").collect()
+  let package_parts = selection[0].split("/").collect()
+  if package_parts.length() < 2 || !package_parts[0].contains(".") {
+    return false
+  }
+  if !package_parts[0].split(".").collect().all(metadata_release_segment) ||
+    !package_parts[1:].all(metadata_release_segment) {
+    return false
+  }
+  let parts = selection[1].split(".").collect()
   parts.length() == 3 &&
   parts.all(p => {
     p != "" &&
@@ -155,9 +178,9 @@ pub fn Document::metadata_provider_request(
     )
   }
   let release = metadata_text(self, "metadata.naming.release")
-  if !exact_naming_release(release) {
+  if !exact_provider_release(release) {
     metadata_invalid(
-      self, "metadata.naming.release", "must be an exact stable morphir/naming@MAJOR.MINOR.PATCH release",
+      self, "metadata.naming.release", "must be an authority-qualified PACKAGE@MAJOR.MINOR.PATCH release; the IR name morphir/naming is checked separately",
     )
   }
   SharedLocalRestore({

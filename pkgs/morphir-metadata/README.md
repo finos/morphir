@@ -121,3 +121,19 @@ Unknown syntactically valid predicates remain preserved and are listed as unvali
 ```sh
 moon test -p finos/morphir-metadata --target all
 ```
+
+The shared `v4.1-document-metadata-to-v4.0/1` projection is qualified against a
+signed test naming Library in `finos/morphir-rust`. Its authority-qualified
+release is `example.com/morphir/naming@1.0.0`; its native IR identity remains
+`morphir/naming` at 4.1.0. The interoperability test reads the shared v4.0 core
+view, original native document metadata and exact context bytes, then validates
+the closed frontend/backend declaration through a simulated host capability.
+The provider revision hashes the original native payload, not the core view.
+
+This qualifies data interoperability. Fresh authentication and restoration are
+verified separately by the Rust signed-fixture tests; installed host sessions
+and process transport remain separate integration work. The first projection
+profile refuses node-local linked metadata and nonlexical parameter maps.
+
+The [shared signed fixture](https://github.com/finos/morphir-rust/blob/3b55adfa831c6dcfb749e4e74c301e924124490c/crates/morphir-package/tests/local_registry/naming-snapshot-fixture/README.md)
+pins the source corpus used by the consumer test.

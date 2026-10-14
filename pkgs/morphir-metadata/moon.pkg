@@ -13,4 +13,6 @@ import {
 import {
   "finos/morphir-metadata" @metadata,
   "finos/morphir-metadata/fixtures",
+  "finos/morphir-ir/json" @ir_json,
+  "moonrockz/ion/json" @ion_json,
 } for "test"

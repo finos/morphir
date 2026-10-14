@@ -8,7 +8,7 @@ fn scoped_metadata_files(allowed : String) -> Map[String, String] {
       root +
       "'\n[frontend]\nlanguage='ion-text'\n[pipeline]\nbackend='moonbit'\nvalidation='source-only'\n[metadata]\nprovider='shared-local-restore'\nservice='tools/provider'\npolicy='" +
       (if root == allowed { "accepted.json" } else { "denied.json" }) +
-      "'\nlock='morphir.lock'\nregistry='registry'\nstate='state'\nassurance='portable'\n[metadata.naming]\nrelease='morphir/naming@1.0.0'"
+      "'\nlock='morphir.lock'\nregistry='registry'\nstate='state'\nassurance='portable'\n[metadata.naming]\nrelease='example.com/morphir/naming@1.0.0'"
     files[root + "/src/main.ion"] = "placeholder"
   }
   files

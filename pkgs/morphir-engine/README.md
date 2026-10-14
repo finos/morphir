@@ -471,7 +471,7 @@ state = "trust/state"
 assurance = "portable"
 
 [metadata.naming]
-release = "morphir/naming@1.0.0"
+release = "example.com/morphir/naming@1.0.0"
 ```
 
 Every path retains its winning configuration origin for host resolution. Parsing
@@ -492,3 +492,8 @@ does not enable authenticated generation. Shared-service snapshot export,
 checked native projection, scoped host sessions and installed authenticated
 qualification are separate integration work. A trusted-validation summary or
 stored receipt cannot substitute for freshly authenticated provider bytes.
+
+The release identifies the authority-qualified publisher package in the shared
+registry, such as `example.com/morphir/naming@1.0.0`. It is distinct from the
+provider's native IR package name, `morphir/naming`, which admission must check
+independently. The example authority is a placeholder, not a default trust grant.

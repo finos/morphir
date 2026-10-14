@@ -1,6 +1,6 @@
 ///|
 fn configured_metadata() -> String {
-  "[metadata]\nprovider='shared-local-restore'\nservice='tools/provider'\npolicy='trust/policy.json'\nlock='morphir.lock'\nregistry='registry'\nstate='trust/state'\nassurance='portable'\n[metadata.naming]\nrelease='morphir/naming@1.2.3'\n"
+  "[metadata]\nprovider='shared-local-restore'\nservice='tools/provider'\npolicy='trust/policy.json'\nlock='morphir.lock'\nregistry='registry'\nstate='trust/state'\nassurance='portable'\n[metadata.naming]\nrelease='example.com/morphir/naming@1.2.3'\n"
 }
 
 ///|
@@ -42,7 +42,7 @@ test "provider request defaults are disabled and preserve unrelated metadata" {
 test "provider requests retain each winning configuration origin without granting I/O" {
   let base = @config.parse(configured_metadata(), origin="member/morphir.toml")
   let overlay = @config.parse(
-    "[metadata]\npolicy='/user/policy.json'\n[metadata.naming]\nrelease='morphir/naming@2.0.0'",
+    "[metadata]\npolicy='/user/policy.json'\n[metadata.naming]\nrelease='example.com/morphir/naming@2.0.0'",
     origin="CLI",
   )
   let effective = @config.merge(base, overlay)
@@ -54,14 +54,14 @@ test "provider requests retain each winning configuration origin without grantin
   assert_eq(request.policy.origin, "CLI")
   assert_eq(request.service.path, "tools/provider")
   assert_eq(request.service.origin, "member/morphir.toml")
-  assert_eq(request.release, "morphir/naming@2.0.0")
+  assert_eq(request.release, "example.com/morphir/naming@2.0.0")
   assert_eq(request.assurance, "portable")
   guard effective.value is @toml.TomlTable(fields) else { fail("table") }
   fields["metadata"] = @toml.TomlTable(Map([]))
   effective.provenance["metadata.policy"] = "later mutation"
   assert_eq(request.policy.path, "/user/policy.json")
   assert_eq(request.policy.origin, "CLI")
-  assert_eq(request.release, "morphir/naming@2.0.0")
+  assert_eq(request.release, "example.com/morphir/naming@2.0.0")
 }
 
 ///|
@@ -98,23 +98,51 @@ test "shared restore requires all selections and refuses weaker or unsupported a
 }
 
 ///|
-test "naming provider requires canonical exact stable release and namespace" {
+test "naming provider requires an authority-qualified exact stable release" {
   for
     release in [
-      "morphir/naming@latest", "morphir/naming@1.2", "morphir/naming@01.2.3", "morphir/naming@1.2.3-beta.1",
-      "other/naming@1.2.3", "morphir/naming@1.2.3.4", "morphir/naming@1.-2.3",
+      "example.com/morphir/naming@latest", "example.com/morphir/naming@1.2", "example.com/morphir/naming@01.2.3",
+      "example.com/morphir/naming@1.2.3-beta.1", "morphir/naming@1.2.3", "example.com/morphir/naming@1.2.3@2.0.0",
+      "example.com//naming@1.2.3", "EXAMPLE.com/naming@1.2.3", "example..com/naming@1.2.3",
+      "example.com/name--space@1.2.3", "example.com/../naming@1.2.3", "example.com/morphir/naming@1.2.3.4",
+      "example.com/morphir/naming@1.-2.3",
     ] {
     let error = metadata_error(
-      configured_metadata().replace(old="morphir/naming@1.2.3", new=release),
+      configured_metadata().replace(
+        old="example.com/morphir/naming@1.2.3",
+        new=release,
+      ),
     )
     assert_true(error.contains("metadata.naming.release"))
   }
   assert_true(
     metadata_error(
       configured_metadata().replace(
-        old="release='morphir/naming@1.2.3'",
+        old="release='example.com/morphir/naming@1.2.3'",
         new="",
       ),
     ).contains("is required"),
   )
+}
+
+///|
+test "provider releases select publisher packages independently of IR names" {
+  for
+    release in [
+      "example.com/morphir/naming@1.2.3", "registry.example.org/metadata/names@100000000000000000000000.0.0",
+    ] {
+    let document = @config.parse(
+      configured_metadata().replace(
+        old="example.com/morphir/naming@1.2.3",
+        new=release,
+      ),
+      origin="member/morphir.toml",
+    )
+    document.validate()
+    guard document.metadata_provider_request()
+      is @config.SharedLocalRestore(request) else {
+      fail("expected a shared restore request")
+    }
+    assert_eq(request.release, release)
+  }
 }
