@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.1.0-draft.1/identity-request.schema.json",
+  "title": "Workbench host identity request",
+  "description": "Exact body shared by query, cancellation and terminal release. Authentication and identity ownership are semantic requirements",
+  "examples": [
+    {
+      "contractVersion": "0.1.0-draft.1",
+      "identity": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "jobId": "job",
+        "snapshotId": "snapshot"
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "contractVersion", "identity" ],
+  "properties": {
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "identity": {
+      "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/identity.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

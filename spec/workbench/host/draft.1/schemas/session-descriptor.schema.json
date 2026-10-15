@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.1.0-draft.1/session-descriptor.schema.json",
+  "title": "Authenticated Workbench host descriptor",
+  "description": "Exact opt-in host HTTP profile containing the authenticated jobs offer. Authentication and session equality are semantic requirements",
+  "examples": [
+    {
+      "profile": "morphir/workbench/host",
+      "contractVersion": "0.1.0-draft.1",
+      "offer": {
+        "profile": "morphir/workbench/jobs",
+        "contractVersion": "0.1.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "operations": [ "query", "cancel" ]
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "profile", "contractVersion", "offer" ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/host"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "offer": {
+      "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/offer.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

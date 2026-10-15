@@ -1,0 +1,124 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/host/0.1.0-draft.1/identity-request.schema.json",
+  "tests": [
+    {
+      "description": "Exact request shared by query cancel release",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job",
+          "snapshotId": "snapshot"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown draft",
+      "data": {
+        "contractVersion": "0.1.0-draft.2",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job",
+          "snapshotId": "snapshot"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Empty job ID",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "",
+          "snapshotId": "snapshot"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Snapshot length bound",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job",
+          "snapshotId": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown identity member",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job",
+          "snapshotId": "snapshot",
+          "path": "/tmp/model"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No client receipt override",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "jobId": "job",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Identity required",
+      "data": {
+        "contractVersion": "0.1.0-draft.1"
+      },
+      "valid": false
+    },
+    {
+      "description": "Version required",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job",
+          "snapshotId": "snapshot"
+        }
+      },
+      "valid": false
+    }
+  ]
+}

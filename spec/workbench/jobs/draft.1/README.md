@@ -134,3 +134,12 @@ then qualify host adapters and bind query/cancel transport methods.
 It selects this exact job profile and the frozen draft.5 terminal envelope.
 Its offline capability claim does not enable live query or cancellation controls;
 those require a separately qualified host adapter and authenticated transport.
+
+## Authenticated HTTP mapping
+
+[Host draft.1](../../host/draft.1/README.md) maps this unchanged receipt profile
+to an opt-in same-origin loopback HTTP gateway. Each request authenticates
+through the existing connected v1 session. The mapping adds immutable model
+submission and explicit terminal release, with one fixed invocation inventory,
+while retaining query/cancellation receipts and same-session reconnect rules.
+Its separate descriptor is required before enabling live connected controls.
