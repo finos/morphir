@@ -180,3 +180,62 @@ pub fn flush_file(
 ) -> Bool {
   flush_file_js(spawn, path, data, timeout, root)
 }
+
+///|
+#module("node:fs")
+extern "js" fn read_sync(
+  fd : Int,
+  buffer : FixedArray[Byte],
+  offset : Int,
+  length : Int,
+) -> Int = "readSync"
+
+///|
+#module("node:fs")
+extern "js" fn close_sync(fd : Int) -> Unit = "closeSync"
+
+///|
+#module("node:fs")
+extern "js" fn fstat(fd : Int) -> Stats = "fstatSync"
+
+///|
+extern "js" fn file_open_js(
+  stat : (Int) -> Stats,
+  close : (Int) -> Unit,
+  path : String,
+  limit : Int,
+) -> Int =
+  #| (stat,close,path,limit) => {let fd=-1;try{const fs=process.getBuiltinModule('node:fs');fd=fs.openSync(path,fs.constants.O_RDONLY|(fs.constants.O_NONBLOCK||0)|(fs.constants.O_NOFOLLOW||0));const s=stat(fd);if(!s.isFile()||s.size<0||s.size>limit)throw Error();return fd;}catch{if(fd>=0)close(fd);return -1;}}
+
+///|
+fn file_open(path : String, limit : Int) -> Int {
+  file_open_js(fstat, close_sync, path, limit)
+}
+
+///|
+extern "js" fn file_read_js(
+  read : (Int, FixedArray[Byte], Int, Int) -> Int,
+  fd : Int,
+  buffer : FixedArray[Byte],
+  length : Int,
+) -> Int =
+  #| (read,fd,buffer,length) => {try{return read(fd,buffer,0,length);}catch{return -1;}}
+
+///|
+fn file_read(fd : Int, buffer : FixedArray[Byte], length : Int) -> Int {
+  file_read_js(read_sync, fd, buffer, length)
+}
+
+///|
+extern "js" fn file_close_js(close : (Int) -> Unit, fd : Int) -> Int =
+  #| (close,fd) => {try{close(fd);return 0;}catch{return -1;}}
+
+///|
+fn file_close(fd : Int) -> Int {
+  file_close_js(close_sync, fd)
+}
+
+///|
+/// Probe the host API used by bounded pin reads before acquiring a session.
+pub extern "js" fn file_chunks_supported() -> Bool =
+  #| () => {try {const fs=process.getBuiltinModule?.('node:fs');return !!fs&&['openSync','readSync','fstatSync','closeSync'].every(name=>typeof fs[name]==='function');}catch{return false;}}

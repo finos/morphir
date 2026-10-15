@@ -155,33 +155,59 @@ pub fn Host::register_project_metadata_provider(
   acquire : (@engine.ProjectMetadataScope) -> MetadataSession raise,
 ) -> Unit raise {
   engine.register_project_metadata_provider(scope => {
-    let slot = MetadataSessionSlot::{ state: Empty, }
-    let sessions = self.metadata_sessions
-    {
-      restore_library: Some(fn(predicate) raise {
-        let capabilities = sessions.acquire(slot, scope, acquire).capabilities
-        guard capabilities.restore_library is Some(restore) else {
-          raise @linked_metadata.Invalid(
-            "metadata.provider_unavailable", predicate, "The scoped session does not provide authenticated restoration",
-          )
-        }
-        if !capabilities.target_names_interpreter {
-          raise @linked_metadata.Invalid(
-            "metadata.required_interpreter_unavailable", predicate, "The scoped session does not grant the target-name interpreter",
-          )
-        }
-        restore(predicate)
-      }),
-      load_context: Some(fn(url, base) raise {
-        let capabilities = sessions.acquire(slot, scope, acquire).capabilities
-        guard capabilities.load_context is Some(load) else {
-          raise @linked_metadata.Invalid(
-            "metadata.context_resource_unavailable", url, "The scoped session does not provide this context",
-          )
-        }
-        load(url, base)
-      }),
-      target_names_interpreter: true,
+    self.metadata_capabilities(scope, acquire)
+  })
+}
+
+///|
+fn Host::metadata_capabilities(
+  self : Host,
+  scope : @engine.ProjectMetadataScope,
+  acquire : (@engine.ProjectMetadataScope) -> MetadataSession raise,
+) -> @linked_metadata.Capabilities {
+  let slot = MetadataSessionSlot::{ state: Empty, }
+  let sessions = self.metadata_sessions
+  {
+    restore_library: Some(fn(predicate) raise {
+      let capabilities = sessions.acquire(slot, scope, acquire).capabilities
+      guard capabilities.restore_library is Some(restore) else {
+        raise @linked_metadata.Invalid(
+          "metadata.provider_unavailable", predicate, "The scoped session does not provide authenticated restoration",
+        )
+      }
+      if !capabilities.target_names_interpreter {
+        raise @linked_metadata.Invalid(
+          "metadata.required_interpreter_unavailable", predicate, "The scoped session does not grant the target-name interpreter",
+        )
+      }
+      restore(predicate)
+    }),
+    load_context: Some(fn(url, base) raise {
+      let capabilities = sessions.acquire(slot, scope, acquire).capabilities
+      guard capabilities.load_context is Some(load) else {
+        raise @linked_metadata.Invalid(
+          "metadata.context_resource_unavailable", url, "The scoped session does not provide this context",
+        )
+      }
+      load(url, base)
+    }),
+    target_names_interpreter: true,
+  }
+}
+
+///|
+/// A CLI selection of none does not request a service. Explicit embedding
+/// capabilities keep their separate authority through the general binder.
+fn Host::register_requested_metadata_provider(
+  self : Host,
+  engine : @engine.Engine,
+  acquire : (@engine.ProjectMetadataScope) -> MetadataSession raise,
+) -> Unit raise {
+  engine.register_project_metadata_provider(scope => {
+    if scope.request is Disabled {
+      @linked_metadata.Capabilities::unavailable()
+    } else {
+      self.metadata_capabilities(scope, acquire)
     }
   })
 }

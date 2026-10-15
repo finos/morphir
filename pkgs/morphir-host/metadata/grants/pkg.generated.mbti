@@ -1,0 +1,42 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-host/metadata/grants"
+
+import {
+  "finos/morphir-engine",
+}
+
+// Values
+pub fn host_path(String, String, String) -> String raise
+
+// Errors
+
+// Types and methods
+pub(all) enum GrantFormat {
+  IonText
+  IonBinary
+  Json
+}
+
+pub(all) struct GrantedService {
+  node : String
+  node_sha256 : String
+  helper : String
+  helper_bundle_sha256 : String
+  service : String
+  service_sha256 : String
+  policy : String
+  lock : String
+  registry : String
+  state : String
+  release : String
+}
+
+pub struct Grants {
+  // private fields
+}
+pub fn Grants::decode(Bytes, GrantFormat, String, String) -> Self raise
+pub fn Grants::select(Self, @morphir-engine.ProjectMetadataScope, String, String) -> GrantedService raise
+
+// Type aliases
+
+// Traits

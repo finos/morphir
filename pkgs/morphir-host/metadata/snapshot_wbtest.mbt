@@ -305,3 +305,42 @@ test "capability encoders enforce the advertised request bound" {
     )
   })
 }
+
+///|
+test "a digest with multiple inventory bases cannot pick relative-import semantics by order" {
+  let bytes = rewrite(shared_snapshot(), fn(value) raise {
+    let libraries = list(
+      required(members(value.with_annotations([])), "libraries"),
+      128,
+    )
+    let contexts = list(required(members(libraries[0]), "contexts"), 256)
+    let second = replace(
+      contexts[0],
+      "path",
+      @ion.IonValue::string("contexts/other/schema.jsonld"),
+    )
+    replace(
+      value,
+      "libraries",
+      @ion.IonValue::list([
+        replace(
+          libraries[0],
+          "contexts",
+          @ion.IonValue::list([contexts[0], second]),
+        ),
+      ]),
+    )
+  })
+  let snapshot = Snapshot::decode(bytes, expected())
+  let document = snapshot.restored().document
+  let selected = snapshot.context("./contexts/schema.jsonld", document)
+  refuses(fn() raise {
+    ignore(
+      snapshot.context("morphir://context/sha256/" + selected.sha256, document),
+    )
+  })
+  assert_eq(
+    snapshot.context("./contexts/other/schema.jsonld", document).bytes,
+    selected.bytes,
+  )
+}

@@ -171,19 +171,29 @@ pub fn Snapshot::context(
 ) -> @linked_metadata.ContextDocument raise {
   if resource.has_prefix("morphir://context/sha256/") {
     let digest = resource["morphir://context/sha256/".length():].to_owned()
+    let mut found : @linked_metadata.ContextDocument? = None
     for library in self.libraries {
       for context in library.contexts {
         if context.digest == digest {
-          return {
-            url: "morphir-provider-context://" +
+          let url = "morphir-provider-context://" +
             @identity.sha256(library.manifest) +
             "/" +
-            context.path,
+            context.path
+          if found is Some(previous) && previous.url != url {
+            invalid(
+              "Ambiguous context digest: use an inventory-relative reference from its admitted base",
+            )
+          }
+          found = Some({
+            url,
             bytes: Bytes::from_array(context.bytes.to_array()),
             sha256: context.digest,
-          }
+          })
         }
       }
+    }
+    if found is Some(document) {
+      return document
     }
     invalid("Context digest is absent from retained inventory")
   }

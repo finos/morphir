@@ -98,3 +98,5 @@ try {
 }finally{rmSync(root,{recursive:true,force:true});}
 
 await import('./test-binary-supervision.mjs');
+
+await import('./test-metadata.mjs');

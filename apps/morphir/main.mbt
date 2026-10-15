@@ -30,7 +30,7 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
               "--comparison", "--absolute-tolerance", "--relative-tolerance", "--cancel-file",
               "--cases", "--cases-format", "--evaluators", "--require-evaluator",
               "--rust-evaluator", "--rust-evaluator-pin", "--rust-helper", "--receipt",
-              "--receipt-format",
+              "--receipt-format", "--metadata-grants", "--metadata-timeout",
             ].map(Json::string),
           ),
         ),
@@ -144,7 +144,19 @@ fn command(cli : Cli, mode : OutputMode) -> Int raise {
   let mount = @host.Mount::filesystem(location.root)
   let environment = @platform.environment()
   let (system, global) = @host.configuration(environment)
-  let host = @host.Host::new(mount, environment~, system~, global~)
+  let cancel_path = value(cli, "cancel-file")
+  let cancel_file = if cancel_path == "" {
+    ""
+  } else {
+    @metadata_grants.host_path(
+      cancel_path,
+      @platform.cwd(),
+      @platform.system_type(),
+    )
+  }
+  let host = @host.Host::new(mount, environment~, system~, global~, cancelled=fn() {
+    cancel_file != "" && (@platform.kind(cancel_file) catch { _ => 1 }) != 0
+  })
   let snapshot = host.snapshot()
   let overlay = @config.from_json(Json::object(overlay_fields), origin="CLI")
   let workspace = @workspace.discover(
@@ -185,6 +197,40 @@ fn command(cli : Cli, mode : OutputMode) -> Int raise {
   defer logs.flush()
   let engine = @engine.Engine::new()
   @moonbit_frontend.register(engine, observer=logs.observer())
+  let grant_file = value(cli, "metadata-grants")
+  let grants = if grant_file == "" {
+    None
+  } else {
+    let path = @metadata_grants.host_path(
+      grant_file,
+      @platform.cwd(),
+      @platform.system_type(),
+    )
+    let format = if path.has_suffix(".json") {
+      @metadata_grants.Json
+    } else if path.has_suffix(".ionb") {
+      @metadata_grants.IonBinary
+    } else {
+      @metadata_grants.IonText
+    }
+    Some(
+      @metadata_grants.Grants::decode(
+        @platform.read_bytes(path),
+        format,
+        path,
+        @platform.system_type(),
+      ),
+    )
+  }
+  host.register_process_metadata_provider(
+    engine,
+    grants,
+    location.root,
+    @platform.cwd(),
+    timeout=metadata_timeout(value(cli, "metadata-timeout", fallback="120000")),
+    cancel_file~,
+    observer=logs.observer(),
+  )
   let script = if script_path == "" { "" } else { @platform.read(script_path) }
   if project_list {
     return print_projects(
@@ -247,13 +293,8 @@ fn command(cli : Cli, mode : OutputMode) -> Int raise {
       )
     other => raise @config.Invalid("build.unsupported_provider: " + other)
   }
-  let host = @host.Host::new(
-    mount,
-    environment~,
-    system~,
-    global~,
-    library_build=provider,
-  )
+  // Retain the owner used by the effect-free metadata binder during planning.
+  let host = { ..host, library_build: provider, }
   let boundaries = plan.boundaries()
   let result = host.run_content(
     engine,
@@ -398,5 +439,17 @@ fn build_timeout(text : String) -> Int raise {
     Number(n, ..) if n >= 1.0 && n <= 600000.0 && n == n.to_int().to_double() =>
       n.to_int()
     _ => raise @config.Invalid("build.invalid_timeout")
+  }
+}
+
+///|
+fn metadata_timeout(text : String) -> Int raise {
+  let value = @json.parse(text) catch {
+    _ => raise @config.Invalid("metadata.restore_invalid_deadline")
+  }
+  match value {
+    Number(n, ..) if n >= 6001.0 && n <= 600000.0 && n == n.to_int().to_double() =>
+      n.to_int()
+    _ => raise @config.Invalid("metadata.restore_invalid_deadline")
   }
 }

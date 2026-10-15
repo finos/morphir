@@ -16,3 +16,21 @@ fn check(code : Int, operation : String) -> Unit raise {
 pub fn bytes_supported() -> Bool {
   true
 }
+
+///|
+#cfg(any(target="wasm", target="wasm-gc"))
+pub fn file_chunks(
+  _path : String,
+  _limit : Int,
+  _consume : (Bytes) -> Unit raise,
+) -> Unit raise {
+  raise IOError(
+    "metadata.restore_runtime_unavailable: executable pin reads are not qualified on this runtime",
+  )
+}
+
+///|
+#cfg(any(target="wasm", target="wasm-gc"))
+pub fn file_chunks_supported() -> Bool {
+  false
+}

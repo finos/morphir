@@ -15,7 +15,10 @@ Library and 1024 contexts in total.
 Original native JSON bytes and their revision stay separate from the checked
 v4.0 JSON core and raw document metadata. Both remain supported JSON artifacts,
 carried as exact Ion blobs. Context resolution uses only the retained inventory,
-including relative imports, with no filesystem or network fallback. Returned
+including relative imports, with no filesystem or network fallback. A digest
+that identifies different inventory bases refuses rather than choosing relative
+import semantics by order; use an inventory-relative reference from its admitted
+base in that case. Returned
 semantic views are reparsed so mutation cannot alter the retained response.
 
 `shared_fixture_wbtest.mbt` embeds binary responses emitted by the Rust service

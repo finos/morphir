@@ -182,3 +182,23 @@ pub fn flush_file(
 ) -> Bool {
   flush_file_c(cstring(path), data, data.length(), timeout, cstring(root)) == 0
 }
+
+///|
+#borrow(path)
+extern "C" fn file_open_c(path : Bytes, limit : Int) -> Int = "morphir_host_file_open"
+
+///|
+fn file_open(path : String, limit : Int) -> Int {
+  file_open_c(cstring(path), limit)
+}
+
+///|
+#borrow(buffer)
+extern "C" fn file_read(
+  fd : Int,
+  buffer : FixedArray[Byte],
+  length : Int,
+) -> Int = "morphir_host_file_read"
+
+///|
+extern "C" fn file_close(fd : Int) -> Int = "morphir_host_file_close"

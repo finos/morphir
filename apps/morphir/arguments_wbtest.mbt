@@ -208,14 +208,14 @@ test "option data retains equals Unicode and whitespace without scalar conversio
 }
 
 ///|
-test "merged lifecycle cancellation option belongs to execution commands" {
+test "lifecycle cancellation belongs to execution and pipeline runs" {
   let cli = parse_cli(["verify", "model", "--cancel-file= cancellation signal "])
   assert_eq(value(cli, "cancel-file"), " cancellation signal ")
   assert_true(cli.help_text.contains("--cancel-file"))
   for
     args in [
       ["execute", "model", "--cancel-file", "a", "--cancel-file", "b"],
-      ["run", "--cancel-file", "a"],
+      ["workspace", "--cancel-file", "a"],
       ["verify", "--cancel-file"],
     ] {
     assert_true(
@@ -252,6 +252,31 @@ test "merged conform command retains evaluator and receipt options" {
       ["verify", "model", "--receipt", "receipt.ion"],
       ["conform", "model", "--cases", "first", "--cases", "second"],
       ["conform", "model", "--receipt-format"],
+    ] {
+    assert_true(
+      try {
+        ignore(parse_cli(args))
+        false
+      } catch {
+        _ => true
+      },
+    )
+  }
+}
+
+///|
+test "metadata authority is an explicit single host file on run" {
+  let cli = parse_cli([
+    "run", "--metadata-grants", "/host/grants.ion", "--metadata-timeout", "120000",
+    "--cancel-file", "stop",
+  ])
+  assert_eq(value(cli, "metadata-grants"), "/host/grants.ion")
+  assert_eq(value(cli, "cancel-file"), "stop")
+  for
+    args in [
+      ["run", "--metadata-grants", "a", "--metadata-grants", "b"],
+      ["workspace", "--metadata-grants", "a"],
+      ["execute", "--metadata-grants", "a"],
     ] {
     assert_true(
       try {

@@ -328,3 +328,46 @@ int morphir_flush_file(const char *path, const unsigned char *data, int length, 
   return -1;
 #endif
 }
+
+/* Bounded descriptor reads for executable pins, independent of model buffers. */
+#include <fcntl.h>
+#ifdef _WIN32
+#include <io.h>
+#endif
+int morphir_host_file_open(const char *path, int limit) {
+#ifdef _WIN32
+  wchar_t *wide = wide_path(path);
+  if (!wide) return -1;
+  int fd = _wopen(wide, _O_RDONLY | _O_BINARY | _O_NOINHERIT);
+  free(wide);
+  if (fd < 0) return -1;
+  struct _stat64 st;
+  if (_fstat64(fd, &st) || (st.st_mode & _S_IFMT) != _S_IFREG || st.st_size < 0 || st.st_size > limit) {
+    _close(fd); return -1;
+  }
+#else
+  int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_NOFOLLOW);
+  if (fd < 0) return -1;
+  struct stat st;
+  if (fstat(fd, &st) || !S_ISREG(st.st_mode) || st.st_size < 0 || st.st_size > limit) {
+    close(fd); return -1;
+  }
+#endif
+  return fd;
+}
+int morphir_host_file_read(int fd, unsigned char *buffer, int length) {
+#ifdef _WIN32
+  return _read(fd, buffer, (unsigned int)length);
+#else
+  ssize_t result;
+  do { result = read(fd, buffer, (size_t)length); } while (result < 0 && errno == EINTR);
+  return (int)result;
+#endif
+}
+int morphir_host_file_close(int fd) {
+#ifdef _WIN32
+  return _close(fd);
+#else
+  return close(fd);
+#endif
+}

@@ -57,7 +57,10 @@ fn command_schema(path : String) -> CliSchema {
       ]
     "run" => {
       flags = ["all", "dry-run", "file", "directory", "log"]
-      options = pipeline_options + ["log-file", "log-format"]
+      options = pipeline_options +
+        [
+          "log-file", "log-format", "metadata-grants", "metadata-timeout", "cancel-file",
+        ]
       repeatable = pipeline_options
       positional = true
     }
@@ -177,7 +180,7 @@ fn parse_cli(args : Array[String]) -> Cli raise {
   let names = (pipeline_options +
   execution_options +
   conformance_options +
-  ["package"]).fold(
+  ["package", "metadata-grants", "metadata-timeout"]).fold(
     (names : Array[String], name) => {
       if !names.contains(name) {
         names.push(name)

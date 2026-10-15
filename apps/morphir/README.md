@@ -706,3 +706,86 @@ Known naming facts therefore continue to fail with `metadata.provider_unavailabl
 during generation; Ion checkpoints retain their authored metadata. Ordinary naming
 and projects without those facts continue to work. See the
 [engine host contract](../../pkgs/morphir-engine/README.md#project-scoped-metadata-providers).
+
+## Authenticated metadata provider
+
+`run --metadata-grants /host/grants.ion` explicitly enables the shared restore
+provider selected in project configuration. Nothing discovers a grant file,
+installs a service or initializes trust. A disabled provider keeps the existing
+unavailable behavior; a grant file alone does not enable it. The selected policy, complete lock,
+registry and already provisioned trust-state directory must each match a grant
+for that exact workspace/project. The registry release is authority-qualified;
+the native IR package is independently checked as `morphir/naming`.
+
+```toml
+[metadata]
+provider = "shared-local-restore"
+service = "/tools/morphir-provider-snapshot"
+policy = "/trust/policy.json"
+lock = "morphir.lock"
+registry = "/registry/local"
+state = "/trust/state"
+assurance = "portable"
+
+[metadata.naming]
+release = "example.com/morphir/naming@1.0.0"
+```
+
+Selections resolve relative to their own configuration file. CLI-origin paths
+resolve from the invocation directory. Relative environment or unknown-origin
+selections refuse rather than guessing a base. Grant paths resolve from the
+explicitly supplied grant file. For example, a workspace with member `one` uses:
+
+```ion
+{
+  profile: "morphir-metadata-host-grants-v1",
+  workspace: "/work/example",
+  runtime: {
+    node: "/tools/node", nodeSha256: "sha256:<raw digest>",
+    helper: "/tools/morphir/build-provider/metadata.mjs",
+    helperBundleSha256: "sha256:<bundle digest>"
+  },
+  projects: [{
+    project: "one",
+    service: "/tools/morphir-provider-snapshot",
+    serviceSha256: "sha256:<raw digest>",
+    policy: "/trust/policy.json", lock: "/work/example/one/morphir.lock",
+    registry: "/registry/local", state: "/trust/state"
+  }]
+}
+```
+
+Replace the placeholders with independently accepted pins from the qualified
+installation. The helper bundle pin hashes the compact JSON array of
+`[filename, raw-SHA256]` pairs for `WindowsJob.cs`, `metadata.mjs`,
+`supervision.mjs`, `windows-job.mjs`, `windows-job.ps1`, in that order. Embeddings
+can calculate it with `host.metadata_helper_bundle_sha256`. Node/service pins
+hash original regular-file bytes, with a 512 MiB identity-read limit.
+
+Grant documents are closed and capped at 1 MiB, with at most 128 project entries.
+Use `.ion` for Ion text, `.ionb` for binary Ion or `.json` for an explicit JSON
+opt-out. The process exchange always uses binary Ion, retaining supported native
+JSON artifacts as exact blobs. Small JSON bridge receipts contain control data
+only. A frame or a saved receipt never grants fresh authority.
+
+Sessions acquire only when metadata is requested during execution. Each fresh
+operation probes the accepted service and replays authentication. The host pins
+its executable/runtime, bounds responses and waits for process-tree quiescence
+before disposing scratch and publishing output. Unknown termination retains
+scratch and refuses publication. Shared trust-state updates remain owned by the
+restore component, including when later generation refuses.
+
+`--metadata-timeout` sets one project operation budget, including probe and
+cleanup, from 6001 through 600000 milliseconds; the default is 120000.
+`--cancel-file PATH` cancels a run when that path exists. Dry runs acquire no
+provider. The process composition currently supports qualified native and Node
+JS hosts; Wasm and WasmGC refuse it explicitly. Pure binary wire support remains
+available on all four targets. The shared profile is `local-library-mvp` /
+`0.1.0-draft.1`, with its portable filesystem assumptions.
+
+Provider lifecycle events join existing frontend observations. `--log` defaults
+to `.morphir/logs/frontend.ionb`; `--log-file PATH` honors an explicit destination,
+including outside that directory. Observations contain operation/project IDs,
+profile, result and duration. Ordinary logs exclude policy/lock bodies, native
+provider payloads and contexts. Installed cross-platform signed-provider
+qualification is tracked separately from these host and wire contracts.

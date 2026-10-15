@@ -13,6 +13,7 @@ import {
   "finos/morphir-engine/config",
   "finos/morphir-engine/workspace",
   "finos/morphir-host" @host,
+  "finos/morphir-host/metadata/grants" @metadata_grants,
   "finos/morphir-host/platform",
   "finos/morphir-host/toolchain",
   "moonbitlang/core/json",

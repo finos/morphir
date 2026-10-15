@@ -1,0 +1,11 @@
+import {
+  "finos/morphir-engine" @engine,
+  "finos/morphir-engine/config",
+  "moonrockz/ion/ion",
+  "moonrockz/ion/text" @ion_text,
+  "moonrockz/ion/binary",
+  "moonrockz/ion/json" @ion_json,
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/path/posix",
+  "moonbitlang/x/path/win32",
+}

@@ -196,3 +196,25 @@ portable engine and generated drivers retain their existing observation contract
 
 Local sinks accept `@stderr` only with `text` or `json-lines`; the host drains
 through its bounded file worker without adding log records to result stdout.
+
+### Explicit process metadata authority
+
+`host.register_process_metadata_provider(engine, grants, workspaceRoot,
+invocationRoot)` composes the scoped session owner with the qualified one-shot
+service. Parse an explicit host document through
+`metadata/grants.Grants::decode`; selections from project configuration never
+create grants. A missing authority refuses only when metadata is actually used,
+so planning and unused providers acquire no resources.
+
+The owning host retains the same metadata-session owner through planning and
+`run_content`. Node/service executable pins and the fixed helper bundle are
+checked before and after each exchange. Original frames and policy/lock bytes
+remain bounded snapshots. Context capabilities resolve from the retained graph
+only. Cleanup failures retain callbacks for explicit retry and block publication.
+Telemetry uses the existing observer, with fixed lifecycle codes and independent
+project/operation correlation, excluding raw provider and trust bodies.
+
+See the [CLI grant format](../../apps/morphir/README.md#authenticated-metadata-provider)
+and the [binary envelope](metadata/README.md). Qualified JS/native process hosts
+are distinct from the pure four-target wire package. The shared portable MVP
+assumptions remain in force; hardened assurance is unavailable.
