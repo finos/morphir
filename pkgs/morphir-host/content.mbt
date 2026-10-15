@@ -72,6 +72,7 @@ pub fn Host::run_content(
     content[path] = value
   }
   (self.event)(Phase("execute"))
+  self.metadata_sessions.begin()
   let report = engine.execute_content(
     plan,
     fn(path, _) raise {
@@ -82,6 +83,7 @@ pub fn Host::run_content(
     },
     cancelled=self.cancelled,
   )
+  let cleanup_error = self.metadata_sessions.dispose(FinishExecution)
   for diagnostic in report.diagnostics {
     (self.event)(Diagnostic(diagnostic))
   }
@@ -90,9 +92,9 @@ pub fn Host::run_content(
   }
   let mut validated = []
   let committed = []
-  let mut publication_error = None
+  let mut publication_error = cleanup_error
   let mut cancelled = (self.cancelled)()
-  if report.successful() && !cancelled {
+  if report.successful() && !cancelled && publication_error is None {
     let mut transaction : ContentPublication? = None
     try {
       if report.artifacts.length() + report.projects.length() >

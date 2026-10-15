@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {supervisedBytes} from './supervision.mjs';
+
+const timeout=process.platform==='win32'?20000:5000;
+const input=Buffer.alloc(2*1024*1024);
+for(let i=0;i<input.length;i++)input[i]=i%256;
+const echo=await supervisedBytes(process.execPath,['-e',"process.stdin.pipe(process.stdout);process.stderr.write('separate diagnostic');"],{timeout,input});
+assert.equal(echo.code,0);
+assert.ok(Buffer.isBuffer(echo.stdout),'binary channel never decodes stdout as UTF-8');
+assert.deepEqual(echo.stdout,input,'every byte, including invalid UTF-8, remains exact');
+assert.equal(echo.stderr,'separate diagnostic');
+const maximum=await supervisedBytes(process.execPath,['-e','process.stdout.write(Buffer.alloc(16777216,255))'],{timeout});
+assert.equal(maximum.stdout.length,16777216);
+assert.equal(maximum.stdout[16777215],255);
+await assert.rejects(supervisedBytes(process.execPath,['-e','process.stdout.write(Buffer.alloc(16777217));setInterval(()=>{},1000)'],{timeout}),/execution.response_limit/);
+await assert.rejects(supervisedBytes(process.execPath,['-e','process.stderr.write(Buffer.alloc(65537));setInterval(()=>{},1000)'],{timeout}),/execution.diagnostic_limit/);
+await assert.rejects(supervisedBytes(process.execPath,['-e',''],{timeout,input:Buffer.alloc(4194305)}),/execution.input_limit/);
+await assert.rejects(supervisedBytes(process.execPath,['-e','setInterval(()=>{},1000)'],{timeout:1}),/execution.deadline/);
+assert.equal(process.listenerCount('SIGTERM'),0);
+assert.equal(process.listenerCount('SIGINT'),0);
+console.log('Binary process bytes, independent limits and deadline passed');

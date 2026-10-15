@@ -1,0 +1,44 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-host/metadata"
+
+import {
+  "finos/morphir-metadata",
+}
+
+// Values
+pub const MAX_REQUEST_BYTES : Int = 4194304
+
+pub const MAX_RESPONSE_BYTES : Int = 16777216
+
+pub const SERVICE_ID : String = "morphir-package/provider-snapshot/0.1.0-draft.1"
+
+pub fn admit_capabilities(Bytes, String, String) -> Unit raise
+
+pub fn capabilities_request(String, String) -> Bytes raise
+
+pub fn snapshot_request(Expected, Bytes, Bytes, String, String, String) -> Bytes raise
+
+// Errors
+pub(all) suberror TransportError {
+  Invalid(String)
+}
+
+// Types and methods
+pub(all) struct Expected {
+  invocation : String
+  project_scope : String
+  release : String
+  policy_sha256 : String
+  lock_sha256 : String
+}
+
+pub struct Snapshot {
+  // private fields
+}
+pub fn Snapshot::context(Self, String, String) -> @morphir-metadata.ContextDocument raise
+pub fn Snapshot::decode(Bytes, Expected) -> Self raise
+pub fn Snapshot::restored(Self) -> @morphir-metadata.RestoredLibrary raise
+
+// Type aliases
+
+// Traits

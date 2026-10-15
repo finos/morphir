@@ -52,6 +52,7 @@ pub(all) struct Host {
   publisher : Publisher?
   toolchain : @toolchain.Provider?
   library_build : LibraryBuildProvider?
+  metadata_sessions : MetadataSessions
   environment : Map[String, String]
   system : @config.Document
   global : @config.Document
@@ -78,6 +79,7 @@ pub fn Host::new(
     publisher,
     toolchain,
     library_build,
+    metadata_sessions: MetadataSessions::new(),
     environment,
     system,
     global,

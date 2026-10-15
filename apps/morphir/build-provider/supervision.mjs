@@ -4,14 +4,25 @@ import {windowsJob} from './windows-job.mjs';
 
 // One owned process group per command. Never resolve on `error` before `close`:
 // AbortSignal's early rejection otherwise allows disposal while children run.
-export async function supervised(program,args,{cwd,env,timeout,cancelFile='',limit=1048576,input}={}) {
+export function supervised(program,args,options={}) {
+  return supervise(program,args,options,false);
+}
+
+// Model payloads use a separate byte channel. The text API keeps its original
+// combined one-MiB cap; binary stdout has a fixed 16-MiB cap and diagnostics an
+// independent 64-KiB cap. Both paths share tree ownership and quiescence checks.
+export function supervisedBytes(program,args,{cwd,env,timeout,cancelFile='',input}={}) {
+  return supervise(program,args,{cwd,env,timeout,cancelFile,input},true);
+}
+
+async function supervise(program,args,{cwd,env,timeout,cancelFile='',limit=1048576,input},binary) {
   if(!Number.isInteger(timeout)||timeout<1||timeout>600000||!Number.isInteger(limit)||limit<1||limit>1048576)throw Error('execution.supervision_limit');
   if(input!==undefined&&(!Buffer.isBuffer(input)||input.length>4194304))throw Error('execution.input_limit');
   if(cancelFile && existsSync(cancelFile))throw Error('execution.cancelled');
   const job=process.platform==='win32'?windowsJob(program,args,{cwd,env,timeout}):null;
   const child=spawn(job?.program||program,job?.args||args,{cwd,env:job?.env||env,detached:process.platform!=='win32',stdio:[input===undefined?'ignore':'pipe','pipe','pipe'],windowsHide:true});
   const closed=new Promise(resolve=>child.once('close',(...result)=>resolve(result)));
-  let reason='',treeError='',spawnError=null,size=0,termination=null;const out=[],err=[];
+  let reason='',treeError='',spawnError=null,size=0,outputSize=0,diagnosticSize=0,termination=null;const out=[],err=[];
   let unconfirmed;
   const treeFailure=new Promise(resolve=>{unconfirmed=resolve;});
   function killTree() {
@@ -58,7 +69,21 @@ export async function supervised(program,args,{cwd,env,timeout,cancelFile='',lim
   process.on('SIGTERM',signal);process.on('SIGINT',signal);
   const timer=setTimeout(()=>stop('execution.deadline'),timeout);
   const poll=cancelFile?setInterval(()=>{if(existsSync(cancelFile))stop('execution.cancelled');},10):null;
-  const collect=(destination,data)=>{size+=data.length;if(size>limit){stop('execution.diagnostic_limit');return;}destination.push(data);};
+  const collect=(destination,data)=>{
+    if(binary) {
+      if(destination===out) {
+        outputSize+=data.length;
+        if(outputSize>16777216){stop('execution.response_limit');return;}
+      } else {
+        diagnosticSize+=data.length;
+        if(diagnosticSize>65536){stop('execution.diagnostic_limit');return;}
+      }
+    } else {
+      size+=data.length;
+      if(size>limit){stop('execution.diagnostic_limit');return;}
+    }
+    destination.push(data);
+  };
   child.stdout.on('data',data=>collect(out,data));child.stderr.on('data',data=>collect(err,data));
   child.on('error',error=>{spawnError=error;});
   // Reclaim descendants at parent exit even when their inherited pipes would
@@ -87,7 +112,7 @@ export async function supervised(program,args,{cwd,env,timeout,cancelFile='',lim
       throw Error(causes.join('; ')+(diagnostic?'\n'+diagnostic:''));
     }
     if(spawnError)throw Error('execution.spawn_failed: '+spawnError.message);
-    return {code,signal,stdout:Buffer.concat(out).toString('utf8'),stderr:Buffer.concat(err).toString('utf8')};
+    return {code,signal,stdout:binary?Buffer.concat(out):Buffer.concat(out).toString('utf8'),stderr:Buffer.concat(err).toString('utf8')};
   } finally {
     clearTimeout(timer);if(poll)clearInterval(poll);
     process.removeListener('SIGTERM',signal);process.removeListener('SIGINT',signal);

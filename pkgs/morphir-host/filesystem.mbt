@@ -201,6 +201,8 @@ fn filesystem_content_publisher(
 pub fn error_message(error : Error) -> String {
   match error {
     @protocol.Invalid(message) => message
+    @linked_metadata.Invalid(code, context, detail) =>
+      code + ": " + context + " " + detail
     @moonbit.Invalid(code, context, detail) =>
       code + ": " + context + " " + detail
     @data.Invalid(code, detail) => code + ": " + detail

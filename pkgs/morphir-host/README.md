@@ -46,6 +46,29 @@ binary output. `Host::run` uses that adapter, so existing text callers and reada
 Ion checkpoints share the typed execution and publication lifecycle. Byte
 snapshots remain bytes throughout execution and staging.
 
+### Scoped metadata sessions
+
+Before planning, an embedding can call
+`host.register_project_metadata_provider(engine, acquire)`. The binder freezes
+project scope without acquiring resources. The `acquire(scope)` callback runs on
+the first restoration or context request during `Host::run_content`, returning a
+`MetadataSession` with explicit capabilities and a disposal callback. Context
+callbacks receive the resource reference and its document base, unchanged.
+
+The host keeps a distinct session for each bound project and reuses it only
+within that execution. It disposes all acquired sessions in reverse order before
+library validation or publication, including after generation failure or
+cancellation. A failed cleanup prevents publication and retains failed callbacks.
+Further execution refuses until an explicit `host.dispose_metadata_sessions()`
+retry succeeds. Original generation diagnostics remain available alongside the
+cleanup error.
+
+Acquisition callbacks must clean up partial resources if they raise before
+returning a session. They own grants, authentication and bounded transport. This
+lifecycle adapter does not itself implement signature verification, a process
+restore command, runtime qualification or installed CLI integration. Capability calls outside the owning host's active execution are refused; explicit static
+engine capabilities remain supported independently.
+
 ## Runtime adapters
 
 | Target | Adapter |

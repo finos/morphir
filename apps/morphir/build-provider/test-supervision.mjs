@@ -96,3 +96,5 @@ try {
   assert.equal(process.listenerCount('SIGTERM'),0);assert.equal(process.listenerCount('SIGINT'),0);
   console.log('Process tree, cancellation, deadline, diagnostics and listener cleanup passed');
 }finally{rmSync(root,{recursive:true,force:true});}
+
+await import('./test-binary-supervision.mjs');

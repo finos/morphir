@@ -1,0 +1,15 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonrockz/ion/ion",
+  "moonrockz/ion/binary",
+  "moonrockz/ion/json" @ion_json,
+  "finos/morphir-host/identity",
+  "finos/morphir-ir" @ir,
+  "finos/morphir-ir/json" @ir_json,
+  "finos/morphir-metadata" @linked_metadata,
+}
+
+import {
+  "moonbitlang/core/encoding/base64",
+  "finos/morphir-metadata/fixtures",
+} for "wbtest"
