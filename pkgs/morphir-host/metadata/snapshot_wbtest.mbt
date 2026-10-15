@@ -41,6 +41,7 @@ test "actual Rust binary frames feed native naming metadata and contexts" {
   admit_capabilities(shared_capabilities(), e.invocation, e.project_scope)
   let snapshot = Snapshot::decode(shared_snapshot(), e)
   let restored = snapshot.restored()
+  assert_eq(snapshot.native_revision(), restored.revision)
   assert_eq(
     restored.revision,
     "870af5f51087dfe6a13fdf10c3b856d879b53d650982612a7aede276060c0720",
@@ -73,6 +74,7 @@ test "actual Rust binary frames feed native naming metadata and contexts" {
         snapshot.context(resource, base)
       }),
       target_names_interpreter: true,
+      provider_observer: @linked_metadata.ProviderObserver::noop(),
     },
   )
   assert_eq(result.facts[0].names.backend["moonbit"], "wanted")

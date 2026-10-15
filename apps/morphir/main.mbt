@@ -230,6 +230,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int raise {
     timeout=metadata_timeout(value(cli, "metadata-timeout", fallback="120000")),
     cancel_file~,
     observer=logs.observer(),
+    audit_sink=logs.metadata_audit_sink(),
   )
   let script = if script_path == "" { "" } else { @platform.read(script_path) }
   if project_list {

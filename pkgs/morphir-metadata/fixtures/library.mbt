@@ -129,6 +129,7 @@ pub fn capabilities() -> @metadata.Capabilities {
     restore_library: Some(fn(_) raise { provider() }),
     load_context: None,
     target_names_interpreter: true,
+    provider_observer: @metadata.ProviderObserver::noop(),
   }
 }
 

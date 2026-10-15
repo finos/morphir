@@ -192,6 +192,14 @@ fn Host::metadata_capabilities(
       load(url, base)
     }),
     target_names_interpreter: true,
+    provider_observer: {
+      notify: fn(signal) raise {
+        // Observation never acquires a session or recovers disposed authority.
+        if slot.state is Acquired(session) {
+          (session.capabilities.provider_observer.notify)(signal)
+        }
+      },
+    },
   }
 }
 

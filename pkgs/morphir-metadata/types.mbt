@@ -82,6 +82,7 @@ pub(all) struct Capabilities {
   restore_library : ((String) -> RestoredLibrary raise)?
   load_context : ((String, String) -> ContextDocument raise)?
   target_names_interpreter : Bool
+  provider_observer : ProviderObserver
 }
 
 ///|
@@ -90,6 +91,7 @@ pub fn Capabilities::unavailable() -> Capabilities {
     restore_library: None,
     load_context: None,
     target_names_interpreter: false,
+    provider_observer: ProviderObserver::noop(),
   }
 }
 

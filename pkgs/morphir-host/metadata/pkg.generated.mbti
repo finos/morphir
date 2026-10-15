@@ -37,6 +37,7 @@ pub struct Snapshot {
 }
 pub fn Snapshot::context(Self, String, String) -> @morphir-metadata.ContextDocument raise
 pub fn Snapshot::decode(Bytes, Expected) -> Self raise
+pub fn Snapshot::native_revision(Self) -> String
 pub fn Snapshot::restored(Self) -> @morphir-metadata.RestoredLibrary raise
 
 // Type aliases

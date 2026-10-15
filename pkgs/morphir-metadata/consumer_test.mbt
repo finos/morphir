@@ -26,6 +26,47 @@ fn consume(
 }
 
 ///|
+test "declaration observations distinguish admission and preserve semantics when the sink fails" {
+  let data = @fixtures.adapter("[" + @fixtures.row("ready") + "]")
+  let events : Array[@metadata.ProviderSignal] = []
+  let capabilities = {
+    ..@fixtures.capabilities(),
+    provider_observer: { notify: fn(signal) { events.push(signal) }, },
+  }
+  let accepted = consume(data, capabilities~)
+  assert_eq(events, [@metadata.Started, @metadata.Succeeded])
+  assert_eq(accepted.facts[0].names.backend["moonbit"], "wanted")
+  let broken_sink = {
+    ..capabilities,
+    provider_observer: { notify: fn(_) raise { fail("sink unavailable") }, },
+  }
+  let unchanged = consume(data, capabilities=broken_sink)
+  assert_eq(unchanged.facts[0].names, accepted.facts[0].names)
+  assert_eq(
+    unchanged.facts[0].provider_revision,
+    accepted.facts[0].provider_revision,
+  )
+  events.clear()
+  reject("metadata.invalid_provider_identity", fn() raise {
+    ignore(
+      consume(data, capabilities={
+        ..capabilities,
+        restore_library: Some(fn(_) raise {
+          { ..@fixtures.provider(), format: "wrong", }
+        }),
+      }),
+    )
+  })
+  assert_eq(events, [
+    @metadata.Started,
+    @metadata.Refused("metadata.invalid_provider_identity"),
+  ])
+  events.clear()
+  ignore(@metadata.interpret(@fixtures.input(), "sample", [], capabilities~))
+  assert_true(events.is_empty())
+}
+
+///|
 test "upstream closed targetNames record and language ID expectations" {
   for
     language in [

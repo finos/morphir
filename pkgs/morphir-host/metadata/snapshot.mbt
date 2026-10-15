@@ -27,6 +27,12 @@ pub struct Snapshot {
 }
 
 ///|
+/// Raw retained native identity. A decoded snapshot alone grants no authority.
+pub fn Snapshot::native_revision(self : Snapshot) -> String {
+  self.libraries[self.root].revision
+}
+
+///|
 fn inventory_path(path : String) -> String raise {
   if path == "" ||
     path.has_prefix("/") ||

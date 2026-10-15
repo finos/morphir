@@ -66,6 +66,7 @@ test "project metadata binding is frozen per job and restoration stays lazy" {
         }),
         load_context: None,
         target_names_interpreter: true,
+        provider_observer: @linked_metadata.ProviderObserver::noop(),
       }
     })
     let files = scoped_metadata_files(allowed)
@@ -125,6 +126,7 @@ test "metadata binder never restores for plans or units without naming facts" {
       }),
       load_context: None,
       target_names_interpreter: true,
+      provider_observer: @linked_metadata.ProviderObserver::noop(),
     }
   })
   let files = scoped_metadata_files("one")

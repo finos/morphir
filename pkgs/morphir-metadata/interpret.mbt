@@ -102,7 +102,7 @@ pub fn interpret(
               "metadata.provider_unavailable", predicate, "Configure a host capability that freshly authenticates and restores the signed provider Library; metadata and matching digests cannot grant trust",
             )
           }
-          let revision = validate_provider(
+          let revision = observed_provider(
             predicate,
             restore(predicate),
             capabilities,

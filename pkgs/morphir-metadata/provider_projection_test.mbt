@@ -158,6 +158,7 @@ test "shared signed fixture projection supplies native naming declarations" {
       }
     }),
     target_names_interpreter: true,
+    provider_observer: @metadata.ProviderObserver::noop(),
   }
   let data = @fixtures.adapter("[" + @fixtures.row("ready") + "]")
   let result = @metadata.interpret(

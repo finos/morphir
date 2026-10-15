@@ -46,6 +46,7 @@ fn[T] metadata_observe(
   stage : @observe.Stage,
   code : String,
   run : () -> T raise,
+  audit? : MetadataAuditContext? = None,
 ) -> T raise {
   let scoped = {
     ..observer,
@@ -72,11 +73,27 @@ fn[T] metadata_observe(
       })
     },
   }
-  scoped
-  .scope()
-  .observe(stage, fn(_) raise { run() }, is_cancelled=fn(error) {
-    error_message(error).contains("Cancelled")
-  })
+  let work = fn() raise {
+    scoped
+    .scope()
+    .observe(stage, fn(_) raise { run() }, is_cancelled=fn(error) {
+      error_message(error).contains("Cancelled")
+    })
+  }
+  match audit {
+    None => work()
+    Some(context) => {
+      let phase : MetadataAuditPhase = match code {
+        "metadata.acquire" => Acquire
+        "metadata.probe" => Probe
+        "metadata.restore" => Restore
+        "metadata.decode" => Decode
+        "metadata.context" => Context
+        _ => Cleanup
+      }
+      context.observe(phase, work)
+    }
+  }
 }
 
 ///|

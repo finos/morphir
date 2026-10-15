@@ -43,6 +43,7 @@ pub(all) struct Capabilities {
   restore_library : ((String) -> RestoredLibrary raise)?
   load_context : ((String, String) -> ContextDocument raise)?
   target_names_interpreter : Bool
+  provider_observer : ProviderObserver
 }
 pub fn Capabilities::unavailable() -> Self
 
@@ -68,6 +69,18 @@ pub(all) struct NamingFact {
   assertions : Array[Assertion]
   provider_revision : String
 }
+
+pub(all) struct ProviderObserver {
+  notify : (ProviderSignal) -> Unit raise
+}
+pub fn ProviderObserver::noop() -> Self
+
+pub(all) enum ProviderSignal {
+  Started
+  Succeeded
+  Refused(String)
+  Cancelled
+} derive(Eq, @debug.Debug)
 
 pub(all) struct RestoredLibrary {
   core : @v4.IRFile

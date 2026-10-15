@@ -5,6 +5,7 @@ pub struct TelemetrySession {
   priv dimensions : Map[String, (Int, Double, Array[Int])]
   priv mut metrics_overflow : Int
   priv records : Array[@observe.Observation]
+  priv audit_records : Array[MetadataAuditRecord]
   priv path : String?
   priv local_root : String?
   priv format : String
@@ -35,6 +36,7 @@ pub fn TelemetrySession::new(
     dimensions: Map([]),
     metrics_overflow: 0,
     records: [],
+    audit_records: [],
     path,
     local_root: None,
     format,
@@ -180,7 +182,7 @@ pub fn TelemetrySession::observer(self : TelemetrySession) -> @observe.Observer 
       if !self.record_traces {
         return @observe.Filtered
       }
-      if self.records.length() >= 2048 {
+      if self.records.length() + self.audit_records.length() >= 2048 {
         self.dropped += 1
         return @observe.Dropped
       }
@@ -245,22 +247,30 @@ pub fn TelemetrySession::flush(self : TelemetrySession) -> Unit {
     let bytes = match self.format {
       "ion-binary" =>
         @ion_binary.write_binary(
-          self.records.map(r => r.to_ion()) + [self.metrics_ion()],
+          self.records.map(r => r.to_ion()) +
+          self.audit_records.map(r => r.to_ion()) +
+          [self.metrics_ion()],
         )
       "ion-text" =>
         @utf8.encode(
-          self.records.map(r => @ion_text.write_ion(r.to_ion())).join("\n") +
+          (self.records.map(r => @ion_text.write_ion(r.to_ion())) +
+          self.audit_records.map(r => @ion_text.write_ion(r.to_ion()))).join(
+            "\n",
+          ) +
           "\n",
         )
       "json-lines" =>
         @utf8.encode(
-          self.records.map(r => r.to_json().stringify()).join("\n") + "\n",
+          (self.records.map(r => r.to_json().stringify()) +
+          self.audit_records.map(r => r.to_json().stringify())).join("\n") +
+          "\n",
         )
       _ =>
         @utf8.encode(
-          self.records
-          .map(r => r.stage.name() + " " + r.to_json().stringify())
-          .join("\n") +
+          (self.records.map(r => r.stage.name() + " " + r.to_json().stringify()) +
+          self.audit_records.map(r => {
+            "metadata." + r.phase.name() + " " + r.to_json().stringify()
+          })).join("\n") +
           "\n",
         )
     }
@@ -272,7 +282,7 @@ pub fn TelemetrySession::flush(self : TelemetrySession) -> Unit {
         1000,
         root=self.local_root.unwrap_or(""),
       ) {
-      self.dropped += self.records.length()
+      self.dropped += self.records.length() + self.audit_records.length()
       @platform.stderr(
         "warning: observability sink unavailable or flush deadline\n",
       )
@@ -286,11 +296,12 @@ pub fn TelemetrySession::flush(self : TelemetrySession) -> Unit {
     }
   } catch {
     _ => {
-      self.dropped += self.records.length()
+      self.dropped += self.records.length() + self.audit_records.length()
       @platform.stderr("warning: observability sink unavailable\n")
     }
   }
   self.records.clear()
+  self.audit_records.clear()
 }
 
 ///|
@@ -343,6 +354,7 @@ fn TelemetrySession::metrics_ion(
 ///|
 fn receipt_ion_metrics(value : Json) -> @ion.IonValue raise {
   match value {
+    Null => @ion.IonValue::untyped_null()
     Number(n, ..) => @ion.IonValue::float(n)
     Array(a) => @ion.IonValue::list(a.map(receipt_ion_metrics))
     Object(f) => {
@@ -393,7 +405,9 @@ pub fn TelemetrySession::flush_to_process(
     }
     let started = @platform.monotonic_seconds()
     let batch = @ion_binary.write_binary(
-      self.records.map(r => r.to_ion()) + [self.metrics_ion()],
+      self.records.map(r => r.to_ion()) +
+      self.audit_records.map(r => r.to_ion()) +
+      [self.metrics_ion()],
     )
     let root = @platform.temporary()
     directory = Some(root)
@@ -440,10 +454,11 @@ pub fn TelemetrySession::flush_to_process(
     }
   }
   if !delivered {
-    self.dropped += self.records.length()
+    self.dropped += self.records.length() + self.audit_records.length()
     @platform.stderr(
       "warning: observability exporter unavailable or flush deadline\n",
     )
   }
   self.records.clear()
+  self.audit_records.clear()
 }

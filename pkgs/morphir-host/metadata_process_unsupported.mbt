@@ -11,8 +11,9 @@ pub fn Host::register_process_metadata_provider(
   timeout? : Int = 120000,
   cancel_file? : String = "",
   observer? : @observe.Observer = @observe.Observer::noop(),
+  audit_sink? : MetadataAuditSink = MetadataAuditSink::noop(),
 ) -> Unit raise {
-  ignore((workspace_root, invocation_root, cancel_file, observer))
+  ignore((workspace_root, invocation_root, cancel_file, observer, audit_sink))
   if timeout < 6001 || timeout > 600000 {
     raise @config.Invalid("metadata.restore_invalid_deadline")
   }

@@ -137,3 +137,16 @@ profile refuses node-local linked metadata and nonlexical parameter maps.
 
 The [shared signed fixture](https://github.com/finos/morphir-rust/blob/3b55adfa831c6dcfb749e4e74c301e924124490c/crates/morphir-package/tests/local_registry/naming-snapshot-fixture/README.md)
 pins the source corpus used by the consumer test.
+
+### Observing provider declaration admission
+
+`Capabilities.provider_observer` receives `Started`, `Succeeded`,
+`Refused(code)` or `Cancelled` for declaration validation after restoration.
+The observer receives no provider data and grants no authority. Its exceptions
+are contained, preserving the original admission result and diagnostic. No facts
+means no restoration or admission events.
+
+When constructing capabilities explicitly, use
+`{ ..Capabilities::unavailable(), ... }` to keep the no-op observer, or supply
+`ProviderObserver::noop()`. Hosts can attach their own bounded telemetry adapter
+without adding clocks or filesystem access to this pure package.

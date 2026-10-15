@@ -218,3 +218,30 @@ See the [CLI grant format](../../apps/morphir/README.md#authenticated-metadata-p
 and the [binary envelope](metadata/README.md). Qualified JS/native process hosts
 are distinct from the pure four-target wire package. The shared portable MVP
 assumptions remain in force; hardened assurance is unavailable.
+
+### Metadata invocation audit records
+
+Pass `audit_sink=logs.metadata_audit_sink()` alongside the ordinary observer when
+registering the process provider. The CLI wires both when logging is enabled.
+The existing destination and bounded flush worker carry separate
+`morphir-metadata-invocation-v1` records, annotated
+`morphir_metadata_invocation_v1` in Ion. Binary Ion remains the default beneath
+`.morphir/logs/frontend.ionb`; explicit paths and formats keep their meaning.
+
+Each record identifies the run, operation and project, phase, outcome and
+duration. Evidence distinguishes the granted service digest from verification,
+and the requested portable MVP profile from a successful capability probe.
+The native revision appears only after snapshot validation. Declaration admission
+is a separate pure-consumer notification; it does not mean generation or
+publication succeeded. Cleanup records follow the existing disposal gate.
+
+Audit records contain no provider/context payloads or policy/lock bodies. They
+never grant authority, enter semantic naming receipts, or add metric dimensions.
+Retention is bounded to 256 audit records and 2048 total retained records per
+session. Sink failures and dropped records cannot change provider decisions.
+Logging off writes no invocation receipt. Consumers of mixed telemetry streams
+should dispatch by profile, rather than assuming every record is an observation.
+
+This slice qualifies local audit sinks. An external exporter must explicitly
+support the new record profile. The native OpenTelemetry adapter's existing
+observation/metric qualification does not qualify metadata audit export.

@@ -26,6 +26,7 @@ pub fn Host::register_process_metadata_provider(
   timeout? : Int = 120000,
   cancel_file? : String = "",
   observer? : @observe.Observer = @observe.Observer::noop(),
+  audit_sink? : MetadataAuditSink = MetadataAuditSink::noop(),
 ) -> Unit raise {
   if timeout < 6001 || timeout > 600000 {
     raise @config.Invalid("metadata.restore_invalid_deadline")
@@ -44,6 +45,12 @@ pub fn Host::register_process_metadata_provider(
         ).stringify(),
       ),
     )
+    let audit = MetadataAuditContext::{
+      sink: audit_sink,
+      operation,
+      project,
+      evidence: None,
+    }
     metadata_observe(
       observer,
       operation,
@@ -59,10 +66,23 @@ pub fn Host::register_process_metadata_provider(
           )
         }
         let selected = granted.select(scope, workspace_root, invocation_root)
+        audit.evidence = Some({
+          service: @metadata_wire.SERVICE_ID,
+          service_sha256: selected.service_sha256,
+          service_verified: false,
+          release: selected.release,
+          native_revision: None,
+          profile: "local-library-mvp",
+          profile_version: "0.1.0-draft.1",
+          assurance: "portable",
+          profile_verified: false,
+        })
         metadata_process_session(
           self, scope, selected, operation, project, timeout, cancel_file, observer,
+          audit,
         )
       },
+      audit=Some(audit),
     )
   })
 }
@@ -77,6 +97,7 @@ fn metadata_process_session(
   timeout : Int,
   cancel_file : String,
   observer : @observe.Observer,
+  audit : MetadataAuditContext,
 ) -> MetadataSession raise {
   if !@platform.file_chunks_supported() || !@platform.process_supported() {
     raise @config.Invalid("metadata.restore_runtime_unavailable")
@@ -160,6 +181,9 @@ fn metadata_process_session(
     lock_sha256: @identity.sha256(lock),
   }
   fn identity() -> Unit raise {
+    if audit.evidence is Some(e) {
+      audit.evidence = Some({ ..e, service_verified: false, })
+    }
     check()
     if metadata_hash_file(grant.node, check) != grant.node_sha256 {
       raise @config.Invalid("metadata.restore_executable_changed: Node pin")
@@ -173,6 +197,9 @@ fn metadata_process_session(
       raise @config.Invalid(
         "metadata.restore_executable_changed: selected service pin",
       )
+    }
+    if audit.evidence is Some(e) {
+      audit.evidence = Some({ ..e, service_verified: true, })
     }
   }
   fn exchange(name : String, input : Bytes) -> Bytes raise {
@@ -273,32 +300,51 @@ fn metadata_process_session(
           @metadata_wire.capabilities_request(operation, frozen_scope),
         )
         @metadata_wire.admit_capabilities(probe, operation, frozen_scope)
+        if audit.evidence is Some(e) {
+          audit.evidence = Some({ ..e, profile_verified: true, })
+        }
       },
+      audit=Some(audit),
     )
-    let snapshot = metadata_observe(
+    let response = metadata_observe(
       observer,
       operation,
       project,
       Resolve,
       "metadata.restore",
       fn() raise {
-        let accepted = @metadata_wire.Snapshot::decode(
-          exchange(
-            "restore",
-            @metadata_wire.snapshot_request(
-              expected,
-              policy,
-              lock,
-              grant.registry,
-              grant.state,
-              directory + "/restored",
-            ),
+        exchange(
+          "restore",
+          @metadata_wire.snapshot_request(
+            expected,
+            policy,
+            lock,
+            grant.registry,
+            grant.state,
+            directory + "/restored",
           ),
-          expected,
         )
+      },
+      audit=Some(audit),
+    )
+    let snapshot = metadata_observe(
+      observer,
+      operation,
+      project,
+      Decode,
+      "metadata.decode",
+      fn() raise {
+        let accepted = @metadata_wire.Snapshot::decode(response, expected)
         check()
+        if audit.evidence is Some(e) {
+          audit.evidence = Some({
+            ..e,
+            native_revision: Some(accepted.native_revision()),
+          })
+        }
         accepted
       },
+      audit=Some(audit),
     )
     state = Retained(snapshot)
     snapshot
@@ -321,12 +367,23 @@ fn metadata_process_session(
       load_context: Some(fn(resource, base) raise {
         metadata_process_boundary(resource, fn() raise {
           check()
-          let context = snapshot().context(resource, base)
-          check()
-          context
+          metadata_observe(
+            observer,
+            operation,
+            project,
+            Resolve,
+            "metadata.context",
+            fn() raise {
+              let context = snapshot().context(resource, base)
+              check()
+              context
+            },
+            audit=Some(audit),
+          )
         })
       }),
       target_names_interpreter: true,
+      provider_observer: audit.provider_observer(),
     },
     dispose: fn() raise {
       if state is Disposed {
@@ -362,6 +419,7 @@ fn metadata_process_session(
           metadata_dispose_tree(directory, until)
           state = Disposed
         },
+        audit=Some(audit),
       )
     },
   }
