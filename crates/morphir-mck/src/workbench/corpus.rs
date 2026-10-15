@@ -93,11 +93,16 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         }
         case.operation()
             .validate_version(&document.format_version)?;
+        case.operation().validate_format(case.format)?;
         identity(&case.id, 128)?;
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::ValidateOutcomes {
+        let input_len = if case.operation() == Operation::ReduceJob {
+            // Negative job traces are arbitrary JSON. The adapter owns admission;
+            // the runner only bounds the compact encoded input.
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::ValidateOutcomes {
             let envelope = case
                 .input
                 .as_object()
