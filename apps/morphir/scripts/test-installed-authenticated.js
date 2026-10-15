@@ -45,10 +45,10 @@ const template=readFileSync(join(repo,'apps/morphir/fixtures/authenticated-provi
 const predicate='morphir://ir/pkg/morphir/naming?format=4.1.0';
 const auditFiles=[],checkpointFiles=[],rows=[];
 
-function scenario(client,name,{before=()=>{}}={}) {
+function scenario(client,name,{before=()=>{},variant='compatible'}={}) {
   const directory=join(root,client.id+'-'+name);mkdirSync(directory);
   const fixture=join(directory,'fixture');
-  run(exporter,[fixture,'--provision-test-trust']);
+  run(exporter,[fixture,'--provision-test-trust','--variant',variant]);
   before(fixture);
   const revision=fileIdentity(join(fixture,'native.json'));
   const workspace=join(directory,'workspace');mkdirSync(workspace);
@@ -105,6 +105,24 @@ function seedOutputs(s,positive) {
   // trust database, authentication receipt, retained frame or provider response.
   mkdirSync(join(s.workspace,'.morphir'),{recursive:true});
   cpSync(join(positive.workspace,'.morphir/out'),join(s.workspace,'.morphir/out'),{recursive:true});
+}
+
+function freshlyAuthenticated(s,audit) {
+  const projects=[...new Set(audit.map(e=>e.project))];assert.equal(projects.length,2);
+  return projects.map(project=>{
+    const events=audit.filter(e=>e.project===project);
+    const restored=events.filter(e=>e.phase==='restore'&&e.outcome==='succeeded');
+    const decoded=events.filter(e=>e.phase==='decode'&&e.outcome==='succeeded');
+    assert.equal(restored.length,1);assert.equal(decoded.length,1);
+    assert.ok(events.indexOf(restored[0])<events.indexOf(decoded[0]));
+    assert.equal(decoded[0].evidence.native_revision,s.revision);
+    assert.equal(decoded[0].evidence.service_verified,true);
+    assert.equal(decoded[0].evidence.profile_verified,true);
+    assert.equal(decoded[0].evidence.service_sha256,fileIdentity(service));
+    const refused=events.findIndex(e=>e.outcome==='refused');
+    assert.ok(refused>events.indexOf(decoded[0]),'Fresh authentication and decode precede refusal');
+    return events;
+  });
 }
 
 function contextImport(s,reference,base='morphir://ir/pkg/morphir/naming?format=4.1.0&rev=sha256:'+s.revision+'#/distribution') {
@@ -217,7 +235,7 @@ function compileConsumer(s,client) {
     for(const target of ['js','native']) {
       const result=run(moon,['test','consumer','--frozen','--target',target],{cwd:workspace});
       assert.match(result.stdout,/Total tests: 1, passed: 1, failed: 0/);
-      writeFileSync(join(receipts,client.id+'-consumer-'+project+'-'+target+'.log'),result.stdout+'\n'+result.stderr);
+      writeFileSync(join(receipts,basename(s.directory)+'-consumer-'+project+'-'+target+'.log'),result.stdout+'\n'+result.stderr);
     }
   }
 }
@@ -278,6 +296,43 @@ for(const client of [{id:'npm',program:process.execPath,prefix:[join(installed,'
     if(name==='revision')assert.equal(audit.filter(e=>e.phase==='restore'&&e.outcome==='succeeded').length,2,'A pin is checked after fresh restoration');
     console.log('Installed signed provider '+client.id+' '+name+' passed');
   }
+  // Signatures establish provenance. Consumer declarations still require admission.
+  for(const [variant,code] of [
+    ['wrong-type',/metadata\.invalid_provider_type/],
+    ['wrong-subject-role',/metadata\.invalid_provider_declaration/],
+    ['wrong-object-form',/metadata\.invalid_provider_declaration/],
+    ['wrong-interpreter',/metadata\.invalid_provider_declaration/],
+  ]) {
+    const s=scenario(client,variant,{variant});seedOutputs(s,positive);
+    const audit=s.refuse(code);
+    for(const events of freshlyAuthenticated(s,audit)) {
+      const refused=events.filter(e=>e.phase==='admission'&&e.outcome==='refused');
+      assert.equal(refused.length,1);
+      assert.equal(refused[0].evidence.native_revision,s.revision);
+      assert.equal(refused[0].evidence.service_verified,true);
+      assert.equal(refused[0].evidence.profile_verified,true);
+      assert.ok(!events.some(e=>e.phase==='admission'&&e.outcome==='succeeded'));
+    }
+    Object.assign(rows.at(-1),{signedVariant:variant,freshAuthentication:true,decodedNativeRevision:s.revision,semanticAdmissionRefused:true});
+  }
+  const ambiguous=scenario(client,'context-ambiguous',{variant:'ambiguous-contexts'});seedOutputs(ambiguous,positive);
+  const contextBytes=readFileSync(join(ambiguous.fixture,'contexts/schema.jsonld'));
+  assert.deepEqual(readFileSync(join(ambiguous.fixture,'contexts/alias.jsonld')),contextBytes);
+  contextImport(ambiguous,'morphir://context/sha256/'+hash(contextBytes));
+  const ambiguousAudit=ambiguous.refuse(/metadata\.restore_invalid_response: Ambiguous context digest: use an inventory-relative reference from its admitted base/);
+  for(const events of freshlyAuthenticated(ambiguous,ambiguousAudit)) {
+    assert.ok(events.some(e=>e.phase==='context'&&e.outcome==='refused'));
+    assert.ok(!events.some(e=>e.phase==='admission'&&e.outcome==='succeeded'));
+  }
+  Object.assign(rows.at(-1),{signedVariant:'ambiguous-contexts',freshAuthentication:true,contextSha256:hash(contextBytes)});
+  const relativeReferences=[];
+  for(const path of ['schema.jsonld','alias.jsonld']) {
+    const s=scenario(client,'context-relative-'+path,{variant:'ambiguous-contexts'});
+    contextImport(s,'./contexts/'+path);
+    s.accept();compileConsumer(s,client);relativeReferences.push('./contexts/'+path);
+  }
+  rows.push({client:client.id,case:'context-relative-disambiguation',signedVariant:'ambiguous-contexts',relativeReferences,admittedNativeBase:true,projects:2,independentConsumerTargets:['js','native']});
+
   const rollback=scenario(client,'rollback',{before:fixture=>{
     const newer=timestamp(fixture,body=>{body.version=2;});
     writeFileSync(join(fixture,'registry/metadata/2.timestamp.json'),newer);
@@ -324,6 +379,7 @@ for(const client of [{id:'npm',program:process.execPath,prefix:[join(installed,'
   await blockedRestore(client,'restore-deadline',false,positive);
   unconfirmedCleanup(client,positive);
 }
-const summary={profile:'morphir-installed-authenticated-v1',rustRevision,packageIntegrity:pack.integrity,cliNativeSha256:fileIdentity(native),cliJsSha256:fileIdentity(join(installed,'dist/morphir.js')),cliBuildMode:'release',nodeSha256:fileIdentity(process.execPath),node:process.version,platform:process.platform,arch:process.arch,serviceSha256:fileIdentity(service),serviceBuildMode:'debug',rustCompiler:run('rustc',['--version']).stdout.trim(),fixtureExporterSha256:fileIdentity(exporter),modelSha256:hash(template),helperBundleSha256:helperBundle,compilerIdentity:capability.compilerIdentity,coreIdentity:capability.coreIdentity,executionProfile:'local-library-mvp',profileVersion:'0.1.0-draft.1',assurance:'portable',rows,auditFiles,checkpointFiles,remaining:['signed incompatible provider declarations and ambiguous context inventory'],completeTask6:false};
+assert.equal(rows.length,60,'Complete installed qualification coverage for both clients');
+const summary={profile:'morphir-installed-authenticated-v1',rustRevision,packageIntegrity:pack.integrity,cliNativeSha256:fileIdentity(native),cliJsSha256:fileIdentity(join(installed,'dist/morphir.js')),cliBuildMode:'release',nodeSha256:fileIdentity(process.execPath),node:process.version,platform:process.platform,arch:process.arch,serviceSha256:fileIdentity(service),serviceBuildMode:'debug',rustCompiler:run('rustc',['--version']).stdout.trim(),fixtureExporterSha256:fileIdentity(exporter),modelSha256:hash(template),helperBundleSha256:helperBundle,compilerIdentity:capability.compilerIdentity,coreIdentity:capability.coreIdentity,executionProfile:'local-library-mvp',profileVersion:'0.1.0-draft.1',assurance:'portable',rows,auditFiles,checkpointFiles,remaining:[],completeTask6:true};
 jsonFile(join(receipts,'bridge.json'),summary);
 console.log('Installed signed provider checks passed for npm and native clients.');

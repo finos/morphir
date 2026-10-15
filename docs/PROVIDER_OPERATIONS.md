@@ -124,7 +124,7 @@ state or restore older timestamp files to make an operation pass.
 ## Reproduce installed qualification
 
 Check out shared Rust source revision
-`2cf4be235a2bf6cff6dbfb1b677023fe9d91032b` into a separate, clean directory.
+`ce68e7d1861b35bf51b6ddcaf6d48d5f93824893` into a separate, clean directory.
 Install Rust 1.98.1 and the repository's complete pinned MoonBit toolchain.
 Then run from this repository:
 
@@ -151,9 +151,22 @@ Node, helper bundle, compiler, core, OS, architecture and assurance profile.
 
 CI selects Ubuntu 24.04 and macOS 15 npm/native host lanes. A platform row is
 qualified only after that exact job passes; adding it to the matrix does not
-establish qualification. The receipt's `remaining` field lists coverage still
-required for Task 6. Windows authenticated installation, pure Wasm/WasmGC process
-hosting, hardened filesystem assurance, extension packaging and a production
+establish qualification. The gate covers 60 cases, 30 per installed client,
+including genuinely signed incompatible type, subject-role, object-form and
+interpreter declarations. Those cases require successful fresh authentication
+and snapshot decoding before semantic admission refuses, preserving all
+previously published files for both projects.
+
+The signed context fixture inventories identical bytes at two distinct paths.
+Digest-only lookup refuses ambiguity. Selecting either inventory-relative path
+from the admitted native document base succeeds and the generated public API
+passes independent JS/native consumers for both projects.
+
+The receipt's `completeTask6` reports coverage for that execution's exact
+combination, and `remaining` lists missing cases. Closing Task 6 also requires
+passing receipts for both selected CI platforms. Windows authenticated
+installation, pure Wasm/WasmGC process hosting, hardened filesystem assurance,
+extension packaging and a production
 signed naming-provider release are outside this gate's qualification claim.
 
 Morphir JSON remains supported. Ion is preferred for engine processing and rich

@@ -431,7 +431,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: finos/morphir-rust
-          ref: 2cf4be235a2bf6cff6dbfb1b677023fe9d91032b
+          ref: ce68e7d1861b35bf51b6ddcaf6d48d5f93824893
           path: .dev/provider-rust
           persist-credentials: false
       - name: Install Node.js
