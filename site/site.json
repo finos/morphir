@@ -9,7 +9,7 @@
     "morphir-workbench"
   ],
   "nav": [
-    { "group": "Get started", "items": ["QUICK_START.md", "ARCHITECTURE.md"] },
+    { "group": "Get started", "items": ["QUICK_START.md", "ARCHITECTURE.md", "PROVIDER_OPERATIONS.md"] },
     { "group": "Packages", "items": ["packages/"] },
     { "group": "Design and decisions", "items": ["adr/", "design/", "specs/"] },
     { "group": "Contribute", "items": ["MISE_TASKS.md", "WRITING_FOR_THE_SITE.md"] }

@@ -1,0 +1,217 @@
+///|
+/// Qualify explicitly installed clients against a pinned shared signed service.
+/// The selected Rust checkout must be clean and at the accepted source revision.
+/// Test keys and fresh trust are confined to disposable test fixture destinations.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonrockz/ion@0.3.0/binary",
+  "moonrockz/ion@0.3.0/ion",
+  "moonrockz/ion@0.3.0/text",
+  "moonrockz/ion@0.3.0/json" @ion_json,
+}
+
+///|
+let rust_revision = "2cf4be235a2bf6cff6dbfb1b677023fe9d91032b"
+
+///|
+async fn checked(
+  program : String,
+  args : Array[String],
+  cwd? : String = ".",
+) -> String {
+  let (code, out, err) = @process.collect_output(program, args, cwd~)
+  if code != 0 {
+    @stdio.stderr.write(err)
+    @stdio.stderr.write(out)
+    fail("Installed provider check failed: " + program + " " + args.join(" "))
+  }
+  out.text().trim().to_owned()
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+fn string(value : Json, name : String) -> String raise {
+  guard field(value, name) is String(text) else {
+    fail("Missing receipt field: " + name)
+  }
+  text
+}
+
+///|
+fn rich_values(value : @ion.IonValue) -> Array[@ion.IonValue] {
+  if value
+    .annotations()
+    .any(a => a.text() == Some("qualification_rich_metadata")) {
+    return [value]
+  }
+  match value.kind() {
+    Struct(fields) =>
+      fields.iter().flat_map(f => rich_values(f.value()).iter()).collect()
+    List(values) | Sexp(values) =>
+      values.iter().flat_map(v => rich_values(v).iter()).collect()
+    _ => []
+  }
+}
+
+///|
+async fn main {
+  let receipts = @env.get_env_var("MORPHIR_PROVIDER_RECEIPTS").unwrap_or(
+    ".dev/installed-provider",
+  )
+  if !@fs.exists(receipts) {
+    @fs.mkdir(receipts, recursive=true)
+  }
+  let receipts = @fs.realpath(receipts)
+  // Remove a previous success receipt before any build or assertion can fail.
+  for file in ["summary.ionb", "summary.json", "bridge.json"] {
+    if @fs.exists(receipts + "/" + file) {
+      @fs.remove(receipts + "/" + file)
+    }
+  }
+  guard @env.get_env_var("MORPHIR_PROVIDER_RUST") is Some(rust) else {
+    fail("Set MORPHIR_PROVIDER_RUST to a clean checkout at " + rust_revision)
+  }
+  guard @env.get_env_var("MOON_HOME") is Some(home) else {
+    fail("Explicit pinned MOON_HOME required")
+  }
+  let rust = @fs.realpath(rust)
+  guard checked("git", ["rev-parse", "HEAD"], cwd=rust) == rust_revision &&
+    checked("git", ["status", "--porcelain", "--untracked-files=all"], cwd=rust) ==
+    "" else {
+    fail("The shared service checkout must match the clean accepted revision")
+  }
+  let root = @fs.realpath(@fs.tmpdir(prefix="morphir-installed-provider-"))
+  defer @fs.rmdir(root, recursive=true)
+  ignore(
+    checked(
+      "cargo",
+      [
+        "build", "--locked", "-p", "morphir-package", "--bin", "morphir-provider-snapshot",
+        "--example", "provider-snapshot-fixture",
+      ],
+      cwd=rust,
+    ),
+  )
+  let target = match @env.get_env_var("CARGO_TARGET_DIR") {
+    Some(path) => if path.has_prefix("/") { path } else { rust + "/" + path }
+    None => rust + "/target"
+  }
+  let service = @fs.realpath(target + "/debug/morphir-provider-snapshot")
+  let exporter = @fs.realpath(
+    target + "/debug/examples/provider-snapshot-fixture",
+  )
+  let build = ".dev/installed-provider-native"
+  if !@fs.exists(build) {
+    @fs.mkdir(build, recursive=true)
+  }
+  let build = @fs.realpath(build)
+  ignore(
+    checked(
+      home + "/bin/moon",
+      ["build", "--target", "native", "--release", "--target-dir", build],
+      cwd="apps/morphir",
+    ),
+  )
+  let native = root + "/morphir-native"
+  @fs.write_file(
+    native,
+    @fs.read_file(build + "/native/release/build/morphir/morphir/morphir.exe"),
+  )
+  @fs.chmod(native, 0o755)
+  // Execute the compiler-produced file directly; no repository launcher wraps it.
+  ignore(
+    checked("node", [
+      "apps/morphir/scripts/test-installed-authenticated.js", root, service, exporter,
+      native, rust_revision, receipts,
+    ]),
+  )
+  let summary = @fs.read_file(receipts + "/bridge.json").json()
+  guard field(summary, "auditFiles") is Array(files) && files.length() == 2 else {
+    fail("Both installed client audit files are required")
+  }
+  for file in files {
+    let bytes = @fs.read_file(string(file, "path")).binary()
+    guard @binary.has_binary_version_marker(bytes[:]) else {
+      fail("Default audit output must be binary Ion")
+    }
+    let records = @binary.read_binary(bytes[:])
+      .filter(value => {
+        value
+        .annotations()
+        .any(a => a.text() == Some("morphir_metadata_invocation_v1"))
+      })
+      .map(value => @ion_json.to_json(value.with_annotations([])))
+    guard records.any(record => {
+      field(record, "phase") == Json::string("acquire") &&
+      field(record, "outcome") == Json::string("started") &&
+      field(record, "evidence") == Json::null()
+    }) else {
+      fail("Early audit evidence must remain explicitly absent")
+    }
+    let admitted = records.filter(record => {
+      field(record, "phase") == Json::string("admission") &&
+      field(record, "outcome") == Json::string("succeeded")
+    })
+    guard admitted.length() == 2 else {
+      fail("Both project admissions must appear in the binary audit")
+    }
+    for record in admitted {
+      let evidence = field(record, "evidence")
+      guard string(evidence, "native_revision") == string(file, "revision") &&
+        string(evidence, "service_sha256") == string(file, "serviceSha256") &&
+        field(evidence, "service_verified") == Json::boolean(true) &&
+        field(evidence, "profile_verified") == Json::boolean(true) else {
+        fail(
+          "Binary audit identity must match actual verified service/native bytes",
+        )
+      }
+    }
+    @fs.write_file(
+      receipts + "/" + string(file, "client") + "-binary-audit.jsonl",
+      records.map(record => record.stringify()).join("\n") + "\n",
+    )
+  }
+  guard field(summary, "checkpointFiles") is Array(checkpoints) &&
+    checkpoints.length() == 4 else {
+    fail("Both Ion checkpoint formats are required for both installed clients")
+  }
+  let expected = @text.read_ion(
+    "qualification_rich_metadata::{amount:1.20,when:2026-10-15T00:00:00Z,bytes:{{AP8=}},nil:null.int}",
+  )
+  for file in checkpoints {
+    let data = @fs.read_file(string(file, "path"))
+    let value = if string(file, "format") == "ion-binary" {
+      let bytes = data.binary()
+      @binary.read_binary_value(bytes[:])
+    } else {
+      @text.read_ion(data.text())
+    }
+    let retained = rich_values(value)
+    guard retained.length() == 1 && retained[0].equals(expected) else {
+      fail(
+        "Ion annotations, decimal precision, timestamp, blob and typed null must survive exactly",
+      )
+    }
+  }
+  let ion = @ion_json.to_ion(summary).with_annotations([
+    @ion.SymbolToken::new("morphir_installed_authenticated_v1"),
+  ])
+  @fs.write_file(receipts + "/summary.ionb", @binary.write_binary_value(ion))
+  // JSON is an explicit convenient inspection view of the primary Ion receipt.
+  @fs.write_file(receipts + "/summary.json", summary.stringify(indent=2) + "\n")
+  println(
+    "Installed npm/native signed provider checks and binary Ion audit verification passed.",
+  )
+}

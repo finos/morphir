@@ -101,6 +101,10 @@ run = "moon run scripts/installed-lifecycle-check.mbtx"
 description = "Installed native OTLP capture and paired instrumentation baseline"
 run = "moon run scripts/native-telemetry-check.mbtx"
 
+[tasks."test:installed-provider"]
+description = "Qualify installed npm/native authenticated providers against the explicit pinned Rust checkout"
+run = "moon run scripts/installed-provider-check.mbtx"
+
 [tasks."test:workbench-mck"]
 description = "Opt-in JSON/Ion value and invocation admission through the shared parent Rust MCK"
 run = "moon run scripts/workbench-mck.mbtx"

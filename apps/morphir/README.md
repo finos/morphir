@@ -701,11 +701,10 @@ existing checkpoint keeps its entry IDs unchanged.
 
 The engine exposes project-scoped metadata-provider binding to embedding hosts.
 `[metadata] provider = "shared-local-restore"` describes an explicit service request
-and is validated with configuration provenance, but this CLI does not yet integrate
-that service. Configuration cannot grant authentication or install host callbacks.
-Known naming facts therefore continue to fail with `metadata.provider_unavailable`
-during generation; Ion checkpoints retain their authored metadata. Ordinary naming
-and projects without those facts continue to work. See the
+and is validated with configuration provenance. The CLI binds that service when
+the host supplies an explicit matching grant as described below. Configuration
+alone cannot grant authentication or install host callbacks. Ordinary naming
+and projects without relevant facts continue to work. See the
 [engine host contract](../../pkgs/morphir-engine/README.md#project-scoped-metadata-providers).
 
 ## Authenticated metadata provider
@@ -790,3 +789,7 @@ including outside that directory. Observations contain operation/project IDs,
 profile, result and duration. Ordinary logs exclude policy/lock bodies, native
 provider payloads and contexts. Installed cross-platform signed-provider
 qualification is tracked separately from these host and wire contracts.
+
+See the [provider operations guide](../../docs/PROVIDER_OPERATIONS.md) for identity
+preparation, test-only trust provisioning, audit inspection, refusal handling and
+the installed qualification gate.

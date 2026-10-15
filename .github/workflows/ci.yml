@@ -410,6 +410,60 @@ jobs:
             .dev/llvm-pin.json
           if-no-files-found: error
 
+  installed-provider:
+    name: Installed signed provider (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: [changes, lint, format-check]
+    if: needs.changes.outputs.code == 'true'
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    env:
+      MORPHIR_PROVIDER_RUST: ${{ github.workspace }}/.dev/provider-rust
+      MORPHIR_PROVIDER_RECEIPTS: .dev/installed-provider-ci
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Checkout accepted shared fixture and service source
+        uses: actions/checkout@v6
+        with:
+          repository: finos/morphir-rust
+          ref: 2cf4be235a2bf6cff6dbfb1b677023fe9d91032b
+          path: .dev/provider-rust
+          persist-credentials: false
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Install pinned complete MoonBit and Rust toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          mise install http:moonbit rust@1.98.1
+          moonbit_dir="$(mise where http:moonbit)"
+          moonbit_version="$(mise current http:moonbit)"
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+      - name: Resolve pinned workspace packages
+        run: moon update
+      - name: Qualify installed npm and native clients with fresh signed fixtures
+        run: mise exec rust@1.98.1 -- mise run test:installed-provider
+      - name: Retain exact installed identities and admission evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: installed-provider-${{ matrix.os }}
+          path: .dev/installed-provider-ci/
+          if-no-files-found: error
+
   native-telemetry:
     name: Native telemetry (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -588,6 +642,7 @@ jobs:
       - build
       - elm-scheme
       - installed-lifecycle
+      - installed-provider
       - native-telemetry
       - test
     steps:

@@ -287,8 +287,8 @@ For task categories (like `lint` or `build`), the main task should be named `_de
   readable and legacy modes, including exact target requests through a simulated
   explicit-capability host. Checks cover quiet structured warnings, both Ion
   resumptions, opaque metadata, JSON loss guards and preserved publication after
-  strict or unavailable-provider failure. The installed CLI does not acquire
-  trusted providers. For focused diagnosis, run
+  strict or unavailable-provider failure. That lifecycle task uses simulated provider capabilities. The separate
+  `test:installed-provider` task exercises real signed restoration. For focused diagnosis, run
   `node apps/morphir/scripts/test-installed-lifecycle.js --naming-only` with the
   same environment. The required task always runs the complete lifecycle.
   Set `MOON_HOME`; LLVM additionally requires home/pin. Set
@@ -301,7 +301,16 @@ For task categories (like `lint` or `build`), the main task should be named `_de
   `MORPHIR_OTEL_BINARY`, `MORPHIR_OTEL_PIN`, `MOON_HOME`; set
   `MORPHIR_TELEMETRY_RECEIPTS` for artifacts. Runs separately from portable tests.
 
-All four tasks use standalone MoonBit scripts. The native adapter and supported
+These tasks use standalone MoonBit scripts. The native adapter and supported
 hosts/transports are documented in [its guide](../apps/morphir-otel/README.md).
+
+`test:installed-provider` qualifies the packed npm CLI and native executable
+against a clean, explicit `MORPHIR_PROVIDER_RUST` checkout at the pinned shared
+revision. Set `MOON_HOME`; optionally set `MORPHIR_PROVIDER_RECEIPTS` for binary
+Ion receipts and their JSON inspection view. It provisions fresh disposable test
+trust per case and verifies independent generated API calls, authentication
+refusals, context boundaries, publication preservation and audit evidence.
+See [provider operations](PROVIDER_OPERATIONS.md#reproduce-installed-qualification)
+for setup, exact scope and remaining qualification work.
 
 `mise run test:workbench-live-host -- --host-bin /absolute/path/to/morphir` verifies single-use launch authentication, native Gleam compilation/generation and workspace-model opening through the loopback proxy against a real Rust host. Supply a host with native Gleam available; see [Workbench verification](../apps/morphir-workbench/README.md#verification) for setup and version evidence. This optional check is separate from the default test suite.
