@@ -1,0 +1,11 @@
+import {
+  "finos/morphir-engine/execution",
+  "finos/morphir-engine/data",
+  "finos/morphir-execution" @protocol,
+  "finos/morphir-execution/jobs" @receipts,
+}
+
+import {
+  "finos/morphir-engine/execution/jobs" @host,
+  "finos/morphir-moonbit/fixtures",
+} for "test"

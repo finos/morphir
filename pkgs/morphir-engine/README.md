@@ -520,3 +520,11 @@ The release identifies the authority-qualified publisher package in the shared
 registry, such as `example.com/morphir/naming@1.0.0`. It is distinct from the
 provider's native IR package name, `morphir/naming`, which admission must check
 independently. The example authority is a placeholder, not a default trust grant.
+
+## Host-owned execution jobs
+
+The [execution jobs package](execution/jobs/README.md) owns bounded in-memory
+snapshot-bound receipts around admitted engine plans. It captures rich inputs,
+allows one execution claim, acknowledges cooperative cancellation and validates
+terminal outputs against the retained public declarations. Authenticated host
+transport and shared Workbench UI adoption are separate integrations.

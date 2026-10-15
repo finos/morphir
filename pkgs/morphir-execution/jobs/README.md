@@ -33,5 +33,9 @@ Portable semantic tests cover cancellation races, stale/replayed/conflicting
 receipts, monotonic revisions, disconnected observation, same-session reconnect,
 all five identity dimensions, inventory checks, mutation isolation, UTF-16 and
 sequence bounds, and separate primary/cleanup failures. This is contract work;
-the current Workbench and connected host do not advertise live jobs. Shared MCK
-qualification and actual query/cancel transport adapters remain separate work.
+the current Workbench and connected host do not advertise live jobs. The shared
+MCK draft.6 independently qualifies the existing reducer. The engine's
+`finos/morphir-engine/execution/jobs` package adds a bounded host owner for
+captured input, execution claims, cancellation acknowledgement and validated
+terminal publication. Authenticated query/cancel transports and UI adoption
+remain separate work.
