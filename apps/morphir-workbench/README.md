@@ -486,3 +486,11 @@ Tests exercise actual typed values/SDK errors and explicit failure, cleanup and
 cancellation evidence fixtures. Connected v1 has no new job or cancellation RPC;
 local cancellation still stops/discards the worker operation. Native provider
 acquisition/disposal and authoritative daemon job transitions are subsequent work.
+
+The portable `finos/morphir-execution/jobs` package now implements the proposed
+snapshot-bound job receipt reducer. It keeps host, session, provider, job and
+snapshot identity immutable; cancellation acknowledgement and connection
+availability stay separate from terminal outcomes. This contract package is not
+wired into the existing connected v1 adapter. The upstream profile contribution,
+shared MCK qualification and actual host query/cancel methods must be qualified
+before live job controls are enabled.
