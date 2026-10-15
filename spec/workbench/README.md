@@ -185,3 +185,10 @@ runner compares parent-owned fixed traces against an explicit implementation
 adapter and independently rechecks reports. The five historical kits, job
 receipt profile and nested terminal payload remain unchanged. This qualifies
 offline receipt behavior; live authenticated host/UI jobs remain separate.
+
+[Authenticated HTTP host](host/draft.1/README.md) defines the separate opt-in
+`morphir/workbench/host` `0.1.0-draft.1` mapping for immutable submission,
+query, cancellation and explicit terminal release. It authenticates each host
+request through the existing connected v1 session and preserves its manifest
+and RPC contract. Structural fixtures do not advertise live implementation
+support or durable recovery.

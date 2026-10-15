@@ -1,0 +1,102 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/host/0.1.0-draft.1/error.schema.json",
+  "tests": [
+    {
+      "description": "Bounded error",
+      "data": {
+        "error": {
+          "code": "workbench.invalid_request",
+          "message": "Invalid request"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Bounded maximum error text",
+      "data": {
+        "error": {
+          "code": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Error code required content",
+      "data": {
+        "error": {
+          "code": "",
+          "message": "Invalid request"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Error code upper bound",
+      "data": {
+        "error": {
+          "code": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "message": "Invalid request"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Message required content",
+      "data": {
+        "error": {
+          "code": "workbench.invalid_request",
+          "message": ""
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Message upper bound",
+      "data": {
+        "error": {
+          "code": "workbench.invalid_request",
+          "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Message must be text",
+      "data": {
+        "error": {
+          "code": "workbench.invalid_request",
+          "message": {}
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No source echo",
+      "data": {
+        "error": {
+          "code": "workbench.invalid_request",
+          "message": "Invalid request",
+          "source": "secret model"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No credentials",
+      "data": {
+        "error": {
+          "code": "workbench.invalid_request",
+          "message": "Invalid request"
+        },
+        "cookie": "secret"
+      },
+      "valid": false
+    },
+    {
+      "description": "Error object required",
+      "data": {},
+      "valid": false
+    }
+  ]
+}

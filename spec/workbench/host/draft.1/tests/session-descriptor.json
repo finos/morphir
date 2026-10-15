@@ -1,0 +1,279 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/host/0.1.0-draft.1/session-descriptor.schema.json",
+  "tests": [
+    {
+      "description": "Exact authenticated descriptor",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Query-only descriptor",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Operation ordering is not authority",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "cancel",
+            "query"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Wrong host profile",
+      "data": {
+        "profile": "morphir/workbench/jobs",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Future host draft",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.2",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Build suffix rejected",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1+build",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Offer version independent and exact",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Query required",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Duplicate operations",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "query"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown operation",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "submit"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Empty host identity",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Identity code point upper bound",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown descriptor member",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "rpcVersion": 2
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown nested offer member",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1",
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ],
+          "recovery": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Offer required",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.1.0-draft.1"
+      },
+      "valid": false
+    }
+  ]
+}

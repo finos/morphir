@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.1.0-draft.1/error.schema.json",
+  "title": "Workbench host bounded HTTP error",
+  "description": "Closed non-success error without source text or credentials. Schema validation does not establish absence of sensitive text",
+  "examples": [
+    {
+      "error": {
+        "code": "workbench.invalid_request",
+        "message": "Invalid request"
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "error" ],
+  "properties": {
+    "error": {
+      "type": "object",
+      "required": [ "code", "message" ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512,
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

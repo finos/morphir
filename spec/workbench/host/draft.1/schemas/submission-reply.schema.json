@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.1.0-draft.1/submission-reply.schema.json",
+  "title": "Workbench host initial submission reply",
+  "description": "Expected identity and fixed call inventory with the exact initial submitted receipt. Identity equality across fields requires runtime admission",
+  "examples": [
+    {
+      "identity": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "jobId": "job",
+        "snapshotId": "snapshot"
+      },
+      "calls": [ "workbench" ],
+      "receipt": {
+        "contractVersion": "0.1.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "identity", "calls", "receipt" ],
+  "properties": {
+    "identity": {
+      "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/identity.schema.json"
+    },
+    "calls": {
+      "const": [ "workbench" ]
+    },
+    "receipt": {
+      "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/receipt.schema.json",
+      "properties": {
+        "sequence": {
+          "const": 0
+        },
+        "state": {
+          "const": "submitted"
+        },
+        "cancelRequested": {
+          "const": false
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
