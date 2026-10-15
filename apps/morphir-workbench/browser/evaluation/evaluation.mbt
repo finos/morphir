@@ -18,6 +18,8 @@ pub(all) struct Props {
   stale : Bool
   busy : Bool
   connected : Bool
+  jobs_available : Bool
+  job_pending : Bool
   typed : Bool
   input_mode : InputMode
   result_mode : @result.Mode
@@ -366,7 +368,7 @@ pub fn view(
     @html.div(class="evaluation-heading", heading),
   ]
   let supported = field(props.profile, "supported") == Json::boolean(true)
-  if props.connected {
+  if props.connected && !props.jobs_available {
     contents.push(
       @html.p(
         class="muted",
@@ -388,7 +390,9 @@ pub fn view(
     contents.push(
       @html.p(
         class="muted small",
-        if props.typed {
+        if props.connected {
+          "Evaluated by the authenticated bounded host runtime. Inputs are captured when the job is submitted."
+        } else if props.typed {
           "Each run starts in a fresh bounded runtime. Tagged JSON preserves exact numbers, UTF-16 units and constructor identity."
         } else {
           "Each run starts in a fresh local runtime. Use JSON or Ion inputs for larger values."
@@ -498,7 +502,7 @@ pub fn view(
       @html.div(class="evaluation-actions", [
         @html.button(
           class="primary",
-          disabled=props.busy,
+          disabled=props.busy || props.job_pending,
           on_click=on_run,
           "Evaluate",
         ),

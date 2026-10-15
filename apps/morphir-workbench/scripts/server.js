@@ -1,5 +1,61 @@
 import { createServer, request as forwardRequest } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { validateManifest } from '../browser/transport.js';
+
+const jobLimit = 1024 * 1024;
+const jobPaths = new Map([['/api/workbench/session', 'session'], ['/api/workbench/submit', 'submit'], ['/api/workbench/query', 'query'], ['/api/workbench/cancel', 'cancel'], ['/api/workbench/release', 'release']]);
+const jobFailure = (code, status) => Object.assign(new Error('The Workbench job request failed.'), { code, status });
+function jobJSON(response, status, value) {
+  let text = JSON.stringify(value);
+  if (Buffer.byteLength(text) > jobLimit) { status = 503; text = JSON.stringify({ error: { code: 'workbench.host_response_limit', message: 'The host response exceeded its limit.' } }); }
+  if (!response.destroyed) { response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); response.end(text); }
+}
+function jobError(response, error) {
+  const code = typeof error?.code === 'string' && /^[a-zA-Z0-9_.-]{1,128}$/.test(error.code) ? error.code : 'workbench.host_unavailable';
+  const status = [400, 401, 403, 404, 409, 413, 503].includes(error?.status) ? error.status : 503;
+  jobJSON(response, status, { error: { code, message: status === 401 ? 'Authenticate with the Morphir host before using jobs.' : code === 'workbench.session_changed' ? 'The authenticated host session changed. The retained job owner is unchanged.' : 'The host rejected this job request.' } });
+}
+function authenticateJob(upstream, cookie, deadlineMs, decode) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = (error, value) => { if (settled) return; settled = true; clearTimeout(timer); error ? reject(error) : resolve(value); };
+    const forwarded = forwardRequest(new URL('/api/session', upstream), { headers: { Host: upstream.host, ...(cookie ? { Cookie: cookie } : {}) } }, result => {
+      const chunks = []; let size = 0;
+      result.on('data', chunk => { size += chunk.length; if (size > jobLimit) { done(jobFailure('workbench.host_unavailable', 503)); result.destroy(); } else chunks.push(chunk); });
+      result.on('end', () => {
+        if (result.statusCode === 401 || result.statusCode === 403) { done(jobFailure('workbench.host_authentication', 401)); return; }
+        try {
+          if (result.statusCode !== 200) throw new Error('Session unavailable');
+          const session = decode(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)));
+          const keys = ['protocolVersion', 'webSocketPath', 'sessionId', 'providers', 'initialSources'];
+          if (!session || Array.isArray(session) || Object.keys(session).length !== keys.length || !keys.every(key => Object.hasOwn(session, key)) || typeof session.sessionId !== 'string' || session.sessionId.length > 128) throw new Error('Invalid manifest');
+          validateManifest(session);
+          done(null, session.sessionId);
+        } catch { done(jobFailure('workbench.host_unavailable', 503)); }
+      });
+      result.on('error', () => done(jobFailure('workbench.host_unavailable', 503)));
+    });
+    const timer = setTimeout(() => { done(jobFailure('workbench.host_unavailable', 503)); forwarded.destroy(); }, deadlineMs);
+    forwarded.on('error', () => done(jobFailure('workbench.host_unavailable', 503)));
+    forwarded.end();
+  });
+}
+function readJobBody(request, deadlineMs) {
+  return new Promise((resolve, reject) => {
+    const chunks = []; let size = 0, settled = false;
+    const done = (error, value) => {
+      if (settled) return; settled = true;
+      clearTimeout(timer); request.off('data', data); request.off('end', end); request.off('error', failed); request.off('aborted', failed);
+      if (!request.complete) request.once('error', () => {});
+      error ? reject(error) : resolve(value);
+    };
+    const data = chunk => { size += chunk.length; if (size > jobLimit) { done(jobFailure('workbench.host_input_limit', 413)); request.resume(); } else chunks.push(chunk); };
+    const end = () => { try { done(null, new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))); } catch { done(jobFailure('workbench.host_utf8', 400)); } };
+    const failed = () => done(jobFailure('workbench.host_disconnected', 400));
+    const timer = setTimeout(() => { done(jobFailure('workbench.host_body_deadline', 503)); request.resume(); }, deadlineMs);
+    request.on('data', data); request.on('end', end); request.on('error', failed); request.on('aborted', failed);
+  });
+}
 
 export function hostOrigin(value) {
   if (!value) return null;
@@ -10,19 +66,45 @@ export function hostOrigin(value) {
   return host;
 }
 
-export function createWorkbenchServer({ root = new URL('../dist/', import.meta.url), host = null } = {}) {
+export function createWorkbenchServer({ root = new URL('../dist/', import.meta.url), host = null, jobs = null, jobAuthDeadlineMs = 2000, jobBodyDeadlineMs = 5000 } = {}) {
   const upstream = hostOrigin(host);
+  if (jobs && !upstream) throw new Error('Workbench jobs require a configured upstream host.');
   const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml' };
   let authority;
   const allowed = request => request.headers.host === authority &&
     (!request.headers.origin || request.headers.origin === `http://${authority}`) &&
     request.headers['sec-fetch-site'] !== 'cross-site';
   const server = createServer(async (request, response) => {
-    if (!allowed(request) || !request.url.startsWith('/') || request.url.startsWith('//')) { response.writeHead(403).end('Invalid workbench origin.'); return; }
-    if (request.method !== 'GET') { response.writeHead(405).end(); return; }
+    if (!allowed(request) || !request.url.startsWith('/') || request.url.startsWith('//')) {
+      if (request.url.startsWith('/api/workbench/')) jobError(response, jobFailure('workbench.host_origin', 403));
+      else response.writeHead(403).end('Invalid workbench origin.');
+      return;
+    }
     let url;
     try { url = new URL(request.url, `http://${authority}`); } catch { response.writeHead(400).end(); return; }
     if (url.origin !== `http://${authority}`) { response.writeHead(403).end(); return; }
+    if (url.pathname.startsWith('/api/workbench/')) {
+      const op = jobPaths.get(url.pathname);
+      if (!jobs || !op) { jobError(response, jobFailure('workbench.host_disabled', 404)); return; }
+      try {
+        if (url.search) throw jobFailure('workbench.host_shape', 400);
+        if ((op === 'session' && request.method !== 'GET') || (op !== 'session' && request.method !== 'POST')) throw jobFailure('workbench.host_method', 400);
+        if (op !== 'session' && request.headers.origin !== `http://${authority}`) throw jobFailure('workbench.host_origin', 403);
+        const sessionId = await authenticateJob(upstream, request.headers.cookie, jobAuthDeadlineMs, source => jobs.decode(source));
+        if (response.destroyed) return;
+        if (op === 'session') jobJSON(response, 200, await jobs.session(sessionId));
+        else {
+          if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(request.headers['content-type'] ?? '') || (request.headers['content-encoding'] && request.headers['content-encoding'] !== 'identity')) throw jobFailure('workbench.host_content_type', 400);
+          const body = await readJobBody(request, jobBodyDeadlineMs);
+          if (!response.destroyed) jobJSON(response, 200, await jobs.command(op, body, sessionId));
+        }
+      } catch (error) {
+        if (!request.complete) { response.setHeader('Connection', 'close'); response.once('finish', () => request.destroy()); }
+        jobError(response, error);
+      }
+      return;
+    }
+    if (request.method !== 'GET') { response.writeHead(405).end(); return; }
     if (upstream && ['/launch', '/api/session'].includes(url.pathname)) {
       const forwarded = forwardRequest(new URL(url.pathname + url.search, upstream), {
         headers: { Host: upstream.host, ...(request.headers.cookie ? { Cookie: request.headers.cookie } : {}) },
@@ -48,6 +130,11 @@ export function createWorkbenchServer({ root = new URL('../dist/', import.meta.u
       response.writeHead(200, { 'Content-Type': mime[file.slice(file.lastIndexOf('.'))], 'Cache-Control': 'no-store' });
       response.end(content);
     } catch { response.writeHead(404).end('Build the workbench with npm run build first.'); }
+  });
+  server.jobCleanup = Promise.resolve();
+  server.on('close', () => {
+    server.jobCleanup = Promise.resolve().then(() => jobs?.close());
+    server.jobCleanup.catch(() => {});
   });
   server.on('listening', () => { authority = `127.0.0.1:${server.address().port}`; });
   server.on('upgrade', (request, socket, head) => {

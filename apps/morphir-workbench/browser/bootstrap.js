@@ -16,6 +16,7 @@ globalThis.morphirWorkbench = {
       let result;
       if (request.operation === 'initialize') {
         if (connected) {
+          await import('./job-core.js');
           adapter = await connect(location, local);
           result = await adapter.initialize();
         } else {
@@ -23,15 +24,24 @@ globalThis.morphirWorkbench = {
           if (!catalog.success) throw new Error(catalog.message || 'The local compiler catalog is unavailable.');
           result = { success: true, operation: 'initialize', connected: false, catalog, projects: [], message: 'Browser local · ready to compile' };
         }
-      } else result = await adapter.execute(request);
+      } else result = await adapter.execute(request, job => {
+        if (current === generation) receive(JSON.stringify({ success: true, operation: 'job-progress', job }));
+      });
       if (current === generation) receive(JSON.stringify(result));
     } catch (error) {
       if (request.operation === 'initialize' && connected) adapter.dispose?.();
       if (current === generation) receive(JSON.stringify({ success: false, message: error.message || 'Host request failed',
+        ...(error.job ? { job: error.job } : {}),
+        ...(error.jobTransport ? { jobTransport: true } : {}),
+        ...(error.submissionUnknown ? { submissionUnknown: true } : {}),
         ...(Array.isArray(error.diagnostics) && error.diagnostics.length ? { diagnostics: error.diagnostics } : {}) }));
     }
   },
-  cancel() { ++generation; adapter.cancel(); },
+  cancel() {
+    const hostJob = adapter.jobs?.active || (adapter.jobs?.job && adapter.jobs.job.state !== 'terminal');
+    if (!hostJob) ++generation;
+    Promise.resolve(adapter.cancel()).catch(() => { /* The active observer reports retained disconnection evidence. */ });
+  },
   importModel(receive) {
     const input = document.createElement('input');
     input.type = 'file'; input.accept = '.json,application/json';

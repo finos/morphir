@@ -99,7 +99,9 @@ The top bar's rounded arrow button, with a **Back** tooltip, retraces experience
 navigation, including references and Used by links. It restores the search and
 detail view recorded at that destination and works with the sidebar collapsed.
 Editing source does not add history entries or undo source changes. Selecting a
-different function resets its evaluation inputs and result. History keeps the
+different function resets its local evaluation inputs and result. The latest connected
+host evaluation keeps its own draft and full result when navigating away and back.
+History keeps the
 latest 100 destinations in memory; replacing a model clears declaration and
 search destinations while retaining experience navigation. Back is disabled
 when no earlier destination is available.
@@ -211,7 +213,7 @@ execution validation rejects them until completed. Unexpected tags, record field
 constructor owners or invalid JSON fall back to a repair message without replacing
 data. Forms visit at most 200 values/units with depth 32. Recursive types are
 rendered from their actual finite values; additions that have no bounded finite
-default use JSON input. Upstream connected profile publication remains pending.
+default use JSON input. Connected hosts use the separate authenticated job profile described below.
 
 **Ion inputs** accepts one Ion list in parameter order through the same editor
 component. Typed mode uses the published `Value::from_ion` codec. Int, Bool and
@@ -250,8 +252,8 @@ Specifications, native/external/incomplete definitions, private constructors,
 unresolved type variables and unavailable input types show an
 unavailable explanation. Supported input shapes do not guarantee that every
 referenced SDK operation has a runtime binding; execution errors appear in the
-result panel. Connected protocol v1 has no evaluation method, so this component
-shows its availability message in that mode without sending an RPC extension.
+result panel. Connected protocol v1 has no evaluation method. Without a separately authenticated
+job offer, this component shows its availability message without sending an RPC extension.
 
 The portable `inspector.mbt` builds this projection from semantic IR. Its selection
 keys include declaration kind because a type and value can share a qualified name.
@@ -391,7 +393,8 @@ Start the upstream Morphir UI/playground host first. Open its one-time launch UR
 with the origin changed to the workbench server's origin, keeping `/launch` and
 the token query. The proxy exchanges the token with the upstream host, retains
 its HttpOnly session cookie, then redirects to this frontend in connected mode.
-It forwards only `/launch`, `/api/session` and `/rpc`; ordinary assets are local.
+It proxies `/launch`, `/api/session` and `/rpc`; ordinary assets are local.
+The optional job endpoints described below execute in this gateway.
 The upstream target must be an explicit `http://127.0.0.1:<port>` origin. The
 proxy binds to loopback, checks its own Host/Origin and cross-site request headers,
 and rewrites Host/Origin only after those checks. Tokens and cookies are not logged.
@@ -416,14 +419,13 @@ which means expose all, and never name a provider directly.
 
 The wire shapes follow [finos/morphir protocol.rs](https://github.com/finos/morphir/blob/5c5307d89f34d876e8f1ebf561ec55efbadf9fa0/crates/morphir/src/commands/ui/protocol.rs).
 No new wire method or protocol version is introduced by this slice. v1 does not
-offer evaluation or server cancellation. Those controls are unavailable when
-connected; Discard ignores a reply while the host may keep running. Workspace
-watching, reconnect/replay and native daemon attachment are not implemented yet.
+offer evaluation or server cancellation. Without the separate job offer, evaluation controls are unavailable when
+connected; Discard ignores a compile reply while the host may keep running.
+Workspace watching and native daemon IPC are not implemented yet.
 
-The candidate workbench profile remains a design proposal in
-`.dev/design/morphir-workbench.html`. Evaluation, job and artifact extensions
-must be contributed with schemas and compatibility fixtures to finos/morphir
-before this application can advertise them. No such profile has been published.
+The separate live job profile is contributed to
+[finos/morphir](https://github.com/finos/morphir/tree/98f9ad980b2c64a89ce550c6eee45e69834d300f/spec/workbench/host/draft.1).
+It preserves connected v1 and the existing job receipt and terminal contracts.
 
 ## Verification
 
@@ -464,8 +466,8 @@ Live acceptance passed with finos/morphir `5c5307d89f34d876e8f1ebf561ec55efbadf9
 pinned morphir-rust submodule `04ababf1dbeff10333bdaa70613562157843125a`,
 Rust 1.98.1 and Chromium. The v1 `morphir.workspace.open` result wraps the workspace
 in `snapshot`; malformed envelopes now report a diagnostic while keeping compiler
-capabilities available. Other installed providers, connected evaluation,
-workspace watching and durable daemon recovery need their own acceptance.
+capabilities available. Other installed providers, workspace watching and durable daemon recovery need
+their own acceptance. The opt-in job acceptance below exercises connected evaluation.
 
 ## Typed terminal outcomes
 
@@ -487,10 +489,66 @@ cancellation evidence fixtures. Connected v1 has no new job or cancellation RPC;
 local cancellation still stops/discards the worker operation. Native provider
 acquisition/disposal and authoritative daemon job transitions are subsequent work.
 
-The portable `finos/morphir-execution/jobs` package now implements the proposed
-snapshot-bound job receipt reducer. It keeps host, session, provider, job and
-snapshot identity immutable; cancellation acknowledgement and connection
-availability stay separate from terminal outcomes. This contract package is not
-wired into the existing connected v1 adapter. The upstream profile contribution,
-shared MCK qualification and actual host query/cancel methods must be qualified
-before live job controls are enabled.
+## Authenticated evaluation jobs
+
+Build the app first, then explicitly enable the gateway's bounded Scheme provider:
+
+```sh
+MORPHIR_WORKBENCH_HOST_URL=http://127.0.0.1:HOST_PORT MORPHIR_WORKBENCH_JOBS=1 mise exec -- npm run dev --prefix apps/morphir-workbench
+```
+
+Authenticate through the upstream one-use `/launch` URL with its origin changed
+to `http://127.0.0.1:5173`, as above. The gateway serves the shared UI and the
+exact `morphir/workbench/host` version `0.1.0-draft.1` endpoints at one origin.
+Every job request authenticates the HttpOnly cookie against the real upstream
+`/api/session`. The gateway selects its own `moonbit-scheme` provider; it does
+not claim the Rust host's compiler provider can evaluate or grant metadata access.
+With the flag absent, connected v1 retains its existing behavior.
+
+Import the typed pricing fixture and evaluate a public entry with fields,
+JSON or Ion. The UI captures one immutable model/entry/input snapshot and binds
+its cursor to the authenticated host, session, provider, job and snapshot.
+`finos/morphir-engine/execution/jobs` owns authoritative receipts; the portable
+`finos/morphir-execution/jobs` cursor admits incoming evidence. JavaScript handles
+HTTP and worker scheduling, while shared MoonBit code admits values and receipts.
+Private host code is built outside the public `dist` directory.
+
+The provider runs at most two isolated Node workers at once, with a 128 MiB
+V8 old-generation limit and a 30-second execution deadline. This is not a total
+process-memory quota. It retains at most eight
+jobs within the owner's 16 MiB serialized-evidence budget. Terminal jobs require
+explicit release; the UI releases them after admitting their evidence. The raw
+HTTP body and receipt each have a 1 MiB limit. Duplicate JSON keys and invalid
+UTF-8 reject before admission. Ion uses the library's flat lexer to reject more
+than 300,000 tokens or structural depth above 512 before recursive parsing;
+typed values still obey depth 64 and 100,000-node/code-unit limits.
+
+Cancel acknowledges intent before worker termination and cleanup. A captured
+returned value can win the race. A lost HTTP reply never creates terminal
+execution evidence. The UI retains a known job while disconnected and offers
+**Reconnect / resume** only for a newly authenticated identical offer. Resume
+queries the same identity without submitting again. A lost submission response
+has unknown acceptance, so blind resubmission is blocked. Retention is in memory;
+owner restart, browser reload recovery and durable retry are separate work.
+
+The bottom Output and Diagnostics panels show admitted terminal evidence,
+including ordinary `Result.Err`, SDK model errors and separate cleanup failures.
+Editing inputs marks earlier output outdated while the accepted snapshot stays
+unchanged. Model replacement is blocked while a job needs reconciliation, including a
+disconnected terminal job whose release reply was lost. The latest host evaluation
+retains its input draft and full result across declaration navigation. Returning
+to that declaration preserves input edits and the result's outdated marker; a new
+host evaluation replaces this single retained evaluation.
+
+Run the real-host browser acceptance with jobs enabled:
+
+```sh
+mise run test:workbench-live-host -- --host-bin /absolute/path/to/morphir --jobs
+```
+
+Add `--desktop-bin '/absolute/path/to/Morphir Workbench.app/Contents/MacOS/morphir-workbench'`
+to run the same flow in the packaged Proton app. These optional checks require
+the existing Rust binary and, for desktop, a packaged app. They exercise real
+cookie authentication, exact Decimal fields/JSON/Ion results, Result.Err, SDK
+errors, cancellation, disconnected-query reconciliation and stale-input output.
+They do not add an evaluation or cancellation method to connected JSON-RPC v1.

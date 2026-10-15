@@ -299,3 +299,404 @@ test('connected compile failure keeps the host diagnostics with their locations'
     return true;
   });
 });
+
+// Transport fixtures are precomputed projections. Receipt/state admission is the
+// compiled MoonBit cursor's responsibility, exercised by its own qualified tests.
+const { JobClient } = await import('./job-session.js');
+const jobIdentity = { hostId: 'host', sessionId: 'test-session', providerId: 'scheme', jobId: 'one', snapshotId: 'snapshot' };
+const submittedJob = { identity: jobIdentity, state: 'submitted', sequence: 0, cancelRequested: false, connected: true, cancelAction: 'send' };
+const runningJob = { ...submittedJob, state: 'running', sequence: 1 };
+const acknowledgedJob = { ...runningJob, sequence: 2, cancelRequested: true, cancelAction: 'pending' };
+const terminalJob = { ...acknowledgedJob, state: 'terminal', sequence: 3, cancelAction: 'already-terminal' };
+const hostDescriptor = { profile: 'morphir/workbench/host', contractVersion: '0.1.0-draft.1', offer: { sessionId: 'test-session' } };
+const evaluated = { success: true, profile: 'scheme-portable-v1', value: '42', terminalOutcomes: { fixture: 'typed-evidence' } };
+function cursorFixture() {
+  let job = null; let result = null; const commands = [];
+  return { commands, core(source) {
+    const command = JSON.parse(source); commands.push(command);
+    if (command.op === 'decode') {
+      if (command.source === 'duplicate-keys') return JSON.stringify({ ok: false, code: 'duplicate' });
+      return JSON.stringify({ ok: true, value: JSON.parse(command.source) });
+    }
+    if (command.op === 'offer') {
+      if (command.sessionId !== 'test-session' || command.value.offer.sessionId !== command.sessionId) return JSON.stringify({ ok: false, code: 'session' });
+      return JSON.stringify({ ok: true, value: command.value });
+    }
+    if (command.op === 'start') { job = { ...submittedJob, identity: command.identity }; result = null; }
+    if (command.op === 'observe') {
+      ({ job, result = null } = command.receipt);
+    }
+    if (command.op === 'disconnect') job = { ...job, connected: false, cancelAction: 'disconnected' };
+    if (command.op === 'reconnect') job = { ...job, connected: true, cancelAction: job.cancelRequested ? 'pending' : 'send' };
+    return JSON.stringify({ ok: true, job, result });
+  } };
+}
+const response = (value, status = 200) => new Response(typeof value === 'string' ? value : JSON.stringify(value), { status });
+const submission = { identity: jobIdentity, calls: ['workbench'], receipt: { job: submittedJob } };
+const evaluationRequest = { operation: 'evaluate', source: '{"distribution":{}}', entry: 'Example:Main:answer', arguments: [] };
+
+test('host jobs are optional, advertised only after exact authenticated profile admission', async () => {
+  const fixture = cursorFixture();
+  const legacy = new JobClient('test-session', { core: fixture.core, fetchFn: async () => response('', 404) });
+  assert.equal(await legacy.initialize(), false);
+  assert.equal(fixture.commands.length, 0);
+  const invalid = new JobClient('test-session', { core: fixture.core, fetchFn: async () => response({ ...hostDescriptor, unexpected: true }) });
+  await assert.rejects(invalid.initialize(), /incompatible/);
+  const otherSession = new JobClient('wrong-session', { core: fixture.core, fetchFn: async () => response(hostDescriptor) });
+  await assert.rejects(otherSession.initialize(), /rejected/);
+});
+
+test('host job evaluation sends tagged input source, observes progress, retains terminal evidence and releases', async () => {
+  const fixture = cursorFixture(); const requests = []; const progress = []; let queries = 0;
+  const client = new JobClient('test-session', { core: fixture.core, pause: async () => {}, fetchFn: async (url, options) => {
+    requests.push({ url, options });
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    if (url.endsWith('/submit')) return response(submission);
+    if (url.endsWith('/query')) return response(++queries === 1 ? { job: runningJob } : { job: terminalJob, result: evaluated });
+    if (url.endsWith('/release')) return response({ released: true });
+    throw new Error(url);
+  } });
+  assert.equal(await client.initialize(), true);
+  const result = await client.execute({ ...evaluationRequest, argumentsIon: '[42]' }, job => progress.push(job));
+  assert.equal(result.value, '42');
+  assert.deepEqual(result.terminalOutcomes, evaluated.terminalOutcomes);
+  assert.deepEqual(progress.map(job => job.state), ['submitted', 'running', 'terminal']);
+  const submit = requests.find(request => request.url.endsWith('/submit'));
+  assert.deepEqual(JSON.parse(submit.options.body), { contractVersion: '0.1.0-draft.1', model: evaluationRequest.source,
+    entry: evaluationRequest.entry, inputs: { format: 'ion-text', source: '[42]' } });
+  assert.ok(requests.every(request => request.options.credentials === 'same-origin' && request.options.cache === 'no-store'));
+  assert.deepEqual(fixture.commands.find(command => command.op === 'start').offer, hostDescriptor.offer);
+  assert.equal(client.releasePending, false);
+});
+
+test('query disconnect retains identity and explicit authenticated resume never resubmits', async () => {
+  const fixture = cursorFixture(); const urls = []; let fail = true; let authentications = 0;
+  const client = new JobClient('test-session', { core: fixture.core, pause: async () => {}, authenticate: async () => { ++authentications; return 'test-session'; }, fetchFn: async url => {
+    urls.push(url);
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    if (url.endsWith('/submit')) return response(submission);
+    if (url.endsWith('/query')) { if (fail) { fail = false; throw new Error('offline'); } return response({ job: terminalJob, result: evaluated }); }
+    if (url.endsWith('/release')) return response({ released: true });
+  } });
+  await client.initialize();
+  await assert.rejects(client.execute(evaluationRequest), error => error.job.identity.jobId === 'one' && !error.job.connected);
+  await assert.rejects(client.execute(evaluationRequest), /already active/);
+  const result = await client.resume();
+  assert.equal(result.value, '42');
+  assert.equal(authentications, 1);
+  assert.equal(urls.filter(url => url.endsWith('/submit')).length, 1);
+  assert.equal(fixture.commands.filter(command => command.op === 'reconnect').length, 1);
+});
+
+test('cancel waits for host acknowledgement and polling continues until terminal evidence', async () => {
+  const fixture = cursorFixture(); let releasePoll; let queryCount = 0; let cancelCount = 0;
+  const client = new JobClient('test-session', { core: fixture.core, pause: () => new Promise(resolve => { releasePoll = resolve; }), fetchFn: async url => {
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    if (url.endsWith('/submit')) return response(submission);
+    if (url.endsWith('/cancel')) { ++cancelCount; return response({ job: acknowledgedJob }); }
+    if (url.endsWith('/query')) { ++queryCount; return response({ job: terminalJob, result: evaluated }); }
+    if (url.endsWith('/release')) return response({ released: true });
+  } });
+  await client.initialize();
+  const pending = client.execute(evaluationRequest);
+  while (!releasePoll) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(client.job.cancelRequested, false);
+  await client.cancel();
+  assert.equal(client.job.cancelRequested, true);
+  assert.equal(client.job.state, 'running');
+  await client.cancel();
+  assert.equal(cancelCount, 1);
+  releasePoll();
+  assert.equal((await pending).job.state, 'terminal');
+  assert.equal(queryCount, 1);
+});
+
+test('unknown submission effect cannot trigger a duplicate submission', async () => {
+  const fixture = cursorFixture(); let submissions = 0;
+  const client = new JobClient('test-session', { core: fixture.core, fetchFn: async url => {
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    ++submissions; throw new Error('connection lost before reply');
+  } });
+  await client.initialize();
+  await assert.rejects(client.execute(evaluationRequest), /connection lost/);
+  await assert.rejects(client.execute(evaluationRequest), /Submission status is unknown/);
+  assert.equal(submissions, 1);
+});
+
+test('terminal result survives a failed release and explicit reconnect retries only release', async () => {
+  const fixture = cursorFixture(); let releases = 0; let submissions = 0;
+  const client = new JobClient('test-session', { core: fixture.core, pause: async () => {}, authenticate: async () => 'test-session', fetchFn: async url => {
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    if (url.endsWith('/submit')) { ++submissions; return response(submission); }
+    if (url.endsWith('/query')) return response({ job: terminalJob, result: evaluated });
+    if (url.endsWith('/release')) { if (++releases === 1) throw new Error('offline'); return response({ released: true }); }
+  } });
+  await client.initialize();
+  const result = await client.execute(evaluationRequest);
+  assert.equal(result.value, '42');
+  assert.equal(result.job.connected, false);
+  assert.equal(client.releasePending, true);
+  assert.equal((await client.resume()).value, '42');
+  assert.equal(client.releasePending, false);
+  assert.equal(submissions, 1);
+  assert.equal(releases, 2);
+});
+
+test('raw HTTP evidence is bounded and duplicate-aware decoding precedes submission adoption', async () => {
+  const fixture = cursorFixture();
+  const duplicate = new JobClient('test-session', { core: fixture.core, fetchFn: async () => response('duplicate-keys') });
+  await assert.rejects(duplicate.initialize(), /rejected/);
+  const huge = new JobClient('test-session', { core: fixture.core, fetchFn: async () => response('x'.repeat(1024 * 1024 + 1)) });
+  await assert.rejects(huge.initialize(), /1-MiB/);
+  let requests = 0;
+  const client = new JobClient('test-session', { core: fixture.core, fetchFn: async () => { ++requests; return response(hostDescriptor); } });
+  await client.initialize();
+  await assert.rejects(client.execute({ ...evaluationRequest, source: 'é'.repeat(600000) }), /1-MiB/);
+  assert.equal(requests, 1);
+  assert.equal(client.uncertainSubmission, false);
+});
+
+test('cancel requested before submission identity is admitted is queued and concurrent cancels share one acknowledgement', async () => {
+  const fixture = cursorFixture(); let replySubmit; let replyCancel; let releasePoll; let cancellations = 0;
+  const client = new JobClient('test-session', { core: fixture.core, pause: () => new Promise(resolve => { releasePoll = resolve; }), fetchFn: async url => {
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    if (url.endsWith('/submit')) return new Promise(resolve => { replySubmit = resolve; });
+    if (url.endsWith('/cancel')) { ++cancellations; return new Promise(resolve => { replyCancel = resolve; }); }
+    if (url.endsWith('/query')) return response({ job: terminalJob, result: evaluated });
+    if (url.endsWith('/release')) return response({ released: true });
+  } });
+  await client.initialize();
+  const execution = client.execute(evaluationRequest);
+  assert.equal(client.active, true);
+  await client.cancel();
+  assert.equal(cancellations, 0);
+  replySubmit(response(submission));
+  while (!replyCancel) await new Promise(resolve => setImmediate(resolve));
+  const duplicateCancel = client.cancel();
+  assert.equal(cancellations, 1);
+  assert.equal(client.job.cancelRequested, false);
+  replyCancel(response({ job: acknowledgedJob }));
+  await duplicateCancel;
+  while (!releasePoll) await new Promise(resolve => setImmediate(resolve));
+  releasePoll();
+  assert.equal((await execution).job.state, 'terminal');
+  assert.equal(cancellations, 1);
+  assert.equal(client.active, false);
+});
+
+test('invalid initial receipt or submission envelope cannot be resubmitted after possible host execution', async () => {
+  for (const invalidReceipt of [false, true]) {
+    const fixture = cursorFixture(); let submissions = 0;
+    const client = new JobClient('test-session', { core: source => {
+      if (invalidReceipt && JSON.parse(source).op === 'start') return JSON.stringify({ ok: false, code: 'execution.sequence' });
+      return fixture.core(source);
+    }, fetchFn: async url => {
+      if (url.endsWith('/session')) return response(hostDescriptor);
+      ++submissions; return response(invalidReceipt ? submission : { ...submission, calls: ['other-call'] });
+    } });
+    await client.initialize();
+    await assert.rejects(client.execute(evaluationRequest), error => error.submissionUnknown === true);
+    await assert.rejects(client.execute(evaluationRequest), /Submission status is unknown/);
+    assert.equal(submissions, 1);
+  }
+});
+
+test('explicit resume refuses a changed authenticated session before querying the retained identity', async () => {
+  const fixture = cursorFixture(); let queries = 0; let descriptors = 0;
+  const client = new JobClient('test-session', { core: fixture.core, pause: async () => {}, authenticate: async () => 'different-session', fetchFn: async url => {
+    if (url.endsWith('/session')) { ++descriptors; return response(hostDescriptor); }
+    if (url.endsWith('/submit')) return response(submission);
+    ++queries; throw new Error('offline');
+  } });
+  await client.initialize();
+  await assert.rejects(client.execute(evaluationRequest), /offline/);
+  await assert.rejects(client.resume(), /session changed/);
+  assert.equal(descriptors, 1);
+  assert.equal(queries, 1);
+  assert.deepEqual(client.job.identity, jobIdentity);
+});
+
+test('a timed out observation disconnects the retained job without synthesizing a terminal result', async () => {
+  const fixture = cursorFixture();
+  const client = new JobClient('test-session', { core: fixture.core, timeout: 5, pause: async () => {}, fetchFn: async (url, options) => {
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    if (url.endsWith('/submit')) return response(submission);
+    return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));
+  } });
+  await client.initialize();
+  await assert.rejects(client.execute(evaluationRequest), /timed out/);
+  assert.equal(client.job.connected, false);
+  assert.equal(client.job.state, 'submitted');
+  assert.equal(client.result, null);
+});
+
+test('connected evaluator uses the separately admitted host profile without adding v1 RPC operations', async () => {
+  const rpcCalls = []; const evaluatedRequests = []; const progress = [];
+  let cancellations = 0; let disposed = false;
+  const jobs = { async initialize() { return true; }, job: submittedJob,
+    async execute(request, report) { evaluatedRequests.push(request); report(submittedJob); return evaluated; },
+    async resume(report) { report(runningJob); return evaluated; },
+    async cancel() { ++cancellations; } };
+  const rpc = { async call(method) { rpcCalls.push(method); return {}; }, dispose() { disposed = true; } };
+  const adapter = new ConnectedAdapter(rpc, { ...manifest, providers: [], initialSources: [] }, { cancel() {} }, jobs);
+  assert.equal((await adapter.initialize()).jobsAvailable, true);
+  assert.equal((await adapter.execute(evaluationRequest, job => progress.push(job))).value, '42');
+  assert.equal(evaluatedRequests[0], evaluationRequest);
+  const epoch = adapter.epoch;
+  await adapter.cancel();
+  assert.equal(adapter.epoch, epoch);
+  assert.equal(cancellations, 1);
+  await adapter.execute({ operation: 'resume-job' }, job => progress.push(job));
+  assert.deepEqual(progress, [submittedJob, runningJob]);
+  assert.deepEqual(rpcCalls, ['morphir.session.initialize']);
+  adapter.dispose();
+  assert.equal(cancellations, 1);
+  assert.equal(disposed, true);
+});
+
+test('only closed bounded 4xx envelopes permit a later explicit submission', async () => {
+  const valid = { error: { code: 'workbench.invalid_inputs', message: 'Repair the inputs.' } };
+  for (const [status, envelope, knownRejected] of [
+    [400, valid, true], [503, valid, false], [400, { ...valid, unexpected: true }, false],
+    [400, { error: { ...valid.error, message: 'x'.repeat(513) } }, false],
+  ]) {
+    const fixture = cursorFixture(); let submissions = 0;
+    const client = new JobClient('test-session', { core: fixture.core, fetchFn: async url => {
+      if (url.endsWith('/session')) return response(hostDescriptor);
+      ++submissions; return response(envelope, status);
+    } });
+    await client.initialize();
+    await assert.rejects(client.execute(evaluationRequest));
+    assert.equal(client.uncertainSubmission, !knownRejected);
+    await assert.rejects(client.execute(evaluationRequest));
+    assert.equal(submissions, knownRejected ? 2 : 1);
+  }
+});
+
+test('fresh authenticated resume recovers a lost successful release reply and permits the next submission', async () => {
+  const fixture = cursorFixture(); let releases = 0; let submissions = 0; let authentications = 0;
+  const client = new JobClient('test-session', { core: fixture.core, pause: async () => {}, authenticate: async () => { ++authentications; return 'test-session'; }, fetchFn: async url => {
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    if (url.endsWith('/submit')) { ++submissions; return response(submission); }
+    if (url.endsWith('/query')) return response({ job: terminalJob, result: evaluated });
+    if (url.endsWith('/release')) {
+      ++releases;
+      if (releases === 1) throw new Error('reply lost after host released');
+      if (releases === 2) return response({ error: { code: 'workbench.host_unknown_job', message: 'The job is absent.' } }, 404);
+      return response({ released: true });
+    }
+  } });
+  await client.initialize();
+  const original = await client.execute(evaluationRequest);
+  assert.equal(original.value, '42');
+  assert.equal(client.releasePending, true);
+  const resumed = await client.resume();
+  assert.equal(resumed.value, original.value);
+  assert.deepEqual(resumed.terminalOutcomes, original.terminalOutcomes);
+  assert.equal(client.releasePending, false);
+  assert.equal(authentications, 1);
+  assert.equal((await client.execute(evaluationRequest)).value, '42');
+  assert.equal(submissions, 2);
+});
+
+test('release absence recovery requires both freshly authenticated identity and the exact unknown-job error code', async () => {
+  for (const [code, authenticate] of [
+    ['workbench.host_disabled', async () => 'test-session'],
+    ['workbench.host_unknown_job', undefined],
+  ]) {
+    const fixture = cursorFixture(); let releases = 0;
+    const client = new JobClient('test-session', { core: fixture.core, pause: async () => {}, authenticate, fetchFn: async url => {
+      if (url.endsWith('/session')) return response(hostDescriptor);
+      if (url.endsWith('/submit')) return response(submission);
+      if (url.endsWith('/query')) return response({ job: terminalJob, result: evaluated });
+      if (url.endsWith('/release')) {
+        if (++releases === 1) throw new Error('release reply lost');
+        return response({ error: { code, message: 'Release unavailable.' } }, 404);
+      }
+    } });
+    await client.initialize();
+    const original = await client.execute(evaluationRequest);
+    await assert.rejects(client.resume(), error => error.status === 404 && error.code === code);
+    assert.equal(client.releasePending, true);
+    assert.equal(client.result.value, original.value);
+    assert.equal(client.job.state, 'terminal');
+    assert.equal(client.job.connected, false);
+  }
+});
+
+test('a late cancellation failure from a released job cannot disconnect its replacement', async () => {
+  const fixture = cursorFixture(); const pauses = []; let failOldCancel; let submissions = 0;
+  const nextIdentity = { ...jobIdentity, jobId: 'two', snapshotId: 'snapshot-two' };
+  const client = new JobClient('test-session', { core: fixture.core, pause: () => new Promise(resolve => pauses.push(resolve)), fetchFn: async (url, options) => {
+    if (url.endsWith('/session')) return response(hostDescriptor);
+    if (url.endsWith('/submit')) return response(++submissions === 1 ? submission : { ...submission, identity: nextIdentity });
+    if (url.endsWith('/cancel')) return new Promise((resolve, reject) => { failOldCancel = reject; });
+    if (url.endsWith('/query')) return response({ job: { ...terminalJob, identity: JSON.parse(options.body).identity }, result: evaluated });
+    if (url.endsWith('/release')) return response({ released: true });
+  } });
+  await client.initialize();
+  const first = client.execute(evaluationRequest);
+  while (!pauses.length) await new Promise(resolve => setImmediate(resolve));
+  const oldCancellation = client.cancel().then(() => null, error => error);
+  pauses.shift()();
+  await first;
+  const replacement = client.execute(evaluationRequest);
+  while (!pauses.length) await new Promise(resolve => setImmediate(resolve));
+  failOldCancel(new Error('late old-job cancellation failure'));
+  const lateError = await oldCancellation;
+  assert.equal(client.job.identity.jobId, 'two');
+  assert.equal(client.job.connected, true, 'A rejected old request cannot disconnect the new cursor');
+  assert.equal(lateError, null, 'Stale cancellation failure is ignored');
+  pauses.shift()();
+  assert.equal((await replacement).job.identity.jobId, 'two');
+});
+
+test('late old-job cancel replies and failures preserve the replacement cancellation promise', async () => {
+  for (const lateFailure of [false, true]) {
+    const fixture = cursorFixture(); const pauses = []; const pendingCancels = []; let submissions = 0;
+    const nextIdentity = { ...jobIdentity, jobId: 'two', snapshotId: 'snapshot-two' };
+    const client = new JobClient('test-session', { core: fixture.core, pause: () => new Promise(resolve => pauses.push(resolve)), fetchFn: async (url, options) => {
+      if (url.endsWith('/session')) return response(hostDescriptor);
+      if (url.endsWith('/submit')) return response(++submissions === 1 ? submission : { ...submission, identity: nextIdentity });
+      if (url.endsWith('/cancel')) return new Promise((resolve, reject) => pendingCancels.push({ resolve, reject }));
+      if (url.endsWith('/query')) return response({ job: { ...terminalJob, identity: JSON.parse(options.body).identity }, result: evaluated });
+      if (url.endsWith('/release')) return response({ released: true });
+    } });
+    await client.initialize();
+    const first = client.execute(evaluationRequest);
+    while (!pauses.length) await new Promise(resolve => setImmediate(resolve));
+    const oldCancellation = client.cancel().then(() => null, error => error);
+    pauses.shift()();
+    await first;
+    const replacement = client.execute(evaluationRequest);
+    while (!pauses.length) await new Promise(resolve => setImmediate(resolve));
+    const newCancellation = client.cancel();
+    assert.equal(pendingCancels.length, 2, 'The new job does not reuse the old cancellation promise');
+    if (lateFailure) pendingCancels[0].reject(new Error('late old-job cancellation failure'));
+    else pendingCancels[0].resolve(response({ job: acknowledgedJob }));
+    assert.equal(await oldCancellation, null);
+    assert.equal(client.job.identity.jobId, 'two');
+    assert.equal(client.job.connected, true);
+    assert.equal(client.job.cancelRequested, false, 'An old acknowledgement cannot change the replacement receipt');
+    let duplicateSettled = false;
+    const duplicate = client.cancel().then(() => { duplicateSettled = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(pendingCancels.length, 2, 'Old cancellation cleanup cannot clear the new promise');
+    assert.equal(duplicateSettled, false, 'A repeated cancel waits for the new job acknowledgement');
+    pendingCancels[1].resolve(response({ job: { ...acknowledgedJob, identity: nextIdentity } }));
+    await Promise.all([newCancellation, duplicate]);
+    assert.equal(client.job.cancelRequested, true);
+    pauses.shift()();
+    assert.equal((await replacement).job.identity.jobId, 'two');
+    assert.equal(client.job.connected, true);
+  }
+});
+
+test('host HTTP fetch keeps the browser global receiver required by native Window.fetch', async () => {
+  const fixture = cursorFixture();
+  const client = new JobClient('test-session', { core: fixture.core, fetchFn: function () {
+    assert.equal(this, globalThis, 'Native browser fetch rejects a JobClient receiver');
+    return Promise.resolve(response(hostDescriptor));
+  } });
+  assert.equal(await client.initialize(), true);
+});

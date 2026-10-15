@@ -5,6 +5,9 @@ import { readFile, mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createWorkbenchServer } from './server.js';
+import { createJobProvider } from './job-provider.js';
+import { jobWorkflow } from './job-workflow.js';
+import { createServer as createPortReservation } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { elmWorkflow, moonbitWorkflow, libraryWorkflow } from './elm-workflow.js';
@@ -18,7 +21,8 @@ async function liveHostWorkflow(binary) {
   const workspace = join(scratch, 'workspace'), home = join(scratch, 'home');
   await mkdir(workspace); await mkdir(home);
   await writeFile(join(workspace, 'morphir.toml'), '[project]\nname="acceptance/workbench"\nversion="1.0.0"\nsource_directory="src"\n[frontend]\nlanguage="gleam"\n');
-  let host, proxy, browser;
+  let host, proxy, browser, desktop;
+  const jobsEnabled = process.env.MORPHIR_WORKBENCH_LIVE_JOBS === '1';
   try {
     host = spawn(binary, ['ui', workspace, '--no-open', '--no-banner'], {
       env: {...process.env, MORPHIR_HOME:home, RUST_LOG:'warn'}, stdio:['ignore','ignore','pipe'],
@@ -35,12 +39,36 @@ async function liveHostWorkflow(binary) {
         if (url) { clearTimeout(timer); resolve(new URL(url)); }
       });
     });
-    proxy = createWorkbenchServer({host:launch.origin});
+    const jobs = jobsEnabled ? await createJobProvider() : null;
+    proxy = createWorkbenchServer({host:launch.origin, jobs});
     proxy.listen(0, '127.0.0.1'); await once(proxy, 'listening');
     const origin = `http://127.0.0.1:${proxy.address().port}`;
-    browser = await chromium.launch({headless:true});
-    const context = await browser.newContext({viewport:{width:1440,height:1000}});
-    const page = await context.newPage();
+    let context, page;
+    if (process.env.MORPHIR_WORKBENCH_DESKTOP_BIN) {
+      const reservation = createPortReservation();
+      reservation.listen(0, '127.0.0.1'); await once(reservation, 'listening');
+      const port = reservation.address().port;
+      await new Promise(resolve => reservation.close(resolve));
+      const env = { ...process.env, PROTON_HEADLESS: '1', PROTON_REMOTE_DEBUGGING_PORT: String(port),
+        MORPHIR_WORKBENCH_LAUNCH_URL: origin + launch.pathname + launch.search };
+      delete env.PROTON_FRONTEND_URL;
+      desktop = spawn(process.env.MORPHIR_WORKBENCH_DESKTOP_BIN, [], {env, stdio:['ignore','ignore','ignore']});
+      desktop.on('error', () => {});
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        if (desktop.exitCode !== null || desktop.signalCode !== null) throw new Error('Packaged Proton exited before connection.');
+        try { const response = await fetch(`http://127.0.0.1:${port}/json/version`); if (response.ok) break; } catch {}
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+      context = browser.contexts()[0];
+      page = context.pages()[0];
+      await page.waitForURL(url => url.origin === origin && url.search === '?mode=connected');
+    } else {
+      browser = await chromium.launch({headless:true});
+      context = await browser.newContext({viewport:{width:1440,height:1000}});
+      page = await context.newPage();
+    }
     const errors = [], methods = [], replies = [], requestMethods = new Map();
     let finishProjectOpen;
     const projectOpened = new Promise(resolve => { finishProjectOpen = resolve; });
@@ -55,8 +83,11 @@ async function liveHostWorkflow(binary) {
         if (requestMethods.get(message.id) === 'morphir.project-model.open') finishProjectOpen(message);
       });
     });
-    assert.equal((await context.request.get(origin+'/api/session')).status(), 401);
-    await page.goto(origin+launch.pathname+launch.search);
+    if (!desktop) {
+      assert.equal((await context.request.get(origin+'/api/session')).status(), 401);
+      if (jobsEnabled) assert.equal((await context.request.get(origin+'/api/workbench/session')).status(), 401);
+      await page.goto(origin+launch.pathname+launch.search);
+    } else await page.reload();
     await page.getByRole('status').filter({hasText:'Connected · ready to compile'}).waitFor();
     assert.equal(new URL(page.url()).search, '?mode=connected');
     assert.ok((await context.cookies()).some(cookie => cookie.httpOnly), 'Launch exchanged into an HttpOnly cookie');
@@ -94,7 +125,8 @@ async function liveHostWorkflow(binary) {
     await page.getByRole('heading',{name:'Currency',exact:true}).waitFor();
     await page.locator('.tree-item').filter({hasText:'identity'}).click();
     await page.getByRole('heading',{name:'identity',exact:true}).waitFor();
-    assert.equal(await page.getByRole('button',{name:'Evaluate',exact:true}).count(), 0);
+    if (!jobsEnabled) assert.equal(await page.getByRole('button',{name:'Evaluate',exact:true}).count(), 0);
+    else await jobWorkflow(page, { screenshot: process.env.MORPHIR_WORKBENCH_JOB_SCREENSHOT });
     assert.ok(methods.includes('morphir.session.initialize'));
     for (const method of ['catalog','compile','generate']) assert.ok(methods.includes('morphir.playground.'+method));
     assert.ok(methods.includes('morphir.workspace.open'));
@@ -102,14 +134,21 @@ async function liveHostWorkflow(binary) {
     assert.ok(methods.every(method => !/evaluate|cancel/.test(method)), 'v1 does not invent evaluation or cancellation RPC');
     assert.deepEqual(errors, []);
     if (process.env.MORPHIR_WORKBENCH_LIVE_SCREENSHOT) await page.screenshot({path:process.env.MORPHIR_WORKBENCH_LIVE_SCREENSHOT,fullPage:true});
-    console.log(JSON.stringify({liveRustHost:true,protocol:1,authenticated:true,singleUseLaunch:true,frontend:'gleam',provider:'morphir-gleam',target:'gleam',artifactCount:generation.result.artifacts.length,workspaceModel:true,methods:[...new Set(methods)]}));
+    console.log(JSON.stringify({liveRustHost:true,protocol:1,authenticated:true,singleUseLaunch:true,jobs:jobsEnabled,proton:!!desktop,frontend:'gleam',provider:'morphir-gleam',target:'gleam',artifactCount:generation.result.artifacts.length,workspaceModel:true,methods:[...new Set(methods)]}));
     await browser.close(); browser = null;
     host.kill('SIGINT');
     const timer = setTimeout(() => host.kill('SIGKILL'), 5000);
     try { await exited; } finally { clearTimeout(timer); }
   } finally {
     await browser?.close();
-    proxy?.closeAllConnections(); proxy?.close();
+    if (desktop?.pid && desktop.exitCode === null && desktop.signalCode === null) {
+      const exited = once(desktop, 'exit'); desktop.kill('SIGTERM');
+      const timer = setTimeout(() => desktop.kill('SIGKILL'), 5000);
+      try { await exited; } finally { clearTimeout(timer); }
+    }
+    proxy?.closeAllConnections();
+    if (proxy?.listening) await new Promise(resolve => proxy.close(resolve));
+    await proxy?.jobCleanup;
     if (host?.pid && host.exitCode === null && host.signalCode === null) {
       const exited = once(host, 'exit'); host.kill('SIGKILL'); await exited;
     }

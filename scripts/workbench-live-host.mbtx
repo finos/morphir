@@ -14,14 +14,25 @@ async fn main {
   let command = @argparse.Command(
     "workbench-live-host",
     about="Test the Workbench browser against an existing Rust Morphir UI binary",
-    options=[@argparse.OptionArg("host-bin", required=true)],
+    options=[
+      @argparse.OptionArg("host-bin", required=true),
+      @argparse.OptionArg("desktop-bin"),
+    ],
+    flags=[@argparse.FlagArg("jobs")],
   )
   let matches = command.parse()
   guard matches.values.get("host-bin") is Some([binary]) else { @sys.exit(2) }
+  let environment = { "MORPHIR_WORKBENCH_LIVE_HOST_BIN": binary }
+  if matches.flags.get("jobs").unwrap_or(false) {
+    environment["MORPHIR_WORKBENCH_LIVE_JOBS"] = "1"
+  }
+  if matches.values.get("desktop-bin") is Some([desktop]) {
+    environment["MORPHIR_WORKBENCH_DESKTOP_BIN"] = desktop
+  }
   let status = @process.run(
     "node",
     ["apps/morphir-workbench/scripts/browser-test.js"],
-    extra_env={ "MORPHIR_WORKBENCH_LIVE_HOST_BIN": binary },
+    extra_env=environment,
   )
   @sys.exit(if status < 0 { 1 } else { status })
 }

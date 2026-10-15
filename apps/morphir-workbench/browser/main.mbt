@@ -95,6 +95,13 @@ struct Location {
 } derive(Eq)
 
 ///|
+struct EvaluationDraft {
+  arguments : String
+  mode : @evaluation.InputMode
+  revision : Int
+} derive(Eq)
+
+///|
 struct Model {
   history : Array[Location]
   explorer : Bool
@@ -119,6 +126,7 @@ struct Model {
   evaluation_revision : Int
   evaluation_result_revision : Int
   evaluation_entry : String
+  host_draft : EvaluationDraft?
   model_revision : Int
   output : Json
   worksheet_output : Json
@@ -133,6 +141,11 @@ struct Model {
   output_revision : Int
   worksheet_output_revision : Int
   connected : Bool
+  jobs_available : Bool
+  host_job : Json
+  host_job_revision : Int
+  host_submitting : Bool
+  submission_unknown : Bool
   available : Bool
   catalog : Json
   language : String
@@ -174,6 +187,7 @@ enum Msg {
   Request(String)
   Receive(Int, Int, String, String)
   Cancel
+  ResumeJob
   Import
   Imported(String)
   Export
@@ -225,6 +239,7 @@ fn initial() -> Model {
     evaluation_revision: 0,
     evaluation_result_revision: -1,
     evaluation_entry: "",
+    host_draft: None,
     model_revision: 0,
     output: Json::null(),
     worksheet_output: Json::null(),
@@ -239,6 +254,11 @@ fn initial() -> Model {
     output_revision: -1,
     worksheet_output_revision: -1,
     connected: connected_mode(),
+    jobs_available: false,
+    host_job: Json::null(),
+    host_job_revision: 0,
+    host_submitting: false,
+    submission_unknown: false,
     available: false,
     catalog: Json::null(),
     language: "scheme",
@@ -488,6 +508,23 @@ fn select(model : Model, selected : String) -> Model {
   if selected == model.selected {
     return model
   }
+  // Retain only the current host entry. Other declarations keep their normal
+  // default inputs; navigating does not discard this job's draft or evidence.
+  let host_draft = if model.jobs_available &&
+    model.selected == model.evaluation_entry {
+    Some({
+      arguments: model.evaluation_arguments,
+      mode: model.evaluation_mode,
+      revision: model.evaluation_revision,
+    })
+  } else {
+    model.host_draft
+  }
+  let restored = if model.jobs_available && selected == model.evaluation_entry {
+    host_draft
+  } else {
+    None
+  }
   let profile = evaluation_profile(
     model.model,
     selected,
@@ -496,14 +533,34 @@ fn select(model : Model, selected : String) -> Model {
   {
     ..model,
     selected,
-    evaluation_arguments: default_arguments(
-      profile,
-      model.evaluation_mode,
-      model.evaluation_typed,
-    ),
-    evaluation_result: Json::null(),
-    evaluation_terminal: @outcomes.Absent,
-    evaluation_revision: model.evaluation_revision + 1,
+    host_draft,
+    evaluation_arguments: match restored {
+      Some(draft) => draft.arguments
+      None =>
+        default_arguments(
+          profile,
+          model.evaluation_mode,
+          model.evaluation_typed,
+        )
+    },
+    evaluation_mode: match restored {
+      Some(draft) => draft.mode
+      None => model.evaluation_mode
+    },
+    evaluation_result: if model.jobs_available {
+      model.evaluation_result
+    } else {
+      Json::null()
+    },
+    evaluation_terminal: if model.jobs_available {
+      model.evaluation_terminal
+    } else {
+      @outcomes.Absent
+    },
+    evaluation_revision: match restored {
+      Some(draft) => draft.revision
+      None => model.evaluation_revision + 1
+    },
   }
 }
 
@@ -587,6 +644,9 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
     Query(query) => ({ ..model, query, }, @cmd.none)
     Select(selected) => (remember(model, select(model, selected)), @cmd.none)
     EvaluationRuntime(evaluation_typed) => {
+      if model.connected {
+        return (model, @cmd.none)
+      }
       if evaluation_typed == model.evaluation_typed {
         return (model, @cmd.none)
       }
@@ -684,7 +744,10 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         model.evaluation_typed,
       )
       if model.busy ||
-        model.connected ||
+        host_job_pending(model) ||
+        host_job_disconnected(model) ||
+        model.submission_unknown ||
+        (model.connected && !model.jobs_available) ||
         field(profile, "supported") != Json::boolean(true) {
         return (model, @cmd.none)
       }
@@ -727,7 +790,9 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         " · " +
         entry_label(model, model.selected) +
         " · " +
-        (if model.evaluation_typed {
+        (if model.connected {
+          "host typed invocation"
+        } else if model.evaluation_typed {
           "typed invocation"
         } else {
           "local Scheme"
@@ -742,6 +807,27 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           busy: true,
           started: now_ms(),
           evaluation_entry: model.selected,
+          host_draft: if model.connected {
+            Some({
+              arguments: model.evaluation_arguments,
+              mode: model.evaluation_mode,
+              revision: model.evaluation_revision,
+            })
+          } else {
+            None
+          },
+          evaluation_result: if model.connected {
+            Json::null()
+          } else {
+            model.evaluation_result
+          },
+          evaluation_terminal: if model.connected {
+            @outcomes.Absent
+          } else {
+            model.evaluation_terminal
+          },
+          host_job_revision: model.evaluation_revision,
+          host_submitting: model.connected,
           status: "Evaluating function…",
         },
         request_cmd(
@@ -912,6 +998,16 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
       )
     }
     Request(operation) => {
+      if host_job_blocks_replacement(model) {
+        return (
+          {
+            ..model,
+            status: "Resume or finish the retained host job before replacing the model",
+          },
+          @cmd.none,
+        )
+      }
+
       let job = model.job + 1
       let fields : Array[(String, Json)] = [
         ("operation", Json::string(operation)),
@@ -996,6 +1092,55 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             ("message", Json::string("Invalid host response")),
           ])
       }
+      if text(result, "operation") == "job-progress" {
+        let host_job = field(result, "job")
+        return (
+          {
+            ..model,
+            host_job,
+            host_submitting: false,
+            status: host_job_status(host_job),
+          },
+          @cmd.none,
+        )
+      }
+      if field(result, "jobTransport") == Json::boolean(true) {
+        return (
+          {
+            ..note(
+              model,
+              "Host job",
+              @bottom_panel.Warning,
+              text(result, "message"),
+            ),
+            host_job: if field(result, "job") == Json::null() {
+              model.host_job
+            } else {
+              field(result, "job")
+            },
+            host_submitting: false,
+            submission_unknown: field(result, "submissionUnknown") ==
+            Json::boolean(true),
+            busy: false,
+            status: if field(result, "submissionUnknown") == Json::boolean(true) {
+              "Submission status unknown · the host may still be running; reopen the host session"
+            } else {
+              "Host disconnected · resume the retained job"
+            },
+          },
+          @cmd.none,
+        )
+      }
+      let model = if field(result, "job") != Json::null() {
+        { ..model, host_job: field(result, "job"), }
+      } else {
+        model
+      }
+      let operation = if operation == "resume-job" {
+        "evaluate"
+      } else {
+        operation
+      }
       let (result, terminal) = if operation == "evaluate" {
         @outcomes.prepare(result, expected_ids=Some(["workbench"]))
       } else {
@@ -1005,7 +1150,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
       let took = elapsed(model)
       let succeeded = field(result, "success") == Json::boolean(true)
       if operation == "evaluate" {
-        if model.evaluation_entry != model.selected {
+        if model.evaluation_entry != model.selected && !model.jobs_available {
           return (
             {
               ..note(
@@ -1126,6 +1271,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           {
             ..model,
             busy: false,
+            host_submitting: false,
             evaluation_result: result,
             evaluation_terminal: terminal,
             evaluation_result_revision: revision,
@@ -1225,6 +1371,10 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             ..model,
             busy: false,
             connected: field(result, "connected") == Json::boolean(true),
+            jobs_available: field(result, "jobsAvailable") ==
+            Json::boolean(true),
+            evaluation_typed: field(result, "jobsAvailable") ==
+            Json::boolean(true),
             available: !frontends.is_empty(),
             catalog,
             language,
@@ -1381,6 +1531,16 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           } else {
             model.evaluation_result
           },
+          evaluation_entry: if compiled {
+            ""
+          } else {
+            model.evaluation_entry
+          },
+          host_draft: if compiled {
+            None
+          } else {
+            model.host_draft
+          },
           evaluation_arguments: if compiled {
             "[]"
           } else {
@@ -1393,7 +1553,9 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           } else {
             model.evaluation_revision
           },
-          evaluation_typed: if compiled {
+          evaluation_typed: if model.jobs_available {
+            true
+          } else if compiled {
             text(result, "sourceProfile") == "moonbit-model-bool-v1" ||
             text(result, "sourceProfile") == "moonbit-model-bool-library-v1"
           } else {
@@ -1444,7 +1606,31 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         @cmd.none,
       )
     }
-    Cancel =>
+    ResumeJob => {
+      if model.busy || model.host_job == Json::null() {
+        return (model, @cmd.none)
+      }
+      (
+        {
+          ..model,
+          busy: true,
+          status: "Reconnecting to the retained host job…",
+        },
+        request_cmd(
+          emit,
+          model.job,
+          model.host_job_revision,
+          object([("operation", Json::string("resume-job"))]),
+        ),
+      )
+    }
+    Cancel => {
+      if host_job_pending(model) {
+        return (
+          { ..model, status: "Requesting host cancellation…", },
+          @cmd.custom_cmd(_ => cancel_host()),
+        )
+      }
       (
         {
           ..note(
@@ -1471,6 +1657,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         },
         @cmd.custom_cmd(_ => cancel_host()),
       )
+    }
     Import =>
       (
         model,
@@ -1479,6 +1666,16 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         }),
       )
     Imported(source) => {
+      if host_job_blocks_replacement(model) {
+        return (
+          {
+            ..model,
+            status: "Resume or finish the retained host job before replacing the model",
+          },
+          @cmd.none,
+        )
+      }
+
       for
         refusal in [
           (
@@ -1562,6 +1759,16 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
       )
     }
     Project(project) => {
+      if host_job_blocks_replacement(model) {
+        return (
+          {
+            ..model,
+            status: "Resume or finish the retained host job before replacing the model",
+          },
+          @cmd.none,
+        )
+      }
+
       let job = model.job + 1
       let model = note(
         model,
@@ -1969,7 +2176,9 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           class="secondary",
           hidden=!model.busy || model.job == 0,
           on_click=emit(Cancel),
-          if model.connected {
+          if host_job_pending(model) {
+            "Cancel"
+          } else if model.connected {
             "Discard"
           } else {
             "Cancel"
@@ -2102,7 +2311,9 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           class="secondary",
           hidden=!model.busy,
           on_click=emit(Cancel),
-          if model.connected {
+          if host_job_pending(model) {
+            "Cancel"
+          } else if model.connected {
             "Discard"
           } else {
             "Cancel"
@@ -2122,6 +2333,20 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         ),
       ]),
     ]),
+    @html.div(
+      hidden=model.host_job == Json::null(),
+      class="evaluation-actions small",
+      [
+        @html.span(host_job_status(model.host_job)),
+        @html.button(
+          class="secondary",
+          hidden=field(model.host_job, "connected") != Json::boolean(false),
+          disabled=model.busy,
+          on_click=emit(ResumeJob),
+          "Reconnect / resume",
+        ),
+      ],
+    ),
     @explorer.details(
       explorer_props(model),
       emit.map(id => Select(id)),
@@ -2143,11 +2368,19 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           "-" +
           model.evaluation_typed.to_string(),
           arguments: model.evaluation_arguments,
-          result: model.evaluation_result,
+          result: if model.evaluation_entry == model.selected {
+            model.evaluation_result
+          } else {
+            Json::null()
+          },
           terminal: model.evaluation_terminal,
           stale: model.evaluation_result_revision != model.evaluation_revision,
           busy: model.busy,
           connected: model.connected,
+          jobs_available: model.jobs_available,
+          job_pending: host_job_pending(model) ||
+          host_job_disconnected(model) ||
+          model.submission_unknown,
         },
         emit.map(value => EvaluationArguments(value)),
         emit(Evaluate),
@@ -2388,4 +2621,43 @@ fn default_arguments(
   } else {
     json
   }
+}
+
+///|
+fn host_job_pending(model : Model) -> Bool {
+  model.host_submitting ||
+  (
+    model.host_job != Json::null() &&
+    text(model.host_job, "state") != "terminal"
+  )
+}
+
+///|
+fn host_job_status(job : Json) -> String {
+  if job == Json::null() {
+    return ""
+  }
+  "Host · " +
+  text(job, "state") +
+  (if field(job, "cancelRequested") == Json::boolean(true) {
+    " · cancellation acknowledged"
+  } else {
+    ""
+  }) +
+  (if field(job, "connected") == Json::boolean(false) {
+    " · disconnected"
+  } else {
+    ""
+  })
+}
+
+///|
+fn host_job_disconnected(model : Model) -> Bool {
+  model.host_job != Json::null() &&
+  field(model.host_job, "connected") == Json::boolean(false)
+}
+
+///|
+fn host_job_blocks_replacement(model : Model) -> Bool {
+  host_job_pending(model) || host_job_disconnected(model)
 }

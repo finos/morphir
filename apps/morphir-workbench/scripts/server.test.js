@@ -80,3 +80,134 @@ test('WebSocket proxy checks its own origin before rewriting the upstream Host a
   assert.equal(String((await data)[0]), 'frame bytes');
   socket.destroy();
 });
+
+async function jobGateway(t, options = {}) {
+  const seen = [];
+  let session = 'authenticated-session';
+  const upstream = createServer((request, response) => {
+    seen.push({ path: request.url, headers: request.headers });
+    if (request.headers.cookie !== 'morphir_session_test=secret') { response.writeHead(401).end(); return; }
+    if (options.authHang) return;
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end(options.authResponse ?? JSON.stringify({ protocolVersion: 1, webSocketPath: '/rpc', sessionId: session, providers: [], initialSources: [] }));
+  });
+  const target = await listen(upstream);
+  const commands = [];
+  let bound;
+  const jobs = options.jobs ?? {
+    decode: JSON.parse,
+    async session(sessionId) {
+      if (bound && bound !== sessionId) throw Object.assign(new Error('private source should not leak'), { status: 409, code: 'workbench.session_changed' });
+      bound = sessionId;
+      return { profile: 'morphir/workbench/host', contractVersion: '0.1.0-draft.1', offer: { sessionId } };
+    },
+    async command(op, body, sessionId) { commands.push({ op, body, sessionId }); return { state: 'running' }; },
+    async close() { this.closed = true; },
+  };
+  const proxy = createWorkbenchServer({ host: target, jobs, ...options });
+  const base = await listen(proxy);
+  t.after(async () => { proxy.closeAllConnections(); await new Promise(resolve => proxy.close(resolve)); await proxy.jobCleanup; upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); });
+  const headers = { Cookie: 'morphir_session_test=secret', Origin: base, 'Content-Type': 'application/json' };
+  return { base, headers, jobs, seen, commands, changeSession: value => { session = value; } };
+}
+
+test('job routes are disabled without explicit provider and require a configured upstream host', async t => {
+  const server = createWorkbenchServer(); const base = await listen(server);
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  for (const method of ['GET', 'POST']) assert.equal((await fetch(`${base}/api/workbench/session`, { method })).status, 404);
+  assert.throws(() => createWorkbenchServer({ jobs: {} }), /upstream|host/i);
+});
+test('job descriptor authenticates cookie against bounded v1 session and forwards only cookie', async t => {
+  const { base, headers, seen } = await jobGateway(t);
+  assert.equal((await get(`${base}/api/workbench/session`)).status, 401);
+  const response = await get(`${base}/api/workbench/session`, { ...headers, Authorization: 'must-not-forward' });
+  assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
+  assert.equal((await response.json()).offer.sessionId, 'authenticated-session');
+  assert.equal(seen.at(-1).path, '/api/session'); assert.equal(seen.at(-1).headers.authorization, undefined);
+  assert.equal(seen.at(-1).headers.origin, undefined);
+});
+test('job POST requires exact origin JSON and forwards unmodified raw body after fresh authentication', async t => {
+  const { base, headers, commands, seen } = await jobGateway(t);
+  const body = '{"contractVersion":"0.1.0-draft.1","duplicate":1,"duplicate":2}';
+  const response = await fetch(`${base}/api/workbench/submit`, { method: 'POST', headers, body });
+  assert.equal(response.status, 200); assert.equal(commands[0].body, body); assert.equal(commands[0].sessionId, 'authenticated-session');
+  const authenticated = seen.length;
+  assert.equal((await fetch(`${base}/api/workbench/query`, { method: 'POST', headers: { Cookie: headers.Cookie, 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
+  assert.equal((await fetch(`${base}/api/workbench/query`, { method: 'POST', headers: { ...headers, Origin: 'https://attacker.example' }, body: '{}' })).status, 403);
+  assert.equal(seen.length, authenticated);
+  assert.equal((await fetch(`${base}/api/workbench/query`, { method: 'POST', headers: { ...headers, 'Content-Type': 'text/plain' }, body: '{}' })).status, 400);
+  assert.equal(commands.length, 1);
+});
+test('changed authenticated session returns bounded409 without replacing owner', async t => {
+  const { base, headers, changeSession } = await jobGateway(t);
+  assert.equal((await get(`${base}/api/workbench/session`, headers)).status, 200);
+  changeSession('replacement');
+  const response = await get(`${base}/api/workbench/session`, headers);
+  assert.equal(response.status, 409); assert.equal((await response.json()).error.code, 'workbench.session_changed');
+  changeSession('authenticated-session'); assert.equal((await get(`${base}/api/workbench/session`, headers)).status, 200);
+});
+test('job body byte limit and fatal UTF8 reject before core invocation', async t => {
+  const { base, headers, commands } = await jobGateway(t);
+  assert.equal((await fetch(`${base}/api/workbench/submit`, { method: 'POST', headers, body: 'x'.repeat(1024 * 1024 + 1) })).status, 413);
+  assert.equal((await fetch(`${base}/api/workbench/submit`, { method: 'POST', headers, body: Buffer.from([0xff]) })).status, 400);
+  assert.equal(commands.length, 0);
+});
+
+test('real duplicate-aware core authenticates exact manifests and rejects duplicate submission members', async t => {
+  const { createJobProvider } = await import('./job-provider.js');
+  const { readFile } = await import('node:fs/promises');
+  const jobs = await createJobProvider();
+  const { base, headers, changeSession } = await jobGateway(t, { jobs });
+  const session = await get(`${base}/api/workbench/session`, headers);
+  assert.equal(session.status, 200); assert.match(session.headers.get('content-type'), /application\/json; charset=utf-8/);
+  const descriptor = await session.json();
+  assert.equal(descriptor.offer.sessionId, 'authenticated-session');
+  const model = await readFile(new URL('../fixtures/typed-pricing.json', import.meta.url), 'utf8');
+  const submit = JSON.stringify({ contractVersion: '0.1.0-draft.1', model, entry: 'pricing:quotes#difference', inputs: { format: 'json', source: '[{"type":"int","value":"7"},{"type":"int","value":"3"}]' } });
+  const duplicate = submit.replace('{', '{"contractVersion":"0.1.0-draft.1",');
+  const rejected = await fetch(`${base}/api/workbench/submit`, { method: 'POST', headers, body: duplicate });
+  assert.equal(rejected.status, 400); const errorText = await rejected.text(); assert(!errorText.includes(model)); assert(!errorText.includes('secret'));
+  const accepted = await fetch(`${base}/api/workbench/submit`, { method: 'POST', headers, body: submit });
+  assert.equal(accepted.status, 200); const job = await accepted.json(); assert.equal(job.receipt.sequence, 0);
+  changeSession('new-session');
+  const query = JSON.stringify({ contractVersion: '0.1.0-draft.1', identity: job.identity });
+  assert.equal((await fetch(`${base}/api/workbench/query`, { method: 'POST', headers, body: query })).status, 409);
+  changeSession('authenticated-session');
+  let latest;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    latest = await (await fetch(`${base}/api/workbench/query`, { method: 'POST', headers, body: query })).json();
+    if (latest.state === 'terminal') break;
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.equal(latest.state, 'terminal'); assert.deepEqual(latest.outcomes.calls[0].outcome, { status: 'returned', value: { type: 'int', value: '4' } });
+  assert.deepEqual(await (await fetch(`${base}/api/workbench/release`, { method: 'POST', headers, body: query })).json(), { released: true });
+  const absent = await fetch(`${base}/api/workbench/query`, { method: 'POST', headers, body: query });
+  assert.equal(absent.status, 404); assert.equal((await absent.json()).error.code, 'workbench.host_unknown_job');
+});
+test('malformed duplicate foreign and oversized authentication manifests never bind a provider', async t => {
+  const { createJobProvider } = await import('./job-provider.js');
+  const manifest = { protocolVersion: 1, webSocketPath: '/rpc', sessionId: 'authenticated-session', providers: [], initialSources: [] };
+  for (const authResponse of [
+    JSON.stringify(manifest).replace('{', '{"sessionId":"wrong-owner",'),
+    JSON.stringify({ ...manifest, protocolVersion: 2 }),
+    JSON.stringify({ ...manifest, extra: true }),
+    JSON.stringify({ ...manifest, providers: 'wrong' }),
+    ' '.repeat(1024 * 1024 + 1),
+  ]) {
+    const jobs = await createJobProvider(); let bindings = 0;
+    const original = jobs.session; jobs.session = (...args) => { bindings++; return original(...args); };
+    const { base, headers } = await jobGateway(t, { jobs, authResponse });
+    assert.equal((await get(`${base}/api/workbench/session`, headers)).status, 503);
+    assert.equal(bindings, 0);
+  }
+});
+test('authentication and body deadlines fail without invoking a job or inventing terminal state', async t => {
+  const unavailable = await jobGateway(t, { authHang: true, jobAuthDeadlineMs: 20 });
+  assert.equal((await get(`${unavailable.base}/api/workbench/session`, unavailable.headers)).status, 503);
+  const gateway = await jobGateway(t, { jobBodyDeadlineMs: 20 });
+  const status = await new Promise((resolve, reject) => {
+    const request = httpRequest(`${gateway.base}/api/workbench/submit`, { method: 'POST', headers: gateway.headers }, response => { response.resume(); resolve(response.statusCode); });
+    request.on('error', reject); request.write('{');
+  });
+  assert.equal(status, 503); assert.equal(gateway.commands.length, 0);
+});

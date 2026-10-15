@@ -1,3 +1,4 @@
+import { JobClient } from './job-session.js';
 // Browser host boundary. Private operation envelopes never go onto Morphir RPC.
 export class LocalAdapter {
   constructor(workerFactory = () => new Worker(new URL('./worker.js', import.meta.url)), timeout = 15000) {
@@ -112,8 +113,9 @@ function diagnosticMessage(result, fallback) {
 }
 
 export class ConnectedAdapter {
-  constructor(rpc, manifest, local) {
+  constructor(rpc, manifest, local, jobs = null) {
     this.rpc = rpc;
+    this.jobs = jobs;
     this.manifest = validateManifest(manifest);
     this.local = local;
     this.catalog = { frontends: [], targets: [] };
@@ -148,10 +150,13 @@ export class ConnectedAdapter {
         }
       } catch (error) { this.workspaceMessage = error.message; }
     }
-    return { success: true, operation: 'initialize', connected: true, catalog: this.catalog, projects: this.projects,
+    this.jobsAvailable = this.jobs ? await this.jobs.initialize() : false;
+    return { success: true, operation: 'initialize', connected: true, jobsAvailable: this.jobsAvailable, catalog: this.catalog, projects: this.projects,
       message: this.workspaceMessage || (this.catalog.frontends.length ? 'Connected · ready to compile' : 'Connected · no compiler is advertised') };
   }
-  async execute(request) {
+  async execute(request, progress) {
+    if (request.operation === 'resume-job') return this.jobs.resume(progress);
+    if (request.operation === 'evaluate' && this.jobsAvailable) return this.jobs.execute(request, progress);
     const epoch = this.epoch;
     const stillCurrent = () => { if (epoch !== this.epoch) throw new Error("Discarded. The host may still be working."); };
     if (request.operation === 'inspect') return this.local.execute(request);
@@ -207,8 +212,10 @@ export class ConnectedAdapter {
     }
     return result;
   }
-  cancel() { ++this.epoch; this.local.cancel(); /* v1 has no server cancellation method */ }
-  dispose() { this.cancel(); this.rpc.dispose(); }
+  cancel() {
+    if (this.jobs?.active || (this.jobs?.job && this.jobs.job.state !== 'terminal')) return this.jobs.cancel();
+    ++this.epoch; this.local.cancel(); /* v1 has no server cancellation method */ }
+  dispose() { ++this.epoch; this.local.cancel(); this.rpc.dispose(); }
 }
 
 export async function connect(location, local, fetchFn = fetch, Socket = WebSocket) {
@@ -226,6 +233,11 @@ export async function connect(location, local, fetchFn = fetch, Socket = WebSock
       socket.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Cannot connect to the same-origin Morphir host.')); }, { once: true });
       socket.addEventListener('close', () => { clearTimeout(timer); reject(new Error('Morphir connection closed before initialization.')); }, { once: true });
     });
-    return new ConnectedAdapter(rpc, manifest, local);
+    const jobs = new JobClient(manifest.sessionId, { fetchFn, authenticate: async () => {
+      const response = await fetchFn('/api/session', { credentials: 'same-origin', cache: 'no-store' });
+      if (!response.ok) throw new Error('Authenticate with the same host session to resume this job.');
+      return validateManifest(await response.json()).sessionId;
+    } });
+    return new ConnectedAdapter(rpc, manifest, local, jobs);
   } catch (error) { rpc.dispose(); throw error; }
 }

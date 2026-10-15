@@ -34,10 +34,16 @@ Proton source-built platforms are macOS Apple Silicon, Linux x64 and Windows
 x64. This slice's actual desktop verification is on macOS Apple Silicon.
 
 The packaged frontend uses Proton's secure application asset origin and runs
-the same worker-based local pipeline. Native engine/process integration and
-attachment to an authenticated Morphir daemon are later adapter work. The
-browser's Connect link requires a host serving these assets on the same origin;
-it does not turn the packaged application origin into a daemon connection.
+the same worker-based local pipeline. Native engine/process integration remains separate work. To attach the packaged
+window to the same-origin authenticated gateway, set
+`MORPHIR_WORKBENCH_LAUNCH_URL` to its one-use
+`http://127.0.0.1:PORT/launch?token=TOKEN` URL before launching the executable.
+The native host accepts only that explicit loopback launch shape and retains
+the normal asset origin when the variable is absent. The gateway exchanges the
+token for the upstream HttpOnly cookie. Do not put the token in logs or saved
+configuration. Enable `MORPHIR_WORKBENCH_JOBS=1` on the gateway for typed evaluation;
+see the [job setup and acceptance](../morphir-workbench/README.md#authenticated-evaluation-jobs).
+This HTTP attachment does not introduce native daemon IPC.
 
 For a headless packaged-app smoke check, enable Proton's CDP port using
 `PROTON_REMOTE_DEBUGGING_PORT` and `PROTON_HEADLESS=1`, then run the browser

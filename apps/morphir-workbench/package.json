@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node scripts/build.js",
     "dev": "node scripts/serve.js",
-    "test": "node --test browser/transport.test.js browser/artifact-download.test.js scripts/server.test.js",
+    "test": "node --test browser/transport.test.js browser/artifact-download.test.js scripts/server.test.js scripts/job-provider.test.js",
     "test:browser": "node scripts/browser-test.js"
   },
   "devDependencies": {

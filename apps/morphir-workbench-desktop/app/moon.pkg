@@ -5,4 +5,6 @@ supported_targets = "native"
 import {
   "moonbitlang/async",
   "moonbit-community/proton",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
 }
