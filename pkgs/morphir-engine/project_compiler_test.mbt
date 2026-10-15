@@ -4,7 +4,9 @@ fn project_profile(
   max_documents? : Int? = None,
 ) -> @engine.SourceProfile {
   {
-    id: "library",
+    id: @ids.ProfileId::parse("library") catch {
+      _ => abort("test profile id")
+    },
     compile: @engine.PerProject(run),
     unit_limits: @data.Limits::default(),
     evidence: @engine.Declared,
@@ -24,11 +26,11 @@ fn project_profile(
 fn project_engine(profile : @engine.SourceProfile) -> @engine.Engine raise {
   let engine = @engine.Engine::new()
   engine.register_source_provider({
-    id: "test/project",
+    id: @ids.ProviderId::parse("test/project"),
     languages: [
       {
-        id: "rich",
-        extensions: [".model"],
+        id: @ids.LanguageId::parse("rich"),
+        extensions: [@ids.FileExtension::parse(".model")],
         default_profile: profile.id,
         profiles: [profile],
       },
@@ -119,8 +121,8 @@ test "a project compiler gets every source of the project in one call" {
   assert_eq(calls.length(), 1)
   let (project, unit_id) = calls[0]
   assert_eq(unit_id, "example/project")
-  assert_eq(project.package_name, "Example.Project")
-  assert_eq(project.exposed_modules, ["Api"])
+  assert_eq(project.package_name.to_string(), "Example.Project")
+  assert_eq(project.exposed_modules.map(m => m.to_string()), ["Api"])
   assert_eq(
     project.sources.map(s => (s.path, s.relative_path, s.module_name, s.content)),
     [

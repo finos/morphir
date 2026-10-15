@@ -5,6 +5,14 @@ pub const PROVIDER : String = "finos/morphir-elm"
 pub const PROFILE : String = "library"
 
 ///|
+/// Parses a constant that cannot fail, because `provider()` does not raise.
+fn[T, E : Error] constant(parse : (String) -> T raise E, text : String) -> T {
+  parse(text) catch {
+    _ => abort("invalid constant: " + text)
+  }
+}
+
+///|
 /// The unit limits of the Elm provider. One unit holds a whole project, so the byte budget is larger than the
 /// default of `@data.Limits`. The depth and value budgets are the identity limits of `@identities.nodes` (depth
 /// 128, 100000 nodes): `IRUnit::validate` applies them whatever the unit limits are, so a larger budget here would
@@ -22,7 +30,7 @@ pub fn provider(
   unit_limits? : @data.Limits = default_unit_limits(),
 ) -> @engine.SourceProvider {
   let library : @engine.SourceProfile = {
-    id: PROFILE,
+    id: constant(@ids.ProfileId::parse, PROFILE),
     dependencies: { "moonrockz/krueger": "0.5.0" },
     evidence: @engine.LocalAcceptance,
     unit_limits,
@@ -53,8 +61,8 @@ pub fn provider(
       })
       let file = @frontend.compile_project(
         sources,
-        project.package_name,
-        project.exposed_modules,
+        project.package_name.to_string(),
+        project.exposed_modules.map(m => m.to_string()),
         output=Referenced,
       ) catch {
         @frontend.ElmFailed(problems) =>
@@ -74,12 +82,12 @@ pub fn provider(
     }),
   }
   {
-    id: PROVIDER,
+    id: constant(@ids.ProviderId::parse, PROVIDER),
     languages: [
       {
-        id: "elm",
-        extensions: [".elm"],
-        default_profile: PROFILE,
+        id: constant(@ids.LanguageId::parse, "elm"),
+        extensions: [constant(@ids.FileExtension::parse, ".elm")],
+        default_profile: constant(@ids.ProfileId::parse, PROFILE),
         profiles: [library],
       },
     ],

@@ -6,8 +6,16 @@ fn elm_projects() -> Array[ElmProject] {
   [
     {
       name: "custom-types",
-      package_name: "Parity.Custom",
-      exposed: ["Shapes"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Custom",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Shapes"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Custom/Shapes.elm",
@@ -78,8 +86,17 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-attribute-model",
-      package_name: "Morphir.Attribute.Model",
-      exposed: ["JsonSchema", "Sensitivity"],
+      manifest: (
+        #|{
+        #|    "name": "Morphir.Attribute.Model",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "JsonSchema",
+        #|        "Sensitivity"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Morphir/Attribute/Model/JsonSchema.elm",
@@ -113,8 +130,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-business-terms",
-      package_name: "Morphir.Remote.App",
-      exposed: ["BusinessTerms"],
+      manifest: (
+        #|{
+        #|    "name": "Morphir.Remote.App",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "BusinessTerms"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Morphir/Remote/App/BusinessTerms.elm",
@@ -176,11 +201,21 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-decoration-model",
-      package_name: "Morphir.Decoration.Model",
-      exposed: [
-        "Composites", "Database", "JsonSchema", "NumberConstraints", "PrivacyControl",
-        "StringConstraints",
-      ],
+      manifest: (
+        #|{
+        #|    "name": "Morphir.Decoration.Model",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Composites",
+        #|        "Database",
+        #|        "JsonSchema",
+        #|        "NumberConstraints",
+        #|        "PrivacyControl",
+        #|        "StringConstraints"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Morphir/Decoration/Model/Composites.elm",
@@ -396,11 +431,23 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-json-schema",
-      package_name: "TestModel",
-      exposed: [
-        "AdvancedTypes", "BasicTypes", "CollectionTypes", "CustomTypes", "OptionalTypes",
-        "RecordTypes", "ResultTypes", "TupleTypes",
-      ],
+      manifest: (
+        #|{
+        #|    "name": "TestModel",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "AdvancedTypes",
+        #|        "BasicTypes",
+        #|        "CollectionTypes",
+        #|        "CustomTypes",
+        #|        "OptionalTypes",
+        #|        "RecordTypes",
+        #|        "ResultTypes",
+        #|        "TupleTypes"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "TestModel/AdvancedTypes.elm",
@@ -589,22 +636,65 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-reference-model",
-      package_name: "Morphir.Reference.Model",
-      exposed: [
-        "BooksAndRecords", "BranchCoverage", "Formulas", "Insight.UseCase1", "Insight.UseCase2",
-        "Issues.Common", "Issues.DecisionTables", "Issues.Issue210", "Issues.Issue227",
-        "Issues.Issue273", "Issues.Issue330", "Issues.Issue331", "Issues.Issue333",
-        "Issues.Issue349", "Issues.Issue350", "Issues.Issue364", "Issues.Issue401",
-        "Issues.Issue407", "Issues.Issue409", "Issues.Issue410", "Issues.Issue432",
-        "Issues.Issue448", "Issues.Issue450", "Issues.Issue493", "Issues.Issue571",
-        "Issues.Issue600", "Issues.Issue889", "Issues.Issue959", "Issues.Issue962",
-        "Issues.Issue969", "Issues.PatternModel.BasicEnum", "Issues.PatternModel.BasicRule",
-        "Issues.PatternModel.OtherBasicEnum", "Issues.RecordUpdateVariableLookup",
-        "Issues.ResolveIssue1", "Issues.UIDependency", "Presentations.UKFintechMeetup",
-        "Relational", "SDK.Dict", "SDK.LocalDate", "SDK.Result", "SDK.String", "SDK.Tuple",
-        "SDK.UUID", "TestModel.LooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongnameTestModelWordsAsdTestWord",
-        "TestModel.Testing", "TypeAscription", "Types", "ValueEditors", "Values",
-      ],
+      manifest: (
+        #|{
+        #|    "name": "Morphir.Reference.Model",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "BooksAndRecords",
+        #|        "BranchCoverage",
+        #|        "Formulas",
+        #|        "Insight.UseCase1",
+        #|        "Insight.UseCase2",
+        #|        "Issues.Common",
+        #|        "Issues.DecisionTables",
+        #|        "Issues.Issue210",
+        #|        "Issues.Issue227",
+        #|        "Issues.Issue273",
+        #|        "Issues.Issue330",
+        #|        "Issues.Issue331",
+        #|        "Issues.Issue333",
+        #|        "Issues.Issue349",
+        #|        "Issues.Issue350",
+        #|        "Issues.Issue364",
+        #|        "Issues.Issue401",
+        #|        "Issues.Issue407",
+        #|        "Issues.Issue409",
+        #|        "Issues.Issue410",
+        #|        "Issues.Issue432",
+        #|        "Issues.Issue448",
+        #|        "Issues.Issue450",
+        #|        "Issues.Issue493",
+        #|        "Issues.Issue571",
+        #|        "Issues.Issue600",
+        #|        "Issues.Issue889",
+        #|        "Issues.Issue959",
+        #|        "Issues.Issue962",
+        #|        "Issues.Issue969",
+        #|        "Issues.PatternModel.BasicEnum",
+        #|        "Issues.PatternModel.BasicRule",
+        #|        "Issues.PatternModel.OtherBasicEnum",
+        #|        "Issues.RecordUpdateVariableLookup",
+        #|        "Issues.ResolveIssue1",
+        #|        "Issues.UIDependency",
+        #|        "Presentations.UKFintechMeetup",
+        #|        "Relational",
+        #|        "SDK.Dict",
+        #|        "SDK.LocalDate",
+        #|        "SDK.Result",
+        #|        "SDK.String",
+        #|        "SDK.Tuple",
+        #|        "SDK.UUID",
+        #|        "TestModel.LooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongnameTestModelWordsAsdTestWord",
+        #|        "TestModel.Testing",
+        #|        "TypeAscription",
+        #|        "Types",
+        #|        "ValueEditors",
+        #|        "Values"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Morphir/Reference/Model/BooksAndRecords.elm",
@@ -3729,8 +3819,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-rentals",
-      package_name: "Morphir.Example.App",
-      exposed: ["Rentals"],
+      manifest: (
+        #|{
+        #|    "name": "Morphir.Example.App",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Rentals"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Morphir/Example/App/Rentals.elm",
@@ -3753,11 +3851,19 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-snowpark",
-      package_name: "CompanyAssets",
-      exposed: [
-        "DataDefinition.Assets", "DataDefinition.Types", "DataDefinition.Vendors",
-        "Rules.DepreciationRules",
-      ],
+      manifest: (
+        #|{
+        #|    "name": "CompanyAssets",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "DataDefinition.Assets",
+        #|        "DataDefinition.Types",
+        #|        "DataDefinition.Vendors",
+        #|        "Rules.DepreciationRules"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "CompanyAssets/DataDefinition/Assets.elm",
@@ -3899,17 +4005,39 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-spark",
-      package_name: "SparkTests",
-      exposed: [
-        "AggregationTests", "AntiqueRulesTests", "DataDefinition.Action", "DataDefinition.Field.Age",
-        "DataDefinition.Field.Amount", "DataDefinition.Field.Category", "DataDefinition.Field.Date",
-        "DataDefinition.Field.Name", "DataDefinition.Field.Price", "DataDefinition.Field.Product",
-        "DataDefinition.Field.Report", "DataDefinition.Field.SubProduct", "DataDefinition.Persistence.Expenditure.Bills",
-        "DataDefinition.Persistence.Expenditure.Loans", "DataDefinition.Persistence.Income.AntiqueShop",
-        "DataDefinition.Persistence.Income.ElectronicShop", "DataDefinition.Persistence.Income.GroceryShop",
-        "FunctionTests", "ListMemberTests", "ReturnTypeTests", "Rules.Income.Antique",
-        "Rules.Rules", "TypeTests", "Types",
-      ],
+      manifest: (
+        #|{
+        #|    "name": "SparkTests",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "AggregationTests",
+        #|        "AntiqueRulesTests",
+        #|        "DataDefinition.Action",
+        #|        "DataDefinition.Field.Age",
+        #|        "DataDefinition.Field.Amount",
+        #|        "DataDefinition.Field.Category",
+        #|        "DataDefinition.Field.Date",
+        #|        "DataDefinition.Field.Name",
+        #|        "DataDefinition.Field.Price",
+        #|        "DataDefinition.Field.Product",
+        #|        "DataDefinition.Field.Report",
+        #|        "DataDefinition.Field.SubProduct",
+        #|        "DataDefinition.Persistence.Expenditure.Bills",
+        #|        "DataDefinition.Persistence.Expenditure.Loans",
+        #|        "DataDefinition.Persistence.Income.AntiqueShop",
+        #|        "DataDefinition.Persistence.Income.ElectronicShop",
+        #|        "DataDefinition.Persistence.Income.GroceryShop",
+        #|        "FunctionTests",
+        #|        "ListMemberTests",
+        #|        "ReturnTypeTests",
+        #|        "Rules.Income.Antique",
+        #|        "Rules.Rules",
+        #|        "TypeTests",
+        #|        "Types"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "SparkTests/AggregationTests.elm",
@@ -5409,11 +5537,21 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "elm-typespec",
-      package_name: "TestModel",
-      exposed: [
-        "AdvancedTypes", "BasicTypes", "CollectionTypes", "CompositeTypes", "OptionalTypes",
-        "UnionTypes",
-      ],
+      manifest: (
+        #|{
+        #|    "name": "TestModel",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "AdvancedTypes",
+        #|        "BasicTypes",
+        #|        "CollectionTypes",
+        #|        "CompositeTypes",
+        #|        "OptionalTypes",
+        #|        "UnionTypes"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "TestModel/AdvancedTypes.elm",
@@ -5601,15 +5739,37 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "examples-sample",
-      package_name: "Morphir.Sample",
-      exposed: [
-        "Apps.BooksAndRecords.Deal", "Apps.Shared.Client", "Apps.Shared.Market",
-        "Apps.Shared.Price", "Apps.Shared.Product", "Apps.Shared.Quantity", "Apps.Shared.Rate",
-        "Apps.Trader.Logic", "Reg.Country", "Reg.Currency", "Reg.LCR.Basics", "Reg.LCR.CentralBank",
-        "Reg.LCR.Counterparty", "Reg.LCR.FedCode", "Reg.LCR.FedCodeRules", "Reg.LCR.Flows",
-        "Reg.LCR.Inflows", "Reg.LCR.MaturityBucket", "Reg.LCR.Product", "Reg.LCR.Rules",
-        "Rules.Direct", "Rules.RuleSet",
-      ],
+      manifest: (
+        #|{
+        #|    "name": "Morphir.Sample",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Apps.BooksAndRecords.Deal",
+        #|        "Apps.Shared.Client",
+        #|        "Apps.Shared.Market",
+        #|        "Apps.Shared.Price",
+        #|        "Apps.Shared.Product",
+        #|        "Apps.Shared.Quantity",
+        #|        "Apps.Shared.Rate",
+        #|        "Apps.Trader.Logic",
+        #|        "Reg.Country",
+        #|        "Reg.Currency",
+        #|        "Reg.LCR.Basics",
+        #|        "Reg.LCR.CentralBank",
+        #|        "Reg.LCR.Counterparty",
+        #|        "Reg.LCR.FedCode",
+        #|        "Reg.LCR.FedCodeRules",
+        #|        "Reg.LCR.Flows",
+        #|        "Reg.LCR.Inflows",
+        #|        "Reg.LCR.MaturityBucket",
+        #|        "Reg.LCR.Product",
+        #|        "Reg.LCR.Rules",
+        #|        "Rules.Direct",
+        #|        "Rules.RuleSet"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Company/Operations/BooksAndRecords.elm",
@@ -8267,8 +8427,20 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "examples-tutorial",
-      package_name: "Morphir.Example.App",
-      exposed: ["App", "Analytics", "Forecast", "Rentals", "Winds"],
+      manifest: (
+        #|{
+        #|    "name": "Morphir.Example.App",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "App",
+        #|        "Analytics",
+        #|        "Forecast",
+        #|        "Rentals",
+        #|        "Winds"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Morphir/Example/App/Analytics.elm",
@@ -8572,8 +8744,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "lambdas",
-      package_name: "Parity.Lambdas",
-      exposed: ["Fns"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Lambdas",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Fns"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Lambdas/Fns.elm",
@@ -8628,8 +8808,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "lets",
-      package_name: "Parity.Lets",
-      exposed: ["Blocks"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Lets",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Blocks"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Lets/Blocks.elm",
@@ -8699,8 +8887,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "modules",
-      package_name: "Parity.Modules",
-      exposed: ["Api"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Modules",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Api"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Modules/Api.elm",
@@ -8846,8 +9042,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "operators",
-      package_name: "Parity.Operators",
-      exposed: ["Ops"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Operators",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Ops"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Operators/Ops.elm",
@@ -8910,8 +9114,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "patterns",
-      package_name: "Parity.Patterns",
-      exposed: ["Cases"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Patterns",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Cases"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Patterns/Cases.elm",
@@ -8982,8 +9194,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "records",
-      package_name: "Parity.Records",
-      exposed: ["Points"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Records",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Points"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Records/Points.elm",
@@ -9034,8 +9254,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "sdk-modules",
-      package_name: "Parity.Sdk",
-      exposed: ["Trades"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Sdk",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Trades"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Sdk/Trades.elm",
@@ -9075,8 +9303,17 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "signatures",
-      package_name: "Parity.Signatures",
-      exposed: ["Functions", "Constrained"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Signatures",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Functions",
+        #|        "Constrained"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Signatures/Constrained.elm",
@@ -9213,10 +9450,21 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "types-and-aliases",
-      package_name: "Parity.Types",
-      exposed: [
-        "Aliases", "DocNoImports", "DocDetached", "DocBetween", "DocTight", "DocBlank",
-      ],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Types",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Aliases",
+        #|        "DocNoImports",
+        #|        "DocDetached",
+        #|        "DocBetween",
+        #|        "DocTight",
+        #|        "DocBlank"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Types/Aliases.elm",
@@ -9374,8 +9622,16 @@ fn elm_projects() -> Array[ElmProject] {
     },
     {
       name: "unannotated",
-      package_name: "Parity.Unannotated",
-      exposed: ["Free"],
+      manifest: (
+        #|{
+        #|    "name": "Parity.Unannotated",
+        #|    "sourceDirectory": "src",
+        #|    "exposedModules": [
+        #|        "Free"
+        #|    ]
+        #|}
+        #|
+      ),
       sources: [
         (
           "Parity/Unannotated/Free.elm",

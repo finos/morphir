@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, symlinkSync } from "node:fs";
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -403,6 +403,29 @@ function exercise(command, prefix, directory, target, buildHelper = join(appDire
   const languageList=JSON.parse(run(["project","list","moon-library","--frontend","moonbit","--json"]).stdout);
   assert.equal(languageList.projects[0].frontend,"moonbit");
   assert.deepEqual(JSON.parse(run(["project","list","moon-library","--frontend","moonbit-library","--json"]).stdout).projects,[]);
+  // An unchanged morphir-elm project compiles with the Elm provider that the CLI registers.
+  const elmCorpus = join(workspaceDirectory, "pkgs/morphir-elm/conformance/projects/modules");
+  mkdirSync(join(directory, "elm-modules"), {recursive: true});
+  cpSync(join(elmCorpus, "morphir.json"), join(directory, "elm-modules/morphir.json"));
+  cpSync(join(elmCorpus, "src"), join(directory, "elm-modules/src"), {recursive: true});
+  const elmPlan = JSON.parse(run(["run", "elm-modules", "--dry-run", "--json"]).stdout);
+  const elmFrontend = elmPlan.frontends[0];
+  assert.equal(elmFrontend.language, "elm");
+  assert.equal(elmFrontend.provider, "finos/morphir-elm");
+  assert.equal(elmFrontend.profile, "library");
+  assert.equal(elmFrontend.capabilities.maxDocuments, null);
+  assert.ok(!existsSync(join(directory, "elm-modules/.morphir")));
+  assert.equal(JSON.parse(run(["run", "elm-modules", "--json"]).stdout).successful, true);
+  const elmIr = JSON.parse(readFileSync(join(directory, "elm-modules/.morphir/out/compile.dest/parity/modules.json"), "utf8"));
+  assert.equal(typeof elmIr, "object");
+  const generated = (backend, suffix) => {
+    assert.equal(JSON.parse(run(["run", "elm-modules", "--backend", backend, "--validation", "source-only", "--json"]).stdout).successful, true);
+    return readdirSync(join(directory, "elm-modules/.morphir/out"), {recursive: true}).filter(p => String(p).endsWith(suffix));
+  };
+  assert.ok(generated("elm", ".elm").length > 0);
+  assert.ok(generated("moonbit", "library.mbt").length > 0);
+  assert.match(run(["run", "elm-modules", "--backend", "ir-json", "--json"], 2).stdout, /frontend\.typed_backend_required/);
+  assert.deepEqual(JSON.parse(run(["project", "list", "elm-modules", "--json"]).stdout).projects.map(p => [p.name, p.frontend]), [["Parity.Modules", "elm"]]);
   const namingManifest='[project]\nname="Naming"\nmodule_prefix="App"\n[frontend]\nlanguage="moonbit"\nprofile="'+libraryProfile+'"\n[pipeline]\nbackend="checkpoint"\n';
   put("naming/morphir.toml",namingManifest);
   put("naming/src/Main.mbt",'pub fn is_ready() -> Bool { true }\npub fn isReady() -> Bool { false }');
@@ -590,13 +613,18 @@ function exercise(command, prefix, directory, target, buildHelper = join(appDire
     assert.ok(!existsSync(join(libraryRoot,"build-receipt.ionb")));
   }
 
-  // Legacy manifests still pass through the new CLI.
+  // A morphir-elm morphir.json still passes through the new CLI.
   const legacy = join(directory, "legacy");
-  put("legacy/morphir.json", '{"name":"Legacy","sourceDirectory":"src"}');
-  put("legacy/src/main.scm", '42');
+  put("legacy/morphir.json", '{"name":"Legacy","sourceDirectory":"src","exposedModules":["Main"]}');
+  put("legacy/src/Legacy/Main.elm", 'module Legacy.Main exposing (answer)\n\n\nanswer : Int\nanswer =\n    42\n');
   // Keep the legacy project independent of its enclosing test workspace.
   run(["run", "--dry-run"], 0, legacy);
   assert.equal(JSON.parse(run(["project", "list", "--json"], 0, legacy).stdout).projects[0].name, "Legacy");
+  assert.equal(JSON.parse(run(["project", "list", "--json"], 0, legacy).stdout).projects[0].frontend, "elm");
+  // A morphir.json is always a morphir-elm project, and morphir-elm requires exposedModules.
+  const legacyElm = join(directory, "legacy-elm");
+  put("legacy-elm/morphir.json", '{"name":"Legacy","sourceDirectory":"src"}');
+  assert.match(run(["run", "--dry-run", "--json"], 2, legacyElm).stdout, /exposedModules must be a list of module names/);
   console.log(`CLI workspace integration passed: ${target}`);
 }
 

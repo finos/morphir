@@ -2,6 +2,7 @@ import {
   "finos/morphir-execution/observability" @observe,
   "finos/morphir-engine" @engine,
   "finos/morphir-engine/data",
+  "finos/morphir-engine/ids",
   "finos/morphir-moonbit-frontend" @frontend,
 }
 

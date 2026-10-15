@@ -4,6 +4,7 @@ import {
   "finos/morphir-moonbit" @moonbit,
   "finos/morphir-elm/backend" @elm,
   "finos/morphir-engine/data",
+  "finos/morphir-engine/ids",
   "finos/morphir-engine/config" @configuration,
   "finos/morphir-engine/workspace",
   "finos/morphir-ir" @ir,
@@ -25,6 +26,7 @@ import {
 
 import {
   "finos/morphir-engine" @engine,
+  "finos/morphir-engine/ids",
   "finos/morphir-metadata/fixtures" @metadata_fixtures,
   "moonrockz/ion/text" @ion_text,
   "finos/morphir-moonbit/fixtures",

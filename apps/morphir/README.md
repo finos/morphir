@@ -135,13 +135,13 @@ name = "Core"
 source_directory = "src"
 ```
 
-The CLI also finds `.morphir/morphir.toml` and `.config/morphir/config.toml`. Multiple primary candidates are errors. YAML candidates are detected and reported as unsupported. Legacy `morphir.json` and `morphir-workspace.json` remain supported; canonical configuration takes precedence with a warning.
+The CLI also finds `.morphir/morphir.toml` and `.config/morphir/config.toml`. Multiple primary candidates are errors. YAML candidates are detected and reported as unsupported. `morphir.json` is the morphir-elm project file and is read as an Elm project (see [Elm projects](#elm-projects)); other languages, Scheme included, use `morphir.toml`. `morphir-workspace.json` remains supported; canonical configuration takes precedence with a warning.
 
 Configuration layers are defaults, system, global user, workspace primary, member primary, workspace/member user overrides, environment and CLI. Global configuration and shared workspace defaults exclude project identity and workspace-root settings when applied to a member. Tables merge recursively and arrays replace. TOML encoding preserves unknown values semantically, without preserving comments or formatting.
 
 Workspace and project `morphir.config.scm` files supply pipeline configuration and transforms. An explicit `--config` script runs last; explicit CLI language/provider/profile/backend choices are reapplied afterward. Scripts cannot access filesystem, processes or network implicitly.
 
-Outputs go to `.morphir/out/<member-path>/compile.dest/<source-stem>.ir.json`. Each source produces an independent distribution. Project-wide linking and dependency resolution are separate compiler work. The legacy text frontends/backends are `scheme` and `ir-json`. The explicitly registered `moonbit` source frontend uses the typed checkpoint or generation pipeline below; requested unregistered frontends fail explicitly. JSON output supports IR versions 1 through 4 through existing lossless migration codecs. Unsupported layouts and serialization formats fail validation.
+Outputs go to `.morphir/out/<member-path>/compile.dest/<source-stem>.ir.json`. Each source produces an independent distribution. Project-wide linking and dependency resolution are separate compiler work. The legacy text frontends/backends are `scheme` and `ir-json`. The explicitly registered `moonbit` and `elm` source frontends use the typed checkpoint or generation pipeline below; requested unregistered frontends fail explicitly. JSON output supports IR versions 1 through 4 through existing lossless migration codecs. Unsupported layouts and serialization formats fail validation.
 
 Conventional project/module spelling such as `Core` and `Main.scm` is converted to canonical IR names. `project.module_prefix` qualifies modules; `project.exposed_modules` controls module visibility.
 
@@ -233,6 +233,33 @@ Execution reports stable `moonbit_frontend.*` diagnostic codes and available par
 spans, with provider/profile context. A failed source unit prevents task publication
 and preserves existing task output. The rich unit and its compiler limits are fixed
 when the plan is made, so later plugin registrations cannot change its execution.
+
+## Elm projects
+
+The CLI registers the Elm frontend of [`finos/morphir-elm`](../../pkgs/morphir-elm/README.md) by default, so an
+unchanged morphir-elm project compiles with `morphir run`. A `morphir.json` file selects the provider; no
+`morphir.toml` is needed:
+
+```shell
+morphir run path/to/elm-project
+```
+
+The `morphir.json` fields map as the [engine README](../../pkgs/morphir-engine/README.md#morphirjson-is-an-elm-project) describes: `name` is
+the package name (`project.name`), `sourceDirectory` is the source directory (default `src`), and `exposedModules`
+is required and gives `project.exposed_modules`. The project uses the `elm` frontend and the `checkpoint` backend
+with the `morphir-json` format. The default output is the Morphir IR JSON of the package, at
+`.morphir/out/compile.dest/<package path>.json` (for `Parity.Modules`: `parity/modules.json`).
+
+Choose a generator with `--backend elm` or `--backend moonbit --validation source-only`:
+
+```shell
+morphir run path/to/elm-project --backend moonbit --validation source-only
+```
+
+The `ir-json` backend is for untyped frontends. The CLI refuses it for Elm with `frontend.typed_backend_required`.
+
+`dependencies`, `localDependencies` and `decorations` are ignored. If one of them is not empty, the CLI gives a
+warning. `morphir.json` is always read as an Elm project, and it must have `exposedModules`; a `morphir.json` without it is refused at discovery. Other languages, Scheme included, use `morphir.toml`.
 
 ## Ion checkpoints
 

@@ -18,8 +18,8 @@ pub fn SourceEvidence::name(self : SourceEvidence) -> String {
 /// `exposed_modules` are as written in the project configuration (`project.name` and `project.exposed_modules`);
 /// `exposed_modules` is empty when the key is missing. The sources are in path order.
 pub(all) struct ProjectSources {
-  package_name : String
-  exposed_modules : Array[String]
+  package_name : @ids.SourcePackageName
+  exposed_modules : Array[@ids.SourceModuleName]
   sources : Array[Source]
 }
 
@@ -46,7 +46,7 @@ pub(all) struct SourceCapabilities {
 
 ///|
 pub(all) struct SourceProfile {
-  id : String
+  id : @ids.ProfileId
   capabilities : SourceCapabilities
   evidence : SourceEvidence
   dependencies : Map[String, String]
@@ -56,15 +56,15 @@ pub(all) struct SourceProfile {
 
 ///|
 pub(all) struct SourceLanguage {
-  id : String
-  extensions : Array[String]
-  default_profile : String
+  id : @ids.LanguageId
+  extensions : Array[@ids.FileExtension]
+  default_profile : @ids.ProfileId
   profiles : Array[SourceProfile]
 }
 
 ///|
 pub(all) struct SourceProvider {
-  id : String
+  id : @ids.ProviderId
   languages : Array[SourceLanguage]
 }
 
@@ -98,51 +98,40 @@ pub fn Engine::register_source_provider(
   self : Engine,
   provider : SourceProvider,
 ) -> Unit raise {
-  ignore(source_constraint(provider.id, "provider"))
-  if self.source_providers.contains(provider.id) ||
-    self.frontends.contains(provider.id) {
+  let provider_id = provider.id.to_string()
+  if self.source_providers.contains(provider_id) ||
+    self.frontends.contains(provider_id) {
     raise @configuration.Invalid(
-      "frontend.registration_conflict: " + provider.id,
+      "frontend.registration_conflict: " + provider_id,
     )
   }
   if provider.languages.is_empty() || provider.languages.length() > 64 {
-    raise @configuration.Invalid("frontend.invalid_languages: " + provider.id)
+    raise @configuration.Invalid("frontend.invalid_languages: " + provider_id)
   }
   let languages = []
-  let seen_languages : Map[String, Bool] = Map([])
+  let seen_languages : Map[@ids.LanguageId, Bool] = Map([])
   for language in provider.languages {
-    ignore(source_constraint(language.id, "language"))
+    let language_id = language.id.to_string()
     if seen_languages.contains(language.id) ||
-      self.data_formats.contains(language.id) ||
-      language.id == "ir-json" {
-      raise @configuration.Invalid("frontend.invalid_language: " + language.id)
+      self.data_formats.contains(language_id) ||
+      language_id == "ir-json" {
+      raise @configuration.Invalid("frontend.invalid_language: " + language_id)
     }
     seen_languages[language.id] = true
-    if language.extensions.is_empty() ||
-      language.extensions.length() > 64 ||
-      !language.extensions.all(s => {
-        s.length() > 1 &&
-        s.length() <= 256 &&
-        s.has_prefix(".") &&
-        !s.to_array().any(c => c.to_int() < 32 || c.to_int() == 127) &&
-        !s.contains("/") &&
-        !s.contains("\\") &&
-        !s.contains(":")
-      }) {
+    if language.extensions.is_empty() || language.extensions.length() > 64 {
       raise @configuration.Invalid(
-        "frontend.invalid_extensions: " + language.id,
+        "frontend.invalid_extensions: " + language_id,
       )
     }
     if language.profiles.is_empty() || language.profiles.length() > 64 {
-      raise @configuration.Invalid("frontend.invalid_profiles: " + provider.id)
+      raise @configuration.Invalid("frontend.invalid_profiles: " + provider_id)
     }
-    let seen : Map[String, Bool] = Map([])
+    let seen : Map[@ids.ProfileId, Bool] = Map([])
     let profiles = []
     for profile in language.profiles {
-      ignore(source_constraint(profile.id, "profile"))
       if seen.contains(profile.id) {
         raise @configuration.Invalid(
-          "frontend.duplicate_profile: " + profile.id,
+          "frontend.duplicate_profile: " + profile.id.to_string(),
         )
       }
       seen[profile.id] = true
@@ -159,7 +148,7 @@ pub fn Engine::register_source_provider(
         c.limits.length() > 64 ||
         profile.dependencies.length() > 64 {
         raise @configuration.Invalid(
-          "frontend.invalid_capabilities: " + profile.id,
+          "frontend.invalid_capabilities: " + profile.id.to_string(),
         )
       }
       for text in c.supported + c.excluded {
@@ -168,7 +157,9 @@ pub fn Engine::register_source_provider(
       for key, value in c.limits {
         ignore(source_constraint(key, "limits"))
         if value < 0 {
-          raise @configuration.Invalid("frontend.invalid_limits: " + profile.id)
+          raise @configuration.Invalid(
+            "frontend.invalid_limits: " + profile.id.to_string(),
+          )
         }
       }
       for key, value in profile.dependencies {
@@ -177,7 +168,9 @@ pub fn Engine::register_source_provider(
       }
       let limits = profile.unit_limits
       if limits.max_bytes <= 0 || limits.max_depth < 0 || limits.max_values <= 0 {
-        raise @configuration.Invalid("frontend.invalid_limits: " + profile.id)
+        raise @configuration.Invalid(
+          "frontend.invalid_limits: " + profile.id.to_string(),
+        )
       }
       profiles.push({
         ..profile,
@@ -187,7 +180,8 @@ pub fn Engine::register_source_provider(
     }
     if !seen.contains(language.default_profile) {
       raise @configuration.Invalid(
-        "frontend.unknown_default_profile: " + language.default_profile,
+        "frontend.unknown_default_profile: " +
+        language.default_profile.to_string(),
       )
     }
     languages.push({
@@ -196,7 +190,7 @@ pub fn Engine::register_source_provider(
       extensions: language.extensions.copy(),
     })
   }
-  self.source_providers[provider.id] = { ..provider, languages, }
+  self.source_providers[provider_id] = { ..provider, languages, }
 }
 
 ///|
@@ -209,7 +203,7 @@ fn Engine::select_source_frontend(
   let offers : Map[String, SourceLanguage] = Map([])
   for id, provider in self.source_providers {
     for offered in provider.languages {
-      if offered.id == language {
+      if offered.id.to_string() == language {
         offers[id] = offered
       }
     }
@@ -262,10 +256,12 @@ fn Engine::select_source_frontend(
     }
   }
   if offers.get(id) is Some(offered) {
-    let available = offered.profiles.map(p => p.id)
+    let available = offered.profiles.map(p => p.id.to_string())
     available.sort()
-    let wanted = settings.frontend_profile.unwrap_or(offered.default_profile)
-    let profiles = offered.profiles.filter(p => p.id == wanted)
+    let wanted = settings.frontend_profile.unwrap_or(
+      offered.default_profile.to_string(),
+    )
+    let profiles = offered.profiles.filter(p => p.id.to_string() == wanted)
     if profiles.is_empty() {
       raise @configuration.Invalid(
         "frontend.unknown_profile: " +
@@ -280,13 +276,13 @@ fn Engine::select_source_frontend(
     }
     let profile = profiles[0]
     return Some({
-      extensions: offered.extensions.copy(),
+      extensions: offered.extensions.map(e => e.to_string()),
       compiler: match profile.compile {
         PerFile(run) => UnitCompiler(run, profile.unit_limits)
         PerProject(run) => ProjectCompiler(run, profile.unit_limits)
       },
       provider: id,
-      profile: Some(profile.id),
+      profile: Some(profile.id.to_string()),
       default_profile: profile.id == offered.default_profile,
       available_profiles: available,
       capabilities: Some(profile.capabilities.snapshot()),

@@ -26,8 +26,8 @@ pub fn Request::new() -> Request {
 /// The project of a `PerProject` source compiler: one unit for all source files of the project.
 priv struct ProjectJob {
   unit_id : String
-  package_name : String
-  exposed_modules : Array[String]
+  package_name : @ids.SourcePackageName
+  exposed_modules : Array[@ids.SourceModuleName]
 }
 
 ///|
@@ -531,13 +531,16 @@ pub fn Engine::plan(
       strict_naming: effective.boolean("pipeline.strict_naming", false),
       inference,
       project: if project_compiler {
+        let exposed = []
+        if effective.get("project.exposed_modules") is Some(_) {
+          for text in effective.strings("project.exposed_modules") {
+            exposed.push(@ids.SourceModuleName::parse(text))
+          }
+        }
         Some({
           unit_id: canonical_path(settings.package_name),
-          package_name: settings.package_name,
-          exposed_modules: match effective.get("project.exposed_modules") {
-            Some(_) => effective.strings("project.exposed_modules")
-            None => []
-          },
+          package_name: @ids.SourcePackageName::parse(settings.package_name),
+          exposed_modules: exposed,
         })
       } else {
         None

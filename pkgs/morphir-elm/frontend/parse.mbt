@@ -13,6 +13,13 @@ fn dotted(segments : Array[String]) -> String {
 }
 
 ///|
+/// The package name in Elm module syntax. `morphir.json` may write it with `/` (for example `Morphir/Sample`, which
+/// morphir-elm accepts); Elm module names use `.`.
+fn elm_package(package_name : String) -> String {
+  package_name.replace_all(old="/", new=".")
+}
+
+///|
 fn package_segments(package_name : String) -> Array[String] {
   package_name.split(".").map(s => s.to_owned()).collect()
 }
@@ -25,7 +32,7 @@ pub fn parse_modules(
   sources : Array[ElmSource],
   package_name : String,
 ) -> Array[@resolve.ParsedModule] raise ElmFailed {
-  let parsed = parse_sources(sources, package_name)
+  let parsed = parse_sources(sources, elm_package(package_name))
   let problems : Array[ElmProblem] = []
   for entry in parsed {
     problems.append(entry.1)

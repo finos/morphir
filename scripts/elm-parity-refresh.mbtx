@@ -231,10 +231,14 @@ async fn main {
     lines.push("    },")
     acceptance.push("    {")
     acceptance.push("      name: \{quoted(name)},")
-    acceptance.push("      package_name: \{quoted(package_name)},")
-    acceptance.push(
-      "      exposed: [\{exposed.map(e => e.stringify()).join(", ")}],",
+    acceptance.push("      manifest: (")
+    push_raw(
+      acceptance,
+      "        ",
+      @fs.read_file(dir + "/morphir.json").text(),
+      dir + "/morphir.json",
     )
+    acceptance.push("      ),")
     acceptance.push("      sources: [")
     for s in sources {
       acceptance.push("        (")

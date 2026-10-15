@@ -92,25 +92,3 @@ fn Config::apply(
     }
   }
 }
-
-///|
-fn manifest(
-  host : Host,
-  root : String,
-  name : String,
-) -> Map[String, Json] raise {
-  @wire.object(@wire.parse((host.read)(join(root, name))))
-}
-
-///|
-fn optional_string(
-  fields : Map[String, Json],
-  key : String,
-  fallback : String,
-) -> String raise {
-  match fields.get(key) {
-    None => fallback
-    Some(String(value)) => value
-    _ => raise @scheme.Invalid("Manifest field must be a string: " + key)
-  }
-}

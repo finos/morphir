@@ -19,14 +19,16 @@ fn source_constraint(request : Json, key : String) -> String? raise {
 fn compile_source(request : Json, source : String) -> CompiledSource raise {
   let provider = @moonbit_adapter.provider()
   if source_constraint(request, "frontendProvider") is Some(wanted) &&
-    wanted != provider.id {
+    wanted != provider.id.to_string() {
     raise @scheme.Invalid("frontend.unknown_provider: " + wanted)
   }
   let language = provider.languages[0]
   let wanted = source_constraint(request, "frontendProfile").unwrap_or(
-    language.default_profile,
+    language.default_profile.to_string(),
   )
-  let offered = language.profiles.filter(profile => profile.id == wanted)
+  let offered = language.profiles.filter(profile => {
+    profile.id.to_string() == wanted
+  })
   if offered.is_empty() {
     raise @scheme.Invalid("frontend.unknown_profile: " + wanted)
   }
@@ -34,7 +36,9 @@ fn compile_source(request : Json, source : String) -> CompiledSource raise {
   let run = match profile.compile {
     @engine.PerFile(run) => run
     @engine.PerProject(_) =>
-      raise @scheme.Invalid("frontend.unsupported_profile: " + profile.id)
+      raise @scheme.Invalid(
+        "frontend.unsupported_profile: " + profile.id.to_string(),
+      )
   }
   let unit = run(
     {
@@ -48,7 +52,7 @@ fn compile_source(request : Json, source : String) -> CompiledSource raise {
     fn() { false },
   )
   unit.validate(limits=profile.unit_limits)
-  { unit, profile: profile.id, provider: provider.id, }
+  { unit, profile: profile.id.to_string(), provider: provider.id.to_string(), }
 }
 
 ///|
@@ -59,7 +63,7 @@ fn source_catalog() -> Json raise {
   let profiles = language.profiles.map(profile => {
     let c = profile.capabilities
     @wire.obj([
-      ("id", @wire.text(profile.id)),
+      ("id", @wire.text(profile.id.to_string())),
       ("displayName", @wire.text(c.summary)),
       ("supported", Json::array(c.supported.map(@wire.text))),
       ("excluded", Json::array(c.excluded.map(@wire.text))),
@@ -79,13 +83,16 @@ fn source_catalog() -> Json raise {
           "compile": true,
         },
         @wire.obj([
-          ("languageId", @wire.text(language.id)),
+          ("languageId", @wire.text(language.id.to_string())),
           ("displayName", @wire.text("MoonBit")),
-          ("fileExtensions", Json::array(language.extensions.map(@wire.text))),
+          (
+            "fileExtensions",
+            Json::array(language.extensions.map(e => @wire.text(e.to_string()))),
+          ),
           ("irVersions", Json::array([@wire.text("4.0.0")])),
           ("compile", Json::boolean(true)),
-          ("providerId", @wire.text(provider.id)),
-          ("defaultProfile", @wire.text(language.default_profile)),
+          ("providerId", @wire.text(provider.id.to_string())),
+          ("defaultProfile", @wire.text(language.default_profile.to_string())),
           ("profiles", Json::array(profiles)),
         ]),
       ]),

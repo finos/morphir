@@ -1,16 +1,17 @@
 ///|
 /// Compiles an Elm project to a Morphir IR library, as `morphir-elm make` 2.100.0 does. `package_name` is the
-/// dotted package name and `exposed` holds the exposed module names relative to the package, as in
-/// `morphir.json`. Each pass reports all of its problems; the first pass with problems stops the compile. The last
-/// pass infers the type of every value and pattern node; its problems are `elm.type`. `output` chooses the output
-/// modules: `Parity` (the default) keeps the modules that morphir-elm keeps; `Referenced` also keeps every module
-/// that the output names.
+/// package name, dotted or with `/` (`Morphir.Sample` or `Morphir/Sample`), and `exposed` holds the exposed module
+/// names relative to the package, as in `morphir.json`. Each pass reports all of its problems; the first pass with
+/// problems stops the compile. The last pass infers the type of every value and pattern node; its problems are
+/// `elm.type`. `output` chooses the output modules: `Parity` (the default) keeps the modules that morphir-elm keeps;
+/// `Referenced` also keeps every module that the output names.
 pub fn compile_project(
   sources : Array[ElmSource],
   package_name : String,
   exposed : Array[String],
   output? : OutputModules = Parity,
 ) -> @ir.IRFile raise ElmFailed {
+  let package_name = elm_package(package_name)
   if exposed.is_empty() {
     raise ElmFailed([
       problem(

@@ -1,10 +1,13 @@
 import {
   "finos/morphir-engine" @engine,
   "finos/morphir-engine/data",
+  "finos/morphir-engine/ids",
   "finos/morphir-elm/frontend",
 }
 
 import {
   "finos/morphir-engine/elm" @adapter,
+  "finos/morphir-engine/config",
   "finos/morphir-engine/workspace",
+  "moonbitlang/core/json",
 } for "test"

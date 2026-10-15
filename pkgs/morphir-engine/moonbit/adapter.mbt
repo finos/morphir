@@ -36,7 +36,7 @@ pub fn provider(
     ("moonbitlang/lexer", "0.4.0"),
   ])
   let seed : @engine.SourceProfile = {
-    id: @frontend.PROFILE,
+    id: @ids.ProfileId::parse(@frontend.PROFILE),
     dependencies,
     evidence: @engine.LocalAcceptance,
     unit_limits,
@@ -84,7 +84,7 @@ pub fn provider(
     }),
   }
   let library : @engine.SourceProfile = {
-    id: @frontend.LIBRARY_PROFILE,
+    id: @ids.ProfileId::parse(@frontend.LIBRARY_PROFILE),
     dependencies,
     evidence: @engine.LocalAcceptance,
     unit_limits,
@@ -138,12 +138,12 @@ pub fn provider(
     }),
   }
   {
-    id: PROVIDER,
+    id: @ids.ProviderId::parse(PROVIDER),
     languages: [
       {
-        id: "moonbit",
-        extensions: [".mbt"],
-        default_profile: @frontend.PROFILE,
+        id: @ids.LanguageId::parse("moonbit"),
+        extensions: [@ids.FileExtension::parse(".mbt")],
+        default_profile: @ids.ProfileId::parse(@frontend.PROFILE),
         profiles: [seed, library],
       },
     ],

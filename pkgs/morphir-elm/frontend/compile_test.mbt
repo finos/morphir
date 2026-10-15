@@ -277,3 +277,28 @@ test "top-level mutual recursion is accepted" {
   assert_eq(odd.to_canonical(), "my/pkg:a#is-odd")
   assert_true(values[n("is-odd")].value.value is ExpressionBody(_, _, _))
 }
+
+///|
+/// morphir-elm accepts a package name written with `/` in `morphir.json` (finos/morphir-examples writes
+/// `Morphir/Sample`). It compiles like the dotted name.
+test "a slash-separated package name compiles like the dotted one" {
+  let slashed = @frontend.compile_project(
+    [
+      { path: "My/Pkg/Types.elm", content: types_elm, },
+      { path: "My/Pkg/Util.elm", content: util_elm, },
+      { path: "My/Pkg/Internal.elm", content: internal_elm, },
+      { path: "My/Pkg/Lonely.elm", content: lonely_elm, },
+    ],
+    "My/Pkg",
+    ["Types"],
+  )
+  guard slashed.distribution is Library(pkg, _, def) else { fail("library") }
+  guard compile().distribution is Library(_, _, expected) else {
+    fail("library")
+  }
+  assert_eq(pkg, p("my/pkg"))
+  assert_eq(
+    def.modules.keys().map(k => k.to_canonical()).collect(),
+    expected.modules.keys().map(k => k.to_canonical()).collect(),
+  )
+}

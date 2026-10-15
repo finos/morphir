@@ -1,5 +1,6 @@
 import {
   "finos/morphir-engine/config",
+  "finos/morphir-engine/ids",
   "moonbitlang/core/json",
 }
 

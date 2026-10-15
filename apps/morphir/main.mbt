@@ -196,7 +196,10 @@ fn command(cli : Cli, mode : OutputMode) -> Int raise {
   )
   defer logs.flush()
   let engine = @engine.Engine::new()
-  @moonbit_frontend.register(engine, observer=logs.observer())
+    ..register_source_provider(
+      @moonbit_frontend.provider(observer=logs.observer()),
+    )
+    ..register_source_provider(@elm_frontend.provider())
   let grant_file = value(cli, "metadata-grants")
   let grants = if grant_file == "" {
     None

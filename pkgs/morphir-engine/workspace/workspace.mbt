@@ -69,23 +69,88 @@ fn user(tree : Tree, anchor : String) -> @config.Document raise {
 }
 
 ///|
-fn legacy(tree : Tree, root : String) -> @config.Document raise {
+/// A morphir-elm project file. `morphir.json` is morphir-elm's format, so the project is an Elm project. It
+/// compiles to a Morphir IR JSON checkpoint unless the configuration or the run chooses another backend. It
+/// returns the pipeline defaults, which sit below system and global configuration, and the project
+/// document. `dependencies`, `localDependencies` and `decorations` are not supported; a non-empty one
+/// gives a warning.
+fn legacy(
+  tree : Tree,
+  root : String,
+  warnings : Array[String],
+) -> (@config.Document, @config.Document) raise {
   let path = join(root, "morphir.json")
-  let value = @json.parse(tree.files[path])
-  match value {
-    Object(fields) => {
-      let project = Map([])
-      project["name"] = fields.get("name").unwrap_or(Json::string("user"))
-      project["source_directory"] = fields
-        .get("sourceDirectory")
-        .unwrap_or(Json::string("src"))
-      @config.from_json(
-        Json::object(Map::from_array([("project", Json::object(project))])),
-        origin=path,
+  guard @json.parse(tree.files[path]) is Object(fields) else {
+    raise @config.Invalid("Expected project manifest object: " + path)
+  }
+  let fail = fn(message : String) -> @config.Invalid {
+    @config.Invalid("morphir.json " + message + ": " + path)
+  }
+  let name = match fields.get("name") {
+    Some(String(text)) => text
+    None => "user"
+    Some(_) => raise fail("name must be a string")
+  }
+  ignore(
+    @ids.SourcePackageName::parse(name) catch {
+      @config.Invalid(message) => raise fail("name: " + message)
+    },
+  )
+  let source_directory = match fields.get("sourceDirectory") {
+    Some(String(text)) => text
+    None => "src"
+    Some(_) => raise fail("sourceDirectory must be a string")
+  }
+  guard fields.get("exposedModules") is Some(Array(items)) else {
+    raise fail("exposedModules must be a list of module names")
+  }
+  let exposed : Array[Json] = []
+  for item in items {
+    guard item is String(text) else {
+      raise fail("exposedModules must be a list of module names")
+    }
+    ignore(
+      @ids.SourceModuleName::parse(text) catch {
+        @config.Invalid(message) => raise fail("exposedModules: " + message)
+      },
+    )
+    exposed.push(Json::string(text))
+  }
+  for key in ["dependencies", "localDependencies", "decorations"] {
+    let present = match fields.get(key) {
+      None | Some(Null) => false
+      Some(Array(values)) => !values.is_empty()
+      Some(Object(values)) => !values.is_empty()
+      Some(_) => true
+    }
+    if present {
+      warnings.push(
+        "Ignoring morphir.json " + key + " (not supported): " + path,
       )
     }
-    _ => raise @config.Invalid("Expected project manifest object: " + path)
   }
+  let primary = @config.from_json(
+    {
+      "project": {
+        "name": Json::string(name),
+        "source_directory": Json::string(source_directory),
+        "exposed_modules": Json::array(exposed),
+      },
+      "frontend": { "language": "elm" },
+    },
+    origin=path,
+  )
+  // The pipeline settings are defaults only: system, global and workspace configuration may replace them.
+  let defaults = @config.from_json(
+    {
+      "pipeline": {
+        "backend": "checkpoint",
+        "checkpoint_format": "morphir-json",
+      },
+    },
+    origin=path,
+  )
+  (defaults, primary)
 }
 
 ///|
@@ -93,7 +158,7 @@ fn load(
   tree : Tree,
   root : String,
   warnings : Array[String],
-) -> (String, @config.Document) raise {
+) -> (String, @config.Document, @config.Document) raise {
   match primary(tree, root) {
     Some(path) => {
       if tree.files.contains(join(root, "morphir.json")) ||
@@ -102,14 +167,15 @@ fn load(
           "Canonical configuration overrides legacy manifest at " + root,
         )
       }
-      (path, @config.parse(tree.files[path], origin=path))
+      (path, @config.parse(tree.files[path], origin=path), @config.empty())
     }
     None => {
       let path = join(root, "morphir.json")
       if tree.files.contains(path) {
-        (path, legacy(tree, root))
+        let (defaults, document) = legacy(tree, root, warnings)
+        (path, document, defaults)
       } else {
-        ("", @config.empty())
+        ("", @config.empty(), @config.empty())
       }
     }
   }
@@ -126,15 +192,18 @@ pub fn discover(
 ) -> Workspace raise {
   let root = normalize(root)
   let warnings = []
-  let (anchor, primary_doc) = load(tree, root, warnings)
+  let (anchor, primary_doc, root_defaults) = load(tree, root, warnings)
   let defaults = @config.parse(
     "[workspace]\nout_dir = '.morphir/out'\n[frontend]\nlanguage = 'scheme'\n[project]\nsource_directory = 'src'\n[ir]\nformat_version = 4\nlayout = 'single-file'\nformat = 'json'\n",
     origin="defaults",
   )
-  let base = @config.merge(
-    @config.merge(defaults, system.shared()),
-    global.shared(),
-  )
+  let base_with = fn(extra : @config.Document) {
+    defaults
+    |> @config.merge(extra)
+    |> @config.merge(system.shared())
+    |> @config.merge(global.shared())
+  }
+  let base = base_with(root_defaults)
   let env = @config.environment(environment)
   let shared = @config.merge(base, primary_doc)
   let root_user = user(tree, anchor)
@@ -203,8 +272,9 @@ pub fn discover(
   let projects = []
   for path in paths {
     try {
-      let (member_anchor, member_config) = if path == workspace_root {
-        (anchor, @config.empty())
+      let (member_anchor, member_config, member_defaults) = if path ==
+        workspace_root {
+        (anchor, @config.empty(), @config.empty())
       } else {
         load(tree, path, warnings)
       }
@@ -224,7 +294,7 @@ pub fn discover(
         if path == workspace_root {
           shared
         } else {
-          @config.merge(base, primary_doc.shared())
+          @config.merge(base_with(member_defaults), primary_doc.shared())
         },
         member_config,
       )

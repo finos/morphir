@@ -33,6 +33,28 @@ shape through `discover_request`; the supported TOML success snapshots are teste
 against vendored upstream fixtures. YAML candidates produce explicit diagnostics.
 Malformed members have error state and do not prevent selecting a valid sibling.
 
+### `morphir.json` is an Elm project
+
+`discover` and `plan` read `morphir.json` (and the members of `morphir-workspace.json`) as a
+morphir-elm project. A `morphir.toml` beside it wins, and a warning says so.
+
+| `morphir.json` | Configuration |
+| --- | --- |
+| `name` (default `user`; must be a valid package name) | `project.name` |
+| `sourceDirectory` (default `src`) | `project.source_directory` |
+| `exposedModules` (required list of module names) | `project.exposed_modules` |
+| none | `frontend.language = "elm"` |
+| none | default `pipeline.backend = "checkpoint"`, `pipeline.checkpoint_format = "morphir-json"` (system, global and workspace configuration can replace them) |
+
+The planner refuses the plain `ir-json` backend for project compilers, so the default is a
+`morphir-json` checkpoint. It writes the same Morphir IR JSON to
+`.morphir/out/compile.dest/<package path>.json`. A run can choose another backend, for
+example `elm` or `moonbit`, and an overlay can choose another language.
+
+A bad field is a configuration error that names the file. `dependencies`,
+`localDependencies` and `decorations` are not supported: when one is not empty, it adds a
+line to `Workspace.warnings`.
+
 `Engine::list_projects` resolves effective frontend and target choices through the
 same configuration resolver used by planning, including workspace and member scripts.
 It returns `ProjectInfo` entries with per-project errors, accepts an optional final
@@ -72,7 +94,7 @@ Declare `finos/morphir-engine@0.1.0` in your module and import it as `engine`.
 
 ```moonbit
 let host = @engine.Host::memory(Map::from_array([
-  ("demo/morphir.json", "{\"name\":\"demo\",\"sourceDirectory\":\"src\"}"),
+  ("demo/morphir.toml", "[project]\nname = 'demo'\nsource_directory = 'src'\n"),
   ("demo/src/main.scm", "(* 6 7)"),
 ]))
 let engine = @engine.Engine::new()
@@ -91,22 +113,27 @@ any selected transformation fails.
 | --- | --- |
 | `File(path)` | One file, regardless of extension; parent directory supplies config |
 | `Directory(root)` | Recursively listed files matching the selected frontend extensions |
-| `Project(root)` | `morphir.json` supplies `name` and `sourceDirectory` (defaults: `user`, `src`) |
-| `Workspace(root)` | `morphir-workspace.json` lists project directories in `projects` |
+| `Project(root)` | `morphir.toml` supplies `[project] name` and `source_directory` (defaults: `user`, `src`) |
+| `Workspace(root)` | `morphir.toml` lists project directories in `[workspace] members`, as literal paths (no `*`, `?`, `[` or `{`) |
 
-For this legacy API, project manifests must exist. It uses their name and source directory;
-it does not implement Elm `exposedModules`, dependency resolution or cross-file
-linking. Each source yields a separate IR distribution/artifact. A Scheme module's
-name comes from its source-relative path without the final extension. Nested source
-paths are retained in output paths. References to other implementations can be
-resolved by loading them together in a Scheme runtime.
+For this legacy API, project manifests must exist. Scheme is a new project type, so `Engine::run`
+reads `morphir.toml` and ignores every key except the ones above; `morphir.json` and
+`morphir-workspace.json` are not read by it. A `morphir.json` is only ever an Elm project, read
+by `discover` and `plan` (see "`morphir.json` is an Elm project"). `Engine::run` uses the name
+and source directory of the manifest; it does not implement Elm `exposedModules`, dependency
+resolution or cross-file linking. Each source yields a separate IR distribution/artifact. A
+Scheme module's name comes from its source-relative path without the final extension. Nested
+source paths are retained in output paths. References to other implementations can be resolved
+by loading them together in a Scheme runtime.
 
-Workspace manifest:
+Workspace manifest (`morphir.toml`):
 
-```json
-{"projects": ["packages/orders", "packages/pricing"]}
+```toml
+[workspace]
+members = ['packages/orders', 'packages/pricing']
 ```
 
+Members are literal paths: a member with `*`, `?`, `[` or `{` is refused with a diagnostic.
 Workspace project order is retained; files within each project are sorted and
 deduplicated. Duplicate project entries are ignored. Configuration and manifest
 files at the project root, plus the output subtree, are excluded from discovery.
@@ -212,6 +239,16 @@ only provider offering the language. Multiple providers require an explicit choi
 even if a profile name matches only one of them. Unknown providers, a provider that
 does not offer the language, and unknown profiles fail before model reads.
 Source constraints are invalid on codec inputs, including `ir-json`.
+
+`Engine::languages()` lists every source language the engine can compile as
+`LanguageOffer` records: registered providers, plus frontends from `register_frontend`
+and `register_unit_frontend`, including the built-in `scheme`. An offer has the language,
+provider, extensions, default profile and `ProfileOffer` records (`EachFile` or
+`WholeProject`, capabilities, evidence and unit limits). No offer holds a compile
+callback, so the list is safe to give to any caller. The list has one offer for each
+language and provider, sorted by language and then provider. The `ir-json` frontend and
+the data formats (`morphir-json`, `ion-text`, `ion-binary`) are not source languages and
+are left out.
 
 `finos/morphir-engine/elm` registers the Elm frontend as a `PerProject` provider; see [its README](elm/README.md).
 

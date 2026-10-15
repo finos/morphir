@@ -4,7 +4,9 @@ fn source_profile(
   run : (@engine.Source, String, () -> Bool) -> @data.IRUnit raise,
 ) -> @engine.SourceProfile {
   {
-    id,
+    id: @ids.ProfileId::parse(id) catch {
+      _ => abort("test profile id: " + id)
+    },
     compile: @engine.PerFile(run),
     unit_limits: @data.Limits::default(),
     evidence: @engine.Declared,
@@ -26,12 +28,23 @@ fn source_provider(
   profiles : Array[@engine.SourceProfile],
   language? : String = "rich",
 ) -> @engine.SourceProvider {
+  let parsed = fn(text : String) -> @ids.LanguageId {
+    @ids.LanguageId::parse(text) catch {
+      _ => abort("test language: " + text)
+    }
+  }
   {
-    id,
+    id: @ids.ProviderId::parse(id) catch {
+      _ => abort("test provider: " + id)
+    },
     languages: [
       {
-        id: language,
-        extensions: [".model"],
+        id: parsed(language),
+        extensions: [
+          @ids.FileExtension::parse(".model") catch {
+            _ => abort("ext")
+          },
+        ],
         default_profile: profiles[0].id,
         profiles,
       },
@@ -190,7 +203,12 @@ test "registration validates atomically and legacy providers remain selectable" 
       source_provider("compiler", [profile], language="ion-binary"),
       {
         ..good,
-        languages: [{ ..good.languages[0], default_profile: "missing", }],
+        languages: [
+          {
+            ..good.languages[0],
+            default_profile: @ids.ProfileId::parse("missing"),
+          },
+        ],
       },
     ] {
     assert_true(
@@ -249,7 +267,10 @@ test "Scheme profile selection and explicit overlays preserve precedence" {
     @data.IRUnit::new(id, @fixtures.library())
   })
   engine.register_source_provider(
-    source_provider("compiler", [profile, { ..profile, id: "library", }]),
+    source_provider("compiler", [
+      profile,
+      { ..profile, id: @ids.ProfileId::parse("library"), },
+    ]),
   )
   let request = {
     ..@engine.Request::new(),
@@ -280,10 +301,14 @@ test "one provider can offer languages and mixed projects retain their profiles"
   let seed = source_profile("seed", fn(_, id, _) raise {
     @data.IRUnit::new(id, @fixtures.library())
   })
-  let provider = source_provider("compiler", [seed, { ..seed, id: "library", }])
+  let provider = source_provider("compiler", [
+    seed,
+    { ..seed, id: @ids.ProfileId::parse("library"), },
+  ])
   engine.register_source_provider({
     ..provider,
-    languages: provider.languages + [{ ..provider.languages[0], id: "other", }],
+    languages: provider.languages +
+    [{ ..provider.languages[0], id: @ids.LanguageId::parse("other"), }],
   })
   let files = Map::from_array([
     ("morphir.toml", "[workspace]\nmembers=['a','b']"),
@@ -366,4 +391,104 @@ test "a document limit is optional and has no upper bound" {
       ]),
     )
   }
+}
+
+///|
+test "a project compiler receives typed package and module names" {
+  let engine = @engine.Engine::new()
+  let mut seen : (String, Array[String]) = ("", [])
+  let profile : @engine.SourceProfile = {
+    ..source_profile("whole", fn(_, id, _) raise {
+      @data.IRUnit::new(id, @fixtures.library())
+    }),
+    compile: @engine.PerProject(fn(project, id, _) raise {
+      seen = (
+        project.package_name.to_string(),
+        project.exposed_modules.map(m => m.to_string()),
+      )
+      @data.IRUnit::new(id, @fixtures.library())
+    }),
+  }
+  engine.register_source_provider(source_provider("test/whole", [profile]))
+  let files = Map::from_array([
+    (
+      "morphir.toml", "[project]\nname='My.Pkg'\nexposed_modules=['Api', 'Sub.Util']\n[frontend]\nlanguage='rich'\n[pipeline]\nbackend='checkpoint'",
+    ),
+    ("src/a.model", "a"),
+  ])
+  let host = @engine.Host::memory(files)
+  let plan = engine.plan(
+    host,
+    @workspace.discover({ files, directories: ["", "src"], }),
+    @engine.Request::new(),
+  )
+  let report = engine.execute_content(plan, fn(path, _) raise {
+    @data.Text((host.read)(path))
+  })
+  assert_true(report.successful())
+  assert_eq(seen, ("My.Pkg", ["Api", "Sub.Util"]))
+}
+
+///|
+test "languages lists built-in frontends and providers, sorted, without callbacks" {
+  let engine = @engine.Engine::new()
+  let run = fn(_ : @engine.Source, id : String, _ : () -> Bool) raise {
+    @data.IRUnit::new(id, @fixtures.library())
+  }
+  engine
+  ..register_source_provider(
+    source_provider("b/compiler", [source_profile("seed", run)]),
+  )
+  .register_source_provider(
+    source_provider("a/compiler", [source_profile("seed", run)]),
+  )
+  let offers = engine.languages()
+  assert_eq(offers.map(o => (o.language.to_string(), o.provider.to_string())), [
+    ("rich", "a/compiler"),
+    ("rich", "b/compiler"),
+    ("scheme", "scheme"),
+  ])
+  let rich = offers[0]
+  assert_eq(rich.extensions.map(e => e.to_string()), [".model"])
+  assert_eq(rich.default_profile.map(p => p.to_string()), Some("seed"))
+  assert_eq(rich.profiles.map(p => (p.id.to_string(), p.compile)), [
+    ("seed", @engine.EachFile),
+  ])
+  assert_eq(rich.profiles[0].unit_limits, Some(@data.Limits::default()))
+  assert_true(rich.profiles[0].capabilities is Some(_))
+  let scheme = offers[2]
+  assert_eq(scheme.extensions.map(e => e.to_string()), [".scm", ".ss"])
+  assert_eq(scheme.default_profile, None)
+  assert_eq(scheme.profiles.length(), 0)
+}
+
+///|
+test "languages describes a unit frontend's profile and leaves out ir-json" {
+  let engine = @engine.Engine::new()
+  engine.register_unit_frontend(
+    "rich",
+    [".model"],
+    fn(_, id, _) raise { @data.IRUnit::new(id, @fixtures.library()) },
+    profile=Some("legacy"),
+  )
+  let offers = engine.languages()
+  assert_false(offers.any(o => o.language.to_string() == "ir-json"))
+  let rich = offers.filter(o => o.language.to_string() == "rich")[0]
+  assert_eq(rich.provider.to_string(), "rich")
+  assert_eq(rich.default_profile.map(p => p.to_string()), Some("legacy"))
+  assert_eq(rich.profiles[0].compile, @engine.EachFile)
+  assert_true(rich.profiles[0].capabilities is None)
+}
+
+///|
+test "languages leaves out a frontend whose name or extension is not a valid id" {
+  let engine = @engine.Engine::new()
+  let never = fn(_ : @engine.Source) raise { fail("not compiled") }
+  engine
+  ..register_frontend("Bad Name", [".x"], never)
+  .register_frontend("okay", ["noperiod"], never)
+  let names = engine.languages().map(o => o.language.to_string())
+  assert_false(names.contains("Bad Name"))
+  assert_false(names.contains("okay"))
+  assert_true(names.contains("scheme"))
 }

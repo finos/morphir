@@ -1,39 +1,52 @@
 ///|
-/// One Elm corpus project: its `morphir.json` settings and its Elm sources. `elm_projects` in the generated
-/// `projects.mbt` lists them.
+/// One Elm corpus project: its `morphir.json` text, unchanged, and its Elm sources. `elm_projects` in the
+/// generated `projects.mbt` lists them.
 priv struct ElmProject {
   name : String
-  package_name : String
-  exposed : Array[String]
+  manifest : String // the corpus morphir.json, byte for byte
   sources : Array[(String, String)] // path relative to the source directory, content
 }
 
 ///|
-/// The `morphir.toml` of a project for one backend. The engine does not read `exposedModules` from
-/// `morphir.json` yet (`morphir-ukvn.5.22.4`).
-fn manifest(project : ElmProject, backend : String) -> String {
-  let exposed = project.exposed.map(e => "'" + e + "'").join(", ")
-  "[project]\nname = '\{project.package_name}'\nexposed_modules = [\{exposed}]\n[frontend]\nlanguage = 'elm'\n[pipeline]\nbackend = '\{backend}'\nvalidation = 'source-only'\n"
+/// The source directory of `project`, from its `morphir.json` (`src` when it has none).
+fn source_directory(project : ElmProject) -> String raise {
+  match @json.parse(project.manifest) {
+    Object(fields) =>
+      match fields.get("sourceDirectory") {
+        Some(String(text)) => text
+        _ => "src"
+      }
+    _ => fail("\{project.name}: morphir.json is not an object")
+  }
 }
 
 ///|
-/// Compiles `project` through the engine with the Elm provider and generates it with `backend`.
+/// Compiles `project` through the engine with the Elm provider, from its unchanged `morphir.json`, and generates
+/// it with `backend`.
 fn generate(
   project : ElmProject,
   backend : String,
 ) -> @engine.ContentReport raise {
-  let files = Map::from_array([("morphir.toml", manifest(project, backend))])
+  let directory = source_directory(project)
+  let files = Map::from_array([("morphir.json", project.manifest)])
   for source in project.sources {
-    files["src/" + source.0] = source.1
+    files[directory + "/" + source.0] = source.1
   }
-  let engine = @engine.Engine::new()
-  @adapter.register(engine)
+  let engine = @engine.Engine::new()..register_source_provider(
+    @adapter.provider(),
+  )
   let host = @engine.Host::memory(files)
+  let request = {
+    ..@engine.Request::new(),
+    overlay: "[pipeline]\nbackend = '\{backend}'\nvalidation = 'source-only'\n"
+    |> @config.parse(),
+  }
   let plan = engine.plan(
     host,
-    @workspace.discover({ files, directories: ["", "src"], }),
-    @engine.Request::new(),
+    @workspace.discover({ files, directories: ["", directory], }),
+    request,
   )
+  // A pipe cannot feed `plan` here: it is the second argument of the method, after the engine.
   engine.execute_content(plan, fn(path, _) raise {
     @data.Text((host.read)(path))
   })

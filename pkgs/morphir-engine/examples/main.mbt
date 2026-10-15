@@ -3,7 +3,9 @@ fn main {
   try {
     let host = @engine.Host::memory(
       Map::from_array([
-        ("demo/morphir.json", "{\"name\":\"demo\",\"sourceDirectory\":\"src\"}"),
+        (
+          "demo/morphir.toml", "[project]\nname = 'demo'\nsource_directory = 'src'\n",
+        ),
         ("demo/src/main.scm", "40"),
         (
           "demo/morphir.config.scm", "(pipeline (transform (lambda (file) (ir-rewrite-file file (lambda (node) (if (ir-integer? node) (ir-with-integer node (+ (ir-integer node) 2)) node))))))",

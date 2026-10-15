@@ -39,14 +39,14 @@ test "file and directory inputs produce stable artifacts without writes" {
 ///|
 test "workspace and project manifests inherit script configuration" {
   let host = host([
-    ("morphir-workspace.json", "{\"projects\":[\"one\",\"two\"]}"),
+    ("morphir.toml", "[workspace]\nmembers = ['one', 'two']\n"),
     (
       "morphir.config.scm", "(pipeline (output \"generated\") (transform (lambda (file) (ir-rewrite-file file (lambda (node) (if (ir-integer? node) (ir-with-integer node (+ (ir-integer node) 1)) node))))))",
     ),
-    ("one/morphir.json", "{\"name\":\"one\",\"sourceDirectory\":\"src\"}"),
+    ("one/morphir.toml", "[project]\nname = 'one'\nsource_directory = 'src'\n"),
     ("one/morphir.config.scm", "(pipeline (output \"build\"))"),
     ("one/src/main.scm", "41"),
-    ("two/morphir.json", "{\"name\":\"two\",\"sourceDirectory\":\"lib\"}"),
+    ("two/morphir.toml", "[project]\nname = 'two'\nsource_directory = 'lib'\n"),
     ("two/lib/main.scm", "41"),
   ])
   let engine = @engine.Engine::new()
@@ -64,6 +64,35 @@ test "workspace and project manifests inherit script configuration" {
   assert_true(project.successful())
   assert_eq(project.artifacts[0].path, "one/explicit/main.ir.json")
   assert_eq(answer(project.artifacts[0], "one:main#main"), "41")
+}
+
+///|
+test "Engine::run no longer reads morphir.json as a Scheme project" {
+  let report = @engine.Engine::new().run(
+    host([
+      (
+        "legacy/morphir.json", "{\"name\":\"legacy\",\"sourceDirectory\":\"src\"}",
+      ),
+      ("legacy/src/main.scm", "41"),
+    ]),
+    @engine.Project("legacy"),
+  )
+  assert_false(report.successful())
+  assert_true(report.diagnostics[0].message.contains("morphir.toml"))
+}
+
+///|
+test "Engine::run workspace members must be literal paths" {
+  let report = @engine.Engine::new().run(
+    host([
+      ("morphir.toml", "[workspace]\nmembers = ['packages/*']\n"),
+      ("packages/a/morphir.toml", "[project]\nname = 'a'\n"),
+      ("packages/a/src/main.scm", "41"),
+    ]),
+    @engine.Workspace("."),
+  )
+  assert_false(report.successful())
+  assert_true(report.diagnostics[0].message.contains("literal paths"))
 }
 
 ///|

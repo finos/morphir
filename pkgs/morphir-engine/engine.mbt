@@ -35,10 +35,14 @@ pub fn Engine::run(
         transforms: [],
       }
       if project_manifest {
-        let fields = manifest(host, root, "morphir.json")
-        settings.package_name = optional_string(fields, "name", "user")
+        let path = join(root, "morphir.toml")
+        if !(host.exists)(path) {
+          raise @scheme.Invalid("Missing project manifest: " + path)
+        }
+        let document = (host.read)(path) |> @configuration.parse(origin=path)
+        settings.package_name = document.text("project.name", "user")
         settings.source = normalize(
-          optional_string(fields, "sourceDirectory", "src"),
+          document.text("project.source_directory", "src"),
         )
       }
       if inherited != "" {
@@ -98,8 +102,7 @@ pub fn Engine::run(
         if file is None &&
           (
             path == config_path ||
-            path == join(root, "morphir.json") ||
-            path == join(root, "morphir-workspace.json") ||
+            path == join(root, "morphir.toml") ||
             within(output_root, path)
           ) {
           continue
@@ -178,11 +181,13 @@ pub fn Engine::run(
       Workspace(root) => {
         requested_path = root
         let root = normalize(root)
-        let fields = manifest(host, root, "morphir-workspace.json")
-        let projects = match fields.get("projects") {
-          Some(Array(items)) => items
-          _ => raise @scheme.Invalid("Workspace requires a projects array")
+        let manifest_path = join(root, "morphir.toml")
+        if !(host.exists)(manifest_path) {
+          raise @scheme.Invalid("Missing workspace manifest: " + manifest_path)
         }
+        let projects = (host.read)(manifest_path)
+          |> @configuration.parse(origin=manifest_path)
+          |> document => { document.strings("workspace.members") }
         let config_path = join(root, "morphir.config.scm")
         let inherited = if (host.exists)(config_path) {
           (host.read)(config_path)
@@ -191,14 +196,15 @@ pub fn Engine::run(
         }
         for item in projects {
           try {
-            let path = match item {
-              String(path) => path
-              _ =>
-                raise @scheme.Invalid(
-                  "Workspace project must be a relative path",
-                )
+            if item.contains("*") ||
+              item.contains("?") ||
+              item.contains("[") ||
+              item.contains("{") {
+              raise @scheme.Invalid(
+                "Engine::run workspace members must be literal paths: " + item,
+              )
             }
-            let path = join(root, path)
+            let path = join(root, item)
             if path == root {
               raise @scheme.Invalid("Workspace projects must be subdirectories")
             }
