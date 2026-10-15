@@ -18,7 +18,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@moonbit/moonc-worker": "0.1.202609203"
+    "@moonbit/moonc-worker": "0.1.202610123"
   },
   "devDependencies": {
     "esbuild": "0.27.4",
