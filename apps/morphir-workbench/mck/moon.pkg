@@ -1,5 +1,6 @@
 import {
   "finos/morphir-execution" @execution,
+  "finos/morphir-execution/jobs",
   "moonrockz/ion/text",
   "moonrockz/ion/ion",
   "moonbitlang/core/json",

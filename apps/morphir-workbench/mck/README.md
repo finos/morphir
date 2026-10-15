@@ -2,7 +2,7 @@
 
 This component exposes the shipped `finos/morphir-execution` value codec and
 validator to the shared Rust MCK. It supports exact contracts
-`0.1.0-draft.1`, `0.1.0-draft.2`, `0.1.0-draft.3`, `0.1.0-draft.4` and `0.1.0-draft.5`. It has no goldens, evaluator or separate
+`0.1.0-draft.1` through `0.1.0-draft.6`. It has no goldens, evaluator or separate
 conformance runner. The parent `finos/morphir` repository owns the specification,
 corpora and verdict calculation. Draft.1/.2 are merged; draft.3 adds invocation
 admission; draft.4 adds output admission; draft.5 adds terminal outcome admission.
@@ -130,3 +130,34 @@ null/annotations, UTF-16 and value budgets. Earlier exact drafts remain supporte
 Admission of failed/cancelled evidence means valid evidence, not successful or
 authenticated execution. UI adoption, live daemon jobs, acknowledged cancellation
 and connected protocol extensions remain subsequent work.
+
+## Job transition qualification
+
+Exact offline MCK draft.6 advertises only `reduce-job` and JSON. It maps the
+unchanged `morphir/workbench/jobs` `0.1.0-draft.1` profile and its nested draft.5
+terminal outcomes. It does not add operations to the five historical drafts or
+define an Ion receipt mapping. Requalify historical kits separately.
+
+Input is exactly `{offer,identity,calls,initial,actions}`. The adapter admits the
+offer, caller-owned expected identity, ordered call IDs and initial submitted
+receipt through `finos/morphir-execution/jobs`. It preadmits closed action syntax
+before executing up to 64 actions. Actions are `observe` with a receipt,
+`reconnect` with an offer, `disconnect`, or `cancel-action`. Invalid receipt or
+offer payloads produce a bounded per-action rejection and leave the cursor
+unchanged. A malformed trace/action shape rejects the entire operation.
+
+The canonical observation retains the final identity, complete latest receipt,
+connection availability, cancellation action and ordered step observations.
+Each step includes its operation, disposition or rejection code, and a bounded
+view of sequence, state, acknowledgement, connection and cancellation action.
+Values and cleanup appear only in the final receipt, not in every view. Input
+and output are each capped at 1 MiB. The parent owns all fixed expectations,
+observation admission, comparisons and report rechecking. No expected data or
+case ID is sent to this adapter.
+
+Select `spec/workbench/mck/draft.6` with the existing gate. Set
+`MORPHIR_WORKBENCH_EVIDENCE` to retain reports in a separate directory per kit;
+the default remains `.dev/workbench-mck/`. This qualifies recorded transitions,
+replay/conflict handling, cancellation races and same-session reconciliation.
+It does not authenticate receipts or qualify live job RPC, host execution,
+durable recovery, Proton IPC or generated browser execution.

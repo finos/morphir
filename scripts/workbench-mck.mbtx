@@ -1,5 +1,5 @@
 ///|
-/// Opt-in value, invocation, output and terminal qualification against a selected parent-owned MCK corpus
+/// Opt-in value, invocation, output, terminal and job-trace qualification against a selected parent-owned MCK corpus
 /// and Rust runner. No upstream checkout or toolchain is acquired by this gate.
 import {
   "moonbitlang/async@0.22.4",
@@ -47,6 +47,10 @@ async fn main {
     @stdio.stderr.write("The selected corpus has no cases.\n")
     @sys.exit(1)
   }
+  let evidence_root = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
+    ".dev/workbench-mck",
+  )
+  @fs.mkdir(evidence_root, recursive=true)
   for target in ["js", "native", "wasm", "wasm-gc"] {
     checked("moon", ["test", "apps/morphir-workbench/mck", "--target", target])
   }
@@ -60,7 +64,7 @@ async fn main {
       )
       let artifact = "_build/\{target}/\{mode}/build/finos/morphir-workbench/mck/\{target}/\{target}" +
         (if target == "js" { ".js" } else { ".exe" })
-      let report = ".dev/workbench-mck/\{target}-\{mode}.json"
+      let report = "\{evidence_root}/\{target}-\{mode}.json"
       let adapter_args = if target == "js" {
         ["--adapter", "node", "--adapter-arg", artifact]
       } else {

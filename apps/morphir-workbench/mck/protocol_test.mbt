@@ -91,7 +91,7 @@ test "adapter rejects unsupported drafts and leaked expected values" {
       "id": 3,
       "op": "capabilities",
       "suite": "workbench",
-      "contractVersion": "0.1.0-draft.6",
+      "contractVersion": "0.1.0-draft.7",
     },
     {
       "id": 3,
