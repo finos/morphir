@@ -15,6 +15,8 @@ pub const TARGET_NAMES_PREDICATE : String = "morphir://ir/pkg/morphir/naming?for
 
 pub fn interpret(@v4.IRFile, String, Array[MetadataEntry], capabilities? : Capabilities) -> Interpretation raise
 
+pub fn is_target_names_predicate(String) -> Bool raise
+
 pub fn valid_language_id(String) -> Bool
 
 pub fn value_uri(@v4.IRFile, @common.FQName) -> String raise

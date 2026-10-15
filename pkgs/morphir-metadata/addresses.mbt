@@ -148,7 +148,10 @@ fn declaration(uri : String) -> (@ir.FQName, Address) raise {
 }
 
 ///|
-fn naming_predicate(uri : String) -> Bool raise {
+/// Recognize the 4.1 target-names declaration, including optional native revision
+/// pins. Recognition grants no authority and does not check revision equality;
+/// admission checks the pin against the freshly restored native Library.
+pub fn is_target_names_predicate(uri : String) -> Bool raise {
   if !uri.has_prefix("morphir://ir/pkg/morphir/naming?") {
     return false
   }

@@ -68,7 +68,7 @@ pub fn interpret(
     let context = scoped_context(metadata, parent, capabilities, base)
     for fact in graph(metadata, context, entry.node_id, document) {
       let predicate = fact.assertion.predicate
-      if !naming_predicate(predicate) {
+      if !is_target_names_predicate(predicate) {
         unvalidated[predicate] = true
         continue
       }

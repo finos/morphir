@@ -546,3 +546,36 @@ test "selected naming provider admits only nonempty ValueDefinition subject role
   )
   assert_eq(valid.facts.length(), 1)
 }
+
+///|
+test "target-name requests recognize native revision pins while admission checks their value" {
+  let revision = @fixtures.provider().revision
+  let predicate = @metadata.TARGET_NAMES_PREDICATE.replace(
+    old="#/",
+    new="&rev=sha256:" + revision + "#/",
+  )
+  assert_true(
+    @metadata.is_target_names_predicate(@metadata.TARGET_NAMES_PREDICATE),
+  )
+  assert_true(@metadata.is_target_names_predicate(predicate))
+  let wrong = @metadata.TARGET_NAMES_PREDICATE.replace(
+    old="#/",
+    new="&rev=sha256:" + "0".repeat(64) + "#/",
+  )
+  assert_true(@metadata.is_target_names_predicate(wrong))
+  let data = @fixtures.adapter(
+    "[" + @fixtures.row("ready") + "]",
+    context="{targetNames:{'@id':\"" + predicate + "\",'@type':\"@json\"}}",
+  )
+  let result = consume(data)
+  assert_eq(result.facts[0].provider_revision, revision)
+  assert_eq(result.facts[0].names.backend["moonbit"], "wanted")
+  for
+    other in [
+      predicate.replace(old="/pkg/morphir/naming?", new="/pkg/other/naming?"),
+      predicate.replace(old="format=4.1.0", new="format=4.0.0"),
+      predicate.replace(old="/value/target-names", new="/value/other"),
+    ] {
+    assert_false(@metadata.is_target_names_predicate(other))
+  }
+}

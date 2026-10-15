@@ -150,3 +150,9 @@ When constructing capabilities explicitly, use
 `{ ..Capabilities::unavailable(), ... }` to keep the no-op observer, or supply
 `ProviderObserver::noop()`. Hosts can attach their own bounded telemetry adapter
 without adding clocks or filesystem access to this pure package.
+
+`is_target_names_predicate` recognizes the supported declaration identity and
+optional native revision pin. It does not authorize a provider or assert that
+the pin matches. Process hosts use this same parser before restoration; pure
+admission compares the authored pin with the freshly authenticated native
+revision and retains `metadata.provider_revision_mismatch` on disagreement.

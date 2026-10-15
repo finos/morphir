@@ -352,7 +352,7 @@ fn metadata_process_session(
   {
     capabilities: {
       restore_library: Some(fn(predicate) raise {
-        if predicate != @linked_metadata.TARGET_NAMES_PREDICATE {
+        if !@linked_metadata.is_target_names_predicate(predicate) {
           raise @linked_metadata.Invalid(
             "metadata.provider_unavailable", predicate, "The grant is for the target-name provider",
           )
