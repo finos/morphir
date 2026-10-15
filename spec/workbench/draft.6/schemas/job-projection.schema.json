@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.6/job-projection.schema.json",
+  "title": "Offline Workbench job projection",
+  "description": "Closed exact draft.6 JSON reduce-job contract. Shape validation does not establish transition semantics, authority authentication or live host execution",
+  "examples": [
+    {
+      "identity": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "jobId": "job",
+        "snapshotId": "snapshot"
+      },
+      "receipt": {
+        "contractVersion": "0.1.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "jobId": "job",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "connected": true,
+      "cancelAction": "send",
+      "observations": []
+    }
+  ],
+  "type": "object",
+  "if": {
+    "properties": {
+      "receipt": {
+        "properties": {
+          "state": {
+            "const": "terminal"
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "cancelAction": {
+        "const": "already-terminal"
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "cancelAction": {
+        "not": {
+          "const": "already-terminal"
+        }
+      }
+    }
+  },
+  "required": [
+    "identity",
+    "receipt",
+    "connected",
+    "cancelAction",
+    "observations"
+  ],
+  "properties": {
+    "identity": {
+      "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/identity.schema.json"
+    },
+    "receipt": {
+      "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/receipt.schema.json"
+    },
+    "connected": {
+      "type": "boolean"
+    },
+    "cancelAction": {
+      "enum": [
+        "send",
+        "pending",
+        "already-terminal",
+        "unavailable",
+        "disconnected"
+      ]
+    },
+    "observations": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "op", "status", "view" ],
+            "properties": {
+              "op": {
+                "const": "observe"
+              },
+              "status": {
+                "enum": [ "advanced", "replay", "stale" ]
+              },
+              "view": {
+                "$ref": "#/$defs/view"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "status", "view", "code" ],
+            "properties": {
+              "op": {
+                "const": "observe"
+              },
+              "status": {
+                "const": "invalid"
+              },
+              "view": {
+                "$ref": "#/$defs/view"
+              },
+              "code": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "status", "view" ],
+            "properties": {
+              "op": {
+                "const": "reconnect"
+              },
+              "status": {
+                "const": "local"
+              },
+              "view": {
+                "$ref": "#/$defs/view"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "status", "view", "code" ],
+            "properties": {
+              "op": {
+                "const": "reconnect"
+              },
+              "status": {
+                "const": "invalid"
+              },
+              "view": {
+                "$ref": "#/$defs/view"
+              },
+              "code": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "status", "view" ],
+            "properties": {
+              "op": {
+                "const": "disconnect"
+              },
+              "status": {
+                "const": "local"
+              },
+              "view": {
+                "$ref": "#/$defs/view"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "status", "view" ],
+            "properties": {
+              "op": {
+                "const": "cancel-action"
+              },
+              "status": {
+                "const": "local"
+              },
+              "view": {
+                "$ref": "#/$defs/view"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "view": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "sequence": {
+                "const": 0
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "submitted"
+              },
+              "cancelRequested": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [ "running", "terminal" ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "sequence": {
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "terminal"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cancelAction": {
+                "const": "already-terminal"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [ "submitted", "running" ]
+              },
+              "connected": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cancelAction": {
+                "const": "disconnected"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "cancelAction": {
+                "const": "disconnected"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "connected": {
+                "const": false
+              },
+              "state": {
+                "enum": [ "submitted", "running" ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "cancelAction": {
+                "enum": [ "send", "pending", "unavailable" ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "connected": {
+                "const": true
+              },
+              "state": {
+                "enum": [ "submitted", "running" ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "cancelAction": {
+                "const": "pending"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cancelRequested": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "cancelAction": {
+                "const": "send"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cancelRequested": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "cancelAction": {
+                "const": "already-terminal"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "terminal"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "cancelAction": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cancelRequested": {
+                "const": false
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "sequence",
+        "state",
+        "cancelRequested",
+        "connected",
+        "cancelAction"
+      ],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "state": {
+          "enum": [ "submitted", "running", "terminal" ]
+        },
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "cancelAction": {
+          "enum": [
+            "send",
+            "pending",
+            "already-terminal",
+            "unavailable",
+            "disconnected"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

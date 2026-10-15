@@ -178,3 +178,10 @@ authority, snapshot and call inventory; separates cancellation acknowledgement
 from terminal evidence; and retains host receipts across same-session reconnect.
 This contribution does not change any offline MCK draft or add live RPC methods.
 Shared transition MCK qualification and authenticated host adapters remain pending.
+
+[Offline job transition qualification](draft.6/README.md) adds the separate exact
+MCK `0.1.0-draft.6` operation `reduce-job`, JSON only. The existing shared Rust
+runner compares parent-owned fixed traces against an explicit implementation
+adapter and independently rechecks reports. The five historical kits, job
+receipt profile and nested terminal payload remain unchanged. This qualifies
+offline receipt behavior; live authenticated host/UI jobs remain separate.
