@@ -1,0 +1,60 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/identity.schema.json",
+  "tests": [
+    {
+      "description": "Exact identity",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "jobId": "job",
+        "snapshotId": "snapshot"
+      },
+      "valid": true
+    },
+    {
+      "description": "Empty snapshot",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "jobId": "job",
+        "snapshotId": ""
+      },
+      "valid": false
+    },
+    {
+      "description": "No job",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "snapshotId": "snapshot"
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown member",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "jobId": "job",
+        "snapshotId": "snapshot",
+        "path": "/local/path"
+      },
+      "valid": false
+    },
+    {
+      "description": "Long provider",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp",
+        "jobId": "job",
+        "snapshotId": "snapshot"
+      },
+      "valid": false
+    }
+  ]
+}

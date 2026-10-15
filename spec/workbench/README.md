@@ -171,3 +171,10 @@ terminal evidence to an admitted invocation suite and public manifest. Its
 [377-case kit](mck/draft.5/README.md) preserves returned values, SDK model errors,
 primary failures, cancellation and separate cleanup failures. Offline admission
 does not establish actual host execution or authoritative job cancellation.
+
+[Snapshot-bound job receipts](jobs/draft.1/README.md) define a separate exact
+`morphir/workbench/jobs` `0.1.0-draft.1` profile. The portable reducer binds
+authority, snapshot and call inventory; separates cancellation acknowledgement
+from terminal evidence; and retains host receipts across same-session reconnect.
+This contribution does not change any offline MCK draft or add live RPC methods.
+Shared transition MCK qualification and authenticated host adapters remain pending.
