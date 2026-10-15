@@ -126,3 +126,11 @@ Wasm GC. These are implementation tests, not a shared MCK adapter qualification
 or evidence that the Rust connected host implements job execution. A future
 shared MCK slice must add parent-owned transition goldens to the existing runner,
 then qualify host adapters and bind query/cancel transport methods.
+
+## Independent offline transition kit
+
+[Workbench MCK draft.6](../../draft.6/README.md) now specifies the independent
+`reduce-job` JSON trace mapping and its [parent-owned fixed cases](../../mck/draft.6/README.md).
+It selects this exact job profile and the frozen draft.5 terminal envelope.
+Its offline capability claim does not enable live query or cancellation controls;
+those require a separately qualified host adapter and authenticated transport.

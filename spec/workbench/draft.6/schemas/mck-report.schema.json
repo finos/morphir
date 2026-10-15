@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.6/mck-report.schema.json",
+  "title": "Offline Workbench job mck-report",
+  "description": "Closed exact draft.6 JSON reduce-job contract. Shape validation does not establish transition semantics, authority authentication or live host execution",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.6",
+      "suite": "workbench",
+      "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "capabilities": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.6",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [ "reduce-job" ],
+        "formats": [ "json" ]
+      },
+      "records": [
+        {
+          "caseId": "submitted-no-actions",
+          "operation": "reduce-job",
+          "format": "json",
+          "result": "pass",
+          "observed": {
+            "status": "ok",
+            "value": {
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "jobId": "job",
+                "snapshotId": "snapshot"
+              },
+              "receipt": {
+                "contractVersion": "0.1.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "jobId": "job",
+                  "snapshotId": "snapshot"
+                },
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "outcomes": null
+              },
+              "connected": true,
+              "cancelAction": "send",
+              "observations": []
+            }
+          }
+        }
+      ],
+      "errors": [],
+      "qualified": true
+    }
+  ],
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "suite",
+    "corpusHash",
+    "capabilities",
+    "records",
+    "errors",
+    "qualified"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.6"
+    },
+    "suite": {
+      "const": "workbench"
+    },
+    "corpusHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capabilities": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.6/mck-capabilities.schema.json"
+        }
+      ]
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "caseId", "operation", "format", "result", "observed" ],
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "reduce-job"
+          },
+          "format": {
+            "const": "json"
+          },
+          "result": {
+            "enum": [ "pass", "fail", "unsupported", "error" ]
+          },
+          "observed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.6/mck-observation.schema.json"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "phase", "message" ],
+        "properties": {
+          "phase": {
+            "enum": [ "spawn", "capabilities", "exchange", "shutdown" ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 16384,
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "qualified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

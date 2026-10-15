@@ -10,6 +10,7 @@ pub const ADMISSION_VERSION: &str = "0.1.0-draft.2";
 pub const INVOCATION_VERSION: &str = "0.1.0-draft.3";
 pub const OUTPUT_VERSION: &str = "0.1.0-draft.4";
 pub const OUTCOMES_VERSION: &str = "0.1.0-draft.5";
+pub const JOBS_VERSION: &str = "0.1.0-draft.6";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -46,6 +47,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.3",
         "=0.1.0-draft.4",
         "=0.1.0-draft.5",
+        "=0.1.0-draft.6",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -77,10 +79,15 @@ pub enum Operation {
     ValidateOutput,
     #[serde(rename = "validate-outcomes")]
     ValidateOutcomes,
+    #[serde(rename = "reduce-job")]
+    ReduceJob,
 }
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if (version == JOBS_VERSION) != (self == Self::ReduceJob) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if (version == VERSION && self != Self::DecodeValue)
             || (version == ADMISSION_VERSION
                 && !matches!(self, Self::DecodeValue | Self::ValidateValue))
@@ -89,6 +96,13 @@ impl Operation {
             || (version != OUTCOMES_VERSION && self == Self::ValidateOutcomes)
         {
             return Err("operation is not defined by this Workbench draft".into());
+        }
+        Ok(())
+    }
+
+    pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
+        if self == Self::ReduceJob && format != Format::Json {
+            return Err("job reduction supports JSON only".into());
         }
         Ok(())
     }
@@ -135,6 +149,11 @@ impl Capabilities {
         }
         for operation in &self.operations {
             operation.validate_version(&self.contract_version)?;
+        }
+        if self.contract_version == JOBS_VERSION
+            && (self.operations != [Operation::ReduceJob] || self.formats != [Format::Json])
+        {
+            return Err("job reduction requires exactly reduce-job and JSON capabilities".into());
         }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
@@ -195,6 +214,7 @@ fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> 
     match operation {
         Operation::ValidateInvocations => invocation_projection(value),
         Operation::ValidateOutcomes => super::outcomes::projection(value),
+        Operation::ReduceJob => super::jobs::projection(value),
         _ => projection(value),
     }
 }

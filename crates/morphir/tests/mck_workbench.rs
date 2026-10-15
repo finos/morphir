@@ -233,3 +233,48 @@ fn terminal_report_retains_cleanup_and_rejects_value_or_operation_substitution()
         assert_eq!(check(&kit, &report).status.code(), Some(1));
     }
 }
+
+#[test]
+fn job_trace_report_is_checked_through_the_existing_workbench_command() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    std::fs::write(
+        kit.join("cases.json"),
+        json!({"formatVersion":"0.1.0-draft.6","cases":[{
+            "id":"negative-json","operation":"reduce-job","format":"json","input":null,
+            "expected":{"status":"invalid","code":"workbench.invalid_job_trace"}
+        }]})
+        .to_string(),
+    )
+    .unwrap();
+    let hash = morphir_mck::workbench::load(&kit)
+        .unwrap()
+        .corpus_hash()
+        .to_owned();
+    let saved = json!({"formatVersion":"0.1.0-draft.6","suite":"workbench","corpusHash":hash,
+        "capabilities":{"suite":"workbench","contractVersion":"0.1.0-draft.6",
+            "binding":"fixed-transcript","language":"fixture","operations":["reduce-job"],"formats":["json"]},
+        "records":[{"caseId":"negative-json","operation":"reduce-job","format":"json","result":"pass",
+            "observed":{"status":"invalid","code":"workbench.invalid_job_trace"}}],"errors":[],"qualified":true});
+    let report = root.path().join("report.json");
+    std::fs::write(&report, saved.to_string()).unwrap();
+    let admitted = check(&kit, &report);
+    assert_eq!(
+        admitted.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&admitted.stderr)
+    );
+    for field in ["operation", "format", "code"] {
+        let mut forged = saved.clone();
+        match field {
+            "operation" => forged["records"][0]["operation"] = json!("validate-outcomes"),
+            "format" => forged["records"][0]["format"] = json!("ion-text"),
+            "code" => forged["records"][0]["observed"]["code"] = json!("workbench.job_receipt"),
+            _ => unreachable!(),
+        }
+        std::fs::write(&report, forged.to_string()).unwrap();
+        assert_eq!(check(&kit, &report).status.code(), Some(1), "{field}");
+    }
+}

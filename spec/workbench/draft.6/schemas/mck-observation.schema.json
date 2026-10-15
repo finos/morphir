@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.6/mck-observation.schema.json",
+  "title": "Offline Workbench job mck-observation",
+  "description": "Closed exact draft.6 JSON reduce-job contract. Shape validation does not establish transition semantics, authority authentication or live host execution",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "jobId": "job",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "jobId": "job",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": []
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "status", "value" ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.6/job-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "status", "code" ],
+      "properties": {
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
