@@ -1,0 +1,7 @@
+{
+    "name": "Parity.Custom",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Shapes"
+    ]
+}

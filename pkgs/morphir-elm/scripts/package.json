@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "devDependencies": {
-    "elm": "0.19.1-6"
+    "elm": "0.19.1-6",
+    "morphir-elm": "2.100.0"
   }
 }

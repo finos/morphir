@@ -1,0 +1,7 @@
+{
+    "name": "Parity.Sdk",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Trades"
+    ]
+}

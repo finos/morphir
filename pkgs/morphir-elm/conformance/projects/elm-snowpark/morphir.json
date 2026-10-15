@@ -1,0 +1,10 @@
+{
+    "name": "CompanyAssets",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "DataDefinition.Assets",
+        "DataDefinition.Types",
+        "DataDefinition.Vendors",
+        "Rules.DepreciationRules"
+    ]
+}

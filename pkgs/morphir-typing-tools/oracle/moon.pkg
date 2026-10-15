@@ -4,12 +4,12 @@ supported_targets = "native"
 
 import {
   "finos/morphir-ir" @ir,
-  "finos/morphir-ir/migration",
-  "finos/morphir-sdk-spec" @sdk_spec,
   "finos/morphir-typing" @typing,
 }
 
 import {
+  "finos/morphir-ir/migration",
+  "finos/morphir-sdk-spec" @sdk_spec,
   "finos/morphir-elm/fixtures" @elm_fixtures,
   "finos/morphir-moonbit/fixtures",
 } for "wbtest"

@@ -33,7 +33,7 @@ test "criterion B: stripped classic IR infers the morphir-elm types" {
           .join("; "),
         )
     }
-    let mismatches = compare_types(original, filled)
+    let mismatches = @typing.compare_types(original, filled, deps())
     assert_eq(mismatches, [], msg=name)
   }
 }
@@ -54,7 +54,7 @@ test "fill over fully typed classic IR keeps its types" {
           .join("; "),
         )
     }
-    assert_eq(compare_types(original, filled), [], msg=name)
+    assert_eq(@typing.compare_types(original, filled, deps()), [], msg=name)
   }
 }
 
@@ -99,7 +99,7 @@ test "criterion C: check finds a swapped rigid variable and a dropped class" {
     }
     assert_eq(codes, [("annotation_mismatch", path)], msg=path)
     // The oracle reports the same node.
-    let lines = compare_types(shapes, mutated)
+    let lines = @typing.compare_types(shapes, mutated, deps())
     assert_eq(lines.length(), 1, msg=path)
     assert_true(lines[0].has_prefix(path + ": expected "))
   }
@@ -184,12 +184,51 @@ fn has_marked_variable(t : @ir.Type) -> Bool {
 }
 
 ///|
+/// The top-level signature types of `file`, keyed `<path>:input/<i>` and `<path>:output`, in walk order.
+fn top_level_signatures(file : @ir.IRFile) -> Array[(String, @ir.Type)] {
+  let out : Array[(String, @ir.Type)] = []
+  visit(file, (_, _, _) => (), (def, path, is_let) => {
+    if !is_let {
+      out.append(signature_entries(def, path))
+    }
+  })
+  out
+}
+
+///|
+/// The let-signature paths of `file` whose types have a morphir-elm placeholder, in walk order.
+fn placeholder_paths(file : @ir.IRFile) -> Array[String] {
+  let out : Array[String] = []
+  visit(file, (_, _, _) => (), (def, path, is_let) => {
+    for entry in signature_entries(def, path) {
+      if is_let && has_placeholder(entry.1) {
+        out.push(entry.0)
+      }
+    }
+  })
+  out
+}
+
+///|
+/// Whether `t` has a morphir-elm placeholder variable or row variable.
+fn has_placeholder(t : @ir.Type) -> Bool {
+  let placeholder = @migration.is_classic_placeholder
+  match t {
+    Variable(_, name) => placeholder(name)
+    Unit(_) => false
+    Reference(_, _, items) | Tuple(_, items) =>
+      items.iter().any(has_placeholder)
+    Record(_, fields) => fields.values().any(has_placeholder)
+    ExtensibleRecord(_, row, fields) =>
+      placeholder(row) || fields.values().any(has_placeholder)
+    Function(_, input, output) =>
+      has_placeholder(input) || has_placeholder(output)
+  }
+}
+
+///|
 test "placeholders: only t-<digits> variables of let signatures are marked" {
-  assert_true(is_placeholder(@ir.Name::from_words(["t", "8"])))
-  assert_true(is_placeholder(@ir.Name::from_words(["t", "12"])))
-  assert_false(is_placeholder(@ir.Name::from_words(["t"])))
-  assert_false(is_placeholder(@ir.Name::from_words(["t", "a"])))
-  assert_false(is_placeholder(@ir.Name::from_words(["comparable"])))
+  // `pkgs/morphir-typing/compare_files_wbtest.mbt` tests which names are placeholders.
   // classic-greeting has exactly one placeholder signature type: the output of the `discount` let.
   let greeting = @elm_fixtures.classic_greeting()
   assert_eq(placeholder_paths(greeting), [
@@ -199,37 +238,29 @@ test "placeholders: only t-<digits> variables of let signatures are marked" {
   assert_eq(marked_signatures(greeting), [
     "value:elm-compat:main#apply-discount/body/definition:output",
   ])
-  // A top-level signature path has no `/body` step.
-  let top_level = typed_entries(greeting).filter(e => !e.0.contains("/body"))
+  let top_level = top_level_signatures(greeting)
   assert_true(top_level.length() > 0)
-  assert_true(
-    top_level.iter().all(e => !(e.1 is Some(t) && has_marked_variable(t))),
-  )
+  assert_true(top_level.iter().all(e => !has_marked_variable(e.1)))
 }
 
 ///|
 test "the oracle reports a changed node type" {
   let original = @elm_fixtures.classic_rentals_v1()
   let (mutated, path) = mutate_first_literal_type(original)
-  let lines = compare_types(original, mutated)
+  let lines = @typing.compare_types(original, mutated, deps())
   assert_eq(lines.length(), 1)
   assert_true(lines[0].has_prefix(path + ": expected "))
-  assert_eq(compare_types(original, original), [])
+  assert_eq(@typing.compare_types(original, original, deps()), [])
   assert_true(count_untyped(strip_node_types(original)) > 0)
   assert_true(count_untyped(strip_full(original)) > 0)
   // `strip_full` marks every top-level signature type, and `strip_node_types` marks none.
   let top_level = fn(file : @ir.IRFile) {
-    typed_entries(file).filter(e => !e.0.contains("/body")).map(e => e.0)
+    top_level_signatures(file).map(e => e.0)
   }
   assert_true(top_level(original).length() > 0)
   assert_eq(marked_signatures(strip_full(original)), top_level(original))
   assert_eq(marked_signatures(strip_node_types(original)), [])
   assert_eq(count_untyped(original), 0)
-}
-
-///|
-fn type_var(text : String) -> @ir.Type {
-  Variable(Default::default(), @ir.Name::parse(text) catch { _ => abort(text) })
 }
 
 ///|
@@ -251,50 +282,6 @@ fn path_of(text : String) -> @ir.Path {
 }
 
 ///|
-/// Whether `want` and `have` are the same type outside the placeholders of `want`.
-fn same_outside_placeholders(want : @ir.Type, have : @ir.Type) -> Bool {
-  let (a, b) = mask_placeholders(want, have)
-  @typing.types_equivalent(a, b)
-}
-
-///|
-test "C3: a let signature type is compared outside its placeholders" {
-  let int = type_ref("morphir/SDK:basics#int", [])
-  let float = type_ref("morphir/SDK:basics#float", [])
-  let string = type_ref("morphir/SDK:string#string", [])
-  let list = fn(t : @ir.Type) { type_ref("morphir/SDK:list#list", [t]) }
-  let maybe = fn(t : @ir.Type) { type_ref("morphir/SDK:maybe#maybe", [t]) }
-  let fn_ = fn(a : @ir.Type, b : @ir.Type) -> @ir.Type {
-    Function(Default::default(), a, b)
-  }
-  let t8 = type_var("t-8")
-  assert_true(same_outside_placeholders(t8, int))
-  assert_true(same_outside_placeholders(list(t8), list(int)))
-  assert_false(same_outside_placeholders(maybe(t8), list(int)))
-  assert_true(same_outside_placeholders(fn_(t8, int), fn_(string, int)))
-  assert_false(same_outside_placeholders(fn_(t8, int), fn_(string, float)))
-  // A placeholder row compares only the fields that the signature lists.
-  let name_field = (@ir.Name::from_words(["name"]), string)
-  let age_field = (@ir.Name::from_words(["age"]), int)
-  let open_ : @ir.Type = ExtensibleRecord(
-    Default::default(),
-    @ir.Name::from_words(["t", "9"]),
-    Map::from_array([name_field]),
-  )
-  let have : @ir.Type = Record(
-    Default::default(),
-    Map::from_array([name_field, age_field]),
-  )
-  assert_true(same_outside_placeholders(open_, have))
-  assert_false(
-    same_outside_placeholders(
-      open_,
-      Record(Default::default(), Map::from_array([age_field])),
-    ),
-  )
-}
-
-///|
 test "C3: compare_types reports a let signature that differs outside its placeholder" {
   // classic-greeting's `discount` let has the output `t-8`. Write it as `List t-8`: the inferred output is not a
   // list, so the oracle reports the path. Before, any let signature type with a placeholder was skipped.
@@ -311,10 +298,10 @@ test "C3: compare_types reports a let signature that differs outside its placeho
     }
     walker.definition(def, root)
   })
-  let lines = compare_types(changed, filled)
+  let lines = @typing.compare_types(changed, filled, deps())
   assert_eq(lines.length(), 1)
   assert_true(lines[0].has_prefix(at + ":output: expected "))
-  assert_eq(compare_types(original, filled), [])
+  assert_eq(@typing.compare_types(original, filled, deps()), [])
 }
 
 ///|

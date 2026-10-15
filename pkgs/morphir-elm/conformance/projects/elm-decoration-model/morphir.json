@@ -1,0 +1,12 @@
+{
+    "name": "Morphir.Decoration.Model",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Composites",
+        "Database",
+        "JsonSchema",
+        "NumberConstraints",
+        "PrivacyControl",
+        "StringConstraints"
+    ]
+}

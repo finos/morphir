@@ -156,6 +156,8 @@ priv struct Declaration {
   fqname : @ir.FQName
   module_name : @ir.ModuleName
   public : Bool
+  /// Visible to the other modules of the package: the value's own access is Public.
+  exposed : Bool
   output : Lowered
   inputs : Array[(@ir.Name, Lowered)]
   body : @ir.Value
@@ -177,6 +179,8 @@ priv enum Lowered {
 priv struct TypeEntry {
   definition : @ir.TypeDefinition
   public : Bool
+  /// The type's own access is Public, whatever the module's access.
+  exposed : Bool
 }
 
 ///|
@@ -184,6 +188,8 @@ priv struct ConstructorEntry {
   output : Lowered
   inputs : Array[Lowered]
   public : Bool
+  /// Visible to the other modules of the package: the type and the constructors are Public.
+  exposed : Bool
   module_name : @ir.ModuleName
 }
 
@@ -194,6 +200,8 @@ priv struct Lowering {
   values : Map[@ir.FQName, Declaration]
   shapes : Map[String, Array[(@ir.Name, Lowered)]]
   exported_shapes : Map[String, Bool]
+  /// Types that are not `public` but that a `pub` signature or a `pub` type names: they are emitted abstract.
+  abstract_types : Map[@ir.FQName, Bool]
   imports : Map[String, Bool]
   names : TargetNames
   mut locals : LocalNames?

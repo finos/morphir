@@ -1,0 +1,16 @@
+import {
+  "finos/morphir-ir" @ir,
+  "finos/morphir-elm/mapping",
+  "finos/morphir-elm/frontend/resolve",
+  "moonrockz/krueger/ast",
+  "moonbitlang/core/debug",
+}
+
+import {
+  "finos/morphir-elm/frontend/lower",
+  "finos/morphir-elm/frontend/resolve",
+  "finos/morphir-elm/mapping",
+  "finos/morphir-ir" @ir,
+  "moonrockz/krueger",
+  "moonrockz/krueger/ast",
+} for "test"

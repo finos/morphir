@@ -2,12 +2,28 @@
 priv enum SourceCompiler {
   FileCompiler((Source) -> @ir.IRFile raise)
   UnitCompiler((Source, String, () -> Bool) -> @data.IRUnit raise, @data.Limits)
+  ProjectCompiler(
+    (ProjectSources, String, () -> Bool) -> @data.IRUnit raise,
+    @data.Limits
+  )
 }
 
 ///|
-/// Source adapters translate their errors without adding a parser dependency to core.
+/// One problem of a project compiler. `path` is relative to the source directory; it is empty for a problem of the
+/// whole project.
+pub(all) struct SourceProblem {
+  code : String
+  detail : String
+  path : String
+  location : @ir.SourceLocation?
+}
+
+///|
+/// Source adapters translate their errors without adding a parser dependency to core. A project compiler reports
+/// all of its problems with `RejectedSources`.
 pub(all) suberror SourceFrontendError {
   Rejected(String, String, @ir.SourceLocation?)
+  RejectedSources(Array[SourceProblem])
 }
 
 ///|
@@ -90,18 +106,8 @@ fn Frontend::compile_unit(
         module_name: canonical_path(source.module_name),
       }
       let unit = run(canonical, unit_id, cancelled) catch {
-        Rejected(code, detail, location) => {
-          let context = if self.capabilities is Some(_) {
-            " [provider " +
-            self.provider +
-            "; profile " +
-            self.profile.unwrap_or("") +
-            "]"
-          } else {
-            ""
-          }
-          raise Rejected(code, detail + context, location)
-        }
+        Rejected(code, detail, location) =>
+          raise Rejected(code, detail + self.context(), location)
         error => raise error
       }
       if unit.id != unit_id {
@@ -110,7 +116,65 @@ fn Frontend::compile_unit(
       unit.validate(limits~)
       unit
     }
+    ProjectCompiler(_, _) =>
+      raise @configuration.Invalid(
+        "frontend.project_compiler: " +
+        self.provider +
+        " compiles whole projects",
+      )
   }
+}
+
+///|
+/// The provider and profile of a provider frontend, for its diagnostics.
+fn Frontend::context(self : Frontend) -> String {
+  if self.capabilities is Some(_) {
+    " [provider " +
+    self.provider +
+    "; profile " +
+    self.profile.unwrap_or("") +
+    "]"
+  } else {
+    ""
+  }
+}
+
+///|
+fn Frontend::compile_project(
+  self : Frontend,
+  sources : ProjectSources,
+  unit_id : String,
+  cancelled : () -> Bool,
+) -> @data.IRUnit raise {
+  guard self.compiler is ProjectCompiler(run, limits) else {
+    raise @configuration.Invalid(
+      "frontend.project_compiler: " +
+      self.provider +
+      " compiles one file at a time",
+    )
+  }
+  let context = self.context()
+  let unit = run(sources, unit_id, cancelled) catch {
+    Rejected(code, detail, location) =>
+      raise Rejected(code, detail + context, location)
+    // An empty rejection is still a failed compile; it must not pass without a diagnostic.
+    RejectedSources([]) =>
+      raise Rejected(
+        "frontend.rejected",
+        "the compiler reported no problems" + context,
+        None,
+      )
+    RejectedSources(problems) =>
+      raise RejectedSources(
+        problems.map(p => { ..p, detail: p.detail + context, }),
+      )
+    error => raise error
+  }
+  if unit.id != unit_id {
+    raise @data.Invalid("data.unit_mismatch", unit_id)
+  }
+  unit.validate(limits~)
+  unit
 }
 
 ///|
@@ -125,13 +189,17 @@ pub fn Plan::source_frontends(self : Plan) -> Array[SourceFrontendSelection] {
       for source in job.paths {
         result.push({
           source,
-          unit_id: stem(
-            if job.source_root == "" {
-              source
-            } else {
-              source[job.source_root.length() + 1:].to_owned()
-            },
-          ),
+          unit_id: match job.project {
+            Some(project) => project.unit_id
+            None =>
+              stem(
+                if job.source_root == "" {
+                  source
+                } else {
+                  source[job.source_root.length() + 1:].to_owned()
+                },
+              )
+          },
           frontend: job.settings.frontend,
           language: job.settings.frontend,
           provider: frontend.provider,
@@ -144,6 +212,7 @@ pub fn Plan::source_frontends(self : Plan) -> Array[SourceFrontendSelection] {
           output_contract: match frontend.compiler {
             FileCompiler(_) => "ir-file"
             UnitCompiler(_, _) => "ir-unit"
+            ProjectCompiler(_, _) => "ir-project"
           },
         })
       }

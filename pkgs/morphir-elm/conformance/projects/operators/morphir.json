@@ -1,0 +1,7 @@
+{
+    "name": "Parity.Operators",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Ops"
+    ]
+}

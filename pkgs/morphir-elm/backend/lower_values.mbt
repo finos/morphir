@@ -4,11 +4,12 @@ fn Ctx::reserve_top_level(self : Ctx, elm_name : String) -> Unit {
 }
 
 ///|
-/// Elm rejects a name_text name that shadows any name in scope, so a taken name gets a numeric suffix.
+/// Elm rejects a name that shadows any name in scope, so a name that is used or pending gets a numeric suffix.
 fn Ctx::bind(self : Ctx, name : @ir.Name) -> String {
   let base = value_name(name)
   let mut elm_name = base
-  while self.used.contains(elm_name) {
+  while self.used.contains(elm_name) ||
+        self.pending.get(elm_name).unwrap_or(0) > 0 {
     self.fresh += 1
     elm_name = base + "_" + self.fresh.to_string()
   }
@@ -18,15 +19,74 @@ fn Ctx::bind(self : Ctx, name : @ir.Name) -> String {
 }
 
 ///|
+/// Marks the names of a let block as pending until the block binds them (`release`).
+fn Ctx::reserve(self : Ctx, names : Array[String]) -> Unit {
+  for name in names {
+    self.pending[name] = self.pending.get(name).unwrap_or(0) + 1
+  }
+}
+
+///|
+/// A let block binds `name` now, so it is no longer pending.
+fn Ctx::release(self : Ctx, name : String) -> Unit {
+  match self.pending.get(name) {
+    Some(count) if count > 1 => self.pending[name] = count - 1
+    _ => self.pending.remove(name)
+  }
+}
+
+///|
+/// Lowers `body` in a new scope. The locals that it binds go out of scope at the end, so a sibling scope can take
+/// the same names.
 fn[T] Ctx::with_scope(
   self : Ctx,
   body : () -> T raise ElmGenerationError,
 ) -> T raise ElmGenerationError {
-  let saved = self.scope.copy()
+  let saved_scope = self.scope.copy()
+  let saved_used = self.used.copy()
+  let saved_pending = self.pending.copy()
   defer {
-    self.scope = saved
+    self.scope = saved_scope
+    self.used = saved_used
+    self.pending = saved_pending
   }
   body()
+}
+
+///|
+/// The Elm names that a let chain binds, as `lower_let` puts them in one Elm let block: the let definition names
+/// and the names of each destructuring pattern.
+fn chain_binders(v : @ir.Value) -> Array[String] {
+  let out = []
+  let mut rest = v
+  while true {
+    match rest {
+      LetDefinition(_, name, _, next) => {
+        out.push(value_name(name))
+        rest = next
+      }
+      LetRecursion(_, definitions, next) => {
+        for name, _ in definitions {
+          out.push(value_name(name))
+        }
+        rest = next
+      }
+      Destructure(_, pattern, _, next) => {
+        out.append(pattern_names(pattern))
+        rest = next
+      }
+      _ => break
+    }
+  }
+  out
+}
+
+///|
+/// The Elm names that a pattern binds.
+fn pattern_names(pattern : @ir.Pattern) -> Array[String] {
+  let found : Map[String, Bool] = Map([])
+  pattern_binders(pattern, found)
+  found.keys().collect()
 }
 
 ///|
@@ -268,6 +328,8 @@ fn setters(
 }
 
 ///|
+/// A let function. It has a signature when its type has no type variable (`closed_type`): Elm reads a variable in
+/// a let signature as a new rigid variable, so a signature with one could make valid code fail.
 fn let_function(
   ctx : Ctx,
   elm_name : String,
@@ -275,7 +337,7 @@ fn let_function(
   at : String,
 ) -> @ast.LetDeclaration raise ElmGenerationError {
   let (arguments, expression) = match definition {
-    ExpressionBody(inputs, _, body) => function_body(ctx, inputs, body, at)
+    ExpressionBody(inputs, _, body) => let_function_body(ctx, inputs, body, at)
     _ =>
       (
         [][:],
@@ -284,11 +346,53 @@ fn let_function(
         ),
       )
   }
+  let signature = match definition {
+    ExpressionBody(inputs, output, _) if closed_type(output) &&
+      inputs.iter().all(input => closed_type(input.1)) =>
+      Some(signature(ctx, elm_name, inputs, output, at))
+    _ => None
+  }
   LetFunction({
     documentation: None,
-    signature: None,
+    signature,
     declaration: node({ name: node(elm_name), arguments, expression, }),
   })
+}
+
+///|
+/// The arguments and the body of a let function: the inputs, then the patterns of the leading lambdas of the body.
+/// Elm refuses a let value that refers to itself (`loop = \\n -> loop n`), but accepts a let function that does
+/// (`loop n = loop n`).
+fn let_function_body(
+  ctx : Ctx,
+  inputs : Array[(@ir.Name, @ir.Type)],
+  body : @ir.Value,
+  at : String,
+) -> (ArrayView[@ast.Node[@ast.Pattern]], @ast.Node[@ast.Expression]) raise ElmGenerationError {
+  ctx.with_scope(fn() raise ElmGenerationError {
+    let arguments = inputs.map(input => {
+      node(@ast.Pattern::VarPattern(ctx.bind(input.0)))
+    })
+    let mut rest = body
+    while rest is Lambda(_, pattern, next) {
+      arguments.push(node(lower_pattern(ctx, pattern, at)))
+      rest = next
+    }
+    (arguments[:], node(lower_value(ctx, rest, at)))
+  })
+}
+
+///|
+/// Whether a type has no type variable, also no row variable.
+fn closed_type(t : @ir.Type) -> Bool {
+  match t {
+    Variable(_, _) | ExtensibleRecord(_, _, _) => false
+    Reference(_, _, args) => args.iter().all(closed_type)
+    Tuple(_, items) => items.iter().all(closed_type)
+    Record(_, fields) => fields.values().all(closed_type)
+    Function(_, input, output) => closed_type(input) && closed_type(output)
+    Unit(_) => true
+  }
 }
 
 ///|
@@ -313,6 +417,8 @@ fn lower_let(
   at : String,
 ) -> @ast.Expression raise ElmGenerationError {
   ctx.with_scope(fn() raise ElmGenerationError {
+    // Elm sees every name of the block in each definition, so the binders inside a definition avoid them.
+    ctx.reserve(chain_binders(v))
     let declarations = []
     let mut rest = v
     while true {
@@ -320,11 +426,15 @@ fn lower_let(
         LetDefinition(_, name, definition, next) => {
           // The definition sees the outer binding of its own name, so bind after lowering.
           let body = let_function(ctx, "", definition, at)
+          ctx.release(value_name(name))
           let elm_name = ctx.bind(name)
           declarations.push(node(rename_let(body, elm_name)))
           rest = next
         }
         LetRecursion(_, definitions, next) => {
+          for name, _ in definitions {
+            ctx.release(value_name(name))
+          }
           let names = definitions
             .keys()
             .map(name => (name, ctx.bind(name)))
@@ -340,6 +450,7 @@ fn lower_let(
         }
         Destructure(_, pattern, value, next) => {
           let lowered_value = node(lower_value(ctx, value, at))
+          pattern_names(pattern).each(name => ctx.release(name))
           let lowered_pattern = node(lower_pattern(ctx, pattern, at))
           declarations.push(
             node(
@@ -369,6 +480,9 @@ fn rename_let(
     LetFunction(f) =>
       LetFunction({
         ..f,
+        signature: f.signature.map(s => {
+          node({ ..s.value, name: node(elm_name), })
+        }),
         declaration: node({ ..f.declaration.value, name: node(elm_name), }),
       })
     other => other
@@ -433,15 +547,15 @@ fn lower_value(
       CaseExpression({ expression: lowered_subject, cases: lowered_cases[:], })
     }
     UpdateRecord(_, target, fields) =>
-      match target {
-        Variable(_, _) => {
-          let record = match lower_value(ctx, target, at) {
-            FunctionOrValue(_, name) => name
-            _ => panic()
-          }
-          RecordUpdateExpression(node(record), setters(ctx, fields, at))
-        }
-        _ => {
+      // Elm updates only a bare name: a local, or a value that prints unqualified. Any other target is bound in
+      // a `let` first.
+      match lower_value(ctx, target, at) {
+        FunctionOrValue(qualifier, name) if qualifier.is_empty() &&
+          name.get_char(0) is Some(c) &&
+          c >= 'a' &&
+          c <= 'z' =>
+          RecordUpdateExpression(node(name), setters(ctx, fields, at))
+        record => {
           let fresh = ctx.fresh_name("record")
           let bound = node(
             @ast.LetDeclaration::LetFunction({
@@ -450,7 +564,7 @@ fn lower_value(
               declaration: node({
                 name: node(fresh),
                 arguments: [][:],
-                expression: node(lower_value(ctx, target, at)),
+                expression: node(record),
               }),
             }),
           )

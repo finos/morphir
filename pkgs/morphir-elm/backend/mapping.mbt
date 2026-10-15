@@ -1,30 +1,5 @@
 ///|
-/// `Function` and `Type` hold an Elm name, qualified or not, and an optional import line.
-pub(all) enum MappingEntry {
-  Operator(String)
-  Function(String, String?)
-  Type(String, String?)
-  Removed
-} derive(Eq, Debug)
-
-///|
-pub extend MappingEntry with Eq::{equal, not_equal}
-
-///|
-pub extend MappingEntry with @debug.Debug::{to_repr}
-
-///|
-/// Types and values have separate namespaces: `basics#never` is both a type and a function.
-pub(all) enum Namespace {
-  TypeSpace
-  ValueSpace
-} derive(Eq, Debug)
-
-///|
-pub extend Namespace with Eq::{equal, not_equal}
-
-///|
-pub extend Namespace with @debug.Debug::{to_repr}
+pub using @mapping {type MappingEntry, type Namespace}
 
 ///|
 /// Keys are canonical FQName text, for example `morphir/SDK:basics#add`.
@@ -43,7 +18,7 @@ pub fn Mapping::empty() -> Mapping {
 ///|
 pub fn Mapping::builtin() -> Mapping {
   let mapping = Mapping::empty()
-  for entry in builtin_entries() {
+  for entry in @mapping.builtin_entries() {
     match entry.1 {
       Type(_, _) => mapping.types[entry.0] = entry.1
       _ => mapping.values[entry.0] = entry.1

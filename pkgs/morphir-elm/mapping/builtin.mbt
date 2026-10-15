@@ -2,7 +2,7 @@
 // Source: pkgs/morphir-sdk/conformance/bindings.json
 
 ///|
-fn builtin_entries() -> Array[(String, MappingEntry)] {
+pub fn builtin_entries() -> Array[(String, MappingEntry)] {
   [
     ("morphir/SDK:basics#bool", Type("Basics.Bool", None)),
     ("morphir/SDK:basics#float", Type("Basics.Float", None)),

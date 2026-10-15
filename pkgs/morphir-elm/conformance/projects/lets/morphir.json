@@ -1,0 +1,7 @@
+{
+    "name": "Parity.Lets",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Blocks"
+    ]
+}

@@ -1,0 +1,12 @@
+{
+    "name": "TestModel",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "AdvancedTypes",
+        "BasicTypes",
+        "CollectionTypes",
+        "CompositeTypes",
+        "OptionalTypes",
+        "UnionTypes"
+    ]
+}

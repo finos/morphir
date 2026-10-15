@@ -1,0 +1,28 @@
+{
+    "name": "Morphir.Sample",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Apps.BooksAndRecords.Deal",
+        "Apps.Shared.Client",
+        "Apps.Shared.Market",
+        "Apps.Shared.Price",
+        "Apps.Shared.Product",
+        "Apps.Shared.Quantity",
+        "Apps.Shared.Rate",
+        "Apps.Trader.Logic",
+        "Reg.Country",
+        "Reg.Currency",
+        "Reg.LCR.Basics",
+        "Reg.LCR.CentralBank",
+        "Reg.LCR.Counterparty",
+        "Reg.LCR.FedCode",
+        "Reg.LCR.FedCodeRules",
+        "Reg.LCR.Flows",
+        "Reg.LCR.Inflows",
+        "Reg.LCR.MaturityBucket",
+        "Reg.LCR.Product",
+        "Reg.LCR.Rules",
+        "Rules.Direct",
+        "Rules.RuleSet"
+    ]
+}

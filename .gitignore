@@ -43,3 +43,6 @@ website/yarn-error.log*
 *.log
 # Local renders of beads specs and plans (beads is the record)
 .dev/
+
+# morphir-elm incremental build state of the Elm parity projects
+pkgs/morphir-elm/conformance/projects/*/morphir-hashes.json

@@ -89,7 +89,7 @@ fn Env::add_specification(
       let key = fq_text(pkg_name, module_, name)
       match t.value.body {
         TypeAliasSpecification(params, body) =>
-          self.add_alias(key, params, body)
+          self.add_alias(pkg_name, module_, name, params, body)
         OpaqueTypeSpecification(params) | DerivedTypeSpecification(params, _) =>
           self.types[key] = Nominal(params.length())
         CustomTypeSpecification(params, ctors) =>
@@ -125,7 +125,8 @@ fn Env::add_definition(
       }
       let key = fq_text(pkg_name, module_, name)
       match t.value.value {
-        TypeAliasDefinition(params, body) => self.add_alias(key, params, body)
+        TypeAliasDefinition(params, body) =>
+          self.add_alias(pkg_name, module_, name, params, body)
         CustomTypeDefinition(params, ctors) =>
           if public_only && ctors.access is Private {
             self.types[key] = Nominal(params.length())
@@ -161,13 +162,27 @@ fn Env::add_values_of_definition(
 }
 
 ///|
+/// Adds an alias. An alias of a closed record is also a constructor, as in Elm and in morphir-elm
+/// (`MetaTypeMapping.lookupConstructor`): `Point 1 2` for `type alias Point = { x : Int, y : Int }`. It takes the
+/// fields in declaration order and gives the alias type.
 fn Env::add_alias(
   self : Env,
-  key : String,
+  pkg_name : @ir.PackageName,
+  module_ : @ir.ModuleName,
+  name : @ir.Name,
   params : Array[@ir.Name],
   body : @ir.Type,
 ) -> Unit {
+  let key = fq_text(pkg_name, module_, name)
   self.types[key] = Alias(params.map(p => p.to_canonical()), body)
+  guard body is Record(_, fields) else { return }
+  let attrs : @ir.TypeAttributes = Default::default()
+  let result : @ir.Type = Reference(
+    attrs,
+    { package_name: pkg_name, module_name: module_, local_name: name, },
+    params.map(p => Variable(attrs, p)),
+  )
+  self.constructors[key] = poly_of_signature(fields.to_array(), result)
 }
 
 ///|

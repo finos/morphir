@@ -1,0 +1,97 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-elm/frontend/resolve"
+
+import {
+  "finos/morphir-ir/common",
+  "moonbitlang/core/debug",
+  "moonrockz/krueger/ast",
+}
+
+// Values
+
+// Errors
+pub(all) suberror ResolveError {
+  ResolveError(String, String)
+} derive(Eq, @debug.Debug)
+pub fn ResolveError::equal(Self, Self) -> Bool
+pub fn ResolveError::not_equal(Self, Self) -> Bool
+pub fn ResolveError::to_repr(Self) -> @debug.Repr
+
+pub(all) suberror ResolveFailed {
+  ResolveFailed(Array[ResolveProblem])
+} derive(Eq, @debug.Debug)
+pub fn ResolveFailed::equal(Self, Self) -> Bool
+pub fn ResolveFailed::not_equal(Self, Self) -> Bool
+pub fn ResolveFailed::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) struct Exports {
+  all : Bool
+  values : Map[String, Bool]
+  types : Map[String, Bool]
+} derive(Eq, @debug.Debug)
+pub fn Exports::equal(Self, Self) -> Bool
+pub fn Exports::not_equal(Self, Self) -> Bool
+pub fn Exports::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ModuleReferences {
+  modules : Array[Array[String]]
+  values : Array[@common.FQName]
+  problems : Array[ResolveProblem]
+} derive(Eq, @debug.Debug)
+pub fn ModuleReferences::equal(Self, Self) -> Bool
+pub fn ModuleReferences::not_equal(Self, Self) -> Bool
+pub fn ModuleReferences::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ParsedModule {
+  name : Array[String]
+  path : String
+  file : @ast.File
+} derive(Eq, @debug.Debug)
+pub fn ParsedModule::equal(Self, Self) -> Bool
+pub fn ParsedModule::header(Self) -> @ast.DefaultModuleData
+pub fn ParsedModule::imports(Self) -> Array[Array[String]]
+pub fn ParsedModule::not_equal(Self, Self) -> Bool
+pub fn ParsedModule::to_repr(Self) -> @debug.Repr
+
+pub struct Project {
+  // private fields
+}
+pub fn Project::collect_references(Self, Array[String]) -> (Array[Array[String]], Array[ResolveProblem])
+pub fn Project::exports(Self, Array[String]) -> Exports
+pub fn Project::fqname(Self, Array[String], String) -> @common.FQName
+pub fn Project::module_references(Self, Array[String]) -> ModuleReferences
+pub fn Project::new(Array[String], Array[ParsedModule]) -> Self raise ResolveFailed
+pub fn Project::references(Self, Array[String]) -> Array[Array[String]] raise ResolveFailed
+pub fn Project::scope(Self, Array[String]) -> Scope
+pub fn Project::with_problems(Array[String], Array[ParsedModule]) -> (Self, Map[String, Array[ResolveProblem]])
+
+pub(all) struct ResolveProblem {
+  code : String
+  message : String
+  path : String
+  range : @ast.Range?
+} derive(Eq, @debug.Debug)
+pub fn ResolveProblem::equal(Self, Self) -> Bool
+pub fn ResolveProblem::not_equal(Self, Self) -> Bool
+pub fn ResolveProblem::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Resolved {
+  Local(String)
+  Global(@common.FQName)
+  BoolLiteral(Bool)
+} derive(Eq, @debug.Debug)
+pub fn Resolved::equal(Self, Self) -> Bool
+pub fn Resolved::not_equal(Self, Self) -> Bool
+pub fn Resolved::to_repr(Self) -> @debug.Repr
+
+pub struct Scope {
+  // private fields
+}
+pub fn Scope::resolve_operator(Self, String) -> @common.FQName raise ResolveError
+pub fn Scope::resolve_type(Self, Array[String], String) -> @common.FQName raise ResolveError
+pub fn Scope::resolve_value(Self, Array[String], String, (String) -> Bool) -> Resolved raise ResolveError
+
+// Type aliases
+
+// Traits

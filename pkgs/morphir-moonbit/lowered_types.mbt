@@ -85,7 +85,7 @@ fn lower_type(
                 ":" +
                 name.module_name.to_canonical() +
                 "#"
-              if !entry.public &&
+              if !entry.exposed &&
                 !context.has_prefix("value:" + owner) &&
                 !context.has_prefix("type:" + owner) {
                 raise Invalid(
@@ -218,35 +218,30 @@ fn curry_source(
 }
 
 ///|
-fn check_export_type(
-  ctx : Lowering,
-  tpe : Lowered,
-  context : String,
-) -> Unit raise {
+/// Marks what a `pub` declaration exposes: record shapes become `pub(all)`, and a type that is not `public` is
+/// emitted abstract. MoonBit refuses a `pub` signature that names a `priv` type, but an abstract type is visible to
+/// other packages without its constructors.
+fn export_type(ctx : Lowering, tpe : Lowered) -> Unit {
   match tpe {
     Nominal(name) =>
       if !ctx.types[name].public {
-        raise Invalid(
-          "moonbit.inaccessible_type",
-          context,
-          "Export exposes private type " + name.to_canonical(),
-        )
+        ctx.abstract_types[name] = true
       }
     Arrow(a, b) | Outcome(a, b) => {
-      check_export_type(ctx, a, context)
-      check_export_type(ctx, b, context)
+      export_type(ctx, a)
+      export_type(ctx, b)
     }
     Product(xs) =>
       for t in xs {
-        check_export_type(ctx, t, context)
+        export_type(ctx, t)
       }
     Shape(name, fields) => {
       ctx.exported_shapes[name] = true
       for field in fields {
-        check_export_type(ctx, field.1, context)
+        export_type(ctx, field.1)
       }
     }
-    Optional(t) | Sequence(t) => check_export_type(ctx, t, context)
+    Optional(t) | Sequence(t) => export_type(ctx, t)
     Atom(_) => ()
   }
 }

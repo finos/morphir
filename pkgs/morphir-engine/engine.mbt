@@ -64,7 +64,7 @@ pub fn Engine::run(
         Some(value) => value
         None => raise @scheme.Invalid("Unknown backend: " + settings.backend)
       }
-      if frontend.compiler is UnitCompiler(_, _) {
+      if !(frontend.compiler is FileCompiler(_)) {
         raise @scheme.Invalid(
           "frontend.typed_backend_required: Rich source units require a planned checkpoint or generation backend",
         )
@@ -232,24 +232,37 @@ pub fn Engine::run(
 }
 
 ///|
+fn rejection_message(
+  code : String,
+  detail : String,
+  location : @ir.SourceLocation?,
+) -> String {
+  code +
+  ": " +
+  detail +
+  (match location {
+    Some(loc) =>
+      " at " +
+      loc.start_line.to_string() +
+      ":" +
+      loc.start_column.to_string() +
+      "-" +
+      loc.end_line.to_string() +
+      ":" +
+      loc.end_column.to_string()
+    None => ""
+  })
+}
+
+///|
 fn diagnostic_message(error : Error) -> String {
   match error {
     Rejected(code, detail, location) =>
-      code +
-      ": " +
-      detail +
-      (match location {
-        Some(loc) =>
-          " at " +
-          loc.start_line.to_string() +
-          ":" +
-          loc.start_column.to_string() +
-          "-" +
-          loc.end_line.to_string() +
-          ":" +
-          loc.end_column.to_string()
-        None => ""
-      })
+      rejection_message(code, detail, location)
+    RejectedSources(problems) =>
+      problems
+      .map(p => rejection_message(p.code, p.detail, p.location))
+      .join("\n")
     @configuration.Invalid(message) => message
     @wire.Invalid(code, message) => code + ": " + message
     @data.Invalid(code, message) => code + ": " + message

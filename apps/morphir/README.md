@@ -223,10 +223,11 @@ profile, supported and excluded behavior, limits and evidence. JSON documents in
 `language`, `provider`, `defaultProfile`, `availableProfiles`, `capabilities` and
 `evidence`. `defaultProfile` is true when the selected profile is the default, even
 when chosen explicitly. Capabilities include `summary`, `supported`, `excluded`,
-`maxDocuments`, `incremental` and `limits`. Dependency pins remain in their own
-structured field. `local-acceptance` denotes repository evidence, not MCK verification
-or a claim that arbitrary MoonBit code is supported. These source descriptions are
-separate from IR capability vocabulary.
+`maxDocuments`, `incremental` and `limits`. `maxDocuments` is `null` when a unit has
+no document limit; human output then prints `documents per unit: no limit`.
+Dependency pins remain in their own structured field. `local-acceptance` denotes
+repository evidence, not MCK verification or a claim that arbitrary MoonBit code is
+supported. These source descriptions are separate from IR capability vocabulary.
 
 Execution reports stable `moonbit_frontend.*` diagnostic codes and available parser
 spans, with provider/profile context. A failed source unit prevents task publication

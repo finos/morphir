@@ -1,0 +1,10 @@
+import {
+  "finos/morphir-engine" @engine,
+  "finos/morphir-engine/data",
+  "finos/morphir-elm/frontend",
+}
+
+import {
+  "finos/morphir-engine/elm" @adapter,
+  "finos/morphir-engine/workspace",
+} for "test"

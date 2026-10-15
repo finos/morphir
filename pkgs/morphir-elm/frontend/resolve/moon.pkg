@@ -1,0 +1,12 @@
+import {
+  "finos/morphir-ir" @ir,
+  "finos/morphir-elm/mapping",
+  "finos/morphir-sdk-spec" @sdk_spec,
+  "moonrockz/krueger/ast",
+  "moonbitlang/core/debug",
+}
+
+import {
+  "moonrockz/krueger",
+  "finos/morphir-ir" @ir,
+} for "test"

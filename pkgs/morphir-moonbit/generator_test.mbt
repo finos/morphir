@@ -42,9 +42,23 @@ fn error(input : @generator.Input) -> (String, String) {
 }
 
 ///|
-test "private nominal types cannot escape through public value signatures" {
+fn library_source(input : @generator.Input) -> String raise {
+  let output = @generator.generate(input)
+  guard output.artifacts.search_by(a => a.path == "library.mbt") is Some(i) &&
+    output.artifacts[i].content is Text(text) else {
+    fail("library.mbt")
+  }
+  text
+}
+
+///|
+test "a private nominal type that a public signature or public payload names is emitted abstract" {
   let nominal = @fixtures.scalar("sample:main#hidden")
-  let input = single(nominal, @ir.Value::Unit(@fixtures.attrs()))
+  let hidden_case = @ir.Value::Constructor(
+    { ..@fixtures.attrs(), inferred_type: Some(nominal), },
+    @ir.FQName::parse("sample:main#hidden-case"),
+  )
+  let input = single(nominal, hidden_case)
   guard input.ir.distribution
     is Library(package_name, dependencies, package_def) else {
     fail("library")
@@ -77,7 +91,11 @@ test "private nominal types cannot escape through public value signatures" {
       @ir.Distribution::Library(package_name, dependencies, { modules, }),
     ),
   }
-  assert_eq(error(updated).0, "moonbit.inaccessible_type")
+  assert_eq(error(updated), ("", ""))
+  let source = library_source(updated)
+  // No visibility modifier: other packages name `Hidden`, but not its constructor.
+  assert_true(source.contains("///|\nenum Hidden {"), msg=source)
+  assert_true(source.contains("pub fn value()"), msg=source)
   types[@ir.Name::parse("wrapper")] = {
     access: @ir.Access::Public,
     value: {
@@ -90,11 +108,29 @@ test "private nominal types cannot escape through public value signatures" {
       }),
     },
   }
-  let opaque = single(
-    @fixtures.scalar("sample:main#wrapper"),
-    @ir.Value::Unit(@fixtures.attrs()),
+  let wrapper = @fixtures.scalar("sample:main#wrapper")
+  let wrap = @ir.Value::Constructor(
+    {
+      ..@fixtures.attrs(),
+      inferred_type: Some(
+        @ir.Type::Function(
+          { source: None, constraints: Map([]), extensions: Map([]), },
+          nominal,
+          wrapper,
+        ),
+      ),
+    },
+    @ir.FQName::parse("sample:main#wrap"),
   )
-  guard opaque.ir.distribution is Library(_, _, opaque_def) else {
+  let wrapped = single(
+    wrapper,
+    @ir.Value::Apply(
+      { ..@fixtures.attrs(), inferred_type: Some(wrapper), },
+      wrap,
+      hidden_case,
+    ),
+  )
+  guard wrapped.ir.distribution is Library(_, _, opaque_def) else {
     fail("library")
   }
   let opaque_entry = opaque_def.modules[path]
@@ -102,7 +138,10 @@ test "private nominal types cannot escape through public value signatures" {
     ..opaque_entry,
     value: { ..opaque_entry.value, types, },
   }
-  assert_eq(error(opaque).0, "moonbit.inaccessible_type")
+  assert_eq(error(wrapped), ("", ""))
+  let source = library_source(wrapped)
+  assert_true(source.contains("///|\npub enum Wrapper {"), msg=source)
+  assert_true(source.contains("///|\nenum Hidden {"), msg=source)
 }
 
 ///|
@@ -569,7 +608,7 @@ test "tuples lists maybe and result use concrete type parameter order" {
     @ir.FQName::parse("morphir/SDK:result#result"),
     [bool, int],
   )
-  let constructor = @ir.Value::Constructor(
+  let ok_constructor = @ir.Value::Constructor(
     {
       ..@fixtures.attrs(),
       inferred_type: Some(@ir.Type::Function(a, int, result)),
@@ -577,8 +616,292 @@ test "tuples lists maybe and result use concrete type parameter order" {
     @ir.FQName::parse("morphir/SDK:result#ok"),
   )
   let out = @generator.generate(
-    single(result, @ir.Value::Apply(@fixtures.attrs(), constructor, one)),
+    single(result, @ir.Value::Apply(@fixtures.attrs(), ok_constructor, one)),
   )
   guard out.artifacts[2].content is Text(source) else { fail("source") }
   assert_true(source.contains("Result[@integer.Integer, Bool]"))
+}
+
+///|
+test "a module uses the exposed values and constructors of a private module of the package" {
+  let attrs = @fixtures.attrs()
+  let boolean = @fixtures.scalar("morphir/SDK:basics#bool")
+  let flag_name = @ir.FQName::parse("sample:inner#flag")
+  let flag = @ir.Type::Reference(
+    { source: None, constraints: Map([]), extensions: Map([]), },
+    flag_name,
+    [],
+  )
+  let on = @ir.FQName::parse("sample:inner#on")
+  let types : Map[
+    @ir.Name,
+    @ir.AccessControlled[@ir.Documented[@ir.TypeDefinition]],
+  ] = Map::from_array([
+    (
+      @ir.Name::parse("flag"),
+      {
+        access: @ir.Access::Public,
+        value: {
+          doc: None,
+          value: @ir.TypeDefinition::CustomTypeDefinition([], {
+            access: @ir.Access::Public,
+            value: Map::from_array([(@ir.Name::parse("on"), [])]),
+          }),
+        },
+      },
+    ),
+  ])
+  let inner : @ir.ModuleDefinition = {
+    types,
+    doc: None,
+    values: Map::from_array([
+      (
+        @ir.Name::parse("one"),
+        @fixtures.definition(
+          boolean,
+          @ir.Value::Literal(attrs, @ir.Literal::BoolLiteral(true)),
+        ),
+      ),
+    ]),
+  }
+  let on_value = @ir.Value::Constructor(
+    { ..attrs, inferred_type: Some(flag), },
+    on,
+  )
+  let matched = @ir.Value::PatternMatch(attrs, on_value, [
+    (
+      @ir.Pattern::ConstructorPattern(
+        { ..attrs, inferred_type: Some(flag), },
+        on,
+        [],
+      ),
+      @ir.Value::Literal(attrs, @ir.Literal::BoolLiteral(true)),
+    ),
+  ])
+  let main : @ir.ModuleDefinition = {
+    types: Map([]),
+    doc: None,
+    values: Map::from_array([
+      (
+        @ir.Name::parse("reader"),
+        @fixtures.definition(
+          boolean,
+          @ir.Value::Reference(
+            { ..attrs, inferred_type: Some(boolean), },
+            @ir.FQName::parse("sample:inner#one"),
+          ),
+        ),
+      ),
+      (@ir.Name::parse("matcher"), @fixtures.definition(boolean, matched)),
+    ]),
+  }
+  let input = @generator.Input::new(
+    "inner",
+    @ir.IRFile::new(
+      @ir.Distribution::Library(@ir.Path::parse("sample"), Map([]), {
+        modules: Map::from_array([
+          (
+            @ir.Path::parse("inner"),
+            { access: @ir.Access::Private, value: inner, },
+          ),
+          (
+            @ir.Path::parse("main"),
+            { access: @ir.Access::Public, value: main, },
+          ),
+        ]),
+      }),
+    ),
+  )
+  assert_eq(error(input), ("", ""))
+}
+
+///|
+/// A package as the Elm frontend makes it when an exposed module names `sig` and `sig` names `deep` only in public
+/// signatures: `sig` is Public and `deep` is Private. `deep` has the exposed type `Box`, the exposed alias `Boxed`,
+/// the type `Sealed` with private constructors and the private value `secret`. `sig_values` are the values of `sig`.
+fn private_module_package(
+  sig_values : Array[
+    (@ir.Name, @ir.AccessControlled[@ir.Documented[@ir.ValueDefinition]]),
+  ],
+) -> @generator.Input raise {
+  let int = @fixtures.scalar("morphir/SDK:basics#int")
+  fn custom(
+    access : @ir.Access,
+    case_name : String,
+  ) -> @ir.AccessControlled[@ir.Documented[@ir.TypeDefinition]] raise {
+    {
+      access: @ir.Access::Public,
+      value: {
+        doc: None,
+        value: @ir.TypeDefinition::CustomTypeDefinition([], {
+          access,
+          value: Map::from_array([
+            (@ir.Name::parse(case_name), [(@ir.Name::parse("n"), int)]),
+          ]),
+        }),
+      },
+    }
+  }
+  let deep : @ir.ModuleDefinition = {
+    types: Map::from_array([
+      (@ir.Name::parse("box"), custom(@ir.Access::Public, "box")),
+      (@ir.Name::parse("sealed"), custom(@ir.Access::Private, "sealed")),
+      (
+        @ir.Name::parse("boxed"),
+        {
+          access: @ir.Access::Public,
+          value: {
+            doc: None,
+            value: @ir.TypeDefinition::TypeAliasDefinition(
+              [],
+              @fixtures.scalar("my/pkg:deep#box"),
+            ),
+          },
+        },
+      ),
+    ]),
+    doc: None,
+    values: Map::from_array([
+      (
+        @ir.Name::parse("secret"),
+        @fixtures.definition(
+          int,
+          @ir.Value::Literal(
+            { ..@fixtures.attrs(), inferred_type: Some(int), },
+            @ir.Literal::IntegerLiteral("1"),
+          ),
+          access=@ir.Access::Private,
+        ),
+      ),
+    ]),
+  }
+  let sig : @ir.ModuleDefinition = {
+    types: Map([]),
+    doc: None,
+    values: Map::from_array(sig_values),
+  }
+  @generator.Input::new(
+    "my/pkg",
+    @ir.IRFile::new(
+      @ir.Distribution::Library(@ir.Path::parse("my/pkg"), Map([]), {
+        modules: Map::from_array([
+          (
+            @ir.Path::parse("deep"),
+            { access: @ir.Access::Private, value: deep, },
+          ),
+          (@ir.Path::parse("sig"), { access: @ir.Access::Public, value: sig, }),
+        ]),
+      }),
+    ),
+  )
+}
+
+///|
+/// `C b`, where the constructor `C` named `name` makes a value of type `result` from an `Int`.
+fn apply_constructor(name : String, result : @ir.Type) -> @ir.Value raise {
+  let int = @fixtures.scalar("morphir/SDK:basics#int")
+  @ir.Value::Apply(
+    { ..@fixtures.attrs(), inferred_type: Some(result), },
+    @ir.Value::Constructor(
+      {
+        ..@fixtures.attrs(),
+        inferred_type: Some(
+          @ir.Type::Function(
+            { source: None, constraints: Map([]), extensions: Map([]), },
+            int,
+            result,
+          ),
+        ),
+      },
+      @ir.FQName::parse(name),
+    ),
+    @ir.Value::Variable(
+      { ..@fixtures.attrs(), inferred_type: Some(int), },
+      @ir.Name::parse("b"),
+    ),
+  )
+}
+
+///|
+/// A public value of `sig` with one input of type `input` and body `body`, of type `Int` unless `output` says.
+fn sig_value(
+  name : String,
+  input : @ir.Type,
+  body : @ir.Value,
+  output? : @ir.Type? = None,
+) -> (@ir.Name, @ir.AccessControlled[@ir.Documented[@ir.ValueDefinition]]) raise {
+  (
+    @ir.Name::parse(name),
+    {
+      access: @ir.Access::Public,
+      value: {
+        doc: None,
+        value: @ir.ValueDefinition::ExpressionBody(
+          [(@ir.Name::parse("b"), input)],
+          output.unwrap_or(@fixtures.scalar("morphir/SDK:basics#int")),
+          body,
+        ),
+      },
+    },
+  )
+}
+
+///|
+test "review I1: a public signature names an exposed type of a private module, which is emitted abstract" {
+  let int = @fixtures.scalar("morphir/SDK:basics#int")
+  let one = @ir.Value::Literal(
+    { ..@fixtures.attrs(), inferred_type: Some(int), },
+    @ir.Literal::IntegerLiteral("1"),
+  )
+  let box = @fixtures.scalar("my/pkg:deep#box")
+  let record = @ir.Type::Record(
+    { source: None, constraints: Map([]), extensions: Map([]), },
+    Map::from_array([(@ir.Name::parse("b"), box)]),
+  )
+  let input = private_module_package([
+    sig_value("g", box, one),
+    sig_value("h", @fixtures.scalar("my/pkg:deep#boxed"), one),
+    sig_value("k", record, one),
+    // `make b = Box b`: the exposed constructor of a private module.
+    sig_value(
+      "make",
+      int,
+      apply_constructor("my/pkg:deep#box", box),
+      output=Some(box),
+    ),
+  ])
+  assert_eq(error(input), ("", ""))
+  let source = library_source(input)
+  // Abstract: no visibility modifier, so other packages name `Box` but not its constructor.
+  assert_true(source.contains("///|\nenum Box {"), msg=source)
+  assert_false(source.contains("pub(all) enum Box"), msg=source)
+  assert_false(source.contains("pub enum Box"), msg=source)
+  // Nothing public names `Sealed`, so it stays private.
+  assert_true(source.contains("///|\npriv enum Sealed {"), msg=source)
+  assert_true(source.contains("pub fn g()"), msg=source)
+  assert_true(source.contains("pub fn h()"), msg=source)
+  assert_true(source.contains("pub fn k()"), msg=source)
+}
+
+///|
+test "review I1: a private value or constructor of a private module is still out of reach of another module" {
+  let int = @fixtures.scalar("morphir/SDK:basics#int")
+  let secret = @ir.Value::Reference(
+    { ..@fixtures.attrs(), inferred_type: Some(int), },
+    @ir.FQName::parse("my/pkg:deep#secret"),
+  )
+  assert_eq(
+    error(private_module_package([sig_value("g", int, secret)])),
+    ("moonbit.inaccessible_reference", "value:my/pkg:sig#g/body"),
+  )
+  let closed = @fixtures.scalar("my/pkg:deep#sealed")
+  let construct = apply_constructor("my/pkg:deep#sealed", closed)
+  assert_eq(
+    error(
+      private_module_package([
+        sig_value("g", int, construct, output=Some(closed)),
+      ]),
+    ).0,
+    "moonbit.inaccessible_reference",
+  )
 }

@@ -71,7 +71,7 @@ fn emit_plan(
           "  " +
           c.summary +
           "; documents per unit: " +
-          c.max_documents.to_string() +
+          documents_per_unit(c) +
           "; incremental: " +
           c.incremental.to_string(),
         )
@@ -341,7 +341,13 @@ fn capabilities_json(c : @engine.SourceCapabilities) -> Json {
       ("summary", Json::string(c.summary)),
       ("supported", Json::array(c.supported.map(Json::string))),
       ("excluded", Json::array(c.excluded.map(Json::string))),
-      ("maxDocuments", Json::number(c.max_documents.to_double())),
+      (
+        "maxDocuments",
+        match c.max_documents {
+          Some(n) => Json::number(n.to_double())
+          None => Json::null()
+        },
+      ),
       ("incremental", Json::boolean(c.incremental)),
       (
         "limits",
@@ -351,6 +357,15 @@ fn capabilities_json(c : @engine.SourceCapabilities) -> Json {
       ),
     ]),
   )
+}
+
+///|
+/// The number of documents one unit can hold, as the CLI prints it. `None` is "no limit", never a number.
+fn documents_per_unit(c : @engine.SourceCapabilities) -> String {
+  match c.max_documents {
+    Some(n) => n.to_string()
+    None => "no limit"
+  }
 }
 
 ///|

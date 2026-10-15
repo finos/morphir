@@ -1,0 +1,7 @@
+{
+    "name": "Parity.Lambdas",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Fns"
+    ]
+}

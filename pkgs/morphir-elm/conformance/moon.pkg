@@ -1,0 +1,11 @@
+import {
+  "finos/morphir-elm/backend" @elm,
+  "finos/morphir-elm/fixtures",
+  "finos/morphir-elm/frontend",
+  "finos/morphir-ir" @ir,
+  "finos/morphir-ir/migration",
+  "finos/morphir-ir/versioned/json" @versioned_json,
+  "finos/morphir-sdk-spec" @sdk_spec,
+  "finos/morphir-typing" @typing,
+  "moonbitlang/core/json",
+} for "wbtest"

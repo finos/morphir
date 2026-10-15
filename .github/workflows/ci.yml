@@ -275,20 +275,6 @@ jobs:
           path: .dev/conformance-ci/
           if-no-files-found: warn
 
-      - name: Check generated Elm projects with elm make
-        if: matrix.target == 'native'
-        run: mise run test:elm
-
-      - name: Scheme with inference to MoonBit and Elm
-        if: matrix.target == 'native'
-        run: |
-          mise run e2e:scheme-moonbit
-          mise run e2e:scheme-elm
-
-      - name: Check the SDK specification
-        if: matrix.target == 'native'
-        run: mise run sdk-spec:check
-
       - name: Upload ${{ matrix.target }} artifacts
         uses: actions/upload-artifact@v6
         with:
@@ -298,6 +284,68 @@ jobs:
             apps/morphir/dist/morphir.js
             pkgs/morphir-host/runners/wasm.mjs
           if-no-files-found: error
+
+  # The Elm and Scheme checks compile their own programs and do not use the output of the native
+  # build, so they run beside `build` instead of after the native leg's steps.
+  elm-scheme:
+    name: Elm and Scheme end to end
+    runs-on: ubuntu-latest
+    needs: [changes, lint, format-check]
+    if: needs.changes.outputs.code == 'true'
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install pinned MoonBit
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          mise install http:moonbit
+          moonbit_dir="$(mise where http:moonbit)"
+          moonbit_version="$(mise current http:moonbit)"
+          # The binary archive omits core; install the matching complete toolchain.
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
+          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+
+      - name: Report MoonBit version
+        run: moon version --all
+
+      - name: Update Mooncakes registry
+        run: moon update
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.21.0'
+
+      - name: Check generated Elm projects with elm make
+        run: mise run test:elm
+
+      - name: Check the Elm parity corpus is fresh
+        run: |
+          mise run elm:parity-refresh
+          git diff --exit-code -- pkgs/morphir-elm/conformance pkgs/morphir-engine/acceptance/elm
+
+      - name: Scheme with inference to MoonBit and Elm
+        run: |
+          mise run e2e:scheme-moonbit
+          mise run e2e:scheme-elm
+
+      - name: Elm through the engine to MoonBit and Elm
+        run: |
+          mise run e2e:elm-moonbit
+          mise run e2e:elm-elm
+
+      - name: Check the SDK specification
+        run: mise run sdk-spec:check
 
   installed-lifecycle:
     name: Installed lifecycle (${{ matrix.os }})
@@ -538,6 +586,7 @@ jobs:
       - format-check
       - validate-config
       - build
+      - elm-scheme
       - installed-lifecycle
       - native-telemetry
       - test

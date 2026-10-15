@@ -1,0 +1,8 @@
+{
+    "name": "Parity.Signatures",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Functions",
+        "Constrained"
+    ]
+}

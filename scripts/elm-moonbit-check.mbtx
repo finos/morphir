@@ -1,0 +1,20 @@
+// Elm projects through the engine (Elm provider) to MoonBit: `moon build` accepts the libraries.
+
+///|
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn main {
+  let code = @process.run(
+    "node", [
+      "pkgs/morphir-engine/scripts/check-generated.mjs", "moonbit", "pkgs/morphir-engine/acceptance/elm",
+    ],
+    stdout=@stdio.stdout, stderr=@stdio.stderr,
+  )
+  if code != 0 { @sys.exit(if code > 0 { code } else { 1 }) }
+}

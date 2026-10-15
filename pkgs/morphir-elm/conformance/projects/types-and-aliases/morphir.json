@@ -1,0 +1,12 @@
+{
+    "name": "Parity.Types",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Aliases",
+        "DocNoImports",
+        "DocDetached",
+        "DocBetween",
+        "DocTight",
+        "DocBlank"
+    ]
+}

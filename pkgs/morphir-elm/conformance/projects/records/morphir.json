@@ -1,0 +1,7 @@
+{
+    "name": "Parity.Records",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Points"
+    ]
+}

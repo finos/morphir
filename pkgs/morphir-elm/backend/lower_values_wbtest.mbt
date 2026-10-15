@@ -146,6 +146,30 @@ test "records, fields and updates" {
 }
 
 ///|
+test "an update of a top-level record names the record" {
+  let ctx = ctx_for()
+  let fields = Map::from_array([(n("total"), int("2"))])
+  // A value of the same module prints bare, and Elm updates a bare name.
+  let same_module = @ir.Value::UpdateRecord(
+    va(),
+    sdk("acme/app:orders#empty"),
+    fields,
+  )
+  assert_eq(show(ctx, same_module), "{ empty | total = 2 }")
+  // A value of another module prints qualified, which Elm cannot update.
+  let other = @ir.Value::UpdateRecord(
+    va(),
+    sdk("acme/app:defaults#empty"),
+    fields,
+  )
+  let printed = show(ctx, other)
+  assert_true(
+    printed.contains("Acme.App.Defaults.empty") &&
+    printed.contains("{ record_1 | total = 2 }"),
+  )
+}
+
+///|
 test "lambdas, lets, ifs and cases" {
   let ctx = ctx_for()
   let lambda = @ir.Value::Lambda(
@@ -176,7 +200,7 @@ test "lambdas, lets, ifs and cases" {
   let printed = show(ctx, let_value)
   assert_true(printed.has_prefix("let\n"))
   assert_true(printed.contains("total =\n") && printed.contains("( p, q ) =\n"))
-  assert_false(printed.contains("total :")) // no signatures in let
+  assert_true(printed.contains("total : ()\n")) // a closed type gives a signature
   let branch = @ir.Value::IfThenElse(
     va(),
     @ir.Value::Literal(va(), BoolLiteral(true)),
@@ -232,6 +256,150 @@ test "shadowed names are renamed" {
   assert_true(printed.contains("total_2 =\n"))
   assert_true(printed.contains("total_1 + 1"))
   assert_true(printed.has_suffix("total_2"))
+}
+
+///|
+fn unit_type() -> @ir.Type {
+  @ir.Type::Unit({ source: None, constraints: Map([]), extensions: Map([]), })
+}
+
+///|
+test "a name in sibling scopes keeps its name" {
+  let ctx = ctx_for()
+  // Each case branch and each lambda is its own scope, so the second `a` does not shadow the first.
+  let branches = @ir.Value::PatternMatch(va(), int("1"), [
+    (bind_var("a"), variable("a")),
+    (bind_var("a"), variable("a")),
+  ])
+  let printed = show(ctx, branches)
+  assert_false(printed.contains("a_"))
+  let lambdas = @ir.Value::Tuple(va(), [
+    @ir.Value::Lambda(va(), bind_var("x"), variable("x")),
+    @ir.Value::Lambda(va(), bind_var("x"), variable("x")),
+  ])
+  assert_eq(show(ctx, lambdas), "( \\x -> x, \\x -> x )")
+}
+
+///|
+test "a name in a let definition avoids the names of its let block" {
+  let ctx = ctx_for()
+  // Elm sees every name of a let block in each of its definitions: the lambda of `f` must not bind `a` or `f`.
+  let block = @ir.Value::LetDefinition(
+    va(),
+    n("f"),
+    ExpressionBody(
+      [],
+      unit_type(),
+      @ir.Value::Lambda(
+        va(),
+        bind_var("a"),
+        @ir.Value::Lambda(va(), bind_var("f"), variable("a")),
+      ),
+    ),
+    @ir.Value::LetDefinition(
+      va(),
+      n("a"),
+      ExpressionBody([], unit_type(), int("1")),
+      apply(variable("f"), [variable("a"), variable("a")]),
+    ),
+  )
+  let printed = show(ctx, block)
+  assert_true(printed.contains("\n    f a_1 f_2 =\n        a_1\n"))
+  assert_true(printed.contains("\n    a =\n"))
+  assert_true(printed.has_suffix("f a a"))
+  // A destructuring sees its own names too.
+  let destructure = @ir.Value::Destructure(
+    va(),
+    @ir.Pattern::TuplePattern(va(), [bind_var("p"), bind_var("q")]),
+    @ir.Value::Tuple(va(), [
+      @ir.Value::Lambda(va(), bind_var("p"), variable("p")),
+      int("2"),
+    ]),
+    variable("q"),
+  )
+  let printed_destructure = show(ctx, destructure)
+  assert_true(printed_destructure.contains("( p, q ) ="))
+  assert_false(printed_destructure.contains("\\p "))
+}
+
+///|
+test "a let definition has a signature only when its type has no variables" {
+  let ctx = ctx_for()
+  let int_type = ref_type("morphir/SDK:basics#int")
+  let identity = @ir.Value::Lambda(va(), bind_var("x"), variable("x"))
+  let closed = @ir.Value::LetDefinition(
+    va(),
+    n("g"),
+    ExpressionBody(
+      [],
+      @ir.Type::Function(@ir.TypeAttributes::default(), int_type, int_type),
+      identity,
+    ),
+    apply(variable("g"), [int("1")]),
+  )
+  let printed = show(ctx, closed)
+  assert_true(printed.contains("\n    g : Int -> Int\n    g x =\n        x\n"))
+  // Elm reads a variable in a let signature as a new rigid variable, so a type with a variable gets none.
+  let open_type = @ir.Value::LetDefinition(
+    va(),
+    n("g"),
+    ExpressionBody(
+      [],
+      @ir.Type::Function(
+        @ir.TypeAttributes::default(),
+        @ir.Type::Variable(@ir.TypeAttributes::default(), n("a")),
+        int_type,
+      ),
+      identity,
+    ),
+    apply(variable("g"), [int("1")]),
+  )
+  assert_false(show(ctx, open_type).contains("g :"))
+}
+
+///|
+test "a let function takes the arguments of its lambdas" {
+  let ctx = ctx_for()
+  // Elm refuses `loop = \\n -> loop n` as a cyclic value, but accepts `loop n = loop n`.
+  let recursive = @ir.Value::LetRecursion(
+    va(),
+    Map::from_array([
+      (
+        n("loop"),
+        ExpressionBody(
+          [],
+          unit_type(),
+          @ir.Value::Lambda(
+            va(),
+            bind_var("n"),
+            apply(variable("loop"), [variable("n")]),
+          ),
+        ),
+      ),
+    ]),
+    apply(variable("loop"), [int("1")]),
+  )
+  assert_true(show(ctx, recursive).contains("\n    loop n =\n        loop n\n"))
+  let paid = @ir.FQName::parse("acme/app:orders#paid") catch { _ => panic() }
+  let unwrap = @ir.Value::LetDefinition(
+    va(),
+    n("unwrap"),
+    ExpressionBody(
+      [],
+      unit_type(),
+      @ir.Value::Lambda(
+        va(),
+        @ir.Pattern::ConstructorPattern(va(), paid, [bind_var("amount")]),
+        @ir.Value::Lambda(va(), WildcardPattern(va()), variable("amount")),
+      ),
+    ),
+    variable("unwrap"),
+  )
+  assert_true(
+    show(ctx, unwrap).contains(
+      "\n    unwrap (Paid amount) _ =\n        amount\n",
+    ),
+  )
 }
 
 ///|

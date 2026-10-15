@@ -14,12 +14,32 @@ pub fn SourceEvidence::name(self : SourceEvidence) -> String {
 }
 
 ///|
+/// Every source file of one language in a project, for a `PerProject` profile. `package_name` and
+/// `exposed_modules` are as written in the project configuration (`project.name` and `project.exposed_modules`);
+/// `exposed_modules` is empty when the key is missing. The sources are in path order.
+pub(all) struct ProjectSources {
+  package_name : String
+  exposed_modules : Array[String]
+  sources : Array[Source]
+}
+
+///|
+/// How a source profile compiles. `PerFile` compiles each source file to its own unit; the callback gets the
+/// source, the unit id and the cancellation check. `PerProject` compiles every source file of a project to one
+/// unit, in one call; the unit id is the canonical project name.
+pub(all) enum SourceCompile {
+  PerFile((Source, String, () -> Bool) -> @data.IRUnit raise)
+  PerProject((ProjectSources, String, () -> Bool) -> @data.IRUnit raise)
+}
+
+///|
+/// `max_documents` is the number of source documents one unit can hold; `None` means no limit.
 /// Source behavior descriptions are not an IR feature vocabulary or wire protocol.
 pub(all) struct SourceCapabilities {
   summary : String
   supported : Array[String]
   excluded : Array[String]
-  max_documents : Int
+  max_documents : Int?
   incremental : Bool
   limits : Map[String, Int]
 }
@@ -30,7 +50,7 @@ pub(all) struct SourceProfile {
   capabilities : SourceCapabilities
   evidence : SourceEvidence
   dependencies : Map[String, String]
-  compile : (Source, String, () -> Bool) -> @data.IRUnit raise
+  compile : SourceCompile
   unit_limits : @data.Limits
 }
 
@@ -128,8 +148,12 @@ pub fn Engine::register_source_provider(
       seen[profile.id] = true
       let c = profile.capabilities
       ignore(source_constraint(c.summary, "capabilities"))
-      if c.max_documents <= 0 ||
-        c.max_documents > 64 ||
+      // No limit is the default. A declared limit is a positive number, with no upper bound.
+      let documents_valid = match c.max_documents {
+        Some(n) => n > 0
+        None => true
+      }
+      if !documents_valid ||
         c.supported.length() > 64 ||
         c.excluded.length() > 64 ||
         c.limits.length() > 64 ||
@@ -257,7 +281,10 @@ fn Engine::select_source_frontend(
     let profile = profiles[0]
     return Some({
       extensions: offered.extensions.copy(),
-      compiler: UnitCompiler(profile.compile, profile.unit_limits),
+      compiler: match profile.compile {
+        PerFile(run) => UnitCompiler(run, profile.unit_limits)
+        PerProject(run) => ProjectCompiler(run, profile.unit_limits)
+      },
       provider: id,
       profile: Some(profile.id),
       default_profile: profile.id == offered.default_profile,

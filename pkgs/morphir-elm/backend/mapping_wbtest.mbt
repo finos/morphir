@@ -79,7 +79,7 @@ test "a type and a value can share one key" {
 test "built-in entries have no duplicate key within a namespace" {
   let types : Map[String, Bool] = Map([])
   let values : Map[String, Bool] = Map([])
-  for entry in builtin_entries() {
+  for entry in @mapping.builtin_entries() {
     let table = match entry.1 {
       Type(_, _) => types
       _ => values
@@ -195,7 +195,7 @@ test "built-in keys match names decoded from legacy IR" {
 
 ///|
 test "built-in keys are canonical FQNames" {
-  for entry in builtin_entries() {
+  for entry in @mapping.builtin_entries() {
     let parsed = @ir.FQName::parse(entry.0) catch { _ => fail(entry.0) }
     assert_eq(parsed.to_canonical(), entry.0)
   }

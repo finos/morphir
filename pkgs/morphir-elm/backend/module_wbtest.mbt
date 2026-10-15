@@ -102,6 +102,23 @@ test "module documentation is printed" {
 }
 
 ///|
+test "an empty doc gives no doc comment" {
+  // An empty doc is no doc: Elm frontends read `{-| -}` back as the doc " ".
+  let value = defined(
+    "answer",
+    Public,
+    Some(""),
+    ExpressionBody([], int_type(), int("42")),
+  )
+  let source = generate_module(
+      Options::default(),
+      module_with([value], doc=Some("")),
+    ).source
+  assert_false(source.contains("{-|"))
+  assert_true(source.contains("\n\nanswer : Int\nanswer =\n"))
+}
+
+///|
 test "documentation that contains the comment end is escaped" {
   let value = defined(
     "answer",

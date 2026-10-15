@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-engine/elm"
+
+import {
+  "finos/morphir-engine",
+  "finos/morphir-engine/data",
+}
+
+// Values
+pub const PROFILE : String = "library"
+
+pub const PROVIDER : String = "finos/morphir-elm"
+
+pub fn default_unit_limits() -> @data.Limits
+
+pub fn provider(unit_limits? : @data.Limits) -> @morphir-engine.SourceProvider
+
+pub fn register(@morphir-engine.Engine, unit_limits? : @data.Limits) -> Unit raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

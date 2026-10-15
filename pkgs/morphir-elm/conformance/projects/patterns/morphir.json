@@ -1,0 +1,7 @@
+{
+    "name": "Parity.Patterns",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Cases"
+    ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write backend/mapping_builtin.mbt from the SDK binding inventory.
+"""Write mapping/builtin.mbt from the SDK binding inventory.
 
 Only bindings whose semantics come from elm/core 1.0.5 map to Elm. Every other SDK reference stays qualified and
 resolves through the finos/morphir-elm Elm package.
@@ -10,7 +10,7 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 BINDINGS = ROOT / "pkgs/morphir-sdk/conformance/bindings.json"
-OUTPUT = ROOT / "pkgs/morphir-elm/backend/mapping_builtin.mbt"
+OUTPUT = ROOT / "pkgs/morphir-elm/mapping/builtin.mbt"
 
 # Elm modules that every Elm module imports by default.
 DEFAULT_IMPORTS = {"Basics", "List", "Maybe", "Result", "String", "Char", "Tuple"}
@@ -116,7 +116,7 @@ def main():
         "// Source: pkgs/morphir-sdk/conformance/bindings.json",
         "",
         "///|",
-        "fn builtin_entries() -> Array[(String, MappingEntry)] {",
+        "pub fn builtin_entries() -> Array[(String, MappingEntry)] {",
         "  [",
     ]
     lines += [f"    ({json.dumps(key)}, {value})," for key, value in entries]

@@ -1,0 +1,8 @@
+pkgtype(kind: "executable")
+
+import {
+  "finos/morphir-engine" @engine,
+  "finos/morphir-engine/data",
+  "finos/morphir-engine/elm" @adapter,
+  "finos/morphir-engine/workspace",
+}

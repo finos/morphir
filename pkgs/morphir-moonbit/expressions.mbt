@@ -144,7 +144,7 @@ fn expression(
     Reference(_, n) =>
       match ctx.values.get(n) {
         Some(d) => {
-          if !d.public && d.module_name != owner.module_name {
+          if !d.exposed && d.module_name != owner.module_name {
             raise Invalid(
               "moonbit.inaccessible_reference",
               context,
@@ -383,7 +383,7 @@ fn expression(
     Constructor(_, n) =>
       match ctx.constructors.get(n) {
         Some(c) => {
-          if !c.public && c.module_name != owner.module_name {
+          if !c.exposed && c.module_name != owner.module_name {
             raise Invalid(
               "moonbit.inaccessible_reference",
               context,
@@ -512,7 +512,7 @@ fn pattern_source(
             "moonbit.unsupported_pattern", context, "Only binding custom constructor patterns are implemented",
           )
       }
-      if !c.public && c.module_name != owner.module_name {
+      if !c.exposed && c.module_name != owner.module_name {
         raise Invalid(
           "moonbit.inaccessible_reference",
           context,

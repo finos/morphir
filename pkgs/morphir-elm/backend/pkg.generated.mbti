@@ -2,6 +2,7 @@
 package "finos/morphir-elm/backend"
 
 import {
+  "finos/morphir-elm/mapping",
   "finos/morphir-ir/common",
   "finos/morphir-ir/versions/v4",
   "moonbitlang/core/debug",
@@ -72,26 +73,8 @@ pub struct Mapping {
 pub fn Mapping::builtin() -> Self
 pub fn Mapping::empty() -> Self
 pub fn Mapping::is_empty(Self) -> Bool
-pub fn Mapping::lookup(Self, @common.FQName, Namespace) -> MappingEntry?
-pub fn Mapping::with_overrides(Self, Map[String, MappingEntry]) -> Self
-
-pub(all) enum MappingEntry {
-  Operator(String)
-  Function(String, String?)
-  Type(String, String?)
-  Removed
-} derive(Eq, @debug.Debug)
-pub fn MappingEntry::equal(Self, Self) -> Bool
-pub fn MappingEntry::not_equal(Self, Self) -> Bool
-pub fn MappingEntry::to_repr(Self) -> @debug.Repr
-
-pub(all) enum Namespace {
-  TypeSpace
-  ValueSpace
-} derive(Eq, @debug.Debug)
-pub fn Namespace::equal(Self, Self) -> Bool
-pub fn Namespace::not_equal(Self, Self) -> Bool
-pub fn Namespace::to_repr(Self) -> @debug.Repr
+pub fn Mapping::lookup(Self, @common.FQName, @mapping.Namespace) -> @mapping.MappingEntry?
+pub fn Mapping::with_overrides(Self, Map[String, @mapping.MappingEntry]) -> Self
 
 pub(all) struct Options {
   profile : Profile
@@ -138,5 +121,8 @@ pub fn Profile::not_equal(Self, Self) -> Bool
 pub fn Profile::to_repr(Self) -> @debug.Repr
 
 // Type aliases
+pub using @mapping {type MappingEntry}
+
+pub using @mapping {type Namespace}
 
 // Traits

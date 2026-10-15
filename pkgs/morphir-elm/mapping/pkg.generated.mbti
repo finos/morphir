@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-elm/mapping"
+
+import {
+  "finos/morphir-ir/common",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn builtin_entries() -> Array[(String, MappingEntry)]
+
+pub let elm_core_modules : Array[String]
+
+pub fn elm_name(String) -> @common.Name
+
+pub fn elm_path(Array[String]) -> @common.Path
+
+pub fn elm_words(String) -> Array[String]
+
+pub fn morphir_operator(String) -> @common.FQName?
+
+// Errors
+
+// Types and methods
+pub struct ElmCore {
+  // private fields
+}
+pub fn ElmCore::builtin() -> Self
+pub fn ElmCore::is_core_module(Self, String) -> Bool
+pub fn ElmCore::type_of(Self, String, String) -> @common.FQName?
+pub fn ElmCore::value_of(Self, String, String) -> @common.FQName?
+
+pub(all) enum MappingEntry {
+  Operator(String)
+  Function(String, String?)
+  Type(String, String?)
+  Removed
+} derive(Eq, @debug.Debug)
+pub fn MappingEntry::equal(Self, Self) -> Bool
+pub fn MappingEntry::not_equal(Self, Self) -> Bool
+pub fn MappingEntry::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Namespace {
+  TypeSpace
+  ValueSpace
+} derive(Eq, @debug.Debug)
+pub fn Namespace::equal(Self, Self) -> Bool
+pub fn Namespace::not_equal(Self, Self) -> Bool
+pub fn Namespace::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

@@ -31,7 +31,12 @@ fn compile_source(request : Json, source : String) -> CompiledSource raise {
     raise @scheme.Invalid("frontend.unknown_profile: " + wanted)
   }
   let profile = offered[0]
-  let unit = (profile.compile)(
+  let run = match profile.compile {
+    @engine.PerFile(run) => run
+    @engine.PerProject(_) =>
+      raise @scheme.Invalid("frontend.unsupported_profile: " + profile.id)
+  }
+  let unit = run(
     {
       path: "main.mbt",
       relative_path: "main.mbt",

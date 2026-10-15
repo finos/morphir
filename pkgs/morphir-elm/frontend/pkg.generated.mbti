@@ -1,0 +1,58 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-elm/frontend"
+
+import {
+  "finos/morphir-elm/frontend/resolve",
+  "finos/morphir-ir/common",
+  "finos/morphir-ir/versions/v4",
+  "moonbitlang/core/debug",
+  "moonrockz/krueger/ast",
+}
+
+// Values
+pub fn compile_project(Array[ElmSource], String, Array[String], output? : OutputModules) -> @v4.IRFile raise ElmFailed
+
+pub fn location_of(@ast.Range) -> @v4.SourceLocation
+
+pub fn module_path(Array[String], Array[String]) -> @common.Path
+
+pub fn parse_modules(Array[ElmSource], String) -> Array[@resolve.ParsedModule] raise ElmFailed
+
+// Errors
+pub(all) suberror ElmFailed {
+  ElmFailed(Array[ElmProblem])
+} derive(Eq, @debug.Debug)
+pub fn ElmFailed::equal(Self, Self) -> Bool
+pub fn ElmFailed::not_equal(Self, Self) -> Bool
+pub fn ElmFailed::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) struct ElmProblem {
+  code : String
+  message : String
+  path : String
+  location : @v4.SourceLocation?
+} derive(Eq, @debug.Debug)
+pub fn ElmProblem::equal(Self, Self) -> Bool
+pub fn ElmProblem::not_equal(Self, Self) -> Bool
+pub fn ElmProblem::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ElmSource {
+  path : String
+  content : String
+} derive(Eq, @debug.Debug)
+pub fn ElmSource::equal(Self, Self) -> Bool
+pub fn ElmSource::not_equal(Self, Self) -> Bool
+pub fn ElmSource::to_repr(Self) -> @debug.Repr
+
+pub(all) enum OutputModules {
+  Parity
+  Referenced
+} derive(Eq, @debug.Debug)
+pub fn OutputModules::equal(Self, Self) -> Bool
+pub fn OutputModules::not_equal(Self, Self) -> Bool
+pub fn OutputModules::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

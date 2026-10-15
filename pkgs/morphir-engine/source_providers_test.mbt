@@ -5,7 +5,7 @@ fn source_profile(
 ) -> @engine.SourceProfile {
   {
     id,
-    compile: run,
+    compile: @engine.PerFile(run),
     unit_limits: @data.Limits::default(),
     evidence: @engine.Declared,
     dependencies: { "parser": "1.0" },
@@ -13,7 +13,7 @@ fn source_profile(
       summary: "Test source",
       supported: ["Boolean literals"],
       excluded: ["Calls"],
-      max_documents: 1,
+      max_documents: Some(1),
       incremental: false,
       limits: { "bytes": 1024 },
     },
@@ -181,6 +181,12 @@ test "registration validates atomically and legacy providers remain selectable" 
           capabilities: { ..profile.capabilities, limits: { "bytes": -1 }, },
         },
       ]),
+      source_provider("compiler", [
+        {
+          ..profile,
+          capabilities: { ..profile.capabilities, max_documents: Some(0), },
+        },
+      ]),
       source_provider("compiler", [profile], language="ion-binary"),
       {
         ..good,
@@ -344,6 +350,20 @@ test "codec inputs reject source profile constraints and configuration rejects e
         }
         error => raise error
       },
+    )
+  }
+}
+
+///|
+test "a document limit is optional and has no upper bound" {
+  let profile = source_profile("only", fn(_, id, _) raise {
+    @data.IRUnit::new(id, @fixtures.library())
+  })
+  for max_documents in [None, Some(65), Some(100000)] {
+    @engine.Engine::new().register_source_provider(
+      source_provider("compiler", [
+        { ..profile, capabilities: { ..profile.capabilities, max_documents, }, },
+      ]),
     )
   }
 }

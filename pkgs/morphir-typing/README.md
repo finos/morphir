@@ -78,6 +78,21 @@ its types. It is stricter than `types_equivalent`:
 
 A comparison that fails does not change the scope. Like `types_equivalent`, it does not expand aliases.
 
+`compare_types(expected, actual, deps, mask_signatures?)` compares every node type and every signature type of
+two files (`compare_files.mbt`). It expands the aliases of `deps`, of the file's own dependencies and of its own
+package. It compares the types of each declaration in that declaration's `TypeScope`, made from `expected`. It
+writes one line per difference, `<path>: expected <t1>, found <t2>`, where a path is a logical path or
+`<path>:input/<i>` and `<path>:output` for a signature. A path that only one side has is a difference too.
+
+A let-signature type of `expected` with a morphir-elm placeholder (`t-<digits>`, see
+[Classic let placeholders](#classic-let-placeholders)) is compared only outside its placeholders: each placeholder
+position is `()` on both sides, and a placeholder row compares only the fields that `expected` lists. So `List t8`
+must still be a list. With `mask_signatures=true`, the placeholders of top-level signatures are masked in the same
+way and are not fixed in the scope. morphir-elm `make` writes the top-level signature of an unannotated value from
+a first inference pass, so the placeholders there are not declared types. The node types are compared everywhere.
+The typing oracle (`pkgs/morphir-typing-tools/oracle`) and the Elm parity harness
+(`pkgs/morphir-elm/conformance`) use it.
+
 ### The caller supplies the SDK
 
 This module has no built-in SDK, because it depends only on `finos/morphir-ir`. Add the SDK specification to
@@ -219,7 +234,9 @@ from its name prefix (`number`, `comparable`, `appendable`, `compappend`). Class
 A closed record that lacks a field gives `missing_field`.
 
 Aliases expand during unification. Opaque types and custom types are nominal. A constructor has the type
-`args -> T params`.
+`args -> T params`. An alias of a closed record is a constructor too, as in Elm and in morphir-elm: with
+`type alias Point = { x : Int, y : Int }`, the constructor `Point` has the type `Int -> Int -> Point`. It takes
+the fields in declaration order and gives the alias type.
 
 ## Diagnostics
 

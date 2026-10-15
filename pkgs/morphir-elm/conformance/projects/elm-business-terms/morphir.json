@@ -1,0 +1,7 @@
+{
+    "name": "Morphir.Remote.App",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "BusinessTerms"
+    ]
+}

@@ -14,7 +14,7 @@ async fn main {
   )
   if install != 0 { @sys.exit(if install > 0 { install } else { 1 }) }
   let code = @process.run(
-    "node", ["pkgs/morphir-engine/scripts/test-scheme-inference.mjs", "elm"],
+    "node", ["pkgs/morphir-engine/scripts/check-generated.mjs", "elm"],
     stdout=@stdio.stdout, stderr=@stdio.stderr,
   )
   if code != 0 { @sys.exit(if code > 0 { code } else { 1 }) }

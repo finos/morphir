@@ -8,6 +8,8 @@ import {
 }
 
 // Values
+pub fn compare_types(@v4.IRFile, @v4.IRFile, Map[@common.Path, @v4.PackageSpecification], mask_signatures? : Bool) -> Array[String]
+
 pub fn infer(@v4.IRFile, Map[@common.Path, @v4.PackageSpecification], Mode) -> @v4.IRFile raise InferenceFailed
 
 pub fn types_equivalent(@v4.Type, @v4.Type) -> Bool

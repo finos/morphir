@@ -1,0 +1,30 @@
+{
+    "name": "SparkTests",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "AggregationTests",
+        "AntiqueRulesTests",
+        "DataDefinition.Action",
+        "DataDefinition.Field.Age",
+        "DataDefinition.Field.Amount",
+        "DataDefinition.Field.Category",
+        "DataDefinition.Field.Date",
+        "DataDefinition.Field.Name",
+        "DataDefinition.Field.Price",
+        "DataDefinition.Field.Product",
+        "DataDefinition.Field.Report",
+        "DataDefinition.Field.SubProduct",
+        "DataDefinition.Persistence.Expenditure.Bills",
+        "DataDefinition.Persistence.Expenditure.Loans",
+        "DataDefinition.Persistence.Income.AntiqueShop",
+        "DataDefinition.Persistence.Income.ElectronicShop",
+        "DataDefinition.Persistence.Income.GroceryShop",
+        "FunctionTests",
+        "ListMemberTests",
+        "ReturnTypeTests",
+        "Rules.Income.Antique",
+        "Rules.Rules",
+        "TypeTests",
+        "Types"
+    ]
+}

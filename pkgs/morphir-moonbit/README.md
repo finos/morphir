@@ -38,9 +38,10 @@ under `moonbit-readable-targets-v1`. Public values in public modules produce
 `pub fn`; other declarations stay private. Cross-module references require public
 source declarations even though the generated package is flat.
 Record shapes used by exported signatures are public; shapes used only privately
-stay private. Public signatures and custom-type payloads cannot contain private
-nominal types, including when constructors are hidden, because MoonBit rejects
-that dependency. Generation reports it contextually before compiler invocation.
+stay private. MoonBit refuses a `pub` signature or `pub` type payload that names a
+`priv` type. A custom type that is not public (its module or the type is private)
+but that a public signature or public type payload names is emitted abstract, with
+no visibility modifier: other packages can name it, but not its constructors.
 
 Zero-input values become accessor functions, preserving evaluation on reference
 without eager global initialization. Each accessor can propagate `SdkError`.

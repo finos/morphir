@@ -235,8 +235,17 @@ fn check_tree(
   let mut count = 0
   while pending.pop() is Some((value, depth)) {
     count += 1 + value.annotations().length()
-    if depth > limits.max_depth || count > limits.max_values {
-      raise Invalid("data.tree_limit", "Depth or value budget exceeded")
+    if depth > limits.max_depth {
+      raise Invalid(
+        "data.tree_limit",
+        "Depth exceeds the limit of \{limits.max_depth}",
+      )
+    }
+    if count > limits.max_values {
+      raise Invalid(
+        "data.tree_limit",
+        "Value count exceeds the limit of \{limits.max_values}",
+      )
     }
     for token in value.annotations() {
       check_symbol(token)

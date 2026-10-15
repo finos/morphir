@@ -9,7 +9,7 @@ import {
 ///|
 async fn main {
   let code = @process.run(
-    "node", ["pkgs/morphir-engine/scripts/test-scheme-inference.mjs", "moonbit"],
+    "node", ["pkgs/morphir-engine/scripts/check-generated.mjs", "moonbit"],
     stdout=@stdio.stdout, stderr=@stdio.stderr,
   )
   if code != 0 { @sys.exit(if code > 0 { code } else { 1 }) }

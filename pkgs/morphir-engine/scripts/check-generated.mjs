@@ -6,14 +6,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { includeDependencyPath } from '../../../apps/morphir/build-provider/paths.mjs';
 
-// Scheme programs, filled by inference, must generate MoonBit that `moon build` accepts (`moonbit`) or Elm that
-// `elm make` accepts (`elm`).
+// Runs an acceptance executable that prints generated MoonBit libraries and Elm projects, then checks them:
+// `moon build` must accept each library (`moonbit`) and `elm make` each project (`elm`).
+// Usage: node check-generated.mjs <moonbit|elm> [acceptance package, default pkgs/morphir-engine/acceptance/inference]
 const backend = process.argv[2];
 assert.ok(['moonbit', 'elm'].includes(backend), 'Supply the backend as an argument: moonbit or elm');
+const acceptance = process.argv[3] ?? 'pkgs/morphir-engine/acceptance/inference';
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 
 function generate() {
-  return JSON.parse(execFileSync('moon', ['run', 'pkgs/morphir-engine/acceptance/inference', '--target', 'native'], {
+  return JSON.parse(execFileSync('moon', ['run', acceptance, '--target', 'native'], {
     cwd: repository, encoding: 'utf8', maxBuffer: 16777216,
   }));
 }
@@ -28,7 +30,7 @@ function checkElm(output) {
   const version = execFileSync(elm, ['--version'], { encoding: 'utf8' }).trim();
   assert.equal(version, '0.19.1', `Elm must be 0.19.1, got ${version}`);
   assert.ok(output.elm.length > 0, 'expected generated Elm projects');
-  const workspace = mkdtempSync(join(tmpdir(), 'morphir-scheme-elm-'));
+  const workspace = mkdtempSync(join(tmpdir(), 'morphir-generated-elm-'));
   const failures = [];
   try {
     for (const project of output.elm) {
@@ -51,6 +53,9 @@ function checkElm(output) {
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }
+  for (const gap of output.elmGaps ?? []) {
+    console.log(`known Elm gap ${gap.name}: ${gap.code} (${gap.detail})`);
+  }
   assert.deepEqual(failures, [], failures.join('\n\n'));
 }
 
@@ -65,7 +70,7 @@ function checkMoonBit(output) {
   assert.ok(output.moonbit.length > 0, 'expected generated MoonBit libraries');
   const failures = [];
   for (const library of output.moonbit) {
-    const workspace = mkdtempSync(join(tmpdir(), 'morphir-scheme-moonbit-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'morphir-generated-moonbit-'));
     try {
       cpSync(sdk, join(workspace, 'sdk'), { recursive: true, filter: path => includeDependencyPath(sdk, path, excluded) });
       const generated = join(workspace, 'generated');
@@ -90,7 +95,7 @@ function checkMoonBit(output) {
     }
   }
   for (const gap of output.moonbitGaps) {
-    console.log(`known MoonBit gap ${gap.name}: ${gap.code} at ${gap.node} (${gap.detail})`);
+    console.log(`known MoonBit gap ${gap.name}: ${gap.code}${gap.node ? ` at ${gap.node}` : ''} (${gap.detail})`);
   }
   assert.deepEqual(failures, [], failures.join('\n\n'));
 }

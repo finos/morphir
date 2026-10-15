@@ -198,17 +198,22 @@ The separate [MoonBit adapter](moonbit/README.md) registers `moonbit` explicitly
 `register_source_provider(SourceProvider)` registers an in-process compiler provider
 with one or more `SourceLanguage` offerings. Each language has file extensions, an
 explicit default profile, and `SourceProfile` records. Each profile contains its
-rich-unit callback, envelope limits, source capabilities, dependency versions and
-`SourceEvidence`. Registration validates bounded descriptors and copies mutable
-arrays and maps. It invokes no compiler.
+compile callback (`SourceCompile`; `PerFile` compiles one source file to one rich unit),
+envelope limits, source capabilities, dependency versions and `SourceEvidence`. Registration validates bounded descriptors and copies mutable
+arrays and maps. It invokes no compiler. `max_documents` is the number of source
+documents one unit can hold. `None` means no limit (the default). A provider may declare
+a limit, a positive number with no upper bound.
 
 Configure `frontend.language`, `frontend.provider` and `frontend.profile` in TOML.
 Scheme equivalents are `frontend`, `frontend-provider` and `frontend-profile`.
+
 A missing profile selects that provider's default. A missing provider selects the
 only provider offering the language. Multiple providers require an explicit choice,
 even if a profile name matches only one of them. Unknown providers, a provider that
 does not offer the language, and unknown profiles fail before model reads.
 Source constraints are invalid on codec inputs, including `ir-json`.
+
+`finos/morphir-engine/elm` registers the Elm frontend as a `PerProject` provider; see [its README](elm/README.md).
 
 A plan captures the selected callback and its limits. Later registrations cannot
 change execution of that plan. Selection descriptors include `language`, `provider`,
@@ -223,11 +228,23 @@ one compiler. `register_unit_frontend` rejects such collisions at registration.
 `SourceCapabilities` describes supported and excluded source behavior, document
 bounds, incremental support and configured parser budgets. These descriptions are
 separate from IR feature vocabulary and protocol negotiation. `LocalAcceptance`
-records repository qualification, not Morphir MCK certification. A callback receives
-one source document per invocation; a provider's broader document capability does
-not create project linking. Profile diagnostics keep their code and span and add
-the captured provider/profile context. Project listing continues to report language
-and configured target, without requiring compiler registration.
+records repository qualification, not Morphir MCK certification. A `PerFile` callback
+receives one source document per invocation. A `PerProject` callback receives every
+source document of the project in one `ProjectSources` (the project name and
+`exposed_modules` as written, and the sources in path order) and returns one unit whose
+id is the canonical project name (`Example.Project` gives `example/project`). It needs a
+checkpoint or generator backend, compiles whole projects only (a single-file request,
+or a directory request that does not hold the project's source directory, fails with
+`frontend.project_compiler_file`) and has no document limit unless its
+profile declares one (`max_documents: Some(n)`; planning then refuses more than `n`
+sources with `frontend.too_many_documents`). The output budget `unit_limits` bounds the
+unit. The plan accepts `exposed_modules` on the checkpoint path for a project compiler
+and does not rewrite module access: the compiler sets it. A project compiler reports
+all of its problems with `RejectedSources`; each problem is a diagnostic at its file. An
+empty `RejectedSources` is a `frontend.rejected` diagnostic at the source directory.
+Profile diagnostics keep their code and span and add the captured provider/profile
+context. Project listing continues to report language and configured target, without
+requiring compiler registration.
 
 ### Type inference
 
@@ -259,6 +276,12 @@ fails `fill` with `unknown_reference`, because the Scheme frontend lowers that r
 holds monomorphic programs only, because the MoonBit generator has no specialization: a generic value, such as
 `(define (id x) x)`, needs the specialization follow-up. `moonbit_gaps` names the corpus programs that the MoonBit
 generator does not support yet, with the error that it must raise; Elm checks them all.
+
+**Elm end to end.** `mise run e2e:elm-moonbit` and `mise run e2e:elm-elm` compile every project of the Elm parity
+corpus (`pkgs/morphir-elm/conformance/projects`) through the engine with the Elm provider and generate MoonBit and
+Elm; `moon build` and `elm make` must accept the output. `acceptance/elm/projects.mbt` holds the sources; `mise run
+elm:parity-refresh` regenerates it. `gaps` in `acceptance/elm/gaps.mbt` names each project and backend that does not
+generate yet, with the start of its first diagnostic and its bead.
 
 ### Typed checkpoints
 

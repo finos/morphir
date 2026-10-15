@@ -1,4 +1,5 @@
 import {
+  "finos/morphir-elm/mapping",
   "finos/morphir-ir" @ir,
   "moonrockz/krueger/ast",
   "moonrockz/krueger/printer",

@@ -42,7 +42,7 @@ pub fn provider(
     unit_limits,
     capabilities: {
       summary: "Single Boolean function",
-      max_documents: 1,
+      max_documents: Some(1),
       incremental: false,
       supported: [
         "One function with explicit Bool signature", "Boolean literals and parameters",
@@ -59,7 +59,7 @@ pub fn provider(
         "expressionDepth": limits.max_depth,
       },
     },
-    compile: fn(source, unit_id, cancelled) raise {
+    compile: @engine.PerFile(fn(source, unit_id, cancelled) raise {
       let output = @frontend.compile(
         input(source, unit_id),
         limits~,
@@ -81,7 +81,7 @@ pub fn provider(
         annotations: output.annotations.copy(),
         provenance: output.provenance.copy(),
       }
-    },
+    }),
   }
   let library : @engine.SourceProfile = {
     id: @frontend.LIBRARY_PROFILE,
@@ -90,7 +90,7 @@ pub fn provider(
     unit_limits,
     capabilities: {
       summary: "Boolean library",
-      max_documents: 1,
+      max_documents: Some(1),
       incremental: false,
       supported: [
         "Multiple functions with explicit Bool signatures", "Public and unexported functions",
@@ -112,7 +112,7 @@ pub fn provider(
         "callGraphDepth": library_limits.max_call_depth,
       },
     },
-    compile: fn(source, unit_id, cancelled) raise {
+    compile: @engine.PerFile(fn(source, unit_id, cancelled) raise {
       let output = @frontend.compile_library(
         input(source, unit_id),
         limits=library_limits,
@@ -135,7 +135,7 @@ pub fn provider(
         annotations: output.annotations.copy(),
         provenance: output.provenance.copy(),
       }
-    },
+    }),
   }
   {
     id: PROVIDER,

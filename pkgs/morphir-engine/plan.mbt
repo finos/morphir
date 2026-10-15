@@ -23,6 +23,14 @@ pub fn Request::new() -> Request {
 }
 
 ///|
+/// The project of a `PerProject` source compiler: one unit for all source files of the project.
+priv struct ProjectJob {
+  unit_id : String
+  package_name : String
+  exposed_modules : Array[String]
+}
+
+///|
 priv struct Job {
   root : String
   source_root : String
@@ -43,6 +51,7 @@ priv struct Job {
   components : Array[ComponentStep]
   strict_naming : Bool
   inference : @typing.Mode?
+  project : ProjectJob?
 }
 
 ///|
@@ -258,10 +267,18 @@ pub fn Engine::plan(
     if frontend is None && input_format is None {
       raise @configuration.Invalid("Unknown frontend: " + settings.frontend)
     }
-    if !checkpoint && frontend is Some(f) && f.compiler is UnitCompiler(_, _) {
+    let project_compiler = frontend is Some(f) &&
+      f.compiler is ProjectCompiler(_, _)
+    if !checkpoint && frontend is Some(f) && !(f.compiler is FileCompiler(_)) {
       raise @configuration.Invalid(
         "frontend.typed_backend_required: Rich source units require checkpoint or generation output",
       )
+    }
+    let whole_project = "frontend.project_compiler_file: " +
+      settings.frontend +
+      " compiles whole projects; select the project, not a file or directory"
+    if project_compiler && request.file is Some(_) {
+      raise @configuration.Invalid(whole_project)
     }
     let boundary = if checkpoint {
       let format = effective.text("pipeline.checkpoint_format", "ion-binary")
@@ -285,7 +302,8 @@ pub fn Engine::plan(
           "Checkpoint IR uses current version 4; use ir-json for historical export",
         )
       }
-      if !settings.transforms.is_empty() || exposed is Some(_) {
+      if !settings.transforms.is_empty() ||
+        (exposed is Some(_) && !project_compiler) {
         raise @configuration.Invalid(
           "Checkpoint identity processing does not yet support transforms or exposed_modules; metadata lineage is required",
         )
@@ -356,20 +374,27 @@ pub fn Engine::plan(
         @workspace.within(other.root, path)
       })
     }
-    let source_root = match request.directory {
+    let project_source = join(selected.root, settings.source)
+    let requested = match request.directory {
       Some(directory) => normalize(directory)
-      None => join(selected.root, settings.source)
+      None => project_source
     }
-    if !owned(source_root) {
+    if !owned(requested) {
       raise @configuration.Invalid(
         "Input directory belongs to another workspace project",
       )
     }
-    if !@workspace.within(selected.root, source_root) {
+    if !@workspace.within(selected.root, requested) {
       raise @configuration.Invalid(
         "Input directory is outside selected project",
       )
     }
+    // A project compiler compiles from the project's source directory. A directory request selects the project
+    // only when it holds that directory; a narrower one would compile part of the project.
+    if project_compiler && !@workspace.within(requested, project_source) {
+      raise @configuration.Invalid(whole_project)
+    }
+    let source_root = if project_compiler { project_source } else { requested }
     if @workspace.within(output_root, source_root) {
       raise @configuration.Invalid(
         "Source directory is inside output directory",
@@ -424,23 +449,40 @@ pub fn Engine::plan(
           "Host listed a path outside source root: " + path,
         )
       }
-      let rel = relative(source_root, path)
-      let target = join(
-        output,
-        stem(rel) + (if generator is Some(_) { "" } else { suffix }),
-      )
-      let key = target.to_lower()
-      if seen.contains(key) ||
-        seen
-        .keys()
-        .any(existing => {
-          @workspace.within(existing, key) || @workspace.within(key, existing)
-        }) {
-        raise @configuration.Invalid("Duplicate output path: " + target)
+      // A file compiler writes one output per source. A project compiler writes one output for the
+      // project, so nested module paths (`Api` and `Api/Util`) do not collide.
+      if !project_compiler {
+        let rel = relative(source_root, path)
+        let target = join(
+          output,
+          stem(rel) + (if generator is Some(_) { "" } else { suffix }),
+        )
+        let key = target.to_lower()
+        if seen.contains(key) ||
+          seen
+          .keys()
+          .any(existing => {
+            @workspace.within(existing, key) || @workspace.within(key, existing)
+          }) {
+          raise @configuration.Invalid("Duplicate output path: " + target)
+        }
+        seen[key] = true
       }
-      seen[key] = true
       unique.push(path)
       sources.push(path)
+    }
+    if project_compiler &&
+      frontend
+      is Some({ capabilities: Some({ max_documents: Some(limit), .. }), .. }) &&
+      unique.length() > limit {
+      raise @configuration.Invalid(
+        "frontend.too_many_documents: " +
+        unique.length().to_string() +
+        " sources; " +
+        settings.frontend +
+        " accepts at most " +
+        limit.to_string(),
+      )
     }
     if destinations.any(existing => {
         @workspace.within(existing, destination) ||
@@ -471,7 +513,11 @@ pub fn Engine::plan(
       paths: unique,
       settings,
       module_prefix,
-      exposed,
+      exposed: if project_compiler {
+        None
+      } else {
+        exposed
+      },
       runtime,
       frontend,
       backend,
@@ -484,9 +530,48 @@ pub fn Engine::plan(
       components,
       strict_naming: effective.boolean("pipeline.strict_naming", false),
       inference,
+      project: if project_compiler {
+        Some({
+          unit_id: canonical_path(settings.package_name),
+          package_name: settings.package_name,
+          exposed_modules: match effective.get("project.exposed_modules") {
+            Some(_) => effective.strings("project.exposed_modules")
+            None => []
+          },
+        })
+      } else {
+        None
+      },
     })
   }
   { jobs, consumed: false, sources, destinations, output_root, }
+}
+
+///|
+/// The frontend source of one file. File and project compilers both use it, so they name modules the same way.
+fn Job::source(
+  self : Job,
+  path : String,
+  relative_path : String,
+  content : @data.Content,
+) -> Source raise {
+  {
+    path,
+    relative_path,
+    content: match content {
+      Text(text) => text
+      Binary(_) =>
+        raise @configuration.Invalid(
+          "data.encoding_mismatch: Expected text frontend content",
+        )
+    },
+    package_name: self.settings.package_name,
+    module_name: if self.module_prefix == "" {
+      stem(relative_path)
+    } else {
+      self.module_prefix + "/" + stem(relative_path)
+    },
+  }
 }
 
 ///|
@@ -520,48 +605,79 @@ pub fn Engine::execute_content(
   plan.consumed = true
   for job in plan.jobs {
     job.runtime.set_cancelled(cancelled)
-    for path in job.paths {
+    // A project compiler gives one unit for all sources of its project; it reports at the source directory.
+    let inputs = match job.project {
+      Some(_) => if job.paths.is_empty() { [] } else { [job.source_root] }
+      None => job.paths
+    }
+    for path in inputs {
       let mut stage = "read"
+      // The file of a `read` diagnostic: a project reads every source before its compile.
+      let mut diagnostic_path = path
       try {
         if cancelled() {
           raise @configuration.Invalid("Cancelled")
         }
-        let relative_path = relative(job.source_root, path)
-        let content = read(path, job.read_bytes)
-        let unit_id = stem(relative_path)
-        stage = "frontend"
-        let mut checkpoint_unit = match job.boundary {
-          Some(boundary) =>
-            match boundary.input {
-              Some(format) =>
-                Some(
-                  boundary.codecs.decode(format.codec, { unit_id, content, }),
-                )
+        let mut checkpoint_unit : @data.IRUnit? = None
+        let unit_id = match job.project {
+          Some(project) => {
+            let sources : Array[Source] = []
+            for source_path in job.paths {
+              diagnostic_path = source_path
+              sources.push(
+                job.source(
+                  source_path,
+                  relative(job.source_root, source_path),
+                  read(source_path, false),
+                ),
+              )
+            }
+            diagnostic_path = path
+            stage = "frontend"
+            checkpoint_unit = Some(
+              job.frontend
+              .unwrap()
+              .compile_project(
+                {
+                  package_name: project.package_name,
+                  exposed_modules: project.exposed_modules.copy(),
+                  sources,
+                },
+                project.unit_id,
+                cancelled,
+              ),
+            )
+            project.unit_id
+          }
+          None => {
+            let relative_path = relative(job.source_root, path)
+            let content = read(path, job.read_bytes)
+            let unit_id = stem(relative_path)
+            stage = "frontend"
+            checkpoint_unit = match job.boundary {
+              Some(boundary) =>
+                match boundary.input {
+                  Some(format) =>
+                    Some(
+                      boundary.codecs.decode(format.codec, { unit_id, content, }),
+                    )
+                  None => None
+                }
               None => None
             }
-          None => None
-        }
-        if checkpoint_unit is None {
-          let source = Source::{
-            path,
-            relative_path,
-            content: match content {
-              Text(text) => text
-              Binary(_) =>
-                raise @configuration.Invalid(
-                  "data.encoding_mismatch: Expected text frontend content",
-                )
-            },
-            package_name: job.settings.package_name,
-            module_name: if job.module_prefix == "" {
-              stem(relative_path)
-            } else {
-              job.module_prefix + "/" + stem(relative_path)
-            },
+            if checkpoint_unit is None {
+              checkpoint_unit = Some(
+                job.frontend
+                .unwrap()
+                .compile_unit(
+                  job.source(path, relative_path, content),
+                  unit_id,
+                  cancelled,
+                ),
+              )
+            }
+            unit_id
           }
-          checkpoint_unit = Some(
-            job.frontend.unwrap().compile_unit(source, unit_id, cancelled),
-          )
         }
         let seen_warnings : Map[String, Bool] = Map([])
         for item in checkpoint_unit.unwrap().provenance {
@@ -719,7 +835,7 @@ pub fn Engine::execute_content(
         }
         processed += 1
         artifacts.push({
-          path: join(job.destination, stem(relative_path) + job.suffix),
+          path: join(job.destination, unit_id + job.suffix),
           source: path,
           content,
           format: match job.boundary {
@@ -728,6 +844,25 @@ pub fn Engine::execute_content(
           },
         })
       } catch {
+        RejectedSources(problems) =>
+          for problem in problems {
+            diagnostics.push({
+              path: if problem.path == "" {
+                path
+              } else {
+                join(job.source_root, problem.path) catch {
+                  _ => path
+                }
+              },
+              stage,
+              message: rejection_message(
+                problem.code,
+                problem.detail,
+                problem.location,
+              ),
+              details: None,
+            })
+          }
         @typing.InferenceFailed(problems) =>
           for problem in problems {
             diagnostics.push({
@@ -739,7 +874,7 @@ pub fn Engine::execute_content(
           }
         e =>
           diagnostics.push({
-            path,
+            path: diagnostic_path,
             stage,
             message: diagnostic_message(e),
             details: None,

@@ -250,6 +250,11 @@ fn app_file() -> @ir.IRFile {
   }
   let types = Map([
     (nm("point"), alias_def([], trec([("x", t_int()), ("y", t_int())]))),
+    (
+      nm("person"),
+      alias_def([], trec([("name", tr(STRING, [])), ("age", t_int())])),
+    ),
+    (nm("box"), alias_def(["a"], trec([("item", tv("a"))]))),
     (nm("pair"), alias_def(["a"], Tuple(tattrs(), [tv("a"), tv("a")]))),
     (nm("loop"), alias_def([], tr("acme/app:m#loop", []))),
     (nm("ping"), alias_def([], tr("acme/app:m#pong", []))),
@@ -709,6 +714,26 @@ test "carry-forward: an alias to a record unifies with the record" {
     }),
     ("missing_field", "e/body"),
   )
+}
+
+///|
+test "a record alias is a constructor that takes the fields in declaration order" {
+  let i = new_infer()
+  let person : @ir.Value = Constructor(va(), fq("acme/app:m#person"))
+  assert_eq(show(i, i.value(person, "c")), "String -> Int -> Person")
+  let partial = v_apply(person, v_str("Ada"))
+  assert_eq(show(i, i.value(partial, "p")), "Int -> Person")
+  let full = v_apply(partial, v_int("36"))
+  assert_eq(show(i, i.value(full, "f")), "Person")
+  let box_ctor : @ir.Value = Constructor(va(), fq("acme/app:m#box"))
+  let boxed = v_apply(box_ctor, v_str("s"))
+  assert_eq(show(i, i.value(boxed, "b")), "Box String")
+  assert_eq(
+    failure(() => i.value(v_apply(person, v_int("1")), "e") |> ignore),
+    ("no_instance", "e/argument"),
+  )
+  // Only an alias of a record is a constructor.
+  assert_true(i.env.constructors.get("acme/app:m#pair") is None)
 }
 
 ///|
