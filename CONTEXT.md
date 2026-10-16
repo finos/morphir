@@ -31,6 +31,28 @@ A value with both a portable implementation and one or more optional runtime bin
 **Distribution**:
 A package delivered as a library, a specification, or an application with entry points.
 
+**Compilation unit**:
+The complete source set compiled together for one Morphir package, with an explicit package and dependency context.
+_Avoid_: Compiled model, individual source file when the compilation includes several documents
+
+**Morphir model**:
+An identified logical pipeline value containing a versioned distribution, metadata, annotations and provenance. It can be created, enriched, transformed, analyzed, evaluated or consumed by a generator independently of its storage or transport encoding.
+_Avoid_: IRModel, unit, compilation unit, model envelope
+
+**Model revision**:
+A particular state of a Morphir model to which facts and guarantees apply. Its identity distinguishes it from other states of the same logical model.
+
+**Model guarantee**:
+A property established for a model revision within a stated scope and dependency context. Later changes may preserve or invalidate it.
+_Avoid_: Unchecked state label, capability claim
+
+**Model enrichment**:
+Information added to a Morphir model, such as source origins, naming facts, numeric precision or analysis results. An enrichment establishes a guarantee only when its evidence has been admitted.
+
+**Model envelope**:
+The representation used to store or transmit a Morphir model, with the format and integrity information required by that representation.
+_Avoid_: Compilation unit, semantic distribution
+
 **Migration**:
 An explicit conversion between IR format versions. A conversion that cannot retain the represented information is refused.
 
