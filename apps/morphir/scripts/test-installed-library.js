@@ -11,7 +11,7 @@ const provider='finos/morphir-moonbit-frontend';
 // The L1 fixture expectations are hand-authored, never computed from generated IR.
 export function testInstalledLibrary({run,root,receipts,cli,helper,cwd,home,llvmHome,llvmPin,required,deps,pack,fixtures}) {
   assert.equal(fixtures.profile,profile);assert.equal(fixtures.language,'moonbit');
-  assert.equal(fixtures.parserVersion,'0.4.1');
+  assert.equal(fixtures.parserVersion,'0.4.5');
   assert.deepEqual(fixtures.models.map(m=>m.id),['forward','shadow','diamond','zero','private','operators']);
   assert.equal(fixtures.models.reduce((n,m)=>n+m.entries.length,0),13);
   assert.equal(fixtures.models.reduce((n,m)=>n+m.entries.reduce((n,e)=>n+e.expected.length,0),0),42);

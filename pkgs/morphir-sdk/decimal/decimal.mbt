@@ -4,7 +4,7 @@
 /// minimum exponent for public arithmetic and parsing.
 pub struct Decimal {
   coefficient : @bigint.BigInt
-  exponent : Int
+  exponent : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -19,7 +19,7 @@ fn ten() -> @bigint.BigInt {
 }
 
 ///|
-fn pow10(n : Int) -> @bigint.BigInt {
+fn pow10(n : Int32) -> @bigint.BigInt {
   ten().pow(@bigint.BigInt::from_int(n))
 }
 
@@ -43,7 +43,7 @@ fn divide_truncated(a : @bigint.BigInt, b : @bigint.BigInt) -> @bigint.BigInt {
 }
 
 ///|
-fn normalize(coefficient : @bigint.BigInt, exponent : Int) -> Decimal {
+fn normalize(coefficient : @bigint.BigInt, exponent : Int32) -> Decimal {
   if coefficient.is_zero() {
     return { coefficient, exponent: 0, }
   }
@@ -209,7 +209,7 @@ pub fn to_float(value : Decimal) -> Double {
 
 ///|
 pub fn add(a : Decimal, b : Decimal) -> Decimal {
-  let exponent = Int::min(a.exponent, b.exponent)
+  let exponent = Int32::min(a.exponent, b.exponent)
   normalize(
     a.coefficient * pow10(a.exponent - exponent) +
     b.coefficient * pow10(b.exponent - exponent),
@@ -276,7 +276,7 @@ pub fn div_with_default(
 
 ///|
 pub fn compare(a : Decimal, b : Decimal) -> @sdk.Order {
-  let exponent = Int::min(a.exponent, b.exponent)
+  let exponent = Int32::min(a.exponent, b.exponent)
   @sdk.order(
     (a.coefficient * pow10(a.exponent - exponent)).compare(
       b.coefficient * pow10(b.exponent - exponent),
@@ -351,12 +351,12 @@ pub fn round(value : Decimal) -> Decimal {
 }
 
 ///|
-pub fn shift_decimal_left(count : Int, value : Decimal) -> Decimal {
+pub fn shift_decimal_left(count : Int32, value : Decimal) -> Decimal {
   normalize(value.coefficient, value.exponent - count)
 }
 
 ///|
-pub fn shift_decimal_right(count : Int, value : Decimal) -> Decimal {
+pub fn shift_decimal_right(count : Int32, value : Decimal) -> Decimal {
   normalize(value.coefficient, value.exponent + count)
 }
 

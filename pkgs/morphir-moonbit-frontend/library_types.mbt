@@ -4,14 +4,14 @@ pub const LIBRARY_PROFILE : String = "moonbit-model-bool-library-v1"
 ///|
 /// Caller budgets may tighten, but cannot exceed, the profile's hard bounds.
 pub(all) struct LibraryLimits {
-  max_bytes : Int
-  max_functions : Int
-  max_parameters : Int
-  max_lets : Int
-  max_expressions : Int
-  max_calls : Int
-  max_depth : Int
-  max_call_depth : Int
+  max_bytes : Int32
+  max_functions : Int32
+  max_parameters : Int32
+  max_lets : Int32
+  max_expressions : Int32
+  max_calls : Int32
+  max_depth : Int32
+  max_call_depth : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -83,7 +83,7 @@ priv enum ResolvedExpr {
     ResolvedExpr,
     @ir.SourceLocation
   )
-  Call(Int, Array[ResolvedExpr], @ir.SourceLocation)
+  Call(Int32, Array[ResolvedExpr], @ir.SourceLocation)
 }
 
 ///|

@@ -176,7 +176,7 @@ fn Solver::instance(self : Solver, class : String, t : Ty) -> String? {
 
 ///|
 /// Joins `class` into the class set of the unbound meta `id`.
-fn Solver::add_class(self : Solver, id : Int, class : String) -> Bool {
+fn Solver::add_class(self : Solver, id : Int32, class : String) -> Bool {
   guard self.metas[id] is Unbound(level~, classes~) else { return false }
   match join(classes, [class]) {
     Some(joined) => {

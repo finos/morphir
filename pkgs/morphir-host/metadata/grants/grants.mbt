@@ -84,7 +84,7 @@ fn fields(
 fn text(
   fields : Map[String, @ion.IonValue],
   key : String,
-  empty? : Bool = false,
+  empty~ : Bool = false,
 ) -> String raise {
   guard fields.get(key) is Some(value) &&
     !value.has_annotations() &&

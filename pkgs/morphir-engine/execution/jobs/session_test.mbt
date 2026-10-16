@@ -1,5 +1,5 @@
 ///|
-fn offer(cancel? : Bool = true) -> @receipts.Offer raise {
+fn offer(cancel~ : Bool = true) -> @receipts.Offer raise {
   @receipts.Offer::from_json({
     "profile": "morphir/workbench/jobs",
     "contractVersion": "0.1.0-draft.1",
@@ -40,7 +40,7 @@ fn suite() -> @protocol.Suite raise {
 
 ///|
 fn returned(
-  value? : Json = { "type": "int", "value": "42" },
+  value~ : Json = { "type": "int", "value": "42" },
 ) -> @protocol.Outcomes raise {
   @protocol.Outcomes::from_json({
     "contractVersion": "0.1.0-draft.5",

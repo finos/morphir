@@ -26,7 +26,7 @@ rules; the source language remains `moonbit`.
 `register` registers that provider with the engine; it accepts optional `limits` for the seed, `library_limits` for the library,
 and `unit_limits` for rich envelope admission. It validates source budgets before
 registering and reports their configured values in capability descriptors. Parser
-0.4.1 and lexer 0.4.0 remain explicit dependency pins. Both profiles report local
+0.4.5 and lexer 0.4.3 remain explicit dependency pins. Both profiles report local
 acceptance evidence; this is separate from ecosystem MCK qualification.
 
 An optional host-owned `observer` instruments frontend stages and defaults to a

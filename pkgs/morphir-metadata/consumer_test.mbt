@@ -15,7 +15,7 @@ fn reject(code : String, action : () -> Unit raise) -> Unit raise {
 ///|
 fn consume(
   data : @ion.IonValue,
-  capabilities? : @metadata.Capabilities = @fixtures.capabilities(),
+  capabilities~ : @metadata.Capabilities = @fixtures.capabilities(),
 ) -> @metadata.Interpretation raise {
   @metadata.interpret(
     @fixtures.input(),

@@ -143,10 +143,10 @@ pub fn rust_evaluator_lane(
   program : String,
   helper : String,
   pin : Json?,
-  node? : String = "node",
-  required? : Bool = false,
-  timeout? : Int = 5000,
-  cancel_file? : String = "",
+  node~ : String = "node",
+  required~ : Bool = false,
+  timeout~ : Int32 = 5000,
+  cancel_file~ : String = "",
 ) -> @conformance.EvaluatorLane raise {
   let unavailable : @conformance.EvaluatorLane = {
     name: "rust",
@@ -179,7 +179,7 @@ pub fn rust_evaluator_lane(
   let source = @wire.string(@wire.field(pin, "sourceRevision"))
   let runtime = @wire.string(@wire.field(pin, "runtimeRevision"))
   let identity = @wire.string(@wire.field(pin, "binaryIdentity"))
-  fn hex(value : String, size : Int) -> Bool {
+  fn hex(value : String, size : Int32) -> Bool {
     value.length() == size &&
     value.to_array().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
   }

@@ -1,7 +1,7 @@
 ///|
 /// Errors are values at every embedding boundary; no language error aborts the host.
 pub(all) suberror SchemeError {
-  Syntax(String, Int)
+  Syntax(String, Int32)
   Unbound(String)
   Invalid(String)
   Domain(String, String)
@@ -51,8 +51,8 @@ pub extend Datum with @debug.Debug::{to_repr}
 ///|
 /// Closures carry an owning runtime and an arena index, avoiding environment cycles.
 pub struct Closure {
-  priv owner : Int
-  priv environment : Int
+  priv owner : Int32
+  priv environment : Int32
   priv parameters : Array[String]
   priv rest : String?
   priv body : Array[Datum]
@@ -82,7 +82,7 @@ pub(all) enum Value {
 
 ///|
 struct Frame {
-  parent : Int?
+  parent : Int32?
   bindings : Map[String, Value]
   pending : Map[String, Bool]
 }
@@ -90,9 +90,9 @@ struct Frame {
 ///|
 /// Limits apply to one public evaluation or call, including nested host callbacks.
 pub(all) struct Limits {
-  steps : Int
-  depth : Int
-  frames : Int
+  steps : Int32
+  depth : Int32
+  frames : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -109,23 +109,23 @@ pub extend Limits with @debug.Debug::{to_repr}
 ///|
 /// A persistent session. Native procedures receive the active runtime explicitly.
 pub struct Runtime {
-  priv owner : Int
+  priv owner : Int32
   priv frames : Array[Frame]
   priv natives : Map[String, (Runtime, Array[Value]) -> Value raise]
-  priv native_arities : Map[String, Int]
+  priv native_arities : Map[String, Int32]
   priv limits : Limits
-  priv mut fuel : Int
-  priv mut depth : Int
+  priv mut fuel : Int32
+  priv mut depth : Int32
   priv mut cancelled : () -> Bool
   priv mut active : Bool
 }
 
 ///|
-let next_owner : Ref[Int] = { val: 0, }
+let next_owner : Ref[Int32] = { val: 0, }
 
 ///|
 pub fn Runtime::new(
-  limits? : Limits = Limits::default(),
+  limits~ : Limits = Limits::default(),
 ) -> Runtime raise SchemeError {
   if limits.steps <= 0 || limits.depth <= 0 || limits.frames <= 0 {
     raise Invalid("Runtime limits must be positive")
@@ -171,7 +171,7 @@ pub fn Runtime::has_native(self : Runtime, name : String) -> Bool {
 }
 
 ///|
-pub fn Runtime::native_arity(self : Runtime, name : String) -> Int? {
+pub fn Runtime::native_arity(self : Runtime, name : String) -> Int32? {
   self.native_arities.get(name)
 }
 
@@ -181,7 +181,7 @@ pub fn Runtime::native_arity(self : Runtime, name : String) -> Int? {
 pub fn Runtime::register_native_binding(
   self : Runtime,
   name : String,
-  arity : Int,
+  arity : Int32,
   procedure : (Runtime, Array[Value]) -> Value raise,
 ) -> Unit raise SchemeError {
   if arity < 0 {
@@ -198,7 +198,7 @@ pub fn Runtime::register_native_binding(
 pub fn Runtime::replace_native_binding(
   self : Runtime,
   name : String,
-  arity : Int,
+  arity : Int32,
   procedure : (Runtime, Array[Value]) -> Value raise,
 ) -> Unit raise SchemeError {
   if arity < 0 || !self.has_native(name) {
@@ -219,7 +219,7 @@ pub fn Runtime::lookup(
 ///|
 fn Runtime::lookup_in(
   self : Runtime,
-  environment : Int,
+  environment : Int32,
   name : String,
 ) -> Value raise SchemeError {
   let mut scope = Some(environment)
@@ -236,7 +236,7 @@ fn Runtime::lookup_in(
 }
 
 ///|
-fn Runtime::frame(self : Runtime, parent : Int) -> Int raise SchemeError {
+fn Runtime::frame(self : Runtime, parent : Int32) -> Int32 raise SchemeError {
   if self.frames.length() >= self.limits.frames {
     raise Limit("environment frames")
   }

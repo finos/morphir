@@ -37,7 +37,7 @@ fn is_declared(def : @ir.ValueDefinition) -> Bool {
 /// The binding groups, in dependency order: a group comes after every group that it refers to. A declaration
 /// refers to the undeclared values of the file that its body names. Declared values need no order, because
 /// their schemes are known before any group is solved.
-fn Driver::groups(self : Driver) -> Array[Array[Int]] {
+fn Driver::groups(self : Driver) -> Array[Array[Int32]] {
   let edges = self.decls.map(d => self.edges(d))
   let n = self.decls.length()
   let t : Tarjan = {
@@ -59,12 +59,12 @@ fn Driver::groups(self : Driver) -> Array[Array[Int]] {
 
 ///|
 /// The undeclared declarations of the file that the body of `d` refers to, in first-seen order.
-fn Driver::edges(self : Driver, d : Decl) -> Array[Int] {
+fn Driver::edges(self : Driver, d : Decl) -> Array[Int32] {
   let refs : Array[String] = []
   if definition_parts(d.def).2 is Some(body) {
     references_in(body, refs)
   }
-  let out : Array[Int] = []
+  let out : Array[Int32] = []
   for key in refs {
     if self.index.get(key) is Some(j) &&
       !self.decls[j].declared &&
@@ -122,17 +122,17 @@ fn value_children(v : @ir.Value) -> Array[@ir.Value] {
 /// Tarjan's algorithm for strongly connected components. A component is emitted after every component that
 /// it reaches, so the components come out in dependency order.
 priv struct Tarjan {
-  edges : Array[Array[Int]]
-  index : Array[Int]
-  low : Array[Int]
+  edges : Array[Array[Int32]]
+  index : Array[Int32]
+  low : Array[Int32]
   on_stack : Array[Bool]
-  stack : Array[Int]
-  mut counter : Int
-  groups : Array[Array[Int]]
+  stack : Array[Int32]
+  mut counter : Int32
+  groups : Array[Array[Int32]]
 }
 
 ///|
-fn Tarjan::visit(self : Tarjan, v : Int) -> Unit {
+fn Tarjan::visit(self : Tarjan, v : Int32) -> Unit {
   self.index[v] = self.counter
   self.low[v] = self.counter
   self.counter += 1
@@ -147,7 +147,7 @@ fn Tarjan::visit(self : Tarjan, v : Int) -> Unit {
     }
   }
   if self.low[v] == self.index[v] {
-    let group : Array[Int] = []
+    let group : Array[Int32] = []
     while self.stack.pop() is Some(w) {
       self.on_stack[w] = false
       group.push(w)
@@ -162,7 +162,7 @@ fn Tarjan::visit(self : Tarjan, v : Int) -> Unit {
 }
 
 ///|
-fn min_int(a : Int, b : Int) -> Int {
+fn min_int(a : Int32, b : Int32) -> Int32 {
   if a < b {
     a
   } else {

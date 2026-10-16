@@ -68,7 +68,7 @@ pub(all) struct Diagnostic {
 pub(all) struct Report {
   artifacts : Array[Artifact]
   diagnostics : Array[Diagnostic]
-  processed : Int
+  processed : Int32
 }
 
 ///|
@@ -112,8 +112,8 @@ pub struct Engine {
 
 ///|
 pub fn Engine::new(
-  limits? : @scheme.Limits = @scheme.Limits::default(),
-  metadata_capabilities? : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
+  limits~ : @scheme.Limits = @scheme.Limits::default(),
+  metadata_capabilities~ : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
 ) -> Engine {
   let engine = {
     static_metadata_authority: metadata_capabilities.restore_library is Some(_) ||

@@ -49,7 +49,7 @@ pub fn post_parts(file_name : String) -> (String, String)? {
 }
 
 ///|
-fn digits(text : String, from : Int, to : Int) -> Int? {
+fn digits(text : String, from : Int32, to : Int32) -> Int32? {
   let mut n = 0
   for i in from..<to {
     let c = text[i]

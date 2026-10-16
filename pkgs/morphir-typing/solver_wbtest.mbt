@@ -42,7 +42,7 @@ fn record(fields : Array[(String, Ty)], tail : Ty?) -> Ty {
 }
 
 ///|
-fn state(s : Solver, t : Ty) -> (Int, Array[String]) {
+fn state(s : Solver, t : Ty) -> (Int32, Array[String]) {
   guard s.prune(t) is Meta(id) else { abort("not an unbound meta") }
   guard s.metas[id] is Unbound(level~, classes~) else { abort("linked meta") }
   (level, classes)

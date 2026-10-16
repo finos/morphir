@@ -46,11 +46,11 @@ async fn main {
   }
   @fs.mkdir(directory, recursive=true)
   let home = @fs.realpath(directory)
-  let version = "0.10.14+6b3b9bf5a-nightly"
-  let compiler_url = "https://cli.moonbitlang.com/binaries/0.10.14%2B6b3b9bf5a-nightly/moonbit-darwin-aarch64.tar.gz"
-  let core_url = "https://cli.moonbitlang.com/cores/core-0.10.14%2B6b3b9bf5a-nightly.tar.gz"
-  let compiler_hash = "9f81a111a71b5f7148ec4e722eb3326f9932c894b8afa694d4b860a3f34c7487"
-  let core_hash = "9a38c9f088ca61c62b6c45eb66d907718ea8db5daca397390f9e79768f3c1107"
+  let version = "0.10.15+1e9f6672d-nightly"
+  let compiler_url = "https://cli.moonbitlang.com/binaries/0.10.15%2B1e9f6672d-nightly/moonbit-darwin-aarch64.tar.gz"
+  let core_url = "https://cli.moonbitlang.com/cores/core-0.10.15%2B1e9f6672d-nightly.tar.gz"
+  let compiler_hash = "fde5452f4484722cb987bfe1ece4d3ef2028761847ed056ba07f2c076938b0ed"
+  let core_hash = "a2bf894183ec84bb1b2b8caf464bb6b4046df4507133046cedc8db3b4e1cc108"
   let scratch = @fs.tmpdir(prefix="morphir-llvm-")
   defer @fs.rmdir(scratch, recursive=true)
   let archives = [

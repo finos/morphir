@@ -83,7 +83,7 @@ fn fail_on(problems : Array[InferenceProblem]) -> Unit raise InferenceFailed {
 
 ///|
 /// Compares two strings character by character. `String::compare` orders by length first.
-fn lexical_compare(a : String, b : String) -> Int {
+fn lexical_compare(a : String, b : String) -> Int32 {
   let n = min_int(a.length(), b.length())
   for i = 0; i < n; i = i + 1 {
     let c = a.code_unit_at(i).compare(b.code_unit_at(i))
@@ -113,16 +113,16 @@ priv struct Driver {
   mode : Mode
   decls : Array[Decl]
   /// The index of each declaration in `decls`, by canonical FQName.
-  index : Map[String, Int]
+  index : Map[String, Int32]
   problems : Array[InferenceProblem]
   /// The solved state of each declaration whose binding group succeeded, by index.
-  solved : Map[Int, Infer]
+  solved : Map[Int32, Infer]
 }
 
 ///|
 fn Driver::new(env : Env, file : @ir.IRFile, mode : Mode) -> Driver {
   let decls = collect_declarations(file)
-  let index : Map[String, Int] = Map([])
+  let index : Map[String, Int32] = Map([])
   for i, d in decls {
     index[d.key] = i
   }
@@ -184,7 +184,7 @@ fn Driver::declare_signatures(self : Driver) -> Unit {
 /// meets the rigid of another declaration, through the monomorphic type of that declaration, sees its classes.
 /// A `typeclass` that is not one of the four classes, in the signature of any member, fails the group before
 /// inference starts, whatever the order of the members.
-fn Driver::solve(self : Driver, group : Array[Int]) -> Unit {
+fn Driver::solve(self : Driver, group : Array[Int32]) -> Unit {
   let infer = Infer::new(self.env, 1, facts=true)
   for i in group {
     let d = self.decls[i]
@@ -247,7 +247,7 @@ fn Driver::solve(self : Driver, group : Array[Int]) -> Unit {
 ///|
 /// Gives each undeclared member of a failed group an unconstrained scheme, so that dependants do not report
 /// again.
-fn Driver::fail(self : Driver, group : Array[Int]) -> Unit {
+fn Driver::fail(self : Driver, group : Array[Int32]) -> Unit {
   for i in group {
     let d = self.decls[i]
     if !d.declared {

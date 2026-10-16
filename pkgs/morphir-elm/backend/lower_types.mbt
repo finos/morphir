@@ -1,5 +1,8 @@
 ///|
-fn check_tuple_arity(count : Int, at : String) -> Unit raise ElmGenerationError {
+fn check_tuple_arity(
+  count : Int32,
+  at : String,
+) -> Unit raise ElmGenerationError {
   if count < 2 || count > 3 {
     refuse(
       "tuple_arity",

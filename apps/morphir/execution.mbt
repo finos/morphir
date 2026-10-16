@@ -1,5 +1,5 @@
 ///|
-fn execution_command(cli : Cli, mode : OutputMode) -> Int raise {
+fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   let conform = cli.command == "conform"
   let options : Map[String, String] = Map([])
   for name in execution_options + conformance_options {
@@ -427,7 +427,7 @@ fn execution_pin_targets(pin : Json) -> Array[String] raise {
   if targets.contains("llvm") &&
     (
       targets.length() != 1 ||
-      text("compilerVersion") != "0.10.14+6b3b9bf5a-nightly" ||
+      text("compilerVersion") != "0.10.15+1e9f6672d-nightly" ||
       text("platform") != "darwin" ||
       text("arch") != "arm64"
     ) {

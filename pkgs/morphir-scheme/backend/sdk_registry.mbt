@@ -2,7 +2,7 @@
 // Source: finos/morphir-elm bc99af69a8b24d391311fae3822a87eafef3c334.
 
 ///|
-fn sdk_registry() -> Array[(String, Int)] {
+fn sdk_registry() -> Array[(String, Int32)] {
   [
     ("morphir/SDK:basics#add", 2),
     ("morphir/SDK:basics#subtract", 2),
@@ -256,7 +256,7 @@ fn sdk_registry() -> Array[(String, Int)] {
 }
 
 ///|
-fn sdk_expected_arity(name : String) -> Int? {
+fn sdk_expected_arity(name : String) -> Int32? {
   match name {
     "morphir/SDK:basics#add" => Some(2)
     "morphir/SDK:basics#subtract" => Some(2)

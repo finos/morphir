@@ -1,6 +1,6 @@
 ///|
 pub(all) enum Segment {
-  Index(Int)
+  Index(Int32)
   Field(String)
 }
 
@@ -11,14 +11,14 @@ pub(all) enum Edit {
   Float64(Array[Segment], String)
   TextUnits(Array[Segment], String)
   Append(Array[Segment], Json)
-  Remove(Array[Segment], Int)
+  Remove(Array[Segment], Int32)
 }
 
 ///|
 fn modify(
   value : Json,
   path : Array[Segment],
-  at : Int,
+  at : Int32,
   change : (Json) -> Json raise,
 ) -> Json raise {
   if at == path.length() {
@@ -142,7 +142,7 @@ fn check_shape(
   schema : Json,
   value : Json,
   path : String,
-  budget : Ref[Int],
+  budget : Ref[Int32],
 ) -> Unit raise {
   budget.val -= 1
   if budget.val < 0 {
@@ -256,7 +256,7 @@ pub fn form_error(profile : Json, document : String) -> String? {
         "invalid_shape", "The argument count does not match this function",
       )
     }
-    let budget : Ref[Int] = { val: 200, }
+    let budget : Ref[Int32] = { val: 200, }
     for i, input in inputs {
       check_shape(
         @wire.field(input, "schema"),

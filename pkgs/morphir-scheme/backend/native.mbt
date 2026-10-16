@@ -36,7 +36,7 @@ fn file_definitions(
 fn native_arity(
   runtime : @scheme.Runtime,
   binding : String,
-  expected : Int,
+  expected : Int32,
 ) -> Unit raise @scheme.SchemeError {
   if runtime.native_arity(binding) is Some(actual) && actual != expected {
     raise @scheme.Invalid(

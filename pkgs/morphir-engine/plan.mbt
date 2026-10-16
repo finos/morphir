@@ -139,9 +139,9 @@ pub fn Engine::plan(
   host : Host,
   workspace : @workspace.Workspace,
   request : Request,
-  cancelled? : () -> Bool = fn() { false },
-  bind_runtime? : (@scheme.Runtime) -> Unit raise = fn(_) { () },
-  codecs? : @data.Registry? = None,
+  cancelled~ : () -> Bool = fn() { false },
+  bind_runtime~ : (@scheme.Runtime) -> Unit raise = fn(_) { () },
+  codecs~ : @data.Registry? = None,
 ) -> Plan raise {
   let jobs = []
   let sources = []
@@ -582,7 +582,7 @@ pub fn Engine::execute_content(
   _self : Engine,
   plan : Plan,
   read : (String, Bool) -> @data.Content raise,
-  cancelled? : () -> Bool = fn() { false },
+  cancelled~ : () -> Bool = fn() { false },
 ) -> ContentReport {
   let artifacts = []
   let projects = []

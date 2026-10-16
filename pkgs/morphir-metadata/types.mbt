@@ -37,8 +37,8 @@ pub(all) struct Assertion {
   subject : String
   predicate : String
   property : String
-  ordinal : Int
-  object_ordinal : Int
+  ordinal : Int32
+  object_ordinal : Int32
 }
 
 ///|

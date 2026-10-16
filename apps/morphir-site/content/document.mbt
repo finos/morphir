@@ -1,6 +1,6 @@
 ///|
 pub(all) struct Heading {
-  level : Int
+  level : Int32
   id : String
   text : String
 } derive(Eq, Debug)

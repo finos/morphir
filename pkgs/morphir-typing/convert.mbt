@@ -62,7 +62,7 @@ fn poly_of_signature(
   inputs : Array[(@ir.Name, @ir.Type)],
   output : @ir.Type,
 ) -> Poly {
-  let ids : Map[String, Int] = Map([])
+  let ids : Map[String, Int32] = Map([])
   let gens : Array[Array[String]] = []
   let vars = fn(name : String, attrs : @ir.TypeAttributes) -> Ty {
     match ids.get(name) {
@@ -101,7 +101,7 @@ fn Solver::rebuild(self : Solver, t : Ty, leaf : (Ty) -> Ty) -> Ty {
 
 ///|
 /// A new instance of `p`: each `Gen` becomes a fresh meta at `level` with the classes of the `Gen`.
-fn Solver::instantiate(self : Solver, p : Poly, level : Int) -> Ty {
+fn Solver::instantiate(self : Solver, p : Poly, level : Int32) -> Ty {
   if p.gens.is_empty() {
     return p.body
   }
@@ -116,11 +116,11 @@ fn Solver::instantiate(self : Solver, p : Poly, level : Int) -> Ty {
 fn Solver::generalize_with(
   self : Solver,
   t : Ty,
-  level : Int,
+  level : Int32,
   rigids : Array[String],
 ) -> Poly {
-  let metas : Map[Int, Int] = Map([])
-  let named : Map[String, Int] = Map([])
+  let metas : Map[Int32, Int32] = Map([])
+  let named : Map[String, Int32] = Map([])
   let gens : Array[Array[String]] = []
   let body = self.rebuild(t, v => {
     match v {
@@ -164,7 +164,7 @@ fn rigid_key(owner : String, name : String) -> String {
 ///|
 /// The key of the `n`th let-annotation rigid whose scope key is `key`: `<key>#<n>`. Two annotations that use the
 /// same name, such as two let-rec siblings, then declare two variables. `rigid_name` drops the `#<n>`.
-fn let_rigid_key(key : String, n : Int) -> String {
+fn let_rigid_key(key : String, n : Int32) -> String {
   key + "#" + n.to_string()
 }
 
@@ -186,7 +186,7 @@ fn scope_key(key : String) -> String {
 ///|
 /// The position of the `|` that ends the owner of a rigid key, if the key has an owner. Names and FQNames do
 /// not contain `|`.
-fn owner_end(key : String) -> Int? {
+fn owner_end(key : String) -> Int32? {
   for i = key.length() - 1; i >= 0; i = i - 1 {
     if key.code_unit_at(i) == '|' {
       return Some(i)
@@ -222,14 +222,14 @@ priv struct Namer {
   /// meta. With `""`, every rigid keeps its name.
   owner : String
   /// The name of each meta. A `Gen(i)` is keyed `-1 - i`.
-  names : Map[Int, String]
+  names : Map[Int32, String]
   /// The name of each rigid of another declaration, by key.
   foreign : Map[String, String]
   used : Map[String, Bool]
 }
 
 ///|
-fn Namer::new(owner? : String = "") -> Namer {
+fn Namer::new(owner~ : String = "") -> Namer {
   { owner, names: Map([]), foreign: Map([]), used: Map([]), }
 }
 
@@ -262,7 +262,11 @@ fn Namer::next(self : Namer, prefix : String) -> String {
 
 ///|
 /// The name of the meta (or `Gen`) keyed `key`. A constrained one takes its class: `comparable-a`.
-fn Namer::meta_name(self : Namer, key : Int, classes : Array[String]) -> String {
+fn Namer::meta_name(
+  self : Namer,
+  key : Int32,
+  classes : Array[String],
+) -> String {
   match self.names.get(key) {
     Some(name) => name
     None => {

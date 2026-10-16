@@ -1,7 +1,7 @@
 ///|
 pub(all) struct Located {
   datum : Datum
-  start : Int
+  start : Int32
   children : Array[Located]
 } derive(Eq, Debug)
 
@@ -14,9 +14,9 @@ pub extend Located with @debug.Debug::{to_repr}
 ///|
 priv struct Reader {
   chars : Array[Char]
-  mut index : Int
+  mut index : Int32
   // Pre-order start offsets of every datum read, when recording.
-  record : Array[Int]?
+  record : Array[Int32]?
 }
 
 ///|
@@ -44,7 +44,7 @@ fn Reader::starts(self : Reader, a : Char, b : Char) -> Bool {
 }
 
 ///|
-fn Reader::skip(self : Reader, depth : Int) -> Unit raise {
+fn Reader::skip(self : Reader, depth : Int32) -> Unit raise {
   while self.index < self.chars.length() {
     let c = self.chars[self.index]
     if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
@@ -130,7 +130,7 @@ fn Reader::token(self : Reader) -> String {
 }
 
 ///|
-fn Reader::read(self : Reader, depth : Int) -> Datum raise {
+fn Reader::read(self : Reader, depth : Int32) -> Datum raise {
   if depth > 256 {
     raise Syntax("Reader nesting limit", self.index)
   }
@@ -274,7 +274,7 @@ pub fn parse_program(source : String) -> Array[Datum] raise {
 }
 
 ///|
-fn attach(datum : Datum, offsets : Array[Int], next : Ref[Int]) -> Located {
+fn attach(datum : Datum, offsets : Array[Int32], next : Ref[Int32]) -> Located {
   let start = offsets[next.val]
   next.val += 1
   let children = match datum {
@@ -293,7 +293,7 @@ fn attach(datum : Datum, offsets : Array[Int], next : Ref[Int]) -> Located {
 
 ///|
 pub fn parse_program_located(source : String) -> Array[Located] raise {
-  let offsets : Array[Int] = []
+  let offsets : Array[Int32] = []
   let reader = Reader::{
     chars: source.iter().collect(),
     index: 0,
@@ -305,12 +305,12 @@ pub fn parse_program_located(source : String) -> Array[Located] raise {
     forms.push(reader.read(0))
     reader.skip(0)
   }
-  let next : Ref[Int] = { val: 0, }
+  let next : Ref[Int32] = { val: 0, }
   forms.map(form => attach(form, offsets, next))
 }
 
 ///|
-pub fn line_column(source : String, offset : Int) -> (Int, Int) {
+pub fn line_column(source : String, offset : Int32) -> (Int32, Int32) {
   let mut line = 1
   let mut column = 1
   for i, c in source.iter().collect() {

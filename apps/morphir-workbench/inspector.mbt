@@ -11,7 +11,7 @@ fn capitalize(value : String) -> String {
 }
 
 ///|
-fn display_name(name : @ir.Name, upper? : Bool = false) -> String {
+fn display_name(name : @ir.Name, upper~ : Bool = false) -> String {
   let parts = name.to_segments()
   parts
   .mapi((index, segment) => {
@@ -24,7 +24,7 @@ fn display_name(name : @ir.Name, upper? : Bool = false) -> String {
 }
 
 ///|
-fn qualified(name : @ir.FQName, upper? : Bool = false) -> String {
+fn qualified(name : @ir.FQName, upper~ : Bool = false) -> String {
   name.module_name
   .to_canonical()
   .split("/")

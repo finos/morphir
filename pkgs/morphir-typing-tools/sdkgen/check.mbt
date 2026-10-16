@@ -167,7 +167,7 @@ fn compare_signature(
 
 ///|
 /// Every difference between bindings.json, sdk.scm and sdk_data.mbt.
-fn check() -> (Array[String], Int) raise Error {
+fn check() -> (Array[String], Int32) raise Error {
   let problems : Array[String] = []
   let scm = @fs.read_file_to_string(scm_path)
   let (_, specification) = @spec.read_package(scm)

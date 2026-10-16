@@ -2,8 +2,8 @@
 let url_markers : Array[String] = [" href=\"", " href='", " src=\"", " src='"]
 
 ///|
-fn earliest(text : StringView) -> (Int, String)? {
-  let mut best : (Int, String)? = None
+fn earliest(text : StringView) -> (Int32, String)? {
+  let mut best : (Int32, String)? = None
   for marker in url_markers {
     if text.find(marker) is Some(i) {
       match best {

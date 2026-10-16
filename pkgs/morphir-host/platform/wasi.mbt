@@ -2,10 +2,10 @@
 /// WASI Preview 1 ABI. All paths are relative to preopened fd 3.
 #unsafe_skip_stub_check
 #borrow(bytes)
-fn address(bytes : FixedArray[Byte]) -> Int = "(func (param i32) (result i32) local.get 0)"
+fn address(bytes : FixedArray[Byte]) -> Int32 = "(func (param i32) (result i32) local.get 0)"
 
 ///|
-fn sizes(args : Bool, out : FixedArray[Byte], size : FixedArray[Byte]) -> Int {
+fn sizes(args : Bool, out : FixedArray[Byte], size : FixedArray[Byte]) -> Int32 {
   if args {
     args_sizes(out, size)
   } else {
@@ -16,115 +16,115 @@ fn sizes(args : Bool, out : FixedArray[Byte], size : FixedArray[Byte]) -> Int {
 ///|
 #unsafe_skip_stub_check
 #borrow(a, b)
-fn args_sizes(a : FixedArray[Byte], b : FixedArray[Byte]) -> Int = "wasi_snapshot_preview1" "args_sizes_get"
+fn args_sizes(a : FixedArray[Byte], b : FixedArray[Byte]) -> Int32 = "wasi_snapshot_preview1" "args_sizes_get"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(a, b)
-fn env_sizes(a : FixedArray[Byte], b : FixedArray[Byte]) -> Int = "wasi_snapshot_preview1" "environ_sizes_get"
+fn env_sizes(a : FixedArray[Byte], b : FixedArray[Byte]) -> Int32 = "wasi_snapshot_preview1" "environ_sizes_get"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(a, b)
-fn args_get(a : FixedArray[Byte], b : FixedArray[Byte]) -> Int = "wasi_snapshot_preview1" "args_get"
+fn args_get(a : FixedArray[Byte], b : FixedArray[Byte]) -> Int32 = "wasi_snapshot_preview1" "args_get"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(a, b)
-fn env_get(a : FixedArray[Byte], b : FixedArray[Byte]) -> Int = "wasi_snapshot_preview1" "environ_get"
+fn env_get(a : FixedArray[Byte], b : FixedArray[Byte]) -> Int32 = "wasi_snapshot_preview1" "environ_get"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(path, result)
 fn open_ffi(
-  fd : Int,
-  flags : Int,
+  fd : Int32,
+  flags : Int32,
   path : FixedArray[Byte],
-  length : Int,
-  oflags : Int,
+  length : Int32,
+  oflags : Int32,
   rights : Int64,
   inheriting : Int64,
-  fdflags : Int,
+  fdflags : Int32,
   result : FixedArray[Byte],
-) -> Int = "wasi_snapshot_preview1" "path_open"
+) -> Int32 = "wasi_snapshot_preview1" "path_open"
 
 ///|
-fn close_ffi(fd : Int) -> Int = "wasi_snapshot_preview1" "fd_close"
+fn close_ffi(fd : Int32) -> Int32 = "wasi_snapshot_preview1" "fd_close"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(vectors, result)
 fn read_ffi(
-  fd : Int,
+  fd : Int32,
   vectors : FixedArray[Byte],
-  count : Int,
+  count : Int32,
   result : FixedArray[Byte],
-) -> Int = "wasi_snapshot_preview1" "fd_read"
+) -> Int32 = "wasi_snapshot_preview1" "fd_read"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(vectors, result)
 fn write_ffi(
-  fd : Int,
+  fd : Int32,
   vectors : FixedArray[Byte],
-  count : Int,
+  count : Int32,
   result : FixedArray[Byte],
-) -> Int = "wasi_snapshot_preview1" "fd_write"
+) -> Int32 = "wasi_snapshot_preview1" "fd_write"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(path, result)
 fn stat_ffi(
-  fd : Int,
-  flags : Int,
+  fd : Int32,
+  flags : Int32,
   path : FixedArray[Byte],
-  length : Int,
+  length : Int32,
   result : FixedArray[Byte],
-) -> Int = "wasi_snapshot_preview1" "path_filestat_get"
+) -> Int32 = "wasi_snapshot_preview1" "path_filestat_get"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(path)
-fn mkdir_ffi(fd : Int, path : FixedArray[Byte], length : Int) -> Int = "wasi_snapshot_preview1" "path_create_directory"
+fn mkdir_ffi(fd : Int32, path : FixedArray[Byte], length : Int32) -> Int32 = "wasi_snapshot_preview1" "path_create_directory"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(path)
-fn unlink_ffi(fd : Int, path : FixedArray[Byte], length : Int) -> Int = "wasi_snapshot_preview1" "path_unlink_file"
+fn unlink_ffi(fd : Int32, path : FixedArray[Byte], length : Int32) -> Int32 = "wasi_snapshot_preview1" "path_unlink_file"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(path)
-fn rmdir_ffi(fd : Int, path : FixedArray[Byte], length : Int) -> Int = "wasi_snapshot_preview1" "path_remove_directory"
+fn rmdir_ffi(fd : Int32, path : FixedArray[Byte], length : Int32) -> Int32 = "wasi_snapshot_preview1" "path_remove_directory"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(a, b)
 fn rename_ffi(
-  fd : Int,
+  fd : Int32,
   a : FixedArray[Byte],
-  alen : Int,
-  fd2 : Int,
+  alen : Int32,
+  fd2 : Int32,
   b : FixedArray[Byte],
-  blen : Int,
-) -> Int = "wasi_snapshot_preview1" "path_rename"
+  blen : Int32,
+) -> Int32 = "wasi_snapshot_preview1" "path_rename"
 
 ///|
 #unsafe_skip_stub_check
 #borrow(buffer, result)
 fn readdir_ffi(
-  fd : Int,
+  fd : Int32,
   buffer : FixedArray[Byte],
-  length : Int,
+  length : Int32,
   cookie : Int64,
   result : FixedArray[Byte],
-) -> Int = "wasi_snapshot_preview1" "fd_readdir"
+) -> Int32 = "wasi_snapshot_preview1" "fd_readdir"
 
 ///|
-pub fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
+pub fn exit(code : Int32) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
-fn word(b : FixedArray[Byte], i : Int) -> Int {
+fn word(b : FixedArray[Byte], i : Int32) -> Int32 {
   b[i].to_int() |
   (b[i + 1].to_int() << 8) |
   (b[i + 2].to_int() << 16) |
@@ -132,7 +132,7 @@ fn word(b : FixedArray[Byte], i : Int) -> Int {
 }
 
 ///|
-fn put(b : FixedArray[Byte], i : Int, value : Int) -> Unit {
+fn put(b : FixedArray[Byte], i : Int32, value : Int32) -> Unit {
   for n = 0; n < 4; n = n + 1 {
     b[i + n] = ((value >> (n * 8)) & 255).to_byte()
   }
@@ -196,7 +196,7 @@ pub fn cwd() -> String {
 }
 
 ///|
-fn open(path : String, flags : Int, rights : Int64) -> Int raise {
+fn open(path : String, flags : Int32, rights : Int64) -> Int32 raise {
   let data = encode(path)
   let result : FixedArray[Byte] = FixedArray::make(4, 0)
   check(
@@ -207,7 +207,7 @@ fn open(path : String, flags : Int, rights : Int64) -> Int raise {
 }
 
 ///|
-pub fn kind(path : String) -> Int raise {
+pub fn kind(path : String) -> Int32 raise {
   let data = encode(path)
   let result : FixedArray[Byte] = FixedArray::make(64, 0)
   let code = stat_ffi(3, 0, data, data.length(), result)
@@ -224,7 +224,7 @@ pub fn kind(path : String) -> Int raise {
 }
 
 ///|
-fn vectors(data : FixedArray[Byte], offset : Int) -> FixedArray[Byte] {
+fn vectors(data : FixedArray[Byte], offset : Int32) -> FixedArray[Byte] {
   let result : FixedArray[Byte] = FixedArray::make(8, 0)
   put(result, 0, address(data) + offset)
   put(result, 4, data.length() - offset)
@@ -255,7 +255,7 @@ pub fn read_bytes(path : String) -> Bytes raise {
 }
 
 ///|
-fn write_fd(fd : Int, data : FixedArray[Byte]) -> Unit raise {
+fn write_fd(fd : Int32, data : FixedArray[Byte]) -> Unit raise {
   let result : FixedArray[Byte] = FixedArray::make(4, 0)
   let mut offset = 0
   while offset < data.length() {
@@ -391,7 +391,7 @@ pub fn process(
   _args : Array[String],
   _cwd : String,
   _home : String,
-  _timeout : Int,
+  _timeout : Int32,
 ) -> Json raise {
   raise IOError("WASI Preview 1 does not provide process execution")
 }

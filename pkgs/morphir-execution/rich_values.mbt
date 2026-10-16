@@ -43,7 +43,7 @@ fn integer_string(source : String) -> @bigint.BigInt raise {
 }
 
 ///|
-fn small_integer(value : @ion.IonValue) -> Int raise {
+fn small_integer(value : @ion.IonValue) -> Int32 raise {
   if value.has_annotations() {
     raise Invalid("execution.unexpected_annotation")
   }
@@ -61,8 +61,8 @@ fn small_integer(value : @ion.IonValue) -> Int raise {
 ///|
 pub fn normalize_decimal(
   coefficient : @bigint.BigInt,
-  exponent : Int,
-) -> (@bigint.BigInt, Int) raise {
+  exponent : Int32,
+) -> (@bigint.BigInt, Int32) raise {
   if coefficient.to_string().length() > 10000 ||
     exponent < -10000 ||
     exponent > 10000 {
@@ -88,7 +88,7 @@ pub fn normalize_decimal(
 /// Scientific form accepted by the concrete SDK without loss of precision.
 pub fn decimal_source(
   coefficient : @bigint.BigInt,
-  exponent : Int,
+  exponent : Int32,
 ) -> String raise {
   let (n, e) = normalize_decimal(coefficient, exponent)
   if n.is_zero() {
@@ -113,7 +113,11 @@ fn valid_model_error(code : String) -> Bool {
 }
 
 ///|
-fn validate_value(value : Value, depth : Int, budget : Ref[Int]) -> Unit raise {
+fn validate_value(
+  value : Value,
+  depth : Int32,
+  budget : Ref[Int32],
+) -> Unit raise {
   budget.val -= 1
   if depth > 64 || budget.val < 0 {
     raise Invalid("execution.value_limit")
@@ -173,7 +177,7 @@ pub fn validate_as(
   value : Value,
   expected : ValueType,
   definitions : Array[CustomType],
-  output? : Bool = false,
+  output~ : Bool = false,
 ) -> Unit raise {
   validate_value(value, 0, Ref(100000))
   if value is ModelError(_) {
@@ -191,7 +195,7 @@ fn validate_typed(
   expected : ValueType,
   definitions : Array[CustomType],
   path : String,
-  depth : Int,
+  depth : Int32,
 ) -> Unit raise {
   if depth > 64 {
     raise Invalid("execution.value_limit: " + path)
@@ -300,7 +304,7 @@ pub fn Value::to_json(self : Value) -> Json {
 }
 
 ///|
-fn payload_value(value : @ion.IonValue, depth : Int) -> Value raise {
+fn payload_value(value : @ion.IonValue, depth : Int32) -> Value raise {
   if depth > 64 {
     raise Invalid("execution.value_limit")
   }

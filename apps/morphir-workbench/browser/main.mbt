@@ -98,7 +98,7 @@ struct Location {
 struct EvaluationDraft {
   arguments : String
   mode : @evaluation.InputMode
-  revision : Int
+  revision : Int32
 } derive(Eq)
 
 ///|
@@ -123,11 +123,11 @@ struct Model {
   evaluation_arguments : String
   evaluation_result : Json
   evaluation_terminal : @outcomes.Projection
-  evaluation_revision : Int
-  evaluation_result_revision : Int
+  evaluation_revision : Int32
+  evaluation_result_revision : Int32
   evaluation_entry : String
   host_draft : EvaluationDraft?
-  model_revision : Int
+  model_revision : Int32
   output : Json
   worksheet_output : Json
   model : Json
@@ -135,15 +135,15 @@ struct Model {
   generated_state : @generated.State
   status : String
   busy : Bool
-  job : Int
-  revision : Int
-  worksheet_revision : Int
-  output_revision : Int
-  worksheet_output_revision : Int
+  job : Int32
+  revision : Int32
+  worksheet_revision : Int32
+  output_revision : Int32
+  worksheet_output_revision : Int32
   connected : Bool
   jobs_available : Bool
   host_job : Json
-  host_job_revision : Int
+  host_job_revision : Int32
   host_submitting : Bool
   submission_unknown : Bool
   available : Bool
@@ -185,7 +185,7 @@ enum Msg {
   MoonBitLibraryExample
   DownloadSourceUnit
   Request(String)
-  Receive(Int, Int, String, String)
+  Receive(Int32, Int32, String, String)
   Cancel
   ResumeJob
   Import
@@ -300,7 +300,7 @@ fn reported(
   model : Model,
   operation : String,
   scope : String,
-  revision : Int,
+  revision : Int32,
   diagnostics : Array[@bottom_panel.Diagnostic],
 ) -> Model {
   {
@@ -466,8 +466,8 @@ fn with_language(model : Model, language : String) -> Model {
 ///|
 fn request_cmd(
   emit : @cmd.Emit[Msg],
-  job : Int,
-  revision : Int,
+  job : Int32,
+  revision : Int32,
   request : Json,
 ) -> @cmd.Cmd {
   @cmd.custom_cmd(scheduler => {

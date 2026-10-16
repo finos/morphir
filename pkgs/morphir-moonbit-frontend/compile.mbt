@@ -44,10 +44,10 @@ fn logical_path(text : String) -> @ir.Path raise FrontendError {
 /// Compile one pure, explicitly annotated Boolean function. No host access.
 pub fn compile(
   input : Input,
-  limits? : Limits = Limits::default(),
-  strict_naming? : Bool = false,
-  cancelled? : () -> Bool = fn() { false },
-  scope? : @observe.Scope = @observe.Observer::noop().scope(),
+  limits~ : Limits = Limits::default(),
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
 ) -> Output raise {
   scope.observe(
     @observe.Frontend,

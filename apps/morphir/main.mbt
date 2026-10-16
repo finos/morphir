@@ -76,7 +76,7 @@ fn main {
 }
 
 ///|
-fn command(cli : Cli, mode : OutputMode) -> Int raise {
+fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
   if cli.help {
     usage(mode, cli.help_text)
     return 0
@@ -438,7 +438,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int raise {
 }
 
 ///|
-fn build_timeout(text : String) -> Int raise {
+fn build_timeout(text : String) -> Int32 raise {
   match @json.parse(text) {
     Number(n, ..) if n >= 1.0 && n <= 600000.0 && n == n.to_int().to_double() =>
       n.to_int()
@@ -447,7 +447,7 @@ fn build_timeout(text : String) -> Int raise {
 }
 
 ///|
-fn metadata_timeout(text : String) -> Int raise {
+fn metadata_timeout(text : String) -> Int32 raise {
   let value = @json.parse(text) catch {
     _ => raise @config.Invalid("metadata.restore_invalid_deadline")
   }

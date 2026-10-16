@@ -47,7 +47,7 @@ fn matches(node : Json, query : String) -> Bool {
 }
 
 ///|
-fn count(nodes : Array[Json], kind : String) -> Int {
+fn count(nodes : Array[Json], kind : String) -> Int32 {
   nodes.filter(node => text(node, "kind") == kind).length()
 }
 

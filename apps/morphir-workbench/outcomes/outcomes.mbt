@@ -45,7 +45,7 @@ pub extend Cleanup with Eq::{equal, not_equal}
 /// History retains previews, never the full canonical value tree.
 pub(all) struct Summary {
   calls : Array[Call]
-  omitted : Int
+  omitted : Int32
   cleanup : Cleanup?
 } derive(Eq)
 
@@ -109,7 +109,7 @@ fn field(value : Json, name : String) -> Json {
 }
 
 ///|
-pub fn bounded(value : String, limit : Int) -> String {
+pub fn bounded(value : String, limit : Int32) -> String {
   if value.length() <= limit {
     return value
   }
@@ -176,7 +176,7 @@ fn stage_text(stage : @execution.OutcomeStage) -> String {
 /// falls back to a legacy success flag. Expected identities are caller-owned.
 pub fn prepare(
   reply : Json,
-  expected_ids? : Array[String]? = None,
+  expected_ids~ : Array[String]? = None,
 ) -> (Json, Projection) {
   guard reply is Object(original) && original.contains("terminalOutcomes") else {
     return (reply, Absent)

@@ -15,7 +15,7 @@ pub(all) suberror SdkError {
 } derive(Eq, Debug)
 
 ///|
-pub fn order(n : Int) -> Order {
+pub fn order(n : Int32) -> Order {
   if n < 0 {
     LT
   } else if n > 0 {
@@ -26,7 +26,7 @@ pub fn order(n : Int) -> Order {
 }
 
 ///|
-pub fn order_int(value : Order) -> Int {
+pub fn order_int(value : Order) -> Int32 {
   match value {
     LT => -1
     EQ => 0

@@ -22,7 +22,7 @@ pub fn ComparisonPolicy::validate(self : ComparisonPolicy) -> Unit raise {
 pub fn compare(
   left : Value,
   right : Value,
-  policy? : ComparisonPolicy = Exact,
+  policy~ : ComparisonPolicy = Exact,
 ) -> Bool raise {
   policy.validate()
   validate_value(left, 0, Ref(100000))
@@ -116,7 +116,7 @@ pub fn ComparisonPolicy::to_json(self : ComparisonPolicy) -> Json {
 pub fn mismatch_path(
   left : Value,
   right : Value,
-  policy? : ComparisonPolicy = Exact,
+  policy~ : ComparisonPolicy = Exact,
 ) -> String? raise {
   if compare(left, right, policy~) {
     return None

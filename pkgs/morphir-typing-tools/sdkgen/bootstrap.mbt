@@ -39,7 +39,7 @@ fn module_of(fq_name : String) -> String? {
 fn string_field(
   object : Map[String, Json],
   key : String,
-  entry : Int,
+  entry : Int32,
 ) -> String raise BootstrapError {
   match object.get(key) {
     Some(String(s)) => s

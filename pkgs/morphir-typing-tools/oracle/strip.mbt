@@ -359,7 +359,7 @@ pub fn mutate_first_literal_type(file : @ir.IRFile) -> (@ir.IRFile, String) {
 
 ///|
 /// The number of `Value` and `Pattern` nodes of `file` with no `inferred_type`.
-pub fn count_untyped(file : @ir.IRFile) -> Int {
+pub fn count_untyped(file : @ir.IRFile) -> Int32 {
   let mut count = 0
   visit(file, (a, _, _) => if a.inferred_type is None { count += 1 }, (_, _, _) => {
     ()
@@ -373,7 +373,7 @@ pub fn count_untyped(file : @ir.IRFile) -> Int {
 fn variables_of(
   t : @ir.Type,
   out : Array[String],
-  unmarked? : Bool = false,
+  unmarked~ : Bool = false,
 ) -> Unit {
   let add = fn(attrs : @ir.TypeAttributes, name : @ir.Name) {
     let marked = attrs.extensions.get("morphir.inference")

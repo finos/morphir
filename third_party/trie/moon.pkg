@@ -1,0 +1,3 @@
+import {
+  "moonbitlang/core/immut/sorted_map" @immut/sorted_map,
+}

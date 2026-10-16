@@ -57,8 +57,8 @@ pub fn primitive(name : String) -> String? {
 
 ///|
 priv struct Compiler {
-  mut next : Int
-  mut depth : Int
+  mut next : Int32
+  mut depth : Int32
   reserved : Map[String, Bool]
 }
 
@@ -418,7 +418,7 @@ fn int_fact() -> @ir.ValueAttributes raise {
 
 ///|
 /// `t` with each `scheme-value` placeholder replaced by the next `t-<n>` with the unknown marker.
-fn number_type(t : @ir.Type, next : Ref[Int]) -> @ir.Type {
+fn number_type(t : @ir.Type, next : Ref[Int32]) -> @ir.Type {
   if t == unknown_type() {
     let name = @ir.Name::from_words(["t", next.val.to_string()])
     next.val += 1
@@ -440,7 +440,7 @@ fn number_type(t : @ir.Type, next : Ref[Int]) -> @ir.Type {
 /// The definition with its placeholders numbered: its inputs, then its output, then its body.
 fn number_definition(
   def : @ir.ValueDefinition,
-  next : Ref[Int],
+  next : Ref[Int32],
 ) -> @ir.ValueDefinition {
   match def {
     ExpressionBody(inputs, output, body) => {
@@ -458,7 +458,7 @@ fn number_definition(
 
 ///|
 /// The value with the placeholders of every let signature in it numbered, in pre-order.
-fn number_value(v : @ir.Value, next : Ref[Int]) -> @ir.Value {
+fn number_value(v : @ir.Value, next : Ref[Int32]) -> @ir.Value {
   match v {
     LetDefinition(a, n, def, rest) => {
       let def = number_definition(def, next)
@@ -506,8 +506,8 @@ pub fn compile_expression(source : String) -> @ir.Value raise {
 /// Lower top-level definitions and an optional final expression into a library.
 pub fn compile_file(
   source : String,
-  package_name? : String = "user",
-  module_name? : String = "main",
+  package_name~ : String = "user",
+  module_name~ : String = "main",
 ) -> @ir.IRFile raise {
   let forms = @scheme.parse_program(source)
   let compiler = compiler(forms)

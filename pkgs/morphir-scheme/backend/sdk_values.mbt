@@ -9,7 +9,7 @@ fn sdk_integer(
 }
 
 ///|
-fn sdk_int(value : @scheme.Value) -> Int raise @scheme.SchemeError {
+fn sdk_int(value : @scheme.Value) -> Int32 raise @scheme.SchemeError {
   match @integer.to_int(sdk_integer(value)) {
     Some(n) => n
     None => raise @scheme.Invalid("Integer is outside the host Int range")

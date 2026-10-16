@@ -1,6 +1,6 @@
 ///|
 priv struct LibraryResolver {
-  functions : Map[String, Int]
+  functions : Map[String, Int32]
   cancelled : () -> Bool
   names : BinderNames
 }
@@ -86,7 +86,7 @@ fn library_resolve(
   functions : Array[LibraryFunction],
   cancelled : () -> Bool,
 ) -> Array[ResolvedFunction] raise {
-  let indices : Map[String, Int] = Map([])
+  let indices : Map[String, Int32] = Map([])
   for i = 0; i < functions.length(); i = i + 1 {
     indices[functions[i].name] = i
   }

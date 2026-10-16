@@ -2,10 +2,10 @@
 /// Compile a pure Boolean library without host access or entry inference.
 pub fn compile_library(
   input : Input,
-  limits? : LibraryLimits = LibraryLimits::default(),
-  strict_naming? : Bool = false,
-  cancelled? : () -> Bool = fn() { false },
-  scope? : @observe.Scope = @observe.Observer::noop().scope(),
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
 ) -> LibraryOutput raise {
   scope.observe(
     @observe.Frontend,

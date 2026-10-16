@@ -1,5 +1,5 @@
 ///|
-fn offer(session? : String = "session") -> Json {
+fn offer(session~ : String = "session") -> Json {
   {
     "profile": "morphir/workbench/jobs",
     "contractVersion": "0.1.0-draft.1",
@@ -12,8 +12,8 @@ fn offer(session? : String = "session") -> Json {
 
 ///|
 fn body(
-  format? : String = "json",
-  inputs? : String = "[{\"type\":\"int\",\"value\":\"45\"},{\"type\":\"int\",\"value\":\"3\"}]",
+  format~ : String = "json",
+  inputs~ : String = "[{\"type\":\"int\",\"value\":\"45\"},{\"type\":\"int\",\"value\":\"3\"}]",
 ) -> Json raise {
   {
     "contractVersion": "0.1.0-draft.1",
@@ -39,7 +39,7 @@ fn request(identity : Json) -> String {
 }
 
 ///|
-fn outcomes(value? : Json = { "type": "int", "value": "42" }) -> Json {
+fn outcomes(value~ : Json = { "type": "int", "value": "42" }) -> Json {
   {
     "contractVersion": "0.1.0-draft.5",
     "calls": [

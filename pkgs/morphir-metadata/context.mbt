@@ -23,7 +23,7 @@ fn Context::copy(self : Context) -> Context {
 }
 
 ///|
-fn check_reference(uri : String, stem? : Bool = false) -> Unit raise {
+fn check_reference(uri : String, stem~ : Bool = false) -> Unit raise {
   let parsed = address(uri)
   let parts = parsed.fragment.split("/").collect()
   if parts.length() != 5 ||
@@ -258,7 +258,7 @@ fn resolve_context(
   base : String,
   seen : Map[String, Bool],
   active : Map[String, Bool],
-  depth? : Int = 0,
+  depth~ : Int32 = 0,
 ) -> Context raise {
   if !value.annotations().is_empty() {
     raise Invalid(

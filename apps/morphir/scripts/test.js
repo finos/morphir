@@ -234,7 +234,7 @@ function exercise(command, prefix, directory, target, buildHelper = join(appDire
   assert.ok(!existsSync(sourceDryLog));
   assert.ok(!existsSync(join(directory,"moon-model/.morphir/logs")));
   assert.deepEqual(modelPlan.sources, ["src/Main.mbt"]);
-  assert.deepEqual(modelPlan.frontends.map(f => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))), [{source: "src/Main.mbt", unitId: "Main", frontend: "moonbit", profile: "moonbit-model-bool-v1", dependencies: {"moonbitlang/parser": "0.4.1", "moonbitlang/lexer": "0.4.0"}, outputContract: "ir-unit"}]);
+  assert.deepEqual(modelPlan.frontends.map(f => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))), [{source: "src/Main.mbt", unitId: "Main", frontend: "moonbit", profile: "moonbit-model-bool-v1", dependencies: {"moonbitlang/parser": "0.4.5", "moonbitlang/lexer": "0.4.3"}, outputContract: "ir-unit"}]);
   assert.equal(modelPlan.frontends[0].language,'moonbit');
   assert.equal(modelPlan.frontends[0].provider,'finos/morphir-moonbit-frontend');
   assert.equal(modelPlan.frontends[0].defaultProfile,true);

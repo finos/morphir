@@ -16,7 +16,7 @@ fn json_value(value : Json) -> @scheme.Value raise {
 }
 
 ///|
-fn value_json(value : @scheme.Value, depth : Int) -> Json raise {
+fn value_json(value : @scheme.Value, depth : Int32) -> Json raise {
   if depth > 256 {
     raise @scheme.Limit("JSON conversion depth")
   }
@@ -142,7 +142,7 @@ pub fn install(runtime : @scheme.Runtime) -> Unit raise {
 
 ///|
 pub fn new_runtime(
-  limits? : @scheme.Limits = @scheme.Limits::default(),
+  limits~ : @scheme.Limits = @scheme.Limits::default(),
 ) -> @scheme.Runtime raise {
   let runtime = @scheme.Runtime::new(limits~)
   install(runtime)
@@ -154,7 +154,7 @@ pub fn new_runtime(
 pub fn transform_file(
   file : @ir.IRFile,
   script : String,
-  limits? : @scheme.Limits = @scheme.Limits::default(),
+  limits~ : @scheme.Limits = @scheme.Limits::default(),
 ) -> @ir.IRFile raise {
   let runtime = new_runtime(limits~)
   let transform = runtime.eval(script)

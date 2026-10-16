@@ -17,7 +17,7 @@ fn a_value(file : @ir.IRFile, name : String) -> @ir.ValueDefinition {
 
 ///|
 /// The number of value and pattern nodes without an inferred type, let definitions included.
-fn untyped(v : @ir.Value) -> Int {
+fn untyped(v : @ir.Value) -> Int32 {
   let sum = (items : Array[@ir.Value]) => {
     items.fold(init=0, (n, x) => n + untyped(x))
   }
@@ -58,7 +58,7 @@ fn untyped(v : @ir.Value) -> Int {
 }
 
 ///|
-fn untyped_pattern(p : @ir.Pattern) -> Int {
+fn untyped_pattern(p : @ir.Pattern) -> Int32 {
   match p {
     WildcardPattern(a) => missing(a)
     EmptyListPattern(a) => missing(a)
@@ -75,7 +75,7 @@ fn untyped_pattern(p : @ir.Pattern) -> Int {
 }
 
 ///|
-fn missing(a : @ir.ValueAttributes) -> Int {
+fn missing(a : @ir.ValueAttributes) -> Int32 {
   if a.inferred_type is None {
     1
   } else {

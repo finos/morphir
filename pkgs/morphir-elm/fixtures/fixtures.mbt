@@ -23,7 +23,7 @@ fn fq(text : String) -> @ir.FQName {
 }
 
 ///|
-fn ty(name : String, args? : Array[@ir.Type] = []) -> @ir.Type {
+fn ty(name : String, args~ : Array[@ir.Type] = []) -> @ir.Type {
   Reference(t(), fq(name), args)
 }
 
@@ -44,7 +44,7 @@ fn public_value(
   inputs : Array[(String, @ir.Type)],
   output : @ir.Type,
   body : @ir.Value,
-  doc? : String? = None,
+  doc~ : String? = None,
 ) -> @ir.AccessControlled[@ir.Documented[@ir.ValueDefinition]] {
   {
     access: Public,

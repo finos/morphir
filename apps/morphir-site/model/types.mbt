@@ -31,7 +31,7 @@ pub extend PostSummary with @debug.Debug::{to_repr}
 pub(all) struct NavItem {
   route : String
   title : String
-  depth : Int
+  depth : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -45,7 +45,7 @@ pub extend NavItem with @debug.Debug::{to_repr}
 pub(all) struct TocEntry {
   id : String
   text : String
-  depth : Int
+  depth : Int32
 } derive(Eq, Debug)
 
 ///|

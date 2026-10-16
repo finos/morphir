@@ -83,7 +83,7 @@ fn prefix_hit(haystack : Array[String], token : String) -> Bool {
 pub fn search(
   entries : Array[SearchEntry],
   query : String,
-  limit? : Int = 10,
+  limit~ : Int32 = 10,
 ) -> Array[SearchEntry] {
   let tokens = words(query)
   if tokens.is_empty() {

@@ -26,8 +26,8 @@ pub fn typed_default(tpe : Json, definitions : Array[Json]) -> Json raise {
 fn typed_default_inner(
   tpe : Json,
   definitions : Array[Json],
-  depth : Int,
-  budget : Ref[Int],
+  depth : Int32,
+  budget : Ref[Int32],
 ) -> Json raise {
   budget.val -= 1
   if depth > 24 || budget.val < 0 {
@@ -119,8 +119,8 @@ fn typed_shape(
   value : Json,
   definitions : Array[Json],
   path : String,
-  depth : Int,
-  budget : Ref[Int],
+  depth : Int32,
+  budget : Ref[Int32],
 ) -> Unit raise {
   budget.val -= 1
   if budget.val < 0 || depth > 32 {

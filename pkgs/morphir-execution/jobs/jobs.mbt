@@ -31,7 +31,7 @@ pub enum State {
 ///|
 pub struct Receipt {
   priv identity : Identity
-  priv sequence : Int
+  priv sequence : Int32
   priv state : State
   priv cancel_requested : Bool
 }
@@ -58,7 +58,7 @@ pub struct Cursor {
   priv identity : Identity
   priv calls : Array[String]
   priv evidence : String
-  priv sequence : Int
+  priv sequence : Int32
   priv running : Bool
   priv terminal : Bool
   priv acknowledged : Bool
@@ -239,7 +239,7 @@ pub fn Receipt::identity(self : Receipt) -> Identity {
 }
 
 ///|
-pub fn Receipt::sequence(self : Receipt) -> Int {
+pub fn Receipt::sequence(self : Receipt) -> Int32 {
   self.sequence
 }
 

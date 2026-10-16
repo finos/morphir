@@ -64,7 +64,7 @@ pub extend IRUnit with @debug.Debug::{to_repr}
 pub fn IRUnit::new(
   id : String,
   distribution : @ir.IRFile,
-  metadata? : Array[NodeMetadata] = [],
+  metadata~ : Array[NodeMetadata] = [],
 ) -> IRUnit {
   {
     id,
@@ -79,7 +79,7 @@ pub fn IRUnit::new(
 /// Validate a source frontend's rich output before components or serialization.
 pub fn IRUnit::validate(
   self : IRUnit,
-  limits? : Limits = Limits::default(),
+  limits~ : Limits = Limits::default(),
 ) -> Unit raise {
   if limits.max_bytes <= 0 || limits.max_depth < 0 || limits.max_values <= 0 {
     raise Invalid("data.invalid_limits", "Limits must be positive")
@@ -100,9 +100,9 @@ pub fn IRUnit::validate(
 ///|
 /// These are acceptance/traversal budgets, not a streaming-parser guarantee.
 pub(all) struct Limits {
-  max_bytes : Int
-  max_depth : Int
-  max_values : Int
+  max_bytes : Int32
+  max_depth : Int32
+  max_values : Int32
 } derive(Eq, Debug)
 
 ///|

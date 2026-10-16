@@ -21,7 +21,7 @@ pub fn Text::to_units(self : Text) -> Array[UInt16] {
 }
 
 ///|
-pub fn Text::length(self : Text) -> Int {
+pub fn Text::length(self : Text) -> Int32 {
   self.units.length()
 }
 

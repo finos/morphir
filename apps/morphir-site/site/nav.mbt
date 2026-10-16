@@ -5,7 +5,7 @@ pub(all) struct NavEntry {
   source : String
   title : String
   /// Position among siblings; 1000 when the page has no `order`.
-  order : Int
+  order : Int32
 }
 
 ///|
@@ -33,7 +33,7 @@ fn label(name : String) -> String {
 
 ///|
 /// Alphabetical order by UTF-16 code unit. `String::compare` orders by length first.
-fn compare_titles(a : String, b : String) -> Int {
+fn compare_titles(a : String, b : String) -> Int32 {
   let shared = if a.length() < b.length() { a.length() } else { b.length() }
   for i in 0..<shared {
     let x = a.code_unit_at(i).to_int()
@@ -51,7 +51,7 @@ fn compare_titles(a : String, b : String) -> Int {
 /// a README is a label. `/docs/` itself is not listed.
 pub fn build_nav(entries : Array[NavEntry]) -> Array[@model.NavItem] {
   let items = []
-  fn walk(prefix : Array[String], depth : Int) -> Unit {
+  fn walk(prefix : Array[String], depth : Int32) -> Unit {
     let names : Array[String] = []
     for e in entries {
       let s = segments(e.route)
@@ -109,7 +109,7 @@ pub fn build_nav(entries : Array[NavEntry]) -> Array[@model.NavItem] {
 pub fn glob_match(pattern : String, name : String) -> Bool {
   let p = pattern.to_array()
   let n = name.to_array()
-  fn go(i : Int, j : Int) -> Bool {
+  fn go(i : Int32, j : Int32) -> Bool {
     if i == p.length() {
       return j == n.length()
     }

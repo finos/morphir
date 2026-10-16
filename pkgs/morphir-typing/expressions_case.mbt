@@ -98,7 +98,7 @@ fn Infer::pattern_constructor(
 
 ///|
 /// The number of arguments of a curried function type.
-fn arity_of(t : Ty) -> Int {
+fn arity_of(t : Ty) -> Int32 {
   match t {
     Fun(_, output) => 1 + arity_of(output)
     _ => 0

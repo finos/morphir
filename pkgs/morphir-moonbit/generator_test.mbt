@@ -2,7 +2,7 @@
 fn single(
   output : @ir.Type,
   body : @ir.Value,
-  definition? : @ir.ValueDefinition? = None,
+  definition~ : @ir.ValueDefinition? = None,
 ) -> @generator.Input raise {
   let name = @ir.Name::parse("value")
   let value : @ir.AccessControlled[@ir.Documented[@ir.ValueDefinition]] = match
@@ -828,7 +828,7 @@ fn sig_value(
   name : String,
   input : @ir.Type,
   body : @ir.Value,
-  output? : @ir.Type? = None,
+  output~ : @ir.Type? = None,
 ) -> (@ir.Name, @ir.AccessControlled[@ir.Documented[@ir.ValueDefinition]]) raise {
   (
     @ir.Name::parse(name),

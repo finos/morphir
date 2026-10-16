@@ -4,7 +4,7 @@ priv enum TypeInfo {
   /// An alias: its parameters by canonical name, and its body.
   Alias(Array[String], @ir.Type)
   /// An opaque, custom or derived type, by arity.
-  Nominal(Int)
+  Nominal(Int32)
 }
 
 ///|
@@ -266,7 +266,7 @@ fn references_of(t : @ir.Type, out : Array[String]) -> Unit {
 
 ///|
 /// Every type reference that `t` contains, as its canonical name and its number of arguments.
-fn counted_references_of(t : @ir.Type, out : Array[(String, Int)]) -> Unit {
+fn counted_references_of(t : @ir.Type, out : Array[(String, Int32)]) -> Unit {
   match t {
     Reference(_, name, args) => {
       out.push((name.to_canonical(), args.length()))

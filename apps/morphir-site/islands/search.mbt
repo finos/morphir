@@ -10,7 +10,7 @@ priv enum Index {
 priv struct SearchModel {
   index : Index
   query : String
-  selected : Int
+  selected : Int32
 } derive(Eq)
 
 ///|

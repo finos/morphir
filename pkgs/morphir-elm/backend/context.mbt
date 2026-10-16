@@ -42,8 +42,8 @@ priv struct Ctx {
   mut used : Map[String, Bool]
   /// Elm names of the let blocks being lowered that are not bound yet, with a count. Elm sees every name of a let
   /// block in each of its definitions, so a binder inside a definition must not take one.
-  mut pending : Map[String, Int]
-  mut fresh : Int
+  mut pending : Map[String, Int32]
+  mut fresh : Int32
   /// Elm names of the type variables of the declaration being lowered, by canonical IR name.
   mut type_variables : Map[String, String]
   /// Elm names of the module's top-level values.

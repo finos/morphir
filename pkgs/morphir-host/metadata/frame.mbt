@@ -9,10 +9,10 @@ pub(all) suberror TransportError {
 pub const SERVICE_ID : String = "morphir-package/provider-snapshot/0.1.0-draft.1"
 
 ///|
-pub const MAX_REQUEST_BYTES : Int = 4194304
+pub const MAX_REQUEST_BYTES : Int32 = 4194304
 
 ///|
-pub const MAX_RESPONSE_BYTES : Int = 16777216
+pub const MAX_RESPONSE_BYTES : Int32 = 16777216
 
 ///|
 fn[T] invalid(detail : String) -> T raise {
@@ -32,7 +32,7 @@ fn preflight(bytes : Bytes) -> Unit raise {
     invalid("Require one bounded Ion 1.0 binary frame")
   }
   let mut count = 0
-  fn uint(position : Int, end : Int) -> (Int, Int) raise {
+  fn uint(position : Int32, end : Int32) -> (Int32, Int32) raise {
     let mut value = 0
     let mut cursor = position
     for _ in 0..<5 {
@@ -51,7 +51,7 @@ fn preflight(bytes : Bytes) -> Unit raise {
     }
     invalid("Overlong binary integer")
   }
-  fn value(position : Int, end : Int, depth : Int) -> Int raise {
+  fn value(position : Int32, end : Int32, depth : Int32) -> Int32 raise {
     count += 1
     if count > 8192 || depth > 16 || position >= end {
       invalid("Binary structure limit")
@@ -204,7 +204,7 @@ fn blob(value : @ion.IonValue) -> Bytes raise {
 }
 
 ///|
-fn list(value : @ion.IonValue, limit : Int) -> Array[@ion.IonValue] raise {
+fn list(value : @ion.IonValue, limit : Int32) -> Array[@ion.IonValue] raise {
   if value.has_annotations() {
     invalid("Annotated list")
   }

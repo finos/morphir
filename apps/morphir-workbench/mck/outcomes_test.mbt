@@ -1,7 +1,7 @@
 ///|
 fn terminal_request(
   calls : Array[Json],
-  cleanup? : Json = Json::null(),
+  cleanup~ : Json = Json::null(),
 ) -> Json {
   {
     "id": 1,

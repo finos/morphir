@@ -39,7 +39,7 @@ pub fn[A] member(value : A, set : Set[A]) -> Bool raise @sdk.SdkError {
 }
 
 ///|
-pub fn[A] size(set : Set[A]) -> Int {
+pub fn[A] size(set : Set[A]) -> Int32 {
   @dict.size(set.dict)
 }
 

@@ -1,7 +1,7 @@
 ///|
 fn generation_files(
   backend : String,
-  language? : String = "ir-json",
+  language~ : String = "ir-json",
 ) -> Map[String, String] raise {
   Map::from_array([
     (

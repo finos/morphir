@@ -40,8 +40,8 @@ test "checked conversion and callback order" {
     _ => false
   }
   assert_true(bad)
-  assert_eq(compose_left((n : Int) => n * 2, (n : Int) => n + 1, 3), 8)
-  assert_eq(compose_right((n : Int) => n + 1, (n : Int) => n * 2, 3), 8)
+  assert_eq(compose_left((n : Int32) => n * 2, (n : Int32) => n + 1, 3), 8)
+  assert_eq(compose_right((n : Int32) => n + 1, (n : Int32) => n * 2, 3), 8)
   assert_eq(always(5, "ignored"), 5)
   assert_eq(compare(2, 3), @sdk.LT)
   let ab = @sdk.Text::from_string("ab")

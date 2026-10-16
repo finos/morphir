@@ -220,7 +220,7 @@ fn moonbit_validate_options(options : Json) -> Unit raise {
 }
 
 ///|
-fn portable_path(path : String, allow_empty? : Bool = false) -> Unit raise {
+fn portable_path(path : String, allow_empty~ : Bool = false) -> Unit raise {
   if (path == "" && !allow_empty) ||
     normalize(path) != path ||
     path.contains(":") ||

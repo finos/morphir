@@ -46,7 +46,7 @@ fn[T] metadata_observe(
   stage : @observe.Stage,
   code : String,
   run : () -> T raise,
-  audit? : MetadataAuditContext? = None,
+  audit~ : MetadataAuditContext? = None,
 ) -> T raise {
   let scoped = {
     ..observer,
@@ -99,7 +99,7 @@ fn[T] metadata_observe(
 ///|
 fn metadata_read_file(
   path : String,
-  limit : Int,
+  limit : Int32,
   check : () -> Unit raise,
 ) -> Bytes raise {
   let chunks : Array[Bytes] = []

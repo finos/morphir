@@ -37,7 +37,7 @@ fn scheme_output(
   value : @scheme.Value,
   expected : @protocol.ValueType,
   definitions : Array[@protocol.CustomType],
-  depth : Int,
+  depth : Int32,
 ) -> @protocol.Value raise {
   if depth > 64 {
     raise @protocol.Invalid("execution.value_limit")
@@ -48,7 +48,7 @@ fn scheme_output(
   ) -> @protocol.Value raise {
     scheme_output(v, t, definitions, depth + 1)
   }
-  fn units(values : Array[@scheme.Value]) -> Array[Int] raise {
+  fn units(values : Array[@scheme.Value]) -> Array[Int32] raise {
     values.map(v => {
       guard v is Number(Integer(n)) else {
         raise @protocol.Invalid("execution.evaluator_utf16")

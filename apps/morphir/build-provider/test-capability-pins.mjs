@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {capabilities,stableVersion} from './capabilities.mjs';
 const root=mkdtempSync(join(tmpdir(),'morphir-pin-test-'));
 const pin={profile:'morphir-toolchain-pin-v1',platform:process.platform,arch:process.arch,
-  compilerIdentity:'a'.repeat(64),coreIdentity:'b'.repeat(64),compilerVersion:'0.10.14+6b3b9bf5a-nightly'};
+  compilerIdentity:'a'.repeat(64),coreIdentity:'b'.repeat(64),compilerVersion:'0.10.15+1e9f6672d-nightly'};
 try {
   // There is no compiler in this directory. Version/target selection must reject
   // before attempting a compiler, hashing the core or advertising capabilities.

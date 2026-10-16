@@ -72,7 +72,7 @@ pub fn ElmPackageRef::range(self : ElmPackageRef) -> String {
 pub(all) struct Options {
   profile : Profile
   placeholders : Placeholders
-  width : Int
+  width : Int32
   elm_package : ElmPackageRef
   mapping : Mapping
   packages : Map[String, ElmPackageRef]

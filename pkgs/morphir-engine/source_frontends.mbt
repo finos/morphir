@@ -51,9 +51,9 @@ pub fn Engine::register_unit_frontend(
   name : String,
   extensions : Array[String],
   compile : (Source, String, () -> Bool) -> @data.IRUnit raise,
-  profile? : String? = None,
-  dependencies? : Map[String, String] = Map([]),
-  limits? : @data.Limits = @data.Limits::default(),
+  profile~ : String? = None,
+  dependencies~ : Map[String, String] = Map([]),
+  limits~ : @data.Limits = @data.Limits::default(),
 ) -> Unit raise {
   if name == "" ||
     self.frontends.contains(name) ||

@@ -31,7 +31,7 @@ priv struct Infer {
   /// The local variables in scope, by canonical name.
   mut locals : Map[String, Poly]
   /// The level of new metas. A let definition is inferred one level deeper.
-  level : Int
+  level : Int32
   /// The type of each node, by logical path.
   types : Map[String, Ty]
   /// The monomorphic types of the binding group being solved, by canonical FQName.
@@ -46,13 +46,13 @@ priv struct Infer {
   /// classes, whatever its own attributes say.
   rigid_scope : Map[String, Ty]
   /// The number of let-annotation rigids made so far. Each one gets a unique key (see `let_rigid_key`).
-  let_rigids : Ref[Int]
+  let_rigids : Ref[Int32]
   /// When set, an existing `inferred_type` on a node is a fact: it is unified with the node's type.
   facts : Bool
 }
 
 ///|
-fn Infer::new(env : Env, level : Int, facts? : Bool = false) -> Infer {
+fn Infer::new(env : Env, level : Int32, facts~ : Bool = false) -> Infer {
   {
     solver: Solver::new((name, args) => env.expand(name, args)),
     env,

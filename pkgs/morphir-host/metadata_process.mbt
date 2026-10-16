@@ -23,10 +23,10 @@ pub fn Host::register_process_metadata_provider(
   grants : @metadata_grants.Grants?,
   workspace_root : String,
   invocation_root : String,
-  timeout? : Int = 120000,
-  cancel_file? : String = "",
-  observer? : @observe.Observer = @observe.Observer::noop(),
-  audit_sink? : MetadataAuditSink = MetadataAuditSink::noop(),
+  timeout~ : Int32 = 120000,
+  cancel_file~ : String = "",
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+  audit_sink~ : MetadataAuditSink = MetadataAuditSink::noop(),
 ) -> Unit raise {
   if timeout < 6001 || timeout > 600000 {
     raise @config.Invalid("metadata.restore_invalid_deadline")
@@ -94,7 +94,7 @@ fn metadata_process_session(
   grant : @metadata_grants.GrantedService,
   operation : String,
   project : String,
-  timeout : Int,
+  timeout : Int32,
   cancel_file : String,
   observer : @observe.Observer,
   audit : MetadataAuditContext,

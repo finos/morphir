@@ -9,10 +9,10 @@ pub(all) suberror Invalid {
 pub struct Session {
   priv offer : @receipts.Offer
   priv jobs : Map[String, Job]
-  priv max_jobs : Int
-  priv max_bytes : Int
-  priv mut reserved : Int
-  priv mut next : Int
+  priv max_jobs : Int32
+  priv max_bytes : Int32
+  priv mut reserved : Int32
+  priv mut next : Int32
 }
 
 ///|
@@ -22,7 +22,7 @@ priv struct Job {
   snapshot : Bytes
   suite : Bytes
   cursor : @receipts.Cursor
-  reserved : Int
+  reserved : Int32
 }
 
 ///|
@@ -38,8 +38,8 @@ priv enum Publication {
 /// not allocator overhead or temporary planning allocations.
 pub fn Session::new(
   offer : @receipts.Offer,
-  max_jobs? : Int = 8,
-  max_bytes? : Int = 16 * 1024 * 1024,
+  max_jobs~ : Int32 = 8,
+  max_bytes~ : Int32 = 16 * 1024 * 1024,
 ) -> Session raise {
   if max_jobs <= 0 ||
     max_jobs > 64 ||
@@ -266,7 +266,7 @@ pub fn Session::release(
 ///|
 fn receipt(
   identity : @receipts.Identity,
-  sequence : Int,
+  sequence : Int32,
   state : Publication,
   acknowledged : Bool,
 ) -> @receipts.Receipt raise {

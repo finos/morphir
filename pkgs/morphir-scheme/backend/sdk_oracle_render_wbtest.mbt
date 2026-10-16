@@ -4,7 +4,7 @@
 /// in run_elm_oracle.py, so opaque internals do not become fixture contracts.
 fn oracle_render(
   value : @scheme.Value,
-  depth : Int,
+  depth : Int32,
 ) -> String raise @scheme.SchemeError {
   if depth > 256 {
     raise @scheme.Limit("Elm oracle rendering depth")

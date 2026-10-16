@@ -17,7 +17,7 @@ let theme_script : String = "try{var t=localStorage.getItem('site-theme');if(t&&
 
 ///|
 /// A block of reviewed HTML.
-pub fn raw(html : String, class? : String = "prose") -> Html {
+pub fn raw(html : String, class~ : String = "prose") -> Html {
   @html.div(class~, attrs=@html.Attrs::build().inner_html(html), @html.nothing)
 }
 

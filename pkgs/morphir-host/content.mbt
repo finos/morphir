@@ -27,7 +27,7 @@ pub fn ContentResult::successful(self : ContentResult) -> Bool {
 }
 
 ///|
-fn content_size(content : @data.Content) -> Int {
+fn content_size(content : @data.Content) -> Int32 {
   match content {
     Text(text) => @utf8.encode(text[:]).length()
     Binary(bytes) => bytes.length()
@@ -40,7 +40,7 @@ pub fn Host::run_content(
   engine : @engine.Engine,
   plan : @engine.Plan,
   publisher : ContentPublisher,
-  read_bytes? : ((String) -> Bytes raise)? = None,
+  read_bytes~ : ((String) -> Bytes raise)? = None,
 ) -> ContentResult raise {
   if plan.requires_byte_read() && read_bytes is None {
     raise @config.Invalid(

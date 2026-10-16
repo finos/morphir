@@ -6,8 +6,8 @@ pub(all) suberror ToolchainError {
 ///|
 /// Effects are supplied by the embedding host. No engine dependency on processes.
 pub(all) struct Host {
-  execute : (String, Array[String], String, String, Int) -> Json raise
-  kind : (String) -> Int raise
+  execute : (String, Array[String], String, String, Int32) -> Json raise
+  kind : (String) -> Int32 raise
   read : (String) -> String raise
   write : (String, String) -> Unit raise
   list : (String) -> Array[String] raise
@@ -55,7 +55,7 @@ fn field(value : Json, key : String) -> Json {
 }
 
 ///|
-fn string(value : Json, key : String, fallback? : String = "") -> String {
+fn string(value : Json, key : String, fallback~ : String = "") -> String {
   match field(value, key) {
     String(text) => text
     _ => fallback
@@ -81,7 +81,7 @@ fn execute(
   args : Array[String],
   cwd : String,
   home : String,
-  timeout : Int,
+  timeout : Int32,
 ) -> Json raise {
   check_cancelled(host)
   if !host.process {

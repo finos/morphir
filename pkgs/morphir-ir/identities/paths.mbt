@@ -111,18 +111,18 @@ pub fn path_subject(path : String) -> String {
 }
 
 ///|
-pub fn path_case_pattern(path : String, i : Int) -> String {
+pub fn path_case_pattern(path : String, i : Int32) -> String {
   step(path, "cases/\{i}/pattern")
 }
 
 ///|
-pub fn path_case_body(path : String, i : Int) -> String {
+pub fn path_case_body(path : String, i : Int32) -> String {
   step(path, "cases/\{i}/body")
 }
 
 ///|
 /// An item of a `Tuple`, a `List` or a `TuplePattern`.
-pub fn path_item(path : String, i : Int) -> String {
+pub fn path_item(path : String, i : Int32) -> String {
   step(path, "items/\{i}")
 }
 
@@ -139,7 +139,7 @@ pub fn path_record(path : String) -> String {
 }
 
 ///|
-pub fn path_arg(path : String, i : Int) -> String {
+pub fn path_arg(path : String, i : Int32) -> String {
   step(path, "args/\{i}")
 }
 

@@ -328,7 +328,7 @@ fn values(cli : Cli, name : String) -> Array[String] {
 }
 
 ///|
-fn value(cli : Cli, name : String, fallback? : String = "") -> String {
+fn value(cli : Cli, name : String, fallback~ : String = "") -> String {
   let entries = values(cli, name)
   entries.get(entries.length() - 1).unwrap_or(fallback)
 }

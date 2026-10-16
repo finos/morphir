@@ -31,7 +31,7 @@ fn curried_native(
 
 ///|
 priv struct Emitter {
-  mut next : Int
+  mut next : Int32
   globals : Map[@ir.Name, @ir.FQName]
 }
 
@@ -70,7 +70,7 @@ fn Emitter::literal(_self : Emitter, literal : @ir.Literal) -> String raise {
 fn collect_names(
   pattern : @ir.Pattern,
   names : Array[@ir.Name],
-  depth : Int,
+  depth : Int32,
 ) -> Unit raise {
   if depth > 256 {
     raise @scheme.Limit("Pattern depth")
@@ -100,7 +100,7 @@ fn Emitter::matched(
   body : @ir.Value,
   fallback : String,
   bound : Map[@ir.Name, Bool],
-  depth : Int,
+  depth : Int32,
 ) -> String raise {
   let names : Array[@ir.Name] = []
   collect_names(pattern, names, 0)
@@ -146,7 +146,7 @@ fn Emitter::definition(
   self : Emitter,
   definition : @ir.ValueDefinition,
   bound : Map[@ir.Name, Bool],
-  depth : Int,
+  depth : Int32,
 ) -> String raise {
   match definition {
     ExpressionBody(inputs, _, body) => {
@@ -201,7 +201,7 @@ fn Emitter::value(
   self : Emitter,
   value : @ir.Value,
   bound : Map[@ir.Name, Bool],
-  depth : Int,
+  depth : Int32,
 ) -> String raise {
   if depth > 256 {
     raise @scheme.Limit("IR backend depth")

@@ -4,7 +4,7 @@
 fn library_check_body(
   expr : ResolvedExpr,
   functions : Array[ResolvedFunction],
-  edges : Map[Int, Bool],
+  edges : Map[Int32, Bool],
   cancelled : () -> Bool,
 ) -> Unit raise {
   library_poll(cancelled)
@@ -76,7 +76,7 @@ fn library_check(
       for caller = 0; caller < functions.length(); caller = caller + 1 {
         if edges[caller].contains(i) {
           remaining[caller] -= 1
-          depth[caller] = Int::max(depth[caller], depth[i] + 1)
+          depth[caller] = Int32::max(depth[caller], depth[i] + 1)
         }
       }
     }

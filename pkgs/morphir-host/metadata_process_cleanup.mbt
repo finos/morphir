@@ -20,7 +20,7 @@ fn metadata_receipt(
 ///|
 fn metadata_dispose_tree(root : String, deadline : Double) -> Unit raise {
   let mut count = 0
-  fn walk(path : String, depth : Int) -> Unit raise {
+  fn walk(path : String, depth : Int32) -> Unit raise {
     count += 1
     if count > 16384 || depth > 64 || @platform.monotonic_seconds() >= deadline {
       raise @config.Invalid("metadata.restore_cleanup_limit: scratch retained")

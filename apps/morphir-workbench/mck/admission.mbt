@@ -24,7 +24,7 @@ fn declaration_name(value : Json, code : String) -> String raise {
 }
 
 ///|
-fn declaration_nodes(budget : Ref[Int]) -> Unit raise {
+fn declaration_nodes(budget : Ref[Int32]) -> Unit raise {
   budget.val -= 1
   if budget.val < 0 {
     raise @execution.Invalid("workbench.type_limit")
@@ -34,7 +34,7 @@ fn declaration_nodes(budget : Ref[Int]) -> Unit raise {
 ///|
 fn declaration_array(
   value : Json,
-  limit : Int,
+  limit : Int32,
   code : String,
 ) -> Array[Json] raise {
   guard value is Array(values) else { raise @execution.Invalid(code) }
@@ -47,8 +47,8 @@ fn declaration_array(
 ///|
 fn declared_type(
   value : Json,
-  depth : Int,
-  budget : Ref[Int],
+  depth : Int32,
+  budget : Ref[Int32],
   references : Array[String],
 ) -> @execution.ValueType raise {
   declaration_nodes(budget)
@@ -113,7 +113,7 @@ fn declared_type(
 /// Named cycles are allowed without expanding inline descriptor depth.
 fn declared_definitions(
   value : Json,
-  budget : Ref[Int],
+  budget : Ref[Int32],
   references : Array[String],
 ) -> Array[@execution.CustomType] raise {
   let names : Map[String, Bool] = Map([])
@@ -156,7 +156,7 @@ fn declared_definitions(
 fn admit_value(
   input : Json,
   format : Json,
-  output? : Bool = false,
+  output~ : Bool = false,
 ) -> @execution.Value raise {
   ignore(
     closed_fields(

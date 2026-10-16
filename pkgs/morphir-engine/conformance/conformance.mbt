@@ -125,7 +125,7 @@ pub fn Report::to_json(self : Report) -> Json {
 pub fn prepare(
   execution : @execution.Plan,
   expectations : Expectations,
-  lanes? : Array[EvaluatorLane] = [EvaluatorLane::scheme()],
+  lanes~ : Array[EvaluatorLane] = [EvaluatorLane::scheme()],
 ) -> Plan raise {
   expectations.validate()
   if execution.suite.encode("ion-binary") !=
@@ -214,8 +214,8 @@ fn diagnostic(error : Error) -> String {
 pub fn run(
   plan : Plan,
   provider : @execution.Provider,
-  observer? : @observe.Observer = @observe.Observer::noop(),
-  cancelled? : () -> Bool = fn() { false },
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+  cancelled~ : () -> Bool = fn() { false },
 ) -> Report raise {
   let expectations = Expectations::from_ion(plan.expectations.to_ion())
   let source = @data.Registry::new().encode("ion-binary", plan.execution.unit)
@@ -455,7 +455,7 @@ pub fn Report::to_ion(self : Report) -> @ion.IonValue raise {
 ///|
 pub fn Report::encode(
   self : Report,
-  format? : String = "ion-binary",
+  format~ : String = "ion-binary",
 ) -> Bytes raise {
   match format {
     "ion-binary" => @binary.write_binary([self.to_ion()])

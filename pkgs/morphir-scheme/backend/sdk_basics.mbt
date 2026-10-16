@@ -1,7 +1,7 @@
 ///|
 fn sdk_assert_equality_data(
   value : @scheme.Value,
-  depth : Int,
+  depth : Int32,
 ) -> Unit raise @scheme.SchemeError {
   if depth > 256 {
     raise @scheme.Limit("SDK equality depth")
@@ -28,7 +28,7 @@ fn sdk_assert_equality_data(
 ///|
 fn sdk_contains_nan(
   value : @scheme.Value,
-  depth : Int,
+  depth : Int32,
 ) -> Bool raise @scheme.SchemeError {
   if depth > 256 {
     raise @scheme.Limit("SDK equality depth")
@@ -60,7 +60,7 @@ fn sdk_contains_nan(
 ///|
 fn sdk_normalize_equality(
   value : @scheme.Value,
-  depth : Int,
+  depth : Int32,
 ) -> @scheme.Value raise @scheme.SchemeError {
   if depth > 256 {
     raise @scheme.Limit("SDK equality depth")
@@ -94,7 +94,7 @@ fn sdk_normalize_equality(
 fn sdk_compare(
   left : @scheme.Value,
   right : @scheme.Value,
-  depth : Int,
+  depth : Int32,
 ) -> @sdk.Order raise @scheme.SchemeError {
   if depth > 256 {
     raise @scheme.Limit("SDK comparison depth")

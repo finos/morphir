@@ -62,7 +62,7 @@ pub fn write_bytes(path : String, content : Bytes) -> Unit raise {
 /// must remain stable under the portable host's filesystem assumptions.
 pub fn file_chunks(
   path : String,
-  limit : Int,
+  limit : Int32,
   consume : (Bytes) -> Unit raise,
 ) -> Unit raise {
   if path.contains("\u0000") ||

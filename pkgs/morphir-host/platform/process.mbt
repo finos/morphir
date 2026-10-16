@@ -1,6 +1,6 @@
 ///|
 #cfg(target="native")
-fn process_result(code : Int, output : String, error : String) -> Json {
+fn process_result(code : Int32, output : String, error : String) -> Json {
   Json::object(
     Map::from_array([
       ("exitCode", Json::number(code.to_double())),

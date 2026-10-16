@@ -1,9 +1,9 @@
 ///|
 pub struct TelemetrySession {
-  priv sequence : Ref[Int]
-  priv metrics : Map[String, (Int, Double, Array[Int])]
-  priv dimensions : Map[String, (Int, Double, Array[Int])]
-  priv mut metrics_overflow : Int
+  priv sequence : Ref[Int32]
+  priv metrics : Map[String, (Int32, Double, Array[Int32])]
+  priv dimensions : Map[String, (Int32, Double, Array[Int32])]
+  priv mut metrics_overflow : Int32
   priv records : Array[@observe.Observation]
   priv audit_records : Array[MetadataAuditRecord]
   priv path : String?
@@ -11,16 +11,16 @@ pub struct TelemetrySession {
   priv format : String
   priv record_traces : Bool
   priv run_id : String
-  priv mut next : Int
-  priv mut dropped : Int
+  priv mut next : Int32
+  priv mut dropped : Int32
   priv mut closed : Bool
 }
 
 ///|
 pub fn TelemetrySession::new(
   path : String?,
-  format? : String = "ion-binary",
-  record_traces? : Bool = true,
+  format~ : String = "ion-binary",
+  record_traces~ : Bool = true,
 ) -> TelemetrySession raise {
   if !["ion-binary", "ion-text", "json-lines", "text"].contains(format) {
     raise @config.Invalid("observability.unsupported_format")
@@ -55,9 +55,9 @@ pub fn TelemetrySession::new(
 pub fn TelemetrySession::local(
   root : String,
   path : String?,
-  enabled? : Bool = false,
-  kind? : String = "execution",
-  format? : String = "ion-binary",
+  enabled~ : Bool = false,
+  kind~ : String = "execution",
+  format~ : String = "ion-binary",
 ) -> TelemetrySession raise {
   if path is Some(_) || !enabled {
     return TelemetrySession::new(path, format~)
@@ -376,10 +376,10 @@ pub fn TelemetrySession::flush_to_process(
   helper : String,
   program : String,
   args : Array[String],
-  timeout? : Int = 1000,
-  cancel_file? : String = "",
-  program_identity? : String? = None,
-  clear_otel_environment? : Bool = false,
+  timeout~ : Int32 = 1000,
+  cancel_file~ : String = "",
+  program_identity~ : String? = None,
+  clear_otel_environment~ : Bool = false,
 ) -> Unit {
   if self.closed {
     return

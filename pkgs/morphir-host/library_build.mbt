@@ -110,7 +110,7 @@ fn validate_evidence(
   request : LibraryBuildRequest,
   lease : String,
   evidence : Json,
-  compiler_version? : String = @toolchain.compiler_version,
+  compiler_version~ : String = @toolchain.compiler_version,
 ) -> Unit raise {
   if !(build_field(evidence, "successful") is True) ||
     !(build_field(evidence, "frozen") is True) ||
@@ -279,7 +279,7 @@ pub fn LibraryBuildProvider::process(
   helper : String,
   compiler_home : String,
   dependencies : Map[String, String],
-  timeout? : Int = 120000,
+  timeout~ : Int32 = 120000,
 ) -> LibraryBuildProvider raise {
   if !@platform.process_supported() ||
     program == "" ||

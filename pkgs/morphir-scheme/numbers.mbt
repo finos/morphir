@@ -167,7 +167,7 @@ fn arithmetic(
 }
 
 ///|
-fn compare_numbers(left : Number, right : Number) -> Int raise SchemeError {
+fn compare_numbers(left : Number, right : Number) -> Int32 raise SchemeError {
   if left is Real(_) || right is Real(_) {
     left.real().compare(right.real())
   } else {

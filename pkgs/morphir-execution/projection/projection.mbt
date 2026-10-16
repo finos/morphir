@@ -48,9 +48,9 @@ pub(all) struct Report {
   destination : Destination
   policy : Policy
   value : Json?
-  encoded : Int
-  dropped : Int
-  lossy : Int
+  encoded : Int32
+  dropped : Int32
+  lossy : Int32
   issues : Array[Issue]
 }
 
@@ -65,11 +65,11 @@ fn pointer(name : String) -> String {
 pub fn project(
   value : @ion.IonValue,
   destination : Destination,
-  policy? : Policy = Reject,
+  policy~ : Policy = Reject,
 ) -> Report raise {
   let nodes = Ref(0)
   let budget = Ref(8388608)
-  fn charge(size : Int) -> Unit raise {
+  fn charge(size : Int32) -> Unit raise {
     budget.val -= size
     if budget.val < 0 {
       raise Invalid("projection.limit")
@@ -81,7 +81,7 @@ pub fn project(
     }
     charge(text.length() * 6)
   }
-  fn validate(value : @ion.IonValue, depth : Int) -> Unit raise {
+  fn validate(value : @ion.IonValue, depth : Int32) -> Unit raise {
     nodes.val += 1
     charge(16)
     if depth > 64 || nodes.val > 100000 || value.annotations().length() > 128 {

@@ -45,8 +45,8 @@ pub fn ion_arguments(
 ///|
 fn strict_ion_json(
   value : @ion.IonValue,
-  depth : Int,
-  budget : Ref[Int],
+  depth : Int32,
+  budget : Ref[Int32],
 ) -> Json raise {
   budget.val -= 1
   if depth > 64 || budget.val < 0 {

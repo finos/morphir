@@ -1,26 +1,26 @@
 ///|
 /// Exact IR format release, independent of the library's own release version.
 pub struct FormatVersion {
-  major : UInt
-  minor : UInt
-  patch : UInt
+  major : UInt32
+  minor : UInt32
+  patch : UInt32
 } derive(Eq, Compare, Hash, Debug)
 
 ///|
 pub(all) suberror VersionError {
   InvalidSyntax(String)
   OutOfRange(String)
-  UnsupportedMajor(UInt)
-  UnsupportedMinor(UInt, UInt)
-  FamilyMismatch(UInt, UInt)
+  UnsupportedMajor(UInt32)
+  UnsupportedMinor(UInt32, UInt32)
+  FamilyMismatch(UInt32, UInt32)
   SpecsBefore3_1
 } derive(Eq, Debug)
 
 ///|
 pub fn FormatVersion::new(
-  major : UInt,
-  minor : UInt,
-  patch : UInt,
+  major : UInt32,
+  minor : UInt32,
+  patch : UInt32,
 ) -> FormatVersion raise VersionError {
   if major == 0 || (major < 3 && (minor != 0 || patch != 0)) {
     raise InvalidSyntax("Invalid historical format version")
@@ -29,7 +29,7 @@ pub fn FormatVersion::new(
 }
 
 ///|
-fn parse_component(text : String) -> UInt raise VersionError {
+fn parse_component(text : String) -> UInt32 raise VersionError {
   if text.is_empty() || (text.length() > 1 && text.has_prefix("0")) {
     raise InvalidSyntax(text)
   }
@@ -66,7 +66,7 @@ pub fn FormatVersion::parse(text : String) -> FormatVersion raise VersionError {
 ///|
 /// Baseline release for an integer formatVersion.
 pub fn FormatVersion::baseline(
-  major : UInt,
+  major : UInt32,
 ) -> FormatVersion raise VersionError {
   FormatVersion::new(major, 0U, 0U)
 }
@@ -94,7 +94,7 @@ pub fn FormatVersion::check_supported(
 ///|
 pub fn FormatVersion::check_family(
   self : FormatVersion,
-  major : UInt,
+  major : UInt32,
 ) -> Unit raise VersionError {
   self.check_supported()
   if self.major != major {

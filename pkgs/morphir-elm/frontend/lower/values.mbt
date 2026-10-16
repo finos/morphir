@@ -19,7 +19,7 @@ pub fn value_attributes(range : @ast.Range) -> @ir.ValueAttributes {
 priv struct Lowering {
   scope : @resolve.Scope
   locals : Array[Map[String, Bool]]
-  placeholders : Ref[Int]
+  placeholders : Ref[Int32]
 }
 
 ///|

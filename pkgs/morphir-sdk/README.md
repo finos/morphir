@@ -4,6 +4,8 @@
 
 The root package defines `Order`, `SdkError`, UTF-16 `Text` and `Character`, and Elm-compatible lexical string ordering. Subpackages cover `integer`, `basics`, `int`, `decimal`, `char`, `string`, `list`, `maybe`, `result`, `dict`, and `set`. The general `Integer` wraps MoonBit core `BigInt`; `Int8` through `Int64` conversions check bounds. Lists, dictionaries, and sets return new values on updates. Dict and Set require a total Morphir comparator when constructed; use `@string.compare` for `Text` keys and `@sdk.string_order` for MoonBit `String` keys. Generic MoonBit `Compare` uses a different String order.
 
+MoonBit 0.10.15 reserves the built-in names `Int16`, `Int32` and `Int64`. The SDK therefore represents the corresponding Morphir fixed-width types with MoonBit wrappers `int.Int16Value`, `int.Int32Value` and `int.Int64Value`. The Morphir type identities and the `from_int16`/`to_int16`, `from_int32`/`to_int32` and `from_int64`/`to_int64` functions retain their existing contracts. `int.Int8` keeps its name. Callers with explicit MoonBit wrapper type annotations must use the `Value` names.
+
 ## Sources and inventory
 
 The binding inventory is [conformance/bindings.json](conformance/bindings.json). It contains all 248 declared values, their pinned Elm specification fragments and source lines, MoonBit bindings, semantic source, and module test paths. Regenerate it with:

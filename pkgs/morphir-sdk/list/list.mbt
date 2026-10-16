@@ -35,7 +35,7 @@ pub fn[A] cons(value : A, tail : List[A]) -> List[A] {
 }
 
 ///|
-pub fn[A] repeat(n : Int, value : A) -> List[A] {
+pub fn[A] repeat(n : Int32, value : A) -> List[A] {
   { items: @corelist.List::repeat(if n < 0 { 0 } else { n }, value), }
 }
 
@@ -60,7 +60,7 @@ pub fn[A, B] map(f : (A) -> B raise?, values : List[A]) -> List[B] raise? {
 
 ///|
 pub fn[A, B] indexed_map(
-  f : (Int, A) -> B raise?,
+  f : (Int32, A) -> B raise?,
   values : List[A],
 ) -> List[B] raise? {
   { items: values.items.mapi(f), }
@@ -98,7 +98,7 @@ pub fn[A, B] filter_map(
 }
 
 ///|
-pub fn[A] length(values : List[A]) -> Int {
+pub fn[A] length(values : List[A]) -> Int32 {
   values.items.length()
 }
 
@@ -204,12 +204,12 @@ pub fn[A] tail(values : List[A]) -> List[A]? {
 }
 
 ///|
-pub fn[A] take(n : Int, values : List[A]) -> List[A] {
+pub fn[A] take(n : Int32, values : List[A]) -> List[A] {
   { items: values.items.take(if n < 0 { 0 } else { n }), }
 }
 
 ///|
-pub fn[A] drop(n : Int, values : List[A]) -> List[A] {
+pub fn[A] drop(n : Int32, values : List[A]) -> List[A] {
   { items: values.items.drop(if n < 0 { 0 } else { n }), }
 }
 
@@ -249,8 +249,8 @@ pub fn[A] sort_with(
     let previous = a.copy()
     let mut start = 0
     while start < a.length() {
-      let middle = Int::min(start + width, a.length())
-      let end = Int::min(middle + width, a.length())
+      let middle = Int32::min(start + width, a.length())
+      let end = Int32::min(middle + width, a.length())
       let mut i = start
       let mut j = middle
       let mut k = start
@@ -294,7 +294,7 @@ pub fn[A, B, Z] map2(
   let a0 = to_array(v0)
   let a1 = to_array(v1)
   let mut count = a0.length()
-  count = Int::min(count, a1.length())
+  count = Int32::min(count, a1.length())
   let out = []
   for i = 0; i < count; i = i + 1 {
     out.push(f(a0[i], a1[i]))
@@ -313,8 +313,8 @@ pub fn[A, B, C, Z] map3(
   let a1 = to_array(v1)
   let a2 = to_array(v2)
   let mut count = a0.length()
-  count = Int::min(count, a1.length())
-  count = Int::min(count, a2.length())
+  count = Int32::min(count, a1.length())
+  count = Int32::min(count, a2.length())
   let out = []
   for i = 0; i < count; i = i + 1 {
     out.push(f(a0[i], a1[i], a2[i]))
@@ -335,9 +335,9 @@ pub fn[A, B, C, D, Z] map4(
   let a2 = to_array(v2)
   let a3 = to_array(v3)
   let mut count = a0.length()
-  count = Int::min(count, a1.length())
-  count = Int::min(count, a2.length())
-  count = Int::min(count, a3.length())
+  count = Int32::min(count, a1.length())
+  count = Int32::min(count, a2.length())
+  count = Int32::min(count, a3.length())
   let out = []
   for i = 0; i < count; i = i + 1 {
     out.push(f(a0[i], a1[i], a2[i], a3[i]))
@@ -360,10 +360,10 @@ pub fn[A, B, C, D, E, Z] map5(
   let a3 = to_array(v3)
   let a4 = to_array(v4)
   let mut count = a0.length()
-  count = Int::min(count, a1.length())
-  count = Int::min(count, a2.length())
-  count = Int::min(count, a3.length())
-  count = Int::min(count, a4.length())
+  count = Int32::min(count, a1.length())
+  count = Int32::min(count, a2.length())
+  count = Int32::min(count, a3.length())
+  count = Int32::min(count, a4.length())
   let out = []
   for i = 0; i < count; i = i + 1 {
     out.push(f(a0[i], a1[i], a2[i], a3[i], a4[i]))

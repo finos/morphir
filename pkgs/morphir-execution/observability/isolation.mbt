@@ -1,9 +1,9 @@
 ///|
 pub struct Health {
-  priv accepted : Ref[Int]
-  priv filtered : Ref[Int]
-  priv dropped : Ref[Int]
-  priv unavailable : Ref[Int]
+  priv accepted : Ref[Int32]
+  priv filtered : Ref[Int32]
+  priv dropped : Ref[Int32]
+  priv unavailable : Ref[Int32]
 }
 
 ///|

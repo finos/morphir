@@ -19,16 +19,16 @@ fn library_parse(input : Input, cancelled : () -> Bool) -> ParsedLibrary raise {
 priv struct LibraryAdapter {
   limits : LibraryLimits
   cancelled : () -> Bool
-  mut expressions : Int
-  mut calls : Int
-  mut lets : Int
+  mut expressions : Int32
+  mut calls : Int32
+  mut lets : Int32
 }
 
 ///|
 fn LibraryAdapter::visit(
   self : LibraryAdapter,
   loc : @location.Location,
-  depth : Int,
+  depth : Int32,
 ) -> Unit raise {
   library_poll(self.cancelled)
   if depth > self.limits.max_depth ||
@@ -42,7 +42,7 @@ fn LibraryAdapter::visit(
 fn LibraryAdapter::expression(
   self : LibraryAdapter,
   expr : @ast.Expr,
-  depth : Int,
+  depth : Int32,
 ) -> LibraryExpr raise {
   let loc = expr.loc()
   let source = span(loc)

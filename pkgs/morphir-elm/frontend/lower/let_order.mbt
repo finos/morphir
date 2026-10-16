@@ -3,8 +3,8 @@
 /// refer to each other (or one that refers to itself). The ids are declaration
 /// indexes in source order.
 pub(all) enum LetGroup {
-  Single(Int)
-  Recursive(Array[Int])
+  Single(Int32)
+  Recursive(Array[Int32])
 } derive(Eq, Debug)
 
 ///|
@@ -25,25 +25,25 @@ pub extend LetGroup with @debug.Debug::{to_repr}
 /// graph)`), because the `foldl` wraps the first component innermost. A
 /// component of one declaration without a self edge is `Single`; any other is
 /// `Recursive`.
-pub fn let_groups(edges : Array[Array[Int]]) -> Array[LetGroup] {
+pub fn let_groups(edges : Array[Array[Int32]]) -> Array[LetGroup] {
   let n = edges.length()
   let outgoing = adjacency(n, edges)
   // The reversed graph. `from` grows, so each list is ascending, as
   // `IntDict.keys` of the incoming edges is.
-  let incoming : Array[Array[Int]] = Array::makei(n, _ => [])
+  let incoming : Array[Array[Int32]] = Array::makei(n, _ => [])
   for from in 0..<n {
     for to in outgoing[from] {
       incoming[to].push(from)
     }
   }
-  let post_order : Array[Int] = []
+  let post_order : Array[Int32] = []
   for tree in dfs_forest(outgoing, Array::makei(n, i => i)) {
     post_order.append(tree)
   }
   let reverse_post_order = post_order.copy()
   reverse_post_order.rev_in_place()
   let components = dfs_forest(incoming, reverse_post_order)
-  let self_edge = (i : Int) => outgoing[i].contains(i)
+  let self_edge = (i : Int32) => outgoing[i].contains(i)
   let cyclic = components.iter().any(c => c.length() > 1 || self_edge(c[0]))
   if !cyclic {
     return post_order.map(i => Single(i))
@@ -64,9 +64,9 @@ pub fn let_groups(edges : Array[Array[Int]]) -> Array[LetGroup] {
 
 ///|
 /// The outgoing edges of each node: unique, in range and ascending.
-fn adjacency(n : Int, edges : Array[Array[Int]]) -> Array[Array[Int]] {
+fn adjacency(n : Int32, edges : Array[Array[Int32]]) -> Array[Array[Int32]] {
   Array::makei(n, i => {
-    let targets : Array[Int] = []
+    let targets : Array[Int32] = []
     for to in edges[i] {
       if to >= 0 && to < n && !targets.contains(to) {
         targets.push(to)
@@ -83,19 +83,19 @@ fn adjacency(n : Int, edges : Array[Array[Int]]) -> Array[Array[Int]] {
 /// its neighbors in the order of `neighbors`. Each tree lists its nodes in
 /// post-order (a node after all of its descendants).
 fn dfs_forest(
-  neighbors : Array[Array[Int]],
-  seeds : Array[Int],
-) -> Array[Array[Int]] {
+  neighbors : Array[Array[Int32]],
+  seeds : Array[Int32],
+) -> Array[Array[Int32]] {
   let visited = Array::make(neighbors.length(), false)
-  let forest : Array[Array[Int]] = []
+  let forest : Array[Array[Int32]] = []
   for seed in seeds {
     if visited[seed] {
       continue
     }
-    let tree : Array[Int] = []
+    let tree : Array[Int32] = []
     // An explicit stack of (node, index of the next neighbor) keeps deep let
     // chains off the call stack.
-    let stack : Array[(Int, Int)] = [(seed, 0)]
+    let stack : Array[(Int32, Int32)] = [(seed, 0)]
     visited[seed] = true
     while stack.last() is Some((node, next)) {
       if next < neighbors[node].length() {

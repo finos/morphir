@@ -9,7 +9,7 @@ pub fn compile_project(
   sources : Array[ElmSource],
   package_name : String,
   exposed : Array[String],
-  output? : OutputModules = Parity,
+  output~ : OutputModules = Parity,
 ) -> @ir.IRFile raise ElmFailed {
   let package_name = elm_package(package_name)
   if exposed.is_empty() {
@@ -307,7 +307,7 @@ fn declaration_doc(d : @ast.Declaration) -> @ast.Node[String]? {
 ///|
 /// The doc of the declaration that starts on `start_row`, as elm-syntax 7 finds it: the first comment that ends
 /// on the row before, when it is a `{-|` comment.
-fn DocComments::take(self : DocComments, start_row : Int) -> String? {
+fn DocComments::take(self : DocComments, start_row : Int32) -> String? {
   for i, c in self.comments {
     if c.range.end.row + 1 == start_row {
       if self.used[i] || !c.value.has_prefix("{-|") {
@@ -336,7 +336,7 @@ fn module_doc(docs : DocComments) -> String? {
 ///|
 /// `text` without its first `n` and last `n` UTF-16 code units, as Elm's `String.dropLeft` and
 /// `String.dropRight` do. Empty when `text` is shorter than `2 * n`.
-fn drop_ends(text : String, n : Int) -> String {
+fn drop_ends(text : String, n : Int32) -> String {
   if text.length() < 2 * n {
     ""
   } else {
@@ -351,7 +351,7 @@ fn drop_ends(text : String, n : Int) -> String {
 fn declaration_start_row(
   d : @ast.Node[@ast.Declaration],
   content : String,
-) -> Int {
+) -> Int32 {
   match d.value {
     FunctionDeclaration(f) =>
       match f.signature {
@@ -368,7 +368,7 @@ fn declaration_start_row(
 ///|
 /// The row of the first token at or after `from`, past whitespace and comments. Columns count code points, as in
 /// krueger.
-fn next_token_row(content : String, from : @ast.Location) -> Int {
+fn next_token_row(content : String, from : @ast.Location) -> Int32 {
   let chars = content.to_array()
   let mut row = 1
   let mut column = 1

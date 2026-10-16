@@ -35,7 +35,7 @@ pub extend Severity with Eq::{equal, not_equal}
 
 ///|
 pub(all) struct Log {
-  id : Int
+  id : Int32
   time : String
   operation : String
   severity : Severity
@@ -77,12 +77,12 @@ pub extend Diagnostic with Eq::{equal, not_equal}
 ///|
 /// Diagnostics from one operation run, scoped to the document revision it read.
 pub(all) struct Report {
-  id : Int
+  id : Int32
   time : String
   operation : String
-  job : Int
+  job : Int32
   scope : String
-  revision : Int
+  revision : Int32
   diagnostics : Array[Diagnostic]
 } derive(Eq)
 
@@ -91,7 +91,7 @@ pub extend Report with Eq::{equal, not_equal}
 
 ///|
 pub(all) struct Outcome {
-  id : Int
+  id : Int32
   time : String
   operation : String
   severity : Severity
@@ -110,7 +110,7 @@ pub(all) struct State {
   logs : Array[Log]
   reports : Array[Report]
   outcomes : Array[Outcome]
-  next : Int
+  next : Int32
 } derive(Eq)
 
 ///|
@@ -128,19 +128,19 @@ pub(all) enum Action {
 }
 
 ///|
-pub let max_logs : Int = 200
+pub let max_logs : Int32 = 200
 
 ///|
-pub let max_reports : Int = 20
+pub let max_reports : Int32 = 20
 
 ///|
-pub let max_diagnostics : Int = 50
+pub let max_diagnostics : Int32 = 50
 
 ///|
-pub let max_outcomes : Int = 50
+pub let max_outcomes : Int32 = 50
 
 ///|
-pub let max_text : Int = 4000
+pub let max_text : Int32 = 4000
 
 ///|
 let tabs : Array[Tab] = [Logs, Diagnostics, Output]
@@ -172,7 +172,7 @@ fn tab_label(tab : Tab) -> String {
 }
 
 ///|
-fn tab_index(tab : Tab) -> Int {
+fn tab_index(tab : Tab) -> Int32 {
   match tab {
     Logs => 0
     Diagnostics => 1
@@ -240,7 +240,7 @@ fn bounded(text : String) -> String {
 }
 
 ///|
-fn[T] keep_last(items : Array[T], item : T, limit : Int) -> Array[T] {
+fn[T] keep_last(items : Array[T], item : T, limit : Int32) -> Array[T] {
   let start = if items.length() >= limit {
     items.length() - limit + 1
   } else {
@@ -308,9 +308,9 @@ pub fn State::report(
   self : State,
   time : String,
   operation : String,
-  job : Int,
+  job : Int32,
   scope : String,
-  revision : Int,
+  revision : Int32,
   diagnostics : Array[Diagnostic],
 ) -> State {
   let kept = diagnostics[:if diagnostics.length() < max_diagnostics {
@@ -357,7 +357,7 @@ pub fn State::outcome(
   severity : Severity,
   title : String,
   lines : Array[String],
-  terminal? : @outcomes.Summary? = None,
+  terminal~ : @outcomes.Summary? = None,
 ) -> State {
   let entry = {
     terminal,
@@ -383,7 +383,7 @@ pub fn State::outcome(
 pub fn State::is_current(
   self : State,
   report : Report,
-  revisions : Map[String, Int],
+  revisions : Map[String, Int32],
 ) -> Bool {
   let newest = self.reports
     .iter()
@@ -495,7 +495,10 @@ pub fn terminal_diagnostics(
 
 ///|
 /// Errors and warnings in current reports.
-pub fn State::problem_count(self : State, revisions : Map[String, Int]) -> Int {
+pub fn State::problem_count(
+  self : State,
+  revisions : Map[String, Int32],
+) -> Int32 {
   self.reports
   .iter()
   .filter(report => self.is_current(report, revisions))
@@ -523,7 +526,7 @@ fn text(value : Json, key : String) -> String {
 }
 
 ///|
-fn number(value : Json, key : String) -> Int? {
+fn number(value : Json, key : String) -> Int32? {
   match field(value, key) {
     Number(n, ..) => Some(n.to_int())
     _ => None
@@ -760,7 +763,7 @@ pub(all) struct Props {
   state : State
   status : String
   busy : Bool
-  revisions : Map[String, Int]
+  revisions : Map[String, Int32]
 }
 
 ///|
@@ -813,7 +816,7 @@ fn severity_class(severity : Severity) -> String {
 }
 
 ///|
-fn plural(count : Int, noun : String) -> String {
+fn plural(count : Int32, noun : String) -> String {
   count.to_string() + " " + noun + (if count == 1 { "" } else { "s" })
 }
 
@@ -851,7 +854,7 @@ fn logs_view(state : State) -> Array[@html.Html] {
 ///|
 fn diagnostics_view(
   state : State,
-  revisions : Map[String, Int],
+  revisions : Map[String, Int32],
 ) -> Array[@html.Html] {
   if state.reports.is_empty() {
     return [

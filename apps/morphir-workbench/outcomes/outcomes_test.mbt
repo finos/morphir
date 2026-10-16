@@ -1,5 +1,5 @@
 ///|
-fn reply(calls : Array[Json], cleanup? : Json = Json::null()) -> Json {
+fn reply(calls : Array[Json], cleanup~ : Json = Json::null()) -> Json {
   {
     "success": true,
     "typed": { "type": "bool", "value": true },

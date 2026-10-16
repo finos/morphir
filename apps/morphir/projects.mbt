@@ -4,7 +4,7 @@ fn print_projects(
   frontends : Array[String],
   targets : Array[String],
   mode : OutputMode,
-) -> Int {
+) -> Int32 {
   let matches = projects.filter(project => {
     (
       frontends.is_empty() ||

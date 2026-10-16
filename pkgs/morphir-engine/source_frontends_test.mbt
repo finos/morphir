@@ -1,5 +1,5 @@
 ///|
-fn rich_files(backend? : String = "checkpoint") -> Map[String, String] {
+fn rich_files(backend~ : String = "checkpoint") -> Map[String, String] {
   Map::from_array([
     (
       "morphir.toml",

@@ -146,7 +146,7 @@ fn check_cycles(modules : Array[@resolve.ParsedModule]) -> Unit raise ElmFailed 
     by_name[dotted(m.name)] = m
   }
   // 0 = new, 1 = on the stack, 2 = done
-  let state : Map[String, Int] = Map([])
+  let state : Map[String, Int32] = Map([])
   let problems : Array[ElmProblem] = []
   fn visit(name : String, stack : Array[String]) -> Unit {
     if state.get(name) is Some(_) || !problems.is_empty() {

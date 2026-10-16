@@ -230,7 +230,7 @@ the original API's stage sequence is unchanged.
 
 ## Pins and acceptance
 
-The parser is `moonbitlang/parser@0.4.1`, lexer `moonbitlang/lexer@0.4.0`, and Ion
+The parser is `moonbitlang/parser@0.4.5`, lexer `moonbitlang/lexer@0.4.3`, and Ion
 is `moonrockz/ion@0.3.0`. Ion remains the preferred engine representation. Current
 Morphir JSON serialization remains supported and is checked in frontend tests.
 
@@ -244,7 +244,7 @@ moon test -p finos/morphir-moonbit-frontend --target all
 source and generated libraries in a private workspace using supplied SDK source,
 then compares their Boolean truth tables with independent expectations and Scheme
 results on JS, native, Wasm and Wasm GC, in debug and release modes. It uses compiler
-and core `0.10.14+7d59c7ec9` and the SDK's pinned semantic bindings. It performs no
+and core `0.10.15+943464bfa` and the SDK's pinned semantic bindings. It performs no
 registry acquisition in the external workspace. The acceptance executable is a
 test fixture, not an engine integration API.
 

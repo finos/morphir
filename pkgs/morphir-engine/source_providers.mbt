@@ -39,9 +39,9 @@ pub(all) struct SourceCapabilities {
   summary : String
   supported : Array[String]
   excluded : Array[String]
-  max_documents : Int?
+  max_documents : Int32?
   incremental : Bool
-  limits : Map[String, Int]
+  limits : Map[String, Int32]
 }
 
 ///|

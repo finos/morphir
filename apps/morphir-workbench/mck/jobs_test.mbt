@@ -23,10 +23,10 @@ fn job_offer() -> Json {
 
 ///|
 fn job_receipt(
-  sequence : Int,
+  sequence : Int32,
   state : String,
-  acknowledged? : Bool = false,
-  outcomes? : Json = Json::null(),
+  acknowledged~ : Bool = false,
+  outcomes~ : Json = Json::null(),
 ) -> Json {
   {
     "contractVersion": "0.1.0-draft.1",

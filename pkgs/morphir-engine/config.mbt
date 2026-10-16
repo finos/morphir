@@ -42,7 +42,7 @@ fn Config::apply(
   self : Config,
   runtime : @scheme.Runtime,
   script : String,
-  origin? : String = "",
+  origin~ : String = "",
 ) -> Unit raise {
   let entries = runtime.eval(script).to_array()
   for entry in entries {

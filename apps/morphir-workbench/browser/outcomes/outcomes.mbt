@@ -12,7 +12,7 @@ fn kind_class(kind : @terminal_model.Kind) -> String {
 /// Shared by evaluation and history. Native disclosure does not remount editors.
 pub fn view(
   projection : @terminal_model.Projection,
-  show_values? : Bool = false,
+  show_values~ : Bool = false,
 ) -> @html.Html {
   match projection {
     Absent => @html.div(hidden=true, "")

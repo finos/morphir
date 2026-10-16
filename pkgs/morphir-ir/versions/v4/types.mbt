@@ -3,10 +3,10 @@
 
 ///|
 pub(all) struct SourceLocation {
-  start_line : Int
-  start_column : Int
-  end_line : Int
-  end_column : Int
+  start_line : Int32
+  start_column : Int32
+  end_line : Int32
+  end_column : Int32
 } derive(Eq, Debug)
 
 ///|

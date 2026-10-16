@@ -14,7 +14,7 @@ pub fn to_bigint(n : Integer) -> @bigint.BigInt {
 }
 
 ///|
-pub fn from_int(n : Int) -> Integer {
+pub fn from_int(n : Int32) -> Integer {
   from_bigint(@bigint.BigInt::from_int(n))
 }
 
@@ -62,7 +62,7 @@ pub fn to_string(n : Integer) -> String {
 }
 
 ///|
-pub fn to_int(n : Integer) -> Int? {
+pub fn to_int(n : Integer) -> Int32? {
   if n.value.compare_int(-2147483648) < 0 || n.value.compare_int(2147483647) > 0 {
     None
   } else {

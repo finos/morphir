@@ -1,6 +1,6 @@
 ///|
 /// Independently authored capture and namespace fixtures for compiler consumers.
-pub fn naming_library(reverse? : Bool = false) -> @ir.IRFile raise {
+pub fn naming_library(reverse~ : Bool = false) -> @ir.IRFile raise {
   let boolean = scalar("morphir/SDK:basics#bool")
   let a = { ..attrs(), inferred_type: Some(boolean), }
   fn literal(value : Bool) -> @ir.Value {
@@ -100,6 +100,26 @@ pub fn naming_library(reverse? : Bool = false) -> @ir.IRFile raise {
       },
     ),
   )
+  // These IR types must compile without shadowing MoonBit 0.10.15 built-ins.
+  let types : Array[
+    (@ir.Name, @ir.AccessControlled[@ir.Documented[@ir.TypeDefinition]]),
+  ] = [
+    "int-16", "int-32", "u-int-16", "u-int-32", "fixed-array", "bytes-view", "string-view",
+  ].map(name => {
+    (
+      @ir.Name::parse(name),
+      {
+        access: @ir.Access::Public,
+        value: {
+          doc: None,
+          value: @ir.TypeDefinition::CustomTypeDefinition([], {
+            access: @ir.Access::Public,
+            value: Map::from_array([(@ir.Name::parse("wrap-" + name), [])]),
+          }),
+        },
+      },
+    )
+  })
   let modules : Array[(@ir.Path, @ir.AccessControlled[@ir.ModuleDefinition])] = [
     (
       @ir.Path::parse("main"),
@@ -107,7 +127,7 @@ pub fn naming_library(reverse? : Bool = false) -> @ir.IRFile raise {
         access: @ir.Access::Public,
         value: {
           doc: None,
-          types: Map([]),
+          types: Map::from_array(if reverse { types.rev() } else { types }),
           values: Map::from_array(if reverse { entries.rev() } else { entries }),
         },
       },

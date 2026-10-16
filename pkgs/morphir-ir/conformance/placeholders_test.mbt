@@ -29,7 +29,7 @@ fn ph_typed(t : @current.Type) -> @current.ValueAttributes {
 ///|
 /// `test x = let y z = z in y x`, with the let signature `t8 -> t8` and the top-level input `x : t1`. Every node
 /// has an inferred type, so the file can be written as classic IR. `let_var` replaces `t8`.
-fn ph_file(let_var? : @current.Type = ph_var("t-8")) -> @current.IRFile {
+fn ph_file(let_var~ : @current.Type = ph_var("t-8")) -> @current.IRFile {
   let t8 = let_var
   let let_def : @current.ValueDefinition = ExpressionBody(
     [(ph_name("z"), t8)],

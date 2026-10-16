@@ -5,7 +5,7 @@ fn Solver::new(expand : (String, Array[Ty]) -> Ty?) -> Solver {
 
 ///|
 /// A new unbound meta at `level` with the class set `classes`.
-fn Solver::fresh(self : Solver, level : Int, classes : Array[String]) -> Ty {
+fn Solver::fresh(self : Solver, level : Int32, classes : Array[String]) -> Ty {
   let id = self.metas.length()
   self.metas.push(Unbound(level~, classes~))
   Meta(id)
@@ -47,7 +47,7 @@ fn Solver::prune(self : Solver, t : Ty) -> Ty {
 
 ///|
 /// Whether the meta `id` occurs in `t`.
-fn Solver::occurs(self : Solver, id : Int, t : Ty) -> Bool {
+fn Solver::occurs(self : Solver, id : Int32, t : Ty) -> Bool {
   match self.prune(t) {
     Meta(other) => other == id
     Con(_, items) | Tup(items) => items.iter().any(fn(x) { self.occurs(id, x) })
@@ -61,7 +61,7 @@ fn Solver::occurs(self : Solver, id : Int, t : Ty) -> Bool {
 
 ///|
 /// Lowers the level of every unbound meta in `t` to at most `level`.
-fn Solver::adjust_levels(self : Solver, level : Int, t : Ty) -> Unit {
+fn Solver::adjust_levels(self : Solver, level : Int32, t : Ty) -> Unit {
   match self.prune(t) {
     Meta(id) =>
       if self.metas[id] is Unbound(level=own, classes~) && own > level {
@@ -129,8 +129,8 @@ fn Solver::unify(
 /// Links two different metas. The classes join and the lower level wins.
 fn Solver::merge(
   self : Solver,
-  a : Int,
-  b : Int,
+  a : Int32,
+  b : Int32,
   e : Ty,
   f : Ty,
 ) -> Unit raise Mismatch {
@@ -153,7 +153,7 @@ fn Solver::merge(
 /// and `id` is bound to the expansion if it no longer occurs there.
 fn Solver::bind(
   self : Solver,
-  id : Int,
+  id : Int32,
   t : Ty,
   e : Ty,
   f : Ty,
@@ -290,7 +290,7 @@ fn row(fields : Map[String, Ty], tail : Ty) -> Ty {
 
 ///|
 /// The level for a fresh row between two tails: the lower level of the tails that are metas.
-fn Solver::row_level(self : Solver, r1 : Ty, r2 : Ty) -> Int {
+fn Solver::row_level(self : Solver, r1 : Ty, r2 : Ty) -> Int32 {
   let levels = [r1, r2].filter_map(fn(r) {
     match r {
       Meta(id) =>

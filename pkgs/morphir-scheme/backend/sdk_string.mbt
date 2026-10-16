@@ -25,7 +25,7 @@ fn sdk_character_list_value(
 }
 
 ///|
-fn sdk_indexes_value(value : @sdk_list.List[Int]) -> @scheme.Value {
+fn sdk_indexes_value(value : @sdk_list.List[Int32]) -> @scheme.Value {
   @scheme.list(
     @sdk_list.to_array(value).map(index => {
       exact_integer(@integer.from_int(index))

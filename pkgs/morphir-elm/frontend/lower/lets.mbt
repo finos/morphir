@@ -13,7 +13,7 @@ fn Lowering::let_block(
 ) -> @ir.Value raise LowerError {
   let declarations = block.declarations
   // As `declarationIndexForName` (`Dict.fromList`: a later name wins).
-  let index_of : Map[String, Int] = Map([])
+  let index_of : Map[String, Int32] = Map([])
   for i, declaration in declarations {
     for name in names_bound_by_declaration(declaration.value) {
       index_of[name] = i

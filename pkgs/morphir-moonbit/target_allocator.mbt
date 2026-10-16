@@ -7,7 +7,7 @@ fn candidate(
   original : String?,
   source : @diagnostics.Span?,
   upper : Bool,
-  requested? : String? = None,
+  requested~ : String? = None,
 ) -> NamingCandidate {
   let semantic = render_name(name, upper)
   let base = match original {
@@ -43,7 +43,7 @@ fn allocate_namespace(
   plan : TargetNames,
   candidates : Array[NamingCandidate],
   blocked : Map[String, Bool],
-  reserve_global? : Bool = true,
+  reserve_global~ : Bool = true,
 ) -> Unit {
   let exact = candidates.filter(c => c.requested is Some(_))
   let blocked = blocked.copy()

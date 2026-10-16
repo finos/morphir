@@ -19,7 +19,7 @@ pub(all) struct ContentReport {
   projects : Array[LibraryProject]
   diagnostics : Array[Diagnostic]
   warnings : Array[Diagnostic]
-  processed : Int
+  processed : Int32
 }
 
 ///|
@@ -162,7 +162,7 @@ pub fn Engine::execute(
   self : Engine,
   plan : Plan,
   host : Host,
-  cancelled? : () -> Bool = fn() { false },
+  cancelled~ : () -> Bool = fn() { false },
 ) -> Report {
   if plan.requires_byte_read() || plan.requires_byte_write() {
     return {

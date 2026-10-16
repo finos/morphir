@@ -39,7 +39,7 @@ fn Runtime::bind(
   self : Runtime,
   closure : Closure,
   args : Array[Value],
-) -> Int raise SchemeError {
+) -> Int32 raise SchemeError {
   if closure.owner != self.owner {
     raise Invalid("Closure belongs to another runtime")
   }
@@ -63,7 +63,7 @@ fn Runtime::bind(
 fn Runtime::sequence(
   self : Runtime,
   body : Array[Datum],
-  env : Int,
+  env : Int32,
 ) -> Value raise {
   if body.is_empty() {
     return Unit
@@ -79,7 +79,7 @@ fn Runtime::sequence(
 fn Runtime::evaluate(
   self : Runtime,
   datum : Datum,
-  environment : Int,
+  environment : Int32,
 ) -> Value raise {
   self.depth += 1
   defer {
@@ -95,7 +95,7 @@ fn Runtime::evaluate(
 fn Runtime::evaluate_loop(
   self : Runtime,
   datum : Datum,
-  environment : Int,
+  environment : Int32,
 ) -> Value raise {
   let mut current = datum
   let mut env = environment
@@ -293,7 +293,7 @@ fn Runtime::evaluate_loop(
 ///|
 pub fn bindings(
   datum : Datum,
-  sequential? : Bool = false,
+  sequential~ : Bool = false,
 ) -> Array[(String, Datum)] raise SchemeError {
   let seen : Map[String, Bool] = Map([])
   proper(datum).map(binding => {

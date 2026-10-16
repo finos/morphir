@@ -1,6 +1,6 @@
 ///|
 pub(all) suberror SpecError {
-  SpecError(line~ : Int, column~ : Int, message~ : String)
+  SpecError(line~ : Int32, column~ : Int32, message~ : String)
 } derive(Eq, Debug)
 
 ///|

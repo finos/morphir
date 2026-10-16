@@ -16,7 +16,7 @@ fn lower_type(
   ctx : Lowering,
   tpe : @ir.Type,
   context : String,
-  trail? : Array[@ir.FQName] = [],
+  trail~ : Array[@ir.FQName] = [],
 ) -> Lowered raise {
   if !type_attrs(tpe).constraints.is_empty() {
     raise Invalid(

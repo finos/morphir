@@ -1,7 +1,7 @@
 ///|
 fn files(
-  backend? : String = "checkpoint",
-  component? : Bool = false,
+  backend~ : String = "checkpoint",
+  component~ : Bool = false,
 ) -> Map[String, String] {
   Map::from_array([
     (
@@ -173,7 +173,7 @@ test "MoonBit dry runs describe the parser without parsing malformed source" {
   let planned = plan(engine, snapshot)
   let descriptor = planned.source_frontends()[0]
   assert_eq(descriptor.profile, Some("moonbit-model-bool-v1"))
-  assert_eq(descriptor.dependencies["moonbitlang/parser"], "0.4.1")
+  assert_eq(descriptor.dependencies["moonbitlang/parser"], "0.4.5")
   assert_eq(descriptor.unit_id, "Main")
   let report = engine.execute_content(planned, fn(path, _) {
     @data.Text(snapshot[path])
@@ -245,7 +245,7 @@ test "multiple MoonBit source files produce independent logical units" {
 }
 
 ///|
-fn library_files(backend? : String = "checkpoint") -> Map[String, String] {
+fn library_files(backend~ : String = "checkpoint") -> Map[String, String] {
   let snapshot = files(backend~, component=true)
   snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
     old="language='moonbit'",

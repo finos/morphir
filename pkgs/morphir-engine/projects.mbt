@@ -142,9 +142,9 @@ pub fn Engine::list_projects(
   self : Engine,
   host : Host,
   workspace : @workspace.Workspace,
-  script? : String = "",
-  cancelled? : () -> Bool = fn() { false },
-  bind_runtime? : (@scheme.Runtime) -> Unit raise = fn(_) { () },
+  script~ : String = "",
+  cancelled~ : () -> Bool = fn() { false },
+  bind_runtime~ : (@scheme.Runtime) -> Unit raise = fn(_) { () },
 ) -> Array[ProjectInfo] raise {
   workspace.projects.map(fn(project) raise {
     if cancelled() {

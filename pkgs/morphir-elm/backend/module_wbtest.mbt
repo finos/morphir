@@ -16,8 +16,8 @@ fn defined(
 ///|
 fn module_with(
   values : Array[(@ir.Name, @ir.Access, String?, ValueSource)],
-  doc? : String? = None,
-  entry_points? : Map[String, @ir.EntryPoint] = Map([]),
+  doc~ : String? = None,
+  entry_points~ : Map[String, @ir.EntryPoint] = Map([]),
 ) -> ModuleInput {
   {
     package_name: @ir.Path::parse("acme/app") catch {

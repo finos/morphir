@@ -68,7 +68,7 @@ priv struct Lowerer {
   boolean : @ir.Type
   limits : Limits
   cancelled : () -> Bool
-  mut expressions : Int
+  mut expressions : Int32
   names : BinderNames
   origins : Array[@ion.IonValue]
 }
@@ -165,7 +165,7 @@ fn Lowerer::equality(
 fn Lowerer::lower(
   self : Lowerer,
   expr : @ast.Expr,
-  depth : Int,
+  depth : Int32,
 ) -> @ir.Value raise {
   let loc = expr.loc()
   if (self.cancelled)() {

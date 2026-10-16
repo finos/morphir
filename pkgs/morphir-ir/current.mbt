@@ -47,4 +47,4 @@ pub using @v4 {
 }
 
 ///|
-pub const CURRENT_FORMAT_MAJOR : UInt = 4U
+pub const CURRENT_FORMAT_MAJOR : UInt32 = 4U

@@ -314,7 +314,7 @@ fn signature_in(
 
 ///|
 /// Counts the value and pattern nodes of a file, and the nodes that have an `inferred_type`.
-fn count_nodes(file : @ir.IRFile) -> (Int, Int) {
+fn count_nodes(file : @ir.IRFile) -> (Int32, Int32) {
   guard file.distribution is Library(_, _, def) else { abort("not a library") }
   let counts = [0, 0]
   let visit = fn(a : @ir.ValueAttributes) {

@@ -45,7 +45,7 @@ extern "js" fn pretty(text : String) -> String =
   #| (text) => JSON.stringify(JSON.parse(text), null, 2)
 
 ///|
-fn tree(value : Json, label : String, depth : Int) -> @html.Html {
+fn tree(value : Json, label : String, depth : Int32) -> @html.Html {
   let kind = text(value, "kind")
   let compound = ["record", "list", "tuple", "constructor"].contains(kind)
   let children = []

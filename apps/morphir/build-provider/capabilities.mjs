@@ -5,7 +5,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {release,version as osVersion} from 'node:os';
 import {hash,fileIdentity,treeIdentity} from './identity.mjs';
-export const stableVersion='0.10.14+7d59c7ec9';
+export const stableVersion='0.10.15+943464bfa';
 export function run(program,args,timeout=10000) {
   const result=spawnSync(program,args,{encoding:'utf8',timeout,maxBuffer:1048576,env:{...process.env,MOONBIT_NEW_NATIVE:'0'}});
   assert.ok(!result.error,result.error?.message);assert.equal(result.status,0,result.stderr);return result.stdout+result.stderr;
@@ -31,7 +31,7 @@ export function capabilities(request) {
     assert.equal(new Set(pin.targets).size,pin.targets.length,'execution.duplicate_target');
     if(pin.targets.includes('llvm')) {
       assert.deepEqual(pin.targets,['llvm'],'execution.mixed_compiler_targets');
-      assert.equal(version,'0.10.14+6b3b9bf5a-nightly','execution.unverified_llvm_pin');
+      assert.equal(version,'0.10.15+1e9f6672d-nightly','execution.unverified_llvm_pin');
       for(const key of ['compilerArchiveIdentity','coreArchiveIdentity'])assert.match(pin.acquisition?.[key]||'',/^[a-f0-9]{64}$/);
       for(const key of ['compilerUrl','coreUrl'])assert.ok(pin.acquisition?.[key]?.startsWith('https://cli.moonbitlang.com/'));
     } else {

@@ -48,7 +48,7 @@ try {
   const moonc=join(home,'bin',process.platform==='win32'?'moonc.exe':'moonc');
   const actualVersion=await execute(moonc,['-v'],dirname(requestPath),home);
   if(capability)assert.ok(actualVersion.startsWith('v'+compilerVersion+' '),'execution.compiler_version');
-  else assert.match(actualVersion,/^v0\.10\.14\+7d59c7ec9 /);
+  else assert.match(actualVersion,/^v0\.10\.15\+943464bfa /);
   if(capability) { assert.equal(capability.target,request.target);assertRuntime(capability); }
   assert.equal(manifest(join(home,'lib/core')).version,compilerVersion,'Matching core version required');
   const compilerIdentity=hash(Buffer.concat([readFileSync(moonc),readFileSync(moon)]));

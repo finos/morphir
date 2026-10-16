@@ -9,8 +9,8 @@ let sig_elm : String = "module My.Pkg.Sig exposing (Amount)\n\n\ntype alias Amou
 
 ///|
 fn elm_files(
-  exposed? : String = "[\"Api\"]",
-  util? : String = util_elm,
+  exposed~ : String = "[\"Api\"]",
+  util~ : String = util_elm,
 ) -> Map[String, String] {
   Map::from_array([
     (
@@ -30,7 +30,7 @@ fn elm_files(
 /// The files of `elm_files` with a `morphir.toml` project file, for the tests that check TOML behaviour.
 /// `exposed` is a TOML line for the project table.
 fn toml_files(
-  exposed? : String = "\nexposed_modules=['Api']",
+  exposed~ : String = "\nexposed_modules=['Api']",
 ) -> Map[String, String] {
   let files = elm_files()
   files.remove("morphir.json")
@@ -45,8 +45,8 @@ fn toml_files(
 /// the request overlay; without them the project file decides.
 fn elm_report(
   files : Map[String, String],
-  backend? : String = "",
-  format? : String = "",
+  backend~ : String = "",
+  format~ : String = "",
 ) -> @engine.ContentReport raise {
   let engine = @engine.Engine::new()..register_source_provider(
     @adapter.provider(),
@@ -208,7 +208,7 @@ test "review I1: a public signature of a Public module names a type of a Private
 
 ///|
 /// A project whose exposed `Api` has `f : Int -> Int`, an `if` with `branches` branches.
-fn if_chain_files(branches : Int) -> Map[String, String] {
+fn if_chain_files(branches : Int32) -> Map[String, String] {
   let source = StringBuilder()
   source.write_string(
     "module My.Pkg.Api exposing (f)\n\n\nf : Int -> Int\nf n =\n    if n == 0 then\n        0\n\n",

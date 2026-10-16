@@ -6,8 +6,8 @@ pub fn Engine::run(
   self : Engine,
   host : Host,
   input : Input,
-  config? : String = "",
-  bind_runtime? : (@scheme.Runtime) -> Unit raise = fn(_) { () },
+  config~ : String = "",
+  bind_runtime~ : (@scheme.Runtime) -> Unit raise = fn(_) { () },
 ) -> Report {
   let artifacts : Array[Artifact] = []
   let diagnostics : Array[Diagnostic] = []

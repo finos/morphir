@@ -16,7 +16,7 @@ pub extend FieldValue with @debug.Debug::{to_repr}
 pub(all) struct FrontMatter {
   fields : Map[String, FieldValue]
   body : String
-  body_line : Int
+  body_line : Int32
 }
 
 ///|

@@ -21,7 +21,7 @@ priv struct RetainedLibrary {
 /// so caller mutation cannot change this response's accepted inventory.
 pub struct Snapshot {
   priv libraries : Array[RetainedLibrary]
-  priv root : Int
+  priv root : Int32
   priv core : String
   priv metadata : String?
 }

@@ -4,7 +4,7 @@ fn input_schema(
   tpe : @ir.Type,
   types : Map[String, @ir.TypeDefinition],
   variables : Map[@ir.Name, Json],
-  depth : Int,
+  depth : Int32,
 ) -> Json raise {
   if depth > 24 {
     raise @scheme.Unsupported(

@@ -23,7 +23,7 @@ pub fn elm_words(text : String) -> Array[String] {
     } else if c >= 'A' && c <= 'Z' {
       flush()
       digits = false
-      current.val.write_char(Int::unsafe_to_char(c.to_int() + 32))
+      current.val.write_char(Int32::unsafe_to_char(c.to_int() + 32))
     } else if c >= 'a' && c <= 'z' {
       if digits {
         flush()

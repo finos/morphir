@@ -16,7 +16,7 @@ fn matches(
   pattern : @ir.Pattern,
   value : @scheme.Value,
   bindings : Map[String, @scheme.Value],
-  depth : Int,
+  depth : Int32,
 ) -> Bool raise {
   if depth > 256 {
     raise @scheme.Limit("Pattern depth")
@@ -66,7 +66,7 @@ fn match_items(
   patterns : Array[@ir.Pattern],
   values : Array[@scheme.Value],
   bindings : Map[String, @scheme.Value],
-  depth : Int,
+  depth : Int32,
 ) -> Bool raise {
   if patterns.length() != values.length() {
     return false
@@ -83,7 +83,7 @@ fn match_items(
 fn register_constructor(
   runtime : @scheme.Runtime,
   name : String,
-  arity : Int,
+  arity : Int32,
 ) -> Unit raise {
   if arity < 0 || arity > 256 {
     raise @scheme.Invalid("Invalid constructor arity")
@@ -114,8 +114,8 @@ fn register_constructor(
 /// Install the runtime contract used by emitted Scheme. No file or network capabilities.
 pub fn install(
   runtime : @scheme.Runtime,
-  accelerators? : Bool = true,
-  model_errors? : Bool = false,
+  accelerators~ : Bool = true,
+  model_errors~ : Bool = false,
 ) -> Unit raise {
   runtime.define_native("%morphir-tag", fn(_rt, args) raise {
     if args.is_empty() {
@@ -224,7 +224,7 @@ pub fn install(
 ///|
 pub fn evaluate(
   value : @ir.Value,
-  limits? : @scheme.Limits = @scheme.Limits::default(),
+  limits~ : @scheme.Limits = @scheme.Limits::default(),
 ) -> @scheme.Value raise {
   let runtime = @scheme.Runtime::new(limits~)
   install(runtime)
@@ -236,7 +236,7 @@ pub fn run_file(
   file : @ir.IRFile,
   entry : @ir.FQName,
   arguments : Array[@scheme.Value],
-  limits? : @scheme.Limits = @scheme.Limits::default(),
+  limits~ : @scheme.Limits = @scheme.Limits::default(),
 ) -> @scheme.Value raise {
   let runtime = @scheme.Runtime::new(limits~)
   install(runtime)
@@ -274,7 +274,7 @@ pub fn replace_native(
 pub fn register_external(
   runtime : @scheme.Runtime,
   external_name : String,
-  arity : Int,
+  arity : Int32,
   procedure : (@scheme.Runtime, Array[@scheme.Value]) -> @scheme.Value raise,
 ) -> Unit raise @scheme.SchemeError {
   runtime.register_native_binding("external:" + external_name, arity, procedure)
@@ -284,7 +284,7 @@ pub fn register_external(
 pub fn replace_external(
   runtime : @scheme.Runtime,
   external_name : String,
-  arity : Int,
+  arity : Int32,
   procedure : (@scheme.Runtime, Array[@scheme.Value]) -> @scheme.Value raise,
 ) -> Unit raise @scheme.SchemeError {
   runtime.replace_native_binding("external:" + external_name, arity, procedure)
@@ -295,7 +295,7 @@ pub fn replace_external(
 pub fn register_accelerator(
   runtime : @scheme.Runtime,
   name : @ir.FQName,
-  arity : Int,
+  arity : Int32,
   procedure : (@scheme.Runtime, Array[@scheme.Value]) -> @scheme.Value raise,
 ) -> Unit raise @scheme.SchemeError {
   runtime.register_native_binding(
@@ -309,7 +309,7 @@ pub fn register_accelerator(
 pub fn replace_accelerator(
   runtime : @scheme.Runtime,
   name : @ir.FQName,
-  arity : Int,
+  arity : Int32,
   procedure : (@scheme.Runtime, Array[@scheme.Value]) -> @scheme.Value raise,
 ) -> Unit raise @scheme.SchemeError {
   runtime.replace_native_binding(

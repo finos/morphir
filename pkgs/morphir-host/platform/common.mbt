@@ -5,7 +5,7 @@ pub(all) suberror IOError {
 
 ///|
 #cfg(not(target="wasm-gc"))
-fn check(code : Int, operation : String) -> Unit raise {
+fn check(code : Int32, operation : String) -> Unit raise {
   if code != 0 {
     raise IOError(operation + ": host error " + code.to_string())
   }
@@ -21,7 +21,7 @@ pub fn bytes_supported() -> Bool {
 #cfg(any(target="wasm", target="wasm-gc"))
 pub fn file_chunks(
   _path : String,
-  _limit : Int,
+  _limit : Int32,
   _consume : (Bytes) -> Unit raise,
 ) -> Unit raise {
   raise IOError(

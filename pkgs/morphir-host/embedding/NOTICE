@@ -1,7 +1,7 @@
 Morphir's host adapter code is licensed under Apache-2.0.
 
 The generated browser worker includes the MoonBit compiler from
-@moonbit/moonc-worker 0.1.202609203, compiler revision 0.10.14+7d59c7ec9.
+@moonbit/moonc-worker 0.1.202610123, compiler revision 0.10.15+943464bfa.
 Copyright (C) 2024 International Digital Economy Academy.
 The compiler's upstream license is reproduced in THIRD_PARTY_LICENSE.txt.
-Upstream source: https://github.com/moonbitlang/moonbit-compiler/tree/v0.10.14%2B7d59c7ec9
+Upstream source: https://github.com/moonbitlang/moonbit-compiler/tree/v0.10.15%2B943464bfa

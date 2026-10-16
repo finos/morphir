@@ -10,7 +10,7 @@ fn identity() -> @jobs.Identity raise {
 }
 
 ///|
-fn offer(cancel? : Bool = true) -> @jobs.Offer raise {
+fn offer(cancel~ : Bool = true) -> @jobs.Offer raise {
   @jobs.Offer::from_json({
     "profile": "morphir/workbench/jobs",
     "contractVersion": "0.1.0-draft.1",
@@ -29,11 +29,11 @@ fn offer(cancel? : Bool = true) -> @jobs.Offer raise {
 
 ///|
 fn receipt(
-  sequence : Int,
+  sequence : Int32,
   state : String,
-  cancel? : Bool = false,
-  outcomes? : Json = Json::null(),
-  snapshot? : String = "snapshot",
+  cancel~ : Bool = false,
+  outcomes~ : Json = Json::null(),
+  snapshot~ : String = "snapshot",
 ) -> @jobs.Receipt raise {
   @jobs.Receipt::from_json({
     "contractVersion": "0.1.0-draft.1",
@@ -52,7 +52,7 @@ fn receipt(
 }
 
 ///|
-fn outcomes(status? : String = "returned") -> Json {
+fn outcomes(status~ : String = "returned") -> Json {
   {
     "contractVersion": "0.1.0-draft.5",
     "calls": [
@@ -71,7 +71,7 @@ fn outcomes(status? : String = "returned") -> Json {
 }
 
 ///|
-fn start(cancel? : Bool = true) -> @jobs.Cursor raise {
+fn start(cancel~ : Bool = true) -> @jobs.Cursor raise {
   @jobs.Cursor::start(
     offer(cancel~),
     identity(),

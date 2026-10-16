@@ -1,5 +1,5 @@
 ///|
-fn first_code(value : @sdk.Character) -> Int {
+fn first_code(value : @sdk.Character) -> Int32 {
   let source = value.to_units()
   if source.length() == 0 {
     return -1

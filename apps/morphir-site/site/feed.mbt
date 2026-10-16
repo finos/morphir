@@ -50,7 +50,7 @@ pub fn atom_feed(config : @model.SiteConfig, posts : Array[Page]) -> String {
 }
 
 ///|
-fn first_chars(text : String, limit : Int) -> String {
+fn first_chars(text : String, limit : Int32) -> String {
   let out = StringBuilder()
   let mut n = 0
   for c in text {

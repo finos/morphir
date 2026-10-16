@@ -11,7 +11,7 @@ extern "js" fn lstat(path : String) -> Stats = "lstatSync"
 extern "js" fn rename_sync(a : String, b : String) -> Unit = "renameSync"
 
 ///|
-extern "js" fn kind_js(stat : (String) -> Stats, path : String) -> Int =
+extern "js" fn kind_js(stat : (String) -> Stats, path : String) -> Int32 =
   #| (stat,path) => { try { const s = stat(path); return s.isSymbolicLink() ? 3 : s.isDirectory() ? 2 : s.isFile() ? 1 : 4; } catch(e) { return e.code === 'ENOENT' || e.code === 'ENOTDIR' ? 0 : -1; } }
 
 ///|
@@ -19,11 +19,11 @@ extern "js" fn rename_js(
   rename : (String, String) -> Unit,
   a : String,
   b : String,
-) -> Int =
+) -> Int32 =
   #| (rename,a,b) => { try { rename(a,b); return 0; } catch { return -1; } }
 
 ///|
-pub fn kind(path : String) -> Int raise {
+pub fn kind(path : String) -> Int32 raise {
   let result = kind_js(lstat, path)
   if result < 0 {
     raise IOError("Cannot inspect " + path)
@@ -41,7 +41,7 @@ pub extern "js" fn stderr(text : String) -> Unit =
   #| text => process.stderr.write(text)
 
 ///|
-pub extern "js" fn exit(code : Int) -> Unit =
+pub extern "js" fn exit(code : Int32) -> Unit =
   #| code => { process.exitCode = code; }
 
 ///|
@@ -54,11 +54,11 @@ pub extern "js" fn system_type() -> String =
   #| () => process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux'
 
 ///|
-extern "js" fn size_js(stat : (String) -> Stats, path : String) -> Int =
+extern "js" fn size_js(stat : (String) -> Stats, path : String) -> Int32 =
   #| (stat,path) => { try { return Math.min(stat(path).size,16777217); } catch { return -1; } }
 
 ///|
-fn size(path : String) -> Int {
+fn size(path : String) -> Int32 {
   size_js(lstat, path)
 }
 
@@ -67,7 +67,7 @@ fn size(path : String) -> Int {
 extern "js" fn mkdir_sync(path : String) -> Unit = "mkdirSync"
 
 ///|
-extern "js" fn mkdir_js(create : (String) -> Unit, path : String) -> Int =
+extern "js" fn mkdir_js(create : (String) -> Unit, path : String) -> Int32 =
   #| (create,path) => { try { create(path); return 0; } catch { return -1; } }
 
 ///|
@@ -116,7 +116,7 @@ extern "js" fn execute_js(
   args : FixedArray[String],
   cwd : String,
   home : String,
-  timeout : Int,
+  timeout : Int32,
 ) -> String =
   #| (spawn,program,args,cwd,home,timeout) => { const env={...process.env}; if(home) { env.MOON_HOME=home; env.PATH=home+'/bin'+(process.platform==='win32'?';':':')+(env.PATH||''); } const r=spawn(program,args,{cwd,env,encoding:'utf8',timeout,maxBuffer:16777216,windowsHide:true}); return JSON.stringify({exitCode:r.error ? (r.error.code==='ETIMEDOUT'?124:-1) : (r.status??-1),stdout:r.stdout||'',stderr:(r.stderr||'')+(r.error ? r.error.message : '')}); }
 
@@ -126,7 +126,7 @@ pub fn process(
   args : Array[String],
   cwd : String,
   home : String,
-  timeout : Int,
+  timeout : Int32,
 ) -> Json raise {
   @json.parse(
     execute_js(spawn, program, FixedArray::from_array(args), cwd, home, timeout),
@@ -148,7 +148,7 @@ extern "js" fn flush_file_js(
   spawn : (String, FixedArray[String], Process) -> Process,
   path : String,
   data : Bytes,
-  timeout : Int,
+  timeout : Int32,
   root : String,
 ) -> Bool =
   #| (spawn,path,data,timeout,root) => {
@@ -175,8 +175,8 @@ extern "js" fn flush_file_js(
 pub fn flush_file(
   path : String,
   data : Bytes,
-  timeout : Int,
-  root? : String = "",
+  timeout : Int32,
+  root~ : String = "",
 ) -> Bool {
   flush_file_js(spawn, path, data, timeout, root)
 }
@@ -184,54 +184,54 @@ pub fn flush_file(
 ///|
 #module("node:fs")
 extern "js" fn read_sync(
-  fd : Int,
+  fd : Int32,
   buffer : FixedArray[Byte],
-  offset : Int,
-  length : Int,
-) -> Int = "readSync"
+  offset : Int32,
+  length : Int32,
+) -> Int32 = "readSync"
 
 ///|
 #module("node:fs")
-extern "js" fn close_sync(fd : Int) -> Unit = "closeSync"
+extern "js" fn close_sync(fd : Int32) -> Unit = "closeSync"
 
 ///|
 #module("node:fs")
-extern "js" fn fstat(fd : Int) -> Stats = "fstatSync"
+extern "js" fn fstat(fd : Int32) -> Stats = "fstatSync"
 
 ///|
 extern "js" fn file_open_js(
-  stat : (Int) -> Stats,
-  close : (Int) -> Unit,
+  stat : (Int32) -> Stats,
+  close : (Int32) -> Unit,
   path : String,
-  limit : Int,
-) -> Int =
+  limit : Int32,
+) -> Int32 =
   #| (stat,close,path,limit) => {let fd=-1;try{const fs=process.getBuiltinModule('node:fs');fd=fs.openSync(path,fs.constants.O_RDONLY|(fs.constants.O_NONBLOCK||0)|(fs.constants.O_NOFOLLOW||0));const s=stat(fd);if(!s.isFile()||s.size<0||s.size>limit)throw Error();return fd;}catch{if(fd>=0)close(fd);return -1;}}
 
 ///|
-fn file_open(path : String, limit : Int) -> Int {
+fn file_open(path : String, limit : Int32) -> Int32 {
   file_open_js(fstat, close_sync, path, limit)
 }
 
 ///|
 extern "js" fn file_read_js(
-  read : (Int, FixedArray[Byte], Int, Int) -> Int,
-  fd : Int,
+  read : (Int32, FixedArray[Byte], Int32, Int32) -> Int32,
+  fd : Int32,
   buffer : FixedArray[Byte],
-  length : Int,
-) -> Int =
+  length : Int32,
+) -> Int32 =
   #| (read,fd,buffer,length) => {try{return read(fd,buffer,0,length);}catch{return -1;}}
 
 ///|
-fn file_read(fd : Int, buffer : FixedArray[Byte], length : Int) -> Int {
+fn file_read(fd : Int32, buffer : FixedArray[Byte], length : Int32) -> Int32 {
   file_read_js(read_sync, fd, buffer, length)
 }
 
 ///|
-extern "js" fn file_close_js(close : (Int) -> Unit, fd : Int) -> Int =
+extern "js" fn file_close_js(close : (Int32) -> Unit, fd : Int32) -> Int32 =
   #| (close,fd) => {try{close(fd);return 0;}catch{return -1;}}
 
 ///|
-fn file_close(fd : Int) -> Int {
+fn file_close(fd : Int32) -> Int32 {
   file_close_js(close_sync, fd)
 }
 

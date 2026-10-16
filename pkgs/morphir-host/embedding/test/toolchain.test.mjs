@@ -3,7 +3,7 @@ import {test} from "node:test";
 import {createInProcessToolchain, createNodeToolchain} from "../node.mjs";
 import {createEmbeddedToolchain} from "../index.mjs";
 
-const source = value => ({operation: "compile", files: [["main.mbt", `pub fn answer() -> Int { ${value} }`]], exports: ["answer"]});
+const source = value => ({operation: "compile", files: [["main.mbt", `pub fn answer() -> Int32 { ${value} }`]], exports: ["answer"]});
 
 test("capability inspection cannot change embedded target validation", async () => {
   let called=false;
@@ -36,6 +36,7 @@ for (const [name, create] of [["in-process", createInProcessToolchain], ["Node w
     try {
       const info = await tools.request({operation: "info"});
       assert.equal(info.mode, "embedded");
+      assert.equal(info.compilerVersion, "0.10.15+943464bfa");
       for (const target of ["wasm", "wasm-gc"]) {
         const result = await tools.request({...source(42), target});
         assert.equal(result.successful, true);

@@ -1,5 +1,5 @@
 ///|
-pub fn Registry::new(limits? : Limits = Limits::default()) -> Registry raise {
+pub fn Registry::new(limits~ : Limits = Limits::default()) -> Registry raise {
   if limits.max_bytes <= 0 || limits.max_depth < 0 || limits.max_values <= 0 {
     raise Invalid("data.invalid_limits", "Limits must be positive")
   }
@@ -119,7 +119,7 @@ pub fn Registry::encode(
 pub fn Registry::checkpoint(
   self : Registry,
   unit : IRUnit,
-  codec? : String = "ion-binary",
+  codec~ : String = "ion-binary",
 ) -> Content raise BoundaryError {
   self.encode(codec, unit)
 }

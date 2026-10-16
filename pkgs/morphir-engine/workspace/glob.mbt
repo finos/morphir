@@ -8,7 +8,7 @@ pub fn matches(pattern : String, path : String) -> Bool raise {
 fn matches_bounded(
   pattern : String,
   path : String,
-  budget : Ref[Int],
+  budget : Ref[Int32],
 ) -> Bool raise {
   budget.val -= 1
   if budget.val < 0 {
@@ -78,7 +78,7 @@ fn matches_bounded(
   }
   let text = path.to_array()
   let cache : Map[String, Bool] = Map([])
-  fn go(p : Int, t : Int) -> Bool raise {
+  fn go(p : Int32, t : Int32) -> Bool raise {
     let key = p.to_string() + ":" + t.to_string()
     if cache.get(key) is Some(result) {
       return result

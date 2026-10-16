@@ -1,7 +1,7 @@
 ///|
 fn project_profile(
   run : (@engine.ProjectSources, String, () -> Bool) -> @data.IRUnit raise,
-  max_documents? : Int? = None,
+  max_documents~ : Int32? = None,
 ) -> @engine.SourceProfile {
   {
     id: @ids.ProfileId::parse("library") catch {
@@ -41,8 +41,8 @@ fn project_engine(profile : @engine.SourceProfile) -> @engine.Engine raise {
 
 ///|
 fn project_files(
-  backend? : String = "checkpoint",
-  exposed? : String = "\nexposed_modules=['Api']",
+  backend~ : String = "checkpoint",
+  exposed~ : String = "\nexposed_modules=['Api']",
 ) -> Map[String, String] {
   Map::from_array([
     (
@@ -63,7 +63,7 @@ fn project_files(
 fn project_plan(
   engine : @engine.Engine,
   files : Map[String, String],
-  request? : @engine.Request = @engine.Request::new(),
+  request~ : @engine.Request = @engine.Request::new(),
 ) -> @engine.Plan raise {
   engine.plan(
     @engine.Host::memory(files),
@@ -215,7 +215,7 @@ test "planning refuses a file request and an untyped backend" {
 ///|
 /// By default a project compiler has no document limit: neither the old cap (64) nor any other number applies.
 test "a project compiler takes more than 64 sources and more than 1024" {
-  let counts : Array[Int] = []
+  let counts : Array[Int32] = []
   let engine = project_engine(
     project_profile(fn(project, unit_id, _) raise {
       counts.push(project.sources.length())

@@ -254,7 +254,7 @@ fn Infer::annotation_scheme(self : Infer, def : @ir.ValueDefinition) -> Poly? {
     return None
   }
   let owner = self.owner.val
-  let ids : Map[String, Int] = Map([])
+  let ids : Map[String, Int32] = Map([])
   let gens : Array[Array[String]] = []
   let vars = fn(name : String, attrs : @ir.TypeAttributes) -> Ty {
     match self.rigid_scope.get(rigid_key(owner, name)) {

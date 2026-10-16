@@ -7,60 +7,60 @@ import {
 }
 
 // Values
-pub fn from_int16(Int16) -> @integer.Integer
+pub fn from_int16(Int16Value) -> @integer.Integer
 
-pub fn from_int32(Int32) -> @integer.Integer
+pub fn from_int32(Int32Value) -> @integer.Integer
 
-pub fn from_int64(Int64) -> @integer.Integer
+pub fn from_int64(Int64Value) -> @integer.Integer
 
 pub fn from_int8(Int8) -> @integer.Integer
 
-pub fn to_int16(@integer.Integer) -> Int16?
+pub fn to_int16(@integer.Integer) -> Int16Value?
 
-pub fn to_int32(@integer.Integer) -> Int32?
+pub fn to_int32(@integer.Integer) -> Int32Value?
 
-pub fn to_int64(@integer.Integer) -> Int64?
+pub fn to_int64(@integer.Integer) -> Int64Value?
 
 pub fn to_int8(@integer.Integer) -> Int8?
 
 // Errors
 
 // Types and methods
-pub struct Int16 {
+pub struct Int16Value {
   value : @integer.Integer
 } derive(Compare, Eq, @debug.Debug)
-pub fn Int16::compare(Self, Self) -> Int
-pub fn Int16::equal(Self, Self) -> Bool
-pub fn Int16::not_equal(Self, Self) -> Bool
-pub fn Int16::op_ge(Self, Self) -> Bool
-pub fn Int16::op_gt(Self, Self) -> Bool
-pub fn Int16::op_le(Self, Self) -> Bool
-pub fn Int16::op_lt(Self, Self) -> Bool
-pub fn Int16::to_repr(Self) -> @debug.Repr
+pub fn Int16Value::compare(Self, Self) -> Int
+pub fn Int16Value::equal(Self, Self) -> Bool
+pub fn Int16Value::not_equal(Self, Self) -> Bool
+pub fn Int16Value::op_ge(Self, Self) -> Bool
+pub fn Int16Value::op_gt(Self, Self) -> Bool
+pub fn Int16Value::op_le(Self, Self) -> Bool
+pub fn Int16Value::op_lt(Self, Self) -> Bool
+pub fn Int16Value::to_repr(Self) -> @debug.Repr
 
-pub struct Int32 {
+pub struct Int32Value {
   value : @integer.Integer
 } derive(Compare, Eq, @debug.Debug)
-pub fn Int32::compare(Self, Self) -> Int
-pub fn Int32::equal(Self, Self) -> Bool
-pub fn Int32::not_equal(Self, Self) -> Bool
-pub fn Int32::op_ge(Self, Self) -> Bool
-pub fn Int32::op_gt(Self, Self) -> Bool
-pub fn Int32::op_le(Self, Self) -> Bool
-pub fn Int32::op_lt(Self, Self) -> Bool
-pub fn Int32::to_repr(Self) -> @debug.Repr
+pub fn Int32Value::compare(Self, Self) -> Int
+pub fn Int32Value::equal(Self, Self) -> Bool
+pub fn Int32Value::not_equal(Self, Self) -> Bool
+pub fn Int32Value::op_ge(Self, Self) -> Bool
+pub fn Int32Value::op_gt(Self, Self) -> Bool
+pub fn Int32Value::op_le(Self, Self) -> Bool
+pub fn Int32Value::op_lt(Self, Self) -> Bool
+pub fn Int32Value::to_repr(Self) -> @debug.Repr
 
-pub struct Int64 {
+pub struct Int64Value {
   value : @integer.Integer
 } derive(Compare, Eq, @debug.Debug)
-pub fn Int64::compare(Self, Self) -> Int
-pub fn Int64::equal(Self, Self) -> Bool
-pub fn Int64::not_equal(Self, Self) -> Bool
-pub fn Int64::op_ge(Self, Self) -> Bool
-pub fn Int64::op_gt(Self, Self) -> Bool
-pub fn Int64::op_le(Self, Self) -> Bool
-pub fn Int64::op_lt(Self, Self) -> Bool
-pub fn Int64::to_repr(Self) -> @debug.Repr
+pub fn Int64Value::compare(Self, Self) -> Int
+pub fn Int64Value::equal(Self, Self) -> Bool
+pub fn Int64Value::not_equal(Self, Self) -> Bool
+pub fn Int64Value::op_ge(Self, Self) -> Bool
+pub fn Int64Value::op_gt(Self, Self) -> Bool
+pub fn Int64Value::op_le(Self, Self) -> Bool
+pub fn Int64Value::op_lt(Self, Self) -> Bool
+pub fn Int64Value::to_repr(Self) -> @debug.Repr
 
 pub struct Int8 {
   value : @integer.Integer

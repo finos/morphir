@@ -126,7 +126,7 @@ fn decode_document(value : @ion.IonValue, json : Bool) -> Expectations raise {
 ///|
 pub fn Expectations::decode(
   bytes : Bytes,
-  format? : String = "ion-text",
+  format~ : String = "ion-text",
 ) -> Expectations raise {
   if bytes.length() > 8388608 {
     raise @protocol.Invalid("conformance.input_limit")

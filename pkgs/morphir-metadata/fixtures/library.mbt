@@ -136,10 +136,10 @@ pub fn capabilities() -> @metadata.Capabilities {
 ///|
 pub fn adapter(
   graph : String,
-  context? : String = "{targetNames:{'@id':\"" +
+  context~ : String = "{targetNames:{'@id':\"" +
     @metadata.TARGET_NAMES_PREDICATE +
     "\",'@type':\"@json\"}}",
-  document? : String = "morphir://ir/pkg/example/annotations?format=4.1.0#/distribution",
+  document~ : String = "morphir://ir/pkg/example/annotations?format=4.1.0#/distribution",
 ) -> @ion.IonValue raise {
   @ion_text.read_ion(
     "morphir_linked_metadata_v1::{document:\"" +
@@ -155,9 +155,9 @@ pub fn adapter(
 ///|
 pub fn row(
   name : String,
-  backend? : String = "wanted",
-  frontend? : String = "isReady",
-  property? : String = "targetNames",
+  backend~ : String = "wanted",
+  frontend~ : String = "isReady",
+  property~ : String = "targetNames",
 ) -> String {
   "{'@id':\"morphir://ir/pkg/example?format=4.0.0#/module/main/value/" +
   name +

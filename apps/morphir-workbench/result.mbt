@@ -6,7 +6,11 @@ fn result_tree(value : @scheme.Value) -> Json {
 }
 
 ///|
-fn result_node(value : @scheme.Value, depth : Int, budget : Ref[Int]) -> Json {
+fn result_node(
+  value : @scheme.Value,
+  depth : Int32,
+  budget : Ref[Int32],
+) -> Json {
   fn node(kind : String, fields : Array[(String, Json)]) -> Json {
     let entries = [("kind", @wire.text(kind))]
     entries.append(fields)

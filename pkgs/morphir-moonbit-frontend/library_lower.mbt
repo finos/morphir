@@ -19,7 +19,7 @@ fn library_attributes(
 }
 
 ///|
-fn library_arrow(boolean : @ir.Type, arity : Int) -> @ir.Type {
+fn library_arrow(boolean : @ir.Type, arity : Int32) -> @ir.Type {
   let mut result = boolean
   for i = 0; i < arity; i = i + 1 {
     result = @ir.Type::Function(@ir.TypeAttributes::default(), boolean, result)

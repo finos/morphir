@@ -223,7 +223,7 @@ fn type_references(t : @ir.Type, out : Array[@ir.FQName]) -> Unit {
 ///|
 /// Elm `compare` on a morphir-elm `FQName`: the package path, the module path and the local name, each a list of
 /// names, and each name a list of words that compare by code units.
-fn elm_compare_fqname(a : @ir.FQName, b : @ir.FQName) -> Int {
+fn elm_compare_fqname(a : @ir.FQName, b : @ir.FQName) -> Int32 {
   let package_order = elm_compare_path(a.package_name, b.package_name)
   if package_order != 0 {
     return package_order
@@ -240,14 +240,18 @@ fn elm_compare_fqname(a : @ir.FQName, b : @ir.FQName) -> Int {
 }
 
 ///|
-fn elm_compare_path(a : @ir.Path, b : @ir.Path) -> Int {
+fn elm_compare_path(a : @ir.Path, b : @ir.Path) -> Int32 {
   elm_compare_list(a.to_names(), b.to_names(), (x, y) => {
     elm_compare_list(x.to_words(), y.to_words(), elm_compare_string)
   })
 }
 
 ///|
-fn[T] elm_compare_list(a : Array[T], b : Array[T], item : (T, T) -> Int) -> Int {
+fn[T] elm_compare_list(
+  a : Array[T],
+  b : Array[T],
+  item : (T, T) -> Int32,
+) -> Int32 {
   let shorter = if a.length() < b.length() { a.length() } else { b.length() }
   for i in 0..<shorter {
     let order = item(a[i], b[i])
@@ -260,7 +264,7 @@ fn[T] elm_compare_list(a : Array[T], b : Array[T], item : (T, T) -> Int) -> Int 
 
 ///|
 /// Strings in code-unit order, as Elm compares them. `String::compare` puts shorter strings first.
-fn elm_compare_string(a : String, b : String) -> Int {
+fn elm_compare_string(a : String, b : String) -> Int32 {
   let shorter = if a.length() < b.length() { a.length() } else { b.length() }
   for i in 0..<shorter {
     if a.code_unit_at(i) != b.code_unit_at(i) {

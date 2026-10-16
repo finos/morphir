@@ -17,7 +17,7 @@ pub fn validate_invocations(
   suite : Suite,
   entries : Array[PublicEntry],
   definitions : Array[CustomType],
-  rejections? : Array[(String, String)] = [],
+  rejections~ : Array[(String, String)] = [],
 ) -> Unit raise {
   suite.validate()
   for call in suite.calls {

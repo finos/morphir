@@ -62,7 +62,7 @@ pub fn generate(
   unit_id : String,
   ir : @ir.IRFile,
   options : Options,
-  cancelled? : () -> Bool = fn() { false },
+  cancelled~ : () -> Bool = fn() { false },
 ) -> Output raise ElmGenerationError {
   let (package_name, inputs) : (@ir.Path, Array[ModuleInput]) = match
     ir.distribution {

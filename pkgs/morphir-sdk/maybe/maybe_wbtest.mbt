@@ -1,11 +1,11 @@
 ///|
 // Oracle: elm/core 1.0.5 Maybe.elm, exposed by Morphir.IR.SDK.Maybe.
 test "Maybe combinators preserve presence and defaults" {
-  let absent : Int? = None
-  assert_eq(map((n : Int) => n + 1, Some(2)), Some(3))
-  assert_eq(map((n : Int) => n + 1, None), None)
+  let absent : Int32? = None
+  assert_eq(map((n : Int32) => n + 1, Some(2)), Some(3))
+  assert_eq(map((n : Int32) => n + 1, None), None)
   assert_eq(
-    and_then((n : Int) => if n > 0 { Some(n * 2) } else { None }, Some(2)),
+    and_then((n : Int32) => if n > 0 { Some(n * 2) } else { None }, Some(2)),
     Some(4),
   )
   assert_eq(with_default(9, None), 9)

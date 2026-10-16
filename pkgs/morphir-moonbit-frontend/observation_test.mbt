@@ -11,9 +11,9 @@ fn observed_input(source : String) -> @frontend.Input {
 ///|
 fn observer(
   records : Array[@observe.Observation],
-  work : Ref[Int],
-  enabled? : Bool = true,
-  broken? : Bool = false,
+  work : Ref[Int32],
+  enabled~ : Bool = true,
+  broken~ : Bool = false,
 ) -> @observe.Observer {
   {
     enabled: fn() { enabled },

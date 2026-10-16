@@ -7,13 +7,13 @@ priv type Text
 fn begin() -> Text = "morphir_host_v1" "begin"
 
 ///|
-fn append(text : Text, code : Int) -> Unit = "morphir_host_v1" "append"
+fn append(text : Text, code : Int32) -> Unit = "morphir_host_v1" "append"
 
 ///|
-fn length(text : Text) -> Int = "morphir_host_v1" "length"
+fn length(text : Text) -> Int32 = "morphir_host_v1" "length"
 
 ///|
-fn at(text : Text, i : Int) -> Int = "morphir_host_v1" "at"
+fn at(text : Text, i : Int32) -> Int32 = "morphir_host_v1" "at"
 
 ///|
 fn request(op : Text, a : Text, b : Text) -> Text = "morphir_host_v1" "request"
@@ -28,7 +28,7 @@ fn external(text : String) -> Text {
 }
 
 ///|
-fn call(op : String, a? : String = "", b? : String = "") -> Json raise {
+fn call(op : String, a~ : String = "", b~ : String = "") -> Json raise {
   let response = request(external(op), external(a), external(b))
   let text = StringBuilder()
   for i = 0; i < length(response); i = i + 1 {
@@ -45,7 +45,7 @@ fn call(op : String, a? : String = "", b? : String = "") -> Json raise {
 }
 
 ///|
-fn text(op : String, a? : String = "") -> String raise {
+fn text(op : String, a~ : String = "") -> String raise {
   match call(op, a~) {
     String(s) => s
     _ => raise IOError("Expected host string")
@@ -53,7 +53,7 @@ fn text(op : String, a? : String = "") -> String raise {
 }
 
 ///|
-fn array(op : String, a? : String = "") -> Array[String] raise {
+fn array(op : String, a~ : String = "") -> Array[String] raise {
   match call(op, a~) {
     Array(items) =>
       items.map(fn(item) raise {
@@ -113,7 +113,7 @@ pub fn list(path : String) -> Array[String] raise {
 }
 
 ///|
-pub fn kind(path : String) -> Int raise {
+pub fn kind(path : String) -> Int32 raise {
   match call("kind", a=path) {
     Number(n, ..) => n.to_int()
     _ => raise IOError("Expected host kind")
@@ -148,7 +148,7 @@ pub fn stderr(s : String) -> Unit {
 }
 
 ///|
-pub fn exit(code : Int) -> Unit {
+pub fn exit(code : Int32) -> Unit {
   ignore(call("exit", a=code.to_string())) catch {
     _ => ()
   }
@@ -196,7 +196,7 @@ pub fn process(
   args : Array[String],
   cwd : String,
   home : String,
-  timeout : Int,
+  timeout : Int32,
 ) -> Json raise {
   call(
     "process",

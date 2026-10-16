@@ -167,12 +167,12 @@ pub fn process_execution(
   helper : String,
   compiler_home : String,
   dependencies : Map[String, String],
-  timeout? : Int = 120000,
-  toolchain_pin? : Json? = None,
-  build_mode? : String = "debug",
-  cancel_file? : String = "",
-  payload_capture? : @observe.PayloadCapture = @observe.PayloadCapture::disabled(),
-  observer? : @observe.Observer = @observe.Observer::noop(),
+  timeout~ : Int32 = 120000,
+  toolchain_pin~ : Json? = None,
+  build_mode~ : String = "debug",
+  cancel_file~ : String = "",
+  payload_capture~ : @observe.PayloadCapture = @observe.PayloadCapture::disabled(),
+  observer~ : @observe.Observer = @observe.Observer::noop(),
 ) -> @execution.Provider raise {
   if !["debug", "release"].contains(build_mode) {
     raise @config.Invalid("execution.invalid_build_mode")

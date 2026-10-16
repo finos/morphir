@@ -2,7 +2,7 @@
 // Elm/core 1.0.5 delegates default casing to ECMAScript.
 
 ///|
-fn upper_scalar(code : Int, original : String) -> String {
+fn upper_scalar(code : Int32, original : String) -> String {
   match code {
     97 => "A"
     98 => "B"
@@ -1589,7 +1589,7 @@ fn upper_scalar(code : Int, original : String) -> String {
 }
 
 ///|
-fn lower_scalar(code : Int, original : String) -> String {
+fn lower_scalar(code : Int32, original : String) -> String {
   match code {
     65 => "a"
     66 => "b"
@@ -3084,7 +3084,7 @@ fn lower_scalar(code : Int, original : String) -> String {
 }
 
 ///|
-let cased_ranges : Array[(Int, Int)] = [
+let cased_ranges : Array[(Int32, Int32)] = [
   (65, 90),
   (97, 122),
   (170, 170),
@@ -3246,7 +3246,7 @@ let cased_ranges : Array[(Int, Int)] = [
 ]
 
 ///|
-let case_ignorable_ranges : Array[(Int, Int)] = [
+let case_ignorable_ranges : Array[(Int32, Int32)] = [
   (39, 39),
   (46, 46),
   (58, 58),
@@ -3714,7 +3714,7 @@ let case_ignorable_ranges : Array[(Int, Int)] = [
 ]
 
 ///|
-fn in_ranges(code : Int, ranges : Array[(Int, Int)]) -> Bool {
+fn in_ranges(code : Int32, ranges : Array[(Int32, Int32)]) -> Bool {
   let mut low = 0
   let mut high = ranges.length()
   while low < high {
@@ -3732,11 +3732,11 @@ fn in_ranges(code : Int, ranges : Array[(Int, Int)]) -> Bool {
 }
 
 ///|
-fn is_cased(code : Int) -> Bool {
+fn is_cased(code : Int32) -> Bool {
   in_ranges(code, cased_ranges)
 }
 
 ///|
-fn is_case_ignorable(code : Int) -> Bool {
+fn is_case_ignorable(code : Int32) -> Bool {
   in_ranges(code, case_ignorable_ranges)
 }

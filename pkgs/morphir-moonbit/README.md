@@ -168,7 +168,7 @@ MOON_HOME="$HOME/.moon" mise exec -- node \
 ```
 
 `MOON_HOME` must identify a complete installation containing compiler and core
-version `0.10.14+7d59c7ec9`. The SDK argument supplies an explicit source tree.
+version `0.10.15+943464bfa`. The SDK argument supplies an explicit source tree.
 Compiler acceptance copies that tree to a private workspace and uses `--frozen`;
 it performs no dependency acquisition. It builds the emitted multi-module fixture
 on native, JS, WASM and WASM-GC and checks exact scalar results through the exported

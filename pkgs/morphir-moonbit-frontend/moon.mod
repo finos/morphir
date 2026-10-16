@@ -15,8 +15,8 @@ import {
   "finos/morphir-ir@0.1.0",
   "finos/morphir-moonbit@0.1.0",
   "finos/morphir-scheme@0.1.0",
-  "moonbitlang/parser@0.4.1",
-  "moonbitlang/lexer@0.4.0",
+  "moonbitlang/parser@0.4.5",
+  "moonbitlang/lexer@0.4.3",
   "moonbitlang/x@0.5.5",
   "moonrockz/ion@0.3.0",
 }

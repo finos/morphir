@@ -8,10 +8,10 @@ pub fn Host::register_process_metadata_provider(
   grants : @metadata_grants.Grants?,
   workspace_root : String,
   invocation_root : String,
-  timeout? : Int = 120000,
-  cancel_file? : String = "",
-  observer? : @observe.Observer = @observe.Observer::noop(),
-  audit_sink? : MetadataAuditSink = MetadataAuditSink::noop(),
+  timeout~ : Int32 = 120000,
+  cancel_file~ : String = "",
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+  audit_sink~ : MetadataAuditSink = MetadataAuditSink::noop(),
 ) -> Unit raise {
   ignore((workspace_root, invocation_root, cancel_file, observer, audit_sink))
   if timeout < 6001 || timeout > 600000 {

@@ -16,7 +16,7 @@ fn push_text(destination : Array[UInt16], value : @sdk.Text) -> Unit {
 }
 
 ///|
-fn part(source : Array[UInt16], start : Int, end : Int) -> @sdk.Text {
+fn part(source : Array[UInt16], start : Int32, end : Int32) -> @sdk.Text {
   let result : Array[UInt16] = []
   for i = start; i < end; i = i + 1 {
     result.push(source[i])
@@ -28,7 +28,7 @@ fn part(source : Array[UInt16], start : Int, end : Int) -> @sdk.Text {
 fn match_at(
   source : Array[UInt16],
   needle : Array[UInt16],
-  start : Int,
+  start : Int32,
 ) -> Bool {
   if start + needle.length() > source.length() {
     return false
@@ -42,7 +42,7 @@ fn match_at(
 }
 
 ///|
-fn next_index(source : Array[UInt16], i : Int) -> Int {
+fn next_index(source : Array[UInt16], i : Int32) -> Int32 {
   if i + 1 < source.length() &&
     source[i].is_leading_surrogate() &&
     source[i + 1].is_trailing_surrogate() {
@@ -66,7 +66,7 @@ fn chars(value : @sdk.Text) -> Array[@sdk.Character] {
 }
 
 ///|
-fn code(character : @sdk.Character) -> Int {
+fn code(character : @sdk.Character) -> Int32 {
   let source = character.to_units()
   if source.length() == 0 {
     return -1
@@ -91,7 +91,7 @@ pub fn is_empty(value : @sdk.Text) -> Bool {
 }
 
 ///|
-pub fn length(value : @sdk.Text) -> Int {
+pub fn length(value : @sdk.Text) -> Int32 {
   value.length()
 }
 
@@ -106,7 +106,7 @@ pub fn reverse(value : @sdk.Text) -> @sdk.Text {
 }
 
 ///|
-pub fn repeat(count : Int, value : @sdk.Text) -> @sdk.Text {
+pub fn repeat(count : Int32, value : @sdk.Text) -> @sdk.Text {
   let result : Array[UInt16] = []
   let source = units(value)
   for i = 0; i < count; i = i + 1 {
@@ -185,7 +185,7 @@ pub fn replace(
 }
 
 ///|
-fn is_ecmascript_space(code : Int) -> Bool {
+fn is_ecmascript_space(code : Int32) -> Bool {
   (code >= 9 && code <= 13) ||
   code == 32 ||
   code == 160 ||
@@ -270,7 +270,7 @@ pub fn lines(value : @sdk.Text) -> @list.List[@sdk.Text] {
 }
 
 ///|
-fn clamp_index(index : Int, total : Int) -> Int {
+fn clamp_index(index : Int32, total : Int32) -> Int32 {
   let absolute = if index < 0 { total + index } else { index }
   if absolute < 0 {
     0
@@ -282,7 +282,7 @@ fn clamp_index(index : Int, total : Int) -> Int {
 }
 
 ///|
-pub fn slice(start : Int, end : Int, value : @sdk.Text) -> @sdk.Text {
+pub fn slice(start : Int32, end : Int32, value : @sdk.Text) -> @sdk.Text {
   let source = units(value)
   let a = clamp_index(start, source.length())
   let b = clamp_index(end, source.length())
@@ -294,7 +294,7 @@ pub fn slice(start : Int, end : Int, value : @sdk.Text) -> @sdk.Text {
 }
 
 ///|
-pub fn left(count : Int, value : @sdk.Text) -> @sdk.Text {
+pub fn left(count : Int32, value : @sdk.Text) -> @sdk.Text {
   if count <= 0 {
     text("")
   } else {
@@ -303,7 +303,7 @@ pub fn left(count : Int, value : @sdk.Text) -> @sdk.Text {
 }
 
 ///|
-pub fn right(count : Int, value : @sdk.Text) -> @sdk.Text {
+pub fn right(count : Int32, value : @sdk.Text) -> @sdk.Text {
   if count <= 0 {
     text("")
   } else {
@@ -312,7 +312,7 @@ pub fn right(count : Int, value : @sdk.Text) -> @sdk.Text {
 }
 
 ///|
-pub fn drop_left(count : Int, value : @sdk.Text) -> @sdk.Text {
+pub fn drop_left(count : Int32, value : @sdk.Text) -> @sdk.Text {
   if count <= 0 {
     value
   } else {
@@ -321,7 +321,7 @@ pub fn drop_left(count : Int, value : @sdk.Text) -> @sdk.Text {
 }
 
 ///|
-pub fn drop_right(count : Int, value : @sdk.Text) -> @sdk.Text {
+pub fn drop_right(count : Int32, value : @sdk.Text) -> @sdk.Text {
   if count <= 0 {
     value
   } else {
@@ -352,7 +352,7 @@ pub fn ends_with(suffix : @sdk.Text, value : @sdk.Text) -> Bool {
 }
 
 ///|
-pub fn indexes(needle : @sdk.Text, value : @sdk.Text) -> @list.List[Int] {
+pub fn indexes(needle : @sdk.Text, value : @sdk.Text) -> @list.List[Int32] {
   let source = units(value)
   let match_units = units(needle)
   let positions = []
@@ -372,7 +372,7 @@ pub fn indexes(needle : @sdk.Text, value : @sdk.Text) -> @list.List[Int] {
 }
 
 ///|
-pub fn indices(needle : @sdk.Text, value : @sdk.Text) -> @list.List[Int] {
+pub fn indices(needle : @sdk.Text, value : @sdk.Text) -> @list.List[Int32] {
   indexes(needle, value)
 }
 
@@ -479,7 +479,7 @@ pub fn to_upper(value : @sdk.Text) -> @sdk.Text {
 }
 
 ///|
-fn final_sigma(characters : Array[@sdk.Character], index : Int) -> Bool {
+fn final_sigma(characters : Array[@sdk.Character], index : Int32) -> Bool {
   let mut before = index - 1
   while before >= 0 && is_case_ignorable(code(characters[before])) {
     before -= 1
@@ -516,7 +516,7 @@ pub fn to_lower(value : @sdk.Text) -> @sdk.Text {
 
 ///|
 pub fn pad_left(
-  count : Int,
+  count : Int32,
   character : @sdk.Character,
   value : @sdk.Text,
 ) -> @sdk.Text {
@@ -525,7 +525,7 @@ pub fn pad_left(
 
 ///|
 pub fn pad_right(
-  count : Int,
+  count : Int32,
   character : @sdk.Character,
   value : @sdk.Text,
 ) -> @sdk.Text {
@@ -534,7 +534,7 @@ pub fn pad_right(
 
 ///|
 pub fn pad(
-  count : Int,
+  count : Int32,
   character : @sdk.Character,
   value : @sdk.Text,
 ) -> @sdk.Text {

@@ -21,7 +21,7 @@ fn library_entry(result : Json, name : String) -> String raise {
 }
 
 ///|
-fn library_compile(source? : String = library_source) -> Json {
+fn library_compile(source~ : String = library_source) -> Json {
   @pipeline.execute({
     "operation": "compile",
     "source": source,

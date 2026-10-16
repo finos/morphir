@@ -5,21 +5,21 @@ fn cstring(s : String) -> Bytes {
 
 ///|
 #borrow(path)
-extern "C" fn kind_c(path : Bytes) -> Int = "morphir_host_kind"
+extern "C" fn kind_c(path : Bytes) -> Int32 = "morphir_host_kind"
 
 ///|
 #borrow(a, b)
-extern "C" fn rename_c(a : Bytes, b : Bytes) -> Int = "morphir_host_rename"
+extern "C" fn rename_c(a : Bytes, b : Bytes) -> Int32 = "morphir_host_rename"
 
 ///|
 #borrow(text)
 extern "C" fn stderr_c(text : Bytes) -> Unit = "morphir_host_stderr"
 
 ///|
-extern "C" fn exit_c(code : Int) -> Unit = "morphir_host_exit"
+extern "C" fn exit_c(code : Int32) -> Unit = "morphir_host_exit"
 
 ///|
-pub fn kind(path : String) -> Int raise {
+pub fn kind(path : String) -> Int32 raise {
   let result = kind_c(cstring(path))
   if result < 0 {
     raise IOError("Cannot inspect " + path)
@@ -38,7 +38,7 @@ pub fn stderr(text : String) -> Unit {
 }
 
 ///|
-pub fn exit(code : Int) -> Unit {
+pub fn exit(code : Int32) -> Unit {
   exit_c(code)
 }
 
@@ -48,7 +48,7 @@ pub fn arguments() -> Array[String] {
 }
 
 ///|
-extern "C" fn system_c() -> Int = "morphir_host_system"
+extern "C" fn system_c() -> Int32 = "morphir_host_system"
 
 ///|
 pub fn system_type() -> String {
@@ -61,10 +61,10 @@ pub fn system_type() -> String {
 
 ///|
 #borrow(path)
-extern "C" fn size_c(path : Bytes) -> Int = "morphir_host_size"
+extern "C" fn size_c(path : Bytes) -> Int32 = "morphir_host_size"
 
 ///|
-fn size(path : String) -> Int {
+fn size(path : String) -> Int32 {
   size_c(cstring(path))
 }
 
@@ -74,7 +74,7 @@ pub fn mkdir(path : String) -> Unit raise {
 }
 
 ///|
-extern "C" fn architecture_c() -> Int = "morphir_host_architecture"
+extern "C" fn architecture_c() -> Int32 = "morphir_host_architecture"
 
 ///|
 pub fn architecture() -> String {
@@ -107,10 +107,10 @@ pub fn temporary() -> String raise {
 extern "C" fn process_c(
   program : Bytes,
   args : Bytes,
-  count : Int,
+  count : Int32,
   cwd : Bytes,
   home : Bytes,
-  timeout : Int,
+  timeout : Int32,
 ) -> Bytes = "morphir_host_process"
 
 ///|
@@ -119,7 +119,7 @@ pub fn process(
   args : Array[String],
   cwd : String,
   home : String,
-  timeout : Int,
+  timeout : Int32,
 ) -> Json raise {
   let data = process_c(
     cstring(program),
@@ -132,7 +132,7 @@ pub fn process(
   if data.length() < 8 {
     raise IOError("Invalid process response")
   }
-  fn word(i : Int) -> Int {
+  fn word(i : Int32) -> Int32 {
     data[i].to_int() |
     (data[i + 1].to_int() << 8) |
     (data[i + 2].to_int() << 16) |
@@ -168,37 +168,37 @@ pub fn observation_id() -> String {
 extern "C" fn flush_file_c(
   path : Bytes,
   data : Bytes,
-  length : Int,
-  timeout : Int,
+  length : Int32,
+  timeout : Int32,
   root : Bytes,
-) -> Int = "morphir_flush_file"
+) -> Int32 = "morphir_flush_file"
 
 ///|
 pub fn flush_file(
   path : String,
   data : Bytes,
-  timeout : Int,
-  root? : String = "",
+  timeout : Int32,
+  root~ : String = "",
 ) -> Bool {
   flush_file_c(cstring(path), data, data.length(), timeout, cstring(root)) == 0
 }
 
 ///|
 #borrow(path)
-extern "C" fn file_open_c(path : Bytes, limit : Int) -> Int = "morphir_host_file_open"
+extern "C" fn file_open_c(path : Bytes, limit : Int32) -> Int32 = "morphir_host_file_open"
 
 ///|
-fn file_open(path : String, limit : Int) -> Int {
+fn file_open(path : String, limit : Int32) -> Int32 {
   file_open_c(cstring(path), limit)
 }
 
 ///|
 #borrow(buffer)
 extern "C" fn file_read(
-  fd : Int,
+  fd : Int32,
   buffer : FixedArray[Byte],
-  length : Int,
-) -> Int = "morphir_host_file_read"
+  length : Int32,
+) -> Int32 = "morphir_host_file_read"
 
 ///|
-extern "C" fn file_close(fd : Int) -> Int = "morphir_host_file_close"
+extern "C" fn file_close(fd : Int32) -> Int32 = "morphir_host_file_close"

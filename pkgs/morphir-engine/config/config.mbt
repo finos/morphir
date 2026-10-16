@@ -35,7 +35,7 @@ fn leaves(
 }
 
 ///|
-pub fn parse(text : String, origin? : String = "<memory>") -> Document raise {
+pub fn parse(text : String, origin~ : String = "<memory>") -> Document raise {
   let value = @toml.parse(text) catch {
     error =>
       raise Invalid("Invalid TOML at " + origin + ": " + error.to_string())
@@ -186,7 +186,7 @@ fn json_value(value : Json) -> @toml.TomlValue raise {
 ///|
 pub fn from_json(
   value : Json,
-  origin? : String = "<overlay>",
+  origin~ : String = "<overlay>",
 ) -> Document raise {
   let value = json_value(value)
   let provenance = Map([])

@@ -1,5 +1,5 @@
 ///|
-fn profile(tpe : Json, definitions? : Array[Json] = []) -> Json {
+fn profile(tpe : Json, definitions~ : Array[Json] = []) -> Json {
   { "inputs": [{ "label": "input", "type": tpe }], "definitions": definitions }
 }
 

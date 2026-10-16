@@ -1,7 +1,7 @@
 ///|
 fn library_failure(
   source : String,
-  limits? : @frontend.LibraryLimits = @frontend.LibraryLimits::default(),
+  limits~ : @frontend.LibraryLimits = @frontend.LibraryLimits::default(),
 ) -> @frontend.Diagnostic raise {
   try {
     ignore(@frontend.compile_library(input(source), limits~))

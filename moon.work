@@ -1,4 +1,6 @@
 members = [
+  "./third_party/argparser",
+  "./third_party/trie",
   ".",
   "./apps/morphir",
   "./apps/morphir-workbench",

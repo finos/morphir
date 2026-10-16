@@ -1,14 +1,14 @@
 ///|
 // Oracle: elm/core 1.0.5 Result.elm, exposed by Morphir.IR.SDK.Result.
 test "Result combinators keep the first error" {
-  let first : Result[Int, String] = Err("first")
-  let second : Result[Int, String] = Err("second")
-  let one : Result[Int, String] = Ok(1)
-  let two : Result[Int, String] = Ok(2)
-  let three : Result[Int, String] = Ok(3)
-  let four : Result[Int, String] = Ok(4)
-  let five : Result[Int, String] = Ok(5)
-  let absent : Int? = None
+  let first : Result[Int32, String] = Err("first")
+  let second : Result[Int32, String] = Err("second")
+  let one : Result[Int32, String] = Ok(1)
+  let two : Result[Int32, String] = Ok(2)
+  let three : Result[Int32, String] = Ok(3)
+  let four : Result[Int32, String] = Ok(4)
+  let five : Result[Int32, String] = Ok(5)
+  let absent : Int32? = None
   assert_eq(map2((a, b) => a + b, first, second), Err("first"))
   assert_eq(map2((a, b) => a + b, one, second), Err("second"))
   assert_eq(map3((a, b, c) => a + b + c, one, two, three), Ok(6))

@@ -26,7 +26,7 @@ pub fn docs_page(
   nav : Array[@model.NavItem],
   body : String,
   source_url : String?,
-  toc? : Array[@model.TocEntry] = [],
+  toc~ : Array[@model.TocEntry] = [],
 ) -> Html {
   let source = match source_url {
     Some(url) =>

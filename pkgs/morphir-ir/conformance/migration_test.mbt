@@ -45,7 +45,7 @@ fn file_with_definition(definition : String) -> String {
 }
 
 ///|
-fn downgrade_diagnostic(text : String, major : UInt) -> String {
+fn downgrade_diagnostic(text : String, major : UInt32) -> String {
   try {
     ignore(
       @migration.migrate(

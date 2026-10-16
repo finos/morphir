@@ -13,18 +13,18 @@ fn part(text : String) -> String {
 
 ///|
 /// The deepest JSON tree that identity collection walks. Deeper trees are refused, not walked.
-const MAX_DEPTH : Int = 128
+const MAX_DEPTH : Int32 = 128
 
 ///|
 /// The most identities that identity collection keeps for one unit.
-const MAX_NODES : Int = 100000
+const MAX_NODES : Int32 = 100000
 
 ///|
 fn collect(
   prefix : String,
   value : Json,
   result : Map[String, Bool],
-  depth? : Int = 0,
+  depth~ : Int32 = 0,
 ) -> Unit raise {
   if depth > MAX_DEPTH {
     raise @codec_boundary.Invalid(

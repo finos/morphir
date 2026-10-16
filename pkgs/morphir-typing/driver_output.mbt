@@ -272,7 +272,7 @@ fn fill_signature(
   path : String,
 ) -> @ir.ValueDefinition {
   guard infer.signatures.get(path) is Some(solved) else { return def }
-  let solve = fn(t : @ir.Type, i : Int) -> @ir.Type {
+  let solve = fn(t : @ir.Type, i : Int32) -> @ir.Type {
     if has_marker(t) {
       namer.to_ir(infer.solver, solved[i])
     } else {
@@ -403,7 +403,7 @@ fn Env::check_bundled(
   pkg_name : @ir.PackageName,
   def : @ir.PackageDefinition,
 ) -> Array[InferenceProblem] {
-  let own : Map[String, Int] = Map([])
+  let own : Map[String, Int32] = Map([])
   for module_, m in def.modules {
     for name, t in m.value.types {
       own[fq_text(pkg_name, module_, name)] = match t.value.value {
@@ -458,7 +458,7 @@ fn Env::check_references(
   types : Array[@ir.Type],
   path : String,
   out : Array[InferenceProblem],
-  own? : Map[String, Int] = Map([]),
+  own~ : Map[String, Int32] = Map([]),
 ) -> Unit {
   if self.unresolved(types, own~) is Some((code, key)) {
     out.push(problem(code, path, unknown_message(code, key), None))
@@ -473,9 +473,9 @@ fn Env::check_references(
 fn Env::unresolved(
   self : Env,
   types : Array[@ir.Type],
-  own? : Map[String, Int] = Map([]),
+  own~ : Map[String, Int32] = Map([]),
 ) -> (String, String)? {
-  let refs : Array[(String, Int)] = []
+  let refs : Array[(String, Int32)] = []
   types.each(t => counted_references_of(t, refs))
   for ref_ in refs {
     let (key, count) = ref_

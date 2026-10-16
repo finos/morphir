@@ -7,7 +7,7 @@ pub(all) struct Page {
   summary : String
   date : String
   authors : Array[String]
-  order : Int
+  order : Int32
   /// A full HTML document: written as it is, without the layout.
   full : Bool
   html : String

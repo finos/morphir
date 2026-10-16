@@ -6,7 +6,7 @@ pub struct NativeTelemetry {
   priv helper : String
   priv endpoint : String
   priv protocol : String
-  priv timeout : Int
+  priv timeout : Int32
   priv binary_identity : String
 }
 
@@ -17,7 +17,7 @@ pub fn NativeTelemetry::new(
   endpoint : String,
   protocol : String,
   pin : Json,
-  timeout? : Int = 1000,
+  timeout~ : Int32 = 1000,
 ) -> NativeTelemetry raise {
   let platform = if @platform.system_type() == "macos" {
     "darwin"
@@ -40,7 +40,7 @@ pub fn NativeTelemetry::new(
   if build_text(pin, "profile") != "morphir-native-otel-pin-v1" ||
     build_text(pin, "platform") != platform ||
     build_text(pin, "arch") != @platform.architecture() ||
-    build_text(pin, "compilerVersion") != "0.10.14+7d59c7ec9" ||
+    build_text(pin, "compilerVersion") != "0.10.15+943464bfa" ||
     build_text(pin, "otelArchiveIdentity") !=
     "51c7ad32e1344cae45cedfa8d5ee3836d3e22f17ff4796a45a8394917568033f" {
     raise @config.Invalid("observability.native_adapter_pin")
@@ -99,7 +99,7 @@ pub fn native_telemetry_endpoint(endpoint : String) -> Bool {
     let port = pieces[1]
     if port.length() == 0 ||
       port.length() > 5 ||
-      !port.code_units().all(c => c is ('0'..='9')) {
+      !port.code_units().all(c => c is ('0'..<='9')) {
       return false
     }
     let number = @string.parse_int(port) catch { _ => 0 }
@@ -113,14 +113,14 @@ pub fn native_telemetry_endpoint(endpoint : String) -> Bool {
       label.length() > 63 ||
       !label
       .code_units()
-      .all(c => c is ('0'..='9' | 'a'..='z' | 'A'..='Z' | '-')) ||
+      .all(c => c is ('0'..<='9' | 'a'..<='z' | 'A'..<='Z' | '-')) ||
       label.has_prefix("-") ||
       label.has_suffix("-") {
       return false
     }
   }
   if labels.length() == 4 &&
-    labels.all(label => label.code_units().all(c => c is ('0'..='9'))) {
+    labels.all(label => label.code_units().all(c => c is ('0'..<='9'))) {
     for label in labels {
       if label.length() > 3 || (label.length() > 1 && label.has_prefix("0")) {
         return false

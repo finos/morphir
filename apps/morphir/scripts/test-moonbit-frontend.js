@@ -16,7 +16,7 @@ const moonc = join(home, 'bin', process.platform === 'win32' ? 'moonc.exe' : 'mo
 const env = {...process.env, MOON_HOME: home, MOONBIT_NEW_NATIVE: '0', PATH: join(home, 'bin') + delimiter + process.env.PATH};
 delete env.MOON_WORK;
 assert.ok(execFileSync(moonc, ['-v'], {encoding: 'utf8', env}).trim().startsWith('v' + stableVersion));
-assert.match(readFileSync(join(home, 'lib/core/moon.mod'), 'utf8'), /version\s*=\s*"0\.10\.14\+7d59c7ec9"/);
+assert.match(readFileSync(join(home, 'lib/core/moon.mod'), 'utf8'), /version\s*=\s*"0\.10\.15\+943464bfa"/);
 const sdk = resolve(process.env.MORPHIR_FRONTEND_SDK || join(repository, 'pkgs/morphir-sdk'));
 assert.match(readFileSync(join(sdk, 'moon.mod'), 'utf8'), /name\s*=\s*"finos\/morphir-sdk"/);
 assert.match(readFileSync(join(sdk, 'moon.mod'), 'utf8'), /version\s*=\s*"0\.1\.0"/);
@@ -32,7 +32,7 @@ try {
     cwd: repository, encoding: 'utf8', env, timeout: 300000, maxBuffer: 16777216,
   }));
   assert.equal(output.profile, 'moonbit-model-bool-v1');
-  assert.equal(output.parserVersion, '0.4.1');
+  assert.equal(output.parserVersion, '0.4.5');
   assert.equal(output.models.length, 11);
   assert.equal(new Set(output.models.map(m => m.id)).size, 11);
   writeFileSync(join(receipts, 'models.json'), JSON.stringify(output, null, 2) + '\n');

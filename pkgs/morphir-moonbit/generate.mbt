@@ -1,10 +1,10 @@
 ///|
 pub fn generate(
   input : Input,
-  limits? : Limits? = None,
-  naming? : NamingStyle = Readable,
-  metadata_capabilities? : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
-  cancelled? : () -> Bool = fn() { false },
+  limits~ : Limits? = None,
+  naming~ : NamingStyle = Readable,
+  metadata_capabilities~ : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
+  cancelled~ : () -> Bool = fn() { false },
 ) -> Output raise GenerationError {
   generate_library(
     input,

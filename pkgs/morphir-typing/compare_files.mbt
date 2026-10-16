@@ -18,7 +18,7 @@ pub fn compare_types(
   expected : @ir.IRFile,
   actual : @ir.IRFile,
   dependencies : Map[@ir.PackageName, @ir.PackageSpecification],
-  mask_signatures? : Bool = false,
+  mask_signatures~ : Bool = false,
 ) -> Array[String] {
   let env = Env::from(dependencies, expected)
   let scopes : Map[String, TypeScope] = Map([])

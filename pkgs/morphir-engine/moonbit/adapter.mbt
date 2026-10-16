@@ -15,10 +15,10 @@ fn input(source : @engine.Source, unit_id : String) -> @frontend.Input {
 /// Descriptors and callbacks for in-process clients and engine registration.
 /// The original single-function profile remains the default.
 pub fn provider(
-  limits? : @frontend.Limits = @frontend.Limits::default(),
-  library_limits? : @frontend.LibraryLimits = @frontend.LibraryLimits::default(),
-  unit_limits? : @data.Limits = @data.Limits::default(),
-  observer? : @observe.Observer = @observe.Observer::noop(),
+  limits~ : @frontend.Limits = @frontend.Limits::default(),
+  library_limits~ : @frontend.LibraryLimits = @frontend.LibraryLimits::default(),
+  unit_limits~ : @data.Limits = @data.Limits::default(),
+  observer~ : @observe.Observer = @observe.Observer::noop(),
 ) -> @engine.SourceProvider raise {
   try {
     limits.validate()
@@ -33,7 +33,7 @@ pub fn provider(
   }
   let dependencies = Map::from_array([
     ("moonbitlang/parser", @frontend.PARSER_VERSION),
-    ("moonbitlang/lexer", "0.4.0"),
+    ("moonbitlang/lexer", "0.4.3"),
   ])
   let seed : @engine.SourceProfile = {
     id: @ids.ProfileId::parse(@frontend.PROFILE),
@@ -154,10 +154,10 @@ pub fn provider(
 /// Register the same descriptors exposed to in-process clients.
 pub fn register(
   engine : @engine.Engine,
-  limits? : @frontend.Limits = @frontend.Limits::default(),
-  library_limits? : @frontend.LibraryLimits = @frontend.LibraryLimits::default(),
-  unit_limits? : @data.Limits = @data.Limits::default(),
-  observer? : @observe.Observer = @observe.Observer::noop(),
+  limits~ : @frontend.Limits = @frontend.Limits::default(),
+  library_limits~ : @frontend.LibraryLimits = @frontend.LibraryLimits::default(),
+  unit_limits~ : @data.Limits = @data.Limits::default(),
+  observer~ : @observe.Observer = @observe.Observer::noop(),
 ) -> Unit raise {
   engine.register_source_provider(
     provider(limits~, library_limits~, unit_limits~, observer~),

@@ -23,7 +23,10 @@ pub fn[K, V] singleton(
 }
 
 ///|
-fn[K, V] locate(key : K, dict : Dict[K, V]) -> (Int, Bool) raise @sdk.SdkError {
+fn[K, V] locate(
+  key : K,
+  dict : Dict[K, V],
+) -> (Int32, Bool) raise @sdk.SdkError {
   let mut low = 0
   let mut high = dict.entries.length()
   while low < high {
@@ -119,7 +122,7 @@ fn[K, V] has_key(key : K, dict : Dict[K, V]) -> Bool raise @sdk.SdkError {
 }
 
 ///|
-pub fn[K, V] size(dict : Dict[K, V]) -> Int {
+pub fn[K, V] size(dict : Dict[K, V]) -> Int32 {
   dict.entries.length()
 }
 

@@ -156,7 +156,7 @@ fn file_button(
 fn file_tree(
   files : Array[Json],
   prefix : String,
-  depth : Int,
+  depth : Int32,
   state : State,
   selected_path : String,
   emit : @cmd.Emit[Action],

@@ -3,7 +3,7 @@
 
 ///|
 /// Quantifies every unbound meta whose level is greater than `level`. Only the tests use it.
-fn Solver::generalize(self : Solver, t : Ty, level : Int) -> Poly {
+fn Solver::generalize(self : Solver, t : Ty, level : Int32) -> Poly {
   self.generalize_with(t, level, [])
 }
 

@@ -22,8 +22,8 @@ pub fn verify_and_publish(
   evaluator : @execution.Evaluator,
   publisher : ContentPublisher,
   destination : String,
-  cancelled? : () -> Bool = fn() { false },
-  observer? : @observe.Observer = @observe.Observer::noop(),
+  cancelled~ : () -> Bool = fn() { false },
+  observer~ : @observe.Observer = @observe.Observer::noop(),
 ) -> VerificationResult raise {
   if plans.is_empty() ||
     @workspace.normalize(destination) != destination ||

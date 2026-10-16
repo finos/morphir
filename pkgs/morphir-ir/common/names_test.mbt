@@ -18,7 +18,7 @@ test "legacy SDK identity agrees with canonical spelling" {
 test "name map identity survives mutation of input and returned arrays" {
   let words = ["user", "name"]
   let name = @common.Name::from_words(words)
-  let index : Map[@common.Name, Int] = Map::from_array([(name, 42)])
+  let index : Map[@common.Name, Int32] = Map::from_array([(name, 42)])
   words[0] = "changed"
   let returned = name.to_words()
   returned[0] = "changed"

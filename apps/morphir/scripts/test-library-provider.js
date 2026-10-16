@@ -45,7 +45,7 @@ function run(patch={},expectedError) {
   if(expectedError) {assert.notEqual(result.status,0);assert.equal(result.stdout,'');assert.match(result.stderr,expectedError);}
   else {assert.equal(result.status,0,result.stderr);const evidence=JSON.parse(result.stdout);assert.equal(evidence.successful,true);assert.equal(evidence.sourceIdentity,base.sourceIdentity);assert.match(evidence.buildIdentity,/^[a-f0-9]{64}$/);return evidence;}
 }
-function fakeHome(behavior,version='0.10.14+7d59c7ec9',compiler='0.10.14+7d59c7ec9') {
+function fakeHome(behavior,version='0.10.15+943464bfa',compiler='0.10.15+943464bfa') {
   const home=join(root,'home'+serial++);mkdirSync(join(home,'bin'),{recursive:true});mkdirSync(join(home,'lib/core'),{recursive:true});
   writeFileSync(join(home,'lib/core/moon.mod'),`name="moonbitlang/core"\nversion="${version}"\n`);
   const tools={moonc:`console.log('v${compiler} (test)')`,moon:behavior};

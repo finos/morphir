@@ -1,6 +1,6 @@
 ///|
 /// Order by code unit: the pinned `String::compare` orders by length first.
-fn compare_units(a : String, b : String) -> Int {
+fn compare_units(a : String, b : String) -> Int32 {
   let shared = if a.length() < b.length() { a.length() } else { b.length() }
   for i in 0..<shared {
     let x = a.code_unit_at(i).to_int()
@@ -14,7 +14,7 @@ fn compare_units(a : String, b : String) -> Int {
 
 ///|
 /// Every regular file below `root`, as sorted paths relative to `root` with `/`.
-async fn list_files(root : String, prefix? : String = "") -> Array[String] {
+async fn list_files(root : String, prefix~ : String = "") -> Array[String] {
   let out = []
   let dir = if prefix == "" { root } else { "\{root}/\{prefix}" }
   let names = @fs.readdir(dir)

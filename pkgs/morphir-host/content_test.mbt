@@ -1,7 +1,7 @@
 ///|
 fn checkpoint_files(
-  frontend? : String = "ir-json",
-  format? : String = "ion-binary",
+  frontend~ : String = "ir-json",
+  format~ : String = "ion-binary",
 ) -> Map[String, String] {
   Map::from_array([
     (

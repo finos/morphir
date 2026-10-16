@@ -36,10 +36,10 @@ fn Walk::add(
   self : Walk,
   id : String,
   path : String,
-  tag? : String = "",
-  attribute? : Bool = false,
-  marker? : Bool = false,
-  leaf? : (String, Json)? = None,
+  tag~ : String = "",
+  attribute~ : Bool = false,
+  marker~ : Bool = false,
+  leaf~ : (String, Json)? = None,
 ) -> Unit {
   self.out[id] = { path, id, tag, attribute, marker, leaf, }
 }
@@ -51,7 +51,7 @@ fn Walk::content(
   json : Json,
   id : String,
   path : String,
-  attribute? : Bool = false,
+  attribute~ : Bool = false,
 ) -> Unit {
   match json {
     Object(fields) => {
@@ -88,7 +88,7 @@ fn field(json : Json, key : String) -> Json raise {
 }
 
 ///|
-fn index(json : Json, i : Int) -> Json raise {
+fn index(json : Json, i : Int32) -> Json raise {
   match json {
     Array(items) if i < items.length() => items[i]
     _ => raise @codec_boundary.Invalid("identity.layout", i.to_string())

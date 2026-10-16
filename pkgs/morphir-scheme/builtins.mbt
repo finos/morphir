@@ -1,7 +1,7 @@
 ///|
 pub fn arity(
   args : Array[Value],
-  count : Int,
+  count : Int32,
   name : String,
 ) -> Unit raise SchemeError {
   if args.length() != count {
@@ -342,7 +342,7 @@ pub fn value_to_string(value : Value) -> String raise SchemeError {
 }
 
 ///|
-fn render(value : Value, depth : Int) -> String raise SchemeError {
+fn render(value : Value, depth : Int32) -> String raise SchemeError {
   if depth > 256 {
     raise Limit("value printing depth")
   }

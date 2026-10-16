@@ -212,7 +212,7 @@ fn fl_marked() -> @ir.Type {
 fn fl_file(
   typed : Bool,
   output : @ir.Type,
-  second? : String = "2",
+  second~ : String = "2",
 ) -> @ir.IRFile {
   let pair : @ir.Type = Tuple(Default::default(), [fl_int(), fl_int()])
   let attrs : @ir.ValueAttributes = if typed {
@@ -321,7 +321,7 @@ test "a change that is not an attribute or a marker is refused" {
 ///|
 /// A tuple type of 11 items: Int, apart from item 1, which is the marker variable when `marked`, and item 10,
 /// which is `tenth`.
-fn fl_eleven(marked : Bool, tenth? : @ir.Type = fl_int()) -> @ir.Type {
+fn fl_eleven(marked : Bool, tenth~ : @ir.Type = fl_int()) -> @ir.Type {
   let items : Array[@ir.Type] = Array::makei(11, i => {
     if i == 1 && marked {
       fl_marked()

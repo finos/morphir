@@ -23,7 +23,7 @@ test "nav is a tree: leaves and directories sorted by order then title" {
 fn entry(
   source : String,
   title : String,
-  order? : Int = 1000,
+  order~ : Int32 = 1000,
 ) -> @site.NavEntry {
   { route: @model.doc_route(source), source, title, order, }
 }
@@ -42,7 +42,7 @@ let site_pages : Array[@site.NavEntry] = [
 ]
 
 ///|
-fn rows(nav : Array[@model.NavItem]) -> Array[(String, Int)] {
+fn rows(nav : Array[@model.NavItem]) -> Array[(String, Int32)] {
   nav.map(n => (n.title, n.depth))
 }
 

@@ -1,6 +1,6 @@
 ///|
 pub(all) struct Mount {
-  kind : (String) -> Int raise
+  kind : (String) -> Int32 raise
   read : (String) -> String raise
   list : (String) -> Array[String] raise
 }
@@ -27,9 +27,9 @@ pub(all) struct Publisher {
 
 ///|
 pub(all) struct Limits {
-  max_files : Int
-  max_bytes : Int
-  max_depth : Int
+  max_files : Int32
+  max_bytes : Int32
+  max_depth : Int32
 }
 
 ///|
@@ -64,15 +64,15 @@ pub(all) struct Host {
 ///|
 pub fn Host::new(
   input : Mount,
-  publisher? : Publisher? = None,
-  toolchain? : @toolchain.Provider? = None,
-  library_build? : LibraryBuildProvider? = None,
-  environment? : Map[String, String] = Map([]),
-  system? : @config.Document = @config.empty(),
-  global? : @config.Document = @config.empty(),
-  cancelled? : () -> Bool = fn() { false },
-  event? : (Event) -> Unit = fn(_) { () },
-  limits? : Limits = Limits::default(),
+  publisher~ : Publisher? = None,
+  toolchain~ : @toolchain.Provider? = None,
+  library_build~ : LibraryBuildProvider? = None,
+  environment~ : Map[String, String] = Map([]),
+  system~ : @config.Document = @config.empty(),
+  global~ : @config.Document = @config.empty(),
+  cancelled~ : () -> Bool = fn() { false },
+  event~ : (Event) -> Unit = fn(_) { () },
+  limits~ : Limits = Limits::default(),
 ) -> Host {
   {
     input,
@@ -129,7 +129,7 @@ pub fn Host::snapshot(self : Host) -> Snapshot raise {
   let paths = []
   let directories = []
   let mut bytes = 0
-  fn walk(path : String, depth : Int) -> Unit raise {
+  fn walk(path : String, depth : Int32) -> Unit raise {
     if (self.cancelled)() {
       raise @config.Invalid("Cancelled")
     }

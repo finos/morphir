@@ -13,7 +13,7 @@ pub extend CodecError with @debug.Debug::{to_repr}
 ///|
 priv struct Reader {
   chars : Array[Char]
-  mut index : Int
+  mut index : Int32
 }
 
 ///|
@@ -66,7 +66,7 @@ fn Reader::string(self : Reader) -> String raise CodecError {
 }
 
 ///|
-fn Reader::value(self : Reader, depth : Int) -> Json raise CodecError {
+fn Reader::value(self : Reader, depth : Int32) -> Json raise CodecError {
   self.space()
   if depth > 512 || self.index >= self.chars.length() {
     raise Invalid("invalid_json", "Depth limit or unexpected end of input")

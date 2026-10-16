@@ -17,7 +17,7 @@ fn function_parts(
 ///|
 /// The placeholder type `t-n`, marked unknown, of an unannotated value or let
 /// definition.
-fn placeholder(n : Int) -> @ir.Type {
+fn placeholder(n : Int32) -> @ir.Type {
   let name = @ir.Name::parse("t-" + n.to_string()) catch { _ => panic() }
   Variable(@ir.TypeAttributes::default().with_unknown(), name)
 }

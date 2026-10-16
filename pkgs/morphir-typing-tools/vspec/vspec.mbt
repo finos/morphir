@@ -90,7 +90,7 @@ fn tokenize(text : String) -> Array[Token] raise VSpecError {
 ///|
 priv struct Parser {
   tokens : Array[Token]
-  mut pos : Int
+  mut pos : Int32
 }
 
 ///|

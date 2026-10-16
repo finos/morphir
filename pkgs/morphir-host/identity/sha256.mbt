@@ -1,12 +1,12 @@
 ///|
-fn rotate(value : UInt, bits : Int) -> UInt {
+fn rotate(value : UInt32, bits : Int32) -> UInt32 {
   (value >> bits) | (value << (32 - bits))
 }
 
 ///|
 /// SHA-256 for bounded, already buffered pipeline snapshots.
 pub fn sha256(bytes : Bytes) -> String {
-  let constants : Array[UInt] = [
+  let constants : Array[UInt32] = [
     0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U, 0x3956c25bU, 0x59f111f1U,
     0x923f82a4U, 0xab1c5ed5U, 0xd807aa98U, 0x12835b01U, 0x243185beU, 0x550c7dc3U,
     0x72be5d74U, 0x80deb1feU, 0x9bdc06a7U, 0xc19bf174U, 0xe49b69c1U, 0xefbe4786U,
@@ -19,7 +19,7 @@ pub fn sha256(bytes : Bytes) -> String {
     0x5b9cca4fU, 0x682e6ff3U, 0x748f82eeU, 0x78a5636fU, 0x84c87814U, 0x8cc70208U,
     0x90befffaU, 0xa4506cebU, 0xbef9a3f7U, 0xc67178f2U,
   ]
-  let state : Array[UInt] = [
+  let state : Array[UInt32] = [
     0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU, 0x510e527fU, 0x9b05688cU,
     0x1f83d9abU, 0x5be0cd19U,
   ]

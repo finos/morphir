@@ -12,7 +12,7 @@ pub fn array(value : Json) -> Array[Json] raise CodecError {
 }
 
 ///|
-pub fn tuple(value : Json, length : Int) -> Array[Json] raise CodecError {
+pub fn tuple(value : Json, length : Int32) -> Array[Json] raise CodecError {
   let items = array(value)
   if items.length() != length {
     raise Invalid("invalid_arity", "Expected \{length} items")
@@ -282,7 +282,7 @@ pub fn[K, V] write_map(
   value : Map[K, V],
   key : (K) -> Json raise,
   item : (V) -> Json raise,
-  legacy? : Bool = false,
+  legacy~ : Bool = false,
 ) -> Json raise {
   let entries = value
     .iter()
@@ -465,7 +465,7 @@ pub fn write_float(value : Double) -> Json raise CodecError {
 
 ///|
 /// Elm Dict orders names and paths lexicographically by their legacy word lists.
-fn compare_legacy_key(left : Json, right : Json) -> Int {
+fn compare_legacy_key(left : Json, right : Json) -> Int32 {
   match (left, right) {
     (String(left), String(right)) => left.compare(right)
     (Array(left), Array(right)) => {

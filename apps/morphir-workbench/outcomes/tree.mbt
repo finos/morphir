@@ -13,7 +13,7 @@ fn node_text(value : Json, name : String) -> String {
 
 ///|
 /// Presentation is bounded independently of the lossless canonical result.
-fn value_node(value : Json, depth : Int, budget : Ref[Int]) -> Json {
+fn value_node(value : Json, depth : Int32, budget : Ref[Int32]) -> Json {
   fn omitted() -> Json {
     { "kind": "truncated", "text": "Result display limit reached" }
   }

@@ -25,7 +25,7 @@ fn hint_text(value : @ion.IonValue, name : String) -> String? {
 
 ///|
 fn hint_span(value : @ion.IonValue) -> @diagnostics.Span? {
-  fn coordinate(value : @ion.IonValue, name : String) -> Int? {
+  fn coordinate(value : @ion.IonValue, name : String) -> Int32? {
     guard hint_field(value, name) is Some(v) else { return None }
     guard v.kind() is Int(n) else { return None }
     let text = n.to_string()

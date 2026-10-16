@@ -1,5 +1,5 @@
 ///|
-pub let compiler_version : String = "0.10.14+7d59c7ec9"
+pub let compiler_version : String = "0.10.15+943464bfa"
 
 ///|
 fn absolute(host : Host, path : String) -> String {
@@ -82,7 +82,7 @@ fn discover(host : Host, request : Json) -> String? raise {
 }
 
 ///|
-fn validate(host : Host, home : String, timeout : Int) -> Json raise {
+fn validate(host : Host, home : String, timeout : Int32) -> Json raise {
   for name in ["moon", "moonc"] {
     if (host.kind)(executable(host, home, name)) == 0 {
       raise ToolchainError("Missing " + name + " in toolchain: " + home)
@@ -157,7 +157,7 @@ fn acquisition_target(host : Host) -> String? {
 }
 
 ///|
-fn acquire(host : Host, home : String, timeout : Int) -> Json raise {
+fn acquire(host : Host, home : String, timeout : Int32) -> Json raise {
   let target = match acquisition_target(host) {
     Some(target) => target
     None =>

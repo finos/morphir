@@ -5,7 +5,7 @@ pub fn interpret(
   file : @ir.IRFile,
   unit_id : String,
   entries : Array[MetadataEntry],
-  capabilities? : Capabilities = Capabilities::unavailable(),
+  capabilities~ : Capabilities = Capabilities::unavailable(),
 ) -> Interpretation raise {
   let owners : Map[String, String] = Map([])
   if file.distribution is Library(package_name, _, definition) {

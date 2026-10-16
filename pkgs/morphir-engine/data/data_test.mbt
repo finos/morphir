@@ -142,7 +142,7 @@ test "historical JSON migration uses the same checkpoint path" {
 }
 
 ///|
-fn ion_envelope(ir : String, extra? : String = "") -> String {
+fn ion_envelope(ir : String, extra~ : String = "") -> String {
   "morphir_pipeline::{profile:\"morphir-pipeline-v1\",contract:\"ir-unit\",unit_id:\"Pricing\",ir:" +
   ir +
   ",metadata:[]" +

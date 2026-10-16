@@ -4,7 +4,7 @@ fn plain() -> @ir.TypeAttributes {
 }
 
 ///|
-fn ref_type(name : String, args? : Array[@ir.Type] = []) -> @ir.Type {
+fn ref_type(name : String, args~ : Array[@ir.Type] = []) -> @ir.Type {
   @ir.Type::Reference(
     plain(),
     @ir.FQName::parse(name) catch {
@@ -15,7 +15,7 @@ fn ref_type(name : String, args? : Array[@ir.Type] = []) -> @ir.Type {
 }
 
 ///|
-fn ctx_for(profile? : Profile = Model) -> Ctx {
+fn ctx_for(profile~ : Profile = Model) -> Ctx {
   Ctx::new(
     { ..Options::default(), profile, },
     @ir.Path::parse("acme/app") catch {
@@ -208,7 +208,7 @@ test "derived and incomplete type definitions are refused" {
 }
 
 ///|
-fn type_var(name : String, typeclass? : String? = None) -> @ir.Type {
+fn type_var(name : String, typeclass~ : String? = None) -> @ir.Type {
   let constraints : Map[String, @ir.Data] = Map([])
   if typeclass is Some(c) {
     constraints["typeclass"] = Text(c)

@@ -2,7 +2,7 @@
 fn invocation_validation_code(
   suite : @execution.Suite,
   entries : Array[@execution.PublicEntry],
-  rejections? : Array[(String, String)] = [],
+  rejections~ : Array[(String, String)] = [],
 ) -> String {
   try {
     @execution.validate_invocations(suite, entries, [], rejections~)

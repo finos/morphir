@@ -14,10 +14,10 @@ pub(all) enum Value {
   Integer(@bigint.BigInt)
   Boolean(Bool)
   Unit
-  Decimal(@bigint.BigInt, Int)
+  Decimal(@bigint.BigInt, Int32)
   Float64(UInt64)
-  Text(Array[Int])
-  Character(Array[Int])
+  Text(Array[Int32])
+  Character(Array[Int32])
   Sequence(Array[Value])
   Product(Array[Value])
   Record(Array[(String, Value)])

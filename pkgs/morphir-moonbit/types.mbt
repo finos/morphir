@@ -131,8 +131,8 @@ pub(all) struct Output {
 
 ///|
 pub(all) struct Limits {
-  max_declarations : Int
-  max_bytes : Int
+  max_declarations : Int32
+  max_bytes : Int32
 }
 
 ///|

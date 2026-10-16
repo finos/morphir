@@ -1,4 +1,4 @@
-export const compilerVersion = "0.10.14+7d59c7ec9";
+export const compilerVersion = "0.10.15+943464bfa";
 export const capabilities = Object.freeze({protocolVersion: 1, mode: "embedded",
   operations: Object.freeze(["info", "compile", "run"]), targets: Object.freeze(["wasm", "wasm-gc"])});
 

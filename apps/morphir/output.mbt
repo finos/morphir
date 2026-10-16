@@ -43,8 +43,8 @@ fn emit_plan(
   destinations : Array[String],
   boundaries : Array[@engine.BoundarySelection],
   mode : OutputMode,
-  components? : Array[@engine.ComponentBoundary] = [],
-  frontends? : Array[@engine.SourceFrontendSelection] = [],
+  components~ : Array[@engine.ComponentBoundary] = [],
+  frontends~ : Array[@engine.SourceFrontendSelection] = [],
 ) -> Unit {
   if mode is Human && frontends.any(f => f.capabilities is Some(_)) {
     println(

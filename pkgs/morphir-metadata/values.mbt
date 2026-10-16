@@ -70,8 +70,8 @@ pub fn valid_language_id(value : String) -> Bool {
 /// One closed typed data object, with both maps required. Empty maps are valid.
 pub fn TargetNames::from_ion(
   value : @ion.IonValue,
-  owner? : String = "targetNames",
-  language_ids? : Bool = true,
+  owner~ : String = "targetNames",
+  language_ids~ : Bool = true,
 ) -> TargetNames raise {
   if !value.annotations().is_empty() {
     raise Invalid(

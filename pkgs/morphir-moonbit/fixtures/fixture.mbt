@@ -16,7 +16,7 @@ pub fn attrs() -> @ir.ValueAttributes {
 pub fn definition(
   output : @ir.Type,
   body : @ir.Value,
-  access? : @ir.Access = @ir.Access::Public,
+  access~ : @ir.Access = @ir.Access::Public,
 ) -> @ir.AccessControlled[@ir.Documented[@ir.ValueDefinition]] {
   {
     access,
@@ -28,7 +28,7 @@ pub fn definition(
 }
 
 ///|
-pub fn library(reverse? : Bool = false) -> @ir.IRFile raise {
+pub fn library(reverse~ : Bool = false) -> @ir.IRFile raise {
   let integer = scalar("morphir/SDK:basics#int")
   let decimal = scalar("morphir/SDK:decimal#decimal")
   let boolean = scalar("morphir/SDK:basics#bool")

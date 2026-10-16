@@ -119,8 +119,8 @@ pub fn Report::to_json(self : Report) -> Json {
 pub fn plan(
   unit : @data.IRUnit,
   suite : @protocol.Suite,
-  target? : String = "js",
-  available_targets? : Array[String] = ["js", "wasm-gc", "native"],
+  target~ : String = "js",
+  available_targets~ : Array[String] = ["js", "wasm-gc", "native"],
 ) -> Plan raise {
   suite.validate()
   if !["js", "wasm-gc", "native", "llvm"].contains(target) ||
@@ -198,10 +198,10 @@ pub fn Evaluator::scheme() -> Evaluator {
 pub fn run_report(
   plan : Plan,
   provider : Provider,
-  evaluator? : Evaluator? = None,
-  observer? : @observe.Observer = @observe.Observer::noop(),
-  cancelled? : () -> Bool = fn() { false },
-  comparison? : @protocol.ComparisonPolicy = @protocol.Exact,
+  evaluator~ : Evaluator? = None,
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+  cancelled~ : () -> Bool = fn() { false },
+  comparison~ : @protocol.ComparisonPolicy = @protocol.Exact,
 ) -> Report raise {
   let observer = observer.isolated(@observe.Health::new())
   comparison.validate()
@@ -417,10 +417,10 @@ pub fn run_report(
 pub fn run(
   plan : Plan,
   provider : Provider,
-  evaluator? : Evaluator? = None,
-  observer? : @observe.Observer = @observe.Observer::noop(),
-  cancelled? : () -> Bool = fn() { false },
-  comparison? : @protocol.ComparisonPolicy = @protocol.Exact,
+  evaluator~ : Evaluator? = None,
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+  cancelled~ : () -> Bool = fn() { false },
+  comparison~ : @protocol.ComparisonPolicy = @protocol.Exact,
 ) -> Report raise {
   let report = run_report(
     plan,

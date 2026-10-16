@@ -1,5 +1,5 @@
 ///|
-fn toolchain_command(cli : Cli, mode : OutputMode) -> Int raise {
+fn toolchain_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   let operation = cli.command[10:].to_owned()
   let fields : Map[String, Json] = Map::from_array([
     ("operation", Json::string(operation)),

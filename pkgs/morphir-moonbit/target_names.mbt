@@ -275,8 +275,9 @@ fn TargetNames::new(
     types,
     Map::from_array(
       [
-        "Int", "Int64", "UInt", "UInt64", "Bool", "Double", "Float", "String", "Char",
-        "Byte", "Bytes", "Unit", "Array", "Option", "Result",
+        "Int", "Int16", "Int32", "Int64", "UInt", "UInt16", "UInt32", "UInt64", "Bool",
+        "Double", "Float", "String", "StringView", "Char", "Byte", "Bytes", "BytesView",
+        "Unit", "Array", "FixedArray", "Option", "Result",
       ].map(n => (n, true)),
     ),
   )

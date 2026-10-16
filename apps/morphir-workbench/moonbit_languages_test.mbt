@@ -1,5 +1,5 @@
 ///|
-fn compile_moonbit(source : String, target? : String = "moonbit") -> Json {
+fn compile_moonbit(source : String, target~ : String = "moonbit") -> Json {
   @pipeline.execute({
     "operation": "compile",
     "source": source,

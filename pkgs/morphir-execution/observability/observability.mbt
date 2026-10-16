@@ -77,7 +77,7 @@ pub(all) struct Observation {
   details : Details?
   context : ObservationContext
   correlation : Correlation?
-  sequence : Int
+  sequence : Int32
   stage : Stage
   signal : Signal
   wall_seconds : Double
@@ -93,7 +93,7 @@ pub(all) struct Observer {
   next_id : () -> String
   run_id : String
   trace_id : String
-  sequence : Ref[Int]
+  sequence : Ref[Int32]
 }
 
 ///|
@@ -114,7 +114,7 @@ pub fn Observer::noop() -> Observer {
 pub struct Scope {
   priv observer : Observer
   priv context : ObservationContext
-  priv sequence : Ref[Int]
+  priv sequence : Ref[Int32]
 }
 
 ///|
@@ -137,8 +137,8 @@ pub fn[T] Scope::observe(
   self : Scope,
   stage : Stage,
   body : (Scope) -> T raise,
-  details? : Details? = None,
-  is_cancelled? : (Error) -> Bool = fn(error) {
+  details~ : Details? = None,
+  is_cancelled~ : (Error) -> Bool = fn(error) {
     error is @execution.Invalid("Cancelled")
   },
 ) -> T raise {
@@ -325,7 +325,7 @@ pub(all) struct TraceContext {
 } derive(Eq)
 
 ///|
-fn hex_id(s : String, size : Int) -> Bool {
+fn hex_id(s : String, size : Int32) -> Bool {
   s.length() == size &&
   s.to_array().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) &&
   s.to_array().any(c => c != '0')

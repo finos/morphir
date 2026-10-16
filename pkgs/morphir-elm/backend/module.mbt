@@ -87,12 +87,12 @@ priv struct ModuleOutput {
 }
 
 ///|
-fn hex4(code : Int) -> String {
+fn hex4(code : Int32) -> String {
   let digits = "0123456789ABCDEF"
   let mut out = ""
   for shift in [12, 8, 4, 0] {
     out = out +
-      Int::unsafe_to_char(digits[(code >> shift) & 15].to_int()).to_string()
+      Int32::unsafe_to_char(digits[(code >> shift) & 15].to_int()).to_string()
   }
   out
 }

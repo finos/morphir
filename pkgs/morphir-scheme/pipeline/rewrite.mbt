@@ -11,7 +11,7 @@ pub fn rewrite_value(
 fn walk(
   value : @ir.Value,
   transform : (@ir.Value) -> @ir.Value raise,
-  depth : Int,
+  depth : Int32,
 ) -> @ir.Value raise {
   if depth > 256 {
     raise @scheme.Limit("IR rewrite depth")

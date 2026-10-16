@@ -1,10 +1,10 @@
 ///|
 /// Parser coordinates, interpreted according to the warning's producer.
 pub(all) struct Span {
-  start_line : Int
-  start_column : Int
-  end_line : Int
-  end_column : Int
+  start_line : Int32
+  start_column : Int32
+  end_line : Int32
+  end_column : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -135,7 +135,7 @@ fn text(
 fn number(
   fields : Map[String, @ion.IonValue],
   name : String,
-) -> Int raise DiagnosticError {
+) -> Int32 raise DiagnosticError {
   guard fields[name].kind() is Int(value) else {
     raise InvalidDiagnostic("Expected diagnostic coordinate: " + name)
   }

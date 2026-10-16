@@ -2,7 +2,7 @@
 fn invocation_request(
   suite : Json,
   manifest : Json,
-  format? : String = "json",
+  format~ : String = "json",
 ) -> Json {
   {
     "id": 11,
@@ -15,7 +15,7 @@ fn invocation_request(
 }
 
 ///|
-fn public_manifest(inputs : Json, output? : Json = { "type": "unit" }) -> Json {
+fn public_manifest(inputs : Json, output~ : Json = { "type": "unit" }) -> Json {
   {
     "entries": [{ "name": "entry", "inputs": inputs, "output": output }],
     "definitions": [],
@@ -23,7 +23,7 @@ fn public_manifest(inputs : Json, output? : Json = { "type": "unit" }) -> Json {
 }
 
 ///|
-fn invocation_suite(arguments : Json, entry? : String = "entry") -> Json {
+fn invocation_suite(arguments : Json, entry~ : String = "entry") -> Json {
   {
     "profile": "morphir-invocations-v1",
     "calls": [{ "id": "c", "entry": entry, "arguments": arguments }],
