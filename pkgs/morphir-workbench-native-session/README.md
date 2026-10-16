@@ -29,6 +29,36 @@ passing integer bounds. Request copies cannot mutate the admitted value.
 Exact offline Workbench MCK draft.7 exercises this decoder through the existing
 explicit adapter. Frame acceptance grants no authority, admits no function and
 executes nothing. Ion input remains opaque at this boundary. Trusted caller and
-session binding, actual OS grants, response validation and packaged lifecycle
-qualification remain separate. The existing private Proton handlers are not
+session binding, actual OS grants and packaged lifecycle qualification remain
+separate. The existing private Proton handlers are not
 changed to advertise the public native profile.
+
+## Native reply boundary
+
+The portable `response` package admits the public native draft.1 reply from
+complete UTF-8 bytes. It rejects malformed encoding, BOMs, duplicate members,
+excessive parsing budgets, unknown fields and mismatched originating operations.
+Whole replies fit 1 MiB and grant offers fit 512 KiB, including their wrappers.
+It validates all 13 operation payloads, shares descriptor admission with the job
+client, binds optional expected sessions and checks initial submission identity
+and receipt agreement. The receipt cursor still owns retained-job transitions.
+
+Grant admission requires unique project IDs. Labels and error messages use the
+published Unicode character limits; nested jobs retain their UTF-16 limits.
+Workspace chunks use exact integers and canonical padded base64, with at most
+196,608 decoded bytes. Capture totals, offsets and retirement still require the
+stateful workspace client and owner. A reply copy cannot mutate admitted data.
+
+`success` validates and reserves the complete reply envelope before publication.
+`failure` takes closed `Code` and `Effect` types and emits fixed public messages,
+omitting internal errors, paths and source. The owner chooses `NoEffect` or
+`UnknownEffect` at its actual effect boundary. An encoding failure after an owner
+action does not establish that no action occurred.
+
+The binding must correlate each completion with its exact invocation, including
+concurrent calls with equal operations. It must also recheck the current native
+page around asynchronous authority boundaries. This codec cannot establish
+framework provenance, immutable captures or confirmed worker exit. Portable and
+compiled-client tests are implementation checks; independent reply/lifecycle MCK
+and actual packaged activation remain pending. The private Proton bridge is
+still shipped until the coordinated host/renderer switch is qualified.

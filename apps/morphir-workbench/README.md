@@ -446,23 +446,39 @@ It preserves connected v1 and the existing job receipt and terminal contracts.
 
 ## Native descriptor admission
 
-The shared job client accepts a transport's explicit `nativeDescriptor()` hook,
-which returns original JSON descriptor text after the binding checks its current
-page and session. The compiled `native-descriptor` command admits the exact
-published native `0.1.0-draft.1` profile, closed capability list and directly
-nested frozen jobs offer. Its session must match the current page session.
-Parsing rejects duplicate members and applies the native depth, node, string
-and 1-MiB text limits. HTTP retains its separate authenticated host-descriptor
-admission. The native hook never negotiates through an HTTP session endpoint.
+The shared job client accepts paired `nativeDescriptor()` and
+`nativeRequest(source)` hooks. The descriptor hook supplies JSON descriptor text
+after the binding checks its current page and session. If it extracts a descriptor
+from a public reply, it must admit the complete original reply with bounded,
+duplicate-aware decoding before projecting that descriptor. The compiled
+`native-descriptor` command uses the shared native reply codec to check the exact
+profile, closed capabilities and directly nested frozen jobs offer. Its session
+must match the current page session. HTTP retains separate authenticated
+host-descriptor admission.
 
-Both paths use the existing receipt cursor. Reconciliation checks the same job
-authority and stable native capabilities before observing a retained identity.
-An absent jobs capability is explicit absence, and malformed negotiation never
-falls back to another transport or submits a replacement job. This is admission
-preparation: the shipped private Proton bridge still uses its existing bootstrap.
-Public raw IPC envelopes, native error effects, lifecycle MCK and packaged target
-qualification remain pending. This text boundary alone does not establish raw
-UTF-8 decoding, framework caller authority or public native-profile support.
+The request hook receives a complete public native job request as JSON text,
+including profile, version, operation, session and payload. Preflight bounds the
+whole 1-MiB envelope before sending. The hook returns the complete raw native
+reply text for compiled `native-response` admission against that originating
+operation and session. Initial session-open admission may use a null expected
+session; later calls require the known session. The binding must correlate its
+own concurrent invocations and enforce deadlines and current-page checks.
+
+Both transports use the existing receipt cursor. Only a closed native error
+with `effect:none` proves that this submission caused no new effect; the client
+allows a later explicit submit and never retries automatically. Unknown effects,
+malformed/lost replies and transport exceptions leave submission uncertain.
+Transport exceptions cannot manufacture an admitted effect. Native errors carry
+no fabricated HTTP status. Terminal release absence can confirm cleanup only
+after fresh, matching authority admission and an authoritative no-effect error.
+
+Reconciliation checks the same job authority and stable native capabilities
+before observing a retained identity. Missing jobs are explicit absence, and
+malformed negotiation never falls back to another transport. The shipped Proton
+bridge still uses its private bootstrap. Coordinated host/renderer adoption,
+independent reply and lifecycle MCK, and packaged target activation remain
+pending. Text hooks alone do not establish raw UTF-8 decoding or native caller
+authority; the byte-oriented codec provides the earlier framing boundary.
 
 ## Verification
 

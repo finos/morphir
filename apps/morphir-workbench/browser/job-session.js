@@ -10,6 +10,10 @@ export class JobClient {
     pause = () => new Promise(resolve => setTimeout(resolve, 150)), authenticate, timeout = 10000, transport } = {}) {
     this.sessionId = sessionId;
     this.transport = transport ?? new HttpJobTransport({ fetchFn, timeout });
+    this.native = typeof this.transport.nativeRequest === 'function';
+    if (this.native !== (typeof this.transport.nativeDescriptor === 'function')) {
+      throw new Error('Native job transports require paired descriptor and request operations.');
+    }
     this.core = core;
     this.pause = pause;
     this.authenticate = authenticate;
@@ -31,9 +35,38 @@ export class JobClient {
     if (reply.job) { this.job = reply.job; this.result = reply.result; }
     return reply;
   }
+  encodeRequest(path, body) {
+    let value = body;
+    if (this.native) {
+      if (!['submit', 'query', 'cancel', 'release'].includes(path)) throw new Error('Unknown native job operation.');
+      value = { profile: 'morphir/workbench/native', contractVersion: version,
+        operation: `job.${path}`, sessionId: this.sessionId, payload: body };
+    }
+    const source = value === undefined ? undefined : JSON.stringify(value);
+    if (source !== undefined && (source.length > limit || bytes(source) > limit)) {
+      throw new Error('Host job request exceeds the complete 1-MiB frame limit.');
+    }
+    return source;
+  }
   async request(path, body, optional = false) {
-    const source = body === undefined ? undefined : JSON.stringify(body);
-    if (source !== undefined && bytes(source) > limit) throw new Error('Host job request exceeds the 1-MiB limit.');
+    const source = this.encodeRequest(path, body);
+    if (this.native) {
+      let text;
+      try { text = await this.transport.nativeRequest(source); }
+      catch (cause) {
+        // Framework/transport exceptions are not admitted native error replies.
+        throw new Error('The native job reply was lost or unavailable. Its effect is unknown.', { cause });
+      }
+      if (typeof text !== 'string') throw new Error('The native host returned an invalid raw job reply.');
+      if (text.length > limit || bytes(text) > limit) throw new Error('Native job response exceeds the 1-MiB frame limit.');
+      const reply = this.command({ op: 'native-response', source: text,
+        operation: `job.${path}`, sessionId: this.sessionId }).value;
+      if (!reply.ok) {
+        throw Object.assign(new Error(reply.error.message), { native: true, code: reply.error.code,
+          effect: reply.error.effect, rejected: reply.error.effect === 'none' });
+      }
+      return reply.value;
+    }
     const response = await this.transport.request(path, source, optional);
     if (optional && response.status === 404) return null;
     const text = response.source;
@@ -54,8 +87,8 @@ export class JobClient {
     return value;
   }
   async descriptor(optional = false) {
-    if (typeof this.transport.nativeDescriptor === 'function') {
-      // The native binding checks its page/session and supplies original text.
+    if (this.native) {
+      // The binding checks its page/session and admits raw replies before any projection.
       // Explicit transport selection keeps HTTP authentication admission separate.
       const source = await this.transport.nativeDescriptor();
       if (typeof source !== 'string') throw new Error('The native descriptor must be raw JSON text.');
@@ -91,7 +124,7 @@ export class JobClient {
       inputs: { format: typeof request.argumentsIon === 'string' ? 'ion-text' : 'json',
         source: typeof request.argumentsIon === 'string' ? request.argumentsIon : JSON.stringify(request.arguments) } };
     // Check bounds before sending: an oversized request has no uncertain host effect.
-    if (bytes(JSON.stringify(body)) > limit) throw new Error('Host job request exceeds the 1-MiB limit.');
+    this.encodeRequest('submit', body);
     ++this.generation;
     this.active = true;
     this.cancelOnSubmit = false;
@@ -191,7 +224,8 @@ export class JobClient {
       // A successful release reply can be lost. Fresh authentication and exact
       // offer admission make absence of this already-terminal identity safe.
       if (this.releaseReauthenticated && this.job.state === 'terminal' &&
-          error.status === 404 && error.code === 'workbench.host_unknown_job') {
+          ((error.status === 404 && error.code === 'workbench.host_unknown_job') ||
+           (error.native === true && error.code === 'not_found' && error.effect === 'none'))) {
         this.releasePending = false;
         return;
       }

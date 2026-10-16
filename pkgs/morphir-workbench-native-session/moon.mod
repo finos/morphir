@@ -2,7 +2,7 @@ name = "finos/morphir-workbench-native-session"
 
 version = "0.1.0"
 
-description = "Portable state for the private Proton Workbench bootstrap"
+description = "Portable native Workbench session and frame boundaries"
 
 license = "Apache-2.0"
 
@@ -14,4 +14,5 @@ supported_targets = "js+native+wasm+wasm-gc"
 
 import {
   "finos/morphir-ir@0.1.0",
+  "finos/morphir-execution@0.1.0",
 }
