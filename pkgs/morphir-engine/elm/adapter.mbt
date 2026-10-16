@@ -31,7 +31,7 @@ pub fn provider(
 ) -> @engine.SourceProvider {
   let library : @engine.SourceProfile = {
     id: constant(@ids.ProfileId::parse, PROFILE),
-    dependencies: { "moonrockz/krueger": "0.7.0" },
+    dependencies: { "moonrockz/krueger": "0.8.0" },
     evidence: @engine.LocalAcceptance,
     unit_limits,
     capabilities: {
