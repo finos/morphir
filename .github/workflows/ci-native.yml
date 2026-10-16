@@ -111,6 +111,9 @@ jobs:
       - name: Test acquisition without a MoonBit installation
         run: node apps/morphir/scripts/test-acquisition.js "$MORPHIR_CI_NATIVE/morphir-native"
 
+      - name: Qualify owned native Workbench workers without CEF
+        run: mise run test:workbench-native-workers
+
       - name: Compile generated libraries and verify private build lifecycle
         run: bash .config/mise/tasks/test/compiler
 

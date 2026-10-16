@@ -50,6 +50,10 @@ run = "moonx scripts/workbench-live-host.mbtx"
 description = "Test native desktop session authority without CEF"
 run = "moonx scripts/workbench-native-session.mbtx"
 
+[tasks."test:workbench-native-workers"]
+description = "Qualify bounded owned native Workbench workers without CEF"
+run = "moonx scripts/workbench-native-workers.mbtx"
+
 [tasks."test:conformance"]
 description = "Independent, Scheme and explicit Rust evaluator conformance gates"
 run = "moon run scripts/conformance-check.mbtx"

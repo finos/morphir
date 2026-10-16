@@ -19,7 +19,7 @@ try {
     window.__MoonBit__.core.invokeOp(`app:workbench_session_${operation}`, payload), [operation, payload]);
   const firstSession = await native('open', '0.1.0-draft.1');
   assert.equal(firstSession.ok, true);
-  assert.deepEqual(firstSession.operations, [], 'The bootstrap does not offer native execution or files');
+  assert.deepEqual(firstSession.operations, ['jobs'], 'The packaged host offers owned native evaluation jobs');
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Desktop local');
   assert.deepEqual(await native('check', firstSession.sessionId), firstSession);
   assert.deepEqual(await native('open', '0.1.0-draft.2'), { ok: false, code: 'workbench.native_version' });
@@ -59,6 +59,14 @@ try {
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Browser local');
   await page.goto(originalUrl);
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  await page.evaluate(() => {
+    const invoke = window.__MoonBit__.core.invokeOp.bind(window.__MoonBit__.core);
+    globalThis.nativeJobCalls = [];
+    window.__MoonBit__.core.invokeOp = (name, payload) => {
+      if (name === 'app:workbench_job') globalThis.nativeJobCalls.push(JSON.parse(payload).path);
+      return invoke(name, payload);
+    };
+  });
   const back = page.getByRole('button', {name:'Back',exact:true});
   assert.equal(await back.isEnabled(), false);
   assert.equal(await page.locator('#tool-panel-body').isVisible(), false, 'The packaged tool panel starts collapsed');
@@ -71,6 +79,7 @@ try {
   await page.locator('.tree-item').filter({ hasText: 'main' }).click();
   await page.getByRole('heading', { name: 'Returns', exact: true }).waitFor();
   assert.match(await page.locator('.type-signature').textContent(), /main/);
+  await page.getByRole('button', { name: 'Local Scheme', exact: true }).click();
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Function evaluated' }).waitFor();
   assert.equal(await page.locator('.evaluation-result pre').textContent(), '42');
@@ -145,6 +154,49 @@ try {
   await moonbitWorkflow(page, { nativeDownloads: false });
   await libraryWorkflow(page, { nativeDownloads: false });
   await toolPanelWorkflow(page, { resize: false });
+  // Native job availability must not apply host retention rules to Local Scheme.
+  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  const localModel = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
+  await (await localModel).setFiles(fileURLToPath(new URL('../../../pkgs/morphir-ir/conformance/fixtures/v3-greeting.json', import.meta.url)));
+  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  const originalEntry = page.locator('.tree-item[title="elm-compat:main#apply-discount"]');
+  const otherEntry = page.locator('.tree-item[title="elm-compat:main#order-status-to-string"]');
+  await originalEntry.click();
+  await page.getByRole('heading', { name: 'applyDiscount', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Local Scheme', exact: true }).click();
+  await page.getByRole('button', { name: 'JSON inputs', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Function arguments', exact: true }).fill('[20,100]');
+  await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
+  await page.getByRole('status').filter({ hasText: 'Function evaluated' }).waitFor();
+  await otherEntry.click();
+  await page.getByRole('heading', { name: 'orderStatusToString', exact: true }).waitFor();
+  assert.equal(await page.locator('.evaluation-result').count(), 0);
+  await originalEntry.click();
+  await page.getByRole('heading', { name: 'applyDiscount', exact: true }).waitFor();
+  assert.equal(await page.locator('.evaluation-result').count(), 0, 'Local results do not reappear after navigation');
+  await page.evaluate(() => {
+    const request = globalThis.morphirWorkbench.request.bind(globalThis.morphirWorkbench);
+    globalThis.restoreLocalScopeRequests = () => { globalThis.morphirWorkbench.request = request; };
+    globalThis.morphirWorkbench.request = (data, receive) => request(data, reply => {
+      if (data.operation === 'evaluate') globalThis.releaseLocalScopeReply = () => receive(reply);
+      else receive(reply);
+    });
+  });
+  try {
+    await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
+    await page.waitForFunction(() => typeof globalThis.releaseLocalScopeReply === 'function');
+    await otherEntry.click();
+    await page.getByRole('heading', { name: 'orderStatusToString', exact: true }).waitFor();
+    await page.evaluate(() => globalThis.releaseLocalScopeReply());
+    await page.getByRole('status').filter({ hasText: 'Finished for another function' }).waitFor();
+    assert.equal(await page.locator('.evaluation-result').count(), 0);
+  } finally { await page.evaluate(() => globalThis.restoreLocalScopeRequests()); }
+  const nativeJobCalls = await page.evaluate(() => globalThis.nativeJobCalls);
+  for (const operation of ['submit', 'query', 'release']) assert.ok(nativeJobCalls.includes(operation), `Native ${operation} was used by real typed evaluation`);
+  // Presentation fixtures model standalone callbacks without host receipts.
+  await page.goto(originalUrl + '?mode=standalone');
+  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   await terminalOutcomeWorkflow(page, { resize: false, screenshot: process.env.MORPHIR_WORKBENCH_OUTCOME_SCREENSHOT });
   assert.deepEqual(errors, []);
   console.log('Packaged Proton smoke passed: page-bound native session, hostile-origin rejection, reload/revocation, explicit standalone, shared UI, worker compile/run, model import/reference/back navigation, typed fields/Ion evaluation and result views.');

@@ -1,4 +1,5 @@
 // Private Proton bootstrap, not an advertised Morphir native execution profile.
+import { JobClient } from './job-session.js';
 export const nativeBridgeVersion = '0.1.0-draft.1';
 const keys = value => value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value).sort().join(',') : '';
 
@@ -23,7 +24,8 @@ export class NativeSession {
       }
       if (keys(reply) !== 'bridgeVersion,ok,operations,sessionId' || reply.ok !== true ||
           reply.bridgeVersion !== nativeBridgeVersion || typeof reply.sessionId !== 'string' ||
-          !/^[a-zA-Z0-9_.-]{1,128}$/.test(reply.sessionId) || !Array.isArray(reply.operations) || reply.operations.length !== 0) {
+          !/^[a-zA-Z0-9_.-]{1,128}$/.test(reply.sessionId) || !Array.isArray(reply.operations) ||
+          !(reply.operations.length === 0 || (reply.operations.length === 1 && reply.operations[0] === 'jobs'))) {
         throw new Error('The desktop session reply is incompatible.');
       }
       return reply;
@@ -32,11 +34,13 @@ export class NativeSession {
   async open() {
     const reply = await this.call('open', nativeBridgeVersion);
     this.id = reply.sessionId;
+    this.operations = reply.operations.join(',');
   }
   async check() {
     if (!this.id) throw new Error('The desktop session has not been opened.');
     const reply = await this.call('check', this.id);
     if (reply.sessionId !== this.id) throw new Error('The desktop session changed. Reopen the application page.');
+    if (reply.operations.join(',') !== this.operations) throw new Error('The desktop session capabilities changed. Reopen the application page.');
   }
   dispose() {
     if (this.disposed) return;
@@ -48,13 +52,32 @@ export class NativeSession {
   }
 }
 
+export class NativeJobTransport {
+  constructor(session) { this.session = session; }
+  async request(path, body) {
+    await this.session.check();
+    let timer;
+    try {
+      const reply = await Promise.race([
+        Promise.resolve().then(() => this.session.invoke('app:workbench_job', JSON.stringify({ sessionId: this.session.id, path, body: body ?? null }))),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('The native job request timed out. Its effect may be unknown.')), this.session.timeout); }),
+      ]);
+      await this.session.check();
+      if (keys(reply) !== 'source,status' || !Number.isInteger(reply.status) || reply.status < 100 || reply.status > 599 ||
+          typeof reply.source !== 'string' || new TextEncoder().encode(reply.source).byteLength > 1048576) throw new Error('The native host returned an invalid job frame.');
+      return { ok: reply.status >= 200 && reply.status < 300, status: reply.status, source: reply.source };
+    } finally { clearTimeout(timer); }
+  }
+}
+
 export class NativeAdapter {
-  constructor(local, invoke, timeout) {
+  constructor(local, invoke, timeout, jobOptions = {}) {
     this.local = local;
     this.session = new NativeSession(invoke, timeout);
     this.runtimeLabel = 'Desktop local';
     this.epoch = 0;
     this.disposed = false;
+    this.jobOptions = jobOptions;
   }
   current(epoch) {
     if (this.disposed || epoch !== this.epoch) throw new Error('Discarded. The desktop request is no longer current.');
@@ -67,12 +90,21 @@ export class NativeAdapter {
     this.current(epoch);
     await this.session.check();
     this.current(epoch);
-    return { ...result, nativeSession: true, jobsAvailable: false, message: 'Desktop local · ready to compile' };
+    if (this.session.operations === 'jobs') {
+      this.jobs = new JobClient(this.session.id, { ...this.jobOptions, transport: new NativeJobTransport(this.session),
+        authenticate: async () => { await this.session.check(); return this.session.id; } });
+      this.jobsAvailable = await this.jobs.initialize();
+      if (!this.jobsAvailable) throw new Error("The native host advertised jobs without a compatible offer.");
+      this.current(epoch);
+    }
+    return { ...result, nativeSession: true, jobsAvailable: !!this.jobsAvailable, message: 'Desktop local · ready to compile' };
   }
-  async execute(request) {
+  async execute(request, progress) {
     const epoch = ++this.epoch;
     await this.session.check();
     this.current(epoch);
+    if (request.operation === 'resume-job' && this.jobsAvailable) return this.jobs.resume(progress);
+    if (request.operation === 'evaluate' && request.executionMode === 'typed' && this.jobsAvailable) return this.jobs.execute(request, progress);
     if (request.operation === 'project' || request.operation === 'resume-job') throw new Error('This desktop session does not offer native jobs or workspace access.');
     const result = await this.local.execute(request);
     this.current(epoch);
@@ -80,8 +112,11 @@ export class NativeAdapter {
     this.current(epoch);
     return result;
   }
-  cancel() { ++this.epoch; this.local.cancel(); }
-  dispose() { this.disposed = true; this.cancel(); this.session.dispose(); }
+  cancel() {
+    if (this.jobs?.active || (this.jobs?.job && this.jobs.job.state !== 'terminal')) return this.jobs.cancel();
+    ++this.epoch; this.local.cancel();
+  }
+  dispose() { this.disposed = true; ++this.epoch; this.local.cancel(); this.session.dispose(); }
 }
 
 export function selectLocalAdapter(location, local, bridge = globalThis.__MoonBit__) {

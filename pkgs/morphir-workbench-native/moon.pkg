@@ -1,0 +1,14 @@
+import {
+  "finos/morphir-workbench" @pipeline,
+  "finos/morphir-workbench/jobs",
+  "finos/morphir-execution" @protocol,
+  "finos/morphir-ir/wire",
+  "moonbitlang/async",
+  "moonbitlang/async/process",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/encoding/utf8",
+}
+
+options(
+  "native-stub": [ "resources.c" ],
+)

@@ -35,26 +35,32 @@ enum State {
 pub struct Session {
   priv mut state : State
   priv mut next : Int32
+  priv jobs : Bool
 }
 
 ///|
-pub fn Session::new() -> Session {
-  { state: Idle, next: 0, }
+pub fn Session::new(jobs~ : Bool = false) -> Session {
+  { state: Idle, next: 0, jobs, }
 }
 
 ///|
-fn descriptor(id : String) -> Json {
+fn Session::descriptor(self : Session, id : String) -> Json {
   {
     "ok": true,
     "bridgeVersion": "0.1.0-draft.1",
     "sessionId": id,
-    "operations": [],
+    "operations": if self.jobs {
+      ["jobs"]
+    } else {
+      []
+    },
   }
 }
 
 ///|
 /// Bootstrap identities are not credentials. Native caller context is required
-/// on every command. No job, filesystem or public native profile is offered.
+/// on every command. Job discovery comes from host configuration. Filesystem
+/// access and the proposed public native profile are not offered here.
 pub fn Session::open(
   self : Session,
   caller : Caller,
@@ -65,7 +71,7 @@ pub fn Session::open(
   }
   match self.state {
     Closed => raise Rejected("workbench.native_closed")
-    Active(page, id) if page == caller.page => return descriptor(id)
+    Active(page, id) if page == caller.page => return self.descriptor(id)
     _ => ()
   }
   guard self.next < 2147483647 else {
@@ -74,7 +80,7 @@ pub fn Session::open(
   self.next += 1
   let id = "proton-session-" + self.next.to_string()
   self.state = Active(caller.page, id)
-  descriptor(id)
+  self.descriptor(id)
 }
 
 ///|
@@ -88,7 +94,7 @@ pub fn Session::check(
     current == id else {
     raise Rejected("workbench.native_stale_session")
   }
-  descriptor(current)
+  self.descriptor(current)
 }
 
 ///|

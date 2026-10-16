@@ -1,0 +1,21 @@
+///|
+/// Qualify real native subprocesses without loading Proton or CEF.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn main {
+  let code = @process.run("moon", ["build", "--target", "native", "--release",
+    "pkgs/morphir-workbench-native/fixture", "pkgs/morphir-workbench-native/acceptance"])
+  if code != 0 { @sys.exit(1) }
+  @fs.mkdir(".dev", allow_exist=true)
+  let prefix = "_build/native/release/build/finos/morphir-workbench-native/"
+  let acceptance = @fs.realpath(prefix + "acceptance/acceptance.exe")
+  let fixture = @fs.realpath(prefix + "fixture/fixture.exe")
+  let code = @process.run(acceptance, [fixture])
+  @sys.exit(if code < 0 { 1 } else { code })
+}

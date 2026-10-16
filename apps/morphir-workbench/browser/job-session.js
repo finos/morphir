@@ -71,6 +71,7 @@ export class JobClient {
   }
   async execute(request, progress = () => {}) {
     if (!this.offer) throw new Error('This host does not offer job evaluation.');
+    if (this.active || this.polling) throw new Error('A host job is already active. Resume it instead of submitting again.');
     if (this.uncertainSubmission) throw new Error('Submission status is unknown. No second job was submitted. Reopen the host session to recover.');
     if (this.job && this.job.state !== 'terminal') throw new Error('A host job is already active. Resume it instead of submitting again.');
     if (this.releasePending) {

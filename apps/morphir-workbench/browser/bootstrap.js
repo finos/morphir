@@ -22,6 +22,7 @@ globalThis.morphirWorkbench = {
           adapter = await connect(location, local);
           result = await adapter.initialize();
         } else {
+          await import('./job-core.js');
           adapter = selectLocalAdapter(location, local);
           result = await adapter.initialize();
         }

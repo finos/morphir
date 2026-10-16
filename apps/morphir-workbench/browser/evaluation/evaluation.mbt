@@ -349,12 +349,14 @@ pub fn view(
           .aria_label("Evaluation runtime"),
         [
           @html.button(
+            disabled=props.job_pending,
             class=if !props.typed { "selected" } else { "" },
             attrs=@html.Attrs::build().aria_pressed((!props.typed).to_string()),
             on_click=on_runtime(false),
             "Local Scheme",
           ),
           @html.button(
+            disabled=props.job_pending,
             class=if props.typed { "selected" } else { "" },
             attrs=@html.Attrs::build().aria_pressed(props.typed.to_string()),
             on_click=on_runtime(true),

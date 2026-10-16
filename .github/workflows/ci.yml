@@ -376,6 +376,8 @@ jobs:
           MORPHIR_LLVM_PIN: ${{ github.workspace }}/.dev/llvm-pin.json
           MORPHIR_INSTALLED_RECEIPTS: .dev/installed-ci
         run: mise run test:installed-lifecycle
+      - name: Qualify owned native Workbench workers without CEF
+        run: mise run test:workbench-native-workers
       - name: Retain installed identity and comparison receipts
         if: always()
         uses: actions/upload-artifact@v6

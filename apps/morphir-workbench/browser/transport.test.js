@@ -730,3 +730,20 @@ test('host HTTP fetch keeps the browser global receiver required by native Windo
   } });
   assert.equal(await client.initialize(), true);
 });
+
+test('an in-flight submission cannot be replaced by another submission before its receipt arrives', async () => {
+  const fixture = cursorFixture(); let resolveSubmit, submissions = 0;
+  const pending = new Promise(resolve => { resolveSubmit = resolve; });
+  const client = new JobClient('test-session', { core: fixture.core, pause: async () => {},
+    transport: { async request(path) {
+      if (path === 'submit') { ++submissions; await pending; }
+      return { ok: true, status: 200, source: JSON.stringify(path === 'session' ? hostDescriptor :
+        path === 'submit' ? submission : path === 'query' ? { job: terminalJob, result: evaluated } : { released: true }) };
+    } },
+  });
+  await client.initialize();
+  const first = client.execute(evaluationRequest);
+  await assert.rejects(client.execute(evaluationRequest), /already active/);
+  assert.equal(submissions, 1);
+  resolveSubmit(); assert.equal((await first).value, '42');
+});

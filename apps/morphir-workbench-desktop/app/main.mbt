@@ -1,5 +1,9 @@
 ///|
 async fn main {
+  if @env.args().contains("--morphir-native-worker") {
+    @native.worker()
+    return
+  }
   let app = @proton.asset(
     "Morphir Workbench",
     "frontend/dist/index.html",

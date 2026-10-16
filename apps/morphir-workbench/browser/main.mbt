@@ -118,6 +118,7 @@ struct Model {
   query : String
   selected : String
   evaluation_typed : Bool
+  evaluation_host_job : Bool
   evaluation_mode : @evaluation.InputMode
   result_mode : @result.Mode
   evaluation_arguments : String
@@ -234,6 +235,7 @@ fn initial() -> Model {
     query: "",
     selected: "",
     evaluation_typed: false,
+    evaluation_host_job: false,
     evaluation_mode: @evaluation.Fields,
     result_mode: @result.Value,
     evaluation_arguments: "[]",
@@ -513,7 +515,7 @@ fn select(model : Model, selected : String) -> Model {
   }
   // Retain only the current host entry. Other declarations keep their normal
   // default inputs; navigating does not discard this job's draft or evidence.
-  let host_draft = if model.jobs_available &&
+  let host_draft = if model.evaluation_host_job &&
     model.selected == model.evaluation_entry {
     Some({
       arguments: model.evaluation_arguments,
@@ -523,7 +525,8 @@ fn select(model : Model, selected : String) -> Model {
   } else {
     model.host_draft
   }
-  let restored = if model.jobs_available && selected == model.evaluation_entry {
+  let restored = if model.evaluation_host_job &&
+    selected == model.evaluation_entry {
     host_draft
   } else {
     None
@@ -550,12 +553,12 @@ fn select(model : Model, selected : String) -> Model {
       Some(draft) => draft.mode
       None => model.evaluation_mode
     },
-    evaluation_result: if model.jobs_available {
+    evaluation_result: if model.evaluation_host_job {
       model.evaluation_result
     } else {
       Json::null()
     },
-    evaluation_terminal: if model.jobs_available {
+    evaluation_terminal: if model.evaluation_host_job {
       model.evaluation_terminal
     } else {
       @outcomes.Absent
@@ -647,7 +650,10 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
     Query(query) => ({ ..model, query, }, @cmd.none)
     Select(selected) => (remember(model, select(model, selected)), @cmd.none)
     EvaluationRuntime(evaluation_typed) => {
-      if model.connected {
+      if model.connected ||
+        host_job_pending(model) ||
+        host_job_disconnected(model) ||
+        model.submission_unknown {
         return (model, @cmd.none)
       }
       if evaluation_typed == model.evaluation_typed {
@@ -676,6 +682,8 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         {
           ..model,
           evaluation_typed,
+          evaluation_host_job: false,
+          host_draft: None,
           evaluation_arguments: default_arguments(
             profile,
             model.evaluation_mode,
@@ -793,7 +801,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         " · " +
         entry_label(model, model.selected) +
         " · " +
-        (if model.connected {
+        (if model.jobs_available && model.evaluation_typed {
           "host typed invocation"
         } else if model.evaluation_typed {
           "typed invocation"
@@ -810,7 +818,8 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           busy: true,
           started: now_ms(),
           evaluation_entry: model.selected,
-          host_draft: if model.connected {
+          evaluation_host_job: model.jobs_available && model.evaluation_typed,
+          host_draft: if model.jobs_available && model.evaluation_typed {
             Some({
               arguments: model.evaluation_arguments,
               mode: model.evaluation_mode,
@@ -819,18 +828,18 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           } else {
             None
           },
-          evaluation_result: if model.connected {
+          evaluation_result: if model.jobs_available && model.evaluation_typed {
             Json::null()
           } else {
             model.evaluation_result
           },
-          evaluation_terminal: if model.connected {
+          evaluation_terminal: if model.jobs_available && model.evaluation_typed {
             @outcomes.Absent
           } else {
             model.evaluation_terminal
           },
           host_job_revision: model.evaluation_revision,
-          host_submitting: model.connected,
+          host_submitting: model.jobs_available && model.evaluation_typed,
           status: "Evaluating function…",
         },
         request_cmd(
@@ -1153,7 +1162,8 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
       let took = elapsed(model)
       let succeeded = field(result, "success") == Json::boolean(true)
       if operation == "evaluate" {
-        if model.evaluation_entry != model.selected && !model.jobs_available {
+        if model.evaluation_entry != model.selected &&
+          !model.evaluation_host_job {
           return (
             {
               ..note(
@@ -1376,8 +1386,8 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             connected: field(result, "connected") == Json::boolean(true),
             jobs_available: field(result, "jobsAvailable") ==
             Json::boolean(true),
-            evaluation_typed: field(result, "jobsAvailable") ==
-            Json::boolean(true),
+            evaluation_typed: field(result, "connected") == Json::boolean(true) &&
+            field(result, "jobsAvailable") == Json::boolean(true),
             available: !frontends.is_empty(),
             catalog,
             language,
@@ -1534,6 +1544,11 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           } else {
             model.evaluation_result
           },
+          evaluation_host_job: if compiled {
+            false
+          } else {
+            model.evaluation_host_job
+          },
           evaluation_entry: if compiled {
             ""
           } else {
@@ -1556,7 +1571,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           } else {
             model.evaluation_revision
           },
-          evaluation_typed: if model.jobs_available {
+          evaluation_typed: if model.jobs_available && model.connected {
             true
           } else if compiled {
             text(result, "sourceProfile") == "moonbit-model-bool-v1" ||
@@ -1618,6 +1633,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           ..model,
           busy: true,
           status: "Reconnecting to the retained host job…",
+          evaluation_host_job: true,
         },
         request_cmd(
           emit,

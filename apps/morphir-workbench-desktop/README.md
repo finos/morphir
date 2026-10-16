@@ -33,18 +33,34 @@ publish a release. CLI, framework and CEF helper versions must match. Supported
 Proton source-built platforms are macOS Apple Silicon, Linux x64 and Windows
 x64. This slice's actual desktop verification is on macOS Apple Silicon.
 
-The packaged frontend uses Proton's secure application asset origin and runs
-the same worker-based local pipeline. Its private session bootstrap now uses
-typed Proton commands, restricted to the bundled main window. Every command
+The packaged frontend uses Proton's secure application asset origin. Compilation
+and explicitly selected Local Scheme evaluation use the shared browser workers.
+Typed invocation uses native-owned child workers on macOS Apple Silicon. Its private
+session bootstrap uses typed Proton commands, restricted to the bundled main window. Every command
 checks Proton's native origin/page context; navigation revokes the binding and
 window shutdown closes it. The UI labels this mode **Desktop local**.
 
-This bootstrap offers no native jobs or filesystem access. The exact private
-bridge version is `0.1.0-draft.1`; `workbench_session_open` takes that version as
-a string, and `workbench_session_check` / `workbench_session_close` take the
-issued session identity. Identities are not credentials: native caller context
-is required on every call. The public Morphir native profile remains future
-work, alongside isolated native workers and explicit workspace grants.
+The private bridge version is `0.1.0-draft.1`. Open/check/close commands bind
+an opaque session identity to the current native page. The `jobs` discovery flag
+is offered only when native process measurements are available on a qualified
+platform. Business requests use `app:workbench_job` with raw bounded JSON bodies
+and the shared job client/receipt decoder. Only session/submit/query/cancel/release
+are exposed. Executable paths, internal claim/complete operations and environment
+overrides are not renderer input.
+
+Each native child runs this same packaged executable with `--morphir-native-worker`
+and exits without starting CEF. Frames are length-prefixed UTF-8 JSON, limited to
+1 MiB. Stderr is capped at 64 KiB. The host observes resident memory every 20 ms
+against a 256 MiB budget and enforces a 30-second deadline. Sampling can overshoot
+between observations; it is not an allocation cap. At most two workers execute,
+with eight retained jobs and 16 MiB retained evidence through the shared owner.
+Terminal publication follows confirmed child exit. Reload stops old workers before
+a new page can claim work, and shutdown waits for owned children. Returned values
+survive late cancellation; cleanup failures remain separate evidence.
+
+Linux has separate CEF-free native process acceptance. Linux and Windows retain
+browser workers pending independent packaged GUI/lifecycle qualification.
+Filesystem grants and the public Morphir native mapping remain subsequent work.
 `?mode=standalone` keeps the browser worker path without negotiating this session.
 Development HTTP entries also retain the worker path; they receive no native
 command grant. The framework, contract package, CLI and helpers remain pinned
@@ -71,3 +87,7 @@ For a headless packaged-app smoke check, enable Proton's CDP port using
 `PROTON_REMOTE_DEBUGGING_PORT` and `PROTON_HEADLESS=1`, then run the browser
 package's `scripts/desktop-test.js <cdp-url>`. Keep that debugging port confined
 to local development.
+
+Run `mise run test:workbench-native-workers` from the repository root for real
+native process, exact-value, cancellation, framing, memory and shutdown acceptance
+without CEF. The native service is in `pkgs/morphir-workbench-native`.

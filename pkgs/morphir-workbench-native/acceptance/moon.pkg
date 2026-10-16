@@ -1,0 +1,14 @@
+pkgtype(kind: "executable")
+
+supported_targets = "native"
+
+import {
+  "finos/morphir-workbench-native" @native,
+  "finos/morphir-workbench/jobs",
+  "finos/morphir-moonbit/fixtures",
+  "finos/morphir-ir/versions/v4/json" @codec,
+  "finos/morphir-ir/wire",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+}

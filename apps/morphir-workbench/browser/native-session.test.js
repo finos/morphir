@@ -92,3 +92,45 @@ test('a late admission reply cannot start an older request after its replacement
   await assert.rejects(older, /Discarded/);
   assert.deepEqual(worker.calls.map(request => request.source), ['latest']);
 });
+
+test('native job frames remain raw and page-bound across request and delivery', async () => {
+  const { NativeJobTransport } = await import('./native-session.js');
+  const calls = [], claimed = { ...descriptor, operations: ['jobs'] };
+  const session = new NativeSession(async (name, payload) => {
+    calls.push([name, payload]);
+    return name === 'app:workbench_job' ? { status: 200, source: '{"duplicate":1,"duplicate":2}' } : claimed;
+  });
+  await session.open();
+  const reply = await new NativeJobTransport(session).request('submit', '{"captured":"input"}');
+  assert.equal(reply.source, '{"duplicate":1,"duplicate":2}', 'Compiled duplicate-aware decoder receives the original bytes');
+  assert.deepEqual(JSON.parse(calls.find(([name]) => name === 'app:workbench_job')[1]),
+    { sessionId: descriptor.sessionId, path: 'submit', body: '{"captured":"input"}' });
+  assert.equal(calls.filter(([name]) => name.endsWith('_check')).length, 2);
+  session.invoke = async () => descriptor;
+  await assert.rejects(session.check(), /capabilities changed/);
+});
+
+test('native job admission does not silently fall back; explicit local evaluation stays local', async () => {
+  const worker = local(); const adapter = new NativeAdapter(worker, async () => descriptor);
+  await adapter.initialize();
+  adapter.jobsAvailable = true;
+  let nativeRequests = 0;
+  adapter.jobs = { async execute() { ++nativeRequests; throw new Error('Native admission rejected'); } };
+  await assert.rejects(adapter.execute({ operation: 'evaluate', executionMode: 'typed' }), /Native admission rejected/);
+  assert.equal(nativeRequests, 1); assert.equal(worker.calls.length, 0);
+  await adapter.execute({ operation: 'evaluate', executionMode: 'local' });
+  assert.equal(nativeRequests, 1); assert.equal(worker.calls.length, 1);
+});
+
+test('native transport rejects oversize and incompatible replies without parsing domain evidence', async () => {
+  const { NativeJobTransport } = await import('./native-session.js');
+  for (const reply of [{ status: 200, source: 'x'.repeat(1048577) }, { status: 200.5, source: '{}' },
+    { status: 200, source: '{}', extra: true }, null]) {
+    const session = new NativeSession(async name => name === 'app:workbench_job' ? reply : descriptor);
+    await session.open();
+    await assert.rejects(new NativeJobTransport(session).request('query', '{}'), /invalid job frame/);
+  }
+  const session = new NativeSession(async name => name === 'app:workbench_job' ? new Promise(() => {}) : descriptor, 5);
+  await session.open();
+  await assert.rejects(new NativeJobTransport(session).request('submit', '{}'), /effect may be unknown/);
+});
