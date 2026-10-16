@@ -16,6 +16,7 @@ import {
   "finos/morphir-moonbit" @moonbit,
   "finos/morphir-moonbit-frontend" @moonbit_frontend,
   "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/encoding/utf8",
   "finos/morphir-elm/backend" @elm,
   "finos/morphir-workbench/arguments",
   "finos/morphir-workbench/outcomes",
@@ -24,6 +25,8 @@ import {
 
 import {
   "finos/morphir-workbench" @pipeline,
+  "finos/morphir-ir/version",
+  "moonrockz/ion/text" @ion_text,
   "finos/morphir-moonbit/fixtures",
   "moonbitlang/core/json",
 } for "test"

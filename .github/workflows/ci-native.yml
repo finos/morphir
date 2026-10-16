@@ -113,6 +113,8 @@ jobs:
 
       - name: Qualify owned native Workbench workers without CEF
         run: mise run test:workbench-native-workers
+      - name: Qualify read-only native Workbench workspace grants without CEF
+        run: mise run test:workbench-native-workspaces
 
       - name: Compile generated libraries and verify private build lifecycle
         run: bash .config/mise/tasks/test/compiler

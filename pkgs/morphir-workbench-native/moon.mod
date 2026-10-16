@@ -13,6 +13,7 @@ description = "Owned native workers for the Morphir Workbench"
 supported_targets = "native"
 
 import {
+  "finos/morphir-engine@0.1.0",
   "finos/morphir-workbench@0.1.0",
   "finos/morphir-execution@0.1.0",
   "finos/morphir-ir@0.1.0",

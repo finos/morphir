@@ -1,1 +1,5 @@
 supported_targets = "js+native+wasm+wasm-gc"
+
+import {
+  "moonbitlang/core/string",
+}

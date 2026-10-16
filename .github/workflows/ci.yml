@@ -381,6 +381,8 @@ jobs:
         run: mise run test:installed-lifecycle
       - name: Qualify owned native Workbench workers without CEF
         run: mise run test:workbench-native-workers
+      - name: Qualify read-only native Workbench workspace grants without CEF
+        run: mise run test:workbench-native-workspaces
       - name: Retain installed identity and comparison receipts
         if: always()
         uses: actions/upload-artifact@v6

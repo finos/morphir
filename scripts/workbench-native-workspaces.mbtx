@@ -1,0 +1,13 @@
+///|
+/// Qualify native read-only grants against actual files and adversarial mutation.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn main {
+  let code = @process.run("moon", ["run", "pkgs/morphir-workbench-native/workspace-acceptance", "--target", "native", "--release"])
+  @sys.exit(if code < 0 { 1 } else { code })
+}

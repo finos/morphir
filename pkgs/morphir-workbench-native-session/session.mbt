@@ -36,31 +36,35 @@ pub struct Session {
   priv mut state : State
   priv mut next : Int32
   priv jobs : Bool
+  priv workspace : Bool
 }
 
 ///|
-pub fn Session::new(jobs~ : Bool = false) -> Session {
-  { state: Idle, next: 0, jobs, }
+pub fn Session::new(jobs~ : Bool = false, workspace~ : Bool = false) -> Session {
+  { state: Idle, next: 0, jobs, workspace, }
 }
 
 ///|
 fn Session::descriptor(self : Session, id : String) -> Json {
+  let operations : Array[Json] = []
+  if self.jobs {
+    operations.push(Json::string("jobs"))
+  }
+  if self.workspace {
+    operations.push(Json::string("workspace"))
+  }
   {
     "ok": true,
     "bridgeVersion": "0.1.0-draft.1",
     "sessionId": id,
-    "operations": if self.jobs {
-      ["jobs"]
-    } else {
-      []
-    },
+    "operations": Json::array(operations),
   }
 }
 
 ///|
 /// Bootstrap identities are not credentials. Native caller context is required
-/// on every command. Job discovery comes from host configuration. Filesystem
-/// access and the proposed public native profile are not offered here.
+/// on every command. Operations come from qualified host configuration. The
+/// private bootstrap does not claim the proposed public native profile.
 pub fn Session::open(
   self : Session,
   caller : Caller,

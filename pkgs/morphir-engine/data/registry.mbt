@@ -91,6 +91,40 @@ pub fn Registry::decode(
 }
 
 ///|
+/// Open a self-contained checkpoint without replacing its logical unit identity.
+/// This does not grant filesystem or provider authority. Raw Morphir JSON has no
+/// unit identity; the local checkpoint reader supplies a stable logical default.
+pub fn Registry::open_checkpoint(
+  self : Registry,
+  codec : String,
+  content : Content,
+) -> IRUnit raise BoundaryError {
+  check_content(content, self.limits)
+  try {
+    let unit_id = if codec == "morphir-json" {
+      "workbench"
+    } else {
+      let value = match (codec, content) {
+        ("ion-text", Text(text)) => @ion_text.read_ion(text[:])
+        ("ion-binary", Binary(bytes)) => @ion_binary.read_binary_value(bytes[:])
+        _ =>
+          raise Invalid(
+            "data.encoding_mismatch", "Expected a supported checkpoint codec and matching content",
+          )
+      }
+      string_field(schema_fields(value), "unit_id")
+    }
+    self.decode(codec, { unit_id, content, })
+  } catch {
+    Invalid(_, _) as error => raise error
+    @ion.Syntax(message)
+    | @ion.DataModel(message)
+    | @ion.Unsupported(message) => raise Invalid("data.decode_failed", message)
+    error => raise Invalid("data.decode_failed", error.to_string())
+  }
+}
+
+///|
 pub fn Registry::encode(
   self : Registry,
   id : String,

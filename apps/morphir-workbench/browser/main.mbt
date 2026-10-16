@@ -143,6 +143,7 @@ struct Model {
   worksheet_output_revision : Int32
   connected : Bool
   jobs_available : Bool
+  workspace_available : Bool
   host_job : Json
   host_job_revision : Int32
   host_submitting : Bool
@@ -185,6 +186,7 @@ enum Msg {
   MoonBitExample
   MoonBitLibraryExample
   DownloadSourceUnit
+  DownloadOriginal
   Request(String)
   Receive(Int32, Int32, String, String)
   Cancel
@@ -260,6 +262,7 @@ fn initial() -> Model {
     worksheet_output_revision: -1,
     connected: connected_mode(),
     jobs_available: false,
+    workspace_available: false,
     host_job: Json::null(),
     host_job_revision: 0,
     host_submitting: false,
@@ -367,6 +370,7 @@ fn operation_label(operation : String) -> String {
     "evaluate" => "Evaluate"
     "inspect" => "Import"
     "project" => "Open project"
+    "workspace" => "Open workspace"
     "initialize" => "Initialize"
     other => other
   }
@@ -968,6 +972,34 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         },
         @cmd.none,
       )
+    DownloadOriginal => {
+      let artifact = field(model.model, "originalArtifact")
+      if artifact == Json::null() {
+        return (model, @cmd.none)
+      }
+      let error = download_generated(Json::array([artifact]).stringify(), false)
+      let message = if error == "" {
+        "Original file download started"
+      } else {
+        error
+      }
+      (
+        {
+          ..note(
+            model,
+            "Download",
+            if error == "" {
+              @bottom_panel.Info
+            } else {
+              @bottom_panel.Error
+            },
+            message,
+          ),
+          status: message,
+        },
+        @cmd.none,
+      )
+    }
     DownloadSourceUnit => {
       let source = text(model.output, "sourceUnitIon")
       if source == "" {
@@ -1055,7 +1087,9 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         @bottom_panel.Info,
         "Started job " +
         job.to_string() +
-        (if model.worksheet {
+        (if operation == "workspace" {
+          " · native folder selection"
+        } else if model.worksheet {
           " · worksheet revision " + model.worksheet_revision.to_string()
         } else {
           " · source revision " +
@@ -1072,7 +1106,17 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         }),
       )
       (
-        { ..model, job, busy: true, started: now_ms(), status: "Working…", },
+        {
+          ..model,
+          job,
+          busy: true,
+          started: now_ms(),
+          status: if operation == "workspace" {
+            "Choose a workspace folder…"
+          } else {
+            "Working…"
+          },
+        },
         request_cmd(
           emit,
           job,
@@ -1309,6 +1353,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         "worksheet" => ("worksheet", revision)
         "compile" | "run" => ("source", revision)
         "initialize" => ("session", 0)
+        "workspace" => ("session", 0)
         // A successful import or project open replaces the model.
         _ =>
           (
@@ -1351,6 +1396,17 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           @cmd.none,
         )
       }
+      if operation == "workspace" {
+        return (
+          {
+            ..model,
+            busy: false,
+            projects: items(field(result, "projects")),
+            status: text(result, "message"),
+          },
+          @cmd.none,
+        )
+      }
       if text(result, "operation") == "initialize" {
         let catalog = field(result, "catalog")
         let frontends = items(field(catalog, "frontends"))
@@ -1385,6 +1441,8 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             busy: false,
             connected: field(result, "connected") == Json::boolean(true),
             jobs_available: field(result, "jobsAvailable") ==
+            Json::boolean(true),
+            workspace_available: field(result, "workspaceAvailable") ==
             Json::boolean(true),
             evaluation_typed: field(result, "connected") == Json::boolean(true) &&
             field(result, "jobsAvailable") == Json::boolean(true),
@@ -1879,6 +1937,9 @@ fn sidebar(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       context.push(
         @html.button(
           class="tree-item",
+          disabled=model.busy ||
+            field(project, "available") == Json::boolean(false),
+          title=text(project, "message"),
           on_click=emit(Project(text(project, "id"))),
           text(project, "name"),
         ),
@@ -2340,6 +2401,13 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         ),
         @html.button(
           class="secondary",
+          hidden=!model.workspace_available,
+          disabled=model.busy || host_job_blocks_replacement(model),
+          on_click=emit(Request("workspace")),
+          [action_icon("folder"), @html.span("Open workspace")],
+        ),
+        @html.button(
+          class="secondary",
           disabled=model.busy,
           on_click=emit(Import),
           "Import model",
@@ -2349,6 +2417,13 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           disabled=field(model.model, "ir") == Json::null(),
           on_click=emit(Export),
           [action_icon("download"), @html.span("Export IR")],
+        ),
+        @html.button(
+          class="ghost",
+          hidden=field(model.model, "originalArtifact") == Json::null(),
+          title="Download the original file, retaining its format version and metadata",
+          on_click=emit(DownloadOriginal),
+          [action_icon("download"), @html.span("Original file")],
         ),
       ]),
     ]),

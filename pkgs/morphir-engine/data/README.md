@@ -22,6 +22,13 @@ let restored = registry.decode("ion-binary", {
 })
 ```
 
+`Registry::open_checkpoint(codec, content)` opens a self-contained saved model.
+For Ion it adopts the embedded logical unit ID, then applies the same strict
+profile, metadata and budget validation as `decode`. JSON has no embedded unit
+identity and receives the local default `workbench`. This logical identity grants
+no filesystem or provider authority. Use `decode` when the caller already knows
+and needs to enforce the expected unit ID.
+
 The module depends on the exact registry release `moonrockz/ion@0.3.0`, using its
 synchronous annotated value, text and binary packages. Async streaming is not
 part of this portable callback contract.

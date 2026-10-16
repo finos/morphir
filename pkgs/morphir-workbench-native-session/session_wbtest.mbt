@@ -101,3 +101,18 @@ test "navigation revokes access; window shutdown cannot be reopened" {
   }
   assert_true(rejected)
 }
+
+///|
+test "qualified operations are independent and stable within the native page session" {
+  for
+    (jobs, workspace, expected) in [
+      (false, true, [Json::string("workspace")]),
+      (true, true, [Json::string("jobs"), Json::string("workspace")]),
+      (true, false, [Json::string("jobs")]),
+    ] {
+    let session = Session::new(jobs~, workspace~)
+    let first = session.open(caller("one"), "0.1.0-draft.1")
+    assert_eq(fields(first).get("operations"), Some(Json::array(expected)))
+    assert_eq(session.check(caller("one"), id(first)), first)
+  }
+}

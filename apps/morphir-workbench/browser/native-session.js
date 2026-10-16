@@ -1,5 +1,6 @@
 // Private Proton bootstrap, not an advertised Morphir native execution profile.
 import { JobClient } from './job-session.js';
+import { NativeWorkspaceClient } from './native-workspace.js';
 export const nativeBridgeVersion = '0.1.0-draft.1';
 const keys = value => value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value).sort().join(',') : '';
 
@@ -25,7 +26,8 @@ export class NativeSession {
       if (keys(reply) !== 'bridgeVersion,ok,operations,sessionId' || reply.ok !== true ||
           reply.bridgeVersion !== nativeBridgeVersion || typeof reply.sessionId !== 'string' ||
           !/^[a-zA-Z0-9_.-]{1,128}$/.test(reply.sessionId) || !Array.isArray(reply.operations) ||
-          !(reply.operations.length === 0 || (reply.operations.length === 1 && reply.operations[0] === 'jobs'))) {
+          reply.operations.length > 2 || reply.operations.some(operation => !['jobs', 'workspace'].includes(operation)) ||
+          new Set(reply.operations).size !== reply.operations.length || reply.operations.join(',') !== [...reply.operations].sort().join(',')) {
         throw new Error('The desktop session reply is incompatible.');
       }
       return reply;
@@ -90,14 +92,15 @@ export class NativeAdapter {
     this.current(epoch);
     await this.session.check();
     this.current(epoch);
-    if (this.session.operations === 'jobs') {
+    if (this.session.operations.split(',').includes('jobs')) {
       this.jobs = new JobClient(this.session.id, { ...this.jobOptions, transport: new NativeJobTransport(this.session),
         authenticate: async () => { await this.session.check(); return this.session.id; } });
       this.jobsAvailable = await this.jobs.initialize();
       if (!this.jobsAvailable) throw new Error("The native host advertised jobs without a compatible offer.");
       this.current(epoch);
     }
-    return { ...result, nativeSession: true, jobsAvailable: !!this.jobsAvailable, message: 'Desktop local · ready to compile' };
+    if (this.session.operations.split(',').includes('workspace')) this.workspace = new NativeWorkspaceClient(this.session, this.local);
+    return { ...result, nativeSession: true, workspaceAvailable: !!this.workspace, jobsAvailable: !!this.jobsAvailable, message: 'Desktop local · ready to compile' };
   }
   async execute(request, progress) {
     const epoch = ++this.epoch;
@@ -105,7 +108,13 @@ export class NativeAdapter {
     this.current(epoch);
     if (request.operation === 'resume-job' && this.jobsAvailable) return this.jobs.resume(progress);
     if (request.operation === 'evaluate' && request.executionMode === 'typed' && this.jobsAvailable) return this.jobs.execute(request, progress);
-    if (request.operation === 'project' || request.operation === 'resume-job') throw new Error('This desktop session does not offer native jobs or workspace access.');
+    if (request.operation === 'workspace' && this.workspace) {
+      const result = await this.workspace.choose(); this.current(epoch); return result;
+    }
+    if (request.operation === 'project' && this.workspace) {
+      const result = await this.workspace.openProject(request.project); this.current(epoch); return result;
+    }
+    if (request.operation === 'project' || request.operation === 'workspace' || request.operation === 'resume-job') throw new Error('This desktop session does not offer native jobs or workspace access.');
     const result = await this.local.execute(request);
     this.current(epoch);
     await this.session.check();
@@ -114,9 +123,9 @@ export class NativeAdapter {
   }
   cancel() {
     if (this.jobs?.active || (this.jobs?.job && this.jobs.job.state !== 'terminal')) return this.jobs.cancel();
-    ++this.epoch; this.local.cancel();
+    ++this.epoch; this.local.cancel(); return this.workspace?.cancel();
   }
-  dispose() { this.disposed = true; ++this.epoch; this.local.cancel(); this.session.dispose(); }
+  dispose() { this.disposed = true; ++this.epoch; this.workspace?.dispose(); this.local.cancel(); this.session.dispose(); }
 }
 
 export function selectLocalAdapter(location, local, bridge = globalThis.__MoonBit__) {

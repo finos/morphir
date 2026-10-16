@@ -54,6 +54,10 @@ run = "moonx scripts/workbench-native-session.mbtx"
 description = "Qualify bounded owned native Workbench workers without CEF"
 run = "moonx scripts/workbench-native-workers.mbtx"
 
+[tasks."test:workbench-native-workspaces"]
+description = "Qualify read-only native grants, containment and captured bytes without CEF"
+run = "moonx scripts/workbench-native-workspaces.mbtx"
+
 [tasks."test:conformance"]
 description = "Independent, Scheme and explicit Rust evaluator conformance gates"
 run = "moon run scripts/conformance-check.mbtx"

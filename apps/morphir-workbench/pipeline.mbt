@@ -71,7 +71,41 @@ pub fn execute(request : Json) -> Json {
     } else {
       None
     }
-    let file = if operation == "inspect" || operation == "evaluate" {
+    let imported = if operation == "inspect" &&
+      @wire.optional(request, "sourceCodec") != None {
+      let codec = @wire.string(@wire.field(request, "sourceCodec"))
+      guard ["morphir-json", "ion-text", "ion-binary"].contains(codec) else {
+        raise @scheme.Invalid("Unsupported model codec")
+      }
+      let encoded = @wire.string(@wire.field(request, "sourceBase64"))
+      guard encoded.length() <= 22369624 else {
+        raise @scheme.Invalid("Model import exceeds the 16-MiB limit")
+      }
+      let bytes = @base64.decode(encoded[:])
+      guard bytes.length() <= 16 * 1024 * 1024 else {
+        raise @scheme.Invalid("Model import exceeds the 16-MiB limit")
+      }
+      let registry = @data.Registry::new(limits={
+        max_bytes: 16 * 1024 * 1024,
+        max_depth: 128,
+        max_values: 100000,
+      })
+      Some(
+        registry.open_checkpoint(
+          codec,
+          if codec == "ion-binary" {
+            @data.Binary(bytes)
+          } else {
+            @data.Text(@utf8.decode(bytes))
+          },
+        ),
+      )
+    } else {
+      None
+    }
+    let file = if imported is Some(unit) {
+      unit.distribution
+    } else if operation == "inspect" || operation == "evaluate" {
       @migration.to_current(@versioned.read(source))
     } else if operation == "compile" || operation == "run" {
       match compiled {
@@ -103,6 +137,18 @@ pub fn execute(request : Json) -> Json {
       ("distributionKind", @wire.text(distribution_kind)),
       ("formatVersion", @wire.text(file.format_version.to_release_string())),
     ]
+    if imported is Some(unit) {
+      source_ui(result, unit.metadata)
+      let registry = @data.Registry::new(limits={
+        max_bytes: 16 * 1024 * 1024,
+        max_depth: 128,
+        max_values: 100000,
+      })
+      match registry.encode("ion-text", unit) {
+        Text(source) => result.push(("sourceUnitIon", @wire.text(source)))
+        Binary(_) => ()
+      }
+    }
     if compiled is Some(output) {
       source_ui(result, output.unit.metadata)
       result.push(("sourceWarnings", source_warnings(output.unit.provenance)))

@@ -60,7 +60,35 @@ survive late cancellation; cleanup failures remain separate evidence.
 
 Linux has separate CEF-free native process acceptance. Linux and Windows retain
 browser workers pending independent packaged GUI/lifecycle qualification.
-Filesystem grants and the public Morphir native mapping remain subsequent work.
+The public Morphir native mapping remains subsequent work.
+
+On macOS Apple Silicon, the `workspace` capability enables **Open workspace** in
+the explorer. The native OS picker grants one read-only root per page session.
+Only opaque project and transfer identities cross the private command bridge.
+The shared engine discovers canonical and legacy configuration and saved model
+checkpoints. JSON versions 1–4, Ion text and Ion binary are decoded by the compiled
+pipeline. Binary Ion markers also identify `.ion` and `.10n` files. Original-file
+downloads preserve bytes; the current-IR export is a separate action. Exports
+from the trusted main page use the native save dialog. The host permits only
+Blob URLs matching that page and its configured bundled or connected origin;
+network URLs and renderer-supplied destination paths are denied. This save flow
+is separate from the read-only workspace grant interface.
+
+Folder cancellation preserves the displayed model and project list. Reads reject
+traversal, symlinks, hard links, special files and observed replacement races.
+Limits are 4,096 entries, 256 directories, depth 16, 128 project/model entries,
+256 KiB per configuration file, 2 MiB aggregate configuration, 512 KiB offers and
+16 MiB model captures. Captures transfer in 192 KiB chunks and are released before
+inspection. Revocation, navigation and shutdown close grants. The observation is
+bounded, not an atomic filesystem snapshot; mount latency remains external.
+Compilation, scripts, writes, watches and persistent grants are not offered.
+
+`mise run test:workbench-native-workspaces` runs real filesystem and concurrent
+replacement acceptance without CEF. macOS packaged qualification additionally
+uses the real OS picker, cancellation, JSON/Ion inspection, byte-exact original
+export Blobs and the shared browser/native regression flows. Linux has CEF-free
+filesystem acceptance; Linux and Windows do not advertise packaged workspace
+grants until their GUI/lifecycle qualification is complete.
 `?mode=standalone` keeps the browser worker path without negotiating this session.
 Development HTTP entries also retain the worker path; they receive no native
 command grant. The framework, contract package, CLI and helpers remain pinned

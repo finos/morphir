@@ -9,13 +9,22 @@ fn native_caller(context : @proton.CommandContext) -> @session.Caller raise {
 
 ///|
 fn with_native_session(app : @proton.App) -> @proton.App {
-  let session = @session.Session::new(jobs=@native.desktop_supported())
+  let workspace_enabled = @native.desktop_supported() && @workspace.supported()
+  let session = @session.Session::new(
+    jobs=@native.desktop_supported(),
+    workspace=workspace_enabled,
+  )
   let services : Map[String, @native.Service] = Map([])
+  let workspaces : Map[String, @workspace.Service] = Map([])
   let mut group : @async.TaskGroup[Unit]? = None
   let mut executable = ""
   let mut cleanup_failed = false
   fn revoke() {
     session.revoke()
+    for (_, service) in workspaces.to_array() {
+      service.close()
+    }
+    workspaces.clear()
     for (id, service) in services.to_array() {
       service.close()
       if group is Some(tasks) {
@@ -45,6 +54,10 @@ fn with_native_session(app : @proton.App) -> @proton.App {
     },
     on_shutdown=async fn(_) {
       session.shutdown()
+      for (_, service) in workspaces.to_array() {
+        service.close()
+      }
+      workspaces.clear()
       for (_, service) in services.to_array() {
         service.shutdown()
       }
@@ -65,6 +78,12 @@ fn with_native_session(app : @proton.App) -> @proton.App {
             abort("Invalid native descriptor")
           }
           // A new page cannot claim workers until all previous-page children exit.
+          for (old_id, old) in workspaces.to_array() {
+            if old_id != id {
+              old.close()
+              workspaces.remove(old_id)
+            }
+          }
           for (old_id, old) in services.to_array() {
             if old_id != id {
               old.shutdown()
@@ -75,6 +94,9 @@ fn with_native_session(app : @proton.App) -> @proton.App {
             raise @session.Rejected("workbench.native_cleanup")
           }
           ignore(session.check(caller, id))
+          if workspace_enabled && !workspaces.contains(id) {
+            workspaces[id] = @workspace.Service::new()
+          }
           if @native.desktop_supported() && !services.contains(id) {
             guard group is Some(tasks) && executable != "" else {
               raise @session.Rejected("workbench.native_startup")
@@ -100,6 +122,10 @@ fn with_native_session(app : @proton.App) -> @proton.App {
       ) -> Json {
         try {
           let reply = session.close(native_caller(context), id)
+          if workspaces.get(id) is Some(service) {
+            service.close()
+            workspaces.remove(id)
+          }
           if services.get(id) is Some(service) {
             service.shutdown()
             services.remove(id)
@@ -124,6 +150,47 @@ fn with_native_session(app : @proton.App) -> @proton.App {
           error => @session.failure(error)
         }
       })
+      registrar.bind(@contract.command("workbench_workspace_choose"), async fn(
+        context,
+        id : String,
+      ) -> Json {
+        try {
+          ignore(session.check(native_caller(context), id))
+          guard workspaces.get(id) is Some(service) else {
+            raise @workspace.Rejected("workbench.workspace_unavailable")
+          }
+          let ticket = service.begin_choose()
+          errdefer service.cancel_choose()
+          guard context.window() is Some(window) else {
+            raise @session.Rejected("workbench.native_caller")
+          }
+          let path = window.choose_directory(
+            Some("Open Morphir workspace"),
+            None,
+          )
+          // The picker can outlive navigation or revocation. Check again before
+          // constructing any filesystem authority from its result.
+          ignore(session.check(native_caller(context), id))
+          service.finish_choose(ticket, path)
+        } catch {
+          error => workspace_failure(error)
+        }
+      })
+      registrar.bind(@contract.command("workbench_workspace"), fn(
+        context,
+        source : String,
+      ) -> Json {
+        try {
+          let (id, body) = @workspace.bridge_request(source)
+          ignore(session.check(native_caller(context), id))
+          guard workspaces.get(id) is Some(service) else {
+            raise @workspace.Rejected("workbench.workspace_unavailable")
+          }
+          service.request(body)
+        } catch {
+          error => workspace_failure(error)
+        }
+      })
     },
     targets=[@proton.RendererTarget::bundled()],
   )
@@ -144,6 +211,10 @@ fn with_native_session(app : @proton.App) -> @proton.App {
   })
   .on_before_quit(async fn(_) noraise {
     session.shutdown()
+    for (_, service) in workspaces.to_array() {
+      service.close()
+    }
+    workspaces.clear()
     try {
       for (_, service) in services.to_array() {
         service.shutdown()
@@ -161,4 +232,12 @@ fn with_native_session(app : @proton.App) -> @proton.App {
       }
     }
   })
+}
+
+///|
+fn workspace_failure(error : Error) -> Json {
+  match error {
+    @session.Rejected(_) => @session.failure(error)
+    _ => @workspace.failure(error)
+  }
 }

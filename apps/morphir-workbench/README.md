@@ -7,7 +7,7 @@ these assets are served by an authenticated Morphir host on the same origin.
 Packaged Proton also negotiates a private, page-bound desktop session. It
 uses browser workers for compilation and explicitly selected Local Scheme evaluation.
 On qualified macOS Apple Silicon packages, Typed invocation uses owned native
-workers. Workspace grants remain pending. Explicit connected launches take precedence over this bootstrap.
+workers. The explorer also offers read-only workspace grants. Explicit connected launches take precedence over this bootstrap.
 
 `browser/job-session.js` owns shared job observation and receipt admission.
 `browser/job-transport.js` carries bounded HTTP text frames; an injected transport
@@ -386,7 +386,14 @@ limits. These limits are not a complete memory sandbox.
 `browser/transport.js` owns browser APIs and connected JSON-RPC. No native
 filesystem or process APIs are imported by the UI. The desktop host packages
 the same frontend and worker without a second implementation of either view.
-The initial desktop runtime uses the worker; a native engine bridge is future work.
+The packaged desktop adds page-bound typed native commands for owned evaluation
+workers and read-only workspace grants on qualified macOS Apple Silicon builds.
+The explorer's **Open workspace** action uses the OS folder picker, discovers
+projects through the shared engine, and opens saved JSON or Ion checkpoints.
+**Original file** retains the exact imported bytes and version; **Export IR**
+exports the normalized current IR. Rich Ion retains its logical unit identity,
+annotations, metadata and provenance. Browser-only runs continue to use file
+imports; connected launches use their host's workspace protocol.
 
 ## Connected host compatibility
 

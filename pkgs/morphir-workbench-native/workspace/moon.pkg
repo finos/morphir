@@ -1,0 +1,12 @@
+supported_targets = "native"
+
+import {
+  "finos/morphir-engine/workspace" @engine,
+  "finos/morphir-workbench/jobs",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
+}
+
+options(
+  "native-stub": [ "filesystem.c" ],
+)

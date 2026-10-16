@@ -3,6 +3,8 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { elmWorkflow, moonbitWorkflow, libraryWorkflow } from './elm-workflow.js';
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.js';
 
@@ -13,13 +15,42 @@ try {
   assert.ok(page, 'Packaged Proton asset page is present');
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  // Optional continuation after choosing this fixture with the real OS picker.
+  // No test bridge accepts a filesystem path or bypasses user folder selection.
+  if (process.argv[3]) {
+    const fixture = process.argv[3];
+    // CEF does not emit Playwright's browser Download event. Capture the exact
+    // Blob passed to the normal anchor download without opening a save dialog.
+    await page.evaluate(() => {
+      const original = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = blob => {
+        globalThis.workspaceDownload = blob.arrayBuffer().then(bytes => Array.from(new Uint8Array(bytes)));
+        return original(blob);
+      };
+      document.addEventListener('click', event => { if (event.target instanceof HTMLAnchorElement && event.target.download) event.preventDefault(); }, true);
+    });
+    for (const [label, relative, model] of [
+      ['demo/rich · rich/morphir-ir.ion', 'rich/morphir-ir.ion', 'user'],
+      ['demo/rich · rich/morphir-ir.ionb', 'rich/morphir-ir.ionb', 'user'],
+      ['demo/legacy', 'legacy/morphir-ir.json', 'morphir/example/app'],
+    ]) {
+      await page.getByRole('button', { name: label, exact: true }).click();
+      await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+      await page.getByRole('heading', { name: model, exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Original file', exact: true }).click();
+      const original = Buffer.from(await page.evaluate(() => globalThis.workspaceDownload));
+      assert.deepEqual(original, await readFile(join(fixture, relative)), 'Original checkpoint download Blob is byte exact');
+    }
+    await page.reload();
+    console.log('Real picker continuation passed: Ion text/binary and legacy JSON inspect, byte-exact original downloads, page reload.');
+  }
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   const originalUrl = page.url();
   const native = async (operation, payload) => page.evaluate(([operation, payload]) =>
     window.__MoonBit__.core.invokeOp(`app:workbench_session_${operation}`, payload), [operation, payload]);
   const firstSession = await native('open', '0.1.0-draft.1');
   assert.equal(firstSession.ok, true);
-  assert.deepEqual(firstSession.operations, ['jobs'], 'The packaged host offers owned native evaluation jobs');
+  assert.deepEqual(firstSession.operations, ['jobs', 'workspace'], 'The packaged host offers owned native evaluation jobs and read-only workspace grants');
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Desktop local');
   assert.deepEqual(await native('check', firstSession.sessionId), firstSession);
   assert.deepEqual(await native('open', '0.1.0-draft.2'), { ok: false, code: 'workbench.native_version' });

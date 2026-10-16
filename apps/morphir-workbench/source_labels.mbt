@@ -33,7 +33,9 @@ fn source_names(
         List(values) => values.map(ion_name)
         _ => []
       }
-      return Some((name, parameters))
+      if name != "" {
+        return Some((name, parameters))
+      }
     }
   }
   None
