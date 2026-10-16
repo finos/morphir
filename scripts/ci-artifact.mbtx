@@ -42,11 +42,17 @@ fn text(value : Json, name : String) -> String raise {
 }
 
 ///|
-fn names(kind : String) -> Array[String] raise {
+fn names(kind : String, metadata~ : Json = Json::null()) -> Array[String] raise {
   match kind {
     "native-cli" => ["morphir-native"]
     "provider-tools" =>
-      ["morphir-provider-snapshot", "provider-snapshot-fixture"]
+      if field(metadata, "acquisition") == Json::string("released") {
+        [
+          "morphir-provider-snapshot", "provider-snapshot-fixture", "release-admission.ionb",
+        ]
+      } else {
+        ["morphir-provider-snapshot", "provider-snapshot-fixture"]
+      }
     _ => fail("Unknown artifact kind: " + kind)
   }
 }
@@ -110,7 +116,7 @@ async fn write_catalog(
   metadata : Json,
 ) -> Json {
   let files = []
-  for name in names(kind) {
+  for name in names(kind, metadata~) {
     files.push({ "name": name, "sha256": digest(directory + "/" + name) })
   }
   let manifest : Json = {
@@ -149,7 +155,7 @@ async fn admit(kind : String, directory : String, expected : Json) -> Json {
   guard field(manifest, "context") == expected else {
     fail("Artifact source/run/platform/toolchain mismatch")
   }
-  let expected_names = names(kind)
+  let expected_names = names(kind, metadata=field(manifest, "metadata"))
   guard field(manifest, "files") is Array(files) &&
     files.length() == expected_names.length() else {
     fail("Artifact inventory")
@@ -162,7 +168,7 @@ async fn admit(kind : String, directory : String, expected : Json) -> Json {
     }
   }
   // GitHub artifact downloads do not retain executable mode. Restore only admitted files.
-  for name in expected_names {
+  for name in names(kind) {
     @fs.chmod(directory + "/" + name, 0o755)
   }
   {
@@ -173,7 +179,11 @@ async fn admit(kind : String, directory : String, expected : Json) -> Json {
 }
 
 ///|
-async fn pack(kind : String, directory : String) -> Json {
+async fn pack(
+  kind : String,
+  directory : String,
+  released~ : Bool = false,
+) -> Json {
   if !@fs.exists(directory) {
     @fs.mkdir(directory, recursive=true)
   }
@@ -185,7 +195,27 @@ async fn pack(kind : String, directory : String) -> Json {
     fail("Publish CI artifacts only from a clean checkout")
   }
   let identity = context(kind)
-  let metadata : Json = if kind == "native-cli" {
+  let metadata : Json = if released {
+    guard kind == "provider-tools" else {
+      fail("Only provider tools have released artifacts")
+    }
+    let bytes = @fs.read_file(directory + "/release-admission.ionb").binary()
+    let receipt = @binary.read_binary_value(bytes[:])
+    guard receipt.annotations().length() == 1 &&
+      receipt.annotations()[0].text() ==
+      Some("morphir_provider_release_admission_v1") else {
+      fail("Provider release admission annotation")
+    }
+    let metadata = field(
+      @ion_json.to_json(receipt.with_annotations([])),
+      "metadata",
+    )
+    guard text(metadata, "acquisition") == "released" &&
+      text(metadata, "buildMode") == "release" else {
+      fail("Verified release metadata required")
+    }
+    metadata
+  } else if kind == "native-cli" {
     let source = "_build/native/release/build/morphir/morphir/morphir.exe"
     @fs.write_file(
       directory + "/morphir-native",
@@ -301,8 +331,21 @@ async fn self_test() -> Unit {
   } noraise {
     _ => fail("Expected missing manifest rejection")
   }
+  let provider = "provider-tools"
+  let metadata : Json = { "acquisition": "released", "buildMode": "release" }
+  for name in names(provider, metadata~) {
+    @fs.write_file(root + "/" + name, "verified fixture bytes: " + name)
+  }
+  ignore(write_catalog(provider, root, expected, metadata))
+  ignore(admit(provider, root, expected))
+  @fs.write_file(root + "/release-admission.ionb", "tampered release proof")
+  try ignore(admit(provider, root, expected)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected release proof integrity rejection")
+  }
   println(
-    "CI artifact admission: valid reuse, stale revision, host/run mismatch, wrong kind, executable symlink, tampered bytes and missing catalog passed",
+    "CI artifact admission: valid reuse, stale revision, host/run mismatch, wrong kind, executable symlink, tampered bytes, missing catalog and release proof integrity passed",
   )
 }
 
@@ -315,12 +358,13 @@ async fn main {
   }
   guard args.length() == 4 else {
     fail(
-      "Usage: ci-artifact.mbtx pack|verify native-cli|provider-tools DIRECTORY",
+      "Usage: ci-artifact.mbtx pack|pack-release|verify native-cli|provider-tools DIRECTORY",
     )
   }
   ignore(names(args[2]))
   let result = match args[1] {
     "pack" => pack(args[2], args[3])
+    "pack-release" => pack(args[2], args[3], released=true)
     "verify" => admit(args[2], @fs.realpath(args[3]), context(args[2]))
     _ => fail("Unknown artifact operation")
   }

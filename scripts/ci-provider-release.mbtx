@@ -1,0 +1,537 @@
+///|
+/// Acquire immutable provider service/test-fixture assets. No source-build fallback.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonrockz/ion@0.3.0/binary",
+  "moonrockz/ion@0.3.0/ion",
+  "moonrockz/ion@0.3.0/text",
+  "moonrockz/ion@0.3.0/json" @ion_json,
+}
+
+///|
+let repository = "finos/morphir-rust"
+
+///|
+let workflow = "finos/morphir-rust/.github/workflows/release-provider-snapshot.yml"
+
+///|
+fn field(value : Json, key : String) -> Json {
+  match value {
+    Object(fields) => fields.get(key).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+fn text(value : Json, key : String) -> String raise {
+  guard field(value, key) is String(value) else {
+    fail("Missing release field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(items) else {
+    fail("Release inventory must be an array")
+  }
+  items
+}
+
+///|
+async fn output(program : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(program, args)
+  guard code == 0 else { fail(program + ": " + err.text() + out.text()) }
+  out.text().trim().to_owned()
+}
+
+///|
+async fn sha256(path : String) -> String {
+  guard @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("Regular release file required")
+  }
+  output("node", [
+    "-e", "process.stdout.write(require('crypto').createHash('sha256').update(require('fs').readFileSync(process.argv[1])).digest('hex'))",
+    path,
+  ])
+}
+
+///|
+fn validate_descriptor(
+  pin : Json,
+  descriptor : Json,
+  target : String,
+) -> Array[Json] raise {
+  guard text(pin, "repository") == repository &&
+    text(pin, "signerWorkflow") == workflow else {
+    fail("Unsupported release authority")
+  }
+  guard text(descriptor, "schemaVersion") == "0.1.0-draft.1" &&
+    text(descriptor, "package") == "morphir-package" &&
+    text(descriptor, "gitCommit") == text(pin, "gitCommit") &&
+    text(descriptor, "tag") == text(pin, "tag") &&
+    text(descriptor, "version") == text(pin, "version") else {
+    fail("Provider descriptor revision/version mismatch")
+  }
+  let compatibility : Json = {
+    "service": "morphir-package/provider-snapshot/0.1.0-draft.1",
+    "profile": "local-library-mvp",
+    "profileVersion": "0.1.0-draft.1",
+    "codec": "v4.1-document-metadata-to-v4.0/1",
+    "requestAnnotations": [
+      "morphir_provider_capabilities_request_v1", "morphir_provider_snapshot_request_v1",
+    ],
+    "responseAnnotations": [
+      "morphir_provider_capabilities_response_v1", "morphir_provider_snapshot_response_v1",
+    ],
+  }
+  guard field(descriptor, "compatibility") == compatibility &&
+    field(pin, "compatibility") == compatibility else {
+    fail("Provider protocol/profile mismatch")
+  }
+  let variants = field(field(descriptor, "qualifiedFixtureVariants"), target)
+  let required_variants : Json = [
+    "compatible", "wrong-type", "wrong-subject-role", "wrong-object-form", "wrong-interpreter",
+    "ambiguous-contexts",
+  ]
+  guard variants == required_variants &&
+    field(pin, "fixtureVariants") == required_variants else {
+    fail("Required signed fixture variants were not qualified")
+  }
+  let (os, arch, runner) = match target {
+    "x86_64-unknown-linux-gnu" => ("linux", "x86_64", "ubuntu-24.04")
+    "aarch64-apple-darwin" => ("macos", "aarch64", "macos-15")
+    _ => fail("Unsupported provider release target")
+  }
+  let locked = array(field(pin, "artifacts")).filter(a => {
+    field(a, "target") == Json::string(target)
+  })
+  let selected = array(field(descriptor, "artifacts")).filter(a => {
+    field(a, "target") == Json::string(target)
+  })
+  guard locked.length() == 2 && selected.length() == 2 else {
+    fail("Exactly one service and one test-fixture required")
+  }
+  for
+    (role, executable, stem) in [
+      ("service", "morphir-provider-snapshot", "morphir-provider-snapshot"),
+      (
+        "test-fixture", "provider-snapshot-fixture", "morphir-provider-snapshot-test-fixture",
+      ),
+    ] {
+    let expected = locked.filter(a => field(a, "role") == Json::string(role))
+    let actual = selected.filter(a => field(a, "role") == Json::string(role))
+    guard expected.length() == 1 && actual.length() == 1 else {
+      fail("Duplicate/missing provider role")
+    }
+    let expected = expected[0]
+    let actual = actual[0]
+    guard text(actual, "executable") == executable &&
+      text(expected, "executable") == executable &&
+      text(actual, "filename") ==
+      stem + "-" + text(pin, "version") + "-" + target + ".tgz" else {
+      fail("Unexpected release filename")
+    }
+    guard text(actual, "os") == os &&
+      text(actual, "arch") == arch &&
+      text(actual, "runner") == runner else {
+      fail("Release platform qualification mismatch")
+    }
+    for
+      key in ["filename", "sha256", "executableSha256", "os", "arch", "runner"] {
+      guard text(actual, key) == text(expected, key) else {
+        fail("Release pin mismatch: " + key)
+      }
+    }
+    guard text(actual, "buildMode") == "release" &&
+      text(field(actual, "rustc"), "version").has_prefix("rustc ") else {
+      fail("Release compiler/build identity required")
+    }
+  }
+  selected
+}
+
+///|
+async fn acquire(
+  pin : Json,
+  temporary : String,
+  filename : String,
+  expected_digest : String,
+) -> Json {
+  let tag = text(pin, "tag")
+  guard tag == "provider-snapshot/v" + text(pin, "version") else {
+    fail("Unexpected provider tag")
+  }
+  let tag_url = tag.replace(old="/", new="%2F")
+  let path = temporary + "/" + filename
+  @stdio.stderr.write("[provider-release] acquiring " + filename + "\n")
+  ignore(
+    output("curl", [
+      "--fail",
+      "--location",
+      "--retry",
+      "3",
+      "--connect-timeout",
+      "30",
+      "--max-time",
+      "180",
+      "--silent",
+      "--show-error",
+      "--proto",
+      "=https",
+      "--output",
+      path,
+      "https://github.com/" +
+      repository +
+      "/releases/download/" +
+      tag_url +
+      "/" +
+      filename,
+    ]),
+  )
+  guard sha256(path) == expected_digest else {
+    fail("Release SHA-256 mismatch: " + filename)
+  }
+  let proof = @json.parse(
+    output("gh", [
+      "attestation",
+      "verify",
+      path,
+      "--repo",
+      repository,
+      "--signer-workflow",
+      workflow,
+      "--source-digest",
+      text(pin, "gitCommit"),
+      "--source-ref",
+      "refs/tags/" + tag,
+      "--deny-self-hosted-runners",
+      "--format",
+      "json",
+    ]),
+  )
+  guard array(proof).length() > 0 else {
+    fail("No verified release attestations")
+  }
+  proof
+}
+
+///|
+async fn check_archive(path : String, executable : String) -> Unit {
+  guard output("tar", ["-tzf", path]) == executable &&
+    output("tar", ["-tvzf", path]).has_prefix("-") else {
+    fail("Archive must contain exactly one regular executable")
+  }
+}
+
+///|
+fn changed(value : Json, key : String, replacement : Json) -> Json raise {
+  guard @json.parse(value.stringify()) is Object(fields) else {
+    fail("Expected test object")
+  }
+  fields.set(key, replacement)
+  Json::object(fields)
+}
+
+///|
+fn fixture(
+  target : String,
+  os : String,
+  arch : String,
+  runner : String,
+) -> (Json, Json) {
+  let compatibility : Json = {
+    "service": "morphir-package/provider-snapshot/0.1.0-draft.1",
+    "profile": "local-library-mvp",
+    "profileVersion": "0.1.0-draft.1",
+    "codec": "v4.1-document-metadata-to-v4.0/1",
+    "requestAnnotations": [
+      "morphir_provider_capabilities_request_v1", "morphir_provider_snapshot_request_v1",
+    ],
+    "responseAnnotations": [
+      "morphir_provider_capabilities_response_v1", "morphir_provider_snapshot_response_v1",
+    ],
+  }
+  let variants : Json = [
+    "compatible", "wrong-type", "wrong-subject-role", "wrong-object-form", "wrong-interpreter",
+    "ambiguous-contexts",
+  ]
+  let artifacts : Array[Json] = []
+  for
+    (role, name, stem) in [
+      ("service", "morphir-provider-snapshot", "morphir-provider-snapshot"),
+      (
+        "test-fixture", "provider-snapshot-fixture", "morphir-provider-snapshot-test-fixture",
+      ),
+    ] {
+    artifacts.push({
+      "role": role,
+      "executable": name,
+      "filename": stem + "-0.2.0-" + target + ".tgz",
+      "sha256": "archive-digest",
+      "executableSha256": "executable-digest",
+      "target": target,
+      "os": os,
+      "arch": arch,
+      "runner": runner,
+      "buildMode": "release",
+      "rustc": { "version": "rustc 1.98.1" },
+    })
+  }
+  let pin : Json = {
+    "repository": repository,
+    "signerWorkflow": workflow,
+    "gitCommit": "accepted",
+    "tag": "provider-snapshot/v0.2.0",
+    "version": "0.2.0",
+    "compatibility": compatibility,
+    "fixtureVariants": variants,
+    "artifacts": artifacts,
+  }
+  let qualified = Map([])
+  qualified.set(target, variants)
+  let descriptor : Json = {
+    "schemaVersion": "0.1.0-draft.1",
+    "package": "morphir-package",
+    "gitCommit": "accepted",
+    "tag": "provider-snapshot/v0.2.0",
+    "version": "0.2.0",
+    "compatibility": compatibility,
+    "qualifiedFixtureVariants": Json::object(qualified),
+    "artifacts": artifacts,
+  }
+  (pin, descriptor)
+}
+
+///|
+async fn self_test() -> Unit {
+  let target = "x86_64-unknown-linux-gnu"
+  let (pin, descriptor) = fixture(target, "linux", "x86_64", "ubuntu-24.04")
+  ignore(validate_descriptor(pin, descriptor, target))
+  let (mac_pin, mac_descriptor) = fixture(
+    "aarch64-apple-darwin", "macos", "aarch64", "macos-15",
+  )
+  ignore(validate_descriptor(mac_pin, mac_descriptor, "aarch64-apple-darwin"))
+  let bad_descriptors = [
+    changed(descriptor, "gitCommit", "stale"),
+    changed(descriptor, "compatibility", {}),
+    changed(descriptor, "qualifiedFixtureVariants", {}),
+    changed(descriptor, "artifacts", []),
+  ]
+  for bad in bad_descriptors {
+    try ignore(validate_descriptor(pin, bad, target)) catch {
+      _ => ()
+    } noraise {
+      _ => fail("Expected descriptor rejection")
+    }
+  }
+  let artifacts = array(field(descriptor, "artifacts"))
+  for
+    (key, value) in [
+      ("role", "test-fixture"),
+      ("buildMode", "debug"),
+      ("filename", "../service.tgz"),
+      ("sha256", "tampered-archive"),
+      ("executableSha256", "tampered-executable"),
+      ("arch", "aarch64"),
+    ] {
+    let bad = changed(
+      descriptor,
+      "artifacts",
+      Json::array([
+        changed(artifacts[0], key, Json::string(value)),
+        artifacts[1],
+      ]),
+    )
+    try ignore(validate_descriptor(pin, bad, target)) catch {
+      _ => ()
+    } noraise {
+      _ => fail("Expected artifact rejection: " + key)
+    }
+  }
+  let (bad_pin, bad_descriptor) = fixture(
+    target, "macos", "aarch64", "macos-15",
+  )
+  try ignore(validate_descriptor(bad_pin, bad_descriptor, target)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected mutually inconsistent host rejection")
+  }
+  try ignore(validate_descriptor(pin, descriptor, "unsupported")) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected unsupported target rejection")
+  }
+  let elapsed = 1036633L
+  let timing : Json = { "elapsedMs": @json.parse(elapsed.to_string()) }
+  let encoded = @binary.write_binary_value(@ion_json.to_ion(timing))
+  let decoded = @ion_json.to_json(@binary.read_binary_value(encoded[:]))
+  guard field(decoded, "elapsedMs").stringify() == "1036633" else {
+    fail("Elapsed time must remain an Ion integer")
+  }
+  let directory = @fs.tmpdir(prefix="morphir-release-hash-test-")
+  defer @fs.rmdir(directory, recursive=true)
+  let file = directory + "/binary"
+  @fs.write_file(file, "original executable")
+  let before = sha256(file)
+  @fs.write_file(file, "tampered executable")
+  guard sha256(file) != before else {
+    fail("Expected executable corruption detection")
+  }
+  @fs.remove(file)
+  @fs.write_file(directory + "/original", "original executable")
+  @fs.symlink(target=directory + "/original", file)
+  try ignore(sha256(file)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected released executable symlink rejection")
+  }
+  let archive = directory + "/tool.tgz"
+  @fs.remove(file)
+  @fs.write_file(file, "executable bytes")
+  ignore(output("tar", ["-czf", archive, "-C", directory, "binary"]))
+  check_archive(archive, "binary")
+  @fs.remove(file)
+  @fs.symlink(target=directory + "/original", file)
+  ignore(output("tar", ["-czf", archive, "-C", directory, "binary"]))
+  try check_archive(archive, "binary") catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected archive symlink rejection")
+  }
+  @fs.remove(file)
+  @fs.write_file(file, "executable bytes")
+  ignore(
+    output("tar", ["-czf", archive, "-C", directory, "binary", "original"]),
+  )
+  try check_archive(archive, "binary") catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected extra archive entries rejection")
+  }
+  println(
+    "Provider release admission: both targets accepted; stale source, protocol, variants, inventory, role, mode, paths, hashes and host mismatch rejected; real executable corruption, symlink and archive inventory checks passed",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    return
+  }
+  guard args.length() == 1 else {
+    fail("ci-provider-release.mbtx takes no arguments")
+  }
+  let directory = @env.get_env_var("MORPHIR_CI_PROVIDER_TOOLS").unwrap_or(
+    ".dev/ci/provider-tools",
+  )
+  if !@fs.exists(directory) {
+    @fs.mkdir(directory, recursive=true)
+  }
+  for name in ["manifest.ionb", "release-admission.ionb"] {
+    if @fs.exists(directory + "/" + name) {
+      @fs.remove(directory + "/" + name)
+    }
+  }
+  let pin_value = @text.read_ion(
+    @fs.read_file(
+      "apps/morphir/fixtures/authenticated-provider/provider-release.ion",
+    ).text(),
+  )
+  guard pin_value.annotations().length() == 1 &&
+    pin_value.annotations()[0].text() == Some("morphir_provider_release_pin_v1") else {
+    fail("Provider Ion pin annotation")
+  }
+  let pin = @ion_json.to_json(pin_value.with_annotations([]))
+  let host = @json.parse(
+    output("node", [
+      "-p", "JSON.stringify({platform:process.platform,arch:process.arch})",
+    ]),
+  )
+  let target = match (text(host, "platform"), text(host, "arch")) {
+    ("linux", "x64") => "x86_64-unknown-linux-gnu"
+    ("darwin", "arm64") => "aarch64-apple-darwin"
+    _ => fail("Unsupported provider release platform")
+  }
+  let temporary = @fs.tmpdir(prefix="morphir-provider-release-")
+  defer @fs.rmdir(temporary, recursive=true)
+  let started = @async.now()
+  let descriptor_pin = field(pin, "descriptor")
+  let descriptor_name = text(descriptor_pin, "filename")
+  guard descriptor_name ==
+    "morphir-provider-snapshot-" + text(pin, "version") + ".release.json" else {
+    fail("Unexpected release descriptor filename")
+  }
+  let proofs = [
+    acquire(pin, temporary, descriptor_name, text(descriptor_pin, "sha256")),
+  ]
+  let descriptor = @fs.read_file(temporary + "/" + descriptor_name).json()
+  let selected = validate_descriptor(pin, descriptor, target)
+  for artifact in selected {
+    let filename = text(artifact, "filename")
+    let executable = text(artifact, "executable")
+    proofs.push(acquire(pin, temporary, filename, text(artifact, "sha256")))
+    let archive = temporary + "/" + filename
+    check_archive(archive, executable)
+    let unpacked = temporary + "/" + text(artifact, "role")
+    @fs.mkdir(unpacked)
+    ignore(output("tar", ["-xzf", archive, "-C", unpacked, "--no-same-owner"]))
+    guard sha256(unpacked + "/" + executable) ==
+      text(artifact, "executableSha256") else {
+      fail("Released executable SHA-256 mismatch")
+    }
+    @fs.write_file(
+      directory + "/" + executable,
+      @fs.read_file(unpacked + "/" + executable),
+      permission=0o755,
+    )
+  }
+  let compilers = selected.map(a => field(a, "rustc"))
+  guard compilers[0] == compilers[1] else {
+    fail("Provider tools must share their Rust compiler")
+  }
+  let metadata : Json = {
+    "acquisition": "released",
+    "buildMode": "release",
+    "rustRevision": text(pin, "gitCommit"),
+    "rustCompiler": text(compilers[0], "version"),
+    "releaseTag": text(pin, "tag"),
+    "target": target,
+    "descriptorSha256": text(descriptor_pin, "sha256"),
+  }
+  let receipt : Json = {
+    "profile": "morphir-provider-release-admission-v1",
+    "metadata": metadata,
+    "pin": pin,
+    "descriptor": descriptor,
+    "attestations": proofs,
+    "elapsedMs": @json.parse((@async.now() - started).to_string()),
+  }
+  @fs.write_file(
+    directory + "/release-admission.ionb",
+    @binary.write_binary_value(
+      @ion_json.to_ion(receipt).with_annotations([
+        @ion.SymbolToken::new("morphir_provider_release_admission_v1"),
+      ]),
+    ),
+  )
+  ignore(
+    output("moon", [
+      "run", "scripts/ci-artifact.mbtx", "pack-release", "provider-tools", directory,
+    ]),
+  )
+  @stdio.stderr.write(
+    "[provider-release] verified both " +
+    target +
+    " tools, elapsed_ms=" +
+    (@async.now() - started).to_string() +
+    "\n",
+  )
+}

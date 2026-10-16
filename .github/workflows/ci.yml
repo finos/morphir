@@ -250,6 +250,9 @@ jobs:
           if-no-files-found: error
 
   native-qualification:
+    permissions:
+      contents: read
+      attestations: read
     name: Native qualification (${{ matrix.os }})
     needs: [changes, lint, format-check]
     if: needs.changes.outputs.code == 'true'

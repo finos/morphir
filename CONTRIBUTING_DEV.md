@@ -157,11 +157,9 @@ site changes also build and test the site.
 Code jobs qualify Wasm, Wasm GC, JavaScript and native targets. Native producers build a
 release executable on Ubuntu 24.04 and macOS 15 and publish it before acceptance tests
 start. Linux native acceptance and installed signed-provider qualification reuse those
-executables. Rust provider preparation runs in parallel with native compilation. CI uses the Rust
-dev profile with debug assertions and overflow checks enabled, but removes debugger and
-symbol data. Admission repeatedly hashes the selected executable, so carrying hundreds
-of megabytes of debug data slows every case. The artifact catalog records these explicit
-profile settings. Local source builds keep their normal profile defaults.
+executables. Released provider-tool acquisition runs in parallel with native compilation. CI downloads
+the separately packaged service and test-fixture exporter instead of installing Rust or
+compiling Cargo targets.
 
 Each executable artifact has a binary Ion catalog. Consumers verify the repository,
 commit, workflow run, platform, architecture, runner image and executable SHA-256.
@@ -169,13 +167,29 @@ Native consumers also verify the pinned compiler and core source identities. Art
 are scoped to a workflow run, including reruns of individual jobs. They never reuse
 trust state, signed fixtures, grants, project outputs or qualification receipts.
 
+The annotated Ion lock at
+`apps/morphir/fixtures/authenticated-provider/provider-release.ion` pins the release
+commit and descriptor, archive and executable digests. Acquisition verifies GitHub
+attestations against the upstream repository, release workflow, exact source commit
+and tag before extraction. Both tools must match their qualified platform and protocol.
+A failed verification ends the job; CI never silently builds a substitute from source.
+The catalog also covers `release-admission.ionb`, which retains the lock, descriptor
+and successful attestation results. Installed-provider evidence includes that receipt.
+
 The installed-provider job still runs all qualification cases against both the npm and
 native clients. Long phases stream their output and report elapsed milliseconds.
 The `installed-provider-<os>` artifact retains `phase-timings.ionb`, the admitted tool
 catalogs, the qualification summary and audit evidence. Its summary records the actual
 Rust compiler and service build mode.
 
-Local qualification keeps its source-build defaults:
+To acquire the same released tools locally with an authenticated `gh` CLI:
+
+```sh
+moon run scripts/ci-provider-release.mbtx --self-test
+moon run scripts/ci-provider-release.mbtx
+```
+
+Local qualification keeps its explicit source-build defaults:
 
 ```sh
 MORPHIR_PROVIDER_RUST=/path/to/clean/accepted/morphir-rust mise run test:installed-provider
@@ -187,7 +201,7 @@ toolchain and Node available. Keep all artifact directories outside tracked path
 ```sh
 moon build --target native --release
 moon run scripts/ci-artifact.mbtx pack native-cli .dev/ci/native
-MORPHIR_PROVIDER_RUST=/path/to/clean/accepted/morphir-rust moon run scripts/ci-provider-tools.mbtx
+moon run scripts/ci-provider-release.mbtx
 MORPHIR_CI_NATIVE="$PWD/.dev/ci/native" MORPHIR_CI_PROVIDER_TOOLS="$PWD/.dev/ci/provider-tools" mise run test:installed-provider
 ```
 

@@ -1,0 +1,79 @@
+morphir_provider_release_pin_v1::{
+  "repository": "finos/morphir-rust",
+  "signerWorkflow": "finos/morphir-rust/.github/workflows/release-provider-snapshot.yml",
+  "gitCommit": "6a481ec17cf75d889ad363b008ece2ba0ea6e05f",
+  "tag": "provider-snapshot/v0.2.0",
+  "version": "0.2.0",
+  "descriptor": {
+    "filename": "morphir-provider-snapshot-0.2.0.release.json",
+    "sha256": "45b9c1c784ce5e1cbb850e8e740d6826156486debbf2d08b5f9612e8324cdf4f"
+  },
+  "compatibility": {
+    "service": "morphir-package/provider-snapshot/0.1.0-draft.1",
+    "profile": "local-library-mvp",
+    "profileVersion": "0.1.0-draft.1",
+    "codec": "v4.1-document-metadata-to-v4.0/1",
+    "requestAnnotations": [
+      "morphir_provider_capabilities_request_v1",
+      "morphir_provider_snapshot_request_v1"
+    ],
+    "responseAnnotations": [
+      "morphir_provider_capabilities_response_v1",
+      "morphir_provider_snapshot_response_v1"
+    ]
+  },
+  "fixtureVariants": [
+    "compatible",
+    "wrong-type",
+    "wrong-subject-role",
+    "wrong-object-form",
+    "wrong-interpreter",
+    "ambiguous-contexts"
+  ],
+  "artifacts": [
+    {
+      "role": "service",
+      "filename": "morphir-provider-snapshot-0.2.0-aarch64-apple-darwin.tgz",
+      "sha256": "03d190b8ef97d354f9aca6854542979c36ce5f77c68a3d80de28ac1a77c432bd",
+      "executable": "morphir-provider-snapshot",
+      "executableSha256": "2696a72d7096a3d1285589a46f2dcbeaf84859e9c5cefa09422cad4f016a786c",
+      "target": "aarch64-apple-darwin",
+      "os": "macos",
+      "arch": "aarch64",
+      "runner": "macos-15"
+    },
+    {
+      "role": "test-fixture",
+      "filename": "morphir-provider-snapshot-test-fixture-0.2.0-aarch64-apple-darwin.tgz",
+      "sha256": "2482af737e3d82b70f227b2c27941e3ee6c76a1163730feffe37be77a8429cdb",
+      "executable": "provider-snapshot-fixture",
+      "executableSha256": "b2326762f754b00b480cb521038d78de7c471b7686b2709f29fd122c902f051b",
+      "target": "aarch64-apple-darwin",
+      "os": "macos",
+      "arch": "aarch64",
+      "runner": "macos-15"
+    },
+    {
+      "role": "service",
+      "filename": "morphir-provider-snapshot-0.2.0-x86_64-unknown-linux-gnu.tgz",
+      "sha256": "9ae0a257072c15743e0fac8bc567ab672d065fcb545075f27edbe08b50a15dc0",
+      "executable": "morphir-provider-snapshot",
+      "executableSha256": "950bb941a7ebcb554a7259d3d16431319cd5660895354055275835369803ca1e",
+      "target": "x86_64-unknown-linux-gnu",
+      "os": "linux",
+      "arch": "x86_64",
+      "runner": "ubuntu-24.04"
+    },
+    {
+      "role": "test-fixture",
+      "filename": "morphir-provider-snapshot-test-fixture-0.2.0-x86_64-unknown-linux-gnu.tgz",
+      "sha256": "8d33cff33ab9b8955d2db0d7ac889134883237b807b635a5ad21f669ebf9a575",
+      "executable": "provider-snapshot-fixture",
+      "executableSha256": "7a089cd58c62968f423493115a2d59429c337388b6e8dfb2f3579cff76a5aaf4",
+      "target": "x86_64-unknown-linux-gnu",
+      "os": "linux",
+      "arch": "x86_64",
+      "runner": "ubuntu-24.04"
+    }
+  ]
+}

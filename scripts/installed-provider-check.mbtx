@@ -123,7 +123,7 @@ async fn main {
   for
     file in [
       "summary.ionb", "summary.json", "bridge.json", "phase-timings.ionb", "native-artifact.ionb",
-      "provider-tools-artifact.ionb",
+      "provider-tools-artifact.ionb", "release-admission.ionb",
     ] {
     if @fs.exists(receipts + "/" + file) {
       @fs.remove(receipts + "/" + file)
@@ -134,7 +134,7 @@ async fn main {
   }
   let root = @fs.realpath(@fs.tmpdir(prefix="morphir-installed-provider-"))
   defer @fs.rmdir(root, recursive=true)
-  let (service, exporter, rust_compiler, service_build_mode) = if @env.get_env_var(
+  let (service, exporter, rust_compiler, service_build_mode, service_revision) = if @env.get_env_var(
       "MORPHIR_CI_PROVIDER_TOOLS",
     )
     is Some(directory) {
@@ -144,19 +144,49 @@ async fn main {
       ]),
     )
     let metadata = field(artifact, "metadata")
-    guard string(metadata, "rustRevision") == rust_revision else {
-      fail("Accepted provider revision required")
+    let selected_revision = string(metadata, "rustRevision")
+    let released = field(metadata, "acquisition") == Json::string("released")
+    if released {
+      let value = @text.read_ion(
+        @fs.read_file(
+          "apps/morphir/fixtures/authenticated-provider/provider-release.ion",
+        ).text(),
+      )
+      guard value.annotations().length() == 1 &&
+        value.annotations()[0].text() == Some("morphir_provider_release_pin_v1") else {
+        fail("Provider release Ion pin annotation")
+      }
+      let pin = @ion_json.to_json(value.with_annotations([]))
+      guard selected_revision == string(pin, "gitCommit") &&
+        string(metadata, "buildMode") == "release" &&
+        string(metadata, "releaseTag") == string(pin, "tag") &&
+        string(metadata, "descriptorSha256") ==
+        string(field(pin, "descriptor"), "sha256") else {
+        fail("Pinned released provider identity required")
+      }
+    } else {
+      guard selected_revision == rust_revision &&
+        string(metadata, "buildMode") == "debug" else {
+        fail("Accepted source-built provider revision required")
+      }
     }
     let directory = string(artifact, "directory")
     @fs.write_file(
       receipts + "/provider-tools-artifact.ionb",
       @fs.read_file(directory + "/manifest.ionb"),
     )
+    if released {
+      @fs.write_file(
+        receipts + "/release-admission.ionb",
+        @fs.read_file(directory + "/release-admission.ionb"),
+      )
+    }
     (
       directory + "/morphir-provider-snapshot",
       directory + "/provider-snapshot-fixture",
       string(metadata, "rustCompiler"),
       string(metadata, "buildMode"),
+      selected_revision,
     )
   } else {
     guard @env.get_env_var("MORPHIR_PROVIDER_RUST") is Some(rust) else {
@@ -191,6 +221,7 @@ async fn main {
       @fs.realpath(target + "/debug/examples/provider-snapshot-fixture"),
       checked("rustc", ["--version"]),
       "debug",
+      rust_revision,
     )
   }
   let native_source = if @env.get_env_var("MORPHIR_CI_NATIVE")
@@ -233,7 +264,7 @@ async fn main {
     "node",
     [
       "apps/morphir/scripts/test-installed-authenticated.js", root, service, exporter,
-      native, rust_revision, receipts, rust_compiler, service_build_mode,
+      native, service_revision, receipts, rust_compiler, service_build_mode,
     ],
     receipts~,
   )

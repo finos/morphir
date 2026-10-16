@@ -145,29 +145,17 @@ jobs:
 
 
   provider-tools:
+    permissions:
+      contents: read
+      attestations: read
     name: Provider tools artifact (${{ inputs.runner }})
     runs-on: ${{ inputs.runner }}
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
-      MORPHIR_PROVIDER_RUST: ${{ github.workspace }}/.dev/provider-rust
       MORPHIR_CI_PROVIDER_TOOLS: .dev/ci/provider-tools
-      CARGO_BUILD_JOBS: '2'
-      # Identity admission hashes these files repeatedly. Keep the dev behavior,
-      # but omit debugger/symbol data that the black-box qualification never uses.
-      CARGO_PROFILE_DEV_DEBUG: '0'
-      CARGO_PROFILE_DEV_STRIP: symbols
-      CARGO_PROFILE_DEV_DEBUG_ASSERTIONS: 'true'
-      CARGO_PROFILE_DEV_OVERFLOW_CHECKS: 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - name: Checkout accepted shared fixture and service source
-        uses: actions/checkout@v6
-        with:
-          repository: finos/morphir-rust
-          ref: ce68e7d1861b35bf51b6ddcaf6d48d5f93824893
-          path: .dev/provider-rust
-          persist-credentials: false
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -191,12 +179,14 @@ jobs:
           echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
           echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
 
-      - name: Install pinned Rust
-        run: mise install rust@1.98.1
       - name: Resolve pinned workspace packages
         run: moon update
-      - name: Prepare pinned provider tools with live progress
-        run: mise exec rust@1.98.1 -- moon run scripts/ci-provider-tools.mbtx
+      - name: Test release admission
+        run: moon run scripts/ci-provider-release.mbtx --self-test
+      - name: Acquire pinned and attested released provider tools
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: moon run scripts/ci-provider-release.mbtx
       - name: Publish provider tools
         uses: actions/upload-artifact@v6
         with:
@@ -205,6 +195,7 @@ jobs:
             .dev/ci/provider-tools/morphir-provider-snapshot
             .dev/ci/provider-tools/provider-snapshot-fixture
             .dev/ci/provider-tools/manifest.ionb
+            .dev/ci/provider-tools/release-admission.ionb
           if-no-files-found: error
           overwrite: true
 
