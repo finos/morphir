@@ -1,0 +1,99 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Accepted",
+      "data": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Stable native.frame.limit",
+      "data": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      },
+      "valid": true
+    },
+    {
+      "description": "Stable native.frame.utf8",
+      "data": {
+        "status": "invalid",
+        "code": "native.frame.utf8"
+      },
+      "valid": true
+    },
+    {
+      "description": "Stable native.frame.json",
+      "data": {
+        "status": "invalid",
+        "code": "native.frame.json"
+      },
+      "valid": true
+    },
+    {
+      "description": "Stable native.frame.shape",
+      "data": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      },
+      "valid": true
+    },
+    {
+      "description": "Stable native.frame.model",
+      "data": {
+        "status": "invalid",
+        "code": "native.frame.model"
+      },
+      "valid": true
+    },
+    {
+      "description": "Stable native.frame.arguments",
+      "data": {
+        "status": "invalid",
+        "code": "native.frame.arguments"
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown invalid",
+      "data": {
+        "status": "invalid",
+        "code": "native.frame.unknown"
+      },
+      "valid": false
+    },
+    {
+      "description": "Adapter errors are not domaininvalid",
+      "data": {
+        "status": "error",
+        "code": "adapter.error"
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed invalid",
+      "data": {
+        "status": "invalid",
+        "code": "native.frame.limit",
+        "message": "detail"
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed success",
+      "data": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        },
+        "extra": 1
+      },
+      "valid": false
+    }
+  ]
+}

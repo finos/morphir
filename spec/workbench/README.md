@@ -199,3 +199,10 @@ existing immutable job payloads and read-only OS-picked workspace grants.
 Its own descriptor contains the frozen jobs offer directly. Structural cases,
 raw input fixtures and lifecycle traces are separate evidence; publication
 does not qualify a packaged platform or advertise the existing private bootstrap.
+
+[Offline native request frame qualification](draft.7/README.md) adds the separate
+exact MCK `0.1.0-draft.7` operation `validate-native-frame`, JSON only, with an
+independent [138-case kit](mck/draft.7/README.md). The existing shared Rust runner
+compares fixed raw request expectations through an explicit production adapter
+and independently rechecks reports. Runtime authority, native lifecycle,
+response handling and packaged platform qualification remain separate.

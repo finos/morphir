@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/mck-response.schema.json",
+  "title": "Offline Workbench native frame mck-response",
+  "description": "Closed exact draft.7 JSON validate-native-frame contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+  "examples": [
+    {
+      "id": 1,
+      "status": "ok",
+      "value": {
+        "frameAccepted": true
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "suite",
+        "contractVersion",
+        "binding",
+        "language",
+        "operations",
+        "formats"
+      ],
+      "properties": {
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.7"
+        },
+        "binding": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "operations": {
+          "const": [ "validate-native-frame" ]
+        },
+        "formats": {
+          "const": [ "json" ]
+        },
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "status", "value" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/native-frame-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "status", "code" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "enum": [
+            "native.frame.limit",
+            "native.frame.utf8",
+            "native.frame.json",
+            "native.frame.shape",
+            "native.frame.model",
+            "native.frame.arguments"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

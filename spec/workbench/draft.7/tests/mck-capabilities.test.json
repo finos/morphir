@@ -1,0 +1,133 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Exact capabilities",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-frame"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Exact draft 0.1.0-draft.6",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.6",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-frame"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact draft 0.1.0-draft.8",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-frame"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact draft 0.1.0-draft.7+local",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7+local",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-frame"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Only native operation",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "reduce-job"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "No empty operations",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "No Ion",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-frame"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-frame"
+        ],
+        "formats": [
+          "json"
+        ],
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

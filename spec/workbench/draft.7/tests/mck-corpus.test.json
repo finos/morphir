@@ -1,0 +1,149 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "Fixed corpus",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "input": {
+              "encoding": "utf8",
+              "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Missing operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "cases": [
+          {
+            "id": "open",
+            "operation": null,
+            "format": "json",
+            "input": {
+              "encoding": "utf8",
+              "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Opaque bad native JSON",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "input": {
+              "encoding": "utf8",
+              "source": "!"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "No Ion",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-frame",
+            "format": "ion-text",
+            "input": {
+              "encoding": "utf8",
+              "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Not jobs",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "reduce-job",
+            "format": "json",
+            "input": {
+              "encoding": "utf8",
+              "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Bad compact source",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "input": {
+              "encoding": "hex",
+              "source": "q"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

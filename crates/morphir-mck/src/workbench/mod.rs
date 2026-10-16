@@ -3,13 +3,14 @@
 mod contract;
 mod corpus;
 mod jobs;
+mod native_frames;
 mod outcomes;
 mod report;
 mod run;
 
 pub use contract::{
     ADMISSION_VERSION, Capabilities, Format, INVOCATION_VERSION, JOBS_VERSION, MAX_VALUE_BYTES,
-    OUTCOMES_VERSION, OUTPUT_VERSION, Observation, Operation, VERSION,
+    NATIVE_FRAMES_VERSION, OUTCOMES_VERSION, OUTPUT_VERSION, Observation, Operation, VERSION,
 };
 pub use corpus::{Corpus, load};
 pub use report::{
@@ -31,3 +32,6 @@ mod outcomes_tests;
 
 #[cfg(test)]
 mod jobs_tests;
+
+#[cfg(test)]
+mod native_frames_tests;

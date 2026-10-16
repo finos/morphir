@@ -1,0 +1,228 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "Native report shape",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.7",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-frame"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "No Ion",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.7",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-frame"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-frame",
+            "format": "ion-text",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.7",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-frame"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "reduce-job",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong draft",
+      "data": {
+        "formatVersion": "0.1.0-draft.6",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.7",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-frame"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid projection",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.7",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-frame"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "No secret fields",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.7",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-frame"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true,
+        "authority": "root"
+      },
+      "valid": false
+    }
+  ]
+}
