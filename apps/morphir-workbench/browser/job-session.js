@@ -1,19 +1,18 @@
-// HTTP transport only. The compiled MoonBit cursor owns every receipt decision.
+import { HttpJobTransport, jobFrameLimit as limit } from './job-transport.js';
+// The compiled MoonBit cursor owns every receipt decision across transports.
 const version = '0.1.0-draft.1';
-const limit = 1024 * 1024;
 const bytes = text => new TextEncoder().encode(text).byteLength;
 const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.keys(value).sort().join(',') === [...keys].sort().join(',');
 
 export class JobClient {
   constructor(sessionId, { fetchFn = fetch, core = command => globalThis.morphirWorkbenchJobs(command),
-    pause = () => new Promise(resolve => setTimeout(resolve, 150)), authenticate, timeout = 10000 } = {}) {
+    pause = () => new Promise(resolve => setTimeout(resolve, 150)), authenticate, timeout = 10000, transport } = {}) {
     this.sessionId = sessionId;
-    this.fetchFn = fetchFn.bind(globalThis);
+    this.transport = transport ?? new HttpJobTransport({ fetchFn, timeout });
     this.core = core;
     this.pause = pause;
     this.authenticate = authenticate;
-    this.timeout = timeout;
     this.offer = null;
     this.job = null;
     this.result = null;
@@ -32,53 +31,30 @@ export class JobClient {
     if (reply.job) { this.job = reply.job; this.result = reply.result; }
     return reply;
   }
-  async http(path, body, optional = false) {
+  async request(path, body, optional = false) {
     const source = body === undefined ? undefined : JSON.stringify(body);
     if (source !== undefined && bytes(source) > limit) throw new Error('Host job request exceeds the 1-MiB limit.');
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(new Error('The host job request timed out.')), this.timeout);
-    try {
-      const response = await this.fetchFn(`/api/workbench/${path}`, { method: body === undefined ? 'GET' : 'POST',
-        credentials: 'same-origin', cache: 'no-store', signal: controller.signal, ...(source === undefined ? {} : {
-          headers: { 'Content-Type': 'application/json' }, body: source,
-        }) });
-      if (optional && response.status === 404) return null;
-      let text;
-      if (response.body?.getReader) {
-        const reader = response.body.getReader();
-        const chunks = []; let size = 0;
-        try {
-          for (;;) {
-            const chunk = await reader.read();
-            if (chunk.done) break;
-            size += chunk.value.byteLength;
-            if (size > limit) { await reader.cancel(); throw new Error('Host job response exceeds the 1-MiB limit.'); }
-            chunks.push(chunk.value);
-          }
-        } finally { reader.releaseLock(); }
-        const all = new Uint8Array(size); let offset = 0;
-        for (const chunk of chunks) { all.set(chunk, offset); offset += chunk.byteLength; }
-        text = new TextDecoder('utf-8', { fatal: true }).decode(all);
-      } else text = await response.text();
-      if (bytes(text) > limit) throw new Error('Host job response exceeds the 1-MiB limit.');
-      const value = this.command({ op: 'decode', source: text }).value;
-      if (!response.ok) {
-        const validError = exact(value, ['error']) && exact(value.error, ['code', 'message']) &&
-          typeof value.error.code === 'string' && value.error.code.length > 0 && bytes(value.error.code) <= 128 &&
-          typeof value.error.message === 'string' && value.error.message.length > 0 && bytes(value.error.message) <= 512;
-        const error = new Error(validError ? value.error.message : 'The host returned an invalid job error envelope.');
-        // A server failure may follow admission. Only a closed 4xx rejection is
-        // evidence that another explicit submission is safe.
-        error.status = response.status;
-        if (validError) error.code = value.error.code;
-        error.rejected = validError && response.status >= 400 && response.status < 500;
-        throw error;
-      }
-      return value;
-    } finally { clearTimeout(timer); }
+    const response = await this.transport.request(path, source, optional);
+    if (optional && response.status === 404) return null;
+    const text = response.source;
+    if (typeof text !== 'string') throw new Error('The host returned an invalid job frame.');
+    if (bytes(text) > limit) throw new Error('Host job response exceeds the 1-MiB limit.');
+    const value = this.command({ op: 'decode', source: text }).value;
+    if (!response.ok) {
+      const validError = exact(value, ['error']) && exact(value.error, ['code', 'message']) &&
+        typeof value.error.code === 'string' && value.error.code.length > 0 && bytes(value.error.code) <= 128 &&
+        typeof value.error.message === 'string' && value.error.message.length > 0 && bytes(value.error.message) <= 512;
+      const error = new Error(validError ? value.error.message : 'The host returned an invalid job error envelope.');
+      // Only a closed 4xx rejection proves that another explicit submit is safe.
+      error.status = response.status;
+      if (validError) error.code = value.error.code;
+      error.rejected = validError && response.status >= 400 && response.status < 500;
+      throw error;
+    }
+    return value;
   }
   async descriptor(optional = false) {
-    const value = await this.http('session', undefined, optional);
+    const value = await this.request('session', undefined, optional);
     if (value === null) return null;
     if (!exact(value, ['profile', 'contractVersion', 'offer']) || value.profile !== 'morphir/workbench/host' || value.contractVersion !== version) {
       throw new Error('The host job profile is incompatible.');
@@ -110,7 +86,7 @@ export class JobClient {
     this.active = true;
     this.cancelOnSubmit = false;
     let submitted;
-    try { submitted = await this.http('submit', body); }
+    try { submitted = await this.request('submit', body); }
     catch (error) {
       this.active = false;
       if (!error.rejected) { this.uncertainSubmission = true; error.submissionUnknown = true; error.jobTransport = true; }
@@ -138,7 +114,7 @@ export class JobClient {
         await this.pause();
         if (this.suspended) throw this.lastError;
         if (this.job.state === 'terminal') break;
-        const receipt = await this.http('query', { contractVersion: version, identity: this.job.identity });
+        const receipt = await this.request('query', { contractVersion: version, identity: this.job.identity });
         if (this.suspended) throw this.lastError;
         this.command({ op: 'observe', receipt });
         this.emit();
@@ -159,7 +135,7 @@ export class JobClient {
     const cancellation = { generation };
     cancellation.promise = (async () => {
       try {
-        const receipt = await this.http('cancel', { contractVersion: version, identity });
+        const receipt = await this.request('cancel', { contractVersion: version, identity });
         if (generation !== this.generation) return;
         this.command({ op: 'observe', receipt });
         this.emit();
@@ -193,7 +169,7 @@ export class JobClient {
   }
   async release() {
     try {
-      const value = await this.http('release', { contractVersion: version, identity: this.job.identity });
+      const value = await this.request('release', { contractVersion: version, identity: this.job.identity });
       if (!exact(value, ['released']) || value.released !== true) throw new Error('The host did not confirm job release.');
       this.releasePending = false;
     } catch (error) {

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:http';
+import { once } from 'node:events';
 import { elmWorkflow, moonbitWorkflow, libraryWorkflow } from './elm-workflow.js';
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.js';
 
@@ -11,6 +13,51 @@ try {
   assert.ok(page, 'Packaged Proton asset page is present');
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  const originalUrl = page.url();
+  const native = async (operation, payload) => page.evaluate(([operation, payload]) =>
+    window.__MoonBit__.core.invokeOp(`app:workbench_session_${operation}`, payload), [operation, payload]);
+  const firstSession = await native('open', '0.1.0-draft.1');
+  assert.equal(firstSession.ok, true);
+  assert.deepEqual(firstSession.operations, [], 'The bootstrap does not offer native execution or files');
+  assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Desktop local');
+  assert.deepEqual(await native('check', firstSession.sessionId), firstSession);
+  assert.deepEqual(await native('open', '0.1.0-draft.2'), { ok: false, code: 'workbench.native_version' });
+  assert.deepEqual(await native('close', 'not-this-session'), { ok: false, code: 'workbench.native_stale_session' });
+  await assert.rejects(native('unknown', ''), /not|unknown|permission/i);
+  await assert.rejects(native('open', { bridgeVersion: '0.1.0-draft.1' }));
+  const hostile = createServer((_, response) => { response.writeHead(200, { 'Content-Type': 'text/html' }); response.end('<!doctype html><title>Untrusted frame</title>'); });
+  try {
+    hostile.listen(0, '127.0.0.1'); await once(hostile, 'listening');
+    const url = `http://127.0.0.1:${hostile.address().port}`;
+    await page.goto(url);
+    const access = await page.evaluate(async () => {
+      if (typeof window.__MoonBit__?.core?.invokeOp !== 'function') return 'absent';
+      return await Promise.race([
+        window.__MoonBit__.core.invokeOp('app:workbench_session_open', '0.1.0-draft.1').then(() => 'allowed', () => 'rejected'),
+        new Promise(resolve => setTimeout(() => resolve('timeout'), 5000)),
+      ]);
+    });
+    assert.ok(['absent', 'rejected'].includes(access), 'An unrelated origin cannot negotiate a native session: ' + access);
+    await page.goto(originalUrl);
+    await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  } finally {
+    hostile.closeAllConnections();
+    await new Promise(resolve => hostile.close(resolve));
+  }
+  await page.reload();
+  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  const freshSession = await native('open', '0.1.0-draft.1');
+  assert.notEqual(freshSession.sessionId, firstSession.sessionId);
+  assert.deepEqual(await native('check', firstSession.sessionId), { ok: false, code: 'workbench.native_stale_session' });
+  assert.deepEqual(await native('close', freshSession.sessionId), { ok: true });
+  const revoked = await page.evaluate(() => new Promise(resolve => globalThis.morphirWorkbench.request(
+    { operation: 'compile', source: '(+ 1 2)', languageId: 'scheme', target: 'scheme' }, text => resolve(JSON.parse(text)))));
+  assert.equal(revoked.success, false); assert.match(revoked.message, /workbench.native_stale_session/);
+  await page.goto(originalUrl + '?mode=standalone');
+  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Browser local');
+  await page.goto(originalUrl);
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   const back = page.getByRole('button', {name:'Back',exact:true});
   assert.equal(await back.isEnabled(), false);
@@ -100,5 +147,5 @@ try {
   await toolPanelWorkflow(page, { resize: false });
   await terminalOutcomeWorkflow(page, { resize: false, screenshot: process.env.MORPHIR_WORKBENCH_OUTCOME_SCREENSHOT });
   assert.deepEqual(errors, []);
-  console.log('Packaged Proton smoke passed: shared UI, secure assets, worker compile/run, model import/reference/back navigation, typed function evaluation with fields/Ion and structured/JSON/printed result views.');
+  console.log('Packaged Proton smoke passed: page-bound native session, hostile-origin rejection, reload/revocation, explicit standalone, shared UI, worker compile/run, model import/reference/back navigation, typed fields/Ion evaluation and result views.');
 } finally { await browser.close(); }

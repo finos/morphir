@@ -346,6 +346,36 @@ test('host jobs are optional, advertised only after exact authenticated profile 
   await assert.rejects(otherSession.initialize(), /rejected/);
 });
 
+test('a text transport reuses shared job admission, polling and terminal release without HTTP', async () => {
+  const fixture = cursorFixture(), requests = [];
+  const client = new JobClient('test-session', { core: fixture.core, pause: async () => {},
+    fetchFn() { throw new Error('HTTP must not be used'); },
+    transport: { async request(operation, source) {
+      requests.push({ operation, source });
+      const value = operation === 'session' ? hostDescriptor : operation === 'submit' ? submission :
+        operation === 'query' ? { job: terminalJob, result: evaluated } : { released: true };
+      return { ok: true, status: 200, source: JSON.stringify(value) };
+    } },
+  });
+  assert.equal(await client.initialize(), true);
+  const result = await client.execute({ ...evaluationRequest, argumentsIon: '[42]' });
+  assert.equal(result.value, '42'); assert.equal(result.job.state, 'terminal'); assert.equal(client.releasePending, false);
+  assert.deepEqual(requests.map(r => r.operation), ['session', 'submit', 'query', 'release']);
+  assert.equal(JSON.parse(requests[1].source).inputs.format, 'ion-text');
+  assert.ok(fixture.commands.some(c => c.op === 'decode'));
+  assert.ok(fixture.commands.some(c => c.op === 'observe'));
+});
+
+test('a supplied text transport cannot bypass frame bounds or duplicate-aware decoding', async () => {
+  for (const source of ['duplicate-keys', 'x'.repeat(1024 * 1024 + 1), null]) {
+    const fixture = cursorFixture();
+    const client = new JobClient('test-session', { core: fixture.core, transport: {
+      async request() { return { ok: true, status: 200, source }; },
+    } });
+    await assert.rejects(client.initialize(), /rejected|limit|invalid job frame/);
+  }
+});
+
 test('host job evaluation sends tagged input source, observes progress, retains terminal evidence and releases', async () => {
   const fixture = cursorFixture(); const requests = []; const progress = []; let queries = 0;
   const client = new JobClient('test-session', { core: fixture.core, pause: async () => {}, fetchFn: async (url, options) => {

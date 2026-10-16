@@ -1,0 +1,98 @@
+// Private Proton bootstrap, not an advertised Morphir native execution profile.
+export const nativeBridgeVersion = '0.1.0-draft.1';
+const keys = value => value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value).sort().join(',') : '';
+
+export class NativeSession {
+  constructor(invoke, timeout = 10000) {
+    this.invoke = invoke;
+    this.timeout = timeout;
+    this.id = null;
+    this.disposed = false;
+  }
+  async call(operation, payload) {
+    if (this.disposed) throw new Error('The desktop session is closed.');
+    let timer;
+    try {
+      const reply = await Promise.race([
+        Promise.resolve().then(() => this.invoke(`app:workbench_session_${operation}`, payload)),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('The desktop session request timed out.')), this.timeout); }),
+      ]);
+      if (this.disposed) throw new Error('The desktop session is closed.');
+      if (keys(reply) === 'code,ok' && reply.ok === false && typeof reply.code === 'string' && /^[a-zA-Z0-9_.-]{1,128}$/.test(reply.code)) {
+        throw new Error(`The desktop session was rejected (${reply.code}).`);
+      }
+      if (keys(reply) !== 'bridgeVersion,ok,operations,sessionId' || reply.ok !== true ||
+          reply.bridgeVersion !== nativeBridgeVersion || typeof reply.sessionId !== 'string' ||
+          !/^[a-zA-Z0-9_.-]{1,128}$/.test(reply.sessionId) || !Array.isArray(reply.operations) || reply.operations.length !== 0) {
+        throw new Error('The desktop session reply is incompatible.');
+      }
+      return reply;
+    } finally { clearTimeout(timer); }
+  }
+  async open() {
+    const reply = await this.call('open', nativeBridgeVersion);
+    this.id = reply.sessionId;
+  }
+  async check() {
+    if (!this.id) throw new Error('The desktop session has not been opened.');
+    const reply = await this.call('check', this.id);
+    if (reply.sessionId !== this.id) throw new Error('The desktop session changed. Reopen the application page.');
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.id) {
+      // Navigation may already have revoked this page. Never retry its close.
+      try { Promise.resolve(this.invoke('app:workbench_session_close', this.id)).catch(() => {}); } catch { /* Bridge already gone. */ }
+    }
+  }
+}
+
+export class NativeAdapter {
+  constructor(local, invoke, timeout) {
+    this.local = local;
+    this.session = new NativeSession(invoke, timeout);
+    this.runtimeLabel = 'Desktop local';
+    this.epoch = 0;
+    this.disposed = false;
+  }
+  current(epoch) {
+    if (this.disposed || epoch !== this.epoch) throw new Error('Discarded. The desktop request is no longer current.');
+  }
+  async initialize() {
+    const epoch = ++this.epoch;
+    await this.session.open();
+    this.current(epoch);
+    const result = await this.local.initialize();
+    this.current(epoch);
+    await this.session.check();
+    this.current(epoch);
+    return { ...result, nativeSession: true, jobsAvailable: false, message: 'Desktop local · ready to compile' };
+  }
+  async execute(request) {
+    const epoch = ++this.epoch;
+    await this.session.check();
+    this.current(epoch);
+    if (request.operation === 'project' || request.operation === 'resume-job') throw new Error('This desktop session does not offer native jobs or workspace access.');
+    const result = await this.local.execute(request);
+    this.current(epoch);
+    await this.session.check();
+    this.current(epoch);
+    return result;
+  }
+  cancel() { ++this.epoch; this.local.cancel(); }
+  dispose() { this.disposed = true; this.cancel(); this.session.dispose(); }
+}
+
+export function selectLocalAdapter(location, local, bridge = globalThis.__MoonBit__) {
+  const url = new URL(location.href);
+  const mode = url.searchParams.get('mode');
+  if (mode && mode !== 'native') return local;
+  const bundled = (url.protocol === 'https:' && url.host === 'proton.localhost') ||
+    (url.protocol === 'proton:' && url.host === 'app');
+  if (!bundled) return local;
+  return new NativeAdapter(local, (name, payload) => {
+    if (typeof bridge?.core?.invokeOp !== 'function') throw new Error('The desktop command bridge is unavailable.');
+    return bridge.core.invokeOp(name, payload);
+  });
+}

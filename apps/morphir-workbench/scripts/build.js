@@ -16,6 +16,7 @@ for (const [source, name] of [
   ['browser/model-explorer/explorer.css', 'model-explorer.css'],
   ['browser/bootstrap.js', 'bootstrap.js'], ['browser/transport.js', 'transport.js'],
   ['browser/job-session.js', 'job-session.js'],
+  ['browser/job-transport.js', 'job-transport.js'], ['browser/native-session.js', 'native-session.js'],
 ]) copyFileSync(`${app}/${source}`, `${app}/dist/${name}`);
 buildSync({ entryPoints: [`${app}/browser/editor/code-editor.js`], outfile: `${app}/dist/code-editor.js`, bundle: true, format: 'esm', target: 'es2022', minify: true, legalComments: 'eof' });
 buildSync({ entryPoints: [`${app}/browser/artifact-download.js`], outfile: `${app}/dist/artifact-download.js`, bundle: true, format: 'esm', target: 'es2022', minify: true, legalComments: 'eof' });

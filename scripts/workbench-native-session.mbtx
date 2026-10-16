@@ -1,0 +1,15 @@
+///|
+/// Test desktop session authority without downloading CEF or building its host.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn main {
+  let status = @process.run("moon", [
+    "test", "--target", "native", "-p", "finos/morphir-workbench-native-session",
+  ])
+  @sys.exit(if status < 0 { 1 } else { status })
+}

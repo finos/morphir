@@ -5,6 +5,8 @@ supported_targets = "native"
 import {
   "moonbitlang/async",
   "moonbit-community/proton",
+  "moonbit-community/proton_contract" @contract,
+  "finos/morphir-workbench-native-session" @session,
   "moonbitlang/core/env",
   "moonbitlang/core/string",
 }

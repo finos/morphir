@@ -1,3 +1,4 @@
 members = [
   ".",
+  "../../pkgs/morphir-workbench-native-session",
 ]

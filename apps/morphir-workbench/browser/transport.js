@@ -7,6 +7,11 @@ export class LocalAdapter {
     this.nextId = 0;
     this.active = null;
   }
+  async initialize() {
+    const catalog = await this.execute({ operation: 'catalog', source: '' });
+    if (!catalog.success) throw new Error(catalog.message || 'The local compiler catalog is unavailable.');
+    return { success: true, operation: 'initialize', connected: false, catalog, projects: [], message: 'Browser local · ready to compile' };
+  }
   execute(request) {
     this.cancel();
     if (typeof request.source !== 'string' || request.source.length > 16 * 1024 * 1024) {
@@ -37,6 +42,7 @@ export class LocalAdapter {
     });
   }
   cancel() { this.active?.cancel(); }
+  dispose() { this.cancel(); }
 }
 
 export function validateManifest(manifest) {

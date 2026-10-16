@@ -64,6 +64,11 @@ async function liveHostWorkflow(binary) {
       context = browser.contexts()[0];
       page = context.pages()[0];
       await page.waitForURL(url => url.origin === origin && url.search === '?mode=connected');
+      const nativeAccess = await page.evaluate(async () => {
+        if (typeof window.__MoonBit__?.core?.invokeOp !== 'function') return false;
+        try { await window.__MoonBit__.core.invokeOp('app:workbench_session_open', '0.1.0-draft.1'); return true; } catch { return false; }
+      });
+      assert.equal(nativeAccess, false, 'An explicit connected launch registers no native session command');
     } else {
       browser = await chromium.launch({headless:true});
       context = await browser.newContext({viewport:{width:1440,height:1000}});

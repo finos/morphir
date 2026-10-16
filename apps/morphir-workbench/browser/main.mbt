@@ -199,6 +199,9 @@ enum Msg {
 extern "js" fn connected_mode() -> Bool = "() => globalThis.morphirWorkbench.connected"
 
 ///|
+extern "js" fn local_runtime_label() -> String = "() => globalThis.morphirWorkbench.runtimeLabel || 'Browser local'"
+
+///|
 /// The site that hosts this copy of the workbench, from `<meta name="morphir-site-home">`; empty when there is none.
 extern "js" fn site_home_href() -> String =
   #|() => document.querySelector('meta[name="morphir-site-home"]')?.getAttribute("content") ?? ""
@@ -2481,7 +2484,7 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
               if model.connected {
                 "Connected host"
               } else {
-                "Browser local"
+                local_runtime_label()
               },
             ),
             @html.a(

@@ -4,6 +4,14 @@ A shared MoonBit/Rabbita frontend for Model Explorer and Try Morphir. It runs as
 a standalone browser app and inside the [Proton desktop host](../morphir-workbench-desktop/README.md).
 The browser adapter can also use Morphir's existing connected protocol v1 when
 these assets are served by an authenticated Morphir host on the same origin.
+Packaged Proton also negotiates a private, page-bound desktop session. It still
+uses the browser worker compiler/evaluator; native jobs and workspace grants
+are not offered. Explicit connected launches take precedence over this bootstrap.
+
+`browser/job-session.js` owns shared job observation and receipt admission.
+`browser/job-transport.js` carries bounded HTTP text frames; an injected transport
+uses the same decoder, cursor, cancellation and release logic. No native job
+transport is advertised by the desktop bootstrap.
 
 ## Run locally
 

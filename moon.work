@@ -20,4 +20,5 @@ members = [
   "./pkgs/morphir-metadata",
   "./pkgs/morphir-elm",
   "./pkgs/morphir-moonbit-frontend",
+  "./pkgs/morphir-workbench-native-session",
 ]

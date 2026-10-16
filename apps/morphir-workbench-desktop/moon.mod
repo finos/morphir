@@ -15,6 +15,8 @@ preferred_target = "native"
 supported_targets = "native"
 
 import {
+  "finos/morphir-workbench-native-session@0.1.0",
   "moonbitlang/async@0.22.4",
   "moonbit-community/proton@0.3.4",
+  "moonbit-community/proton_contract@0.3.4",
 }

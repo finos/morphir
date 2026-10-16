@@ -1,5 +1,6 @@
 import './code-editor.js';
 import { LocalAdapter, connect } from './transport.js';
+import { selectLocalAdapter } from './native-session.js';
 import { downloadArtifacts } from './artifact-download.js';
 
 const local = new LocalAdapter();
@@ -10,6 +11,7 @@ let generation = 0;
 
 globalThis.morphirWorkbench = {
   connected,
+  get runtimeLabel() { return adapter.runtimeLabel || 'Browser local'; },
   async request(request, receive) {
     const current = ++generation;
     try {
@@ -20,16 +22,15 @@ globalThis.morphirWorkbench = {
           adapter = await connect(location, local);
           result = await adapter.initialize();
         } else {
-          const catalog = await local.execute({ operation: 'catalog', source: '' });
-          if (!catalog.success) throw new Error(catalog.message || 'The local compiler catalog is unavailable.');
-          result = { success: true, operation: 'initialize', connected: false, catalog, projects: [], message: 'Browser local · ready to compile' };
+          adapter = selectLocalAdapter(location, local);
+          result = await adapter.initialize();
         }
       } else result = await adapter.execute(request, job => {
         if (current === generation) receive(JSON.stringify({ success: true, operation: 'job-progress', job }));
       });
       if (current === generation) receive(JSON.stringify(result));
     } catch (error) {
-      if (request.operation === 'initialize' && connected) adapter.dispose?.();
+      if (request.operation === 'initialize') adapter.dispose?.();
       if (current === generation) receive(JSON.stringify({ success: false, message: error.message || 'Host request failed',
         ...(error.job ? { job: error.job } : {}),
         ...(error.jobTransport ? { jobTransport: true } : {}),

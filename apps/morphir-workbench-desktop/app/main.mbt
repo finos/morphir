@@ -7,7 +7,7 @@ async fn main {
     height=860,
   ).load_config()
   let app = match @env.get_env_vars().get("MORPHIR_WORKBENCH_LAUNCH_URL") {
-    None => app
+    None => with_native_session(app)
     Some(url) => {
       if !loopback_launch(url) {
         abort("Expected an authenticated loopback launch URL")
