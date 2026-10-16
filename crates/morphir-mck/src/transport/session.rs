@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value};
 
-use super::protocol::{Request, parse_envelope};
+use super::protocol::{Request, parse_envelope, split_envelope};
 use super::tree::{self, ProcessTree, Terminator};
 
 /// The bounds of one adapter session.
@@ -135,6 +135,7 @@ enum Frame {
 enum EnvelopePolicy {
     LegacyIr,
     RejectDuplicateMembers,
+    PreserveLiteralMembers,
 }
 
 /// One absolute deadline covers writing a request and reading its response.
@@ -372,6 +373,23 @@ impl Session {
         &mut self,
         request: &T,
     ) -> Result<Map<String, Value>, TransportError> {
+        self.exchange_serializable_with_policy(request, EnvelopePolicy::RejectDuplicateMembers)
+    }
+
+    /// A newly versioned suite can retain literal JSON object kinds through the
+    /// transport boundary instead of reinterpreting serde's private marker maps.
+    pub(crate) fn exchange_literal<T: serde::Serialize>(
+        &mut self,
+        request: &T,
+    ) -> Result<Map<String, Value>, TransportError> {
+        self.exchange_serializable_with_policy(request, EnvelopePolicy::PreserveLiteralMembers)
+    }
+
+    fn exchange_serializable_with_policy<T: serde::Serialize>(
+        &mut self,
+        request: &T,
+        policy: EnvelopePolicy,
+    ) -> Result<Map<String, Value>, TransportError> {
         self.exchange_line(
             |id| {
                 let body = serde_json::to_string(request)
@@ -383,7 +401,7 @@ impl Session {
                 }
                 Ok(format!("{{\"id\":{id},{}", &body[1..]))
             },
-            EnvelopePolicy::RejectDuplicateMembers,
+            policy,
         )
     }
 
@@ -463,11 +481,19 @@ impl Session {
     ) -> Result<Map<String, Value>, TransportError> {
         match deadline.receive(&self.frames)? {
             Some(Frame::Line(line)) => {
-                if matches!(policy, EnvelopePolicy::RejectDuplicateMembers) {
-                    crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;
+                let (got, body) = match policy {
+                    EnvelopePolicy::PreserveLiteralMembers => {
+                        let value =
+                            crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;
+                        split_envelope(value)
+                    }
+                    EnvelopePolicy::RejectDuplicateMembers => {
+                        crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;
+                        parse_envelope(&line)
+                    }
+                    EnvelopePolicy::LegacyIr => parse_envelope(&line),
                 }
-                let (got, body) =
-                    parse_envelope(&line).map_err(|error| TransportError::Malformed(error.0))?;
+                .map_err(|error| TransportError::Malformed(error.0))?;
                 if got == id {
                     Ok(body)
                 } else {

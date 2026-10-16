@@ -268,7 +268,9 @@ fn native_frames_fixed_transcript_checks_reports_without_decoding_native_inputs(
             _ => unreachable!(),
         }
         assert!(
-            check_report(&root, &Report::from_json(&forged.to_string()).unwrap()).is_err(),
+            Report::from_json(&forged.to_string())
+                .and_then(|report| check_report(&root, &report))
+                .is_err(),
             "{change}"
         );
     }
@@ -311,4 +313,54 @@ fn native_frames_adapter_faults_are_errors_and_valid_differences_are_failures() 
     assert_eq!(report.records[0].result, ResultKind::Fail);
     assert!(report.errors.is_empty());
     check_report(root.path(), &report).unwrap();
+}
+
+#[test]
+fn native_frames_literal_private_objects_cannot_forge_saved_report_success() {
+    let root = tempfile::tempdir().unwrap();
+    corpus_file(root.path(), json!({"encoding":"utf8","source":"{}"}));
+    let corpus = load(root.path()).unwrap();
+    let mut adapter = Replay {
+        replies: [
+            capabilities(),
+            json!({"status":"ok","value":{"frameAccepted":true}}),
+        ]
+        .into(),
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut adapter);
+    assert!(report.qualified);
+    for injected in [
+        json!({"$serde_json::private::RawValue":"true"}),
+        json!({"$serde_json::private::RawValue":"{\"$serde_json::private::RawValue\":\"true\"}"}),
+    ] {
+        let mut saved = serde_json::to_value(&report).unwrap();
+        saved["records"][0]["observed"]["value"]["frameAccepted"] = injected;
+        let decoded = Report::from_json(&saved.to_string());
+        assert!(
+            decoded.is_err(),
+            "literal objects must reject before derived report decoding"
+        );
+    }
+}
+
+#[test]
+fn native_frames_literal_observation_objects_reject_before_derived_decoding() {
+    let root = tempfile::tempdir().unwrap();
+    corpus_file(root.path(), json!({"encoding":"utf8","source":"{}"}));
+    let corpus = load(root.path()).unwrap();
+    for value in [
+        json!({"frameAccepted":{"$serde_json::private::RawValue":"true"}}),
+        json!({"$serde_json::private::RawValue":"{\"frameAccepted\":true}"}),
+    ] {
+        let mut adapter = Replay {
+            replies: [capabilities(), json!({"status":"ok","value":value})].into(),
+            requests: vec![],
+        };
+        let report = execute(&corpus, &mut adapter);
+        assert!(!report.qualified);
+        assert_eq!(report.records[0].result, ResultKind::Error);
+        assert_eq!(report.errors[0].phase, Phase::Exchange);
+        check_report(root.path(), &report).unwrap();
+    }
 }

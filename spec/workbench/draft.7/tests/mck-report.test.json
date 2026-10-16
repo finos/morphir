@@ -223,6 +223,45 @@
         "authority": "root"
       },
       "valid": false
+    },
+    {
+      "description": "Literal object cannot impersonate accepted boolean marker",
+      "data": {
+        "formatVersion": "0.1.0-draft.7",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.7",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-frame"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": {
+                  "$serde_json::private::RawValue": "true"
+                }
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
     }
   ]
 }

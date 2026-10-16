@@ -61,6 +61,20 @@ mod adapter {
 
     pub fn run(mode: &str, arg: Option<&str>) {
         match mode {
+            "workbench-private-marker" => {
+                for (id, line) in requests() {
+                    if is_exit(&line) {
+                        return;
+                    }
+                    if line.contains("\"op\":\"capabilities\"") {
+                        say(format!(r#"{{"id":{id},"suite":"workbench","contractVersion":"0.1.0-draft.7","binding":"hostile-test","language":"test","operations":["validate-native-frame"],"formats":["json"]}}
+"#).as_bytes());
+                    } else {
+                        say(format!(r#"{{"id":{id},"status":"ok","value":{{"frameAccepted":{{"$serde_json::private::RawValue":"true"}}}}}}
+"#).as_bytes());
+                    }
+                }
+            }
             // Answers capabilities, decodes to a fixed result, exits on request.
             "good" => {
                 for (id, line) in requests() {
@@ -621,6 +635,25 @@ fn the_frozen_transcript_replays_byte_for_byte() {
 
 // ---------------------------------------------------------------- runner
 
+fn native_workbench_literal_private_objects_cannot_forge_live_adapter_success() {
+    use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("cases.json"),r#"{"formatVersion":"0.1.0-draft.7","cases":[{"id":"frame","operation":"validate-native-frame","format":"json","input":{"encoding":"utf8","source":"{}"},"expected":{"status":"ok","value":{"frameAccepted":true}}}]}"#).unwrap();
+    let options = RunOptions {
+        adapter: std::env::current_exe().unwrap().into_os_string(),
+        adapter_args: vec![ADAPTER_FLAG.into(), "workbench-private-marker".into()],
+        limits: quick(),
+    };
+    let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
+    assert!(
+        !report.qualified,
+        "literal object must never qualify as a boolean marker"
+    );
+    assert_eq!(report.records[0].result, ResultKind::Error);
+    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    morphir_mck::workbench::check_report(root.path(), &report).unwrap();
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some(ADAPTER_FLAG) {
@@ -629,6 +662,10 @@ fn main() {
     }
 
     let tests: &[(&str, fn())] = &[
+        (
+            "native_workbench_literal_private_objects_cannot_forge_live_adapter_success",
+            native_workbench_literal_private_objects_cannot_forge_live_adapter_success,
+        ),
         (
             "an_unsolicited_reply_after_exit_fails_shutdown",
             an_unsolicited_reply_after_exit_fails_shutdown,

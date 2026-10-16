@@ -22,6 +22,12 @@ operation and format inventory, capabilities and observations, and recomputes
 every result and qualification. A saved transcript tests this boundary; it does
 not establish that an implementation performed decoding.
 
+Literal JSON token kinds are preserved across corpus admission, live adapter
+observations and saved reports. An object cannot impersonate a number, string,
+boolean or projection, including when its member names resemble a JSON library's
+private representation markers. Closed raw shapes are admitted before typed
+conversion; malformed observations remain adapter exchange errors.
+
 ## Transport and compact inputs
 
 The existing bounded newline-delimited request/response transport and IDs apply.

@@ -69,6 +69,19 @@
         }
       },
       "valid": false
+    },
+    {
+      "description": "Literal object cannot impersonate accepted boolean marker",
+      "data": {
+        "id": 1,
+        "status": "ok",
+        "value": {
+          "frameAccepted": {
+            "$serde_json::private::RawValue": "true"
+          }
+        }
+      },
+      "valid": false
     }
   ]
 }

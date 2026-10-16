@@ -128,37 +128,77 @@ pub(super) fn validate_input(value: &Value) -> Result<(), String> {
 
 /// Admit infrastructure shape from literal JSON token kinds before any nested
 /// serde Value deserialization. The schema never examines native source text.
-pub(super) fn validate_corpus_shape(value: &Value) -> Result<(), String> {
-    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
-    let validator = VALIDATOR.get_or_init(|| {
-        let mut options = jsonschema::options();
-        options.with_retriever(super::contract::OfflineOnly);
-        for text in [
-            include_str!("../../../../spec/workbench/draft.7/schemas/mck-input.schema.json"),
-            include_str!(
-                "../../../../spec/workbench/draft.7/schemas/native-frame-projection.schema.json"
-            ),
-            include_str!("../../../../spec/workbench/draft.7/schemas/mck-observation.schema.json"),
-        ] {
-            let schema: Value = serde_json::from_str(text).expect("native MCK schema JSON");
-            options.with_resource(
-                schema["$id"].as_str().expect("native MCK schema id"),
-                jsonschema::Resource::from_contents(schema.clone())
-                    .expect("native MCK schema resource"),
-            );
-        }
-        let schema: Value = serde_json::from_str(include_str!(
-            "../../../../spec/workbench/draft.7/schemas/mck-corpus.schema.json"
-        ))
-        .expect("native MCK corpus schema JSON");
-        options.build(&schema).expect("native MCK corpus schema")
-    });
+fn schema_validator(schema: &str) -> jsonschema::Validator {
+    let mut options = jsonschema::options();
+    options.with_retriever(super::contract::OfflineOnly);
+    for text in [
+        include_str!("../../../../spec/workbench/draft.7/schemas/mck-input.schema.json"),
+        include_str!(
+            "../../../../spec/workbench/draft.7/schemas/native-frame-projection.schema.json"
+        ),
+        include_str!("../../../../spec/workbench/draft.7/schemas/mck-observation.schema.json"),
+        include_str!("../../../../spec/workbench/draft.7/schemas/mck-capabilities.schema.json"),
+    ] {
+        let value: Value = serde_json::from_str(text).expect("native MCK schema JSON");
+        options.with_resource(
+            value["$id"].as_str().expect("native MCK schema id"),
+            jsonschema::Resource::from_contents(value.clone()).expect("native MCK schema resource"),
+        );
+    }
+    let value: Value = serde_json::from_str(schema).expect("native MCK schema JSON");
+    options.build(&value).expect("native MCK schema")
+}
+
+fn validate_shape(
+    value: &Value,
+    validator: &jsonschema::Validator,
+    label: &str,
+) -> Result<(), String> {
     validator.validate(value).map_err(|error| {
         format!(
-            "invalid native frame corpus shape at {}: {error}",
+            "invalid native frame {label} shape at {}: {error}",
             error.instance_path
         )
     })
+}
+
+pub(super) fn validate_corpus_shape(value: &Value) -> Result<(), String> {
+    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
+    validate_shape(
+        value,
+        VALIDATOR.get_or_init(|| {
+            schema_validator(include_str!(
+                "../../../../spec/workbench/draft.7/schemas/mck-corpus.schema.json"
+            ))
+        }),
+        "corpus",
+    )
+}
+
+pub(super) fn validate_observation_shape(value: &Value) -> Result<(), String> {
+    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
+    validate_shape(
+        value,
+        VALIDATOR.get_or_init(|| {
+            schema_validator(include_str!(
+                "../../../../spec/workbench/draft.7/schemas/mck-observation.schema.json"
+            ))
+        }),
+        "observation",
+    )
+}
+
+pub(super) fn validate_report_shape(value: &Value) -> Result<(), String> {
+    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
+    validate_shape(
+        value,
+        VALIDATOR.get_or_init(|| {
+            schema_validator(include_str!(
+                "../../../../spec/workbench/draft.7/schemas/mck-report.schema.json"
+            ))
+        }),
+        "report",
+    )
 }
 
 pub(super) fn projection(value: &Value) -> Result<Value, String> {
