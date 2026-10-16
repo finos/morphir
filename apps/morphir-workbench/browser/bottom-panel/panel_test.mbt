@@ -239,3 +239,53 @@ test "naming diagnostics retain related declarations as one scoped warning" {
   assert_true(stored.message.contains("5 more related locations not retained"))
   assert_true(stored.fix.has_suffix("… (truncated)"))
 }
+
+///|
+test "per-file frontend problems show their file and Elm columns as written" {
+  let reply = @json.parse(
+    (
+      #|{"success":false,"message":"elm.parse: x","frontendDiagnostic":{"code":"elm.parse","coordinateProfile":"elm-source-position-v1","detail":"x","path":"src/A/B.elm","source":{"startLine":4,"startColumn":9,"endLine":4,"endColumn":10}},"frontendDiagnostics":[{"path":"src/A/B.elm","problems":[{"code":"elm.parse","coordinateProfile":"elm-source-position-v1","detail":"x","path":"src/A/B.elm","source":{"startLine":4,"startColumn":9,"endLine":4,"endColumn":10}},{"code":"elm.name","coordinateProfile":"elm-source-position-v1","detail":"y","path":"src/A/B.elm","source":null}]}]}
+    ),
+  ) catch {
+    _ => abort("json")
+  }
+  let found = @bottom_panel.reply_diagnostics(reply).map(d => {
+    (d.code, d.location)
+  })
+  @expect.expect(found, label="panel entries").to_equal([
+    ("elm.parse", "src/A/B.elm line 4, column 9"),
+    ("elm.name", "src/A/B.elm"),
+  ])
+}
+
+///|
+/// Property: the panel shows an Elm column as written and a MoonBit parser column plus one, for any position.
+test "the panel column follows the coordinate profile" {
+  @expect.for_all((position : (UInt32, UInt32)) => {
+    let line = (position.0 % 10000).reinterpret_as_int() + 1
+    let column = (position.1 % 10000).reinterpret_as_int()
+    let shown = (profile : String) => {
+      let reply : Json = {
+        "success": false,
+        "frontendDiagnostic": {
+          "code": "c",
+          "coordinateProfile": profile,
+          "detail": "d",
+          "source": {
+            "startLine": Json::number(line.to_double()),
+            "startColumn": Json::number(column.to_double()),
+            "endLine": Json::number(line.to_double()),
+            "endColumn": Json::number((column + 1).to_double()),
+          },
+        },
+      }
+      @bottom_panel.reply_diagnostics(reply)[0].location
+    }
+    @expect.expect(shown("elm-source-position-v1"), label="elm").to_equal(
+      "line \{line}, column \{column}",
+    )
+    @expect.expect(shown("moonbit-parser-position-v1"), label="moonbit").to_equal(
+      "line \{line}, column \{column + 1}",
+    )
+  })
+}

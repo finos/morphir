@@ -146,6 +146,7 @@ pub fn Engine::run(
               stage: file_stage,
               message: diagnostic_message(error),
               details: None,
+              problem: None,
             })
         }
       }
@@ -156,6 +157,7 @@ pub fn Engine::run(
           stage,
           message: diagnostic_message(error),
           details: None,
+          problem: None,
         })
     }
   }
@@ -220,6 +222,7 @@ pub fn Engine::run(
                 stage: "discovery",
                 message: diagnostic_message(error),
                 details: None,
+                problem: None,
               })
           }
         }
@@ -232,6 +235,7 @@ pub fn Engine::run(
         stage: "discovery",
         message: diagnostic_message(error),
         details: None,
+        problem: None,
       })
   }
   { processed: artifacts.length(), artifacts, diagnostics, }
@@ -268,6 +272,10 @@ fn diagnostic_message(error : Error) -> String {
     RejectedSources(problems) =>
       problems
       .map(p => rejection_message(p.code, p.detail, p.location))
+      .join("\n")
+    GenerationFailed(problems) =>
+      problems
+      .map(p => p.code + " at " + p.node_path + ": " + p.detail)
       .join("\n")
     @configuration.Invalid(message) => message
     @wire.Invalid(code, message) => code + ": " + message

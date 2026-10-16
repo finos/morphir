@@ -69,6 +69,18 @@ let moonbit_example : String =
   #|}
 
 ///|
+let elm_example : String =
+  #|module Workbench.Main exposing (answer, total)
+  #|
+  #|answer : Int
+  #|answer =
+  #|    42
+  #|
+  #|total : Int -> Int -> Int
+  #|total price quantity =
+  #|    price * quantity
+
+///|
 let moonbit_library_example : String =
   #|fn gate(active : Bool) -> Bool { active }
   #|pub fn eligible(activeUser : Bool, vipMember : Bool) -> Bool {
@@ -445,6 +457,8 @@ fn with_selection(model : Model, language : String, profile : String) -> Model {
         moonbit_library_example
       } else if language == "moonbit" {
         moonbit_example
+      } else if language == "elm" {
+        elm_example
       } else {
         example
       },
@@ -1071,7 +1085,9 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         ),
         ("target", Json::string(model.target)),
       ]
-      if !model.connected && !model.worksheet && model.language == "moonbit" {
+      if !model.connected &&
+        !model.worksheet &&
+        !items(field(frontend(model, model.language), "profiles")).is_empty() {
         fields.push(
           (
             "frontendProvider",
@@ -1411,7 +1427,12 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         let catalog = field(result, "catalog")
         let frontends = items(field(catalog, "frontends"))
         let language = if frontends.length() > 0 {
-          text(frontends[0], "languageId")
+          let ids = frontends.map(f => text(f, "languageId"))
+          if ids.contains("scheme") {
+            "scheme"
+          } else {
+            ids[0]
+          }
         } else {
           ""
         }
@@ -2291,7 +2312,7 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           ),
           if model.worksheet {
             "Run worksheet"
-          } else if !model.connected && model.language == "moonbit" {
+          } else if !model.connected && model.language != "scheme" {
             "Evaluate in Explorer"
           } else if !model.connected && model.target != "scheme" {
             "Compile & run (Scheme)"
@@ -2366,6 +2387,8 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         "Scheme worksheet results are dynamic values; this runtime does not infer Scala-style types."
       } else if model.language == "moonbit" {
         "Compile the selected MoonBit profile, then select a public function in Model Explorer to enter inputs and evaluate."
+      } else if model.language != "scheme" {
+        "Compile the Elm module, then select a public function in Model Explorer to enter inputs and evaluate."
       } else if model.target == "elm" {
         "For an Elm library, use named definitions. Scheme does not infer types."
       } else {

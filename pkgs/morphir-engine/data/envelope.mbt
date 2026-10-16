@@ -202,10 +202,10 @@ fn read_semantic_ir(value : @ion.IonValue) -> Json raise {
   }
   match value.kind() {
     Null(@ion.Null) => Json::null()
-    Bool(value) => value.to_json()
+    Bool(value) => Json(value)
     Int(value) => @wire.number(value.to_string())
     Float(value) => {
-      let json = value.to_json()
+      let json = Json(value)
       ignore(@wire.float(json))
       json
     }

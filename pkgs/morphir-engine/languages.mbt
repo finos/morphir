@@ -120,11 +120,13 @@ pub fn Engine::languages(self : Engine) -> Array[LanguageOffer] {
     }
   }
   offers.sort_by((a, b) => {
-    let by_language = a.language.compare(b.language)
+    let by_language = a.language
+      .to_string()
+      .lexical_compare(b.language.to_string())
     if by_language != 0 {
       by_language
     } else {
-      a.provider.compare(b.provider)
+      a.provider.to_string().lexical_compare(b.provider.to_string())
     }
   })
   offers

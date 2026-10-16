@@ -5,7 +5,6 @@ import {
   "finos/morphir-ir/migration",
   "finos/morphir-ir/wire",
   "finos/morphir-scheme" @scheme,
-  "finos/morphir-scheme/frontend",
   "finos/morphir-scheme/backend",
   "finos/morphir-execution" @protocol,
   "finos/morphir-execution/diagnostics",
@@ -13,11 +12,14 @@ import {
   "finos/morphir-engine/data",
   "finos/morphir-engine" @engine,
   "finos/morphir-engine/moonbit" @moonbit_adapter,
+  "finos/morphir-engine/elm" @elm_adapter,
+  "finos/morphir-engine/ids",
+  "finos/morphir-engine/config",
+  "finos/morphir-engine/workspace",
   "finos/morphir-moonbit" @moonbit,
   "finos/morphir-moonbit-frontend" @moonbit_frontend,
   "moonbitlang/core/encoding/base64",
   "moonbitlang/core/encoding/utf8",
-  "finos/morphir-elm/backend" @elm,
   "finos/morphir-workbench/arguments",
   "finos/morphir-workbench/outcomes",
   "moonrockz/ion/ion",
@@ -29,8 +31,10 @@ import {
   "moonrockz/ion/text" @ion_text,
   "finos/morphir-moonbit/fixtures",
   "moonbitlang/core/json",
+  "moonrockz/expect",
 } for "test"
 
 import {
   "finos/morphir-moonbit/fixtures",
+  "moonrockz/expect",
 } for "wbtest"

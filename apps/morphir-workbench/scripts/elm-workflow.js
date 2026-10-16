@@ -12,7 +12,7 @@ export async function elmWorkflow(page, { nativeDownloads = true } = {}) {
   const target = page.getByRole('combobox', { name: 'Target', exact: true });
   assert.equal(await target.inputValue(), 'elm');
   const inputs = await page.getByRole('combobox', { name: 'Language', exact: true }).locator('option').evaluateAll(items => items.map(item => item.value));
-  assert.ok(!inputs.includes('elm'), 'Elm generation does not advertise an Elm compiler');
+  assert.ok(inputs.includes('elm'), 'The catalog offers the Elm frontend');
   await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('42');
   await page.getByRole('button', { name: 'Compile & run (Scheme)', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
@@ -157,7 +157,19 @@ export async function elmWorkflow(page, { nativeDownloads = true } = {}) {
     assert.equal(JSON.parse(await page.locator('#output').evaluate(editor => editor.value)).type, 'package');
     await page.setViewportSize(viewport);
   }
-  console.log(JSON.stringify({ elmTarget: true, elmInput: false, files: paths, fileWorkspace: true, keyboardSelection: true, independentNavigation: true, focusRetainsSource: true, exactFileAndZipBytes: true, nativeDownloads, refusalRetainsIR: true, schemeEvaluation: true }));
+  await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
+  await page.waitForFunction(() => document.querySelector('#source')?.value.includes('module Workbench.Main'));
+  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('moonbit');
+  await page.getByRole('button', { name: 'Compile', exact: true }).click();
+  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByText('Source changed · rerun', {exact:true}).waitFor({state:'hidden'});
+  await page.getByRole('button', { name: 'Morphir IR', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('#output')?.value.includes('"distribution"'));
+  const elmIr = JSON.parse(await page.locator('#output').evaluate(editor => editor.value));
+  assert.ok(elmIr.distribution, 'The Elm module compiles to IR in the browser');
+  await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('scheme');
+  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('elm');
+  console.log(JSON.stringify({ elmTarget: true, elmInput: true, files: paths, fileWorkspace: true, keyboardSelection: true, independentNavigation: true, focusRetainsSource: true, exactFileAndZipBytes: true, nativeDownloads, refusalRetainsIR: true, schemeEvaluation: true }));
 }
 
 // Exercise the same language/draft/evaluation boundary in browser and packaged CEF.
@@ -196,6 +208,7 @@ export async function moonbitWorkflow(page, { nativeDownloads = true } = {}) {
   await page.getByText('Source changed · rerun', {exact:true}).waitFor({state:'hidden'});
   await page.getByRole('button',{name:'Generated',exact:true}).click();
   const navigator = page.getByRole('navigation',{name:'Generated files',exact:true});
+  await navigator.locator('.artifact-file').first().waitFor();
   const paths = await navigator.locator('.artifact-file').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')));
   assert.deepEqual(paths,['moon.mod','moon.pkg','library.mbt','symbols.10n']);
   await navigator.getByRole('button',{name:'library.mbt',exact:true}).click();

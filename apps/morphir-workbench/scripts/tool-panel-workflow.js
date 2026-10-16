@@ -83,7 +83,7 @@ export async function toolPanelWorkflow(page, { resize = true } = {}) {
   await current.waitFor();
   assert.equal(await current.locator('.tool-code').textContent(), 'moonbit_frontend.recursive_call');
   // The diagnostic points to the declaration name 'recur', after 'pub fn '.
-  assert.equal(await current.locator('.tool-location').textContent(), 'line 1, column 8');
+  assert.equal(await current.locator('.tool-location').textContent(), 'src/main.mbt line 1, column 8');
   assert.match(await current.locator('.tool-location').getAttribute('title'), /^moonbit-parser-position-v1 1:7–/);
   assert.equal(await tab('Diagnostics').locator('.tool-count').textContent(), '1');
   await source.press('ControlOrMeta+End');

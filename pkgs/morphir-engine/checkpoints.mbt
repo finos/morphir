@@ -174,6 +174,7 @@ pub fn Engine::execute(
           stage: "capability",
           message: "host.bytes_required: Binary plans require execute_content",
           details: None,
+          problem: None,
         },
       ],
     }
@@ -204,6 +205,7 @@ pub fn ContentReport::text_report(self : ContentReport) -> Report {
               stage: "capability",
               message: "host.byte_write_required: Binary artifacts cannot be represented by a text report",
               details: None,
+              problem: None,
             },
           ],
         }

@@ -1,9 +1,8 @@
 ///|
 test "backend warnings preserve allocations and source warnings decode with shared codec" {
-  let reply = moonbit_output(
+  let warnings = @moonbit.generate(
     @moonbit.Input::new("naming", @fixtures.naming_library()),
-  )
-  let warnings = @wire.array(@wire.field(reply, "generationWarnings"))
+  ).warnings.map(naming_warning)
   assert_true(!warnings.is_empty())
   assert_true(
     warnings.any(w => {

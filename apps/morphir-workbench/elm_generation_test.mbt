@@ -67,7 +67,7 @@ test "unavailable local language and generation target never silently fall back"
     {
       "operation": "compile",
       "source": "(+ 1 2)",
-      "languageId": "elm",
+      "languageId": "cobol",
       "target": "elm",
     },
     { "operation": "compile", "source": "(+ 1 2)", "target": "unavailable" },
@@ -86,4 +86,58 @@ test "unavailable local language and generation target never silently fall back"
   })
   assert_eq(@wire.field(result, "success"), Json::boolean(true))
   assert_true(@wire.optional(result, "generated") is None)
+}
+
+///|
+test "an unknown provider or profile is refused by name" {
+  @expect.expect_all(s => {
+    for
+      case in [
+        ("frontendProvider", "absent/provider", "frontend.unknown_provider"),
+        ("frontendProfile", "absent-profile", "frontend.unknown_profile"),
+      ] {
+      let (key, value, code) = case
+      let request = Map::from_array([
+        ("operation", Json::string("compile")),
+        ("languageId", Json::string("moonbit")),
+        ("source", Json::string("pub fn t() -> Bool { true }")),
+        (key, Json::string(value)),
+      ])
+      let reply = s.expect(@pipeline.execute(Json::object(request)), label=key)
+      reply.at("success").to_equal(false)
+      reply
+      .get("message", r => {
+        @wire.string(@wire.field(r, "message")) catch {
+          _ => ""
+        }
+      })
+      .to_contain(code)
+    }
+  })
+}
+
+///|
+test "a project fails when any of its files is rejected" {
+  let reply = @pipeline.execute({
+    "operation": "compile",
+    "project": {
+      "name": "user",
+      "languageId": "scheme",
+      "files": [
+        { "path": "src/good.scm", "content": "(+ 1 2)" },
+        { "path": "src/broken.scm", "content": "(+ 1" },
+      ],
+    },
+  })
+  @expect.expect_all(s => {
+    s.expect(reply, label="reply").at("success").to_equal(false)
+    s
+    .expect(
+      @wire.array(@wire.field(reply, "frontendDiagnostics")).map(f => {
+        @wire.string(@wire.field(f, "path"))
+      }),
+      label="files",
+    )
+    .to_contain_element("src/broken.scm")
+  })
 }

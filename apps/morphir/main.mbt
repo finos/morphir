@@ -375,17 +375,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
           ),
           (
             "diagnostics",
-            Json::array(
-              result.report.diagnostics.map(d => {
-                Json::object(
-                  Map::from_array([
-                    ("path", Json::string(d.path)),
-                    ("stage", Json::string(d.stage)),
-                    ("message", Json::string(d.message)),
-                  ]),
-                )
-              }),
-            ),
+            Json::array(result.report.diagnostics.map(diagnostic_json)),
           ),
           ("warnings", Json::array(result.report.warnings.map(warning_json))),
           (
@@ -456,4 +446,26 @@ fn metadata_timeout(text : String) -> Int32 raise {
       n.to_int()
     _ => raise @config.Invalid("metadata.restore_invalid_deadline")
   }
+}
+
+///|
+/// A diagnostic as JSON. `code` and `location` appear only when the engine knows the problem.
+fn diagnostic_json(d : @engine.Diagnostic) -> Json {
+  let fields = Map::from_array([
+    ("path", Json::string(d.path)),
+    ("stage", Json::string(d.stage)),
+    ("message", Json::string(d.message)),
+  ])
+  if d.code() is Some(code) {
+    fields["code"] = Json::string(code)
+  }
+  if d.location() is Some(loc) {
+    fields["location"] = {
+      "startLine": Json::number(loc.start_line.to_double()),
+      "startColumn": Json::number(loc.start_column.to_double()),
+      "endLine": Json::number(loc.end_line.to_double()),
+      "endColumn": Json::number(loc.end_column.to_double()),
+    }
+  }
+  Json::object(fields)
 }

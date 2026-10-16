@@ -10,4 +10,5 @@ import {
 import {
   "finos/morphir-workbench/browser/bottom-panel" @bottom_panel,
   "moonbitlang/core/json",
+  "moonrockz/expect",
 } for "test"

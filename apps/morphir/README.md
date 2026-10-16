@@ -60,6 +60,8 @@ morphir run [path] --dry-run
 
 Paths are relative to the current directory. Without a selection, the CLI chooses the enclosing member, configured default member, root project or sole member. A workspace with several members and no default requires `--project` or `--all`. A file path selects only that file. A directory within a project's sources selects that directory; `--directory` explicitly selects a directory even if it is a project root.
 
+`--backend scheme` works on MoonBit projects and warns `backend.metadata_dropped` when it drops metadata. Elm units carry no metadata, so Elm projects give no warning.
+
 Options include `--frontend`, `--frontend-provider`, `--frontend-profile`, `--backend`, `--output`, `--config`, `--json` and `--dry-run`. Dry run resolves scripts and prints planned sources/destinations without reading source contents or publishing outputs. Exit statuses are 0 success, 2 invalid invocation/configuration, 1 execution/publication failure and 130 cancellation.
 
 `project list` lists every discovered project in workspace order, including the enclosing workspace when invoked from a member. A standalone project produces one entry. Each entry has its project name, relative path, effective frontend and target. Target names are the configured backend identifiers from `pipeline.backend`, defaulting to `ir-json`; frontend defaults to `scheme`. Workspace and member Scheme scripts are applied after manifest configuration, and `--config` adds a final script. Listing can report language choices whose compiler plugins are not installed. It reads configuration without reading source contents or publishing artifacts.
@@ -90,7 +92,7 @@ interpret them. Other commands reject a program-argument segment.
 
 ## Structured output
 
-Every command, including help and dry runs, supports `--json` and `--json-lines`. These flags can appear before or after the command and cannot be combined. `--json` emits one JSON document. `--json-lines` emits one JSON object per line, each with a `type` and `data` field. Diagnostics on stderr do not affect JSON parsing on stdout.
+Every command, including help and dry runs, supports `--json` and `--json-lines`. These flags can appear before or after the command and cannot be combined. `--json` emits one JSON document. `--json-lines` emits one JSON object per line, each with a `type` and `data` field. Diagnostics on stderr do not affect JSON parsing on stdout. A diagnostic has `code` and `location` (`startLine`, `startColumn`, `endLine`, `endColumn`) when the engine knows the problem.
 
 ```sh
 morphir --json project list . --frontend scheme
@@ -213,7 +215,7 @@ package/module names use canonical spelling. Native Ion origins, annotations and
 provenance survive checkpoints, generation and an unchanged `json-identity`
 component. JSON checkpoints refuse to discard those origins. Existing Morphir JSON
 inputs and semantic IR serialization remain supported. Rich source units reject
-legacy text backends and transforms without metadata lineage.
+`ir-json` and transforms without metadata lineage; `scheme` accepts them with a warning.
 
 Dry-run selects files without parsing or reading their bodies, opening log sinks,
 or publishing output. MoonBit human output reports the selected language, provider,

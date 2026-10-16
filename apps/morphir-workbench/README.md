@@ -38,6 +38,11 @@ backend. Worksheet evaluates each Scheme expression in a fresh session shared
 within one run. These are dynamic Scheme values, without type inference or
 Scala/JVM dependency resolution. Definitions do not survive a later run.
 
+The local worker compiles through `@engine.Engine` with the MoonBit and Elm providers: discover, plan and
+`execute_content`. Generation uses the engine backends `scheme`, `elm` and `moonbit`. A request carries `source`
+(one file) or `project` (`name`, `languageId`, `files[]`, optional `frontendProvider`, `frontendProfile`,
+`exposedModules`).
+
 Choose **Elm** in the Target dropdown, or click **Elm constant**, to generate
 an Elm package from the compiled IR using the pure `morphir-elm` backend.
 The **Generated** tab shows a folder/file navigator for each module, `elm.json`
@@ -118,6 +123,18 @@ when no earlier destination is available.
 Imported JSON versions 1–4 are decoded and migrated explicitly to the current
 semantic model. Local export writes normalized v4 JSON. Source and model state
 are held in memory, so reloading starts a fresh session.
+
+Elm is in the Language picker. The single editor holds one Elm module: its header (`module A.B.C exposing (..)`)
+gives the package `A.B`, the file `src/A/B/C.elm` and the exposed module `C`. A frontend failure lists its
+problems in the bottom panel by file. The panel shows an Elm or Morphir source column as written, and a MoonBit
+parser column plus one, following the `coordinateProfile` of each problem
+(`elm-source-position-v1`, `moonbit-parser-position-v1`, `morphir-source-location-v1`).
+
+## Size
+
+Moving the worker onto the engine and adding the Elm provider changed `dist/worker.js` from 17,643,040 bytes to
+20,113,918 bytes (+2,470,878 bytes, +14.0%). There is no size budget. `execute` builds a fresh engine for each
+request.
 
 ## Model Explorer
 

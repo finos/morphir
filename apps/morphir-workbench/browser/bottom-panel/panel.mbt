@@ -551,9 +551,18 @@ fn severity(value : String) -> Severity {
 }
 
 ///|
-/// The local MoonBit frontend reports one-based lines and zero-based columns.
+/// The MoonBit parser reports one-based lines and zero-based columns, so its column is shown plus one. The Elm
+/// and Morphir source profiles report one-based columns, shown as written. A file path prefixes the location.
 fn frontend_diagnostic(value : Json) -> Diagnostic {
   let source = field(value, "source")
+  let shift = match text(value, "coordinateProfile") {
+    "elm-source-position-v1" | "morphir-source-location-v1" => 0
+    _ => 1
+  }
+  let file = match text(value, "path") {
+    "" => ""
+    path => path + " "
+  }
   let (location, coordinates) = match
     (
       number(source, "startLine"),
@@ -563,7 +572,11 @@ fn frontend_diagnostic(value : Json) -> Diagnostic {
     ) {
     (Some(line), Some(column), Some(end_line), Some(end_column)) =>
       (
-        "line " + line.to_string() + ", column " + (column + 1).to_string(),
+        file +
+        "line " +
+        line.to_string() +
+        ", column " +
+        (column + shift).to_string(),
         text(value, "coordinateProfile") +
         " " +
         line.to_string() +
@@ -574,7 +587,7 @@ fn frontend_diagnostic(value : Json) -> Diagnostic {
         ":" +
         end_column.to_string(),
       )
-    _ => ("", text(value, "coordinateProfile"))
+    _ => (text(value, "path"), text(value, "coordinateProfile"))
   }
   {
     severity: Error,
@@ -671,7 +684,13 @@ fn naming_diagnostic(value : Json) -> Diagnostic {
 pub fn reply_diagnostics(reply : Json) -> Array[Diagnostic] {
   let found : Array[Diagnostic] = []
   let failed = field(reply, "success") != Json::boolean(true)
-  if field(reply, "frontendDiagnostic") is Object(_) {
+  if field(reply, "frontendDiagnostics") is Array(files) {
+    for file in files {
+      for problem in items(field(file, "problems")) {
+        found.push(frontend_diagnostic(problem))
+      }
+    }
+  } else if field(reply, "frontendDiagnostic") is Object(_) {
     found.push(frontend_diagnostic(field(reply, "frontendDiagnostic")))
   }
   for diagnostic in items(field(reply, "diagnostics")) {

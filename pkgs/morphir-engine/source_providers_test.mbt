@@ -492,3 +492,33 @@ test "languages leaves out a frontend whose name or extension is not a valid id"
   assert_false(names.contains("okay"))
   assert_true(names.contains("scheme"))
 }
+
+///|
+test "languages sorts by language id text, then provider id text, alphabetically" {
+  let engine = @engine.Engine::new()
+  let run = fn(_ : @engine.Source, id : String, _ : () -> Bool) raise {
+    @data.IRUnit::new(id, @fixtures.library())
+  }
+  for name in ["zz", "abc"] {
+    engine.register_unit_frontend(name, ["." + name], run)
+  }
+  engine
+  ..register_source_provider(
+    source_provider("bb/c", [source_profile("seed", run)]),
+  )
+  .register_source_provider(
+    source_provider("a/compiler", [source_profile("seed", run)]),
+  )
+  assert_eq(
+    engine
+    .languages()
+    .map(o => (o.language.to_string(), o.provider.to_string())),
+    [
+      ("abc", "abc"),
+      ("rich", "a/compiler"),
+      ("rich", "bb/c"),
+      ("scheme", "scheme"),
+      ("zz", "zz"),
+    ],
+  )
+}

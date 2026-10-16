@@ -16,7 +16,10 @@ pub(all) struct SourceProblem {
   detail : String
   path : String
   location : @ir.SourceLocation?
-}
+} derive(Debug)
+
+///|
+pub extend SourceProblem with @debug.Debug::{to_repr}
 
 ///|
 /// Source adapters translate their errors without adding a parser dependency to core. A project compiler reports

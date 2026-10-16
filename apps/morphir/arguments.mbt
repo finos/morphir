@@ -41,9 +41,6 @@ let conformance_options : Array[String] = [
 ]
 
 ///|
-let global_flags : Array[String] = ["help", "json", "json-lines"]
-
-///|
 fn command_schema(path : String) -> CliSchema {
   let mut flags = []
   let mut options = []

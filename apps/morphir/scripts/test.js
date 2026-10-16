@@ -314,6 +314,9 @@ function exercise(command, prefix, directory, target, buildHelper = join(appDire
   assert.deepEqual(modelFailure.committed, []);
   assert.equal(modelFailure.diagnostics[0].stage, "frontend");
   assert.match(modelFailure.diagnostics[0].message, /^moonbit_frontend\.unsupported_type:.* at 1:/);
+  const rejected = JSON.parse(run([...modelArgs, "--json"], 1).stdout).diagnostics[0];
+  assert.equal(rejected.code, "moonbit_frontend.unsupported_type");
+  assert.equal(typeof rejected.location.startLine, "number");
   assert.deepEqual(readFileSync(join(modelOutput, "Main/symbols.10n")), modelSymbols);
   if (target !== "wasm" && target !== "wasm-gc") {
   const rejectedLog = join(directory, "rejected-source.jsonl");
@@ -330,6 +333,9 @@ function exercise(command, prefix, directory, target, buildHelper = join(appDire
   assert.match(lossyModel.diagnostics[0].message, /data\.lossy_conversion/);
   put("moon-model/morphir.toml", readFileSync(join(directory, "moon-model/morphir.toml"), "utf8").replace('components=["json-identity"]', ''));
   assert.match(run([...modelArgs, "--backend", "ir-json", "--json"], 2).stdout, /frontend\.typed_backend_required/);
+  const schemeFromMoonBit = JSON.parse(run([...modelArgs, "--backend", "scheme", "--json"]).stdout);
+  assert.equal(schemeFromMoonBit.successful, true);
+  assert.ok(schemeFromMoonBit.warnings.some(w => w.message.startsWith("backend.metadata_dropped")));
   // Language identity stays MoonBit while profile selection changes its supported source.
   const libraryProfile = "moonbit-model-bool-library-v1";
   const sourceProvider = "finos/morphir-moonbit-frontend";

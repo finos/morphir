@@ -269,7 +269,15 @@ pub fn Engine::plan(
     }
     let project_compiler = frontend is Some(f) &&
       f.compiler is ProjectCompiler(_, _)
-    if !checkpoint && frontend is Some(f) && !(f.compiler is FileCompiler(_)) {
+    let plain = if checkpoint {
+      None
+    } else {
+      self.backends.get(settings.backend)
+    }
+    if !checkpoint &&
+      frontend is Some(f) &&
+      !(f.compiler is FileCompiler(_)) &&
+      !(plain is Some(b) && b.rich_units) {
       raise @configuration.Invalid(
         "frontend.typed_backend_required: Rich source units require checkpoint or generation output",
       )
@@ -334,6 +342,7 @@ pub fn Engine::plan(
                 @migration.migrate(@versioned.V4(ir), version),
               )
             },
+            rich_units: registered.rich_units,
           }
         } else {
           registered
@@ -583,6 +592,7 @@ pub fn Engine::execute_content(
   plan : Plan,
   read : (String, Bool) -> @data.Content raise,
   cancelled~ : () -> Bool = fn() { false },
+  on_unit~ : (CompiledUnit) -> Unit = _ => (),
 ) -> ContentReport {
   let artifacts = []
   let projects = []
@@ -601,6 +611,7 @@ pub fn Engine::execute_content(
           stage: "plan",
           message: "Execution plans are single-use; prepare a fresh plan",
           details: None,
+          problem: None,
         },
       ],
     }
@@ -695,6 +706,7 @@ pub fn Engine::execute_content(
               stage: warning.stage,
               message: warning.display(),
               details: Some(warning),
+              problem: None,
             })
             if job.strict_naming &&
               (
@@ -767,6 +779,10 @@ pub fn Engine::execute_content(
             checkpoint_unit = Some(result)
           }
         }
+        on_unit({
+          source: path,
+          unit: { ..checkpoint_unit.unwrap(), distribution: ir, },
+        })
         stage = "backend"
         if cancelled() {
           raise @configuration.Invalid("Cancelled")
@@ -787,6 +803,7 @@ pub fn Engine::execute_content(
               stage: "backend",
               message: warning,
               details: None,
+              problem: None,
             })
           }
           for warning in batch.structured_warnings {
@@ -798,6 +815,7 @@ pub fn Engine::execute_content(
                 stage: warning.stage,
                 message: warning.display(),
                 details: Some(warning),
+                problem: None,
               })
             }
             if job.strict_naming &&
@@ -827,7 +845,28 @@ pub fn Engine::execute_content(
                 None => @data.IRUnit::new(unit_id, ir)
               },
             )
-          None => @data.Text((job.backend.unwrap().emit)(ir))
+          None => {
+            let unit = checkpoint_unit.unwrap()
+            // every unit carries the pipeline marker annotation; only other annotations are dropped data
+            let marker = @data.IRUnit::new(unit.id, ir).annotations
+            let (n, m, k) = (
+              unit.metadata.length(),
+              unit.provenance.length(),
+              unit.annotations.filter(a => !marker.contains(a)).length(),
+            )
+            if n + m + k > 0 {
+              warnings.push({
+                path,
+                stage: "backend",
+                message: "backend.metadata_dropped: " +
+                job.settings.backend +
+                " keeps the IR only; it drops \{n} node metadata entries, \{m} provenance entries and \{k} annotations",
+                details: None,
+                problem: None,
+              })
+            }
+            @data.Text((job.backend.unwrap().emit)(ir))
+          }
         }
         if job.boundary is Some(boundary) {
           if (content is @data.Binary(_)) != boundary.output.binary {
@@ -864,6 +903,38 @@ pub fn Engine::execute_content(
                 problem.location,
               ),
               details: None,
+              problem: Some(Source(problem)),
+            })
+          }
+        Rejected(code, detail, location) =>
+          diagnostics.push({
+            path: diagnostic_path,
+            stage,
+            message: rejection_message(code, detail, location),
+            details: None,
+            problem: Some(
+              Source({
+                code,
+                detail,
+                path: relative(job.source_root, diagnostic_path) catch {
+                  _ => diagnostic_path
+                },
+                location,
+              }),
+            ),
+          })
+        GenerationFailed(problems) =>
+          for problem in problems {
+            diagnostics.push({
+              path,
+              stage: "backend",
+              message: problem.code +
+              " at " +
+              problem.node_path +
+              ": " +
+              problem.detail,
+              details: None,
+              problem: Some(Generation(problem)),
             })
           }
         @typing.InferenceFailed(problems) =>
@@ -873,6 +944,7 @@ pub fn Engine::execute_content(
               stage: "inference",
               message: problem.display(),
               details: None,
+              problem: None,
             })
           }
         e =>
@@ -881,6 +953,7 @@ pub fn Engine::execute_content(
             stage,
             message: diagnostic_message(e),
             details: None,
+            problem: None,
           })
       }
     }

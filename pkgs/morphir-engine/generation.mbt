@@ -78,6 +78,23 @@ pub fn Engine::register_generation_backend(
 }
 
 ///|
+/// A generation backend refused the unit. Each problem names the IR node.
+pub(all) suberror GenerationFailed {
+  GenerationFailed(Array[GenerationProblem])
+}
+
+///|
+fn elm_problems(problems : Array[@elm.Problem]) -> GenerationFailed {
+  GenerationFailed(
+    problems.map(p => {
+      code: p.code,
+      node_path: p.node_path,
+      detail: p.detail,
+    }),
+  )
+}
+
+///|
 fn moonbit_generation(
   unit : @data.IRUnit,
   options : Json,
@@ -95,7 +112,11 @@ fn moonbit_generation(
     naming=moonbit_naming_style(options),
     metadata_capabilities~,
     cancelled~,
-  )
+  ) catch {
+    @moonbit.Invalid(code, node_path, detail) =>
+      raise GenerationFailed([{ code, node_path, detail, }])
+    error => raise error
+  }
   {
     warnings: [],
     structured_warnings: result.warnings,
@@ -140,16 +161,8 @@ fn elm_generation(
     @elm.Options::from_json(options),
     cancelled~,
   ) catch {
-    Failed(problems) =>
-      raise @configuration.Invalid(
-        problems
-        .map(p => p.code + " at " + p.node_path + ": " + p.detail)
-        .join("\n"),
-      )
-    Refused(p) =>
-      raise @configuration.Invalid(
-        p.code + " at " + p.node_path + ": " + p.detail,
-      )
+    Failed(problems) => raise elm_problems(problems)
+    Refused(p) => raise elm_problems([p])
   }
   {
     warnings: output.warnings,
