@@ -96,7 +96,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.21.0'
+          node-version: '24.22.0'
       - name: Test process lifecycle on Unix
         if: runner.os != 'Windows'
         run: bash .config/mise/tasks/test/supervision
@@ -117,7 +117,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.21.0'
+          node-version: '24.22.0'
       - name: Test Node, npm and browser embedding
         run: bash .config/mise/tasks/test/embedding
 
@@ -226,7 +226,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.21.0'
+          node-version: '24.22.0'
 
       - name: Smoke-test CLI for ${{ matrix.target }}
         run: npm --prefix apps/morphir test -- ${{ matrix.target }}
@@ -303,7 +303,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.21.0'
+          node-version: '24.22.0'
 
       - name: Check generated Elm projects with elm make
         run: mise run test:elm
@@ -342,7 +342,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.21.0'
+          node-version: '24.22.0'
       - name: Install pinned complete MoonBit toolchain
         shell: bash
         run: |
@@ -409,7 +409,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.21.0'
+          node-version: '24.22.0'
       - name: Install pinned complete MoonBit toolchain
         shell: bash
         run: |
@@ -486,7 +486,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.21.0'
+          node-version: '24.22.0'
 
       - name: Run tests
         run: moon test --target ${{ matrix.target }}
