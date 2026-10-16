@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/native/0.1.0-draft.1/descriptor.schema.json",
+  "title": "Native Workbench session descriptor",
+  "description": "Exact page-bound native capabilities. Trusted caller identity and nested session equality require runtime admission",
+  "examples": [
+    {
+      "profile": "morphir/workbench/native",
+      "contractVersion": "0.1.0-draft.1",
+      "sessionId": "native-session",
+      "operations": [ "workspace" ]
+    }
+  ],
+  "type": "object",
+  "if": {
+    "properties": {
+      "operations": {
+        "contains": {
+          "const": "jobs"
+        }
+      }
+    }
+  },
+  "then": {
+    "required": [ "offer" ]
+  },
+  "else": {
+    "not": {
+      "required": [ "offer" ]
+    }
+  },
+  "required": [ "profile", "contractVersion", "sessionId", "operations" ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/native"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "sessionId": {
+      "type": "string",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.-]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "enum": [
+        [],
+        [ "jobs" ],
+        [ "workspace" ],
+        [ "jobs", "workspace" ]
+      ]
+    },
+    "offer": {
+      "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/offer.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

@@ -192,3 +192,10 @@ query, cancellation and explicit terminal release. It authenticates each host
 request through the existing connected v1 session and preserves its manifest
 and RPC contract. Structural fixtures do not advertise live implementation
 support or durable recovery.
+
+[Native Workbench mapping](native/draft.1/README.md) defines the separate exact
+`morphir/workbench/native` `0.1.0-draft.1` profile for page-bound desktop IPC,
+existing immutable job payloads and read-only OS-picked workspace grants.
+Its own descriptor contains the frozen jobs offer directly. Structural cases,
+raw input fixtures and lifecycle traces are separate evidence; publication
+does not qualify a packaged platform or advertise the existing private bootstrap.

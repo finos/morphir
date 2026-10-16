@@ -1,0 +1,3157 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/native/0.1.0-draft.1/response.schema.json",
+  "tests": [
+    {
+      "description": "session.open success",
+      "data": {
+        "ok": true,
+        "operation": "session.open",
+        "value": {
+          "profile": "morphir/workbench/native",
+          "contractVersion": "0.1.0-draft.1",
+          "sessionId": "native-session",
+          "operations": [
+            "jobs",
+            "workspace"
+          ],
+          "offer": {
+            "profile": "morphir/workbench/jobs",
+            "contractVersion": "0.1.0-draft.1",
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "operations": [
+              "query",
+              "cancel"
+            ]
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "session.check success",
+      "data": {
+        "ok": true,
+        "operation": "session.check",
+        "value": {
+          "profile": "morphir/workbench/native",
+          "contractVersion": "0.1.0-draft.1",
+          "sessionId": "native-session",
+          "operations": [
+            "workspace"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "session.close success",
+      "data": {
+        "ok": true,
+        "operation": "session.close",
+        "value": {}
+      },
+      "valid": true
+    },
+    {
+      "description": "job.submit success",
+      "data": {
+        "ok": true,
+        "operation": "job.submit",
+        "value": {
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "calls": [
+            "workbench"
+          ],
+          "receipt": {
+            "contractVersion": "0.1.0-draft.1",
+            "identity": {
+              "hostId": "native-host",
+              "sessionId": "native-session",
+              "providerId": "scheme",
+              "jobId": "job-1",
+              "snapshotId": "snapshot-1"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "job.query success",
+      "data": {
+        "ok": true,
+        "operation": "job.query",
+        "value": {
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "job.cancel success",
+      "data": {
+        "ok": true,
+        "operation": "job.cancel",
+        "value": {
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "sequence": 1,
+          "state": "submitted",
+          "cancelRequested": true,
+          "outcomes": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "job.release success",
+      "data": {
+        "ok": true,
+        "operation": "job.release",
+        "value": {
+          "released": true
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.choose success",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.cancel-picker success",
+      "data": {
+        "ok": true,
+        "operation": "workspace.cancel-picker",
+        "value": {}
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.revoke success",
+      "data": {
+        "ok": true,
+        "operation": "workspace.revoke",
+        "value": {}
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.open success",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "morphir-json",
+          "filename": "morphir-ir.json"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.read success",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "e30K",
+          "done": true
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.release success",
+      "data": {
+        "ok": true,
+        "operation": "workspace.release",
+        "value": {}
+      },
+      "valid": true
+    },
+    {
+      "description": "Native picker cancelled",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": true
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured ion-text",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "ion-text",
+          "filename": "morphir-ir.ion"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured ion-binary",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "ion-binary",
+          "filename": "morphir-ir.ion"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Empty captured model is structurally valid",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 0,
+          "format": "morphir-json",
+          "filename": "morphir-ir.json"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Maximum model size",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 16777216,
+          "format": "morphir-json",
+          "filename": "morphir-ir.json"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Empty final chunk",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 3,
+          "content": "",
+          "done": true
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Padded base64 chunk",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "e30=",
+          "done": true
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Unavailable model with explanation",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": false,
+              "message": "No generated model found"
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "No discovered projects",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [],
+          "warnings": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Picker warnings",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": [
+            "Ignored symlink"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Maximum project rows",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-0",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-2",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-3",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-4",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-5",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-6",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-7",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-8",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-9",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-10",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-11",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-12",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-13",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-14",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-15",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-16",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-17",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-18",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-19",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-20",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-21",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-22",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-23",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-24",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-25",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-26",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-27",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-28",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-29",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-30",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-31",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-32",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-33",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-34",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-35",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-36",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-37",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-38",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-39",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-40",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-41",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-42",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-43",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-44",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-45",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-46",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-47",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-48",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-49",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-50",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-51",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-52",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-53",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-54",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-55",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-56",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-57",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-58",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-59",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-60",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-61",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-62",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-63",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-64",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-65",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-66",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-67",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-68",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-69",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-70",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-71",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-72",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-73",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-74",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-75",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-76",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-77",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-78",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-79",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-80",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-81",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-82",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-83",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-84",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-85",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-86",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-87",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-88",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-89",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-90",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-91",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-92",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-93",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-94",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-95",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-96",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-97",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-98",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-99",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-100",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-101",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-102",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-103",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-104",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-105",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-106",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-107",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-108",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-109",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-110",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-111",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-112",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-113",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-114",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-115",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-116",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-117",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-118",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-119",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-120",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-121",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-122",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-123",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-124",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-125",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-126",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-127",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Failure invalid_request confirms no effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "invalid_request",
+          "message": "Request could not complete",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Failure unauthorized confirms no effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unauthorized",
+          "message": "Request could not complete",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Failure unavailable confirms no effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "Request could not complete",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Failure not_found confirms no effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "not_found",
+          "message": "Request could not complete",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Failure conflict confirms no effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "conflict",
+          "message": "Request could not complete",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Failure limit confirms no effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "limit",
+          "message": "Request could not complete",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Failure with unknown effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "Completion could not be established",
+          "effect": "unknown"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Failure requires effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "Completion could not be established"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure rejects invented effect",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "Completion could not be established",
+          "effect": "retryable"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure rejects unknown code",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "error",
+          "message": "Completion could not be established",
+          "effect": "unknown"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure requires diagnostic message",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "effect": "unknown"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure message is nonempty",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "",
+          "effect": "unknown"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure message bound",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+          "effect": "unknown"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure rejects status inference",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "Completion could not be established",
+          "effect": "unknown"
+        },
+        "status": 503
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure cannot carry successful value",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "Completion could not be established",
+          "effect": "unknown"
+        },
+        "value": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "Failure has no operation echo",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "Completion could not be established",
+          "effect": "unknown"
+        },
+        "operation": "job.submit"
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown nested error member",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "Completion could not be established",
+          "effect": "unknown",
+          "retry": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Success requires operation",
+      "data": {
+        "ok": true,
+        "value": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "Success requires value",
+      "data": {
+        "ok": true,
+        "operation": "session.close"
+      },
+      "valid": false
+    },
+    {
+      "description": "Success rejects failure details",
+      "data": {
+        "ok": true,
+        "operation": "session.close",
+        "value": {},
+        "error": {
+          "code": "unavailable",
+          "message": "Completion could not be established",
+          "effect": "unknown"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown successful response member",
+      "data": {
+        "ok": true,
+        "operation": "session.close",
+        "value": {},
+        "status": 200
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown successful operation",
+      "data": {
+        "ok": true,
+        "operation": "workspace.write",
+        "value": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "Session close cannot carry a descriptor",
+      "data": {
+        "ok": true,
+        "operation": "session.close",
+        "value": {
+          "profile": "morphir/workbench/native",
+          "contractVersion": "0.1.0-draft.1",
+          "sessionId": "native-session",
+          "operations": [
+            "jobs",
+            "workspace"
+          ],
+          "offer": {
+            "profile": "morphir/workbench/jobs",
+            "contractVersion": "0.1.0-draft.1",
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "operations": [
+              "query",
+              "cancel"
+            ]
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Session check requires native descriptor",
+      "data": {
+        "ok": true,
+        "operation": "session.check",
+        "value": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session reply cannot advertise HTTP host",
+      "data": {
+        "ok": true,
+        "operation": "session.open",
+        "value": {
+          "profile": "morphir/workbench/host",
+          "contractVersion": "0.1.0-draft.1",
+          "sessionId": "native-session",
+          "operations": [
+            "jobs",
+            "workspace"
+          ],
+          "offer": {
+            "profile": "morphir/workbench/jobs",
+            "contractVersion": "0.1.0-draft.1",
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "operations": [
+              "query",
+              "cancel"
+            ]
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Job submit requires initial frozen receipt",
+      "data": {
+        "ok": true,
+        "operation": "job.submit",
+        "value": {
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "calls": [
+            "workbench"
+          ],
+          "receipt": {
+            "contractVersion": "0.1.0-draft.1",
+            "identity": {
+              "hostId": "native-host",
+              "sessionId": "native-session",
+              "providerId": "scheme",
+              "jobId": "job-1",
+              "snapshotId": "snapshot-1"
+            },
+            "sequence": 1,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Job reply exact frozen draft",
+      "data": {
+        "ok": true,
+        "operation": "job.query",
+        "value": {
+          "contractVersion": "0.1.0-draft.2",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Job release success must confirm release",
+      "data": {
+        "ok": true,
+        "operation": "job.release",
+        "value": {
+          "released": false
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Workspace release does not use job release shape",
+      "data": {
+        "ok": true,
+        "operation": "workspace.release",
+        "value": {
+          "released": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Cancelled picker cannot grant access",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": true,
+          "grantId": "grant-1"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Chosen workspace requires grant",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Chosen workspace does not disclose path",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": [],
+          "path": "/home/user/project"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Projects cannot disclose source path",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": "",
+              "path": "/home/user/project/model.json"
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project count bound",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-0",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-2",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-3",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-4",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-5",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-6",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-7",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-8",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-9",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-10",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-11",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-12",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-13",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-14",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-15",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-16",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-17",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-18",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-19",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-20",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-21",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-22",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-23",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-24",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-25",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-26",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-27",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-28",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-29",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-30",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-31",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-32",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-33",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-34",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-35",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-36",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-37",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-38",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-39",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-40",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-41",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-42",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-43",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-44",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-45",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-46",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-47",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-48",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-49",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-50",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-51",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-52",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-53",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-54",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-55",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-56",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-57",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-58",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-59",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-60",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-61",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-62",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-63",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-64",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-65",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-66",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-67",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-68",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-69",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-70",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-71",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-72",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-73",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-74",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-75",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-76",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-77",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-78",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-79",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-80",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-81",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-82",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-83",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-84",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-85",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-86",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-87",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-88",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-89",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-90",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-91",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-92",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-93",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-94",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-95",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-96",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-97",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-98",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-99",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-100",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-101",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-102",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-103",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-104",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-105",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-106",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-107",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-108",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-109",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-110",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-111",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-112",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-113",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-114",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-115",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-116",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-117",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-118",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-119",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-120",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-121",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-122",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-123",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-124",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-125",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-126",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-127",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-128",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Warning count bound",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": [
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning",
+            "warning"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project identifier ASCII only",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-λ",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project identifier nonempty",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project display name nonempty",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project display name bound",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project explanation bound",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Warning text bound",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": [
+            "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project availability must be boolean",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": "true",
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured model rejects size -1",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": -1,
+          "format": "morphir-json",
+          "filename": "morphir-ir.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured model rejects size 0.5",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 0.5,
+          "format": "morphir-json",
+          "filename": "morphir-ir.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured model rejects size 16777217",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 16777217,
+          "format": "morphir-json",
+          "filename": "morphir-ir.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured filename rejects \"\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "morphir-json",
+          "filename": ""
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured filename rejects \"../model.json\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "morphir-json",
+          "filename": "../model.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured filename rejects \"folder/model.json\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "morphir-json",
+          "filename": "folder/model.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured filename rejects \"folder\\\\model.json\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "morphir-json",
+          "filename": "folder\\model.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured filename rejects overlong name",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "morphir-json",
+          "filename": "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Capture format cannot be inferred codec",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "auto",
+          "filename": "morphir-ir.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Capture sequence starts at one",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 0,
+          "size": 3,
+          "format": "morphir-json",
+          "filename": "morphir-ir.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Capture reply cannot disclose path",
+      "data": {
+        "ok": true,
+        "operation": "workspace.open",
+        "value": {
+          "sequence": 1,
+          "size": 3,
+          "format": "morphir-json",
+          "filename": "morphir-ir.json",
+          "path": "/tmp/model.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid base64 \"not base64\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "not base64",
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid base64 \"a\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "a",
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid base64 \"====\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "====",
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid base64 \"e30\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "e30",
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid base64 \"e3=0\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "e3=0",
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid base64 \"e30=\\n\"",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "e30=\n",
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Chunk content must be source text",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": [
+            123,
+            125
+          ],
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Read offset bound",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 16777217,
+          "content": "e30K",
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Read sequence bound",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 2147483648,
+          "offset": 0,
+          "content": "e30K",
+          "done": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Read completion must be boolean",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "e30K",
+          "done": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Read reply does not select a grant",
+      "data": {
+        "ok": true,
+        "operation": "workspace.read",
+        "value": {
+          "sequence": 1,
+          "offset": 0,
+          "content": "e30K",
+          "done": true,
+          "grantId": "grant-1"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Response grant token rejects final newline",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1\n",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Response project token rejects final newline",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1\n",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Picker cancellation flag is required",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Projects and warnings are required",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project explanation is required",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Null project row is invalid",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            null
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Maximum error message length",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+          "effect": "unknown"
+        }
+      },
+      "valid": true
+    }
+  ]
+}

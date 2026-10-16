@@ -191,6 +191,10 @@ run = [
     "jsonschema lint spec/workbench/host/draft.1/schemas -r spec/workbench/host/draft.1/schemas -r spec/workbench/jobs/draft.1/schemas -r spec/workbench/draft.5/schemas -r spec/workbench/schemas",
     "jsonschema metaschema spec/workbench/host/draft.1/schemas",
     "jsonschema test spec/workbench/host/draft.1/tests -r spec/workbench/host/draft.1/schemas -r spec/workbench/jobs/draft.1/schemas -r spec/workbench/draft.5/schemas -r spec/workbench/schemas",
+    "jsonschema fmt spec/workbench/native/draft.1/schemas --check",
+    "jsonschema lint spec/workbench/native/draft.1/schemas -r spec/workbench/native/draft.1/schemas -r spec/workbench/host/draft.1/schemas -r spec/workbench/jobs/draft.1/schemas -r spec/workbench/draft.5/schemas -r spec/workbench/schemas",
+    "jsonschema metaschema spec/workbench/native/draft.1/schemas",
+    "jsonschema test spec/workbench/native/draft.1/tests -r spec/workbench/native/draft.1/schemas -r spec/workbench/host/draft.1/schemas -r spec/workbench/jobs/draft.1/schemas -r spec/workbench/draft.5/schemas -r spec/workbench/schemas",
 ]
 
 # Not part of `check`: website:build-schemas depends on website:install, whose

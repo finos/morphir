@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/native/0.1.0-draft.1/request.schema.json",
+  "title": "Native Workbench request",
+  "description": "Operation-bound native IPC command. Raw UTF-8, duplicates, authority and lifecycle checks precede dispatch",
+  "examples": [
+    {
+      "profile": "morphir/workbench/native",
+      "contractVersion": "0.1.0-draft.1",
+      "operation": "session.open"
+    }
+  ],
+  "type": "object",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "session.open"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sessionId": false,
+          "payload": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "enum": [
+              "session.check",
+              "session.close",
+              "workspace.choose",
+              "workspace.cancel-picker"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [ "sessionId" ],
+        "properties": {
+          "payload": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "job.submit"
+          }
+        }
+      },
+      "then": {
+        "required": [ "sessionId", "payload" ],
+        "properties": {
+          "payload": {
+            "description": "Exact frozen submission payload. Expanded here to avoid optimizer instability when referenced beneath native operation conditionals",
+            "type": "object",
+            "required": [ "contractVersion", "model", "entry", "inputs" ],
+            "properties": {
+              "contractVersion": {
+                "const": "0.1.0-draft.1"
+              },
+              "model": {
+                "type": "string",
+                "maxLength": 1048576,
+                "minLength": 1
+              },
+              "entry": {
+                "type": "string",
+                "maxLength": 1024,
+                "minLength": 1
+              },
+              "inputs": {
+                "type": "object",
+                "required": [ "format", "source" ],
+                "properties": {
+                  "format": {
+                    "enum": [ "json", "ion-text" ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 1048576,
+                    "minLength": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "enum": [ "job.query", "job.cancel", "job.release" ]
+          }
+        }
+      },
+      "then": {
+        "required": [ "sessionId", "payload" ],
+        "properties": {
+          "payload": {
+            "$ref": "https://morphir.finos.org/spec/workbench/host/0.1.0-draft.1/identity-request.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "workspace.revoke"
+          }
+        }
+      },
+      "then": {
+        "required": [ "sessionId", "payload" ],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [ "grantId" ],
+            "properties": {
+              "grantId": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "workspace.open"
+          }
+        }
+      },
+      "then": {
+        "required": [ "sessionId", "payload" ],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [ "grantId", "projectId", "sequence" ],
+            "properties": {
+              "grantId": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "projectId": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "sequence": {
+                "type": "integer",
+                "maximum": 2147483647,
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "workspace.read"
+          }
+        }
+      },
+      "then": {
+        "required": [ "sessionId", "payload" ],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [ "grantId", "sequence", "offset" ],
+            "properties": {
+              "grantId": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "sequence": {
+                "type": "integer",
+                "maximum": 2147483647,
+                "minimum": 1
+              },
+              "offset": {
+                "type": "integer",
+                "maximum": 16777216,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "workspace.release"
+          }
+        }
+      },
+      "then": {
+        "required": [ "sessionId", "payload" ],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [ "grantId", "sequence" ],
+            "properties": {
+              "grantId": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "sequence": {
+                "type": "integer",
+                "maximum": 2147483647,
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  ],
+  "required": [ "profile", "contractVersion", "operation" ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/native"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "operation": {
+      "enum": [
+        "session.open",
+        "session.check",
+        "session.close",
+        "job.submit",
+        "job.query",
+        "job.cancel",
+        "job.release",
+        "workspace.choose",
+        "workspace.cancel-picker",
+        "workspace.revoke",
+        "workspace.open",
+        "workspace.read",
+        "workspace.release"
+      ]
+    },
+    "sessionId": {
+      "type": "string",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.-]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "payload": true
+  },
+  "additionalProperties": false
+}
