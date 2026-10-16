@@ -1,12 +1,13 @@
 # Workbench native session state
 
-Pure state for the private Proton desktop bootstrap. It admits the trusted main
+Pure state for the Proton desktop owner. Its internal bootstrap admits the trusted main
 window/app-origin/page context supplied by the native host, negotiates the exact
 bridge version, and binds opaque identities to that page. Navigation revokes a
 binding; shutdown prevents reopening it. The default descriptor has no operations.
 A host can explicitly enable jobs discovery after qualifying its worker service.
 Every business command still needs native caller/session admission. Filesystem
-operations and activation of the public Morphir native mapping remain separate.
+operations belong to the composing native owner. That owner builds the public
+descriptor from actual services after admission and awaited cleanup.
 
 This module has no Proton or platform dependencies. The portable workspace
 tests it on JavaScript, native, Wasm and Wasm GC. The isolated desktop workspace
@@ -19,7 +20,7 @@ integration are covered by packaged Proton acceptance, not this pure model.
 ## Native request framing
 
 The portable `request` package decodes the public native `0.1.0-draft.1`
-request bytes before any future dispatch. It checks whole-frame and workspace
+request bytes before production owner dispatch. It checks whole-frame and workspace
 command byte limits, strict UTF-8, bounded duplicate-aware whole JSON, the closed
 request shape, and whole nested model/JSON argument documents. It preserves
 source strings and original number tokens. Workspace sequence/offset checks use
@@ -30,8 +31,9 @@ Exact offline Workbench MCK draft.7 exercises this decoder through the existing
 explicit adapter. Frame acceptance grants no authority, admits no function and
 executes nothing. Ion input remains opaque at this boundary. Trusted caller and
 session binding, actual OS grants and packaged lifecycle qualification remain
-separate. The existing private Proton handlers are not
-changed to advertise the public native profile.
+separate. The bundled Proton host and renderer use this decoder through the
+native owner. Public conformance advertisement still waits for independent
+reply/client/owner lifecycle MCK and packaged-target qualification.
 
 ## Native reply boundary
 
@@ -60,5 +62,6 @@ concurrent calls with equal operations. It must also recheck the current native
 page around asynchronous authority boundaries. This codec cannot establish
 framework provenance, immutable captures or confirmed worker exit. Portable and
 compiled-client tests are implementation checks; independent reply/lifecycle MCK
-and actual packaged activation remain pending. The private Proton bridge is
-still shipped until the coordinated host/renderer switch is qualified.
+and fresh packaged-target qualification remain pending. The bundled host and
+renderer use these codecs together; public conformance advertisement remains
+gated on that independent evidence.

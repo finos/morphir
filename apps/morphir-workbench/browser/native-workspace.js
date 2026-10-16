@@ -1,4 +1,4 @@
-// Private page-bound desktop transport. Business model bytes stay opaque until
+// Page-bound native workspace transport. Business model bytes stay opaque until
 // the compiled codec inspects them; JavaScript never parses their JSON numbers.
 const keys = value => value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value).sort().join(',') : '';
 const token = value => typeof value === 'string' && /^[a-zA-Z0-9_.-]{1,128}$/.test(value);
@@ -27,30 +27,15 @@ export class NativeWorkspaceClient {
   current(epoch) {
     if (this.disposed || epoch !== this.epoch) throw rejected('workbench.workspace_discarded', 'The workspace request is no longer current.');
   }
-  validate(reply) {
-    if (keys(reply) === 'code,ok' && reply.ok === false && token(reply.code)) throw rejected(reply.code);
-    if (!reply || reply.ok !== true || new TextEncoder().encode(JSON.stringify(reply)).byteLength > 512 * 1024) {
-      throw rejected('workbench.workspace_reply', 'The native host returned an invalid workspace reply.');
-    }
-    return reply;
-  }
   async request(body) {
-    await this.session.check();
-    let timer;
-    try {
-      const reply = await Promise.race([
-        Promise.resolve().then(() => this.session.invoke('app:workbench_workspace', JSON.stringify({ sessionId: this.session.id, body: JSON.stringify(body) }))),
-        new Promise((_, reject) => { timer = setTimeout(() => reject(rejected('workbench.workspace_timeout', 'The native workspace request timed out. Reopen the workspace if cleanup cannot be confirmed.')), this.session.timeout); }),
-      ]);
-      await this.session.check();
-      return this.validate(reply);
-    } finally { clearTimeout(timer); }
+    const { action, ...payload } = body;
+    return this.session.request(`workspace.${action}`, action === 'cancel-picker' ? undefined : payload);
   }
   async release() {
     const pending = this.pendingRelease;
     if (!pending) return;
     const reply = await this.request({ action: 'release', ...pending });
-    if (keys(reply) !== 'ok') throw rejected('workbench.workspace_cleanup', 'Model transfer cleanup could not be confirmed.');
+    if (keys(reply) !== '') throw rejected('workbench.workspace_cleanup', 'Model transfer cleanup could not be confirmed.');
     if (this.pendingRelease === pending) this.pendingRelease = null;
   }
   async choose() {
@@ -62,14 +47,14 @@ export class NativeWorkspaceClient {
     try {
       // An interactive system picker has no worker deadline. Its native Cancel
       // action, page revocation and explicit client cancellation fence its result.
-      const reply = this.validate(await this.session.invoke('app:workbench_workspace_choose', this.session.id));
+      const reply = await this.session.request('workspace.choose', undefined, true);
       await this.session.check();
       if (this.disposed || epoch !== this.epoch) {
         if (token(reply.grantId)) await this.request({ action: 'revoke', grantId: reply.grantId });
         this.current(epoch);
       }
-      if (keys(reply) === 'cancelled,ok' && reply.cancelled === true) return this.result(true);
-      if (keys(reply) !== 'cancelled,grantId,ok,projects,warnings' || reply.cancelled !== false || !token(reply.grantId) ||
+      if (keys(reply) === 'cancelled' && reply.cancelled === true) return this.result(true);
+      if (keys(reply) !== 'cancelled,grantId,projects,warnings' || reply.cancelled !== false || !token(reply.grantId) ||
           !Array.isArray(reply.projects) || reply.projects.length > 128 || !Array.isArray(reply.warnings) ||
           reply.warnings.some(w => typeof w !== 'string') || reply.projects.some(p =>
             keys(p) !== 'available,id,message,name' || !token(p.id) || typeof p.name !== 'string' || !p.name ||
@@ -106,13 +91,13 @@ export class NativeWorkspaceClient {
     let opened, content;
     try {
       opened = await this.request({ action: 'open', grantId, projectId: id, sequence }); this.current(epoch);
-      if (keys(opened) !== 'filename,format,ok,sequence,size' || opened.sequence !== sequence || !Number.isInteger(opened.size) || opened.size < 0 || opened.size > maxModel ||
+      if (keys(opened) !== 'filename,format,sequence,size' || opened.sequence !== sequence || !Number.isInteger(opened.size) || opened.size < 0 || opened.size > maxModel ||
           !['morphir-json', 'ion-text', 'ion-binary'].includes(opened.format) || typeof opened.filename !== 'string' ||
-          !/^[^/\\:\u0000-\u001f\u007f]{1,255}$/.test(opened.filename)) throw rejected('workbench.workspace_reply', 'Invalid native model descriptor.');
+          [...opened.filename].length < 1 || [...opened.filename].length > 256 || /[/\\]/.test(opened.filename)) throw rejected('workbench.workspace_reply', 'Invalid native model descriptor.');
       let offset = 0; const chunks = [];
       while (offset < opened.size) {
         const reply = await this.request({ action: 'read', grantId, sequence, offset }); this.current(epoch);
-        if (keys(reply) !== 'content,done,offset,ok,sequence' || reply.sequence !== sequence || reply.offset !== offset || typeof reply.content !== 'string' ||
+        if (keys(reply) !== 'content,done,offset,sequence' || reply.sequence !== sequence || reply.offset !== offset || typeof reply.content !== 'string' ||
             reply.content.length > 256 * 1024 || reply.content.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(reply.content)) {
           throw rejected('workbench.workspace_sequence', 'Invalid native model chunk.');
         }

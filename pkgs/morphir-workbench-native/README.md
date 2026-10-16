@@ -19,4 +19,15 @@ confirm exit keeps the job nonterminal and prevents further execution claims.
 The native service has macOS and Linux process acceptance. Packaged Proton job
 discovery is enabled on macOS Apple Silicon. Linux and Windows retain browser
 workers until their packaged GUI/lifecycle lanes are independently qualified.
-The private bridge does not advertise the proposed public Morphir native profile.
+The bundled host/renderer pair uses the accepted native draft.1 wire mapping.
+Public conformance advertisement still waits for independent reply/client/owner
+lifecycle MCK and packaged target qualification.
+
+`bridge.Owner` composes the actual job and workspace services with the portable
+session and raw request/reply codecs. Only trusted host callbacks supply caller
+context, the executable and picker results. It revalidates page/session authority
+after awaited cleanup and selection. Native errors use explicit stage-based
+effects and fixed messages; workspace owner failures are conservatively unknown.
+The internal `request` helpers remain for existing CEF-free service acceptance;
+they are not the renderer transport. Terminal budgets include the complete native
+reply wrapper, and a workspace grant is validated before replacing the old one.

@@ -35,18 +35,26 @@ x64. This slice's actual desktop verification is on macOS Apple Silicon.
 
 The packaged frontend uses Proton's secure application asset origin. Compilation
 and explicitly selected Local Scheme evaluation use the shared browser workers.
-Typed invocation uses native-owned child workers on macOS Apple Silicon. Its private
-session bootstrap uses typed Proton commands, restricted to the bundled main window. Every command
+Typed invocation uses native-owned child workers on macOS Apple Silicon. Its
+page-bound native protocol uses one typed Proton command, restricted to the bundled main window. Every command
 checks Proton's native origin/page context; navigation revokes the binding and
 window shutdown closes it. The UI labels this mode **Desktop local**.
 
-The private bridge version is `0.1.0-draft.1`. Open/check/close commands bind
-an opaque session identity to the current native page. The `jobs` discovery flag
-is offered only when native process measurements are available on a qualified
-platform. Business requests use `app:workbench_job` with raw bounded JSON bodies
-and the shared job client/receipt decoder. Only session/submit/query/cancel/release
-are exposed. Executable paths, internal claim/complete operations and environment
-overrides are not renderer input.
+The bundled host and renderer use `morphir/workbench/native` draft.1 through
+`app:workbench_native`. Each invocation carries complete raw JSON request and
+reply text. Production codecs bound the full UTF-8 envelope, reject duplicate
+members and validate closed operation payloads. Session open/check returns a
+public descriptor with the actual service's stable frozen jobs offer directly
+nested. Replies correlate to the exact originating invocation and operation.
+
+Errors carry explicit `none` or `unknown` effects, with fixed public messages.
+Caller/frame rejection proves no effect. The shared job owner's returned
+pre-commit rejection also proves no effect. Once that owner accepts a command,
+worker scheduling or publication failure is unknown. Workspace errors after
+entry to the stateful service are conservatively unknown. Closing revokes the
+session before waiting for children, so failed shutdown also remains unknown.
+No status code is invented for native errors. Executable paths, internal
+claim/complete operations and environment overrides are not renderer input.
 
 Each native child runs this same packaged executable with `--morphir-native-worker`
 and exits without starting CEF. Frames are length-prefixed UTF-8 JSON, limited to
@@ -60,11 +68,14 @@ survive late cancellation; cleanup failures remain separate evidence.
 
 Linux has separate CEF-free native process acceptance. Linux and Windows retain
 browser workers pending independent packaged GUI/lifecycle qualification.
-The public Morphir native mapping remains subsequent work.
+The accepted public wire mapping is in use by the bundled pair. Independent
+reply/client/owner lifecycle MCK and fresh packaged-target qualification remain
+required before advertising public native-profile conformance. No additional
+platform is enabled by this migration.
 
 On macOS Apple Silicon, the `workspace` capability enables **Open workspace** in
 the explorer. The native OS picker grants one read-only root per page session.
-Only opaque project and transfer identities cross the private command bridge.
+Only opaque project and transfer identities cross the page-bound native command bridge.
 The shared engine discovers canonical and legacy configuration and saved model
 checkpoints. JSON versions 1–4, Ion text and Ion binary are decoded by the compiled
 pipeline. Binary Ion markers also identify `.ion` and `.10n` files. Original-file
@@ -109,7 +120,7 @@ token for the upstream HttpOnly cookie. Do not put the token in logs or saved
 configuration. Enable `MORPHIR_WORKBENCH_JOBS=1` on the gateway for typed evaluation;
 see the [job setup and acceptance](../morphir-workbench/README.md#authenticated-evaluation-jobs).
 This HTTP attachment does not introduce native daemon IPC.
-An explicit connected launch registers no private native session commands.
+An explicit connected launch registers no native commands.
 
 For a headless packaged-app smoke check, enable Proton's CDP port using
 `PROTON_REMOTE_DEBUGGING_PORT` and `PROTON_HEADLESS=1`, then run the browser
@@ -119,3 +130,11 @@ to local development.
 Run `mise run test:workbench-native-workers` from the repository root for real
 native process, exact-value, cancellation, framing, memory and shutdown acceptance
 without CEF. The native service is in `pkgs/morphir-workbench-native`.
+
+The `bridge` package owns the same session/service state used by Proton. The
+native worker acceptance task also runs `bridge-acceptance` without CEF, covering
+all 13 wire operations, actual child evaluation, stable service authority,
+read-only capture retirement and late picker rejection after a replacement page.
+This is implementation acceptance, not an independent MCK qualification or a
+packaged GUI result. The shared renderer tests use the actual compiled reply
+admission and receipt cursor, including raw duplicates and transport uncertainty.

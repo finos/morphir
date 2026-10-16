@@ -1,81 +1,105 @@
-// Private Proton bootstrap, not an advertised Morphir native execution profile.
+// Bundled page-bound native protocol. Capability advertisement and platform
+// qualification remain separate from using the accepted wire contract here.
 import { JobClient } from './job-session.js';
 import { NativeWorkspaceClient } from './native-workspace.js';
 export const nativeBridgeVersion = '0.1.0-draft.1';
-const keys = value => value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value).sort().join(',') : '';
+const limit = 1048576;
+// Admission closes both objects. Compare every descriptor/offer field in a fixed
+// order so equivalent JSON member order does not look like changed authority.
+const descriptorText = value => JSON.stringify(value,
+  ['profile', 'contractVersion', 'sessionId', 'operations', 'offer', 'hostId', 'providerId']);
+const bytes = source => new TextEncoder().encode(source).byteLength;
 
 export class NativeSession {
-  constructor(invoke, timeout = 10000) {
-    this.invoke = invoke;
-    this.timeout = timeout;
-    this.id = null;
-    this.disposed = false;
+  constructor(invoke, timeout = 10000, core = command => globalThis.morphirWorkbenchJobs(command)) {
+    this.invoke = invoke; this.timeout = timeout; this.core = core;
+    this.id = null; this.disposed = false; this.operations = [];
   }
-  async call(operation, payload) {
+  encode(operation, payload) {
+    const frame = { profile: 'morphir/workbench/native', contractVersion: nativeBridgeVersion, operation };
+    if (operation !== 'session.open') frame.sessionId = this.id;
+    if (payload !== undefined) frame.payload = payload;
+    const source = JSON.stringify(frame);
+    if (source.length > limit || bytes(source) > limit) throw new Error('The complete native request exceeds its frame limit.');
+    return source;
+  }
+  admit(source, operation, sessionId) {
+    if (typeof source !== 'string' || source.length > limit || bytes(source) > limit) throw new Error('The native host returned an invalid raw reply.');
+    const decoded = JSON.parse(this.core(JSON.stringify({ op: 'native-response', source, operation, sessionId })));
+    if (!decoded.ok) throw new Error(`The native reply is incompatible (${decoded.code || 'invalid'}).`);
+    return decoded.value;
+  }
+  async exchange(source, operation, sessionId, interactive = false) {
     if (this.disposed) throw new Error('The desktop session is closed.');
     let timer;
     try {
-      const reply = await Promise.race([
-        Promise.resolve().then(() => this.invoke(`app:workbench_session_${operation}`, payload)),
-        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('The desktop session request timed out.')), this.timeout); }),
-      ]);
+      const invocation = Promise.resolve().then(() => this.invoke('app:workbench_native', source));
+      // Interactive OS picker latency is outside the worker/request deadline.
+      const raw = await (interactive ? invocation : Promise.race([invocation,
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('The native request timed out. Its effect may be unknown.')), this.timeout); }),
+      ]));
       if (this.disposed) throw new Error('The desktop session is closed.');
-      if (keys(reply) === 'code,ok' && reply.ok === false && typeof reply.code === 'string' && /^[a-zA-Z0-9_.-]{1,128}$/.test(reply.code)) {
-        throw new Error(`The desktop session was rejected (${reply.code}).`);
-      }
-      if (keys(reply) !== 'bridgeVersion,ok,operations,sessionId' || reply.ok !== true ||
-          reply.bridgeVersion !== nativeBridgeVersion || typeof reply.sessionId !== 'string' ||
-          !/^[a-zA-Z0-9_.-]{1,128}$/.test(reply.sessionId) || !Array.isArray(reply.operations) ||
-          reply.operations.length > 2 || reply.operations.some(operation => !['jobs', 'workspace'].includes(operation)) ||
-          new Set(reply.operations).size !== reply.operations.length || reply.operations.join(',') !== [...reply.operations].sort().join(',')) {
-        throw new Error('The desktop session reply is incompatible.');
-      }
-      return reply;
+      return { source: raw, envelope: this.admit(raw, operation, sessionId) };
     } finally { clearTimeout(timer); }
   }
+  value(envelope) {
+    if (!envelope.ok) throw Object.assign(new Error(envelope.error.message), {
+      native: true, code: envelope.error.code, effect: envelope.error.effect,
+    });
+    return envelope.value;
+  }
   async open() {
-    const reply = await this.call('open', nativeBridgeVersion);
-    this.id = reply.sessionId;
-    this.operations = reply.operations.join(',');
+    const { envelope } = await this.exchange(this.encode('session.open'), 'session.open', null);
+    const descriptor = this.value(envelope);
+    this.id = descriptor.sessionId; this.operations = descriptor.operations;
+    this.descriptor = descriptorText(descriptor);
   }
   async check() {
     if (!this.id) throw new Error('The desktop session has not been opened.');
-    const reply = await this.call('check', this.id);
-    if (reply.sessionId !== this.id) throw new Error('The desktop session changed. Reopen the application page.');
-    if (reply.operations.join(',') !== this.operations) throw new Error('The desktop session capabilities changed. Reopen the application page.');
+    const { envelope } = await this.exchange(this.encode('session.check'), 'session.check', this.id);
+    const descriptor = this.value(envelope);
+    if (descriptorText(descriptor) !== this.descriptor) throw new Error('The desktop session capabilities or authority changed. Reopen the application page.');
+    return descriptor;
+  }
+  async request(operation, payload, interactive = false) {
+    await this.check();
+    const result = await this.exchange(this.encode(operation, payload), operation, this.id, interactive);
+    await this.check();
+    return this.value(result.envelope);
   }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
     if (this.id) {
       // Navigation may already have revoked this page. Never retry its close.
-      try { Promise.resolve(this.invoke('app:workbench_session_close', this.id)).catch(() => {}); } catch { /* Bridge already gone. */ }
+      try { Promise.resolve(this.invoke('app:workbench_native', this.encode('session.close'))).catch(() => {}); } catch { /* Bridge already gone. */ }
     }
   }
 }
 
 export class NativeJobTransport {
   constructor(session) { this.session = session; }
-  async request(path, body) {
+  async nativeDescriptor() { return JSON.stringify(await this.session.check()); }
+  async nativeRequest(source) {
+    // This is the complete locally generated request from JobClient. Preserve it
+    // exactly; only inspect operation/session for this originating invocation.
+    const request = JSON.parse(source);
+    if (!['job.submit', 'job.query', 'job.cancel', 'job.release'].includes(request.operation) || request.sessionId !== this.session.id) {
+      throw new Error('Invalid native job operation or session.');
+    }
     await this.session.check();
-    let timer;
-    try {
-      const reply = await Promise.race([
-        Promise.resolve().then(() => this.session.invoke('app:workbench_job', JSON.stringify({ sessionId: this.session.id, path, body: body ?? null }))),
-        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('The native job request timed out. Its effect may be unknown.')), this.session.timeout); }),
-      ]);
-      await this.session.check();
-      if (keys(reply) !== 'source,status' || !Number.isInteger(reply.status) || reply.status < 100 || reply.status > 599 ||
-          typeof reply.source !== 'string' || new TextEncoder().encode(reply.source).byteLength > 1048576) throw new Error('The native host returned an invalid job frame.');
-      return { ok: reply.status >= 200 && reply.status < 300, status: reply.status, source: reply.source };
-    } finally { clearTimeout(timer); }
+    const result = await this.session.exchange(source, request.operation, this.session.id);
+    await this.session.check();
+    // JobClient independently admits this same complete raw reply and handles
+    // native error effects. Transport failures cannot manufacture no-effect.
+    return result.source;
   }
 }
 
 export class NativeAdapter {
   constructor(local, invoke, timeout, jobOptions = {}) {
     this.local = local;
-    this.session = new NativeSession(invoke, timeout);
+    this.session = new NativeSession(invoke, timeout, jobOptions.core);
     this.runtimeLabel = 'Desktop local';
     this.epoch = 0;
     this.disposed = false;
@@ -92,14 +116,14 @@ export class NativeAdapter {
     this.current(epoch);
     await this.session.check();
     this.current(epoch);
-    if (this.session.operations.split(',').includes('jobs')) {
+    if (this.session.operations.includes('jobs')) {
       this.jobs = new JobClient(this.session.id, { ...this.jobOptions, transport: new NativeJobTransport(this.session),
         authenticate: async () => { await this.session.check(); return this.session.id; } });
       this.jobsAvailable = await this.jobs.initialize();
       if (!this.jobsAvailable) throw new Error("The native host advertised jobs without a compatible offer.");
       this.current(epoch);
     }
-    if (this.session.operations.split(',').includes('workspace')) this.workspace = new NativeWorkspaceClient(this.session, this.local);
+    if (this.session.operations.includes('workspace')) this.workspace = new NativeWorkspaceClient(this.session, this.local);
     return { ...result, nativeSession: true, workspaceAvailable: !!this.workspace, jobsAvailable: !!this.jobsAvailable, message: 'Desktop local · ready to compile' };
   }
   async execute(request, progress) {

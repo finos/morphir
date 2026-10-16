@@ -203,6 +203,11 @@ pub fn Service::finish_choose(
   guard @utf8.encode(reply.stringify()[:]).length() <= 512 * 1024 else {
     raise Rejected("workbench.workspace_quota")
   }
+  // Validate the complete public envelope before replacing the existing grant.
+  guard reply is Object(fields) else { abort("Workspace offer object") }
+  fields.remove("ok")
+  ignore(@reply.success("workspace.choose", Json::object(fields)))
+  fields["ok"] = Json::boolean(true)
   self.revoke()
   self.root = Some(root)
   self.snapshot = Some(snapshot)
@@ -375,5 +380,38 @@ pub fn failure(error : Error) -> Json {
       Rejected(code) => code
       _ => "workbench.workspace_configuration"
     },
+  }
+}
+
+///|
+/// The dispatcher owns authority checks. This wrapper conservatively reports
+/// unknown after entry to the stateful workspace owner, including reply failure.
+pub fn Service::native_request(
+  self : Service,
+  operation : String,
+  payload : Json,
+) -> Bytes {
+  try {
+    let action = match operation {
+      "workspace.cancel-picker" => "cancel-picker"
+      "workspace.revoke" => "revoke"
+      "workspace.open" => "open"
+      "workspace.read" => "read"
+      "workspace.release" => "release"
+      _ => return @reply.failure(@reply.InvalidRequest, @reply.NoEffect)
+    }
+    guard payload is Object(fields) else {
+      return @reply.failure(@reply.InvalidRequest, @reply.NoEffect)
+    }
+    fields["action"] = Json::string(action)
+    let result = self.request(Json::object(fields).stringify())
+    guard result is Object(result) &&
+      result.get("ok") == Some(Json::boolean(true)) else {
+      return @reply.failure(@reply.Conflict, @reply.UnknownEffect)
+    }
+    result.remove("ok")
+    @reply.success(operation, Json::object(result))
+  } catch {
+    _ => @reply.failure(@reply.Unavailable, @reply.UnknownEffect)
   }
 }

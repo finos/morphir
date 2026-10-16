@@ -1,52 +1,57 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NativeWorkspaceClient } from './native-workspace.js';
-import { NativeSession, nativeBridgeVersion } from './native-session.js';
+import { NativeSession } from './native-session.js';
+import { core, descriptor, bridge, failure, version } from './native-test-fixture.js';
 
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 function fixture(bytes = Buffer.from(' {"formatVersion":1,"exact":9007199254740993} ')) {
   const calls = []; const localCalls = [];
   const host = { retired: 0, active: null, offset: 0, releaseFailures: 0, valid: true };
-  const offer = { ok: true, cancelled: false, grantId: 'workspace-1', projects: [{ id: 'project-0', name: 'Example', available: true, message: '' }], warnings: [] };
+  const offer = { cancelled: false, grantId: 'workspace-1', projects: [{ id: 'project-0', name: 'Example', available: true, message: '' }], warnings: [] };
   const handle = body => {
     if (body.action === 'release') {
-      if (host.releaseFailures-- > 0) return { ok: false, code: 'workbench.workspace_io' };
-      if (host.active !== null && body.sequence !== host.active) return { ok: false, code: 'workbench.workspace_capture' };
-      host.active = null; host.retired = Math.max(host.retired, body.sequence); return { ok: true };
+      if (host.releaseFailures-- > 0) return failure('unavailable', 'unknown');
+      if (host.active !== null && body.sequence !== host.active) return failure('conflict', 'none');
+      host.active = null; host.retired = Math.max(host.retired, body.sequence); return {};
     }
     if (body.action === 'open') {
-      if (body.sequence <= host.retired) return { ok: false, code: 'workbench.workspace_retired' };
+      if (body.sequence <= host.retired) return failure('conflict', 'none');
       host.active = body.sequence; host.offset = 0;
-      return { ok: true, sequence: body.sequence, size: bytes.length, filename: 'morphir-ir.ionb', format: 'ion-binary' };
+      return { sequence: body.sequence, size: bytes.length, filename: 'morphir-ir.ionb', format: 'ion-binary' };
     }
     if (body.action === 'read') {
       assert.equal(body.sequence, host.active); assert.equal(body.offset, host.offset);
       const part = bytes.subarray(host.offset, host.offset + 192 * 1024); host.offset += part.length;
-      return { ok: true, sequence: body.sequence, offset: body.offset, content: part.toString('base64'), done: host.offset === bytes.length };
+      return { sequence: body.sequence, offset: body.offset, content: part.toString('base64'), done: host.offset === bytes.length };
     }
-    return { ok: true };
+    return {};
   };
-  const session = { id: 'native-session-1', timeout: 50, async check() { if (!host.valid) throw new Error('stale session'); },
-    async invoke(name, payload) {
-      calls.push([name, payload]);
-      if (name === 'app:workbench_workspace_choose') { assert.equal(payload, session.id); return host.choose ? host.choose() : offer; }
-      assert.equal(name, 'app:workbench_workspace');
-      const wrapper = JSON.parse(payload); assert.equal(wrapper.sessionId, session.id);
-      const body = JSON.parse(wrapper.body);
-      if (host.intercept) return host.intercept(body, handle);
-      return handle(body);
-    } };
+  const session = new NativeSession(bridge(async frame => {
+    calls.push(['app:workbench_native', JSON.stringify(frame)]);
+    if (!host.valid) throw new Error('stale session');
+    if (frame.operation.startsWith('session.')) return { ...descriptor, operations: ['workspace'] };
+    assert.equal(frame.sessionId, descriptor.sessionId);
+    if (frame.operation === 'workspace.choose') return host.choose ? host.choose() : offer;
+    const body = { action: frame.operation.slice('workspace.'.length), ...frame.payload };
+    if (host.intercept) return host.intercept(body, handle);
+    return handle(body);
+  }), 50, core());
+  const ready = session.open();
+  const check = session.check.bind(session);
+  session.check = async () => { await ready; return check(); };
   const local = { cancel() {}, async execute(request) { localCalls.push(request); return { success: true, irSource: '{"formatVersion":4}' }; } };
   return { client: new NativeWorkspaceClient(session, local), host, session, calls, localCalls, offer, handle };
 }
 
-test('only exact, unique, canonical native operation lists are admitted', async () => {
-  const descriptor = { ok: true, bridgeVersion: nativeBridgeVersion, sessionId: 'native-1', operations: [] };
+test('only exact canonical native capabilities with directly nested jobs offers are admitted', async () => {
+  const offer = { profile: 'morphir/workbench/jobs', contractVersion: version, hostId: 'h', sessionId: descriptor.sessionId, providerId: 'p', operations: ['query'] };
   for (const operations of [[], ['jobs'], ['workspace'], ['jobs', 'workspace']]) {
-    const session = new NativeSession(async () => ({ ...descriptor, operations })); await session.open(); await session.check();
+    const value = { ...descriptor, operations, ...(operations.includes('jobs') ? { offer } : {}) };
+    const session = new NativeSession(bridge(() => value), 50, core()); await session.open(); await session.check();
   }
   for (const operations of [[''], ['jobs,workspace'], ['workspace', 'jobs'], ['jobs', 'jobs'], ['filesystem'], [null]]) {
-    await assert.rejects(new NativeSession(async () => ({ ...descriptor, operations })).open(), /incompatible/);
+    await assert.rejects(new NativeSession(bridge(() => ({ ...descriptor, operations })), 50, core()).open(), /incompatible/);
   }
 });
 
@@ -62,10 +67,10 @@ test('native project transfer preserves every byte across chunks and releases be
 });
 
 test('picker cancellation retains the old project offer; no renderer path reaches the picker', async () => {
-  const f = fixture(); await f.client.choose(); f.host.choose = () => ({ ok: true, cancelled: true });
+  const f = fixture(); await f.client.choose(); f.host.choose = () => ({ cancelled: true });
   const result = await f.client.choose(); assert.equal(result.cancelled, true); assert.equal(result.projects.length, 1);
-  assert.equal(f.calls.filter(([name]) => name.endsWith('_choose')).length, 2);
-  assert.ok(f.calls.every(([name, payload]) => !name.endsWith('_choose') || payload === f.session.id));
+  assert.equal(f.calls.filter(([, source]) => JSON.parse(source).operation === 'workspace.choose').length, 2);
+  assert.ok(f.calls.every(([, source]) => { const f = JSON.parse(source); return f.operation !== 'workspace.choose' || Object.keys(f).sort().join(',') === 'contractVersion,operation,profile,sessionId'; }));
 });
 
 test('late picker completion after explicit cancellation revokes the unaccepted grant', async () => {
@@ -73,14 +78,14 @@ test('late picker completion after explicit cancellation revokes the unaccepted 
   const choosing = f.client.choose(); await new Promise(setImmediate); await f.client.cancel(); wait.resolve(f.offer);
   await assert.rejects(choosing, /no longer current/);
   assert.equal(f.client.grant, null);
-  assert.ok(f.calls.some(([name, source]) => name === 'app:workbench_workspace' && JSON.parse(JSON.parse(source).body).action === 'revoke'));
+  assert.ok(f.calls.some(([, source]) => JSON.parse(source).operation === 'workspace.revoke'));
 });
 
 test('invalid chunks fail closed and still release the captured model', async () => {
   for (const mutate of [r => ({ ...r, offset: 1 }), r => ({ ...r, done: false }), r => ({ ...r, content: '%%%%' }), r => ({ ...r, sequence: 99 }), r => ({ ...r, extra: true })]) {
     const f = fixture(); await f.client.choose();
     f.host.intercept = (body, handle) => { const reply = handle(body); return body.action === 'read' ? mutate(reply) : reply; };
-    await assert.rejects(f.client.openProject('project-0'), /chunk/);
+    await assert.rejects(f.client.openProject('project-0'), /chunk|incompatible/);
     assert.equal(f.host.active, null); assert.equal(f.localCalls.length, 0);
   }
 });
@@ -89,7 +94,7 @@ test('unconfirmed release prevents another open until the same transfer is relea
   const f = fixture(); await f.client.choose(); f.host.releaseFailures = 2;
   await assert.rejects(f.client.openProject('project-0'));
   await assert.rejects(f.client.openProject('project-0'));
-  assert.equal(f.calls.filter(([n, b]) => n === 'app:workbench_workspace' && JSON.parse(JSON.parse(b).body).action === 'open').length, 1);
+  assert.equal(f.calls.filter(([, source]) => JSON.parse(source).operation === 'workspace.open').length, 1);
   assert.equal(f.localCalls.length, 0); assert.deepEqual(f.client.pendingRelease, { grantId: 'workspace-1', sequence: 1 });
   await f.client.openProject('project-0'); assert.equal(f.client.pendingRelease, null); assert.equal(f.host.retired, 2);
 });
@@ -111,4 +116,10 @@ test('lost open replies retire their sequence and stale sessions never invoke lo
   const g = fixture(); await g.client.choose();
   g.host.intercept = (body, handle) => { const reply = handle(body); if (body.action === 'open') g.host.valid = false; return reply; };
   await assert.rejects(g.client.openProject('project-0'), /stale/); assert.equal(g.localCalls.length, 0);
+});
+
+test('interactive picker latency is independent of request deadlines', async () => {
+  const f = fixture(); f.session.timeout = 5;
+  f.host.choose = async () => { await new Promise(resolve => setTimeout(resolve, 25)); return { cancelled: true }; };
+  const result = await f.client.choose(); assert.equal(result.cancelled, true);
 });

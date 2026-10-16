@@ -114,43 +114,7 @@ pub fn Service::request(self : Service, path : String, body : String?) -> Json {
       raise Invalid("workbench.native_operation")
     }
     let value = self.command({ "op": path, "body": body })
-    if path == "submit" {
-      let identity = field(value, "identity")
-      let record : Record = {
-        identity,
-        last_pid: 0,
-        child: None,
-        task: None,
-        stop: "",
-        exited: false,
-        done: false,
-        captured: None,
-        peak: 0.0,
-      }
-      self.records[text(field(identity, "jobId"))] = record
-      self.queue.push(record)
-      self.drain()
-    } else if path == "cancel" {
-      if self.records.get(text(field(field(value, "identity"), "jobId")))
-        is Some(record) &&
-        !record.done {
-        record.stop("cancel")
-        if record.task is None {
-          self.complete(record, evidence("", cancelled=true))
-          let mut index = 0
-          while index < self.queue.length() {
-            if self.queue[index].done {
-              ignore(self.queue.remove(index))
-            } else {
-              index += 1
-            }
-          }
-        }
-      }
-    } else if path == "release" {
-      let identity = field(@jobs.decode(body), "identity")
-      self.records.remove(text(field(identity, "jobId")))
-    }
+    self.apply(path, body, value)
     response(200, value)
   } catch {
     error => {
@@ -238,8 +202,13 @@ fn Service::complete(self : Service, record : Record, outcomes : Json) -> Unit {
     fields["state"] = Json::string("terminal")
     fields["sequence"] = Json::number(2147483647)
     fields["outcomes"] = outcomes
-    let outcomes = if @utf8.encode(Json::object(fields).stringify()).length() >
-      1048576 {
+    let bounded = try {
+      ignore(@reply.success("job.query", Json::object(fields)))
+      true
+    } catch {
+      _ => false
+    }
+    let outcomes = if !bounded {
       evidence("workbench.worker_output_limit")
     } else {
       outcomes
@@ -498,5 +467,118 @@ pub fn Service::stats(self : Service) -> Json {
     "completed": completed,
     "children": children,
     "queued": self.queue.length(),
+  }
+}
+
+///|
+fn Service::apply(
+  self : Service,
+  path : String,
+  body : String,
+  value : Json,
+) -> Unit raise {
+  if path == "submit" {
+    let identity = field(value, "identity")
+    let record : Record = {
+      identity,
+      last_pid: 0,
+      child: None,
+      task: None,
+      stop: "",
+      exited: false,
+      done: false,
+      captured: None,
+      peak: 0.0,
+    }
+    self.records[text(field(identity, "jobId"))] = record
+    self.queue.push(record)
+    self.drain()
+  } else if path == "cancel" {
+    if self.records.get(text(field(field(value, "identity"), "jobId")))
+      is Some(record) &&
+      !record.done {
+      record.stop("cancel")
+      if record.task is None {
+        self.complete(record, evidence("", cancelled=true))
+        let mut index = 0
+        while index < self.queue.length() {
+          if self.queue[index].done {
+            ignore(self.queue.remove(index))
+          } else {
+            index += 1
+          }
+        }
+      }
+    }
+  } else if path == "release" {
+    let identity = field(@jobs.decode(body), "identity")
+    self.records.remove(text(field(identity, "jobId")))
+  }
+}
+
+///|
+/// A fresh view of the actual service authority, stable for its lifetime.
+pub fn Service::offer(self : Service) -> Json {
+  @jobs.decode(self.offer.stringify()) catch {
+    _ => abort("Native service offer")
+  }
+}
+
+///|
+fn native_code(code : String) -> @reply.Code {
+  if [
+      "workbench.host_capacity", "workbench.host_already_claimed", "workbench.host_not_terminal",
+    ].contains(code) {
+    @reply.Conflict
+  } else if ["workbench.host_unknown_job", "workbench.host_cancel_unavailable"].contains(
+      code,
+    ) {
+    @reply.NotFound
+  } else if code.contains("limit") || code.contains("budget") {
+    @reply.Limit
+  } else {
+    @reply.InvalidRequest
+  }
+}
+
+///|
+/// Only the owner's explicit rejected command proves no effect. After owner
+/// acceptance, scheduling, cancellation and reply publication may have occurred.
+pub fn Service::native_request(
+  self : Service,
+  operation : String,
+  payload : Json,
+) -> Bytes {
+  if self.closed || self.uncertain {
+    return @reply.failure(@reply.Unavailable, @reply.NoEffect)
+  }
+  let path = match operation {
+    "job.submit" => "submit"
+    "job.query" => "query"
+    "job.cancel" => "cancel"
+    "job.release" => "release"
+    _ => return @reply.failure(@reply.InvalidRequest, @reply.NoEffect)
+  }
+  try {
+    let body = payload.stringify()
+    let result = self.host.handle(
+      ({ "op": path, "body": body } : Json).stringify(),
+    )
+    if field(result, "ok") == Json::boolean(false) {
+      // The shared owner validates and constructs receipts before mutating its
+      // state. A returned rejection is the explicit pre-commit branch.
+      return @reply.failure(
+        native_code(text(field(result, "code"))),
+        @reply.NoEffect,
+      )
+    }
+    guard field(result, "ok") == Json::boolean(true) else {
+      raise Invalid("workbench.native_shape")
+    }
+    let value = field(result, "value")
+    self.apply(path, body, value)
+    @reply.success(operation, value)
+  } catch {
+    _ => @reply.failure(@reply.Unavailable, @reply.UnknownEffect)
   }
 }

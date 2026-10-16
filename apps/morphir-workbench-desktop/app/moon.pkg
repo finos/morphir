@@ -9,6 +9,9 @@ import {
   "moonbit-community/proton_contract" @contract,
   "finos/morphir-workbench-native-session" @session,
   "finos/morphir-workbench-native" @native,
+  "finos/morphir-workbench-native/bridge",
+  "finos/morphir-workbench-native-session/response" @reply,
+  "moonbitlang/core/encoding/utf8",
   "finos/morphir-workbench-native/workspace",
   "moonbitlang/core/env",
 }

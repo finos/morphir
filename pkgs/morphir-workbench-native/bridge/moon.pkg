@@ -1,0 +1,11 @@
+supported_targets = "native"
+
+import {
+  "finos/morphir-workbench-native" @native,
+  "finos/morphir-workbench-native/workspace",
+  "finos/morphir-workbench-native-session" @session,
+  "finos/morphir-workbench-native-session/request",
+  "finos/morphir-workbench-native-session/response" @reply,
+  "moonbitlang/async",
+  "moonbitlang/core/encoding/utf8",
+}

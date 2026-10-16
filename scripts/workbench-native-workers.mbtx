@@ -10,12 +10,16 @@ import {
 ///|
 async fn main {
   let code = @process.run("moon", ["build", "--target", "native", "--release",
-    "pkgs/morphir-workbench-native/fixture", "pkgs/morphir-workbench-native/acceptance"])
+    "pkgs/morphir-workbench-native/fixture", "pkgs/morphir-workbench-native/acceptance",
+    "pkgs/morphir-workbench-native/bridge-acceptance"])
   if code != 0 { @sys.exit(1) }
   @fs.mkdir(".dev", allow_exist=true)
   let prefix = "_build/native/release/build/finos/morphir-workbench-native/"
   let acceptance = @fs.realpath(prefix + "acceptance/acceptance.exe")
   let fixture = @fs.realpath(prefix + "fixture/fixture.exe")
   let code = @process.run(acceptance, [fixture])
+  if code != 0 { @sys.exit(if code < 0 { 1 } else { code }) }
+  let bridge = @fs.realpath(prefix + "bridge-acceptance/bridge-acceptance.exe")
+  let code = @process.run(bridge, [])
   @sys.exit(if code < 0 { 1 } else { code })
 }

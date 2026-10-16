@@ -46,17 +46,28 @@ try {
   }
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   const originalUrl = page.url();
-  const native = async (operation, payload) => page.evaluate(([operation, payload]) =>
-    window.__MoonBit__.core.invokeOp(`app:workbench_session_${operation}`, payload), [operation, payload]);
-  const firstSession = await native('open', '0.1.0-draft.1');
-  assert.equal(firstSession.ok, true);
+  const native = async (operation, fields = {}) => page.evaluate(async ([operation, fields]) => {
+    const frame = { profile: 'morphir/workbench/native', contractVersion: '0.1.0-draft.1', operation: `session.${operation}`, ...fields };
+    const source = await window.__MoonBit__.core.invokeOp('app:workbench_native', JSON.stringify(frame));
+    const admitted = JSON.parse(globalThis.morphirWorkbenchJobs(JSON.stringify({ op: 'native-response', source,
+      operation: operation === 'unknown' ? 'session.open' : `session.${operation}`,
+      sessionId: operation === 'open' || operation === 'unknown' ? null : fields.sessionId })));
+    if (!admitted.ok) throw new Error(`Native smoke reply admission failed: ${admitted.code}`);
+    return admitted.value;
+  }, [operation, fields]);
+  const denied = (reply, code) => {
+    assert.equal(reply.ok, false); assert.equal(reply.error.code, code); assert.equal(reply.error.effect, 'none');
+  };
+  const opened = await native('open');
+  assert.equal(opened.ok, true);
+  const firstSession = opened.value;
   assert.deepEqual(firstSession.operations, ['jobs', 'workspace'], 'The packaged host offers owned native evaluation jobs and read-only workspace grants');
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Desktop local');
-  assert.deepEqual(await native('check', firstSession.sessionId), firstSession);
-  assert.deepEqual(await native('open', '0.1.0-draft.2'), { ok: false, code: 'workbench.native_version' });
-  assert.deepEqual(await native('close', 'not-this-session'), { ok: false, code: 'workbench.native_stale_session' });
-  await assert.rejects(native('unknown', ''), /not|unknown|permission/i);
-  await assert.rejects(native('open', { bridgeVersion: '0.1.0-draft.1' }));
+  assert.deepEqual((await native('check', { sessionId: firstSession.sessionId })).value, firstSession);
+  denied(await native('open', { contractVersion: '0.1.0-draft.2' }), 'invalid_request');
+  denied(await native('close', { sessionId: 'not-this-session' }), 'unauthorized');
+  denied(await native('unknown'), 'invalid_request');
+  await assert.rejects(page.evaluate(() => window.__MoonBit__.core.invokeOp('app:workbench_native', { operation: 'session.open' })));
   const hostile = createServer((_, response) => { response.writeHead(200, { 'Content-Type': 'text/html' }); response.end('<!doctype html><title>Untrusted frame</title>'); });
   try {
     hostile.listen(0, '127.0.0.1'); await once(hostile, 'listening');
@@ -65,7 +76,7 @@ try {
     const access = await page.evaluate(async () => {
       if (typeof window.__MoonBit__?.core?.invokeOp !== 'function') return 'absent';
       return await Promise.race([
-        window.__MoonBit__.core.invokeOp('app:workbench_session_open', '0.1.0-draft.1').then(() => 'allowed', () => 'rejected'),
+        window.__MoonBit__.core.invokeOp('app:workbench_native', JSON.stringify({ profile: 'morphir/workbench/native', contractVersion: '0.1.0-draft.1', operation: 'session.open' })).then(() => 'allowed', () => 'rejected'),
         new Promise(resolve => setTimeout(() => resolve('timeout'), 5000)),
       ]);
     });
@@ -78,13 +89,13 @@ try {
   }
   await page.reload();
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
-  const freshSession = await native('open', '0.1.0-draft.1');
+  const freshSession = (await native('open')).value;
   assert.notEqual(freshSession.sessionId, firstSession.sessionId);
-  assert.deepEqual(await native('check', firstSession.sessionId), { ok: false, code: 'workbench.native_stale_session' });
-  assert.deepEqual(await native('close', freshSession.sessionId), { ok: true });
+  denied(await native('check', { sessionId: firstSession.sessionId }), 'unauthorized');
+  assert.deepEqual((await native('close', { sessionId: freshSession.sessionId })).value, {});
   const revoked = await page.evaluate(() => new Promise(resolve => globalThis.morphirWorkbench.request(
     { operation: 'compile', source: '(+ 1 2)', languageId: 'scheme', target: 'scheme' }, text => resolve(JSON.parse(text)))));
-  assert.equal(revoked.success, false); assert.match(revoked.message, /workbench.native_stale_session/);
+  assert.equal(revoked.success, false); assert.match(revoked.message, /session|authorized/);
   await page.goto(originalUrl + '?mode=standalone');
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Browser local');
@@ -94,7 +105,10 @@ try {
     const invoke = window.__MoonBit__.core.invokeOp.bind(window.__MoonBit__.core);
     globalThis.nativeJobCalls = [];
     window.__MoonBit__.core.invokeOp = (name, payload) => {
-      if (name === 'app:workbench_job') globalThis.nativeJobCalls.push(JSON.parse(payload).path);
+      if (name === 'app:workbench_native') {
+        const operation = JSON.parse(payload).operation;
+        if (operation.startsWith('job.')) globalThis.nativeJobCalls.push(operation.slice(4));
+      }
       return invoke(name, payload);
     };
   });

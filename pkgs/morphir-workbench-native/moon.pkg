@@ -1,4 +1,5 @@
 import {
+  "finos/morphir-workbench-native-session/response" @reply,
   "finos/morphir-workbench" @pipeline,
   "finos/morphir-workbench/jobs",
   "finos/morphir-execution" @protocol,

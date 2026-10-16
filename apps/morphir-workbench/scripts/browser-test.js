@@ -68,6 +68,7 @@ async function liveHostWorkflow(binary) {
         if (typeof window.__MoonBit__?.core?.invokeOp !== 'function') return [];
         const accessible = [];
         for (const [name, payload] of [
+          ['app:workbench_native', JSON.stringify({ profile: 'morphir/workbench/native', contractVersion: '0.1.0-draft.1', operation: 'session.open' })],
           ['app:workbench_session_open', '0.1.0-draft.1'],
           ['app:workbench_workspace_choose', 'not-a-native-session'],
           ['app:workbench_workspace', JSON.stringify({ sessionId: 'not-a-native-session', body: '{"action":"cancel-picker"}' })],
@@ -77,7 +78,7 @@ async function liveHostWorkflow(binary) {
         }
         return accessible;
       });
-      assert.deepEqual(nativeAccess, [], 'An explicit connected launch registers no private native session, job or workspace commands');
+      assert.deepEqual(nativeAccess, [], 'An explicit connected launch registers no native commands');
     } else {
       browser = await chromium.launch({headless:true});
       context = await browser.newContext({viewport:{width:1440,height:1000}});
