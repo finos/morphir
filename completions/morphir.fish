@@ -698,7 +698,29 @@ cmd dist display_order=21 subcommand_required=#true arg_required_else_help=#true
     }
 }
 cmd extension display_order=22 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
-    cmd install display_order=0 args_override_self=#false help="Install a Morphir extension" unknown_flags=error {
+    cmd bundle display_order=0 args_override_self=#false help="Bundle an already-built host-native MEP process extension" unknown_flags=error {
+        flag --executable help="Already-built native executable; the command runs its describe probe" required=#true {
+            arg <FILE>
+        }
+        flag --extension-id help="Expected extension identity, independent of the source language" required=#true {
+            arg <EXTENSION_ID>
+        }
+        flag --short-id help="Portable identifier used by the extension release inventory" required=#true {
+            arg <SHORT_ID>
+        }
+        flag --version help="Exact extension SemVer; must match the executable\'s description" required=#true {
+            arg <VERSION>
+        }
+        flag --platform help="Native target triple; must match the CLI build target for this probe" required=#true {
+            arg <TRIPLE>
+        }
+        flag --output help="New bundle directory; its parent must exist and existing paths are refused" required=#true {
+            arg <DIR>
+        }
+        complete file type=path
+        complete dir type=path
+    }
+    cmd install display_order=1 args_override_self=#false help="Install a Morphir extension" unknown_flags=error {
         flag --repository help="Named extension repository configured in Morphir Home" required=#true {
             arg <REPOSITORY>
         }
@@ -711,11 +733,11 @@ cmd extension display_order=22 subcommand_required=#true arg_required_else_help=
         flag --no-probe help="Skip executing the selected artifact to check its capability claims"
         arg <NAME> help="Name of the extension to install"
     }
-    cmd list display_order=1 args_override_self=#false help="List installed Morphir extensions" unknown_flags=error
-    cmd search display_order=2 args_override_self=#false help="Search enabled extension repositories" unknown_flags=error {
+    cmd list display_order=2 args_override_self=#false help="List installed Morphir extensions" unknown_flags=error
+    cmd search display_order=3 args_override_self=#false help="Search enabled extension repositories" unknown_flags=error {
         arg <QUERY> help="Extension identity or display-name text"
     }
-    cmd repository display_order=3 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage named extension repositories" unknown_flags=error {
+    cmd repository display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage named extension repositories" unknown_flags=error {
         cmd init display_order=0 args_override_self=#false help="Initialize a local repository directory for publication" unknown_flags=error {
             arg <DIRECTORY> help="Repository directory to create or open"
             complete directory type=path
@@ -756,7 +778,7 @@ Version-2 WASM artifacts remain declared and are not probed.
             arg <NAME> help="Repository name"
         }
     }
-    cmd update display_order=4 args_override_self=#false help="Update an installed Morphir extension" unknown_flags=error {
+    cmd update display_order=5 args_override_self=#false help="Update an installed Morphir extension" unknown_flags=error {
         flag --repository help="Named extension repository configured in Morphir Home" required=#true {
             arg <REPOSITORY>
         }
@@ -768,7 +790,7 @@ Version-2 WASM artifacts remain declared and are not probed.
         }
         arg <NAME> help="Name of the extension to update"
     }
-    cmd uninstall display_order=5 args_override_self=#false help="Uninstall a Morphir extension" unknown_flags=error {
+    cmd uninstall display_order=6 args_override_self=#false help="Uninstall a Morphir extension" unknown_flags=error {
         arg <NAME> help="Name of the extension to uninstall"
     }
 }

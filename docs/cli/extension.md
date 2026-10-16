@@ -7,6 +7,7 @@ Manage Morphir extensions
 
 ## Subcommands
 
+- [`morphir extension bundle <FLAGS>`](extension/bundle.md)
 - [`morphir extension install <FLAGS> <NAME>`](extension/install.md)
 - [`morphir extension list`](extension/list.md)
 - [`morphir extension repository <SUBCOMMAND>`](extension/repository.md)

@@ -1,5 +1,7 @@
 //! Integration tests for CLI commands
 
+#[path = "cli_integration/extension_bundle.rs"]
+mod extension_bundle;
 #[path = "cli_integration/extension_probe.rs"]
 mod extension_probe;
 

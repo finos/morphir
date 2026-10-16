@@ -1,27 +1,35 @@
 use super::*;
 use morphir_extension_sdk::protocol::MEP_VERSION;
 
-fn guest_bytes() -> &'static [u8] {
+pub(super) fn guest_bytes() -> &'static [u8] {
     static BYTES: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
-    BYTES.get_or_init(|| {
-        let temp = TempDir::new().unwrap();
-        let executable = temp.path().join("probe-guest");
-        let output = std::process::Command::new("rustc")
-            .arg(
-                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/extension_probe.rs"),
-            )
-            .env("MEP_VERSION", MEP_VERSION)
-            .arg("-o")
-            .arg(&executable)
-            .output()
-            .unwrap();
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        std::fs::read(executable).unwrap()
-    })
+    BYTES.get_or_init(|| build_guest(None, None))
+}
+
+pub(super) fn build_guest(mode: Option<&str>, extra: Option<&str>) -> Vec<u8> {
+    let temp = TempDir::new().unwrap();
+    let executable = temp.path().join("probe-guest");
+    let mut command = std::process::Command::new("rustc");
+    command
+        .arg(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/extension_probe.rs"))
+        .env("MEP_VERSION", MEP_VERSION)
+        .env_remove("MEP_TEST_MODE")
+        .env_remove("MEP_TEST_CAPABILITY_EXTRA")
+        .arg("-o")
+        .arg(&executable);
+    if let Some(mode) = mode {
+        command.env("MEP_TEST_MODE", mode);
+    }
+    if let Some(extra) = extra {
+        command.env("MEP_TEST_CAPABILITY_EXTRA", extra);
+    }
+    let output = command.output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    std::fs::read(executable).unwrap()
 }
 
 fn setup(mode: &str) -> (TempDir, PathBuf, TestIndex) {

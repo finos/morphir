@@ -195,6 +195,9 @@ Uninstall a Morphir distribution
 \fBextension\fR
 Manage Morphir extensions
 .TP
+\fBextension bundle\fR
+Bundle an already\-built host\-native MEP process extension
+.TP
 \fBextension install\fR
 Install a Morphir extension
 .TP
@@ -1396,6 +1399,31 @@ Uninstall a Morphir distribution
 .TP
 \fB<NAME>\fR
 Name of the distribution to uninstall
+.SH "MORPHIR EXTENSION BUNDLE"
+Bundle an already\-built host\-native MEP process extension
+.PP
+\fBUsage:\fR morphir extension bundle [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-executable\fR \fI<FILE>\fR
+Already\-built native executable; the command runs its describe probe
+.TP
+\fB\-\-extension\-id\fR \fI<EXTENSION_ID>\fR
+Expected extension identity, independent of the source language
+.TP
+\fB\-\-short\-id\fR \fI<SHORT_ID>\fR
+Portable identifier used by the extension release inventory
+.TP
+\fB\-\-version\fR \fI<VERSION>\fR
+Exact extension SemVer; must match the executable's description
+.TP
+\fB\-\-platform\fR \fI<TRIPLE>\fR
+Native target triple; must match the CLI build target for this probe
+.TP
+\fB\-\-output\fR \fI<DIR>\fR
+New bundle directory; its parent must exist and existing paths are refused
 .SH "MORPHIR EXTENSION INSTALL"
 Install a Morphir extension
 .PP

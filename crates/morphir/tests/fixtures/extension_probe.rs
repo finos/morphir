@@ -3,9 +3,19 @@ use std::io::{self, BufRead, Read, Write};
 
 fn main() {
     let protocol = env!("MEP_VERSION");
-    let mode = std::env::args().nth(1).unwrap_or_default();
+    let mode = std::env::args().nth(1)
+        .or_else(|| option_env!("MEP_TEST_MODE").map(str::to_owned)).unwrap_or_default();
+    if mode == "bundle-touch" { std::fs::write("guest-created.txt", "not a bundle artifact").unwrap(); }
+    if let Some(directory) = mode.strip_prefix("bundle-race:") {
+        std::fs::create_dir(directory).unwrap();
+        std::fs::write(std::path::Path::new(directory).join("keep"), "concurrent output").unwrap();
+    }
     let extension = r#"{"id":"morphir-test","name":"Morphir test frontend","version":"1.2.3","types":["frontend"]}"#;
     let capabilities = r#"{"frontend":{"languages":[{"id":"test","fileExtensions":[".test"]}],"irVersions":["4"],"compile":true,"incremental":false,"fragments":false}}"#;
+    let capabilities = match option_env!("MEP_TEST_CAPABILITY_EXTRA") {
+        Some(extra) => format!("{},{}{}", &capabilities[..capabilities.len() - 1], extra, "}"),
+        None => capabilities.to_owned(),
+    };
     let capabilities = if mode.ends_with("disagree") {
         capabilities.replace("\"compile\":true", "\"compile\":false")
     } else {

@@ -1,6 +1,11 @@
 use chrono::Utc;
 
 fn main() {
+    println!(
+        "cargo::rustc-env=MORPHIR_BUILD_TARGET={}",
+        std::env::var("TARGET").expect("Cargo supplies TARGET")
+    );
+
     // Use UTC for reproducible builds across time zones
     let now = Utc::now();
     let date = now.format("%Y-%m-%d").to_string();
