@@ -160,7 +160,7 @@ fn with_native_session(app : @proton.App) -> @proton.App {
             raise @workspace.Rejected("workbench.workspace_unavailable")
           }
           let ticket = service.begin_choose()
-          errdefer service.cancel_choose()
+          errdefer service.cancel_choose_if_current(ticket)
           guard context.window() is Some(window) else {
             raise @session.Rejected("workbench.native_caller")
           }

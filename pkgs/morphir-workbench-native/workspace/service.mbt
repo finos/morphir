@@ -80,6 +80,18 @@ pub fn Service::cancel_choose(self : Service) -> Unit {
 }
 
 ///|
+/// Cleanup belongs to the picker that created it. An older completion may
+/// arrive after explicit cancellation and a replacement picker has started.
+pub fn Service::cancel_choose_if_current(
+  self : Service,
+  ticket : Int32,
+) -> Unit {
+  if self.chooser == Some(ticket) {
+    self.chooser = None
+  }
+}
+
+///|
 fn format(path : String) -> String? {
   if path.has_suffix(".json") {
     Some("morphir-json")

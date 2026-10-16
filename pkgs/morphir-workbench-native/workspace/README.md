@@ -4,6 +4,8 @@ The native picker supplies the sole absolute root. `Service` holds one opaque,
 page-session-scoped grant and at most one captured model. Renderer requests use
 grant/project identities, never filesystem paths. Closing the session closes the
 directory descriptor and discards pending pickers and captured bytes.
+Deferred picker cleanup checks its original ticket, so a late completion cannot
+cancel a newer picker. Explicit cancellation still cancels the current picker.
 
 On qualified POSIX platforms, every path component opens relative to held
 directory descriptors with `O_NOFOLLOW`. All descriptors close on exec. Reads

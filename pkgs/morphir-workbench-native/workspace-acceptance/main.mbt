@@ -212,6 +212,50 @@ async fn main {
     error => raise error
   }
   assert_true(rejected)
+  // A retired picker can finish after a replacement picker has started.
+  // Its failure cleanup must not cancel that newer native dialog.
+  let replacement = service.begin_choose()
+  let late_rejected = try {
+    ignore(service.finish_choose(stale, Some(base + "/root")))
+    false
+  } catch {
+    @workspace.Rejected(_) => true
+    error => raise error
+  }
+  assert_true(late_rejected)
+  service.cancel_choose_if_current(stale)
+  ignore(accepted(service.finish_choose(replacement, None)))
+  // Matching cleanup releases its own ticket and remains safe to repeat.
+  let failed = service.begin_choose()
+  service.cancel_choose_if_current(failed)
+  service.cancel_choose_if_current(failed)
+  let after_failure = service.begin_choose()
+  ignore(accepted(service.finish_choose(after_failure, None)))
+  ignore(
+    accepted(
+      send(
+        service,
+        { "action": "open", "grantId": grant, "projectId": id },
+        sequence=3,
+      ),
+    ),
+  )
+  let retained = accepted(
+    send(
+      service,
+      { "action": "read", "grantId": grant, "offset": 0 },
+      sequence=3,
+    ),
+  )
+  assert_eq(
+    @base64.decode(@wire.string(@wire.field(retained, "content"))[:]),
+    original,
+  )
+  ignore(
+    accepted(
+      send(service, { "action": "release", "grantId": grant }, sequence=3),
+    ),
+  )
   @fs.write_file(
     base + "/root/morphir.json",
     "{\"name\":\"changed\",\"exposedModules\":[]}",
@@ -221,7 +265,7 @@ async fn main {
       send(
         service,
         { "action": "open", "grantId": grant, "projectId": id },
-        sequence=3,
+        sequence=4,
       ),
       "code",
     ),
