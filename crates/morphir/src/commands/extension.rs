@@ -1,6 +1,8 @@
 //! Verified extension artifact management.
 
+mod bundle;
 mod probe;
+pub use bundle::{BundleArgs, run_extension_bundle};
 
 use crate::home::MorphirHome;
 use crate::observability::OperationId;

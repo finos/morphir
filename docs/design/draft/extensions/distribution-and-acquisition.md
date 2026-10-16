@@ -143,6 +143,51 @@ flowchart LR
     Runtime --> MEP[Open MEP session]
 ```
 
+### Author a native process bundle
+
+After a language repository builds its MEP executable, `morphir extension bundle`
+creates a release bundle from explicit inputs. For example, on a native
+`aarch64-apple-darwin` CLI:
+
+```sh
+morphir extension bundle \
+  --executable ./dist/my-extension \
+  --extension-id my-extension \
+  --short-id example \
+  --version 1.2.3 \
+  --platform aarch64-apple-darwin \
+  --output ./dist/my-extension-bundle
+```
+
+The executable must implement `morphir.extension.describe`. The command snapshots
+its bytes, runs a private copy through the host's bounded describe probe, and
+checks the reported identity and exact version. The declared platform must match
+the CLI's own build target. A legacy session fallback is insufficient to author
+the guest's complete claim set.
+
+The new output directory contains `release.json`, the executable with its input
+filename, and `<filename>.sha256`. The descriptor uses the existing
+`2.0.0-draft.2` per-artifact JSON contract, retains optional claim members and
+records runtime `process`. No Cargo manifest, source layout, current Git revision
+or package-version inference is required. Build provenance remains the producer's
+responsibility.
+
+The output parent must exist. Existing destinations, including empty directories
+and symlinks, are refused. A sibling staging directory is moved into place
+atomically without replacement. The guest runs in a separate temporary workspace,
+so files it creates there are not included in the bundle. Probe or validation
+failure leaves no release bundle.
+
+Bundle authoring does not publish or install the extension. Configure a local
+extension repository, publish the bundle with `morphir extension repository
+publish`, and install it through `morphir extension install`. Those steps perform
+their own probes; the bundle keeps `claimCheck` as `unchecked` rather than claiming
+that a later installation has been checked. This command currently authors one
+host-native executable. Portable WASM packaging and multi-platform assembly remain
+separate workflows.
+
+### Installed inventory and activation
+
 The installed extension inventory is local state, not a repository or catalog.
 It records the extension ID, name, version, runtime, platform, arguments,
 artifact digest, content-addressed store path, capabilities, MEP versions,

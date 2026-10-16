@@ -472,6 +472,8 @@ enum DistAction {
 
 #[derive(Clone, Subcommand)]
 enum ExtensionAction {
+    /// Bundle an already-built host-native MEP process extension
+    Bundle(commands::extension::BundleArgs),
     /// Install a Morphir extension
     Install {
         /// Name of the extension to install
@@ -1204,6 +1206,9 @@ impl AppSession for MorphirSession {
                 DistAction::Uninstall { name } => run_dist_uninstall(name.clone()),
             },
             Commands::Extension { action } => match action {
+                ExtensionAction::Bundle(args) => {
+                    commands::extension::run_extension_bundle(&self.operation_id, args).await
+                }
                 ExtensionAction::Install {
                     name,
                     repository,

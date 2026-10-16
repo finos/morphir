@@ -8,6 +8,7 @@ use miette::{IntoDiagnostic, WrapErr, miette};
 use morphir_package::authoring::{AuthoredLibrary, LocalSigningKey};
 
 use super::{emit, read_bounded};
+use crate::commands::staging::move_directory_no_replace;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateArgs {
@@ -245,39 +246,4 @@ pub(super) fn stage_files(output: &Path, files: &[(&str, &[u8])]) -> miette::Res
         .into_diagnostic()
         .wrap_err_with(|| format!("publish Library bundle to {}", output.display()))?;
     Ok(())
-}
-
-#[cfg(unix)]
-fn move_directory_no_replace(
-    parent: &Path,
-    staged: &Path,
-    leaf: &std::ffi::OsStr,
-) -> std::io::Result<()> {
-    use cap_std::ambient_authority;
-    use cap_std::fs::Dir;
-    let parent_dir = Dir::open_ambient_dir(parent, ambient_authority())?;
-    let staged_leaf = staged.file_name().ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "missing staged directory name",
-        )
-    })?;
-    rustix::fs::renameat_with(
-        &parent_dir,
-        staged_leaf,
-        &parent_dir,
-        leaf,
-        rustix::fs::RenameFlags::NOREPLACE,
-    )
-    .map_err(Into::into)
-}
-
-#[cfg(windows)]
-fn move_directory_no_replace(
-    parent: &Path,
-    staged: &Path,
-    leaf: &std::ffi::OsStr,
-) -> std::io::Result<()> {
-    // Windows directory rename fails if the destination already exists.
-    fs::rename(staged, parent.join(leaf))
 }

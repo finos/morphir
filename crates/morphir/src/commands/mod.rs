@@ -20,6 +20,7 @@ pub mod out_context;
 pub mod package;
 pub mod playground;
 pub mod schema;
+pub(crate) mod staging;
 pub mod tool;
 pub mod transform;
 pub mod ui;

@@ -73,6 +73,7 @@
 - [`morphir dist update [-v --version <VERSION>] <NAME>`](dist/update.md)
 - [`morphir dist uninstall <NAME>`](dist/uninstall.md)
 - [`morphir extension <SUBCOMMAND>`](extension.md)
+- [`morphir extension bundle <FLAGS>`](extension/bundle.md)
 - [`morphir extension install <FLAGS> <NAME>`](extension/install.md)
 - [`morphir extension list`](extension/list.md)
 - [`morphir extension search <QUERY>`](extension/search.md)
