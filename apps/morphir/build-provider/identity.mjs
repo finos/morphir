@@ -6,12 +6,12 @@ import {isWithin} from './paths.mjs';
 export const hash=value=>createHash('sha256').update(value).digest('hex');
 export const fileIdentity=path=>hash(readFileSync(path));
 export const excluded=new Set(['.git','node_modules','.mooncakes','_build']);
-export function treeIdentity(root,{core=false,check=()=>{}}={}) {
+export function treeIdentity(root,{core=false,includeBuild=core,check=()=>{}}={}) {
   const entries=[];root=realpathSync(root);
   function walk(relative) {
     check();
     for(const entry of readdirSync(join(root,relative),{withFileTypes:true}).sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0)) {
-      if(excluded.has(entry.name)&&!(core&&entry.name==='_build'))continue;
+      if(excluded.has(entry.name)&&!(includeBuild&&entry.name==='_build'))continue;
       const path=relative?relative+'/'+entry.name:entry.name,absolute=join(root,path);
       if(entry.isDirectory())walk(path);
       else if(entry.isFile())entries.push([path,'file',fileIdentity(absolute)]);

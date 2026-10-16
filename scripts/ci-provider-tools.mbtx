@@ -1,0 +1,54 @@
+///|
+/// Prepare provider tools independently of the MoonBit native build.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.get_env_var("MORPHIR_PROVIDER_RUST") is Some(rust) else {
+    fail("Pinned Rust checkout required")
+  }
+  let (status, revision, errors) = @process.collect_output(
+    "git",
+    ["rev-parse", "HEAD"],
+    cwd=rust,
+  )
+  guard status == 0 &&
+    revision.text().trim() == "ce68e7d1861b35bf51b6ddcaf6d48d5f93824893" else {
+    fail("Accepted Rust revision required: " + errors.text())
+  }
+  let started = @async.now()
+  @stdio.stderr.write("[provider-tools] Rust build started\n")
+  let code = @process.run(
+    "cargo",
+    [
+      "build", "--locked", "-p", "morphir-package", "--bin", "morphir-provider-snapshot",
+      "--example", "provider-snapshot-fixture",
+    ],
+    cwd=rust,
+    stdout=@stdio.stderr,
+    stderr=@stdio.stderr,
+  )
+  @stdio.stderr.write(
+    "[provider-tools] Rust build finished, exit=" +
+    code.to_string() +
+    ", elapsed_ms=" +
+    (@async.now() - started).to_string() +
+    "\n",
+  )
+  guard code == 0 else { fail("Provider tools build failed") }
+  let directory = @env.get_env_var("MORPHIR_CI_PROVIDER_TOOLS").unwrap_or(
+    ".dev/ci/provider-tools",
+  )
+  let result = @process.run(
+    "moon",
+    ["run", "scripts/ci-artifact.mbtx", "pack", "provider-tools", directory],
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  guard result == 0 else { fail("Provider tools artifact failed") }
+}

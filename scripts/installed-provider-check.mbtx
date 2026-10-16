@@ -19,10 +19,55 @@ import {
 let rust_revision = "ce68e7d1861b35bf51b6ddcaf6d48d5f93824893"
 
 ///|
+let timings : Array[Json] = []
+
+///|
+async fn live(
+  phase : String,
+  program : String,
+  args : Array[String],
+  cwd~ : String = ".",
+  receipts~ : String,
+) -> Unit {
+  let started = @async.now()
+  @stdio.stderr.write("[installed-provider] " + phase + " started\n")
+  let code = @process.run(
+    program,
+    args,
+    cwd~,
+    stdout=@stdio.stderr,
+    stderr=@stdio.stderr,
+  )
+  let elapsed = @async.now() - started
+  timings.push({
+    "phase": phase,
+    "elapsedMs": @json.parse(elapsed.to_string()),
+    "exitCode": code,
+  })
+  let receipt = @ion_json.to_ion(Json::array(timings)).with_annotations([
+    @ion.SymbolToken::new("morphir_ci_phase_timings_v1"),
+  ])
+  @fs.write_file(
+    receipts + "/phase-timings.ionb",
+    @binary.write_binary_value(receipt),
+  )
+  @stdio.stderr.write(
+    "[installed-provider] " +
+    phase +
+    " finished, exit=" +
+    code.to_string() +
+    ", elapsed_ms=" +
+    elapsed.to_string() +
+    "\n",
+  )
+  guard code == 0 else { fail("Installed provider phase failed: " + phase) }
+}
+
+///|
 async fn checked(
   program : String,
   args : Array[String],
-  cwd? : String = ".",
+  cwd~ : String = ".",
 ) -> String {
   let (code, out, err) = @process.collect_output(program, args, cwd~)
   if code != 0 {
@@ -75,67 +120,122 @@ async fn main {
   }
   let receipts = @fs.realpath(receipts)
   // Remove a previous success receipt before any build or assertion can fail.
-  for file in ["summary.ionb", "summary.json", "bridge.json"] {
+  for
+    file in [
+      "summary.ionb", "summary.json", "bridge.json", "phase-timings.ionb", "native-artifact.ionb",
+      "provider-tools-artifact.ionb",
+    ] {
     if @fs.exists(receipts + "/" + file) {
       @fs.remove(receipts + "/" + file)
     }
   }
-  guard @env.get_env_var("MORPHIR_PROVIDER_RUST") is Some(rust) else {
-    fail("Set MORPHIR_PROVIDER_RUST to a clean checkout at " + rust_revision)
-  }
   guard @env.get_env_var("MOON_HOME") is Some(home) else {
     fail("Explicit pinned MOON_HOME required")
   }
-  let rust = @fs.realpath(rust)
-  guard checked("git", ["rev-parse", "HEAD"], cwd=rust) == rust_revision &&
-    checked("git", ["status", "--porcelain", "--untracked-files=all"], cwd=rust) ==
-    "" else {
-    fail("The shared service checkout must match the clean accepted revision")
-  }
   let root = @fs.realpath(@fs.tmpdir(prefix="morphir-installed-provider-"))
   defer @fs.rmdir(root, recursive=true)
-  ignore(
-    checked(
+  let (service, exporter, rust_compiler, service_build_mode) = if @env.get_env_var(
+      "MORPHIR_CI_PROVIDER_TOOLS",
+    )
+    is Some(directory) {
+    let artifact = @json.parse(
+      checked(home + "/bin/moon", [
+        "run", "scripts/ci-artifact.mbtx", "verify", "provider-tools", directory,
+      ]),
+    )
+    let metadata = field(artifact, "metadata")
+    guard string(metadata, "rustRevision") == rust_revision else {
+      fail("Accepted provider revision required")
+    }
+    let directory = string(artifact, "directory")
+    @fs.write_file(
+      receipts + "/provider-tools-artifact.ionb",
+      @fs.read_file(directory + "/manifest.ionb"),
+    )
+    (
+      directory + "/morphir-provider-snapshot",
+      directory + "/provider-snapshot-fixture",
+      string(metadata, "rustCompiler"),
+      string(metadata, "buildMode"),
+    )
+  } else {
+    guard @env.get_env_var("MORPHIR_PROVIDER_RUST") is Some(rust) else {
+      fail("Set MORPHIR_PROVIDER_RUST to a clean checkout at " + rust_revision)
+    }
+    let rust = @fs.realpath(rust)
+    guard checked("git", ["rev-parse", "HEAD"], cwd=rust) == rust_revision &&
+      checked(
+        "git",
+        ["status", "--porcelain", "--untracked-files=all"],
+        cwd=rust,
+      ) ==
+      "" else {
+      fail("The shared service checkout must match the clean accepted revision")
+    }
+    live(
+      "rust-build",
       "cargo",
       [
         "build", "--locked", "-p", "morphir-package", "--bin", "morphir-provider-snapshot",
         "--example", "provider-snapshot-fixture",
       ],
       cwd=rust,
-    ),
-  )
-  let target = match @env.get_env_var("CARGO_TARGET_DIR") {
-    Some(path) => if path.has_prefix("/") { path } else { rust + "/" + path }
-    None => rust + "/target"
+      receipts~,
+    )
+    let target = match @env.get_env_var("CARGO_TARGET_DIR") {
+      Some(path) => if path.has_prefix("/") { path } else { rust + "/" + path }
+      None => rust + "/target"
+    }
+    (
+      @fs.realpath(target + "/debug/morphir-provider-snapshot"),
+      @fs.realpath(target + "/debug/examples/provider-snapshot-fixture"),
+      checked("rustc", ["--version"]),
+      "debug",
+    )
   }
-  let service = @fs.realpath(target + "/debug/morphir-provider-snapshot")
-  let exporter = @fs.realpath(
-    target + "/debug/examples/provider-snapshot-fixture",
-  )
-  let build = ".dev/installed-provider-native"
-  if !@fs.exists(build) {
-    @fs.mkdir(build, recursive=true)
-  }
-  let build = @fs.realpath(build)
-  ignore(
-    checked(
+  let native_source = if @env.get_env_var("MORPHIR_CI_NATIVE")
+    is Some(directory) {
+    let artifact = @json.parse(
+      checked(home + "/bin/moon", [
+        "run", "scripts/ci-artifact.mbtx", "verify", "native-cli", directory,
+      ]),
+    )
+    guard string(field(artifact, "metadata"), "buildMode") == "release" else {
+      fail("Native release artifact required")
+    }
+    let directory = string(artifact, "directory")
+    @fs.write_file(
+      receipts + "/native-artifact.ionb",
+      @fs.read_file(directory + "/manifest.ionb"),
+    )
+    directory + "/morphir-native"
+  } else {
+    let build = ".dev/installed-provider-native"
+    if !@fs.exists(build) {
+      @fs.mkdir(build, recursive=true)
+    }
+    let build = @fs.realpath(build)
+    live(
+      "native-build",
       home + "/bin/moon",
       ["build", "--target", "native", "--release", "--target-dir", build],
       cwd="apps/morphir",
-    ),
-  )
+      receipts~,
+    )
+    build + "/native/release/build/morphir/morphir/morphir.exe"
+  }
   let native = root + "/morphir-native"
-  @fs.write_file(
-    native,
-    @fs.read_file(build + "/native/release/build/morphir/morphir/morphir.exe"),
-  )
+  @fs.write_file(native, @fs.read_file(native_source))
   @fs.chmod(native, 0o755)
   // Execute the compiler-produced file directly; no repository launcher wraps it.
-  ignore(
-    checked("node", [
+  live(
+    "installed-qualification",
+    "node",
+    [
       "apps/morphir/scripts/test-installed-authenticated.js", root, service, exporter,
-      native, rust_revision, receipts,
-    ]),
+      native, rust_revision, receipts, rust_compiler, service_build_mode,
+    ],
+    receipts~,
   )
   let summary = @fs.read_file(receipts + "/bridge.json").json()
   guard field(summary, "auditFiles") is Array(files) && files.length() == 2 else {

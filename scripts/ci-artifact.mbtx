@@ -1,0 +1,328 @@
+///|
+/// Same-run CI artifacts. Binary Ion is authoritative; stdout is a JSON view.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonrockz/ion@0.3.0/binary",
+  "moonrockz/ion@0.3.0/ion",
+  "moonrockz/ion@0.3.0/json" @ion_json,
+}
+
+///|
+let profile = "morphir_ci_artifact_v1"
+
+///|
+async fn output(
+  program : String,
+  args : Array[String],
+  cwd~ : String = ".",
+) -> String {
+  let (code, out, err) = @process.collect_output(program, args, cwd~)
+  guard code == 0 else { fail(program + ": " + err.text() + out.text()) }
+  out.text().trim().to_owned()
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+fn text(value : Json, name : String) -> String raise {
+  guard field(value, name) is String(value) else {
+    fail("Missing field: " + name)
+  }
+  value
+}
+
+///|
+fn names(kind : String) -> Array[String] raise {
+  match kind {
+    "native-cli" => ["morphir-native"]
+    "provider-tools" =>
+      ["morphir-provider-snapshot", "provider-snapshot-fixture"]
+    _ => fail("Unknown artifact kind: " + kind)
+  }
+}
+
+///|
+async fn digest(path : String) -> String {
+  guard @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("Artifact must be a regular file: " + path)
+  }
+  output("node", [
+    "-e", "process.stdout.write(require('crypto').createHash('sha256').update(require('fs').readFileSync(process.argv[1])).digest('hex'))",
+    path,
+  ])
+}
+
+///|
+async fn context(kind : String) -> Json {
+  let repo = @fs.realpath(".")
+  let home = @env.get_env_var("MOON_HOME").unwrap_or("")
+  let host = @json.parse(
+    output("node", [
+      "--input-type=module",
+      "-e",
+      (
+        #|import assert from 'node:assert/strict';
+        #|import {join} from 'node:path';import {pathToFileURL} from 'node:url';
+        #|import {readFileSync} from 'node:fs';
+        #|const [repo,home,kind]=process.argv.slice(1);
+        #|const value={repository:process.env.GITHUB_REPOSITORY||'local',runId:process.env.GITHUB_RUN_ID||'local',platform:process.platform,arch:process.arch,imageVersion:process.env.ImageVersion||'local'};
+        #|assert.ok(['linux','darwin'].includes(process.platform),'Unsupported CI artifact host');
+        #|if(kind==='native-cli'){
+        #| const {compilerIdentity,stableVersion,run}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/capabilities.mjs')));
+        #| const {treeIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/identity.mjs')));
+        #| assert.ok(run(join(home,'bin/moonc'),['-v']).startsWith('v'+stableVersion+' '));
+        #| assert.equal(readFileSync(join(home,'lib/core/moon.mod'),'utf8').match(/^\s*version\s*=\s*"([^"]+)"/m)?.[1],stableVersion);
+        #| Object.assign(value,{compilerVersion:stableVersion,compilerIdentity:compilerIdentity(home),coreSourceIdentity:treeIdentity(join(home,'lib/core'),{core:true,includeBuild:false})});
+        #|}
+        #|console.log(JSON.stringify(value));
+      ),
+      repo,
+      home,
+      kind,
+    ]),
+  )
+  guard host is Object(fields) else { fail("Expected artifact context") }
+  let revision = output("git", ["rev-parse", "HEAD"])
+  if @env.get_env_var("GITHUB_SHA") is Some(expected) {
+    guard revision == expected else {
+      fail("Checkout does not match GITHUB_SHA")
+    }
+  }
+  fields.set("revision", Json::string(revision))
+  Json::object(fields)
+}
+
+///|
+async fn write_catalog(
+  kind : String,
+  directory : String,
+  context : Json,
+  metadata : Json,
+) -> Json {
+  let files = []
+  for name in names(kind) {
+    files.push({ "name": name, "sha256": digest(directory + "/" + name) })
+  }
+  let manifest : Json = {
+    "profile": "morphir-ci-artifact-v1",
+    "kind": kind,
+    "context": context,
+    "metadata": metadata,
+    "files": files,
+  }
+  let ion = @ion_json.to_ion(manifest).with_annotations([
+    @ion.SymbolToken::new(profile),
+  ])
+  @fs.write_file(directory + "/manifest.ionb", @binary.write_binary_value(ion))
+  manifest
+}
+
+///|
+async fn admit(kind : String, directory : String, expected : Json) -> Json {
+  guard @fs.kind(directory + "/manifest.ionb", follow_symlink=false) is Regular else {
+    fail("Artifact catalog must be regular")
+  }
+  guard @fs.file_size(directory + "/manifest.ionb") <= 65536 else {
+    fail("Artifact catalog too large")
+  }
+  let bytes = @fs.read_file(directory + "/manifest.ionb").binary()
+  let value = @binary.read_binary_value(bytes[:])
+  guard value.annotations().length() == 1 &&
+    value.annotations()[0].text() == Some(profile) else {
+    fail("Artifact annotation")
+  }
+  let manifest = @ion_json.to_json(value.with_annotations([]))
+  guard text(manifest, "profile") == "morphir-ci-artifact-v1" &&
+    text(manifest, "kind") == kind else {
+    fail("Artifact profile/kind")
+  }
+  guard field(manifest, "context") == expected else {
+    fail("Artifact source/run/platform/toolchain mismatch")
+  }
+  let expected_names = names(kind)
+  guard field(manifest, "files") is Array(files) &&
+    files.length() == expected_names.length() else {
+    fail("Artifact inventory")
+  }
+  for i = 0; i < files.length(); i = i + 1 {
+    let name = expected_names[i]
+    guard text(files[i], "name") == name else { fail("Artifact filename") }
+    guard text(files[i], "sha256") == digest(directory + "/" + name) else {
+      fail("Artifact digest: " + name)
+    }
+  }
+  // GitHub artifact downloads do not retain executable mode. Restore only admitted files.
+  for name in expected_names {
+    @fs.chmod(directory + "/" + name, 0o755)
+  }
+  {
+    "directory": @fs.realpath(directory),
+    "metadata": field(manifest, "metadata"),
+    "manifest": manifest,
+  }
+}
+
+///|
+async fn pack(kind : String, directory : String) -> Json {
+  if !@fs.exists(directory) {
+    @fs.mkdir(directory, recursive=true)
+  }
+  let catalog = directory + "/manifest.ionb"
+  if @fs.exists(catalog) {
+    @fs.remove(catalog)
+  }
+  guard output("git", ["status", "--porcelain", "--untracked-files=all"]) == "" else {
+    fail("Publish CI artifacts only from a clean checkout")
+  }
+  let identity = context(kind)
+  let metadata : Json = if kind == "native-cli" {
+    let source = "_build/native/release/build/morphir/morphir/morphir.exe"
+    @fs.write_file(
+      directory + "/morphir-native",
+      @fs.read_file(source),
+      permission=0o755,
+    )
+    { "buildMode": "release" }
+  } else {
+    let rust = @env.get_env_var("MORPHIR_PROVIDER_RUST").unwrap_or("")
+    guard rust != "" &&
+      output(
+        "git",
+        ["status", "--porcelain", "--untracked-files=all"],
+        cwd=rust,
+      ) ==
+      "" else {
+      fail("Clean provider source required")
+    }
+    let target = match @env.get_env_var("CARGO_TARGET_DIR") {
+      Some(path) => if path.has_prefix("/") { path } else { rust + "/" + path }
+      None => rust + "/target"
+    }
+    for
+      (name, source) in [
+        (
+          "morphir-provider-snapshot",
+          target + "/debug/morphir-provider-snapshot",
+        ),
+        (
+          "provider-snapshot-fixture",
+          target + "/debug/examples/provider-snapshot-fixture",
+        ),
+      ] {
+      @fs.write_file(
+        directory + "/" + name,
+        @fs.read_file(source),
+        permission=0o755,
+      )
+    }
+    {
+      "buildMode": "debug",
+      "rustRevision": output("git", ["rev-parse", "HEAD"], cwd=rust),
+      "rustCompiler": output("rustc", ["--version"]),
+      "rustProfile": {
+        "name": "dev",
+        "debugInfo": @env.get_env_var("CARGO_PROFILE_DEV_DEBUG").unwrap_or(
+          "default",
+        ),
+        "strip": @env.get_env_var("CARGO_PROFILE_DEV_STRIP").unwrap_or(
+          "default",
+        ),
+        "debugAssertions": @env.get_env_var(
+          "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS",
+        ).unwrap_or("default"),
+        "overflowChecks": @env.get_env_var("CARGO_PROFILE_DEV_OVERFLOW_CHECKS").unwrap_or(
+          "default",
+        ),
+      },
+    }
+  }
+  ignore(write_catalog(kind, directory, identity, metadata))
+  admit(kind, directory, identity)
+}
+
+///|
+async fn self_test() -> Unit {
+  let root = @fs.tmpdir(prefix="morphir-ci-artifact-test-")
+  defer @fs.rmdir(root, recursive=true)
+  let kind = "native-cli"
+  let expected : Json = {
+    "revision": "accepted",
+    "platform": "fixture",
+    "runId": "123",
+  }
+  @fs.write_file(root + "/morphir-native", "compiled fixture bytes")
+  ignore(write_catalog(kind, root, expected, { "buildMode": "release" }))
+  ignore(admit(kind, root, expected))
+  let invalid_contexts : Array[Json] = [
+    { "revision": "stale", "platform": "fixture", "runId": "123" },
+    { "revision": "accepted", "platform": "other", "runId": "123" },
+    { "revision": "accepted", "platform": "fixture", "runId": "122" },
+  ]
+  for bad in invalid_contexts {
+    try ignore(admit(kind, root, bad)) catch {
+      _ => ()
+    } noraise {
+      _ => fail("Expected artifact context rejection")
+    }
+  }
+  try ignore(admit("provider-tools", root, expected)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected wrong artifact kind rejection")
+  }
+  @fs.write_file(root + "/original", "compiled fixture bytes")
+  @fs.remove(root + "/morphir-native")
+  @fs.symlink(target=root + "/original", root + "/morphir-native")
+  try ignore(admit(kind, root, expected)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected executable symlink rejection")
+  }
+  @fs.remove(root + "/morphir-native")
+  @fs.write_file(root + "/morphir-native", "tampered bytes")
+  try ignore(admit(kind, root, expected)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected binary tampering rejection")
+  }
+  @fs.remove(root + "/manifest.ionb")
+  try ignore(admit(kind, root, expected)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected missing manifest rejection")
+  }
+  println(
+    "CI artifact admission: valid reuse, stale revision, host/run mismatch, wrong kind, executable symlink, tampered bytes and missing catalog passed",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    return
+  }
+  guard args.length() == 4 else {
+    fail(
+      "Usage: ci-artifact.mbtx pack|verify native-cli|provider-tools DIRECTORY",
+    )
+  }
+  ignore(names(args[2]))
+  let result = match args[1] {
+    "pack" => pack(args[2], args[3])
+    "verify" => admit(args[2], @fs.realpath(args[3]), context(args[2]))
+    _ => fail("Unknown artifact operation")
+  }
+  println(result.stringify())
+}

@@ -1,0 +1,263 @@
+name: Native qualification
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: Qualified native runner label
+        required: true
+        type: string
+
+# Each caller owns one platform's graph. macOS never waits for the Linux Rust build.
+# Publish compiled tools before acceptance, and preserve fresh fixture/trust state.
+jobs:
+  native-cli:
+    name: Native CLI artifact (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Install pinned MoonBit
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          mise install http:moonbit
+          moonbit_dir="$(mise where http:moonbit)"
+          moonbit_version="$(mise current http:moonbit)"
+          # The binary archive omits core; install the matching complete toolchain.
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+
+      - name: Resolve pinned workspace packages
+        run: moon update
+      - name: Test artifact admission
+        run: moon run scripts/ci-artifact.mbtx --self-test
+      - name: Build native workspace release
+        if: runner.os == 'Linux'
+        run: moon build --target native --release
+      - name: Build native CLI release
+        if: runner.os == 'macOS'
+        run: moon -C apps/morphir build --target native --release
+      - name: Catalog native executable
+        run: moon run scripts/ci-artifact.mbtx pack native-cli .dev/ci/native
+      - name: Publish native executable immediately
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-native-${{ inputs.runner }}
+          path: |
+            .dev/ci/native/morphir-native
+            .dev/ci/native/manifest.ionb
+          if-no-files-found: error
+          overwrite: true
+
+  native-acceptance:
+    name: Native acceptance
+    runs-on: ubuntu-24.04
+    needs: native-cli
+    if: inputs.runner == 'ubuntu-24.04'
+    timeout-minutes: 45
+    env:
+      MORPHIR_CI_NATIVE: ${{ github.workspace }}/.dev/ci/native
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Install pinned MoonBit
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          mise install http:moonbit
+          moonbit_dir="$(mise where http:moonbit)"
+          moonbit_version="$(mise current http:moonbit)"
+          # The binary archive omits core; install the matching complete toolchain.
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+
+      - name: Resolve pinned workspace packages
+        run: moon update
+      - name: Download this run's Linux native executable
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-native-ubuntu-24.04
+          path: .dev/ci/native
+      - name: Admit native executable
+        run: moon run scripts/ci-artifact.mbtx verify native-cli "$MORPHIR_CI_NATIVE"
+      - name: Smoke-test admitted native CLI without rebuilding
+        run: npm --prefix apps/morphir test -- native
+      - name: Test acquisition without a MoonBit installation
+        run: node apps/morphir/scripts/test-acquisition.js "$MORPHIR_CI_NATIVE/morphir-native"
+
+      - name: Compile generated libraries and verify private build lifecycle
+        run: bash .config/mise/tasks/test/compiler
+
+      - name: Compare original MoonBit source and lowered Boolean libraries
+        env:
+          MORPHIR_FRONTEND_RECEIPTS: .dev/frontend-ci
+        run: mise run test:moonbit-frontend
+
+      - name: Retain Boolean frontend acceptance identities
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: moonbit-frontend-native
+          path: .dev/frontend-ci/
+          if-no-files-found: error
+
+      - name: Independent semantic conformance and evaluator codec
+        env:
+          MORPHIR_CONFORMANCE_RECEIPTS: .dev/conformance-ci
+        run: mise run test:conformance
+
+      - name: Retain separate evaluator coverage receipts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: conformance-native
+          path: .dev/conformance-ci/
+          if-no-files-found: warn
+
+
+  provider-tools:
+    name: Provider tools artifact (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 40
+    env:
+      MORPHIR_PROVIDER_RUST: ${{ github.workspace }}/.dev/provider-rust
+      MORPHIR_CI_PROVIDER_TOOLS: .dev/ci/provider-tools
+      CARGO_BUILD_JOBS: '2'
+      # Identity admission hashes these files repeatedly. Keep the dev behavior,
+      # but omit debugger/symbol data that the black-box qualification never uses.
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_DEV_STRIP: symbols
+      CARGO_PROFILE_DEV_DEBUG_ASSERTIONS: 'true'
+      CARGO_PROFILE_DEV_OVERFLOW_CHECKS: 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Checkout accepted shared fixture and service source
+        uses: actions/checkout@v6
+        with:
+          repository: finos/morphir-rust
+          ref: ce68e7d1861b35bf51b6ddcaf6d48d5f93824893
+          path: .dev/provider-rust
+          persist-credentials: false
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Install pinned MoonBit
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          mise install http:moonbit
+          moonbit_dir="$(mise where http:moonbit)"
+          moonbit_version="$(mise current http:moonbit)"
+          # The binary archive omits core; install the matching complete toolchain.
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+
+      - name: Install pinned Rust
+        run: mise install rust@1.98.1
+      - name: Resolve pinned workspace packages
+        run: moon update
+      - name: Prepare pinned provider tools with live progress
+        run: mise exec rust@1.98.1 -- moon run scripts/ci-provider-tools.mbtx
+      - name: Publish provider tools
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-provider-tools-${{ inputs.runner }}
+          path: |
+            .dev/ci/provider-tools/morphir-provider-snapshot
+            .dev/ci/provider-tools/provider-snapshot-fixture
+            .dev/ci/provider-tools/manifest.ionb
+          if-no-files-found: error
+          overwrite: true
+
+  installed-provider:
+    name: Installed signed provider (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    needs: [native-cli, provider-tools]
+    timeout-minutes: 60
+    env:
+      MORPHIR_CI_NATIVE: ${{ github.workspace }}/.dev/ci/native
+      MORPHIR_CI_PROVIDER_TOOLS: ${{ github.workspace }}/.dev/ci/provider-tools
+      MORPHIR_PROVIDER_RECEIPTS: .dev/installed-provider-ci
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Install pinned MoonBit
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          mise install http:moonbit
+          moonbit_dir="$(mise where http:moonbit)"
+          moonbit_version="$(mise current http:moonbit)"
+          # The binary archive omits core; install the matching complete toolchain.
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+
+      - name: Resolve pinned workspace packages
+        run: moon update
+      - name: Download this run's native executable
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-native-${{ inputs.runner }}
+          path: .dev/ci/native
+      - name: Download this run's provider tools
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-provider-tools-${{ inputs.runner }}
+          path: .dev/ci/provider-tools
+      - name: Qualify installed npm and native clients with fresh signed fixtures
+        run: mise run test:installed-provider
+      - name: Retain exact installed identities, timings and admission evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: installed-provider-${{ inputs.runner }}
+          path: .dev/installed-provider-ci/
+          if-no-files-found: error

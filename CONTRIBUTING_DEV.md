@@ -150,14 +150,50 @@ mise run test          # Run all tests
 
 ## Continuous Integration
 
-Our CI workflow runs on every push and pull request:
+CI runs on pull requests, merge-queue commits and pushes to main. Lint, formatting and
+configuration validation always run. Documentation-only pull requests skip code jobs;
+site changes also build and test the site.
 
-1. **Lint Job**: Checks YAML and Moonbit code formatting
-2. **Format Check Job**: Ensures code is properly formatted
-3. **Build Job**: Builds for both WASI and browser targets (runs in parallel with lint)
-4. **Test Job**: Runs all package tests (runs in parallel with lint)
+Code jobs qualify Wasm, Wasm GC, JavaScript and native targets. Native producers build a
+release executable on Ubuntu 24.04 and macOS 15 and publish it before acceptance tests
+start. Linux native acceptance and installed signed-provider qualification reuse those
+executables. Rust provider preparation runs in parallel with native compilation. CI uses the Rust
+dev profile with debug assertions and overflow checks enabled, but removes debugger and
+symbol data. Admission repeatedly hashes the selected executable, so carrying hundreds
+of megabytes of debug data slows every case. The artifact catalog records these explicit
+profile settings. Local source builds keep their normal profile defaults.
 
-Lint and format checks run in parallel with the test job to speed up CI.
+Each executable artifact has a binary Ion catalog. Consumers verify the repository,
+commit, workflow run, platform, architecture, runner image and executable SHA-256.
+Native consumers also verify the pinned compiler and core source identities. Artifacts
+are scoped to a workflow run, including reruns of individual jobs. They never reuse
+trust state, signed fixtures, grants, project outputs or qualification receipts.
+
+The installed-provider job still runs all qualification cases against both the npm and
+native clients. Long phases stream their output and report elapsed milliseconds.
+The `installed-provider-<os>` artifact retains `phase-timings.ionb`, the admitted tool
+catalogs, the qualification summary and audit evidence. Its summary records the actual
+Rust compiler and service build mode.
+
+Local qualification keeps its source-build defaults:
+
+```sh
+MORPHIR_PROVIDER_RUST=/path/to/clean/accepted/morphir-rust mise run test:installed-provider
+```
+
+To reproduce CI reuse, first build from a clean MoonBit checkout with the pinned complete
+toolchain and Node available. Keep all artifact directories outside tracked paths:
+
+```sh
+moon build --target native --release
+moon run scripts/ci-artifact.mbtx pack native-cli .dev/ci/native
+MORPHIR_PROVIDER_RUST=/path/to/clean/accepted/morphir-rust moon run scripts/ci-provider-tools.mbtx
+MORPHIR_CI_NATIVE="$PWD/.dev/ci/native" MORPHIR_CI_PROVIDER_TOOLS="$PWD/.dev/ci/provider-tools" mise run test:installed-provider
+```
+
+`moon run scripts/ci-artifact.mbtx --self-test` checks artifact admission and rejection.
+The required `ci-ok` aggregate includes producers and consumers, so a failed producer
+cannot be hidden by a skipped consumer.
 
 ## Pull Request Process
 

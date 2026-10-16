@@ -630,11 +630,18 @@ function exercise(command, prefix, directory, target, buildHelper = join(appDire
 
 for (const target of selected) {
   assert.ok(targets.includes(target), `Unknown target: ${target}`);
-  execFileSync("moon", ["build", "--target", target, "--release"], {cwd: appDirectory, stdio:"inherit"});
+  let admittedNative;
+  if (target === "native" && process.env.MORPHIR_CI_NATIVE) {
+    const artifact = JSON.parse(execFileSync("moon", ["run", "scripts/ci-artifact.mbtx", "verify", "native-cli", process.env.MORPHIR_CI_NATIVE], {cwd: workspaceDirectory, encoding: "utf8"}));
+    assert.equal(artifact.metadata.buildMode, "release");
+    admittedNative = join(artifact.directory, "morphir-native");
+  } else {
+    execFileSync("moon", ["build", "--target", target, "--release"], {cwd: appDirectory, stdio:"inherit"});
+  }
   const artifactDirectory = join(workspaceDirectory, "_build", target, "release/build/morphir/morphir");
   const directory = mkdtempSync(join(tmpdir(), "morphir-cli-"));
   try {
-    if (target === "native") exercise(join(artifactDirectory,"morphir.exe"), [], directory, target);
+    if (target === "native") exercise(admittedNative || join(artifactDirectory,"morphir.exe"), [], directory, target);
     else if (target === "js") exercise(process.execPath, [join(artifactDirectory,"morphir.js")], directory, target);
     else {
       const artifact = join(artifactDirectory,"morphir.wasm");

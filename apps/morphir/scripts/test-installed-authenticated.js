@@ -12,8 +12,10 @@ import {isQuiescent} from '../build-provider/test-process-quiescence.mjs';
 
 // Invoked by installed-provider-check.mbtx. JSON is the explicit test-control
 // bridge; the orchestrator validates binary Ion audit logs and writes the receipt.
-const [selectedRoot,service,exporter,native,rustRevision,receipts]=process.argv.slice(2);
+const [selectedRoot,service,exporter,native,rustRevision,receipts,selectedRustCompiler,selectedServiceBuildMode]=process.argv.slice(2);
 assert.ok([selectedRoot,service,exporter,native,rustRevision,receipts].every(Boolean));
+assert.ok(['debug','release'].includes(selectedServiceBuildMode||'debug'));
+if(selectedRustCompiler)assert.match(selectedRustCompiler,/^rustc \d+\.\d+\.\d+/);
 const root=realpathSync(selectedRoot);
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const home=process.env.MOON_HOME;assert.ok(home,'Explicit pinned MOON_HOME required');
@@ -46,6 +48,7 @@ const predicate='morphir://ir/pkg/morphir/naming?format=4.1.0';
 const auditFiles=[],checkpointFiles=[],rows=[];
 
 function scenario(client,name,{before=()=>{},variant='compatible'}={}) {
+  console.error(`[installed-provider] ${client.id}: ${name}`);
   const directory=join(root,client.id+'-'+name);mkdirSync(directory);
   const fixture=join(directory,'fixture');
   run(exporter,[fixture,'--provision-test-trust','--variant',variant]);
@@ -233,6 +236,7 @@ function compileConsumer(s,client) {
     writeFileSync(join(workspace,'consumer/moon.pkg'),'import {'+JSON.stringify(module)+' @model}\n');
     writeFileSync(join(workspace,'consumer/consumer_test.mbt'),'///|\ntest "independent signed API contract" {\n  assert_eq(@model.authenticated_ready(), true)\n  assert_eq(@model.copy(), true)\n  assert_eq(@model.wanted(), false)\n}\n');
     for(const target of ['js','native']) {
+      console.error(`[installed-provider] ${client.id}: compile ${project} consumer for ${target}`);
       const result=run(moon,['test','consumer','--frozen','--target',target],{cwd:workspace});
       assert.match(result.stdout,/Total tests: 1, passed: 1, failed: 0/);
       writeFileSync(join(receipts,basename(s.directory)+'-consumer-'+project+'-'+target+'.log'),result.stdout+'\n'+result.stderr);
@@ -380,6 +384,6 @@ for(const client of [{id:'npm',program:process.execPath,prefix:[join(installed,'
   unconfirmedCleanup(client,positive);
 }
 assert.equal(rows.length,60,'Complete installed qualification coverage for both clients');
-const summary={profile:'morphir-installed-authenticated-v1',rustRevision,packageIntegrity:pack.integrity,cliNativeSha256:fileIdentity(native),cliJsSha256:fileIdentity(join(installed,'dist/morphir.js')),cliBuildMode:'release',nodeSha256:fileIdentity(process.execPath),node:process.version,platform:process.platform,arch:process.arch,serviceSha256:fileIdentity(service),serviceBuildMode:'debug',rustCompiler:run('rustc',['--version']).stdout.trim(),fixtureExporterSha256:fileIdentity(exporter),modelSha256:hash(template),helperBundleSha256:helperBundle,compilerIdentity:capability.compilerIdentity,coreIdentity:capability.coreIdentity,executionProfile:'local-library-mvp',profileVersion:'0.1.0-draft.1',assurance:'portable',rows,auditFiles,checkpointFiles,remaining:[],completeTask6:true};
+const summary={profile:'morphir-installed-authenticated-v1',rustRevision,packageIntegrity:pack.integrity,cliNativeSha256:fileIdentity(native),cliJsSha256:fileIdentity(join(installed,'dist/morphir.js')),cliBuildMode:'release',nodeSha256:fileIdentity(process.execPath),node:process.version,platform:process.platform,arch:process.arch,serviceSha256:fileIdentity(service),serviceBuildMode:selectedServiceBuildMode||'debug',rustCompiler:selectedRustCompiler||run('rustc',['--version']).stdout.trim(),fixtureExporterSha256:fileIdentity(exporter),modelSha256:hash(template),helperBundleSha256:helperBundle,compilerIdentity:capability.compilerIdentity,coreIdentity:capability.coreIdentity,executionProfile:'local-library-mvp',profileVersion:'0.1.0-draft.1',assurance:'portable',rows,auditFiles,checkpointFiles,remaining:[],completeTask6:true};
 jsonFile(join(receipts,'bridge.json'),summary);
 console.log('Installed signed provider checks passed for npm and native clients.');
