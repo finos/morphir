@@ -1,0 +1,15 @@
+import {
+  "finos/morphir-moonbit" @generator,
+  "finos/morphir-ir/json" @ir_json,
+  "finos/morphir-ir/wire",
+  "moonbitlang/core/string" @strconv,
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/buffer",
+}
+
+import {
+  "finos/morphir-moonbit/mep",
+  "finos/morphir-moonbit/fixtures",
+} for "test"

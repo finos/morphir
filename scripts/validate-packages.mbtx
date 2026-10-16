@@ -22,6 +22,7 @@ let packages : Array[String] = [
   "pkgs/morphir-engine", "pkgs/morphir-host", "pkgs/morphir-core", "pkgs/morphir-moonbit-bindings",
   "pkgs/morphir-metadata", "pkgs/morphir-moonbit", "pkgs/morphir-typing", "pkgs/morphir-sdk-spec", "apps/morphir",
   "apps/morphir-workbench",
+  "apps/morphir-extension",
 ]
 
 ///|

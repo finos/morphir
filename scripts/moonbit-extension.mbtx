@@ -1,0 +1,64 @@
+///|
+/// Build, bundle or qualify the native MoonBit MEP guest. Host acquisition is explicit.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn checked(program : String, args : Array[String]) -> Unit {
+  let code = @process.run(
+    program,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  guard code == 0 else { fail(program + " failed") }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 2 && ["build", "bundle", "test"].contains(args[1]) else {
+    fail("Expected build, bundle or test")
+  }
+  let action = args[1]
+  if action == "test" {
+    checked("moon", ["test", "--target", "native", "pkgs/morphir-moonbit/mep"])
+  }
+  let packages = if action == "test" {
+    ["apps/morphir-extension", "apps/morphir-extension/acceptance"]
+  } else {
+    ["apps/morphir-extension"]
+  }
+  checked("moon", ["build", "--target", "native", "--release"] + packages)
+  let prefix = "_build/native/release/build/finos/morphir-extension/"
+  let guest = @fs.realpath(prefix + "morphir-extension.exe")
+  if action == "build" {
+    println(guest)
+    return
+  }
+  if action == "test" {
+    checked(@fs.realpath(prefix + "acceptance/acceptance.exe"), [
+      guest,
+      @fs.realpath("."),
+      @env.get_env_var("MORPHIR_MEP_EVIDENCE").unwrap_or(".dev/mep-process"),
+    ])
+    return
+  }
+  guard @env.get_env_var("MORPHIR_MEP_HOST") is Some(host) &&
+    @env.get_env_var("MORPHIR_MEP_PLATFORM") is Some(platform) &&
+    @env.get_env_var("MORPHIR_MEP_BUNDLE") is Some(output) else {
+    fail(
+      "MORPHIR_MEP_HOST, MORPHIR_MEP_PLATFORM and MORPHIR_MEP_BUNDLE are required",
+    )
+  }
+  checked(@fs.realpath(host), [
+    "--no-banner", "extension", "bundle", "--executable", guest, "--extension-id",
+    "morphir-moonbit", "--short-id", "moonbit", "--version", "0.1.0", "--platform",
+    platform, "--output", output,
+  ])
+}

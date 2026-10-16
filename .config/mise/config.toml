@@ -66,6 +66,18 @@ run = "moon run scripts/conformance-check.mbtx"
 description = "Compare original Boolean MoonBit models, Scheme and generated libraries"
 run = "moon run scripts/moonbit-frontend-check.mbtx"
 
+[tasks."build:extension"]
+description = "Build the native MoonBit MEP backend"
+run = "moon run scripts/moonbit-extension.mbtx build"
+
+[tasks."bundle:extension"]
+description = "Bundle the MoonBit guest using an explicit canonical host and target"
+run = "moon run scripts/moonbit-extension.mbtx bundle"
+
+[tasks."test:mep-process"]
+description = "Qualify MEP stdio; add explicit host/digest/target pins for installed acceptance"
+run = "moon run scripts/moonbit-extension.mbtx test"
+
 [tasks."sdk-spec:generate"]
 description = "Regenerate pkgs/morphir-sdk-spec/sdk_data.mbt from pkgs/morphir-sdk-spec/sdk.scm"
 run = "moon run scripts/sdk-spec-generate.mbtx"

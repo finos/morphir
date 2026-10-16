@@ -63,6 +63,16 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+      - name: Qualify the native MoonBit MEP backend process
+        run: mise run test:mep-process
+      - name: Retain MEP process qualification receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mep-process-${{ inputs.runner }}
+          path: .dev/mep-process/
+          if-no-files-found: warn
+
   native-acceptance:
     name: Native acceptance
     runs-on: ubuntu-24.04
