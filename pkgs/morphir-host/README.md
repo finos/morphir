@@ -80,7 +80,7 @@ engine capabilities remain supported independently.
 
 Run WASM artifacts with `node pkgs/morphir-host/runners/wasm.mjs <artifact.wasm> [arguments]`. The runner preopens the current directory for WASI. Other WASI runners can supply equivalent arguments, environment and preopens. There are no Moonrun-specific imports in the WASI CLI.
 
-WASM-GC exchanges JSON responses through opaque UTF-16 string handles. Imports are `begin`, `append`, `length`, `at` and `request`; `request` takes operation and two string arguments and returns `{value: ...}` or `{error: ...}`. The supplied runner implements filesystem operations, arguments, environment, platform identity, stderr and exit. Console output uses `spectest.print_char`. These imports are an explicit embedding contract, not WASI.
+WASM-GC exchanges JSON responses through opaque UTF-16 string handles. Imports are `begin`, `append`, `length`, `at` and `request`; `request` takes operation and two string arguments and returns `{value: ...}` or `{error: ...}`. The supplied runner implements filesystem operations, arguments, environment, platform identity, stderr and exit. Console output uses `spectest.print_char`. MoonBit core also declares `__moonbit_sys_unstable.exit(code)`, which the CLI does not call; a host must still supply it, and the supplied runner exits the process. These imports are an explicit embedding contract, not WASI.
 
 Optional WASM-GC operations `bytes_supported`, `read_bytes` and `write_bytes`
 extend this interface. `bytes_supported` returns true when both byte operations

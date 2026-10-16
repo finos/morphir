@@ -1,5 +1,5 @@
 ///|
-/// ArgParser receives explicit argv; host IO and process exit stay in main.
+/// The parser receives explicit argv; host IO and process exit stay in main.
 struct Cli {
   command : String
   flags : Map[String, Bool]
@@ -166,123 +166,87 @@ fn error_output_mode(args : Array[String]) -> OutputMode {
 }
 
 ///|
-/// ArgParser's automatic --help handler raises immediately. Use a private
-/// alias so help is an ordinary flag and the entire Morphir segment is checked.
-/// Reject the alias in user input; never expose it in generated help.
-let help_alias : String = "--morphir-internal-help"
+/// Options whose values may start with `-`, such as a negative tolerance.
+let hyphen_options : Array[String] = [
+  "absolute-tolerance", "relative-tolerance",
+]
+
+///|
+/// The argparse command for `path`, built from `command_schema`. Help, version and the help subcommand are off:
+/// help is an ordinary global flag, so the whole Morphir segment is checked and `render_help` writes the text.
+fn command_spec(path : String, name : String) -> @argparse.Command {
+  let schema = command_schema(path)
+  let flags = schema.flags.map(flag => @argparse.FlagArg(flag))
+  if path == "" {
+    flags.push(@argparse.FlagArg("help", short='h', global=true))
+    flags.push(@argparse.FlagArg("json", global=true))
+    flags.push(@argparse.FlagArg("json-lines", global=true))
+  }
+  let options = schema.options.map(option => {
+    @argparse.OptionArg(
+      option,
+      action=Append,
+      allow_hyphen_values=hyphen_options.contains(option),
+    )
+  })
+  let positionals = if schema.positional {
+    [@argparse.PositionArg("path", num_args=@argparse.ValueRange(upper=1))]
+  } else {
+    []
+  }
+  let subcommands = schema.children.map(child => {
+    command_spec(if path == "" { child } else { path + " " + child }, child)
+  })
+  @argparse.Command(
+    name,
+    flags~,
+    options~,
+    positionals~,
+    subcommands~,
+    disable_help_flag=true,
+    disable_version_flag=true,
+    disable_help_subcommand=true,
+  )
+}
 
 ///|
 fn parse_cli(args : Array[String]) -> Cli raise {
   let head = option_args(args)
-  let command = Ref("")
+  let matches = command_spec("", "morphir").parse(argv=head, env=Map([])) catch {
+    error => raise @config.Invalid(error.to_string())
+  }
+  let mut command = ""
   let flags : Map[String, Bool] = Map([])
   let entries : Map[String, Array[String]] = Map([])
-  let names = (pipeline_options +
-  execution_options +
-  conformance_options +
-  ["package", "metadata-grants", "metadata-timeout"]).fold(
-    (names : Array[String], name) => {
-      if !names.contains(name) {
-        names.push(name)
+  let mut level = Some(matches)
+  while level is Some(current) {
+    for name, set in current.flags {
+      if set {
+        flags[name] = true
       }
-      names
-    },
-    init=[],
-  )
-  let specs : Array[(String, String, @argparser.Spec, String)] = []
-  for
-    name in global_flags + ["all", "dry-run", "file", "directory", "yes", "log"] {
-    let token = if name == "help" { help_alias } else { "--" + name }
-    specs.push(
-      (
-        token,
-        token,
-        @argparser.Unit(() => {
-          if !global_flags.contains(name) &&
-            !command_schema(command.val).flags.contains(name) {
-            raise @config.Invalid(
-              "Unexpected option: --" + name + "\n" + render_help(command.val),
-            )
-          }
-          flags[name] = true
-        }),
-        "",
-      ),
-    )
-  }
-  for name in names {
-    let token = "--" + name
-    specs.push(
-      (
-        token,
-        token,
-        @argparser.String(input => {
-          let schema = command_schema(command.val)
-          if !schema.options.contains(name) {
-            raise @config.Invalid(
-              "Unexpected option: " + token + "\n" + render_help(command.val),
-            )
-          }
-          if input == "" ||
-            (
-              input.has_prefix("-") &&
-              name != "absolute-tolerance" &&
-              name != "relative-tolerance"
-            ) {
-            raise @config.Invalid("Missing value for " + token)
-          }
-          if entries.contains(name) && !schema.repeatable.contains(name) {
-            raise @config.Invalid("Repeated option: " + token)
-          }
-          let previous = entries.get(name).unwrap_or([])
-          previous.push(input)
-          entries[name] = previous
-        }),
-        "",
-      ),
-    )
-  }
-  let normalized : Array[String] = []
-  for token in head {
-    if token == help_alias {
-      raise @config.Invalid("Unexpected argument: " + token)
-    } else if token == "--help" || token == "-h" {
-      normalized.push(help_alias)
-    } else if token.has_prefix("--") &&
-      token.split_once("=") is Some((name, input)) &&
-      names.contains(name[2:].to_owned()) {
-      normalized.push(name.to_owned())
-      normalized.push(input.to_owned())
-    } else {
-      normalized.push(token)
+    }
+    for name, values in current.values {
+      entries[name] = values
+    }
+    level = match current.subcommand {
+      Some((name, child)) => {
+        command = if command == "" { name } else { command + " " + name }
+        Some(child)
+      }
+      None => None
     }
   }
-  @argparser.parse(
-    specs,
-    token => {
-      let schema = command_schema(command.val)
-      if !schema.children.is_empty() && schema.children.contains(token) {
-        command.val = if command.val == "" {
-          token
-        } else {
-          command.val + " " + token
-        }
-      } else if token.has_prefix("-") ||
-        !schema.positional ||
-        entries.contains("path") {
-        raise @config.Invalid(
-          "Unexpected argument: " + token + "\n" + render_help(command.val),
-        )
-      } else {
-        entries["path"] = [token]
-      }
-    },
-    "",
-    normalized,
-  ) catch {
-    @argparser.ErrorMsg(message) =>
-      raise @config.Invalid(message + "\n" + render_help(command.val))
-    error => raise error
+  let schema = command_schema(command)
+  for name, values in entries {
+    if name == "path" {
+      continue
+    }
+    if values.any(value => value == "") {
+      raise @config.Invalid("Missing value for --" + name)
+    }
+    if values.length() > 1 && !schema.repeatable.contains(name) {
+      raise @config.Invalid("Repeated option: --" + name)
+    }
   }
   if flags.contains("json") && flags.contains("json-lines") {
     raise @config.Invalid("--json and --json-lines cannot be combined")
@@ -294,27 +258,18 @@ fn parse_cli(args : Array[String]) -> Cli raise {
     raise @config.Invalid("--file and --directory cannot be combined")
   }
   let forwarded = if head.length() < args.length() {
-    if command.val != "toolchain run" && command.val != "toolchain exec" {
+    if command != "toolchain run" && command != "toolchain exec" {
       raise @config.Invalid("Program arguments require toolchain run or exec")
     }
     Some(args[head.length() + 1:].to_owned())
   } else {
     None
   }
-  let help = flags.contains("help") || command.val == ""
-  if !command_schema(command.val).children.is_empty() &&
-    command.val != "" &&
-    !help {
-    raise @config.Invalid("A subcommand is required for " + command.val)
+  let help = flags.contains("help") || command == ""
+  if !schema.children.is_empty() && command != "" && !help {
+    raise @config.Invalid("A subcommand is required for " + command)
   }
-  {
-    command: command.val,
-    flags,
-    entries,
-    forwarded,
-    help,
-    help_text: render_help(command.val),
-  }
+  { command, flags, entries, forwarded, help, help_text: render_help(command), }
 }
 
 ///|

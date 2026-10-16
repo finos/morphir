@@ -1,7 +1,7 @@
 pkgtype(kind: "executable")
 
 import {
-  "Yoorkin/ArgParser" @argparser,
+  "moonbitlang/core/argparse",
   "moonbitlang/core/string",
   "finos/morphir-engine/execution",
   "finos/morphir-engine/conformance",

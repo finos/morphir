@@ -1,5 +1,5 @@
 ///|
-test "ArgParser selects subcommands and global output without exiting for help" {
+test "the parser selects subcommands and global output without exiting for help" {
   let cli = parse_cli(["--json", "toolchain", "run", "work", "--help"])
   assert_eq(cli.command, "toolchain run")
   assert_true(flag(cli, "json"))
@@ -84,7 +84,7 @@ test "local frontend logs are explicit run options with single values" {
 }
 
 ///|
-test "ArgParser rejects malformed flags arity conflicts and command options" {
+test "the parser rejects malformed flags arity conflicts and command options" {
   for
     args in [
       ["unknown"],
@@ -167,12 +167,11 @@ test "numeric option data stays with validation and parse errors keep envelopes"
 }
 
 ///|
-test "help checks trailing flags and never exposes its private adapter alias" {
+test "help checks trailing flags and leaves help after the program boundary" {
   let cli = parse_cli(["--help", "toolchain", "run", "--json"])
   assert_true(cli.help)
   assert_true(flag(cli, "json"))
   assert_eq(cli.command, "toolchain run")
-  assert_true(!cli.help_text.contains(help_alias))
   assert_true(parse_cli(["project", "list", "-h", "--json-lines"]).help)
   assert_true(
     try {
@@ -182,10 +181,7 @@ test "help checks trailing flags and never exposes its private adapter alias" {
       _ => true
     },
   )
-  assert_eq(
-    parse_cli(["toolchain", "run", "--", help_alias]).forwarded,
-    Some([help_alias]),
-  )
+  assert_eq(parse_cli(["toolchain", "run", "--", "-h"]).forwarded, Some(["-h"]))
 }
 
 ///|

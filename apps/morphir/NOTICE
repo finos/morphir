@@ -1,11 +1,2 @@
 Morphir command-line application
 Copyright FINOS and contributors
-
-This distribution includes compiled code from:
-- Yoorkin/ArgParser 0.2.1, https://github.com/Yoorkin/ArgParser
-- Yoorkin/trie 0.2.10, https://github.com/Yoorkin/trie
-
-Both packages are licensed under Apache License 2.0. Their published source
-archives declare that license and contain no separate NOTICE file. Local copies
-migrate their module/package manifests and apply MoonBit compiler formatting.
-The license is included as LICENSE in this distribution.

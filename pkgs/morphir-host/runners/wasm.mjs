@@ -65,6 +65,8 @@ if (!imports.some(i => i.module === 'morphir_host_v1')) {
       },
     },
     spectest: { print_char: c => process.stdout.write(String.fromCharCode(c)) },
+    // MoonBit core (argparse) declares a WASM-GC exit import; the CLI never calls it.
+    __moonbit_sys_unstable: { exit: code => process.exit(code) },
   });
   instance.exports._start();
 }

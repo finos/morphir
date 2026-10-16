@@ -66,8 +66,8 @@ Options include `--frontend`, `--frontend-provider`, `--frontend-profile`, `--ba
 
 For `project list`, `--frontend` and `--target` filter these effective choices using exact, case-sensitive names. Repeated values match any value within that filter; frontend and target filters must both match when combined. Filters do not override configuration. No matches produce an empty list with exit status 0. Invalid project configuration produces diagnostics and exit status 2, including when filters exclude that project. Text output has `NAME`, `PATH`, `FRONTEND` and `TARGET` columns. JSON output contains `projects`, `diagnostics` and `successful`.
 
-Argument parsing uses pinned `Yoorkin/ArgParser` option specifications with a
-Morphir wrapper for command context, duplicate policy and structured help. `morphir --help` and command-specific help such as
+Argument parsing uses `moonbitlang/core/argparse` command definitions built from one
+Morphir command table, with a Morphir check for empty values, duplicate policy and option conflicts. `morphir --help` and command-specific help such as
 `morphir toolchain run --help` are generated from those definitions. JSON help keeps
 its command/option inventory and adds a `usage` string. Parse failures retain the
 JSON or JSON-lines error envelope and exit status 2.
