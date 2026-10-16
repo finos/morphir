@@ -14,6 +14,9 @@ pub extend CodecError with @debug.Debug::{to_repr}
 priv struct Reader {
   chars : Array[Char]
   mut index : Int32
+  max_depth : Int32
+  mut nodes : Int32?
+  mut string_units : Int32?
 }
 
 ///|
@@ -57,7 +60,15 @@ fn Reader::string(self : Reader) -> String raise CodecError {
         _ => raise Invalid("invalid_json", "Invalid JSON string")
       }
       return match parsed {
-        String(value) => value
+        String(value) => {
+          if self.string_units is Some(remaining) {
+            guard value.length() <= remaining else {
+              raise Invalid("json_limit", "Decoded string budget exceeded")
+            }
+            self.string_units = Some(remaining - value.length())
+          }
+          value
+        }
         _ => raise Invalid("invalid_json", "Expected string")
       }
     }
@@ -68,8 +79,24 @@ fn Reader::string(self : Reader) -> String raise CodecError {
 ///|
 fn Reader::value(self : Reader, depth : Int32) -> Json raise CodecError {
   self.space()
-  if depth > 512 || self.index >= self.chars.length() {
-    raise Invalid("invalid_json", "Depth limit or unexpected end of input")
+  if depth > self.max_depth {
+    raise Invalid(
+      if self.nodes is None {
+        "invalid_json"
+      } else {
+        "json_limit"
+      },
+      "Depth budget exceeded",
+    )
+  }
+  if self.nodes is Some(remaining) {
+    guard remaining > 0 else {
+      raise Invalid("json_limit", "Node budget exceeded")
+    }
+    self.nodes = Some(remaining - 1)
+  }
+  if self.index >= self.chars.length() {
+    raise Invalid("invalid_json", "Unexpected end of input")
   }
   match self.chars[self.index] {
     '"' => Json::string(self.string())
@@ -151,7 +178,35 @@ fn Reader::value(self : Reader, depth : Int32) -> Json raise CodecError {
 ///|
 /// Reject duplicate members and preserve every numeric lexeme before decoding IR.
 pub fn parse(text : String) -> Json raise CodecError {
-  let reader = Reader::{ chars: text.iter().collect(), index: 0, }
+  parse_with_limits(text, 512, None, None)
+}
+
+///|
+/// Bounded duplicate-aware JSON decoding for external frames. Root depth is zero;
+/// each JSON value consumes one node, and keys and values share a UTF-16 budget.
+pub fn parse_bounded(
+  text : String,
+  max_depth~ : Int32 = 64,
+  max_nodes~ : Int32 = 100000,
+  max_string_units~ : Int32 = 1048576,
+) -> Json raise CodecError {
+  parse_with_limits(text, max_depth, Some(max_nodes), Some(max_string_units))
+}
+
+///|
+fn parse_with_limits(
+  text : String,
+  max_depth : Int32,
+  nodes : Int32?,
+  string_units : Int32?,
+) -> Json raise CodecError {
+  let reader = Reader::{
+    chars: text.iter().collect(),
+    index: 0,
+    max_depth,
+    nodes,
+    string_units,
+  }
   let result = reader.value(0)
   reader.space()
   if reader.index != reader.chars.length() {

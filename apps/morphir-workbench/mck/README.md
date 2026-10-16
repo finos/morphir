@@ -2,7 +2,7 @@
 
 This component exposes the shipped `finos/morphir-execution` value codec and
 validator to the shared Rust MCK. It supports exact contracts
-`0.1.0-draft.1` through `0.1.0-draft.6`. It has no goldens, evaluator or separate
+`0.1.0-draft.1` through `0.1.0-draft.7`. It has no goldens, evaluator or separate
 conformance runner. The parent `finos/morphir` repository owns the specification,
 corpora and verdict calculation. Draft.1/.2 are merged; draft.3 adds invocation
 admission; draft.4 adds output admission; draft.5 adds terminal outcome admission.
@@ -161,3 +161,31 @@ the default remains `.dev/workbench-mck/`. This qualifies recorded transitions,
 replay/conflict handling, cancellation races and same-session reconciliation.
 It does not authenticate receipts or qualify live job RPC, host execution,
 durable recovery, Proton IPC or generated browser execution.
+
+## Native request-frame qualification
+
+Exact offline draft.7 advertises only `validate-native-frame` and JSON. It
+uses `finos/morphir-workbench-native-session/request`, the portable native
+draft.1 request decoder. Select `spec/workbench/mck/draft.7` with the same
+parent-owned gate. Historical kits are qualified separately.
+
+Input is exactly `{encoding,source}`, with optional
+`generate:{prefix:{repeat:" ",count}}`. Encoding is `utf8` or complete hex
+byte pairs. The optional count is an exact integer from zero to 1,048,576,
+including integral decimal/exponent spellings. Compact input is limited to
+1 MiB and materialization to 2 MiB before calling the decoder. Malformed fixture
+envelopes terminate the adapter as infrastructure failures, rather than yielding
+a native rejection. The new draft preserves original compact number tokens.
+
+The decoder checks raw frame size, strict UTF-8, duplicate-aware bounded whole
+JSON, the 4 KiB workspace command limit, closed native request shape, then nested
+model JSON and JSON argument arrays. Original nested strings are not reserialized
+before decoding. Success is exactly `{frameAccepted:true}`; the six stable
+rejection codes are `native.frame.limit`, `native.frame.utf8`,
+`native.frame.json`, `native.frame.shape`, `native.frame.model` and
+`native.frame.arguments`. Source, paths and authority are absent from observations.
+
+This tests frame acceptance through an implementation decoder. It does not
+activate the public IPC endpoint, authenticate caller context, admit a Morphir
+function or Ion values, create workspace grants or qualify a packaged platform.
+The live native protocol remains draft.1.

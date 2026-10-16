@@ -43,6 +43,14 @@ pub fn handle_line(source : String) -> Json? raise {
   if duplicate_members(@text.read_ion(source[:])) {
     return Some(invalid(field(request, "id"), "workbench.invalid_request"))
   }
+  // The exact new draft preserves compact recipe number tokens as well as
+  // embedded native source bytes. Historical adapters retain their parser.
+  let request = if field(request, "contractVersion") ==
+    Json::string("0.1.0-draft.7") {
+    @wire.parse(source)
+  } else {
+    request
+  }
   if exit_requested(request) {
     None
   } else {
@@ -75,6 +83,7 @@ pub fn handle(request : Json) -> Json {
     ["id", "op", "suite", "contractVersion", "format", "input"]
   }
   let version = field(request, "contractVersion")
+  let draft7 = version == Json::string("0.1.0-draft.7")
   let draft6 = version == Json::string("0.1.0-draft.6")
   let draft2 = version == Json::string("0.1.0-draft.2")
   let draft3 = version == Json::string("0.1.0-draft.3")
@@ -88,7 +97,8 @@ pub fn handle(request : Json) -> Json {
       draft2 ||
       draft3 ||
       draft4 ||
-      draft6
+      draft6 ||
+      draft7
     ) else {
     return invalid(id, "workbench.invalid_request")
   }
@@ -99,7 +109,9 @@ pub fn handle(request : Json) -> Json {
       "contractVersion": version,
       "binding": "morphir-moonbit",
       "language": "moonbit",
-      "operations": if draft6 {
+      "operations": if draft7 {
+        ["validate-native-frame"]
+      } else if draft6 {
         ["reduce-job"]
       } else if draft5 {
         [
@@ -117,12 +129,19 @@ pub fn handle(request : Json) -> Json {
       } else {
         ["decode-value"]
       },
-      "formats": if draft6 {
+      "formats": if draft6 || draft7 {
         ["json"]
       } else {
         ["json", "ion-text"]
       },
     }
+  }
+  if draft7 {
+    guard op == Json::string("validate-native-frame") &&
+      field(request, "format") == Json::string("json") else {
+      return invalid(id, "workbench.invalid_request")
+    }
+    return native_frame(id, field(request, "input"))
   }
   guard (draft6 && op == Json::string("reduce-job")) ||
     (

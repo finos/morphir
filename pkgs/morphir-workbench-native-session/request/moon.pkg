@@ -1,0 +1,4 @@
+import {
+  "finos/morphir-ir/wire",
+  "moonbitlang/core/encoding/utf8",
+}

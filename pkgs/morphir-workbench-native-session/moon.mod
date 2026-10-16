@@ -11,3 +11,7 @@ repository = "https://github.com/finos/morphir-moonbit"
 readme = "README.md"
 
 supported_targets = "js+native+wasm+wasm-gc"
+
+import {
+  "finos/morphir-ir@0.1.0",
+}
