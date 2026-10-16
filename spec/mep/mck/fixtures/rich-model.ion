@@ -1,0 +1,25 @@
+morphir_model::{
+  ir: {
+    formatVersion: "4.0.0",
+    distribution: {
+      Library: {
+        packageName: "example/mep-fixture",
+        dependencies: {},
+        def: {modules: {}}
+      }
+    }
+  },
+  enrichments: [
+    {
+      owner: "urn:morphir:mep:fixture:unknown-enrichment",
+      data: source_name::target_name::{
+        originalName: "isReady",
+        targetName: "is_ready",
+        sourcePrecision: {kind: int64, exact: 9007199254740993},
+        amount: 123.4500,
+        futureFact: future_vocabulary::{enabled: true}
+      }
+    }
+  ],
+  provenance: [fixture_origin::{producer: "mep-reference-corpus", source: "fixture.mbt"}]
+}

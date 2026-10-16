@@ -164,7 +164,10 @@ fn the_contract_covers_the_handshake() {
     let records: &[(&str, &[&str])] = &[
         ("peer-info", &["kind", "name", "version"]),
         ("describe-params", &["protocol-versions"]),
-        ("initialize-params", &["protocol-versions", "host"]),
+        (
+            "initialize-params",
+            &["protocol-versions", "host", "model-transport"],
+        ),
         (
             "initialize-result",
             &["protocol-version", "extension", "capabilities"],
@@ -217,7 +220,9 @@ fn the_contract_covers_every_method_and_error_code() {
             "info",
             "capabilities",
             "compile",
+            "compile-model",
             "generate",
+            "generate-model",
             "validate",
             "transform",
             "workspace-discover",
@@ -279,6 +284,327 @@ fn assert_records(ir: &Value, records: &[(&str, &[&str])]) {
     }
 }
 
+#[test]
+fn model_operations_have_explicit_carriers_and_scoped_evidence() {
+    let ir = compile_contract();
+    assert_records(
+        &ir,
+        &[
+            (
+                "model-transport-tuple",
+                &[
+                    "operation",
+                    "profile",
+                    "codec",
+                    "envelope-version",
+                    "ir-version",
+                ],
+            ),
+            (
+                "model-transport-limits",
+                &[
+                    "max-encoded-bytes",
+                    "max-decoded-bytes",
+                    "max-depth",
+                    "max-nodes",
+                ],
+            ),
+            (
+                "model-transport-support",
+                &["tuples", "limits", "guarantees"],
+            ),
+            (
+                "model-payload",
+                &[
+                    "codec",
+                    "layout",
+                    "decoded-byte-length",
+                    "sha256",
+                    "content",
+                ],
+            ),
+            (
+                "morphir-model",
+                &[
+                    "envelope-version",
+                    "model-id",
+                    "revision",
+                    "ir-version",
+                    "profile",
+                    "payload",
+                    "evidence",
+                    "critical",
+                ],
+            ),
+            ("model-guarantee-requirement", &["guarantee", "scope"]),
+            (
+                "model-guarantee-evidence",
+                &[
+                    "guarantee",
+                    "model-id",
+                    "model-revision",
+                    "context-digest",
+                    "scope",
+                    "producer",
+                    "evidence",
+                ],
+            ),
+            ("compile-model-dependency", &["package-name", "model"]),
+            (
+                "compile-model-request",
+                &[
+                    "language-id",
+                    "sources",
+                    "package",
+                    "dependencies",
+                    "options",
+                    "context-digest",
+                    "output",
+                ],
+            ),
+            (
+                "generate-model-request",
+                &[
+                    "model",
+                    "input",
+                    "target",
+                    "context-digest",
+                    "required-guarantees",
+                    "options",
+                ],
+            ),
+        ],
+    );
+    assert_eq!(
+        constructor_names(&ir, "model-operation"),
+        ["compile-model-operation", "generate-model-operation"]
+    );
+    assert_eq!(
+        constructor_names(&ir, "model-codec"),
+        ["ion-binary-codec", "morphir-json-codec"]
+    );
+    assert_eq!(
+        constructor_names(&ir, "model-layout"),
+        ["single-document-model"]
+    );
+    assert_eq!(
+        constructor_names(&ir, "compile-model-result"),
+        ["model-compiled", "model-compilation-failed"]
+    );
+    // Negotiation remains optional; successful compilation has a required model
+    // and the failure constructor cannot carry a partial or null model.
+    let types = mep_types(&ir);
+    for name in ["initialize-params", "extension-capabilities"] {
+        let fields = unwrap_access(&types[name])["CustomTypeDefinition"]["constructors"][name]
+            .as_array()
+            .unwrap();
+        let field = fields
+            .iter()
+            .find(|field| field[0] == "model-transport")
+            .unwrap();
+        assert_eq!(field[1]["Reference"]["fqname"], "morphir/SDK:maybe#maybe");
+        assert_eq!(
+            field[1]["Reference"]["args"][0]["Reference"]["fqname"],
+            "morphir/mep:mep#model-transport-support"
+        );
+    }
+    let constructors =
+        &unwrap_access(&types["compile-model-result"])["CustomTypeDefinition"]["constructors"];
+    let success = constructors["model-compiled"].as_array().unwrap();
+    assert_eq!(success[0][0], "model");
+    assert_eq!(
+        success[0][1]["Reference"]["fqname"],
+        "morphir/mep:mep#morphir-model"
+    );
+    let failure = constructors["model-compilation-failed"].as_array().unwrap();
+    assert_eq!(failure.len(), 1);
+    assert_eq!(failure[0][0], "diagnostics");
+    // The existing IR Distribution sum owns Library/Specs/Application. The
+    // carrier must not invent a second outer structural-state enum.
+    assert!(!type_names(&ir).contains("model-stage"));
+    assert!(!type_names(&ir).contains("model-distribution-kind"));
+}
+
+#[test]
+fn model_draft_adopts_semver_without_relabeling_the_legacy_protocol() {
+    let manifest: toml::Value =
+        toml::from_str(&fs::read_to_string(contract_dir().join("gleam.toml")).unwrap()).unwrap();
+    let version = semver::Version::parse(manifest["version"].as_str().unwrap()).unwrap();
+    assert_eq!(version.to_string(), "0.2.0-draft.1");
+    let readme = fs::read_to_string(contract_dir().parent().unwrap().join("README.md")).unwrap();
+    assert!(readme.contains("0.2.0-draft.1"));
+    assert!(readme.contains("0.1.0-draft.1"));
+    assert!(readme.contains("legacy `0.1`"));
+    assert!(!readme.contains("Published contracts carry no prerelease tags"));
+}
+
+#[test]
+fn model_reference_corpus_binds_real_payload_assets() {
+    use base64::Engine as _;
+    use sha2::{Digest, Sha256};
+    let root = contract_dir().parent().unwrap().join("mck");
+    let corpus: Value =
+        serde_json::from_slice(&fs::read(root.join("model-transport.cases.json")).unwrap())
+            .unwrap();
+    assert_eq!(corpus["status"], "reference");
+    assert_eq!(corpus["contractVersion"], "0.1.0-draft.1");
+    assert_eq!(corpus["mepVersion"], "0.2.0-draft.1");
+    let mut paths = BTreeSet::new();
+    for asset in corpus["assets"].as_array().unwrap() {
+        let path = asset["path"].as_str().unwrap();
+        assert!(paths.insert(path));
+        assert!(
+            !Path::new(path).is_absolute()
+                && !Path::new(path)
+                    .components()
+                    .any(|part| matches!(part, std::path::Component::ParentDir))
+        );
+        let bytes = fs::read(root.join(path)).unwrap();
+        assert_eq!(
+            asset["decodedByteLength"].as_u64().unwrap(),
+            bytes.len() as u64
+        );
+        let hash: String = Sha256::digest(&bytes)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        assert_eq!(asset["sha256"], hash);
+        assert_eq!(
+            base64::engine::general_purpose::STANDARD
+                .decode(asset["content"].as_str().unwrap())
+                .unwrap(),
+            bytes
+        );
+        if path.ends_with(".ionb") {
+            assert!(bytes.starts_with(&[0xe0, 1, 0, 0xea]));
+        }
+    }
+    assert!(!paths.is_empty());
+    let cases = corpus["cases"].as_array().unwrap();
+    let mut ids = BTreeSet::new();
+    let mut accepted = 0;
+    let mut rejected = 0;
+    for case in cases {
+        assert!(ids.insert(case["id"].as_str().unwrap()));
+        assert!(!case["description"].as_str().unwrap().is_empty());
+        match case["expected"]["admission"].as_str().unwrap() {
+            "accept" => accepted += 1,
+            "reject" => {
+                rejected += 1;
+                assert!(!case["expected"]["code"].as_str().unwrap().is_empty());
+            }
+            value => panic!("unknown reference admission {value}"),
+        }
+    }
+    // Inventory pins the intended boundaries, not a second admission runner.
+    let kinds: BTreeSet<_> = cases
+        .iter()
+        .map(|case| case["kind"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        kinds,
+        BTreeSet::from([
+            "compatibility",
+            "evidence",
+            "integrity",
+            "limits",
+            "negotiation",
+            "outcome",
+            "preservation"
+        ])
+    );
+    assert_eq!(ids.len(), 35);
+    let case = |id: &str| cases.iter().find(|case| case["id"] == id).unwrap();
+    assert_eq!(
+        case("model-0026")["request"]["method"],
+        "morphir.backend.generate"
+    );
+    assert!(case("model-0026")["request"]["params"].get("ir").is_some());
+    assert_eq!(case("model-0026")["expected"]["admission"], "accept");
+    assert_eq!(
+        case("model-0033")["request"]["params"]["model"]["critical"][0],
+        "payload.futureMember"
+    );
+    assert_eq!(
+        case("model-0033")["expected"]["code"],
+        "unknown_critical_path"
+    );
+    let aggregate = case("model-0035");
+    let model = &aggregate["request"]["params"]["model"];
+    let model_bytes = model["payload"]["decodedByteLength"].as_u64().unwrap();
+    let evidence_bytes = model["evidence"][0]["evidence"]["decodedByteLength"]
+        .as_u64()
+        .unwrap();
+    let bound = aggregate["hostOffer"]["modelTransport"]["limits"]["maxDecodedBytes"]
+        .as_u64()
+        .unwrap();
+    assert!(
+        model_bytes <= bound && evidence_bytes <= bound && model_bytes + evidence_bytes > bound
+    );
+    assert!(accepted >= 3 && rejected >= 10);
+    // This checks fixed corpus integrity. Host/guest behavior is deliberately
+    // not inferred from fixture labels; executable MCK admission is #965.
+}
+
+/// Fixture integrity alone cannot establish that a positive model contains a
+/// supported IR document. Exercise the existing codec, not another MEP runner.
+#[test]
+fn positive_model_json_matches_the_existing_ir_contract() {
+    use base64::Engine as _;
+    use morphir_core::format_version::{
+        Compatibility, NormalizedFormatVersion, ScalarValue, SupportTable,
+    };
+    use morphir_core::ir::json::read_ir_file;
+
+    let root = contract_dir().parent().unwrap().join("mck");
+    let plain = fs::read_to_string(root.join("fixtures/plain-ir.json")).unwrap();
+    let supported_ir = |text: &str| {
+        read_ir_file(text).expect("positive model must decode through the existing IR reader");
+        let document: Value = serde_json::from_str(text).unwrap();
+        let scalar = ScalarValue::from_json(&document["formatVersion"]).unwrap();
+        let normalized =
+            NormalizedFormatVersion::from_scalar(&scalar, &SupportTable::reference()).unwrap();
+        assert!(
+            normalized.is_supported(),
+            "positive model is outside the reference IR support table"
+        );
+        normalized.release
+    };
+    supported_ir(&plain);
+    let corpus: Value =
+        serde_json::from_slice(&fs::read(root.join("model-transport.cases.json")).unwrap())
+            .unwrap();
+    let mut checked = 0;
+    for case in corpus["cases"].as_array().unwrap() {
+        if case["expected"]["admission"] != "accept" {
+            continue;
+        }
+        let model = &case["request"]["params"]["model"];
+        if model["payload"]["codec"] != "morphir-json" {
+            continue;
+        }
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(model["payload"]["content"].as_str().unwrap())
+            .unwrap();
+        let text = String::from_utf8(bytes).unwrap();
+        let release = supported_ir(&text);
+        assert_eq!(model["irVersion"], release.to_string());
+        assert_eq!(
+            case["request"]["params"]["input"]["irVersion"],
+            model["irVersion"]
+        );
+        checked += 1;
+    }
+    assert!(checked > 0, "keep an accepted explicit JSON model example");
+
+    // IR 4.0.0 remains draft work. Its existing wire contract still rejects an
+    // unminted minor; the MEP envelope must not silently invent one.
+    let scalar = ScalarValue::from_json(&Value::String("4.1.0".into())).unwrap();
+    let unsupported =
+        NormalizedFormatVersion::from_scalar(&scalar, &SupportTable::reference()).unwrap();
+    assert_eq!(unsupported.compatibility, Compatibility::UnsupportedMinor);
+}
+
 const CAPABILITY_TYPES: &[&str] = &[
     "language-capability",
     "frontend-capability",
@@ -324,6 +650,7 @@ fn the_contract_covers_capabilities_and_claims() {
                 "frontend",
                 "backend",
                 "workspace",
+                "model-transport",
                 "streaming",
                 "incremental",
                 "cancellation",
@@ -601,6 +928,57 @@ fn every_wire_exception_is_documented() {
         ),
         ("ModuleStatus", &["Wire values"]),
         ("ModuleResult", &["left out when absent", "read as empty"]),
+        // Rich model wire mappings are explicit rather than inferred tags.
+        ("InitializeParams", &["modelTransport", "left out"]),
+        (
+            "ModelOperation",
+            &["Wire values", "0.2.0-draft.1", "legacy `0.1`"],
+        ),
+        (
+            "ModelCodec",
+            &["Wire values", "application/ion", "application/json"],
+        ),
+        (
+            "ModelLayout",
+            &["single-document", "external symbol tables"],
+        ),
+        (
+            "ModelTransportSupport",
+            &["read as empty", "not guarantees"],
+        ),
+        (
+            "ModelTransportLimits",
+            &["2147483647", "summed across", "Depth"],
+        ),
+        (
+            "ModelPayload",
+            &["BOTH codecs", "2147483647", "64 lowercase", "ordered"],
+        ),
+        (
+            "MorphirModel",
+            &[
+                "read as empty",
+                "critical child",
+                "logical immutable revision",
+            ],
+        ),
+        (
+            "ModelGuaranteeEvidence",
+            &[
+                "checking/trust policy",
+                "exact scope",
+                "never authentication",
+            ],
+        ),
+        (
+            "CompileModelRequest",
+            &["read as empty", "options.irVersion"],
+        ),
+        (
+            "CompileModelResult",
+            &["REQUIRED", "even null", "read as empty"],
+        ),
+        ("GenerateModelRequest", &["read as empty", "required scope"]),
         // Generate
         ("GenerateRequest", &["read as empty"]),
         ("GenerateResult", &["read as empty"]),

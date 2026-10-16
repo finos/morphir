@@ -48,6 +48,28 @@ _Avoid_: Configuration loader, automatic resolution
 A resolved secret value that redacts formatting, has no ordinary serialization path, and requires an explicit operation to expose its contents.
 _Avoid_: Plain string, secret reference
 
+## Modeling
+
+**Morphir model**:
+The language-neutral information Morphir captures about modeled logic, including its IR, enrichments and provenance. In APIs, this is `MorphirModel`.
+_Avoid_: IRModel, compilation unit when referring to the modeled result
+
+**Model enrichment**:
+Additional information attached to a Morphir model, such as original names, target names or source numeric precision.
+_Avoid_: Pipeline stage, guarantee
+
+**Model revision**:
+An immutable logical version of a Morphir model's content and facts.
+_Avoid_: Encoded byte digest, protocol version
+
+**Model guarantee**:
+A property established for a particular model revision, context and scope by an accepted check or trust policy.
+_Avoid_: Capability, annotation, pipeline phase
+
+**Guarantee evidence**:
+Information a consumer checks before accepting a claimed model guarantee.
+_Avoid_: Authentication, proof merely because its binding fields match
+
 ## Extensions
 
 **Morphir Extension Protocol**:

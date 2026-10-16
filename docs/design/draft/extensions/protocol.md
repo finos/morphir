@@ -359,17 +359,29 @@ what one session provides. It may never offer a kind or a member the claim set
 does not have, or a different value for one it does. A result that does not
 agree is refused, and the refusal names the first rule that failed.
 
+For an exact `0.2.0-draft.1` session, `modelTransport` has one specific narrowing
+rule. Its session tuples and guarantee IDs must be subsets of the static claim
+and the host offer, and positive session limits must not exceed either set of
+limits. It cannot introduce an unclaimed member. Other capability members keep
+the equality rule above. `modelTransport` is negotiation metadata for frontend
+and backend operations, not a new extension type. This is a new contract rule;
+the current SDK's equality-based checker needs a follow-up runtime change.
+See [model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md).
+
 Comparing two claim sets, as publication and installation do, is a comparison
 of equal documents.
 
 ## Capability methods
 
-Version 0.1 defines these operation methods:
+The legacy operations use version `0.1`; rich-model operations require the
+exact `0.2.0-draft.1` session indicated below:
 
 | Method | Capability | Input | Output |
 |---|---|---|---|
 | `morphir.frontend.compile` | frontend | Source documents and compilation context | Morphir IR and diagnostics |
 | `morphir.backend.generate` | backend | Morphir IR and generation options | Generated artifacts and diagnostics |
+| `morphir.frontend.compileModel` | frontend, new exact draft | Source set, full dependency models and selected output tuple | Success with a full model, or compilation failure |
+| `morphir.backend.generateModel` | backend, new exact draft | Retained model, selected input tuple, target and scoped prerequisites | Existing generation result |
 | `morphir.validator.validate` | validator | Morphir IR and rule options | Diagnostics |
 | `morphir.transform.transform` | transform | Morphir IR and transform options | Morphir IR and diagnostics |
 
@@ -818,10 +830,11 @@ An error response should include stable machine-readable data when it can help t
 
 ## Compatibility rules
 
-Protocol versions use `major.minor` numbers.
+The frozen legacy protocol uses `0.1`. New model operations use full SemVer
+`0.2.0-draft.1`; see [the canonical contract](https://github.com/finos/morphir/blob/main/spec/mep/README.md)
+and [model transport rules](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md).
+The following capability requirements apply to both sessions.
 
-- A major version may remove fields or change their meaning.
-- A minor version may add optional fields, methods, capabilities, or enum values.
 - Receivers must ignore unknown object fields, unless a `critical` list names the field. A receiver that does not understand a critical field refuses and names it.
 - Receivers must reject unsupported methods with JSON-RPC error `-32601`.
 - A host must call only capabilities returned by initialization.
@@ -848,8 +861,12 @@ extension and converts it to draft.2; the extension SDK writes only draft.2. Hos
 [Extensions make capability claims](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0007-extensions-make-capability-claims.md)
 records the rename.
 
-MEP itself is a recorded exception. It keeps `major.minor` protocol versions,
-currently `0.1`, until the next change to the protocol, which adopts SemVer.
+The recorded exception remains only for legacy `0.1`. The next protocol change
+is the rich-model draft `0.2.0-draft.1`, which adopts full SemVer and exact draft
+matching. It adds `morphir.frontend.compileModel` and
+`morphir.backend.generateModel` without replacing legacy JSON methods. The
+model envelope is independently versioned at `0.1.0-draft.1`. Current runtime
+SDK support for `0.1` does not imply support for this draft.
 
 The same must-ignore rule applies to every document that carries a capability
 claim set: the release descriptor, the repository index record and the
@@ -860,18 +877,13 @@ extensions release.
 
 The handshake chooses one exact protocol version. This makes compatibility behavior explicit and keeps extension packages testable against more than one host version.
 
-The additive-only rule for a minor version binds from the first *released*
-protocol version onward, not before it. `GenerateRequest.target` was changed
-from absent to required while MEP 0.1 was still pre-release: no host
-implementing 0.1 had shipped, so no deployed host was broken by the change,
-and the version stayed at 0.1 rather than moving to 0.2. A protocol version
-that has already been released must not repeat this — a required field added
-after release needs a major version, per the rule above.
-
-`CompileRequest.baseline`, `CompileBaseline.contextDigest`,
-`CompileResult.moduleResults`, and `CompileResult.contextDigest` are additive
-optional fields added under the same pre-release rule while MEP 0.1 has not
-yet shipped. Receivers that do not implement them ignore them.
+Legacy examples in this document retain their `0.1` request and result shapes,
+including required generation targets and optional incremental baseline fields.
+New work must not rely on an assumption that legacy `0.1` is unshipped to change
+those shapes. Rich model transport is separately negotiated under the new
+exact draft. Its complete bilateral tuples, bounded Ion/JSON payloads and
+revision/context-scoped evidence are specified in
+[model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md).
 
 ## Security and permissions
 

@@ -1,5 +1,5 @@
 name = "mep"
-version = "0.1.0"
+version = "0.2.0-draft.1"
 description = "The Morphir Extension Protocol contract, as a Morphir model."
 licences = ["Apache-2.0"]
 

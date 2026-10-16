@@ -1,0 +1,3389 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "status": "reference",
+  "mepVersion": "0.2.0-draft.1",
+  "assets": [
+    {
+      "path": "fixtures/rich-model.ionb",
+      "decodedByteLength": 499,
+      "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+      "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+    },
+    {
+      "path": "fixtures/rich-model.ion",
+      "decodedByteLength": 650,
+      "sha256": "3c314a4e29bb3e1477171aff632fecec35257d0835c2e18549c732c609dfa664",
+      "content": "bW9ycGhpcl9tb2RlbDo6ewogIGlyOiB7CiAgICBmb3JtYXRWZXJzaW9uOiAiNC4wLjAiLAogICAgZGlzdHJpYnV0aW9uOiB7CiAgICAgIExpYnJhcnk6IHsKICAgICAgICBwYWNrYWdlTmFtZTogImV4YW1wbGUvbWVwLWZpeHR1cmUiLAogICAgICAgIGRlcGVuZGVuY2llczoge30sCiAgICAgICAgZGVmOiB7bW9kdWxlczoge319CiAgICAgIH0KICAgIH0KICB9LAogIGVucmljaG1lbnRzOiBbCiAgICB7CiAgICAgIG93bmVyOiAidXJuOm1vcnBoaXI6bWVwOmZpeHR1cmU6dW5rbm93bi1lbnJpY2htZW50IiwKICAgICAgZGF0YTogc291cmNlX25hbWU6OnRhcmdldF9uYW1lOjp7CiAgICAgICAgb3JpZ2luYWxOYW1lOiAiaXNSZWFkeSIsCiAgICAgICAgdGFyZ2V0TmFtZTogImlzX3JlYWR5IiwKICAgICAgICBzb3VyY2VQcmVjaXNpb246IHtraW5kOiBpbnQ2NCwgZXhhY3Q6IDkwMDcxOTkyNTQ3NDA5OTN9LAogICAgICAgIGFtb3VudDogMTIzLjQ1MDAsCiAgICAgICAgZnV0dXJlRmFjdDogZnV0dXJlX3ZvY2FidWxhcnk6OntlbmFibGVkOiB0cnVlfQogICAgICB9CiAgICB9CiAgXSwKICBwcm92ZW5hbmNlOiBbZml4dHVyZV9vcmlnaW46Ontwcm9kdWNlcjogIm1lcC1yZWZlcmVuY2UtY29ycHVzIiwgc291cmNlOiAiZml4dHVyZS5tYnQifV0KfQo="
+    },
+    {
+      "path": "fixtures/plain-ir.json",
+      "decodedByteLength": 130,
+      "sha256": "fd49ad8b0cab49216323beb969c08f91a888925dbb995838c57a05b48a80bb2f",
+      "content": "eyJmb3JtYXRWZXJzaW9uIjoiNC4wLjAiLCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6ImV4YW1wbGUvbWVwLWZpeHR1cmUiLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19Cg=="
+    },
+    {
+      "path": "fixtures/legacy-ir.json",
+      "decodedByteLength": 130,
+      "sha256": "fd49ad8b0cab49216323beb969c08f91a888925dbb995838c57a05b48a80bb2f",
+      "content": "eyJmb3JtYXRWZXJzaW9uIjoiNC4wLjAiLCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6ImV4YW1wbGUvbWVwLWZpeHR1cmUiLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19Cg=="
+    },
+    {
+      "path": "fixtures/guarantee-evidence.json",
+      "decodedByteLength": 22,
+      "sha256": "5f09ec4a785145b8442a6789437559aeea1e9b7432ee243a0796b0f0294ff6c8",
+      "content": "eyJmaXh0dXJlIjoiY2hlY2tlZCJ9Cg=="
+    }
+  ],
+  "cases": [
+    {
+      "id": "model-0001",
+      "kind": "negotiation",
+      "description": "Exact bilateral rich tuple admits a model generation request.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "accept",
+        "code": "accepted"
+      }
+    },
+    {
+      "id": "model-0002",
+      "kind": "negotiation",
+      "description": "Missing host model offers means legacy only.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ]
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0003",
+      "kind": "negotiation",
+      "description": "Missing guest model support means legacy only.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1"
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0004",
+      "kind": "negotiation",
+      "description": "Independent codec agreement cannot manufacture a supported tuple.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            },
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            },
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-ir",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0005",
+      "kind": "negotiation",
+      "description": "IR version is part of the exact tuple.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "3.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0006",
+      "kind": "negotiation",
+      "description": "Profile is part of the exact tuple.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-ir",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0007",
+      "kind": "negotiation",
+      "description": "Compile support does not authorize generateModel.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0008",
+      "kind": "negotiation",
+      "description": "A different exact MEP draft cannot invoke the model methods.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.2",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_protocol"
+      }
+    },
+    {
+      "id": "model-0009",
+      "kind": "negotiation",
+      "description": "Legacy MEP0.1 cannot invoke the rich model methods.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_protocol"
+      }
+    },
+    {
+      "id": "model-0010",
+      "kind": "negotiation",
+      "description": "Envelope drafts match exactly.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.2",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0011",
+      "kind": "limits",
+      "description": "Host encoded-byte bound is enforced before base64 decoding.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 667,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "encoded_limit_exceeded"
+      }
+    },
+    {
+      "id": "model-0012",
+      "kind": "limits",
+      "description": "Guest decoded-byte bound cannot be increased by the host.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 498,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "decoded_limit_exceeded"
+      }
+    },
+    {
+      "id": "model-0013",
+      "kind": "limits",
+      "description": "A decoded model cannot exceed the admitted tree-depth bound.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 1,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "depth_limit_exceeded"
+      }
+    },
+    {
+      "id": "model-0014",
+      "kind": "limits",
+      "description": "A decoded model cannot exceed the admitted node-count bound.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 1
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "node_limit_exceeded"
+      }
+    },
+    {
+      "id": "model-0015",
+      "kind": "integrity",
+      "description": "Declared decoded byte length must equal decoded content length.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 500,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "length_mismatch"
+      }
+    },
+    {
+      "id": "model-0016",
+      "kind": "integrity",
+      "description": "SHA256 binds decoded payload bytes.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "digest_mismatch"
+      }
+    },
+    {
+      "id": "model-0017",
+      "kind": "integrity",
+      "description": "Invalid base64 is refused before payload parsing.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "!not-base64!"
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "invalid_base64"
+      }
+    },
+    {
+      "id": "model-0018",
+      "kind": "outcome",
+      "description": "Successful compilation must contain a model.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.frontend.compileModel",
+        "params": {
+          "languageId": "moonbit",
+          "sources": {
+            "documents": [
+              {
+                "uri": "file:///fixture/main.mbt",
+                "languageId": "moonbit",
+                "version": 1,
+                "text": "pub fn is_ready() -> Bool { true }"
+              }
+            ]
+          },
+          "package": {
+            "name": "example/mep-fixture"
+          },
+          "dependencies": [],
+          "options": {
+            "typesOnly": true,
+            "irVersion": "4.0.0"
+          },
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "output": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "missing_model"
+      },
+      "result": {
+        "success": true,
+        "diagnostics": [],
+        "modules": []
+      }
+    },
+    {
+      "id": "model-0019",
+      "kind": "outcome",
+      "description": "Failed compilation cannot carry a model.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.frontend.compileModel",
+        "params": {
+          "languageId": "moonbit",
+          "sources": {
+            "documents": [
+              {
+                "uri": "file:///fixture/main.mbt",
+                "languageId": "moonbit",
+                "version": 1,
+                "text": "pub fn is_ready() -> Bool { true }"
+              }
+            ]
+          },
+          "package": {
+            "name": "example/mep-fixture"
+          },
+          "dependencies": [],
+          "options": {
+            "typesOnly": true,
+            "irVersion": "4.0.0"
+          },
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "output": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "model_on_failure"
+      },
+      "result": {
+        "success": false,
+        "model": {
+          "envelopeVersion": "0.1.0-draft.1",
+          "modelId": "urn:morphir:mep:fixture:model",
+          "revision": "fixture-revision-1",
+          "irVersion": "4.0.0",
+          "profile": "morphir-model",
+          "payload": {
+            "codec": "ion-binary",
+            "layout": "single-document",
+            "decodedByteLength": 499,
+            "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+            "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+          },
+          "evidence": [],
+          "critical": []
+        },
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "model-0020",
+      "kind": "outcome",
+      "description": "A null model is also forbidden on compilation failure.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.frontend.compileModel",
+        "params": {
+          "languageId": "moonbit",
+          "sources": {
+            "documents": [
+              {
+                "uri": "file:///fixture/main.mbt",
+                "languageId": "moonbit",
+                "version": 1,
+                "text": "pub fn is_ready() -> Bool { true }"
+              }
+            ]
+          },
+          "package": {
+            "name": "example/mep-fixture"
+          },
+          "dependencies": [],
+          "options": {
+            "typesOnly": true,
+            "irVersion": "4.0.0"
+          },
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "output": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "model_on_failure"
+      },
+      "result": {
+        "success": false,
+        "model": null,
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "model-0021",
+      "kind": "evidence",
+      "description": "Evidence for an older model revision cannot satisfy a required guarantee.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [
+              {
+                "guarantee": "urn:morphir:mep:fixture:checked",
+                "modelId": "urn:morphir:mep:fixture:model",
+                "modelRevision": "fixture-revision-0",
+                "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+                "scope": "urn:morphir:mep:fixture:package",
+                "producer": "urn:morphir:mep:fixture:producer",
+                "evidence": {
+                  "codec": "morphir-json",
+                  "layout": "single-document",
+                  "decodedByteLength": 22,
+                  "sha256": "5f09ec4a785145b8442a6789437559aeea1e9b7432ee243a0796b0f0294ff6c8",
+                  "content": "eyJmaXh0dXJlIjoiY2hlY2tlZCJ9Cg=="
+                }
+              }
+            ],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [
+            {
+              "guarantee": "urn:morphir:mep:fixture:checked",
+              "scope": "urn:morphir:mep:fixture:package"
+            }
+          ],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "stale_evidence"
+      }
+    },
+    {
+      "id": "model-0022",
+      "kind": "evidence",
+      "description": "Evidence for a different dependency context cannot satisfy a required guarantee.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [
+              {
+                "guarantee": "urn:morphir:mep:fixture:checked",
+                "modelId": "urn:morphir:mep:fixture:model",
+                "modelRevision": "fixture-revision-1",
+                "contextDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+                "scope": "urn:morphir:mep:fixture:package",
+                "producer": "urn:morphir:mep:fixture:producer",
+                "evidence": {
+                  "codec": "morphir-json",
+                  "layout": "single-document",
+                  "decodedByteLength": 22,
+                  "sha256": "5f09ec4a785145b8442a6789437559aeea1e9b7432ee243a0796b0f0294ff6c8",
+                  "content": "eyJmaXh0dXJlIjoiY2hlY2tlZCJ9Cg=="
+                }
+              }
+            ],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [
+            {
+              "guarantee": "urn:morphir:mep:fixture:checked",
+              "scope": "urn:morphir:mep:fixture:package"
+            }
+          ],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "stale_evidence"
+      }
+    },
+    {
+      "id": "model-0023",
+      "kind": "evidence",
+      "description": "An unknown required guarantee prevents invocation.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [
+            {
+              "guarantee": "urn:morphir:mep:fixture:unknown-required",
+              "scope": "urn:morphir:mep:fixture:package"
+            }
+          ],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_guarantee"
+      }
+    },
+    {
+      "id": "model-0024",
+      "kind": "preservation",
+      "description": "Unknown optional enrichment and ordered annotations survive opaque retention.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "accept",
+        "code": "accepted",
+        "retainedAsset": "fixtures/rich-model.ionb",
+        "retainedSha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+        "annotations": [
+          "source_name",
+          "target_name"
+        ],
+        "exactInteger": "9007199254740993",
+        "decimal": "123.4500",
+        "unknownEnrichmentOwner": "urn:morphir:mep:fixture:unknown-enrichment"
+      }
+    },
+    {
+      "id": "model-0025",
+      "kind": "compatibility",
+      "description": "Explicit rich-to-Morphir-JSON projection refuses annotation and precision loss.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.frontend.compileModel",
+        "params": {
+          "languageId": "moonbit",
+          "sources": {
+            "documents": [
+              {
+                "uri": "file:///fixture/main.mbt",
+                "languageId": "moonbit",
+                "version": 1,
+                "text": "pub fn is_ready() -> Bool { true }"
+              }
+            ]
+          },
+          "package": {
+            "name": "example/mep-fixture"
+          },
+          "dependencies": [],
+          "options": {
+            "typesOnly": true,
+            "irVersion": "4.0.0"
+          },
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "output": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "lossy_conversion",
+        "diagnostic": "data.lossy_conversion"
+      },
+      "projectionSource": {
+        "envelopeVersion": "0.1.0-draft.1",
+        "modelId": "urn:morphir:mep:fixture:model",
+        "revision": "fixture-revision-1",
+        "irVersion": "4.0.0",
+        "profile": "morphir-model",
+        "payload": {
+          "codec": "ion-binary",
+          "layout": "single-document",
+          "decodedByteLength": 499,
+          "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+          "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+        },
+        "evidence": [],
+        "critical": []
+      }
+    },
+    {
+      "id": "model-0026",
+      "kind": "compatibility",
+      "description": "Unchanged legacy MEP0.1 accepts a plain Morphir JSON generation request.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.1"
+        ]
+      },
+      "guestSupport": {
+        "protocolVersion": "0.1",
+        "backend": {
+          "targets": [
+            "moonbit"
+          ],
+          "irVersions": [
+            "4"
+          ],
+          "generate": true
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generate",
+        "params": {
+          "ir": {
+            "formatVersion": "4.0.0",
+            "distribution": {
+              "Library": {
+                "packageName": "example/mep-fixture",
+                "dependencies": {},
+                "def": {
+                  "modules": {}
+                }
+              }
+            }
+          },
+          "target": "moonbit",
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "accept",
+        "code": "accepted",
+        "irAsset": "fixtures/legacy-ir.json"
+      }
+    },
+    {
+      "id": "model-0027",
+      "kind": "compatibility",
+      "description": "An explicitly negotiated lossless Morphir JSON model remains supported.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-ir",
+            "payload": {
+              "codec": "morphir-json",
+              "layout": "single-document",
+              "decodedByteLength": 130,
+              "sha256": "fd49ad8b0cab49216323beb969c08f91a888925dbb995838c57a05b48a80bb2f",
+              "content": "eyJmb3JtYXRWZXJzaW9uIjoiNC4wLjAiLCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6ImV4YW1wbGUvbWVwLWZpeHR1cmUiLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19Cg=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "accept",
+        "code": "accepted",
+        "retainedAsset": "fixtures/plain-ir.json"
+      }
+    },
+    {
+      "id": "model-0028",
+      "kind": "outcome",
+      "description": "Successful model compilation returns its complete model and diagnostics.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.frontend.compileModel",
+        "params": {
+          "languageId": "moonbit",
+          "sources": {
+            "documents": [
+              {
+                "uri": "file:///fixture/main.mbt",
+                "languageId": "moonbit",
+                "version": 1,
+                "text": "pub fn is_ready() -> Bool { true }"
+              }
+            ]
+          },
+          "package": {
+            "name": "example/mep-fixture"
+          },
+          "dependencies": [],
+          "options": {
+            "typesOnly": true,
+            "irVersion": "4.0.0"
+          },
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "output": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      },
+      "expected": {
+        "admission": "accept",
+        "code": "accepted"
+      },
+      "result": {
+        "success": true,
+        "model": {
+          "envelopeVersion": "0.1.0-draft.1",
+          "modelId": "urn:morphir:mep:fixture:model",
+          "revision": "fixture-revision-1",
+          "irVersion": "4.0.0",
+          "profile": "morphir-model",
+          "payload": {
+            "codec": "ion-binary",
+            "layout": "single-document",
+            "decodedByteLength": 499,
+            "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+            "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+          },
+          "evidence": [],
+          "critical": []
+        },
+        "diagnostics": [],
+        "modules": []
+      }
+    },
+    {
+      "id": "model-0029",
+      "kind": "outcome",
+      "description": "Failed compilation carries diagnostics without a model.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.frontend.compileModel",
+        "params": {
+          "languageId": "moonbit",
+          "sources": {
+            "documents": [
+              {
+                "uri": "file:///fixture/main.mbt",
+                "languageId": "moonbit",
+                "version": 1,
+                "text": "pub fn is_ready() -> Bool { true }"
+              }
+            ]
+          },
+          "package": {
+            "name": "example/mep-fixture"
+          },
+          "dependencies": [],
+          "options": {
+            "typesOnly": true,
+            "irVersion": "4.0.0"
+          },
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "output": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      },
+      "expected": {
+        "admission": "accept",
+        "code": "accepted"
+      },
+      "result": {
+        "success": false,
+        "diagnostics": [
+          {
+            "severity": "error",
+            "message": "Fixture compilation failed."
+          }
+        ]
+      }
+    },
+    {
+      "id": "model-0030",
+      "kind": "evidence",
+      "description": "Interpreting a guarantee identifier does not establish that guarantee.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [
+            {
+              "guarantee": "urn:morphir:mep:fixture:checked",
+              "scope": "urn:morphir:mep:fixture:package"
+            }
+          ],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "missing_evidence"
+      }
+    },
+    {
+      "id": "model-0031",
+      "kind": "negotiation",
+      "description": "Compile options cannot name a different IR version than the selected output tuple.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.frontend.compileModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.frontend.compileModel",
+        "params": {
+          "languageId": "moonbit",
+          "sources": {
+            "documents": [
+              {
+                "uri": "file:///fixture/main.mbt",
+                "languageId": "moonbit",
+                "version": 1,
+                "text": "pub fn is_ready() -> Bool { true }"
+              }
+            ]
+          },
+          "package": {
+            "name": "example/mep-fixture"
+          },
+          "dependencies": [],
+          "options": {
+            "typesOnly": true,
+            "irVersion": "3.0.0"
+          },
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "output": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "ir_version_mismatch"
+      }
+    },
+    {
+      "id": "model-0032",
+      "kind": "evidence",
+      "description": "Evidence for a different logical model cannot satisfy a required guarantee.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [
+              {
+                "guarantee": "urn:morphir:mep:fixture:checked",
+                "modelId": "urn:morphir:mep:fixture:other-model",
+                "modelRevision": "fixture-revision-1",
+                "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+                "scope": "urn:morphir:mep:fixture:package",
+                "producer": "urn:morphir:mep:fixture:producer",
+                "evidence": {
+                  "codec": "morphir-json",
+                  "layout": "single-document",
+                  "decodedByteLength": 22,
+                  "sha256": "5f09ec4a785145b8442a6789437559aeea1e9b7432ee243a0796b0f0294ff6c8",
+                  "content": "eyJmaXh0dXJlIjoiY2hlY2tlZCJ9Cg=="
+                }
+              }
+            ],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [
+            {
+              "guarantee": "urn:morphir:mep:fixture:checked",
+              "scope": "urn:morphir:mep:fixture:package"
+            }
+          ],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "stale_evidence"
+      }
+    },
+    {
+      "id": "model-0033",
+      "kind": "compatibility",
+      "description": "A known critical parent does not authorize an unknown critical child.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA==",
+              "futureMember": true
+            },
+            "evidence": [],
+            "critical": [
+              "payload.futureMember"
+            ]
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unknown_critical_path"
+      }
+    },
+    {
+      "id": "model-0034",
+      "kind": "evidence",
+      "description": "Matching model and context evidence cannot establish a different exact scope.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [
+              {
+                "guarantee": "urn:morphir:mep:fixture:checked",
+                "modelId": "urn:morphir:mep:fixture:model",
+                "modelRevision": "fixture-revision-1",
+                "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+                "scope": "urn:morphir:mep:fixture:other-scope",
+                "producer": "urn:morphir:mep:fixture:producer",
+                "evidence": {
+                  "codec": "morphir-json",
+                  "layout": "single-document",
+                  "decodedByteLength": 22,
+                  "sha256": "5f09ec4a785145b8442a6789437559aeea1e9b7432ee243a0796b0f0294ff6c8",
+                  "content": "eyJmaXh0dXJlIjoiY2hlY2tlZCJ9Cg=="
+                }
+              }
+            ],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [
+            {
+              "guarantee": "urn:morphir:mep:fixture:checked",
+              "scope": "urn:morphir:mep:fixture:package"
+            }
+          ],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "wrong_evidence_scope"
+      }
+    },
+    {
+      "id": "model-0035",
+      "kind": "limits",
+      "description": "Individually bounded evidence and model payloads still exceed the aggregate decoded budget.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 499,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 499,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.backend.generateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [
+              {
+                "guarantee": "urn:morphir:mep:fixture:checked",
+                "modelId": "urn:morphir:mep:fixture:model",
+                "modelRevision": "fixture-revision-1",
+                "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+                "scope": "urn:morphir:mep:fixture:package",
+                "producer": "urn:morphir:mep:fixture:producer",
+                "evidence": {
+                  "codec": "morphir-json",
+                  "layout": "single-document",
+                  "decodedByteLength": 22,
+                  "sha256": "5f09ec4a785145b8442a6789437559aeea1e9b7432ee243a0796b0f0294ff6c8",
+                  "content": "eyJmaXh0dXJlIjoiY2hlY2tlZCJ9Cg=="
+                }
+              }
+            ],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-model",
+            "codec": "ion-binary",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "target": "moonbit",
+          "contextDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "requiredGuarantees": [],
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "decoded_limit"
+      }
+    }
+  ]
+}
