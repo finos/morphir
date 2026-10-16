@@ -1,0 +1,126 @@
+{
+  "profile": "morphir/workbench/native",
+  "contractVersion": "0.1.0-draft.1",
+  "status": "unexecuted",
+  "kind": "raw-rejection-expectations",
+  "cases": [
+    {
+      "id": "duplicate-wrapper-profile",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}",
+      "expected": "reject",
+      "reason": "Two profile members reject even when their values are equal."
+    },
+    {
+      "id": "duplicate-wrapper-session",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.check\",\"sessionId\":\"session-1\",\"sessionId\":\"session-2\"}",
+      "expected": "reject",
+      "reason": "A parser must not select first or last session authority from duplicate members."
+    },
+    {
+      "id": "escaped-equivalent-wrapper-member",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.check\",\"sessionId\":\"session-1\",\"session\\u0049d\":\"session-1\"}",
+      "expected": "reject",
+      "reason": "Decode member names before checking uniqueness; sessionId and session\\u0049d are the same name."
+    },
+    {
+      "id": "duplicate-payload-member",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"sessionId\":\"session-1\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]}\",\"entry\":\"sample:main#main\",\"entry\":\"sample:main#other\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"}}}",
+      "expected": "reject",
+      "reason": "Duplicate members reject at payload depth before admission or execution."
+    },
+    {
+      "id": "duplicate-input-member",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"sessionId\":\"session-1\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]}\",\"entry\":\"sample:main#main\",\"inputs\":{\"format\":\"json\",\"format\":\"json\",\"source\":\"[]\"}}}",
+      "expected": "reject",
+      "reason": "Nested inputs objects use the same duplicate-aware decoder as the envelope."
+    },
+    {
+      "id": "duplicate-nested-model-member",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"sessionId\":\"session-1\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":3,\\\"formatVersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]}\",\"entry\":\"sample:main#main\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"}}}",
+      "expected": "reject",
+      "reason": "The JSON source stored in payload.model must be decoded with duplicate rejection, independently of outer JSON decoding."
+    },
+    {
+      "id": "escaped-equivalent-nested-model-member",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"sessionId\":\"session-1\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":3,\\\"format\\\\u0056ersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]}\",\"entry\":\"sample:main#main\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"}}}",
+      "expected": "reject",
+      "reason": "Escaped-equivalent model member names reject inside the source string."
+    },
+    {
+      "id": "duplicate-nested-argument-member",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"sessionId\":\"session-1\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]}\",\"entry\":\"sample:main#main\",\"inputs\":{\"format\":\"json\",\"source\":\"[{\\\"type\\\":\\\"bool\\\",\\\"value\\\":true,\\\"value\\\":false}]\"}}}",
+      "expected": "reject",
+      "reason": "The JSON argument source string must reject duplicate value fields before invocation admission."
+    },
+    {
+      "id": "escaped-equivalent-nested-argument-member",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"sessionId\":\"session-1\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]}\",\"entry\":\"sample:main#main\",\"inputs\":{\"format\":\"json\",\"source\":\"[{\\\"type\\\":\\\"bool\\\",\\\"value\\\":true,\\\"val\\\\u0075e\\\":true}]\"}}}",
+      "expected": "reject",
+      "reason": "Argument source member uniqueness compares decoded names, not their escape spellings."
+    },
+    {
+      "id": "multiple-envelope-values",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}\n{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}",
+      "expected": "reject",
+      "reason": "Exactly one complete JSON value must consume the frame."
+    },
+    {
+      "id": "multiple-model-source-values",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"sessionId\":\"session-1\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]} {\\\"formatVersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]}\",\"entry\":\"sample:main#main\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"}}}",
+      "expected": "reject",
+      "reason": "A model source string cannot contain a second JSON document."
+    },
+    {
+      "id": "multiple-argument-source-values",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"sessionId\":\"session-1\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":3,\\\"distribution\\\":[\\\"Library\\\",[],[],{\\\"modules\\\":[]}]}\",\"entry\":\"sample:main#main\",\"inputs\":{\"format\":\"json\",\"source\":\"[] []\"}}}",
+      "expected": "reject",
+      "reason": "An argument source string must contain exactly one array document."
+    },
+    {
+      "id": "invalid-utf8",
+      "encoding": "hex",
+      "source": "7b2270726f66696c65223a22c328227d",
+      "expected": "reject",
+      "reason": "Bytes C3 28 are not a valid UTF-8 sequence; reject before JSON parsing without replacement decoding."
+    },
+    {
+      "id": "overlong-utf8",
+      "encoding": "hex",
+      "source": "7b2278223a22c0af227d",
+      "expected": "reject",
+      "reason": "Bytes C0 AF are an overlong slash encoding, not valid UTF-8."
+    },
+    {
+      "id": "utf8-encoded-surrogate",
+      "encoding": "hex",
+      "source": "7b2278223a22eda080227d",
+      "expected": "reject",
+      "reason": "Bytes ED A0 80 encode a surrogate code point and are invalid UTF-8. This does not forbid escaped UTF-16 units in existing typed-value arrays."
+    },
+    {
+      "id": "whole-frame-byte-limit",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}",
+      "generate": {
+        "prefix": {
+          "repeat": " ",
+          "count": 1048576
+        }
+      },
+      "expected": "reject",
+      "reason": "Prefix the source with exactly 1,048,576 ASCII spaces. Valid JSON whitespace still counts toward the 1,048,576-byte whole-envelope limit; stop before parsing or dispatch."
+    }
+  ]
+}
