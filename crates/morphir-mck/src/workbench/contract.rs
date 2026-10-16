@@ -11,6 +11,7 @@ pub const INVOCATION_VERSION: &str = "0.1.0-draft.3";
 pub const OUTPUT_VERSION: &str = "0.1.0-draft.4";
 pub const OUTCOMES_VERSION: &str = "0.1.0-draft.5";
 pub const JOBS_VERSION: &str = "0.1.0-draft.6";
+pub const NATIVE_FRAMES_VERSION: &str = "0.1.0-draft.7";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -48,6 +49,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.4",
         "=0.1.0-draft.5",
         "=0.1.0-draft.6",
+        "=0.1.0-draft.7",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -81,10 +83,15 @@ pub enum Operation {
     ValidateOutcomes,
     #[serde(rename = "reduce-job")]
     ReduceJob,
+    #[serde(rename = "validate-native-frame")]
+    ValidateNativeFrame,
 }
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if (version == NATIVE_FRAMES_VERSION) != (self == Self::ValidateNativeFrame) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if (version == JOBS_VERSION) != (self == Self::ReduceJob) {
             return Err("operation is not defined by this Workbench draft".into());
         }
@@ -101,8 +108,8 @@ impl Operation {
     }
 
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
-        if self == Self::ReduceJob && format != Format::Json {
-            return Err("job reduction supports JSON only".into());
+        if matches!(self, Self::ReduceJob | Self::ValidateNativeFrame) && format != Format::Json {
+            return Err("operation supports JSON only".into());
         }
         Ok(())
     }
@@ -155,6 +162,14 @@ impl Capabilities {
         {
             return Err("job reduction requires exactly reduce-job and JSON capabilities".into());
         }
+        if self.contract_version == NATIVE_FRAMES_VERSION
+            && (self.operations != [Operation::ValidateNativeFrame]
+                || self.formats != [Format::Json])
+        {
+            return Err(
+                "native frames require exactly validate-native-frame and JSON capabilities".into(),
+            );
+        }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
         if self.operations.iter().collect::<BTreeSet<_>>().len() != self.operations.len()
@@ -188,7 +203,14 @@ impl Observation {
             Self::Ok { value } => {
                 projection_for(value, operation)?;
             }
-            Self::Invalid { code } => identity(code, 128)?,
+            Self::Invalid { code } => {
+                identity(code, 128)?;
+                if operation == Operation::ValidateNativeFrame
+                    && !super::native_frames::INVALID_CODES.contains(&code.as_str())
+                {
+                    return Err("unknown native frame rejection code".into());
+                }
+            }
         }
         if operation == Operation::ValidateValue
             && matches!(self, Self::Ok { value } if value["type"] == "model-error")
@@ -215,6 +237,7 @@ fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> 
         Operation::ValidateInvocations => invocation_projection(value),
         Operation::ValidateOutcomes => super::outcomes::projection(value),
         Operation::ReduceJob => super::jobs::projection(value),
+        Operation::ValidateNativeFrame => super::native_frames::projection(value),
         _ => projection(value),
     }
 }

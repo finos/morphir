@@ -20,9 +20,12 @@ pub(super) trait Testee {
 
 impl Testee for Session {
     fn exchange(&mut self, request: &Value) -> Result<Value, String> {
-        self.exchange_serializable(request)
-            .map(Value::Object)
-            .map_err(|e| e.to_string())
+        let response = if request["contractVersion"] == super::contract::NATIVE_FRAMES_VERSION {
+            self.exchange_literal(request)
+        } else {
+            self.exchange_serializable(request)
+        };
+        response.map(Value::Object).map_err(|e| e.to_string())
     }
 }
 
@@ -82,7 +85,12 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                     &json!({"op":case.operation(),"suite":"workbench","contractVersion":corpus.version,
                 "format":case.format,"input":case.input}),
                 )
-                .and_then(Observation::parse)
+                .and_then(|value| {
+                    if case.operation() == super::contract::Operation::ValidateNativeFrame {
+                        super::native_frames::validate_observation_shape(&value)?;
+                    }
+                    Observation::parse(value)
+                })
                 .and_then(|observation| {
                     observation.validate_for(case.operation())?;
                     let bytes = encoded_size(&observation, observation_budget)?;

@@ -78,7 +78,16 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     }
     let bytes = read_bounded(file, MAX_CORPUS_BYTES as usize)?;
     let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
-    let value = crate::json::strict::parse(text)?;
+    let mut value = crate::json::strict::parse(text)?;
+    if value["formatVersion"] == super::contract::NATIVE_FRAMES_VERSION {
+        // Keep duplicate-aware infrastructure admission above, but retain exact
+        // decimal tokens for compact generation counts in this new draft. The
+        // historical parser's IEEE-754 normalization remains unchanged in 1–6.
+        value = crate::json::strict::parse_exact(text)?;
+        // Validate literal token kinds before serde's nested Value visitors can
+        // interpret private arbitrary-precision/raw-value marker objects.
+        super::native_frames::validate_corpus_shape(&value)?;
+    }
     let document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
     version(&document.format_version)?;
     if document.cases.is_empty() || document.cases.len() > MAX_CASES {
@@ -98,7 +107,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::ReduceJob {
+        let input_len = if case.operation() == Operation::ValidateNativeFrame {
+            super::native_frames::validate_input(&case.input)?;
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::ReduceJob {
             // Negative job traces are arbitrary JSON. The adapter owns admission;
             // the runner only bounds the compact encoded input.
             encoded_size(&case.input, MAX_INPUT_BYTES)?

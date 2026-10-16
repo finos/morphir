@@ -1,0 +1,120 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/mck-request.schema.json",
+  "tests": [
+    {
+      "description": "Native frame request",
+      "data": {
+        "id": 1,
+        "op": "validate-native-frame",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "format": "json",
+        "input": {
+          "encoding": "utf8",
+          "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Capabilities request",
+      "data": {
+        "id": 1,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7"
+      },
+      "valid": true
+    },
+    {
+      "description": "Exit",
+      "data": {
+        "id": 2,
+        "op": "exit"
+      },
+      "valid": true
+    },
+    {
+      "description": "No caseId",
+      "data": {
+        "id": 1,
+        "op": "validate-native-frame",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "format": "json",
+        "input": {
+          "encoding": "utf8",
+          "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+        },
+        "caseId": "hidden"
+      },
+      "valid": false
+    },
+    {
+      "description": "No expectations",
+      "data": {
+        "id": 1,
+        "op": "validate-native-frame",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "format": "json",
+        "input": {
+          "encoding": "utf8",
+          "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+        },
+        "expected": {
+          "status": "ok",
+          "value": {
+            "frameAccepted": true
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No Ion",
+      "data": {
+        "id": 1,
+        "op": "validate-native-frame",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "format": "ion-text",
+        "input": {
+          "encoding": "utf8",
+          "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong operation",
+      "data": {
+        "id": 1,
+        "op": "reduce-job",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "format": "json",
+        "input": {
+          "encoding": "utf8",
+          "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong draft",
+      "data": {
+        "id": 1,
+        "op": "validate-native-frame",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.6",
+        "format": "json",
+        "input": {
+          "encoding": "utf8",
+          "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+        }
+      },
+      "valid": false
+    }
+  ]
+}

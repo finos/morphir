@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/native-frame-projection.schema.json",
+  "title": "Offline Workbench native frame native-frame-projection",
+  "description": "Closed exact draft.7 JSON validate-native-frame contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+  "examples": [
+    {
+      "frameAccepted": true
+    }
+  ],
+  "type": "object",
+  "required": [ "frameAccepted" ],
+  "properties": {
+    "frameAccepted": {
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -42,6 +42,14 @@ impl<'de> Deserialize<'de> for Members<'de> {
     }
 }
 fn from_raw(raw: &serde_json::value::RawValue, depth: usize) -> Result<Document, String> {
+    from_raw_numbers(raw, depth, number)
+}
+
+fn from_raw_numbers(
+    raw: &serde_json::value::RawValue,
+    depth: usize,
+    parse_number: fn(&str) -> Result<Number, String>,
+) -> Result<Document, String> {
     let token = raw.get();
     let kind = token.as_bytes()[0];
     // RawValue intentionally skips serde's recursion guard. Retain the existing
@@ -55,7 +63,7 @@ fn from_raw(raw: &serde_json::value::RawValue, depth: usize) -> Result<Document,
             members
                 .0
                 .into_iter()
-                .map(|(key, value)| Ok((key, from_raw(value, depth + 1)?)))
+                .map(|(key, value)| Ok((key, from_raw_numbers(value, depth + 1, parse_number)?)))
                 .collect::<Result<_, _>>()
                 .map(Document::Object)
         }
@@ -64,7 +72,7 @@ fn from_raw(raw: &serde_json::value::RawValue, depth: usize) -> Result<Document,
                 serde_json::from_str(token).map_err(|e| e.to_string())?;
             values
                 .into_iter()
-                .map(|value| from_raw(value, depth + 1))
+                .map(|value| from_raw_numbers(value, depth + 1, parse_number))
                 .collect::<Result<_, _>>()
                 .map(Document::Array)
         }
@@ -74,7 +82,7 @@ fn from_raw(raw: &serde_json::value::RawValue, depth: usize) -> Result<Document,
         b't' => Ok(Document::Bool(true)),
         b'f' => Ok(Document::Bool(false)),
         b'n' => Ok(Document::Null),
-        _ => number(token).map(Document::Number),
+        _ => parse_number(token).map(Document::Number),
     }
 }
 fn number(token: &str) -> Result<Number, String> {
@@ -178,6 +186,18 @@ pub(crate) fn parse(text: &str) -> Result<Value, String> {
     Document::parse(text.as_bytes()).map(|doc| doc.value())
 }
 
+/// Duplicate-aware exact decimal numbers, with literal objects built through
+/// the same RawValue traversal. Never deserialize arbitrary objects as Value:
+/// serde's private number/raw-value maps could otherwise impersonate scalars.
+pub(crate) fn parse_exact(text: &str) -> Result<Value, String> {
+    let raw =
+        serde_json::from_str::<&serde_json::value::RawValue>(text).map_err(|e| e.to_string())?;
+    from_raw_numbers(raw, 0, |token| {
+        token.parse::<Number>().map_err(|e| e.to_string())
+    })
+    .map(|doc| doc.value())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -221,6 +241,19 @@ mod tests {
         ] {
             assert!(parse(duplicate).is_err(), "{duplicate}");
         }
+    }
+
+    #[test]
+    fn exact_numbers_do_not_reinterpret_literal_private_marker_objects() {
+        let value = parse_exact(r#"{"count":1.00000000000000001,"literal":{"$serde_json::private::Number":"1"},"raw":{"$serde_json::private::RawValue":"true"}}"#).unwrap();
+        assert_eq!(
+            value["count"].as_number().unwrap().to_string(),
+            "1.00000000000000001"
+        );
+        assert_eq!(value["literal"]["$serde_json::private::Number"], "1");
+        assert_eq!(value["raw"]["$serde_json::private::RawValue"], "true");
+        assert!(parse_exact(r#"{"count":1,"\u0063ount":2}"#).is_err());
+        assert!(parse_exact(&format!("{}0{}", "[".repeat(128), "]".repeat(128))).is_err());
     }
 
     #[test]

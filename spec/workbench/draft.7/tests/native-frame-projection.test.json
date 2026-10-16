@@ -1,0 +1,39 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.7/native-frame-projection.schema.json",
+  "tests": [
+    {
+      "description": "Accepted marker",
+      "data": {
+        "frameAccepted": true
+      },
+      "valid": true
+    },
+    {
+      "description": "False marker",
+      "data": {
+        "frameAccepted": false
+      },
+      "valid": false
+    },
+    {
+      "description": "Extra member",
+      "data": {
+        "frameAccepted": true,
+        "model": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "Missing marker",
+      "data": {},
+      "valid": false
+    },
+    {
+      "description": "Old typed projection",
+      "data": {
+        "type": "unit"
+      },
+      "valid": false
+    }
+  ]
+}

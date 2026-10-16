@@ -278,3 +278,108 @@ fn job_trace_report_is_checked_through_the_existing_workbench_command() {
         assert_eq!(check(&kit, &report).status.code(), Some(1), "{field}");
     }
 }
+
+#[test]
+fn native_frame_reports_use_shared_run_and_independent_check() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    std::fs::write(
+        kit.join("cases.json"),
+        json!({"formatVersion":"0.1.0-draft.7","cases":[{
+        "id":"frame","operation":"validate-native-frame","format":"json",
+        "input":{"encoding":"utf8","source":"{}"},
+        "expected":{"status":"invalid","code":"native.frame.shape"}}]})
+        .to_string(),
+    )
+    .unwrap();
+    let report = root.path().join("report.json");
+    let run = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(1));
+    let mut saved: Value = serde_json::from_slice(&std::fs::read(&report).unwrap()).unwrap();
+    assert_eq!(saved["formatVersion"], "0.1.0-draft.7");
+    assert_eq!(saved["records"][0]["operation"], "validate-native-frame");
+    assert_eq!(check(&kit, &report).status.code(), Some(1));
+    saved["capabilities"] = json!({"suite":"workbench","contractVersion":"0.1.0-draft.7",
+        "binding":"transcript","language":"test","operations":["validate-native-frame"],"formats":["json"]});
+    saved["errors"] = json!([]);
+    saved["qualified"] = json!(true);
+    saved["records"][0]["result"] = json!("pass");
+    saved["records"][0]["observed"] = json!({"status":"invalid","code":"native.frame.shape"});
+    std::fs::write(&report, saved.to_string()).unwrap();
+    assert_eq!(check(&kit, &report).status.code(), Some(0));
+    for change in ["operation", "code", "projection", "hash", "capabilities"] {
+        let mut forged = saved.clone();
+        match change {
+            "operation" => forged["records"][0]["operation"] = json!("reduce-job"),
+            "code" => forged["records"][0]["observed"]["code"] = json!("native.frame.unknown"),
+            "projection" => {
+                forged["records"][0]["observed"] =
+                    json!({"status":"ok","value":{"frameAccepted":true}})
+            }
+            "hash" => forged["corpusHash"] = json!("0".repeat(64)),
+            "capabilities" => forged["capabilities"]["contractVersion"] = json!("0.1.0-draft.6"),
+            _ => unreachable!(),
+        }
+        std::fs::write(&report, forged.to_string()).unwrap();
+        assert_eq!(check(&kit, &report).status.code(), Some(1), "{change}");
+    }
+}
+
+#[test]
+fn native_frame_private_number_objects_reject_before_adapter_spawn() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    std::fs::write(kit.join("cases.json"),r#"{"formatVersion":"0.1.0-draft.7","cases":[{"id":"frame","operation":"validate-native-frame","format":"json","input":{"encoding":"utf8","source":"{}","generate":{"prefix":{"repeat":" ","count":{"$serde_json::private::Number":"1"}}}},"expected":{"status":"ok","value":{"frameAccepted":true}}}]}"#).unwrap();
+    let report = root.path().join("report.json");
+    let result = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(result.status.code(), Some(1));
+    assert!(
+        !report.exists(),
+        "invalid corpus must fail before creating an adapter-error report"
+    );
+    assert!(String::from_utf8_lossy(&result.stderr).contains("native frame corpus shape"));
+}
+
+#[test]
+fn native_frame_check_rejects_literal_object_success_marker() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    std::fs::write(kit.join("cases.json"),json!({"formatVersion":"0.1.0-draft.7","cases":[{
+        "id":"frame","operation":"validate-native-frame","format":"json",
+        "input":{"encoding":"utf8","source":"{}"},"expected":{"status":"ok","value":{"frameAccepted":true}}}]}).to_string()).unwrap();
+    let hash = morphir_mck::workbench::load(&kit)
+        .unwrap()
+        .corpus_hash()
+        .to_owned();
+    let mut saved = json!({"formatVersion":"0.1.0-draft.7","suite":"workbench","corpusHash":hash,
+        "capabilities":{"suite":"workbench","contractVersion":"0.1.0-draft.7","binding":"transcript","language":"test","operations":["validate-native-frame"],"formats":["json"]},
+        "records":[{"caseId":"frame","operation":"validate-native-frame","format":"json","result":"pass","observed":{"status":"ok","value":{"frameAccepted":true}}}],"errors":[],"qualified":true});
+    let report = root.path().join("report.json");
+    std::fs::write(&report, saved.to_string()).unwrap();
+    assert_eq!(check(&kit, &report).status.code(), Some(0));
+    saved["records"][0]["observed"]["value"]["frameAccepted"] =
+        json!({"$serde_json::private::RawValue":"true"});
+    std::fs::write(&report, saved.to_string()).unwrap();
+    let rejected = check(&kit, &report);
+    assert_eq!(rejected.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("native frame report shape"));
+}

@@ -303,6 +303,11 @@ pub fn parse_envelope(line: &str) -> Result<(u64, Object), ProtocolError> {
         let shown: String = line.chars().take(200).collect();
         ProtocolError(format!("not a JSON line: {shown}"))
     })?;
+    split_envelope(value)
+}
+
+/// Split a literal-preserving parse without a second serde Value decoding pass.
+pub(super) fn split_envelope(value: Value) -> Result<(u64, Object), ProtocolError> {
     let Value::Object(mut body) = value else {
         return fail("message must be a JSON object");
     };
