@@ -51,16 +51,19 @@ fn starts_upper(name : String) -> Bool {
 /// annotation is a function type (an unannotated value lifts every leading
 /// variable, each with a fresh placeholder type). The other arguments stay in
 /// the body as `Lambda` nodes.
+/// The third part lists the lifted parameters: the Elm spelling of each input
+/// and the range of its argument pattern.
 pub fn lower_value_definition(
   scope : @resolve.Scope,
   f : @ast.Function,
-) -> (String, @ir.ValueDefinition) raise LowerError {
+) -> (String, @ir.ValueDefinition, Array[(String, @ast.Range)]) raise LowerError {
   let lowering : Lowering = { scope, locals: [], placeholders: Ref(0), }
   let declaration = f.declaration.value
   let (arguments, body) = arguments_and_body(declaration)
   let frame : Map[String, Bool] = Map([])
   let patterns = lowering.patterns(arguments[:], frame)
   let inputs : Array[(@ir.Name, @ir.Type)] = []
+  let parameters : Array[(String, @ast.Range)] = []
   let mut rest = f.signature.map(s => s.value.type_annotation)
   let mut lifted = 0
   while lifted < arguments.length() {
@@ -79,6 +82,9 @@ pub fn lower_value_definition(
         rest = Some(result)
       }
     }
+    parameters.push(
+      (variable_name(arguments[lifted]).unwrap_or(""), arguments[lifted].range),
+    )
     lifted += 1
   }
   let output = match rest {
@@ -91,7 +97,18 @@ pub fn lower_value_definition(
   for i = arguments.length() - 1; i >= lifted; i = i - 1 {
     value = Lambda(value_attributes(arguments[i].range), patterns[i], value)
   }
-  (declaration.name.value, ExpressionBody(inputs, output, value))
+  (declaration.name.value, ExpressionBody(inputs, output, value), parameters)
+}
+
+///|
+/// The Elm spelling of a variable pattern: `x`, `(x)` or `_ as x`.
+fn variable_name(node : @ast.Node[@ast.Pattern]) -> String? {
+  match node.value {
+    VarPattern(name) => Some(name)
+    AsPattern(_, name) => Some(name.value)
+    ParenthesizedPattern(inner) => variable_name(inner)
+    _ => None
+  }
 }
 
 ///|

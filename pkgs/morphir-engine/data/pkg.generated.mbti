@@ -87,6 +87,7 @@ pub fn Registry::decode(Self, String, SourceSnapshot) -> IRUnit raise BoundaryEr
 pub fn Registry::encode(Self, String, IRUnit) -> Content raise BoundaryError
 pub fn Registry::has_codec(Self, String) -> Bool
 pub fn Registry::new(limits? : Limits) -> Self raise
+pub fn Registry::open_checkpoint(Self, String, Content) -> IRUnit raise BoundaryError
 pub fn Registry::register(Self, String, Codec) -> Unit raise BoundaryError
 
 pub(all) struct Rewrite {

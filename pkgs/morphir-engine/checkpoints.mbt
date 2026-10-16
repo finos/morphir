@@ -145,14 +145,15 @@ pub fn Plan::requires_byte_read(self : Plan) -> Bool {
 ///|
 pub fn Plan::requires_byte_write(self : Plan) -> Bool {
   self.jobs.any(job => {
-    match job.boundary {
+    job.unit_backend ||
+    (match job.boundary {
       Some(boundary) =>
         match job.generator {
           Some(g) => g.write_bytes
           None => boundary.output.binary
         }
       None => false
-    }
+    })
   })
 }
 

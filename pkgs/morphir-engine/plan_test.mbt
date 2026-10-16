@@ -116,4 +116,6 @@ test "host runtime bindings are available to project scripts" {
   let report = engine.execute(plan, host)
   assert_true(report.successful())
   assert_true(report.artifacts[0].path.has_suffix(".scm"))
+  // A plain Scheme source writes one file and no sidecar.
+  assert_eq(report.artifacts.length(), 1)
 }

@@ -13,4 +13,6 @@ description = "Embeddable Morphir Scheme for IR transformation pipelines and run
 import {
   "finos/morphir-ir@0.1.0",
   "finos/morphir-sdk@0.1.0",
+  "moonrockz/ion@0.3.0",
+  "moonrockz/expect@0.6.1",
 }

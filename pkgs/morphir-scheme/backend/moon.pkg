@@ -15,8 +15,13 @@ import {
   "finos/morphir-sdk/result" @sdk_result,
   "finos/morphir-sdk/set" @sdk_set,
   "finos/morphir-sdk/string" @sdk_string,
+  "finos/morphir-ir/identities",
+  "moonrockz/ion/ion",
+  "moonrockz/ion/binary" @ion_binary,
 }
 
 import {
   "finos/morphir-scheme/backend",
+  "moonrockz/expect",
+  "moonbitlang/core/debug",
 } for "test"

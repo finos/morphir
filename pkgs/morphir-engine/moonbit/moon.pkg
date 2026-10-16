@@ -16,4 +16,5 @@ import {
   "finos/morphir-scheme/backend",
   "moonrockz/ion/ion",
   "moonrockz/ion/binary" @ion_binary,
+  "moonrockz/expect",
 } for "test"

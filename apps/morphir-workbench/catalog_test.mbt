@@ -16,8 +16,14 @@ test "the catalog lists every language the engine compiles" {
           "defaultProfile": "library",
           "profiles": [
             {
+              "id": "library",
               "compileKind": "whole-project",
               "displayName": "Elm 0.19.1 project",
+            },
+            {
+              "id": "library-origins",
+              "compileKind": "whole-project",
+              "displayName": "Elm 0.19.1 project with declaration origins",
             },
           ],
         },

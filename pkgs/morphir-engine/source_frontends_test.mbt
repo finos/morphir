@@ -181,3 +181,43 @@ test "configured source unit budgets apply before checkpoint or generation" {
     assert_true(report.diagnostics[0].message.has_prefix(code))
   }
 }
+
+///|
+test "a unit backend accepts rich units, refuses transforms, and ir-json still needs a typed backend" {
+  let engine = @engine.Engine::new()
+  engine.register_unit_frontend("rich", [".model"], fn(_, id, _) raise {
+    @data.IRUnit::new(id, @fixtures.library())
+  })
+  let report = engine.execute_content(
+    rich_plan(engine, rich_files(backend="scheme")),
+    fn(_, _) { @data.Text("opaque") },
+  )
+  if !report.successful() {
+    fail(report.diagnostics[0].message)
+  }
+  let files = rich_files(backend="scheme")
+  files["morphir.config.scm"] = "(pipeline (transform (lambda (file) file)))"
+  @expect.expect_all(s => {
+    s
+    .expect(report.artifacts.map(a => a.format), label="formats")
+    .to_contain_exactly(["scheme", "ion-binary"])
+    s
+    .expect_call(() => rich_plan(engine, rich_files(backend="ir-json")))
+    .to_raise_matching(
+      e => {
+        e is @configuration.Invalid(message) &&
+        message.contains("frontend.typed_backend_required")
+      },
+      description="frontend.typed_backend_required",
+    )
+    s
+    .expect_call(() => rich_plan(engine, files))
+    .to_raise_matching(
+      e => {
+        e is @configuration.Invalid(message) &&
+        message.contains("metadata lineage is required")
+      },
+      description="the lineage refusal",
+    )
+  })
+}

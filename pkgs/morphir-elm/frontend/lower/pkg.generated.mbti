@@ -17,7 +17,7 @@ pub fn lower_type(@resolve.Scope, @ast.Node[@ast.TypeAnnotation], Array[String]?
 
 pub fn lower_type_definition(@resolve.Scope, @ast.Declaration) -> (String, @v4.TypeDefinition, String?)? raise LowerError
 
-pub fn lower_value_definition(@resolve.Scope, @ast.Function) -> (String, @v4.ValueDefinition) raise LowerError
+pub fn lower_value_definition(@resolve.Scope, @ast.Function) -> (String, @v4.ValueDefinition, Array[(String, @ast.Range)]) raise LowerError
 
 pub fn type_attributes(@ast.Range) -> @v4.TypeAttributes
 

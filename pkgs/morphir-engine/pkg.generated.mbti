@@ -4,6 +4,7 @@ package "finos/morphir-engine"
 import {
   "finos/morphir-engine/config",
   "finos/morphir-engine/data",
+  "finos/morphir-engine/ids",
   "finos/morphir-engine/workspace",
   "finos/morphir-execution/diagnostics",
   "finos/morphir-ir/versions/v4",
@@ -17,6 +18,10 @@ import {
 pub fn infer_unit(@data.IRUnit, @morphir-typing.Mode, Bool) -> @data.IRUnit raise
 
 // Errors
+pub(all) suberror GenerationFailed {
+  GenerationFailed(Array[GenerationProblem])
+}
+
 pub(all) suberror SourceFrontendError {
   Rejected(String, String, @v4.SourceLocation?)
   RejectedSources(Array[SourceProblem])
@@ -48,6 +53,20 @@ pub(all) enum BuildPolicy {
 pub fn BuildPolicy::equal(Self, Self) -> Bool
 pub fn BuildPolicy::not_equal(Self, Self) -> Bool
 pub fn BuildPolicy::to_repr(Self) -> @debug.Repr
+
+pub(all) enum CompileKind {
+  EachFile
+  WholeProject
+} derive(Eq, @debug.Debug)
+pub fn CompileKind::equal(Self, Self) -> Bool
+pub fn CompileKind::not_equal(Self, Self) -> Bool
+pub fn CompileKind::to_repr(Self) -> @debug.Repr
+
+pub(all) struct CompiledUnit {
+  source : String
+  unit : @data.IRUnit
+} derive(@debug.Debug)
+pub fn CompiledUnit::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Component {
   Native((@v4.IRFile) -> @data.Rewrite raise)
@@ -89,17 +108,22 @@ pub(all) struct Diagnostic {
   stage : String
   message : String
   details : @diagnostics.Warning?
-}
+  problem : Problem?
+} derive(@debug.Debug)
+pub fn Diagnostic::code(Self) -> String?
+pub fn Diagnostic::location(Self) -> @v4.SourceLocation?
+pub fn Diagnostic::to_repr(Self) -> @debug.Repr
 
 pub struct Engine {
   // private fields
 }
 pub fn Engine::execute(Self, Plan, Host, cancelled? : () -> Bool) -> Report
-pub fn Engine::execute_content(Self, Plan, (String, Bool) -> @data.Content raise, cancelled? : () -> Bool) -> ContentReport
+pub fn Engine::execute_content(Self, Plan, (String, Bool) -> @data.Content raise, cancelled? : () -> Bool, on_unit? : (CompiledUnit) -> Unit) -> ContentReport
+pub fn Engine::languages(Self) -> Array[LanguageOffer]
 pub fn Engine::list_projects(Self, Host, @workspace.Workspace, script? : String, cancelled? : () -> Bool, bind_runtime? : (@morphir-scheme.Runtime) -> Unit raise) -> Array[ProjectInfo] raise
 pub fn Engine::new(limits? : @morphir-scheme.Limits, metadata_capabilities? : @morphir-metadata.Capabilities) -> Self
 pub fn Engine::plan(Self, Host, @workspace.Workspace, Request, cancelled? : () -> Bool, bind_runtime? : (@morphir-scheme.Runtime) -> Unit raise, codecs? : @data.Registry?) -> Plan raise
-pub fn Engine::register_backend(Self, String, String, (@v4.IRFile) -> String raise) -> Unit
+pub fn Engine::register_backend(Self, String, String, (@v4.IRFile) -> String raise, rich_units? : Bool) -> Unit
 pub fn Engine::register_component(Self, String, Component) -> Unit raise
 pub fn Engine::register_data_format(Self, String, DataFormat) -> Unit raise
 pub fn Engine::register_frontend(Self, String, Array[String], (Source) -> @v4.IRFile raise) -> Unit
@@ -107,6 +131,7 @@ pub fn Engine::register_generation_backend(Self, String, GenerationBackend) -> U
 pub fn Engine::register_metadata_policy(Self, String, @data.MetadataPolicy) -> Unit raise
 pub fn Engine::register_project_metadata_provider(Self, (ProjectMetadataScope) -> @morphir-metadata.Capabilities raise) -> Unit raise
 pub fn Engine::register_source_provider(Self, SourceProvider) -> Unit raise
+pub fn Engine::register_unit_backend(Self, String, String, (@v4.IRFile) -> String raise, (@data.IRUnit, String) -> Array[GeneratedFile] raise) -> Unit
 pub fn Engine::register_unit_frontend(Self, String, Array[String], (Source, String, () -> Bool) -> @data.IRUnit raise, profile? : String?, dependencies? : Map[String, String], limits? : @data.Limits) -> Unit raise
 pub fn Engine::run(Self, Host, Input, config? : String, bind_runtime? : (@morphir-scheme.Runtime) -> Unit raise) -> Report
 
@@ -140,6 +165,13 @@ pub(all) struct GenerationBatch {
   projects : Array[GeneratedProject]
 }
 
+pub(all) struct GenerationProblem {
+  code : String
+  node_path : String
+  detail : String
+} derive(@debug.Debug)
+pub fn GenerationProblem::to_repr(Self) -> @debug.Repr
+
 pub(all) struct Host {
   read : (String) -> String raise
   exists : (String) -> Bool raise
@@ -157,6 +189,14 @@ pub(all) enum Input {
 pub(all) struct JSONRewrite {
   content : String
   lineage : @data.Lineage?
+}
+
+pub(all) struct LanguageOffer {
+  language : @ids.LanguageId
+  provider : @ids.ProviderId
+  extensions : Array[@ids.FileExtension]
+  default_profile : @ids.ProfileId?
+  profiles : Array[ProfileOffer]
 }
 
 pub(all) struct LibraryProject {
@@ -180,6 +220,20 @@ pub fn Plan::requires_byte_read(Self) -> Bool
 pub fn Plan::requires_byte_write(Self) -> Bool
 pub fn Plan::source_frontends(Self) -> Array[SourceFrontendSelection]
 pub fn Plan::sources(Self) -> Array[String]
+
+pub(all) enum Problem {
+  Source(SourceProblem)
+  Generation(GenerationProblem)
+} derive(@debug.Debug)
+pub fn Problem::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ProfileOffer {
+  id : @ids.ProfileId
+  compile : CompileKind
+  capabilities : SourceCapabilities?
+  evidence : SourceEvidence
+  unit_limits : @data.Limits?
+}
 
 pub(all) struct ProjectDependency {
   module_name : String
@@ -208,8 +262,8 @@ pub fn ProjectMetadataScope::not_equal(Self, Self) -> Bool
 pub fn ProjectMetadataScope::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProjectSources {
-  package_name : String
-  exposed_modules : Array[String]
+  package_name : @ids.SourcePackageName
+  exposed_modules : Array[@ids.SourceModuleName]
   sources : Array[Source]
 }
 
@@ -275,9 +329,9 @@ pub(all) struct SourceFrontendSelection {
 }
 
 pub(all) struct SourceLanguage {
-  id : String
-  extensions : Array[String]
-  default_profile : String
+  id : @ids.LanguageId
+  extensions : Array[@ids.FileExtension]
+  default_profile : @ids.ProfileId
   profiles : Array[SourceProfile]
 }
 
@@ -286,10 +340,11 @@ pub(all) struct SourceProblem {
   detail : String
   path : String
   location : @v4.SourceLocation?
-}
+} derive(@debug.Debug)
+pub fn SourceProblem::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SourceProfile {
-  id : String
+  id : @ids.ProfileId
   capabilities : SourceCapabilities
   evidence : SourceEvidence
   dependencies : Map[String, String]
@@ -298,7 +353,7 @@ pub(all) struct SourceProfile {
 }
 
 pub(all) struct SourceProvider {
-  id : String
+  id : @ids.ProviderId
   languages : Array[SourceLanguage]
 }
 

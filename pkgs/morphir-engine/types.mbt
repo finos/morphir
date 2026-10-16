@@ -149,6 +149,9 @@ struct Backend {
   extension : String
   emit : (@ir.IRFile) -> String raise
   rich_units : Bool
+  /// Generation from a rich unit; the second argument is the source path the engine reports. Files are relative
+  /// to the job destination.
+  emit_unit : ((@data.IRUnit, String) -> Array[GeneratedFile] raise)?
 }
 
 ///|
@@ -252,7 +255,9 @@ pub fn Engine::new(
   engine.register_frontend("ir-json", [".json"], fn(source) raise {
     @migration.to_current(@versioned_json.read(source.content))
   })
-  engine.register_backend("scheme", ".scm", @backend.emit_file, rich_units=true)
+  engine.register_unit_backend(
+    "scheme", ".scm", @backend.emit_file, scheme_unit_generation,
+  )
   engine.register_backend("ir-json", ".ir.json", @ir_json.write)
   engine
 }
@@ -285,5 +290,25 @@ pub fn Engine::register_backend(
   emit : (@ir.IRFile) -> String raise,
   rich_units~ : Bool = false,
 ) -> Unit {
-  self.backends[name] = { extension, emit, rich_units, }
+  self.backends[name] = { extension, emit, rich_units, emit_unit: None, }
+}
+
+///|
+/// A backend that also generates from a rich unit. `emit` serves file frontends as with `register_backend`;
+/// `emit_unit` serves rich frontends and keeps the unit's metadata in the form the backend documents, so the
+/// engine reports no `backend.metadata_dropped`. Its files are relative to the job destination, and a plan with
+/// such a job requires a byte publisher.
+pub fn Engine::register_unit_backend(
+  self : Engine,
+  name : String,
+  extension : String,
+  emit : (@ir.IRFile) -> String raise,
+  emit_unit : (@data.IRUnit, String) -> Array[GeneratedFile] raise,
+) -> Unit {
+  self.backends[name] = {
+    extension,
+    emit,
+    rich_units: true,
+    emit_unit: Some(emit_unit),
+  }
 }

@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub const ORIGINS_PROFILE : String = "library-origins"
+
 pub const PROFILE : String = "library"
 
 pub const PROVIDER : String = "finos/morphir-elm"

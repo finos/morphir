@@ -52,15 +52,40 @@ The work belongs to the Morphir ecosystem roadmap, epic `morphir-ukvn`, whose de
 The MoonBit work is Track 5, `morphir-ukvn.5`: its notes are the handoff, and the E0 spike report is the comment on
 `morphir-ukvn.5.1`.
 
+### Specs and plans are HTML documents
+
+Write superpowers specs, implementation plans and other documents a person reviews as HTML pages, not Markdown.
+Thariq Shihipar of Anthropic's Claude Code team makes the case in "Using Claude Code: The Unreasonable
+Effectiveness of HTML" (May 2026; examples at <https://thariqs.github.io/html-effectiveness>) and on the How I AI
+episode "HTML is the new Markdown" (18 May 2026): a long Markdown plan gets skimmed, while an HTML page with a table
+of contents, tables, collapsible sections and highlighted code gets read, questioned and corrected, and its explicit
+structure lets an agent re-read and edit its own document reliably on every later pass. HTML costs more output
+tokens per document, so the rule covers specs, plans and reports, not commit messages, issue text or notes.
+
+- Start from [docs/templates/agent-document.html](docs/templates/agent-document.html). Keep its `<head>` and CSS as
+  they are, so every document looks the same and the effort goes into content.
+- Put code in `<pre><code class="language-moonbit">` (also `scheme`, `toml`, `json`, `bash`, `diff`). The template
+  loads highlight.js 11.11.1 from cdnjs, pinned with integrity hashes, deferred and optional: online it highlights;
+  offline the browser's cache serves it, or the page shows plain code blocks. Add no other external resource and no
+  other script. Do not inline a highlighter or its CSS.
+- Escape `<`, `>` and `&`. Give every section an `id` and list the sections in `nav.toc`.
+- A plan has one `<section class="task" id="task-N">` with an `<h3>Task N: title</h3>` heading per task.
+- Files: `.dev/beads-specs/<epic>.html` and `.dev/beads-plans/<plan-epic>.html`. `.dev/` is gitignored; beads is
+  the record (next section).
+
 ### Specs, plans and ledgers live in beads
 
 Superpowers specs, implementation plans and execution ledgers are stored in beads, not committed here. This
 overrides the superpowers skill defaults for spec, plan and ledger location.
 
-- **Spec:** draft it locally, then `mise run beads:plan -- spec <epic> <file>` stores it as the epic's design.
-  `mise run beads:plan -- spec <epic> --render` writes it back to `.dev/beads-specs/<epic>.md`.
+- **Spec:** draft it locally, then `mise run beads:plan -- spec <epic> <file.html>` stores it as the epic's design;
+  the design holds text of any format. `mise run beads:plan -- spec <epic> --render` writes it back to
+  `.dev/beads-specs/<epic>.md` whatever its format; rename the file to `.html` to open it.
 - **Plan:** `mise run beads:plan -- import <plan.md> --parent <bead> --spec morphir-ukvn` turns it into a plan
-  epic with one child bead per `### Task N`. `mise run beads:plan -- render <plan-epic>` writes
+  epic with one child bead per `### Task N`. The importer reads Markdown headings (`# title`, `### Task N: title`)
+  and does not read HTML yet; until `bd-plan` in finos/morphir does, import an HTML plan through a Markdown outline
+  with the same title and one `### Task N: <title>` per task, each body naming the task's files and tests and
+  linking to the HTML plan's `#task-N` section. `mise run beads:plan -- render <plan-epic>` writes
   `.dev/beads-plans/<plan-epic>.md`; use that path as the plan file for every superpowers script, and never edit it.
 - **Ledger:** `mise run beads:plan -- ledger <plan-epic> "<line>" --workspace <sdd-dir>` adds a ledger line to the
   plan epic as a comment and to the local `progress.md`.

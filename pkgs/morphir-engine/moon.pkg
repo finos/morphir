@@ -33,6 +33,7 @@ import {
   "finos/morphir-elm/fixtures" @elm_fixtures,
   "moonrockz/krueger",
   "moonrockz/ion/ion",
+  "moonrockz/ion/binary" @ion_binary,
   "moonrockz/expect",
   "finos/morphir-ir/identities",
   "finos/morphir-ir/versions/v4/json" @codec,

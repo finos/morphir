@@ -149,6 +149,36 @@ isolated surrogate require a separate runtime value representation before they
 can cross this boundary.
 Holes, incomplete definitions and Specs distributions cannot execute.
 
+## Units, sidecar and source comments
+
+`backend.emit_unit(unit, source_path?)` generates from a rich unit: a `backend.Input` with the unit id, the
+`IRFile`, node metadata (`node_id`, Ion `data`), ordered annotation tokens and provenance, the contract that the
+MoonBit generator's `Input` also follows. It returns a `backend.Output`: the Scheme `source` text and the binary Ion
+`symbols` sidecar. `emit_unit(Input::new(id, ir)).source` equals `emit_file(ir)`; `emit_file` never writes
+comments or a sidecar. The engine writes the two as `<unit>.scm` and `<unit>.symbols.10n` (format `ion-binary`)
+for every rich frontend, and only `<unit>.scm` for the plain `scheme` and `ir-json` frontends. The backend always
+returns a sidecar, even for a unit with no metadata, so that a consumer can rely on it.
+
+The sidecar is one record annotated `morphir_scheme_symbols`, profile `morphir-scheme-symbols-v1`, naming policy
+`scheme-canonical-identity-v1`: Scheme binds each value to its canonical Morphir name, so the generated name of
+every symbol is its fqname. Fields, in order: `profile`, `naming_policy`, `unit_id`, `source_annotations`,
+`source_provenance` (unchanged), `source_nodes` (the owned node ids), `metadata` (every entry, unchanged, in the
+unit's order) and `symbols`. A symbol has `fqname`, `generated_name` (the same), `scheme_symbol` (the `r:` symbol
+as written), `public` (value and module both public), `source_node` (`value:<fqname>`), `generated_node`
+(`scheme:define:<fqname>`) and `origins` (`source_node` and `source_node/body`, each only when the unit owns it, so
+a native or external value lists no body and an application's declarations list none). Unlike `morphir-moonbit-symbols-v1` it has no `warnings`,
+`naming_allocations`, `consumed_naming_facts`, `unvalidated_predicates` or `source_ir_json`: Scheme recovers no
+names and the checkpoint backend carries IR. Metadata is copied without ownership validation; the engine validates
+rich units when a frontend returns them. The bytes are a pure function of the unit.
+
+Above each `define` whose unit metadata entry `value:<fqname>` has a `declaration` record with a `name`, the text
+carries `;; <name> (<path>:<line>:<column>)`. The path is the record's `path` field, else `source_path`, else
+the unit id; the position is `start_line:start_column` when the four coordinates are non-negative integers with
+the end not before the start, else the comment is `;; <name> (<path>)`. A field that occurs more than once, an
+entry that occurs more than once, a name or path that is empty, longer than 256 characters, or holds a control
+character or a line or paragraph separator, is ignored: no hint can end the comment early. Comments change no name
+and no behaviour.
+
 ## Limits
 
 `Limits` bounds evaluation steps, recursive evaluation depth and allocated

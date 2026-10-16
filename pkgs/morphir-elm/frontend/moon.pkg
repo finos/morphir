@@ -14,4 +14,5 @@ import {
 import {
   "finos/morphir-elm/frontend",
   "finos/morphir-ir" @ir,
+  "moonrockz/expect",
 } for "test"

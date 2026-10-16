@@ -5,7 +5,7 @@ fn elm_module(declarations : Array[String]) -> String {
 
 ///|
 fn definition_of(text : String, name : String) -> @ir.ValueDefinition {
-  let (_, definition) = @lower.lower_value_definition(
+  let (_, definition, _) = @lower.lower_value_definition(
     scope_of(text),
     function_named(text, name),
   ) catch {

@@ -12,6 +12,8 @@ import {
 // Values
 pub fn compile_project(Array[ElmSource], String, Array[String], output? : OutputModules) -> @v4.IRFile raise ElmFailed
 
+pub fn compile_project_output(Array[ElmSource], String, Array[String], output? : OutputModules) -> ProjectOutput raise ElmFailed
+
 pub fn location_of(@ast.Range) -> @v4.SourceLocation
 
 pub fn module_path(Array[String], Array[String]) -> @common.Path
@@ -27,6 +29,18 @@ pub fn ElmFailed::not_equal(Self, Self) -> Bool
 pub fn ElmFailed::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub(all) struct DeclarationOrigin {
+  module_name : @common.Path
+  name : @common.Name
+  source_name : String
+  path : String
+  span : @v4.SourceLocation
+  parameters : Array[(String, @v4.SourceLocation)]
+} derive(Eq, @debug.Debug)
+pub fn DeclarationOrigin::equal(Self, Self) -> Bool
+pub fn DeclarationOrigin::not_equal(Self, Self) -> Bool
+pub fn DeclarationOrigin::to_repr(Self) -> @debug.Repr
+
 pub(all) struct ElmProblem {
   code : String
   message : String
@@ -52,6 +66,11 @@ pub(all) enum OutputModules {
 pub fn OutputModules::equal(Self, Self) -> Bool
 pub fn OutputModules::not_equal(Self, Self) -> Bool
 pub fn OutputModules::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ProjectOutput {
+  ir : @v4.IRFile
+  origins : Array[DeclarationOrigin]
+}
 
 // Type aliases
 

@@ -9,6 +9,17 @@ engine: language `elm`, extension `.elm`, provider `finos/morphir-elm`, profile 
 
 The one-line form is `engine |> @elm_adapter.register()`.
 
+The provider offers a second profile, `library-origins`, selected per project with
+`frontend.profile = "library-origins"` in `morphir.toml`. It is the same compiler, and each of its units also
+carries one metadata entry per value declaration of the output, `value:<fqname>`, with a `declaration` record (the
+Elm name, the source path relative to the workspace as the engine reports it, `coordinate_profile`
+`elm-syntax-position-v1` and the range of the name: rows and columns from 1, the end just after the last character)
+and a `parameters` list for the lifted arguments, plus one provenance record annotated `morphir_elm_frontend` with
+the language, profile, parser and parser version. The Scheme backend turns the declaration record into a source
+comment and keeps every entry in its sidecar; an Ion checkpoint keeps them too. `library` stays the default
+because a Morphir JSON checkpoint, the default output of a `morphir.json` project, cannot carry unit metadata and
+the engine refuses the lossy export rather than dropping it.
+
 A project sets `frontend.language = "elm"`, `project.name` (the dotted package name, for example `My.Pkg`) and
 `project.exposed_modules` (relative to the package, for example `["Api"]`), with a checkpoint or generator backend.
 The output keeps every module that it names (`OutputModules::Referenced`), so the `elm` and `moonbit` generators

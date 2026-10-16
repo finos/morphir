@@ -579,3 +579,108 @@ test "historical checkpoint names remain unchanged on load and generation" {
     is @ion.String("pricing:app/main#source-656c696769626c65"),
   )
 }
+
+///|
+fn metadata_entries(bytes : Bytes) -> Array[@ion.IonValue] raise {
+  guard @ion_binary.read_binary_value(bytes[:]).kind() is @ion.Struct(fields) else {
+    fail("Expected a symbols record")
+  }
+  for field in fields {
+    if field.name().text() == Some("metadata") {
+      guard field.value().kind() is @ion.List(entries) else { fail("metadata") }
+      return entries
+    }
+  }
+  fail("No metadata field")
+}
+
+///|
+test "a MoonBit library through the scheme backend keeps its metadata and comments its defines" {
+  let engine = @engine.Engine::new()
+  @adapter.register(engine)
+  let snapshot = library_files(backend="scheme")
+  // Components still need a checkpoint or generator backend; a unit backend takes the unit as compiled.
+  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+    old="components=['json-identity']",
+    new="",
+  )
+  snapshot["src/nested/Other.mbt"] = "pub fn other(x : Bool) -> Bool { !x }"
+  let planned = plan(engine, snapshot)
+  let report = engine.execute_content(planned, fn(path, _) {
+    @data.Text(snapshot[path])
+  })
+  if !report.successful() {
+    fail(report.diagnostics[0].message)
+  }
+  guard report.artifacts[0].content is @data.Text(source) else {
+    fail("Expected Scheme text")
+  }
+  guard report.artifacts[1].content is @data.Binary(bytes) else {
+    fail("Expected binary symbols")
+  }
+  // Every metadata entry of the checkpoint unit is in the sidecar.
+  let checkpoint = execute(engine, library_files())
+  if !checkpoint.successful() {
+    fail(checkpoint.diagnostics[0].message)
+  }
+  let unit = @data.Registry::new().decode("ion-binary", {
+    unit_id: "Main",
+    content: checkpoint.artifacts[0].content,
+  })
+  let entries = metadata_entries(bytes)
+  // The commented text runs.
+  let runtime = @scheme.Runtime::new()
+  @backend.install(runtime)
+  ignore(runtime.eval(source))
+  let zero = @scheme.value_to_string(
+    @backend.call_entry(runtime, @ir.FQName::parse("pricing:app/main#zero"), []),
+  )
+  @expect.expect_all(s => {
+    s.expect(planned.requires_byte_write(), label="byte write").to_be_true()
+    s.expect(report.warnings.length(), label="warnings").to_equal(0)
+    s.expect(report.processed, label="processed").to_equal(2)
+    s
+    .expect(
+      report.artifacts.map(a => (a.format, a.source)),
+      label="formats and sources",
+    )
+    .to_contain_exactly([
+      ("scheme", "src/Main.mbt"),
+      ("ion-binary", "src/Main.mbt"),
+      ("scheme", "src/nested/Other.mbt"),
+      ("ion-binary", "src/nested/Other.mbt"),
+    ])
+    s
+    .expect(report.artifacts.map(a => a.path), label="paths")
+    .to_satisfy_respectively([
+      it => it.to_end_with("/Main.scm"),
+      it => it.to_end_with("/Main.symbols.10n"),
+      it => it.to_end_with("/nested/Other.scm"),
+      it => it.to_end_with("/nested/Other.symbols.10n"),
+    ])
+    s
+    .expect(source, label="comments")
+    .to_contain_substrings_in_order([
+      ";; helper (src/Main.mbt:1:", ";; eligible (src/Main.mbt:2:", ";; zero (src/Main.mbt:3:",
+    ])
+    s
+    .expect(entries, label="metadata entries")
+    .to_have_length(unit.metadata.length())
+    for pair in entries.zip(unit.metadata) {
+      guard pair.0.kind() is @ion.Struct(fields) else { fail("entry") }
+      s
+      .expect(
+        fields[0].value().equals(@ion.IonValue::string(pair.1.node_id)),
+        label=pair.1.node_id + " id",
+      )
+      .to_be_true()
+      s
+      .expect(
+        fields[1].value().equals(pair.1.data),
+        label=pair.1.node_id + " data",
+      )
+      .to_be_true()
+    }
+    s.expect(zero, label="zero()").to_equal("#t")
+  })
+}

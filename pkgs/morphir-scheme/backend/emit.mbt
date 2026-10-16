@@ -394,11 +394,27 @@ pub fn emit_expression(value : @ir.Value) -> String raise {
 }
 
 ///|
+/// One emitted `define`: the symbol the text binds and the access of the value.
+priv struct Symbol {
+  fqname : String
+  scheme_symbol : String
+  public : Bool
+}
+
+///|
+priv struct Emitted {
+  forms : Array[String]
+  symbols : Array[Symbol]
+}
+
+///|
+/// `hints` maps a canonical fqname to the comment line written above its define.
 fn emit_package(
   package_name : @ir.Path,
   package_def : @ir.PackageDefinition,
-) -> Array[String] raise {
-  let output = []
+  hints : Map[String, String],
+  emitted : Emitted,
+) -> Unit raise {
   for module_name, module_def in package_def.modules {
     let globals : Map[@ir.Name, @ir.FQName] = Map([])
     for name, _ in module_def.value.values {
@@ -436,16 +452,26 @@ fn emit_package(
         }
         _ => implementation
       }
-      output.push(
-        "(define " + reference(fq) + " (lambda () " + implementation + "))",
+      let canonical = fq.to_canonical()
+      let symbol = reference(fq)
+      if hints.get(canonical) is Some(comment) {
+        emitted.forms.push(comment)
+      }
+      emitted.forms.push(
+        "(define " + symbol + " (lambda () " + implementation + "))",
       )
+      emitted.symbols.push({
+        fqname: canonical,
+        scheme_symbol: symbol,
+        public: module_def.access is Public && definition.access is Public,
+      })
     }
     for _, definition in module_def.value.types {
       if definition.value.value
         is @ir.TypeDefinition::CustomTypeDefinition(_, constructors) {
         for name, params in constructors.value {
           let fq : @ir.FQName = { package_name, module_name, local_name: name, }
-          output.push(
+          emitted.forms.push(
             "(%morphir-register-constructor " +
             text(fq.to_canonical()) +
             " " +
@@ -456,25 +482,33 @@ fn emit_package(
       }
     }
   }
-  output
+}
+
+///|
+fn emit_distribution(
+  file : @ir.IRFile,
+  hints : Map[String, String],
+) -> Emitted raise {
+  let emitted : Emitted = { forms: [], symbols: [], }
+  match file.distribution {
+    Library(name, _, definition) =>
+      emit_package(name, definition, hints, emitted)
+    Application(name, dependencies, definition, _) => {
+      for dependency, implementation in dependencies {
+        emit_package(dependency, implementation, hints, emitted)
+      }
+      emit_package(name, definition, hints, emitted)
+    }
+    Specs(_, _, _) =>
+      raise @scheme.Unsupported("A Specs distribution has no executable bodies")
+  }
+  emitted
 }
 
 ///|
 /// Emit executable definitions. Evaluate in a runtime initialized with install().
 pub fn emit_file(file : @ir.IRFile) -> String raise {
-  match file.distribution {
-    Library(name, _, definition) => emit_package(name, definition).join("\n")
-    Application(name, dependencies, definition, _) => {
-      let forms = []
-      for dependency, implementation in dependencies {
-        forms.append(emit_package(dependency, implementation))
-      }
-      forms.append(emit_package(name, definition))
-      forms.join("\n")
-    }
-    Specs(_, _, _) =>
-      raise @scheme.Unsupported("A Specs distribution has no executable bodies")
-  }
+  emit_distribution(file, Map([])).forms.join("\n")
 }
 
 ///|

@@ -15,4 +15,5 @@ import {
   "finos/morphir-sdk-spec@0.1.0",
   "finos/morphir-typing@0.1.0",
   "moonrockz/krueger@0.8.0",
+  "moonrockz/expect@0.6.1",
 }

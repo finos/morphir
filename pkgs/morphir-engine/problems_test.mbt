@@ -290,7 +290,37 @@ fn owned_nodes(id : String, count : Int32) -> Array[String] raise {
 }
 
 ///|
-test "the scheme backend accepts a rich project unit and warns about dropped metadata" {
+/// A plain backend that accepts rich units and keeps only their IR: Plan B's behaviour, for the warning.
+fn with_plain_backend(engine : @engine.Engine) -> @engine.Engine {
+  engine.register_backend("plain", ".scm", @backend.emit_file, rich_units=true)
+  engine
+}
+
+///|
+/// The `metadata` and `source_provenance` lists of a Scheme symbols sidecar.
+fn sidecar_lists(
+  content : @data.Content,
+) -> (Array[@ion.IonValue], Array[@ion.IonValue]) raise {
+  guard content is @data.Binary(bytes) else {
+    fail("Expected a binary sidecar")
+  }
+  guard @ion_binary.read_binary_value(bytes[:]).kind() is @ion.Struct(fields) else {
+    fail("Expected a symbols record")
+  }
+  let mut metadata = []
+  let mut provenance = []
+  for field in fields {
+    match (field.name().text(), field.value().kind()) {
+      (Some("metadata"), @ion.List(items)) => metadata = items
+      (Some("source_provenance"), @ion.List(items)) => provenance = items
+      _ => ()
+    }
+  }
+  (metadata, provenance)
+}
+
+///|
+test "the scheme backend keeps a rich project unit's metadata in a sidecar" {
   let engine = project_engine(
     project_profile(fn(_, id, _) raise {
       {
@@ -303,6 +333,43 @@ test "the scheme backend accepts a rich project unit and warns about dropped met
     }),
   )
   let files = project_files(backend="scheme")
+  let report = engine.execute_content(
+    project_plan(engine, files),
+    project_read(files),
+  )
+  let (metadata, _) = sidecar_lists(report.artifacts[1].content)
+  @expect.expect_all(s => {
+    s
+    .expect(report.diagnostics.map(d => d.message), label="diagnostics")
+    .to_be_empty()
+    s
+    .expect(report.artifacts.map(a => (a.format, a.path)), label="artifacts")
+    .to_satisfy_respectively([
+      it => it.all(pair => pair.snd().to_end_with(".scm")),
+      it => it.all(pair => pair.snd().to_end_with(".symbols.10n")),
+    ])
+    s
+    .expect(report.warnings.map(w => w.message), label="warnings")
+    .to_be_empty()
+    s.expect(metadata, label="sidecar metadata").to_have_length(1)
+  })
+}
+
+///|
+test "a plain rich_units backend accepts a rich project unit and warns about dropped metadata" {
+  let engine = project_engine(
+      project_profile(fn(_, id, _) raise {
+        {
+          ..@data.IRUnit::new(id, @fixtures.library()),
+          metadata: owned_nodes(id, 1).map(node_id => {
+            node_id,
+            data: @ion.IonValue::string("hint"),
+          }),
+        }
+      }),
+    )
+    |> with_plain_backend
+  let files = project_files(backend="plain")
   let seen : Array[@engine.CompiledUnit] = []
   let report = engine.execute_content(
     project_plan(engine, files),
@@ -335,7 +402,7 @@ test "the scheme backend accepts a rich project unit and warns about dropped met
     s
     .expect(
       seen.map(c => @codec.to_json(c.unit.distribution)),
-      label="scheme IR",
+      label="plain IR",
     )
     .to_equal(checkpoint.map(c => @codec.to_json(c.unit.distribution)))
   })
@@ -369,25 +436,38 @@ test "a plain unit through the scheme backend gives no warning" {
 }
 
 ///|
-/// Property: the scheme backend warns exactly when the unit carries metadata, and the warning states each count.
+/// Property: a plain rich_units backend warns exactly when the unit carries metadata, and the warning states each
+/// count; the scheme backend never warns and its sidecar keeps every entry.
 test "the metadata warning states what it drops, and only then" {
   @expect.for_all(
     (counts : (UInt32, UInt32)) => {
       let n = (counts.0 % 4).reinterpret_as_int()
       let m = (counts.1 % 4).reinterpret_as_int()
       let engine = project_engine(
-        project_profile(fn(_, id, _) raise {
-          {
-            ..@data.IRUnit::new(id, @fixtures.library()),
-            metadata: owned_nodes(id, n).map(node_id => {
-              node_id,
-              data: @ion.IonValue::string("hint"),
-            }),
-            provenance: Array::makei(m, _ => @ion.IonValue::string("origin")),
-          }
-        }),
+          project_profile(fn(_, id, _) raise {
+            {
+              ..@data.IRUnit::new(id, @fixtures.library()),
+              metadata: owned_nodes(id, n).map(node_id => {
+                node_id,
+                data: @ion.IonValue::string("hint"),
+              }),
+              provenance: Array::makei(m, _ => @ion.IonValue::string("origin")),
+            }
+          }),
+        )
+        |> with_plain_backend
+      let scheme_files = project_files(backend="scheme")
+      let scheme = engine.execute_content(
+        project_plan(engine, scheme_files),
+        project_read(scheme_files),
       )
-      let files = project_files(backend="scheme")
+      let (metadata, provenance) = sidecar_lists(scheme.artifacts[1].content)
+      @expect.expect_all(s => {
+        s.expect(scheme.warnings, label="scheme warnings").to_be_empty()
+        s.expect(metadata, label="sidecar metadata").to_have_length(n)
+        s.expect(provenance, label="sidecar provenance").to_have_length(m)
+      })
+      let files = project_files(backend="plain")
       let warnings = engine.execute_content(
           project_plan(engine, files),
           project_read(files),

@@ -11,6 +11,17 @@ pub fn compile_project(
   exposed : Array[String],
   output~ : OutputModules = Parity,
 ) -> @ir.IRFile raise ElmFailed {
+  compile_project_output(sources, package_name, exposed, output~).ir
+}
+
+///|
+/// `compile_project` with the origin of each value declaration that the output keeps.
+pub fn compile_project_output(
+  sources : Array[ElmSource],
+  package_name : String,
+  exposed : Array[String],
+  output~ : OutputModules = Parity,
+) -> ProjectOutput raise ElmFailed {
   let package_name = elm_package(package_name)
   if exposed.is_empty() {
     raise ElmFailed([
@@ -80,15 +91,19 @@ pub fn compile_project(
   let lowered : Array[(@ir.Path, @ir.ModuleDefinition)] = []
   // The source path of each module, by canonical module path, to place the problems of inference.
   let module_sources : Map[String, String] = Map([])
+  let origins : Array[DeclarationOrigin] = []
   for m in processed {
-    module_sources[module_path(m.name, pkg_segs).to_canonical()] = m.path
+    let module_name = module_path(m.name, pkg_segs)
+    module_sources[module_name.to_canonical()] = m.path
     let definition = lower_module(
       project,
       m,
+      module_name,
       contents.get(m.path).unwrap_or(""),
       problems,
+      origins,
     )
-    lowered.push((module_path(m.name, pkg_segs), definition))
+    lowered.push((module_name, definition))
   }
   fail_if_any(problems)
   // The output keeps the modules that the exposed modules reach in the module graph. They are Private, except the
@@ -140,8 +155,23 @@ pub fn compile_project(
       library.modules[path] = m
     }
   }
-  @ir.IRFile::new(Library(package_name, Map([]), library)) catch {
-    e => abort("the current IR version is not valid: " + @debug.to_string(e))
+  let kept_origins = origins.filter(o => selected.contains(o.module_name))
+  // Lexical order by code unit, so that the list reads alphabetically; `Compare for String` is shortlex.
+  kept_origins.sort_by((a, b) => {
+    let by_module = a.module_name.to_canonical()[:].lexical_compare(
+      b.module_name.to_canonical()[:],
+    )
+    if by_module != 0 {
+      by_module
+    } else {
+      a.name.to_canonical()[:].lexical_compare(b.name.to_canonical()[:])
+    }
+  })
+  {
+    ir: @ir.IRFile::new(Library(package_name, Map([]), library)) catch {
+      e => abort("the current IR version is not valid: " + @debug.to_string(e))
+    },
+    origins: kept_origins,
   }
 }
 
@@ -193,8 +223,10 @@ fn check_exposed(
 fn lower_module(
   project : @resolve.Project,
   m : @resolve.ParsedModule,
+  module_name : @ir.Path,
   content : String,
   problems : Array[ElmProblem],
+  origins : Array[DeclarationOrigin],
 ) -> @ir.ModuleDefinition {
   let scope = project.scope(m.name)
   let exports = project.exports(m.name)
@@ -212,11 +244,21 @@ fn lower_module(
     try {
       match d.value {
         FunctionDeclaration(f) => {
-          let (name, definition) = @lower.lower_value_definition(scope, f)
+          let (name, definition, parameters) = @lower.lower_value_definition(
+            scope, f,
+          )
           values[@mapping.elm_name(name)] = {
             access: value_access(exports, name),
             value: { doc, value: definition, },
           }
+          origins.push({
+            module_name,
+            name: @mapping.elm_name(name),
+            source_name: name,
+            path: m.path,
+            span: location_of(f.declaration.value.name.range),
+            parameters: parameters.map(p => (p.0, location_of(p.1))),
+          })
         }
         _ =>
           if @lower.lower_type_definition(scope, d.value)
