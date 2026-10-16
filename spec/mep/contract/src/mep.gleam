@@ -43,9 +43,16 @@ pub type DescribeParams {
   DescribeParams(protocol_versions: List(String))
 }
 
-/// Parameters of `morphir.initialize`.
+/// Parameters of `morphir.initialize`. Full SemVer protocol versions are used
+/// by the model-operation draft; legacy `0.1` remains an explicit exception.
+/// `model_transport` (wire `modelTransport`) is left out when absent. Absence
+/// means legacy-only, never an implicit offer of model transport.
 pub type InitializeParams {
-  InitializeParams(protocol_versions: List(String), host: PeerInfo)
+  InitializeParams(
+    protocol_versions: List(String),
+    host: PeerInfo,
+    model_transport: Option(ModelTransportSupport),
+  )
 }
 
 /// Result of `morphir.initialize`.
@@ -116,7 +123,7 @@ pub type BackendCapability {
 
 /// Workspace discovery support. Each protocol version is a full SemVer
 /// string, such as `0.1.0`, for the workspace discovery protocol. These are
-/// not MEP versions, which use the `MAJOR.MINOR` form.
+/// independent of full SemVer MEP drafts and the legacy `0.1` exception.
 pub type WorkspaceCapability {
   WorkspaceCapability(protocol_versions: List(String), discover: Bool)
 }
@@ -124,19 +131,26 @@ pub type WorkspaceCapability {
 /// What an extension can do.
 ///
 /// Wire rules:
-/// - `frontend`, `backend` and `workspace` are left out when absent.
+/// - `frontend`, `backend`, `workspace` and `modelTransport` are left out
+///   when absent. An absent `modelTransport` means legacy-only.
+/// - `modelTransport` before initialization is guest support. In a session
+///   it contains only tuples explicitly offered by both peers and limits no
+///   larger than either peer's limits. It is not a Cartesian product.
+///   Under the new draft, agreement with static claims permits this narrowing
+///   for modelTransport only; legacy capability equality rules are unchanged.
 /// - The four flags `streaming`, `incremental`, `cancellation` and
 ///   `progress` are always written. An absent flag is read as false.
 /// - Members of `extra` sit beside the named members on the wire, not under
 ///   an `extra` key. Unknown members are read into `extra`.
 /// - A writer refuses an `extra` key that is one of the reserved names
 ///   `frontend`, `backend`, `workspace`, `streaming`, `incremental`,
-///   `cancellation` or `progress`.
+///   `cancellation`, `progress` or `modelTransport`.
 pub type ExtensionCapabilities {
   ExtensionCapabilities(
     frontend: Option(FrontendCapability),
     backend: Option(BackendCapability),
     workspace: Option(WorkspaceCapability),
+    model_transport: Option(ModelTransportSupport),
     streaming: Bool,
     incremental: Bool,
     cancellation: Bool,
@@ -167,8 +181,9 @@ pub type ClaimsRequirements {
 ///   must match the draft, and a claim set with both names is refused. In a
 ///   draft.1 `critical` list, `statementVersion` is read as `claimsVersion`,
 ///   and a draft.1 `critical` list that names `claimsVersion` is refused.
-/// - `protocol_versions` (wire `protocolVersions`) are MEP versions in the
-///   canonical `MAJOR.MINOR` form, such as `0.1`, not full SemVer.
+/// - `protocol_versions` (wire `protocolVersions`) are full SemVer strings
+///   for the model-operation draft. The frozen legacy `MAJOR.MINOR` value
+///   `0.1` remains accepted only for the legacy protocol.
 /// - Unknown top-level members are dropped when read.
 /// - `capabilities` is open: members this contract does not name are kept
 ///   when read and written. The named members inside it, such as
@@ -202,7 +217,9 @@ pub type CapabilityClaimSet {
 /// | `Info`              | `morphir.extension.info`         | request      |
 /// | `Capabilities`      | `morphir.extension.capabilities` | request      |
 /// | `Compile`           | `morphir.frontend.compile`       | request      |
+/// | `CompileModel`      | `morphir.frontend.compileModel`  | request      |
 /// | `Generate`          | `morphir.backend.generate`       | request      |
+/// | `GenerateModel`     | `morphir.backend.generateModel`  | request      |
 /// | `Validate`          | `morphir.validator.validate`     | request      |
 /// | `Transform`         | `morphir.transform.transform`    | request      |
 /// | `WorkspaceDiscover` | `morphir.workspace.discover`     | request      |
@@ -226,7 +243,9 @@ pub type Method {
   Info
   Capabilities
   Compile
+  CompileModel
   Generate
+  GenerateModel
   Validate
   Transform
   WorkspaceDiscover
@@ -467,6 +486,203 @@ pub type ModuleResult {
     ir: Option(Json),
     frontend_state: Option(Json),
     diagnostics: List(Diagnostic),
+  )
+}
+
+// -- Rich model transport ---------------------------------------------------
+
+/// A model operation. Wire values are `morphir.frontend.compileModel` and
+/// `morphir.backend.generateModel`, respectively. These methods require the
+/// exact MEP draft `0.2.0-draft.1`, bilateral model transport and operation
+/// capability admission; legacy `0.1` never enables them.
+pub type ModelOperation {
+  CompileModelOperation
+  GenerateModelOperation
+}
+
+/// The representation of a complete model document. Wire values are
+/// `ion-binary` and `morphir-json`. Ion binary is preferred; JSON remains a
+/// supported explicit choice. A codec does not assert a semantic guarantee.
+/// Ion uses media type `application/ion` with its binary version marker;
+/// Morphir JSON uses `application/json` encoded as UTF-8.
+pub type ModelCodec {
+  IonBinaryCodec
+  MorphirJsonCodec
+}
+
+/// The payload layout. Wire value: `single-document`. There are no implicit
+/// file references, document trees, compression or external symbol tables.
+pub type ModelLayout {
+  SingleDocumentModel
+}
+
+/// One supported combination, never independent lists whose Cartesian product
+/// might imply unsupported combinations. `envelopeVersion` is the exact
+/// independent envelope draft `0.1.0-draft.1`; `irVersion` names semantic IR,
+/// not MEP or the envelope. `profile` is a nonempty model-content profile id,
+/// independent of source language and target language. See model-transport.md.
+pub type ModelTransportTuple {
+  ModelTransportTuple(
+    operation: ModelOperation,
+    profile: String,
+    codec: ModelCodec,
+    envelope_version: String,
+    ir_version: String,
+  )
+}
+
+/// Bounds applied before allocation and parsing. Encoded bytes count the UTF-8
+/// base64 content member, not its JSON quotes; decoded bytes count payload
+/// bytes, summed across model, dependency and evidence payloads per message.
+/// Values are positive and at most 2147483647 (u32 in bindings with
+/// the same bound). Depth and nodes also apply to decoded profile content.
+/// Depth counts each document root as one; nodes sum decoded value nodes.
+/// Session values never exceed either peer's independently configured limits.
+pub type ModelTransportLimits {
+  ModelTransportLimits(
+    max_encoded_bytes: Int,
+    max_decoded_bytes: Int,
+    max_depth: Int,
+    max_nodes: Int,
+  )
+}
+
+/// Offers or session support. Tuples are complete and unique. An absent offer
+/// never grants model support; an empty list supports no model operations.
+/// `guarantees` lists nonempty ids the peer can interpret, not guarantees it
+/// has established. An absent `guarantees` is read as empty. Unknown required
+/// guarantees refuse invocation; optional evidence remains preserved.
+pub type ModelTransportSupport {
+  ModelTransportSupport(
+    tuples: List(ModelTransportTuple),
+    limits: ModelTransportLimits,
+    guarantees: List(String),
+  )
+}
+
+/// Opaque single-document bytes, independently bounded and hashed. `content`
+/// is canonical padded RFC 4648 base64 for BOTH codecs, without whitespace.
+/// `decodedByteLength` is non-negative, at most 2147483647 (u32 in bindings),
+/// and equals the decoded bytes. `sha256` is 64 lowercase hexadecimal digits
+/// over those exact bytes, before profile parsing; it is not a semantic hash
+/// or logical model revision. Unknown optional Ion facts and ordered
+/// annotations survive by retaining the complete bytes and symbol tables.
+pub type ModelPayload {
+  ModelPayload(
+    codec: ModelCodec,
+    layout: ModelLayout,
+    decoded_byte_length: Int,
+    sha256: String,
+    content: String,
+  )
+}
+
+/// A required guarantee for an exact scope, with nonempty namespaced ids.
+/// A scope is a model or node identity, not an ambient filesystem path.
+pub type ModelGuaranteeRequirement {
+  ModelGuaranteeRequirement(guarantee: String, scope: String)
+}
+
+/// A claim, not authority: the receiver must admit this evidence under its
+/// checking/trust policy before it can establish a prerequisite. All identity
+/// and scope strings are nonempty. `contextDigest` is a SHA-256 string for
+/// the declared dependency/configuration context. Identity, revision, context
+/// and exact scope must match the required view; producer is attribution,
+/// never authentication. The opaque evidence payload has the same bounds.
+pub type ModelGuaranteeEvidence {
+  ModelGuaranteeEvidence(
+    guarantee: String,
+    model_id: String,
+    model_revision: String,
+    context_digest: String,
+    scope: String,
+    producer: String,
+    evidence: ModelPayload,
+  )
+}
+
+/// A Morphir model envelope. The payload's profile defines its content; the
+/// existing semantic IR Distribution owns Library/Specs/Application variants.
+/// There is no outer parsed/typed/optimized state enum. Checked guarantees
+/// are independent revision/context-scoped views established by admission.
+/// `revision` is a nonempty logical immutable revision, not a transport hash.
+/// Changes to semantic content or facts mint a revision and invalidate evidence
+/// unless an explicit component contract proves preservation. Exact transcoding
+/// can preserve a logical revision, but must recompute the payload digest.
+///
+/// Wire rules: an absent `evidence` is read as empty. `critical` is left out
+/// when empty and read as empty when absent. It lists exact registered member
+/// paths relative to the envelope; a known parent never admits an unknown
+/// critical child. Unknown required paths refuse admission. Preserve unknown
+/// optional profile enrichments, annotation order and provenance as bytes.
+pub type MorphirModel {
+  MorphirModel(
+    envelope_version: String,
+    model_id: String,
+    revision: String,
+    ir_version: String,
+    profile: String,
+    payload: ModelPayload,
+    evidence: List(ModelGuaranteeEvidence),
+    critical: List(String),
+  )
+}
+
+/// A complete dependency model, not a legacy JSON-only distribution. Its
+/// format must match the compile operation's selected tuple. Package name
+/// retains CompileDependency's package-namespace meaning.
+pub type CompileModelDependency {
+  CompileModelDependency(package_name: String, model: MorphirModel)
+}
+
+/// A complete source-set compilation. `output` selects one compileModel tuple
+/// already admitted in this session. `options.irVersion` must equal its exact
+/// `irVersion`. The frontend's language and source-count capabilities still
+/// apply. `contextDigest` binds the declared dependency/configuration context.
+/// No legacy incremental baseline is implied by this new operation.
+/// Wire rules: absent `dependencies` is read as empty.
+pub type CompileModelRequest {
+  CompileModelRequest(
+    language_id: String,
+    sources: SourceSet,
+    package: CompilePackage,
+    dependencies: List(CompileModelDependency),
+    options: CompileOptions,
+    context_digest: String,
+    output: ModelTransportTuple,
+  )
+}
+
+/// A success/failure sum. On the wire, ModelCompiled is an object with
+/// `success: true`, a REQUIRED `model`, `diagnostics` and `modules`.
+/// ModelCompilationFailed has `success: false` and `diagnostics`; `model`
+/// MUST be absent, even null is refused. Non-boolean success tags are refused.
+/// An absent `diagnostics` or success `modules` is read as empty. A successful
+/// result's complete model must match the selected output tuple and limits.
+pub type CompileModelResult {
+  ModelCompiled(
+    model: MorphirModel,
+    diagnostics: List(Diagnostic),
+    modules: List(String),
+  )
+  ModelCompilationFailed(diagnostics: List(Diagnostic))
+}
+
+/// Generate from a retained model. `input` selects an admitted generateModel
+/// tuple; the model's profile, codec, envelope and semantic IR version must
+/// match it. `target` is the exact advertised target, independent of profile.
+/// Evidence must bind this model revision and `contextDigest`, and be admitted
+/// for each exact required scope before pure generation. The result reuses
+/// GenerateResult and Artifact, including their existing binary encoding.
+/// Wire rules: absent `requiredGuarantees` or `options` is read as empty.
+pub type GenerateModelRequest {
+  GenerateModelRequest(
+    model: MorphirModel,
+    input: ModelTransportTuple,
+    target: String,
+    context_digest: String,
+    required_guarantees: List(ModelGuaranteeRequirement),
+    options: Dict(String, Json),
   )
 }
 

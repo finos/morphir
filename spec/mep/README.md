@@ -8,13 +8,18 @@ This folder holds the contract as a Morphir model. [`contract/src/mep.gleam`](co
 
 ## Versioning
 
-Before 1.0.0:
+The contract version in `contract/gleam.toml` is **`0.2.0-draft.1`**. The
+handshake sends the full SemVer string and matches this prerelease exactly.
+This change adopts the accepted [SemVer contract policy](../../kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md):
+released versions are compatible within a major, the minor acts as the major on
+the `0.y.z` line, and drafts only match exactly.
 
-- A breaking change bumps the minor version, for example 0.2.x to 0.3.0.
-- An additive or backward-compatible change bumps the patch version.
-- Published contracts carry no prerelease tags.
-
-The contract's full version is `version` in `contract/gleam.toml` (today `0.1.0`); bump it by these rules. The handshake sends the canonical `MAJOR.MINOR` form of that version. `SUPPORTED_MEP_VERSIONS` in `morphir-extension-sdk` lists canonical versions; today it holds `0.1`. After 1.0.0, MEP follows standard SemVer.
+The legacy `0.1` protocol remains frozen with its existing JSON operations and
+handshake spelling. Current SDK implementations continue to advertise `0.1`;
+this source contract does not update their runtime support. New rich model
+operations require the new draft and bilateral transport admission. Their
+independent model envelope version is `0.1.0-draft.1`; see
+[model transport](model-transport.md) for its normative rules.
 
 The capability claims format has its own version, separate from MEP. Writers send `claimsVersion` `0.1.0-draft.2`, and readers also accept `0.1.0-draft.1`.
 
@@ -23,6 +28,7 @@ The capability claims format has its own version, separate from MEP. Writers sen
 ```text
 spec/mep/
   README.md                 this file
+  model-transport.md        rich-model wire and admission rules
   contract/                 Gleam project, the source of truth
     morphir.toml
     gleam.toml
@@ -31,7 +37,7 @@ spec/mep/
     mep.ir.json
     json-schema/            later: finos/morphir-rust#242
     wit/morphir-mep/        later: finos/morphir-rust#243
-  mck/                      later: host and guest conformance suites, finos/morphir#965
+  mck/                      fixed reference cases; executable suite follows #965
 ```
 
 ## Wire mapping
@@ -55,9 +61,10 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `ProgressParams` | `percentage` is left out when absent; when present it is an integer from 0 through 100. |
 | `FrontendCapability` | `multiDocument` is written only when true; absent means false. |
 | `WorkspaceCapability` | `protocolVersions` are full SemVer strings (`0.1.0`), not MEP versions. |
-| `ExtensionCapabilities` | `frontend`, `backend` and `workspace` are left out when absent. The four flags are always written; an absent flag is read as false. `extra` members sit beside the named members, and a writer refuses an `extra` key that reuses a named member's name. |
+| `InitializeParams` | `modelTransport` is left out when absent; absence grants no model operations. |
+| `ExtensionCapabilities` | `frontend`, `backend`, `workspace` and `modelTransport` are left out when absent. Session model tuples must be a bilateral subset. The four flags are always written; an absent flag is read as false. `extra` members sit beside the named members, and a writer refuses an `extra` key that reuses a named member's name. |
 | `ClaimsRequirements` | Each `host` entry is one SemVer comparator. `host` is left out when empty and read as empty when absent. |
-| `CapabilityClaimSet` | `claimsVersion` is the claims format version, and draft.1 names it `statementVersion`. A claim set with both names is refused. In draft.1, `statementVersion` in `critical` is read as `claimsVersion`, and `claimsVersion` in `critical` is refused. `protocolVersions` are MEP `MAJOR.MINOR` versions. Unknown top-level members are dropped when read. `capabilities` is open, and its named members are not checked against `ExtensionCapabilities` when read. `requires` is left out when absent, and `critical` is left out when empty. A reader refuses a `critical` path it does not understand. |
+| `CapabilityClaimSet` | `claimsVersion` is the claims format version, and draft.1 names it `statementVersion`. A claim set with both names is refused. In draft.1, `statementVersion` in `critical` is read as `claimsVersion`, and `claimsVersion` in `critical` is refused. `protocolVersions` contain full MEP SemVer strings for new drafts and the unchanged legacy `0.1` spelling. Unknown top-level members are dropped when read. `capabilities` is open, and its named members are not checked against `ExtensionCapabilities` when read. `requires` is left out when absent, and `critical` is left out when empty. A reader refuses a `critical` path it does not understand. |
 | `CompilePackage` | `exposedModules` is left out when absent. Absent exposes every module; an empty list exposes none. |
 | `CompileOptions` | `extra` members sit beside `typesOnly` and `irVersion`. A writer refuses `extra` keys `typesOnly`, `irVersion`, `sourceRootUri` and `sourceRoot`; a reader refuses `sourceRootUri` and `sourceRoot`. |
 | `SourceSet` | `root` is left out when absent. |
@@ -67,6 +74,14 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `CompileBaseline` | `modules` is read as empty when absent. `contextDigest` is left out when absent. |
 | `ModuleStatus` | Wire values `compiled`, `unchanged`, `failed`, `blocked`. |
 | `ModuleResult` | `sourceDigest`, `interfaceDigest`, `ir` and `frontendState` are left out when absent. `dependsOn` and `diagnostics` are read as empty when absent. |
+| `ModelOperation` | Exact method strings `morphir.frontend.compileModel` and `morphir.backend.generateModel`; require MEP `0.2.0-draft.1`. |
+| `ModelCodec`, `ModelLayout` | `ion-binary` or `morphir-json`; layout `single-document`. Media type derives from the codec. |
+| `ModelTransportSupport` | Unique complete tuples; absent `guarantees` defaults to empty. Session tuples and limits cannot exceed either peer's offer. |
+| `ModelPayload` | Both codecs use canonical padded base64; decoded length and SHA-256 bind exact bytes. |
+| `MorphirModel` | Absent `evidence` and `critical` default to empty; omit empty `critical`. Exact unknown critical paths refuse admission. |
+| `CompileModelRequest` | Absent `dependencies` defaults to empty. Output and dependency formats must match the selected tuple. |
+| `CompileModelResult` | `success:true` requires `model`; `success:false` forbids it, including null. Absent diagnostics and success modules default to empty. |
+| `GenerateModelRequest` | Absent `requiredGuarantees` and `options` default to empty. Result reuses `GenerateResult`. |
 | `GenerateRequest` | `options` is read as empty when absent. |
 | `GenerateResult` | `artifacts` and `diagnostics` are read as empty when absent. |
 | `Artifact` | When `binary` is true, `content` is base64. `binary` is read as false when absent. |
@@ -88,6 +103,8 @@ Gleam has one integer type, `Int`, with no unsigned or fixed-width forms, so the
 | `RpcError.code` | signed 32-bit | `i32` |
 | `RequestId.NumericRequestId` | non-negative | `u64` (the JSON-RPC request `id`) |
 | `ProgressParams.percentage` | 0 through 100 | none yet; from the protocol draft |
+| `ModelTransportLimits` fields | positive, at most 2147483647 | generated bindings use `u32` with that bound |
+| `ModelPayload.decodedByteLength` | 0 through 2147483647 | generated bindings use `u32` with that bound |
 
 ## Regenerate
 
@@ -106,12 +123,13 @@ CI does not run `gleam format`, because CI has no Gleam toolchain. If you have G
 
 ## Scope
 
-The contract covers the types that `morphir-extension-sdk` defines today:
+The contract covers the existing SDK protocol types and the new rich-model draft:
 
 - the handshake: peers, `morphir.extension.describe`, `morphir.initialize` and extension identity
 - capabilities and capability claim sets
 - compile requests and results, including incremental baselines
 - generate requests and results, and diagnostics
+- additive rich-model methods, complete transport tuples, bounded payloads and scoped evidence
 - method names and error codes
 - the `$/cancelRequest` and `morphir.progress` notifications from the [protocol draft](../../docs/design/draft/extensions/protocol.md), which the Rust SDK does not handle yet
 
@@ -119,8 +137,8 @@ Not covered yet:
 
 - Rust, TypeScript and Python types generated from the IR
 - JSON Schema and WIT output (`generated/json-schema/`, `generated/wit/`)
-- the MEP conformance suite (`mck/`)
-- a typed IR payload in place of `Json`
+- executable host/guest MEP conformance; `mck/` currently contains reference cases
+- runtime implementation of rich-model SDK/host adapters; legacy `Json` fields remain supported
 - workspace discovery payloads, which live in `morphir_workspace`
 - validate and transform payloads
 - the JSON-RPC 2.0 envelope, which is a standard and not part of MEP

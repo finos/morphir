@@ -180,7 +180,7 @@
                 },
                 "initialize-params": {
                   "Public": {
-                    "doc": "Parameters of `morphir.initialize`.",
+                    "doc": "Parameters of `morphir.initialize`. Full SemVer protocol versions are used\nby the model-operation draft; legacy `0.1` remains an explicit exception.\n`model_transport` (wire `modelTransport`) is left out when absent. Absence\nmeans legacy-only, never an implicit offer of model transport.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -206,6 +206,21 @@
                             {
                               "Reference": {
                                 "fqname": "morphir/mep:mep#peer-info"
+                              }
+                            }
+                          ],
+                          [
+                            "model-transport",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-transport-support"
+                                    }
+                                  }
+                                ]
                               }
                             }
                           ]
@@ -558,7 +573,7 @@
                 },
                 "workspace-capability": {
                   "Public": {
-                    "doc": "Workspace discovery support. Each protocol version is a full SemVer\nstring, such as `0.1.0`, for the workspace discovery protocol. These are\nnot MEP versions, which use the `MAJOR.MINOR` form.",
+                    "doc": "Workspace discovery support. Each protocol version is a full SemVer\nstring, such as `0.1.0`, for the workspace discovery protocol. These are\nindependent of full SemVer MEP drafts and the legacy `0.1` exception.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -594,7 +609,7 @@
                 },
                 "extension-capabilities": {
                   "Public": {
-                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend` and `workspace` are left out when absent.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `streaming`, `incremental`,\n`cancellation` or `progress`.",
+                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend`, `workspace` and `modelTransport` are left out\nwhen absent. An absent `modelTransport` means legacy-only.\n- `modelTransport` before initialization is guest support. In a session\nit contains only tuples explicitly offered by both peers and limits no\nlarger than either peer's limits. It is not a Cartesian product.\nUnder the new draft, agreement with static claims permits this narrowing\nfor modelTransport only; legacy capability equality rules are unchanged.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `streaming`, `incremental`,\n`cancellation`, `progress` or `modelTransport`.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -639,6 +654,21 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/mep:mep#workspace-capability"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "model-transport",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-transport-support"
                                     }
                                   }
                                 ]
@@ -732,7 +762,7 @@
                 },
                 "capability-claim-set": {
                   "Public": {
-                    "doc": "The result of `morphir.extension.describe`: the capabilities an extension\nclaims, without starting a session.\n\nWire rules:\n- `claims_version` (wire `claimsVersion`) is a SemVer string for the\nclaims format, which is versioned apart from MEP. Writers send\n`0.1.0-draft.2`. Readers accept exactly `0.1.0-draft.1` or\n`0.1.0-draft.2` and read both as draft.2.\n- Draft.1 names the member `statementVersion` instead. The member name\nmust match the draft, and a claim set with both names is refused. In a\ndraft.1 `critical` list, `statementVersion` is read as `claimsVersion`,\nand a draft.1 `critical` list that names `claimsVersion` is refused.\n- `protocol_versions` (wire `protocolVersions`) are MEP versions in the\ncanonical `MAJOR.MINOR` form, such as `0.1`, not full SemVer.\n- Unknown top-level members are dropped when read.\n- `capabilities` is open: members this contract does not name are kept\nwhen read and written. The named members inside it, such as\n`frontend`, are not checked against `ExtensionCapabilities` when read.\n- `requires` is left out when absent.\n- `critical` lists member paths, such as `capabilities.frontend`, that a\nreader must understand. A reader refuses a claim set with a path it\ndoes not understand. `critical` is left out when empty, and an absent\n`critical` is read as empty.",
+                    "doc": "The result of `morphir.extension.describe`: the capabilities an extension\nclaims, without starting a session.\n\nWire rules:\n- `claims_version` (wire `claimsVersion`) is a SemVer string for the\nclaims format, which is versioned apart from MEP. Writers send\n`0.1.0-draft.2`. Readers accept exactly `0.1.0-draft.1` or\n`0.1.0-draft.2` and read both as draft.2.\n- Draft.1 names the member `statementVersion` instead. The member name\nmust match the draft, and a claim set with both names is refused. In a\ndraft.1 `critical` list, `statementVersion` is read as `claimsVersion`,\nand a draft.1 `critical` list that names `claimsVersion` is refused.\n- `protocol_versions` (wire `protocolVersions`) are full SemVer strings\nfor the model-operation draft. The frozen legacy `MAJOR.MINOR` value\n`0.1` remains accepted only for the legacy protocol.\n- Unknown top-level members are dropped when read.\n- `capabilities` is open: members this contract does not name are kept\nwhen read and written. The named members inside it, such as\n`frontend`, are not checked against `ExtensionCapabilities` when read.\n- `requires` is left out when absent.\n- `critical` lists member paths, such as `capabilities.frontend`, that a\nreader must understand. A reader refuses a claim set with a path it\ndoes not understand. `critical` is left out when empty, and an absent\n`critical` is read as empty.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -826,7 +856,7 @@
                 },
                 "method": {
                   "Public": {
-                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                       | Kind         |\n| ------------------- | -------------------------------- | ------------ |\n| `Initialize`        | `morphir.initialize`             | request      |\n| `Describe`          | `morphir.extension.describe`     | request      |\n| `Initialized`       | `morphir.initialized`            | notification |\n| `Ping`              | `morphir.ping`                   | request      |\n| `Info`              | `morphir.extension.info`         | request      |\n| `Capabilities`      | `morphir.extension.capabilities` | request      |\n| `Compile`           | `morphir.frontend.compile`       | request      |\n| `Generate`          | `morphir.backend.generate`       | request      |\n| `Validate`          | `morphir.validator.validate`     | request      |\n| `Transform`         | `morphir.transform.transform`    | request      |\n| `WorkspaceDiscover` | `morphir.workspace.discover`     | request      |\n| `Shutdown`          | `morphir.shutdown`               | request      |\n| `Exit`              | `morphir.exit`                   | notification |\n| `CancelRequest`     | `$/cancelRequest`                | notification |\n| `Progress`          | `morphir.progress`               | notification |\n\nA notification carries no request id and gets no response.\n\n`$/cancelRequest` and `morphir.progress` come from the protocol draft\n(docs/design/draft/extensions/protocol.md). A host sends\n`$/cancelRequest` only to an extension that advertises `cancellation`,\nand an extension sends `morphir.progress` only when it advertises\n`progress`. The Rust SDK does not send or handle them yet.",
+                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                       | Kind         |\n| ------------------- | -------------------------------- | ------------ |\n| `Initialize`        | `morphir.initialize`             | request      |\n| `Describe`          | `morphir.extension.describe`     | request      |\n| `Initialized`       | `morphir.initialized`            | notification |\n| `Ping`              | `morphir.ping`                   | request      |\n| `Info`              | `morphir.extension.info`         | request      |\n| `Capabilities`      | `morphir.extension.capabilities` | request      |\n| `Compile`           | `morphir.frontend.compile`       | request      |\n| `CompileModel`      | `morphir.frontend.compileModel`  | request      |\n| `Generate`          | `morphir.backend.generate`       | request      |\n| `GenerateModel`     | `morphir.backend.generateModel`  | request      |\n| `Validate`          | `morphir.validator.validate`     | request      |\n| `Transform`         | `morphir.transform.transform`    | request      |\n| `WorkspaceDiscover` | `morphir.workspace.discover`     | request      |\n| `Shutdown`          | `morphir.shutdown`               | request      |\n| `Exit`              | `morphir.exit`                   | notification |\n| `CancelRequest`     | `$/cancelRequest`                | notification |\n| `Progress`          | `morphir.progress`               | notification |\n\nA notification carries no request id and gets no response.\n\n`$/cancelRequest` and `morphir.progress` come from the protocol draft\n(docs/design/draft/extensions/protocol.md). A host sends\n`$/cancelRequest` only to an extension that advertises `cancellation`,\nand an extension sends `morphir.progress` only when it advertises\n`progress`. The Rust SDK does not send or handle them yet.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -838,7 +868,9 @@
                         "info": [],
                         "capabilities": [],
                         "compile": [],
+                        "compile-model": [],
                         "generate": [],
+                        "generate-model": [],
                         "validate": [],
                         "transform": [],
                         "workspace-discover": [],
@@ -1699,6 +1731,688 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-operation": {
+                  "Public": {
+                    "doc": "A model operation. Wire values are `morphir.frontend.compileModel` and\n`morphir.backend.generateModel`, respectively. These methods require the\nexact MEP draft `0.2.0-draft.1`, bilateral model transport and operation\ncapability admission; legacy `0.1` never enables them.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-model-operation": [],
+                        "generate-model-operation": []
+                      }
+                    }
+                  }
+                },
+                "model-codec": {
+                  "Public": {
+                    "doc": "The representation of a complete model document. Wire values are\n`ion-binary` and `morphir-json`. Ion binary is preferred; JSON remains a\nsupported explicit choice. A codec does not assert a semantic guarantee.\nIon uses media type `application/ion` with its binary version marker;\nMorphir JSON uses `application/json` encoded as UTF-8.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "ion-binary-codec": [],
+                        "morphir-json-codec": []
+                      }
+                    }
+                  }
+                },
+                "model-layout": {
+                  "Public": {
+                    "doc": "The payload layout. Wire value: `single-document`. There are no implicit\nfile references, document trees, compression or external symbol tables.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "single-document-model": []
+                      }
+                    }
+                  }
+                },
+                "model-transport-tuple": {
+                  "Public": {
+                    "doc": "One supported combination, never independent lists whose Cartesian product\nmight imply unsupported combinations. `envelopeVersion` is the exact\nindependent envelope draft `0.1.0-draft.1`; `irVersion` names semantic IR,\nnot MEP or the envelope. `profile` is a nonempty model-content profile id,\nindependent of source language and target language. See model-transport.md.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-transport-tuple": [
+                          [
+                            "operation",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-operation"
+                              }
+                            }
+                          ],
+                          [
+                            "profile",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "codec",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-codec"
+                              }
+                            }
+                          ],
+                          [
+                            "envelope-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "ir-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-transport-limits": {
+                  "Public": {
+                    "doc": "Bounds applied before allocation and parsing. Encoded bytes count the UTF-8\nbase64 content member, not its JSON quotes; decoded bytes count payload\nbytes, summed across model, dependency and evidence payloads per message.\nValues are positive and at most 2147483647 (u32 in bindings with\nthe same bound). Depth and nodes also apply to decoded profile content.\nDepth counts each document root as one; nodes sum decoded value nodes.\nSession values never exceed either peer's independently configured limits.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-transport-limits": [
+                          [
+                            "max-encoded-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-decoded-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-depth",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-nodes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-transport-support": {
+                  "Public": {
+                    "doc": "Offers or session support. Tuples are complete and unique. An absent offer\nnever grants model support; an empty list supports no model operations.\n`guarantees` lists nonempty ids the peer can interpret, not guarantees it\nhas established. An absent `guarantees` is read as empty. Unknown required\nguarantees refuse invocation; optional evidence remains preserved.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-transport-support": [
+                          [
+                            "tuples",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-transport-tuple"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "limits",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-transport-limits"
+                              }
+                            }
+                          ],
+                          [
+                            "guarantees",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-payload": {
+                  "Public": {
+                    "doc": "Opaque single-document bytes, independently bounded and hashed. `content`\nis canonical padded RFC 4648 base64 for BOTH codecs, without whitespace.\n`decodedByteLength` is non-negative, at most 2147483647 (u32 in bindings),\nand equals the decoded bytes. `sha256` is 64 lowercase hexadecimal digits\nover those exact bytes, before profile parsing; it is not a semantic hash\nor logical model revision. Unknown optional Ion facts and ordered\nannotations survive by retaining the complete bytes and symbol tables.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-payload": [
+                          [
+                            "codec",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-codec"
+                              }
+                            }
+                          ],
+                          [
+                            "layout",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-layout"
+                              }
+                            }
+                          ],
+                          [
+                            "decoded-byte-length",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "sha256",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "content",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-guarantee-requirement": {
+                  "Public": {
+                    "doc": "A required guarantee for an exact scope, with nonempty namespaced ids.\nA scope is a model or node identity, not an ambient filesystem path.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-guarantee-requirement": [
+                          [
+                            "guarantee",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "scope",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-guarantee-evidence": {
+                  "Public": {
+                    "doc": "A claim, not authority: the receiver must admit this evidence under its\nchecking/trust policy before it can establish a prerequisite. All identity\nand scope strings are nonempty. `contextDigest` is a SHA-256 string for\nthe declared dependency/configuration context. Identity, revision, context\nand exact scope must match the required view; producer is attribution,\nnever authentication. The opaque evidence payload has the same bounds.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-guarantee-evidence": [
+                          [
+                            "guarantee",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "model-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "model-revision",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "context-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "scope",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "producer",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "evidence",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-payload"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "morphir-model": {
+                  "Public": {
+                    "doc": "A Morphir model envelope. The payload's profile defines its content; the\nexisting semantic IR Distribution owns Library/Specs/Application variants.\nThere is no outer parsed/typed/optimized state enum. Checked guarantees\nare independent revision/context-scoped views established by admission.\n`revision` is a nonempty logical immutable revision, not a transport hash.\nChanges to semantic content or facts mint a revision and invalidate evidence\nunless an explicit component contract proves preservation. Exact transcoding\ncan preserve a logical revision, but must recompute the payload digest.\n\nWire rules: an absent `evidence` is read as empty. `critical` is left out\nwhen empty and read as empty when absent. It lists exact registered member\npaths relative to the envelope; a known parent never admits an unknown\ncritical child. Unknown required paths refuse admission. Preserve unknown\noptional profile enrichments, annotation order and provenance as bytes.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "morphir-model": [
+                          [
+                            "envelope-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "model-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "revision",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "ir-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "profile",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "payload",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-payload"
+                              }
+                            }
+                          ],
+                          [
+                            "evidence",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-guarantee-evidence"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "critical",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-model-dependency": {
+                  "Public": {
+                    "doc": "A complete dependency model, not a legacy JSON-only distribution. Its\nformat must match the compile operation's selected tuple. Package name\nretains CompileDependency's package-namespace meaning.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-model-dependency": [
+                          [
+                            "package-name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "model",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#morphir-model"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-model-request": {
+                  "Public": {
+                    "doc": "A complete source-set compilation. `output` selects one compileModel tuple\nalready admitted in this session. `options.irVersion` must equal its exact\n`irVersion`. The frontend's language and source-count capabilities still\napply. `contextDigest` binds the declared dependency/configuration context.\nNo legacy incremental baseline is implied by this new operation.\nWire rules: absent `dependencies` is read as empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "compile-model-request": [
+                          [
+                            "language-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "sources",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#source-set"
+                              }
+                            }
+                          ],
+                          [
+                            "package",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#compile-package"
+                              }
+                            }
+                          ],
+                          [
+                            "dependencies",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#compile-model-dependency"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "options",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#compile-options"
+                              }
+                            }
+                          ],
+                          [
+                            "context-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "output",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-transport-tuple"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "compile-model-result": {
+                  "Public": {
+                    "doc": "A success/failure sum. On the wire, ModelCompiled is an object with\n`success: true`, a REQUIRED `model`, `diagnostics` and `modules`.\nModelCompilationFailed has `success: false` and `diagnostics`; `model`\nMUST be absent, even null is refused. Non-boolean success tags are refused.\nAn absent `diagnostics` or success `modules` is read as empty. A successful\nresult's complete model must match the selected output tuple and limits.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-compiled": [
+                          [
+                            "model",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#morphir-model"
+                              }
+                            }
+                          ],
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "modules",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ],
+                        "model-compilation-failed": [
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "generate-model-request": {
+                  "Public": {
+                    "doc": "Generate from a retained model. `input` selects an admitted generateModel\ntuple; the model's profile, codec, envelope and semantic IR version must\nmatch it. `target` is the exact advertised target, independent of profile.\nEvidence must bind this model revision and `contextDigest`, and be admitted\nfor each exact required scope before pure generation. The result reuses\nGenerateResult and Artifact, including their existing binary encoding.\nWire rules: absent `requiredGuarantees` or `options` is read as empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "generate-model-request": [
+                          [
+                            "model",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#morphir-model"
+                              }
+                            }
+                          ],
+                          [
+                            "input",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-transport-tuple"
+                              }
+                            }
+                          ],
+                          [
+                            "target",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "context-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "required-guarantees",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-guarantee-requirement"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "options",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
                                     }
                                   }
                                 ]
