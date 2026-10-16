@@ -54,6 +54,15 @@ export class JobClient {
     return value;
   }
   async descriptor(optional = false) {
+    if (typeof this.transport.nativeDescriptor === 'function') {
+      // The native binding checks its page/session and supplies original text.
+      // Explicit transport selection keeps HTTP authentication admission separate.
+      const source = await this.transport.nativeDescriptor();
+      if (typeof source !== 'string') throw new Error('The native descriptor must be raw JSON text.');
+      if (source.length > limit || bytes(source) > limit) throw new Error('Native descriptor exceeds the 1-MiB limit.');
+      const value = this.command({ op: 'native-descriptor', source, sessionId: this.sessionId }).value;
+      return Object.hasOwn(value, 'offer') ? value : null;
+    }
     const value = await this.request('session', undefined, optional);
     if (value === null) return null;
     if (!exact(value, ['profile', 'contractVersion', 'offer']) || value.profile !== 'morphir/workbench/host' || value.contractVersion !== version) {
@@ -157,6 +166,11 @@ export class JobClient {
       const sessionId = await this.authenticate?.();
       if (sessionId !== undefined && sessionId !== this.sessionId) throw new Error('The authenticated host session changed. The retained job cannot be resumed.');
       const descriptor = await this.descriptor();
+      if (descriptor === null) throw new Error('This session no longer offers job evaluation.');
+      if (this.offer?.profile === 'morphir/workbench/native' &&
+          (descriptor.profile !== this.offer.profile || descriptor.operations.join(',') !== this.offer.operations.join(','))) {
+        throw new Error('The native session capabilities changed. Reopen the application page.');
+      }
       this.command({ op: 'reconnect', offer: descriptor.offer });
       this.releaseReauthenticated = sessionId === this.sessionId && this.job.state === 'terminal';
       this.suspended = false;

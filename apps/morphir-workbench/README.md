@@ -444,6 +444,26 @@ The separate live job profile is contributed to
 [finos/morphir](https://github.com/finos/morphir/tree/98f9ad980b2c64a89ce550c6eee45e69834d300f/spec/workbench/host/draft.1).
 It preserves connected v1 and the existing job receipt and terminal contracts.
 
+## Native descriptor admission
+
+The shared job client accepts a transport's explicit `nativeDescriptor()` hook,
+which returns original JSON descriptor text after the binding checks its current
+page and session. The compiled `native-descriptor` command admits the exact
+published native `0.1.0-draft.1` profile, closed capability list and directly
+nested frozen jobs offer. Its session must match the current page session.
+Parsing rejects duplicate members and applies the native depth, node, string
+and 1-MiB text limits. HTTP retains its separate authenticated host-descriptor
+admission. The native hook never negotiates through an HTTP session endpoint.
+
+Both paths use the existing receipt cursor. Reconciliation checks the same job
+authority and stable native capabilities before observing a retained identity.
+An absent jobs capability is explicit absence, and malformed negotiation never
+falls back to another transport or submits a replacement job. This is admission
+preparation: the shipped private Proton bridge still uses its existing bootstrap.
+Public raw IPC envelopes, native error effects, lifecycle MCK and packaged target
+qualification remain pending. This text boundary alone does not establish raw
+UTF-8 decoding, framework caller authority or public native-profile support.
+
 ## Verification
 
 ```sh

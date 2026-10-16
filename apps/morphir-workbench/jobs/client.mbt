@@ -37,6 +37,65 @@ fn descriptor(value : Json, session : String) -> Json raise {
 }
 
 ///|
+/// Admission of native descriptor data, not proof of framework caller authority.
+/// The binding supplies a raw descriptor only after checking its current page.
+fn native_descriptor(source : String, session : String) -> Json raise {
+  if source.length() > 1048576 || @utf8.encode(source).length() > 1048576 {
+    raise Invalid("workbench.native_input_limit")
+  }
+  let value = @wire.parse_bounded(source)
+  guard value is Object(fields) && fields.get("operations") is Some(operations) else {
+    raise Invalid("workbench.native_shape")
+  }
+  let jobs = operations == (["jobs"] : Json) ||
+    operations == (["jobs", "workspace"] : Json)
+  guard jobs ||
+    operations == ([] : Json) ||
+    operations == (["workspace"] : Json) else {
+    raise Invalid("workbench.native_shape")
+  }
+  ignore(
+    closed(
+      value,
+      if jobs {
+        ["profile", "contractVersion", "sessionId", "operations", "offer"]
+      } else {
+        ["profile", "contractVersion", "sessionId", "operations"]
+      },
+    ),
+  )
+  guard fields["profile"] == Json::string("morphir/workbench/native") &&
+    fields["contractVersion"] == Json::string("0.1.0-draft.1") else {
+    raise Invalid("workbench.native_profile")
+  }
+  let id = string(fields["sessionId"])
+  guard id.length() > 0 &&
+    id.length() <= 128 &&
+    id
+    .iter()
+    .all(c => {
+      (c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9') ||
+      c == '_' ||
+      c == '.' ||
+      c == '-'
+    }) &&
+    id == session else {
+    raise Invalid("workbench.job_authority")
+  }
+  if jobs {
+    let offer = @receipts.Offer::from_json(fields["offer"]).to_json()
+    guard offer is Object(authority) &&
+      authority["sessionId"] == Json::string(session) else {
+      raise Invalid("workbench.job_authority")
+    }
+    fields["offer"] = offer
+  }
+  Json::object(fields)
+}
+
+///|
 pub fn Client::handle(self : Client, source : String) -> Json {
   try {
     let fields = command(source)
@@ -44,6 +103,16 @@ pub fn Client::handle(self : Client, source : String) -> Json {
     if op == "decode" {
       ignore(closed(Json::object(fields), ["op", "source"]))
       return { "ok": true, "value": decode(string(fields["source"])) }
+    }
+    if op == "native-descriptor" {
+      ignore(closed(Json::object(fields), ["op", "source", "sessionId"]))
+      return {
+        "ok": true,
+        "value": native_descriptor(
+          string(fields["source"]),
+          string(fields["sessionId"]),
+        ),
+      }
     }
     if op == "offer" {
       ignore(closed(Json::object(fields), ["op", "value", "sessionId"]))
