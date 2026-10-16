@@ -21,6 +21,14 @@ The model envelope has its own exact version, `0.1.0-draft.1`. Semantic IR
 versions, capability claims versions, and extension distribution versions are
 independent. No MEP version implies support for every semantic IR version.
 
+The reference examples use the current draft IR `4.0.0` target. The existing
+[IR format-version contract](../../docs/spec/ir/format-version.md) accepts both
+integer `4` and string `"4.0.0"`, with integer `4` as canonical writer output.
+Those spellings do not declare IR 4 stable or released. Its draft maturity is
+separate from its wire spelling; do not add a MEP-style prerelease suffix to
+`formatVersion`. This draft neither mints IR `4.1.0` nor changes the IR support
+table.
+
 ## Bilateral admission
 
 `InitializeParams.modelTransport` contains the host offer. It is optional and

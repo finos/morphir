@@ -546,6 +546,65 @@ fn model_reference_corpus_binds_real_payload_assets() {
     // not inferred from fixture labels; executable MCK admission is #965.
 }
 
+/// Fixture integrity alone cannot establish that a positive model contains a
+/// supported IR document. Exercise the existing codec, not another MEP runner.
+#[test]
+fn positive_model_json_matches_the_existing_ir_contract() {
+    use base64::Engine as _;
+    use morphir_core::format_version::{
+        Compatibility, NormalizedFormatVersion, ScalarValue, SupportTable,
+    };
+    use morphir_core::ir::json::read_ir_file;
+
+    let root = contract_dir().parent().unwrap().join("mck");
+    let plain = fs::read_to_string(root.join("fixtures/plain-ir.json")).unwrap();
+    let supported_ir = |text: &str| {
+        read_ir_file(text).expect("positive model must decode through the existing IR reader");
+        let document: Value = serde_json::from_str(text).unwrap();
+        let scalar = ScalarValue::from_json(&document["formatVersion"]).unwrap();
+        let normalized =
+            NormalizedFormatVersion::from_scalar(&scalar, &SupportTable::reference()).unwrap();
+        assert!(
+            normalized.is_supported(),
+            "positive model is outside the reference IR support table"
+        );
+        normalized.release
+    };
+    supported_ir(&plain);
+    let corpus: Value =
+        serde_json::from_slice(&fs::read(root.join("model-transport.cases.json")).unwrap())
+            .unwrap();
+    let mut checked = 0;
+    for case in corpus["cases"].as_array().unwrap() {
+        if case["expected"]["admission"] != "accept" {
+            continue;
+        }
+        let model = &case["request"]["params"]["model"];
+        if model["payload"]["codec"] != "morphir-json" {
+            continue;
+        }
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(model["payload"]["content"].as_str().unwrap())
+            .unwrap();
+        let text = String::from_utf8(bytes).unwrap();
+        let release = supported_ir(&text);
+        assert_eq!(model["irVersion"], release.to_string());
+        assert_eq!(
+            case["request"]["params"]["input"]["irVersion"],
+            model["irVersion"]
+        );
+        checked += 1;
+    }
+    assert!(checked > 0, "keep an accepted explicit JSON model example");
+
+    // IR 4.0.0 remains draft work. Its existing wire contract still rejects an
+    // unminted minor; the MEP envelope must not silently invent one.
+    let scalar = ScalarValue::from_json(&Value::String("4.1.0".into())).unwrap();
+    let unsupported =
+        NormalizedFormatVersion::from_scalar(&scalar, &SupportTable::reference()).unwrap();
+    assert_eq!(unsupported.compatibility, Compatibility::UnsupportedMinor);
+}
+
 const CAPABILITY_TYPES: &[&str] = &[
     "language-capability",
     "frontend-capability",

@@ -8,10 +8,12 @@ available through legacy MEP `0.1`.
 
 **These are reference cases, not executable host or guest qualification.** The
 existing contract test checks corpus identity, case inventory, and asset byte
-lengths, digests, and literal base64 content. It does not implement negotiation,
-host admission, a codec, a guest, or an independent compatibility runner. Passing
+lengths, digests, and literal base64 content. Positive JSON payloads also pass
+the existing IR codec structural checks and the shared reference IR support
+table. These checks do not implement MEP negotiation, host admission, a guest,
+or an independent compatibility runner. Passing
 those integrity checks does not establish support for the methods, the model
-profile, IR `4.1.0`, or any guarantee. Executable host/guest cases and delivery
+profile, IR `4.0.0`, or any guarantee. Executable host/guest cases and delivery
 through the existing native MCK runner remain [#965](https://github.com/finos/morphir/issues/965).
 
 The additive methods refine [#967](https://github.com/finos/morphir/issues/967):
@@ -20,6 +22,13 @@ remains supported. They preserve the legacy request/result fields instead of
 replacing them. The complete operation/profile/codec/envelope/IR tuple replaces
 independent lists that could imply unsupported combinations. No claim is made
 that the current SDK or host implements the new draft.
+
+IR 4 remains a draft for this work. The fixture assets use the accepted input
+spelling `formatVersion: "4.0.0"`; the current canonical JSON writer emits the
+integer `4`. The transport tuple's semantic `irVersion` is `"4.0.0"`. This PR
+does not introduce IR `4.1.0`, add a prerelease suffix to `formatVersion`, change
+the IR support table, or stabilize IR 4. Negative cases 0005 and 0031 use
+`3.0.0` only to preserve their explicit mismatch with the admitted `4.0.0`.
 
 ## Reading a case
 
@@ -77,7 +86,7 @@ node count.
   to [`fixtures/rich-model.ionb`](fixtures/rich-model.ionb). The latter contains
   genuine Ion binary, including its version marker and local symbol table.
 - [`fixtures/plain-ir.json`](fixtures/plain-ir.json) is a small complete
-  `4.1.0` Library distribution without enrichments. It illustrates a lossless
+  `4.0.0` Library distribution without enrichments. It illustrates a lossless
   `morphir-ir`/`morphir-json` payload.
 - [`fixtures/legacy-ir.json`](fixtures/legacy-ir.json) is the equivalent `4.0.0`
   input for the unchanged legacy JSON generation operation.
@@ -101,7 +110,7 @@ The binary fixture was written from the companion text and replayed through
 replay was equal to the source Ion value, including annotations and decimal
 scale. That is asset-generation evidence, not MEP runtime conformance. The
 binary payload is **499 bytes**, with SHA-256
-`bf9757365d1d30c44385aa72e950e90f66eb53d66d2b3c9b42b67204fbef0c8a`.
+`49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1`.
 
 Changes to a fixture's intended meaning require a reviewed corpus change. Do
 not regenerate expected admission outcomes from the implementation under test.

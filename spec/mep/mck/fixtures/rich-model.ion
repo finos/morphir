@@ -1,6 +1,6 @@
 morphir_model::{
   ir: {
-    formatVersion: "4.1.0",
+    formatVersion: "4.0.0",
     distribution: {
       Library: {
         packageName: "example/mep-fixture",

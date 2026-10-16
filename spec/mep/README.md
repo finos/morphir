@@ -19,7 +19,9 @@ handshake spelling. Current SDK implementations continue to advertise `0.1`;
 this source contract does not update their runtime support. New rich model
 operations require the new draft and bilateral transport admission. Their
 independent model envelope version is `0.1.0-draft.1`; see
-[model transport](model-transport.md) for its normative rules.
+[model transport](model-transport.md) for its normative rules. The examples use
+IR `4.0.0`, which remains draft work. Its integer `4` / string `"4.0.0"` wire
+spellings follow the independent IR contract and do not imply stabilization.
 
 The capability claims format has its own version, separate from MEP. Writers send `claimsVersion` `0.1.0-draft.2`, and readers also accept `0.1.0-draft.1`.
 
