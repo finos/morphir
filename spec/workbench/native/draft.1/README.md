@@ -155,7 +155,10 @@ has no protocol deadline; a client timeout does not authorize a late result.
 A grant offer contains exactly `cancelled:false`, `grantId`, `projects` and
 `warnings`. Each project row has `id`, display `name`, `available` and display
 `message`. IDs are opaque and belong only to that grant. Display labels and
-warnings are plain text and grant no authority. Unavailable rows cannot open.
+warnings are plain text and grant no authority. The owner issues unique project
+IDs within each grant. Before admitting an offer, the client rejects repeated
+IDs even if their display metadata differs. It never opens an ambiguous token.
+Unavailable rows cannot open.
 At most 128 project/model rows and 128 warning strings are returned; labels and
 messages contain at most 1,024 Unicode code points. Offers occupy at most
 524,288 UTF-8 bytes including their reply envelope.
@@ -248,7 +251,7 @@ reference the existing frozen schemas. The exact frozen submission and initial
 reply shapes are expanded within the native schemas to avoid validator optimizer
 instability when those references sit beneath operation conditionals. The
 normative payloads above remain unchanged. There is no new compatibility runner.
-These schemas cannot establish nested identity
+These schemas cannot establish per-grant project-ID uniqueness, nested identity
 equality, UTF-16 job limits, canonical base64, raw-byte budgets, duplicate keys,
 trusted caller identity, filesystem races, state transitions or confirmed exit.
 Structurally valid mismatched identity/source fixtures deliberately preserve

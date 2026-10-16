@@ -191,8 +191,10 @@
                         "minLength": 1
                       },
                       "projects": {
+                        "description": "Project IDs must be unique within a grant. This structural constraint rejects identical rows; repeated IDs with differing metadata require runtime admission",
                         "type": "array",
                         "maxItems": 128,
+                        "uniqueItems": true,
                         "items": {
                           "type": "object",
                           "required": [ "id", "name", "available", "message" ],

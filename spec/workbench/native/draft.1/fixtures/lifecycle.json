@@ -1025,6 +1025,61 @@
           ]
         }
       ]
+    },
+    {
+      "id": "duplicate-project-identities-reject-grant-offer",
+      "initial_state": "Client has trusted current session S1, an admitted read-only grant G1, and a previously displayed model M1.",
+      "steps": [
+        {
+          "type": "trusted_context",
+          "window": "main",
+          "origin": "app",
+          "page": "page-A"
+        },
+        {
+          "type": "call",
+          "operation": "workspace.choose",
+          "session": "S1",
+          "capture": "choose-2"
+        },
+        {
+          "type": "host_event",
+          "event": "response_received",
+          "call": "choose-2",
+          "response": {
+            "ok": true,
+            "operation": "workspace.choose",
+            "value": {
+              "cancelled": false,
+              "grantId": "G2",
+              "projects": [
+                {
+                  "id": "project-1",
+                  "name": "First model",
+                  "available": true,
+                  "message": ""
+                },
+                {
+                  "id": "project-1",
+                  "name": "Different model",
+                  "available": false,
+                  "message": "No saved checkpoint"
+                }
+              ],
+              "warnings": []
+            }
+          }
+        },
+        {
+          "type": "expect",
+          "assertions": [
+            "Reject the entire G2 offer because project IDs must be unique within one grant, even when the rows have different display metadata.",
+            "Do not install either duplicate row or choose one by array order, display name, availability, or message.",
+            "Keep the previously displayed model M1 unchanged; rejecting an offer does not assert that the host still retains G1.",
+            "Never issue workspace.open for the ambiguous project-1 under G2; an independent valid offer is required before opening another project."
+          ]
+        }
+      ]
     }
   ]
 }

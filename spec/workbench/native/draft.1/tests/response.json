@@ -3152,6 +3152,60 @@
         }
       },
       "valid": true
+    },
+    {
+      "description": "Identical project rows cannot repeat in one grant",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Duplicate project ID with differing metadata requires runtime rejection",
+      "data": {
+        "ok": true,
+        "operation": "workspace.choose",
+        "value": {
+          "cancelled": false,
+          "grantId": "grant-1",
+          "projects": [
+            {
+              "id": "project-1",
+              "name": "Example model",
+              "available": true,
+              "message": ""
+            },
+            {
+              "id": "project-1",
+              "name": "Another display name",
+              "available": false,
+              "message": "Different metadata for the same opaque ID"
+            }
+          ],
+          "warnings": []
+        }
+      },
+      "valid": true
     }
   ]
 }
