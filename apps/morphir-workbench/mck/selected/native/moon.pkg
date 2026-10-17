@@ -1,0 +1,10 @@
+supported_targets = "native"
+
+pkgtype(kind: "executable")
+
+import {
+  "finos/morphir-workbench/mck/selected" @mck,
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/encoding/utf8",
+}

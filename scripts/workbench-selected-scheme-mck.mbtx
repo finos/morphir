@@ -1,0 +1,116 @@
+///|
+/// Opt-in selected Scheme witness through the existing independent Rust MCK.
+/// This gate does not qualify the full policy or advertise a runtime capability.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn checked(program : String, args : Array[String]) -> Unit {
+  let code = @process.run(
+    program,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    @stdio.stderr.write("Selected Scheme witness failed: \{program}\n")
+    @sys.exit(1)
+  }
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+async fn main {
+  guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
+    @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
+    @stdio.stderr.write(
+      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and exact draft.11 kit.\n",
+    )
+    @sys.exit(1)
+  }
+  let corpus = @fs.read_file(kit + "/cases.json").json()
+  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.11") &&
+    field(corpus, "cases") is Array(cases) &&
+    !cases.is_empty() &&
+    cases.all(case => {
+      field(case, "operation") == Json::string("run-selected-scheme") &&
+      field(case, "format") == Json::string("json")
+    }) else {
+    @stdio.stderr.write(
+      "The selected kit is not the exact selected Scheme witness.\n",
+    )
+    @sys.exit(1)
+  }
+  let evidence = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
+    ".dev/selected-scheme-mck/reports",
+  )
+  let build = @env.get_env_var("MORPHIR_SELECTED_SCHEME_BUILD").unwrap_or(
+    ".dev/selected-scheme-mck/build",
+  )
+  @fs.mkdir(evidence, recursive=true, allow_exist=true)
+  for target in ["js", "native", "wasm", "wasm-gc"] {
+    checked("moon", [
+      "test", "apps/morphir-workbench/mck/selected", "--target", target, "--target-dir",
+      build,
+    ])
+  }
+  for mode in ["debug", "release"] {
+    for target in ["js", "native"] {
+      checked(
+        "moon",
+        [
+          "build",
+          "apps/morphir-workbench/mck/selected/" + target,
+          "--target",
+          target,
+          "--target-dir",
+          build,
+        ] +
+        (if mode == "release" { ["--release"] } else { [] }),
+      )
+      let artifact = "\{build}/\{target}/\{mode}/build/finos/morphir-workbench/mck/selected/\{target}/\{target}" +
+        (if target == "js" { ".js" } else { ".exe" })
+      let report = "\{evidence}/\{target}-\{mode}.json"
+      checked(
+        runner,
+        [
+          "--no-banner", "mck", "workbench", "run", "--kit", kit, "--report", report,
+        ] +
+        (if target == "js" {
+          ["--adapter", "node", "--adapter-arg", artifact]
+        } else {
+          ["--adapter", artifact]
+        }),
+      )
+      checked(runner, [
+        "--no-banner", "mck", "workbench", "check", "--kit", kit, "--report", report,
+      ])
+      let result = @fs.read_file(report).json()
+      guard field(result, "qualified") == Json::boolean(true) &&
+        field(result, "records") is Array(records) &&
+        records.length() == cases.length() else {
+        @stdio.stderr.write(
+          "The shared Rust report is incomplete or unqualified: \{report}\n",
+        )
+        @sys.exit(1)
+      }
+    }
+  }
+  @stdio.stdout.write(
+    "Selected Scheme witness passes Node/native debug/release with independently checked reports; full policy and runtime integrations remain separate.\n",
+  )
+}

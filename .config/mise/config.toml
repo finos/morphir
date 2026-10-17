@@ -145,6 +145,10 @@ run = "moon run scripts/installed-provider-check.mbtx"
 description = "Opt-in JSON/Ion value and invocation admission through the shared parent Rust MCK"
 run = "moon run scripts/workbench-mck.mbtx"
 
+[tasks."test:workbench-selected-scheme-mck"]
+description = "Opt-in selected public Scheme planning and unused-declaration witness through the shared Rust MCK"
+run = "moonx scripts/workbench-selected-scheme-mck.mbtx"
+
 [tasks."test:workbench-native-client-mck"]
 description = "Opt-in production native client scenarios in Node and Chromium through the shared Rust MCK"
 run = "moonx scripts/workbench-native-client-mck.mbtx"

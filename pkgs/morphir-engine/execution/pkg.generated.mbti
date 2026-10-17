@@ -6,6 +6,7 @@ import {
   "finos/morphir-execution",
   "finos/morphir-execution/observability",
   "finos/morphir-moonbit",
+  "moonbitlang/core/debug",
   "moonrockz/ion/ion",
 }
 
@@ -13,6 +14,8 @@ import {
 pub fn matrix_successful(Array[String], Array[Report]) -> Bool
 
 pub fn plan(@data.IRUnit, @morphir-execution.Suite, target? : String, available_targets? : Array[String]) -> Plan raise
+
+pub fn plan_scheme(@data.IRUnit, @morphir-execution.Suite, policy? : AdmissionPolicy, limits? : @data.Limits) -> SchemePlan raise
 
 pub fn run(Plan, Provider, evaluator? : Evaluator?, observer? : @observability.Observer, cancelled? : () -> Bool, comparison? : @morphir-execution.ComparisonPolicy) -> Report raise
 
@@ -23,7 +26,19 @@ pub(all) suberror LifecycleError {
   CleanupFailed(Error?, Error)
 }
 
+pub(all) suberror SchemePlanError {
+  AdmissionInvalid(String)
+}
+
 // Types and methods
+pub(all) enum AdmissionPolicy {
+  Strict
+  Permissive
+} derive(Eq, @debug.Debug)
+pub fn AdmissionPolicy::equal(Self, Self) -> Bool
+pub fn AdmissionPolicy::not_equal(Self, Self) -> Bool
+pub fn AdmissionPolicy::to_repr(Self) -> @debug.Repr
+
 pub(all) struct CallResult {
   id : String
   actual : @morphir-execution.Value
@@ -79,6 +94,14 @@ pub fn Report::status(Self) -> String
 pub fn Report::successful(Self) -> Bool
 pub fn Report::to_ion(Self) -> @ion.IonValue raise
 pub fn Report::to_json(Self) -> Json
+
+pub struct SchemePlan {
+  // private fields
+}
+pub fn SchemePlan::boundary_json(Self) -> Json
+pub fn SchemePlan::evaluate(Self) -> Array[@morphir-execution.Value] raise
+pub fn SchemePlan::policy(Self) -> AdmissionPolicy
+pub fn SchemePlan::validate_outputs(Self, Array[@morphir-execution.Value]) -> Unit raise
 
 pub(all) struct Session {
   id : String

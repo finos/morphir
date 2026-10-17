@@ -1,4 +1,6 @@
 import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
   "moonrockz/ion/ion",
   "moonrockz/ion/binary" @ion_binary,
   "finos/morphir-execution" @protocol,
