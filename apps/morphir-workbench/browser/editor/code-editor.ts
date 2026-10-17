@@ -1,6 +1,7 @@
 import { basicSetup } from 'codemirror';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { markSet, position } from './marks.ts';
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language';
 import { scheme } from '@codemirror/legacy-modes/mode/scheme';
 import { scala } from '@codemirror/legacy-modes/mode/clike';
@@ -16,6 +17,8 @@ import { moonbit } from './moonbit-language.ts';
 // The bounded, in-memory session store retains source history when Rabbita
 // removes an experience. Read-only output never occupies a session slot.
 const sessions = new Map<string, EditorState>();
+// The last reveal request any editor acted on: a remount with the same request does not move the cursor again.
+let lastReveal = '';
 // Compartments belong to each EditorState; this identity also works on a cached state.
 const configuration = new Compartment();
 const highlighting = HighlightStyle.define([
@@ -38,6 +41,7 @@ const theme = EditorView.theme({
   '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: '#e5f5fc' },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: '#ccecfb' },
   '.cm-cursor': { borderLeftColor: '#00729e' },
+  '.cm-morphir-problem': { textDecoration: 'underline wavy #b42318' },
   '.cm-foldPlaceholder': { backgroundColor: '#e5f5fc', borderColor: '#dadde1', color: '#005878' },
 });
 
@@ -65,7 +69,7 @@ export class CodeEditor extends HTMLElement {
   documentKey: string | null;
   readOnly: boolean;
   queued: boolean;
-  static observedAttributes = ['data-document', 'data-language', 'data-readonly', 'aria-label'];
+  static observedAttributes = ['data-document', 'data-language', 'data-readonly', 'data-marks', 'data-reveal', 'aria-label'];
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -81,6 +85,8 @@ export class CodeEditor extends HTMLElement {
     this.readOnly = true;
     this.queued = false;
   }
+  /** The line of the caret, one-based; read by tests. */
+  get caretLine() { return this.view ? this.view.state.doc.lineAt(this.view.state.selection.main.head).number : 0; }
   get value() { return this.view?.state.doc.toString() ?? this.pendingValue; }
   set value(value: string) { this.pendingValue = String(value ?? ''); this.schedule(); }
   connectedCallback() { this.schedule(); }
@@ -106,7 +112,9 @@ export class CodeEditor extends HTMLElement {
   }
   extensions() {
     const readOnly = this.dataset.readonly === 'true';
+    const marks = this.dataset.marks ?? '';
     return [
+      EditorView.decorations.of(view => markSet(view.state.doc, marks)),
       languageSupport(this.dataset.language ?? ''),
       EditorState.readOnly.of(readOnly),
       EditorView.editable.of(!readOnly),
@@ -141,6 +149,17 @@ export class CodeEditor extends HTMLElement {
       this.view.setState(this.newState());
     }
     this.view.dispatch({ effects: this.configuration.reconfigure(this.extensions()) });
+    const reveal = this.dataset.reveal ?? '';
+    // A reveal waits until the view holds the current document for the current key; it is recorded only once moved.
+    if (reveal && reveal !== lastReveal && this.documentKey === key && this.view.state.doc.toString() === this.pendingValue) {
+      const [line = NaN, column = NaN] = reveal.split(':').map(Number);
+      if (Number.isFinite(line) && Number.isFinite(column)) {
+        const anchor = position(this.view.state.doc, line, column);
+        this.view.dispatch({ selection: { anchor }, scrollIntoView: true });
+        this.view.focus();
+        lastReveal = reveal;
+      }
+    }
   }
 }
 

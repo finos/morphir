@@ -164,7 +164,7 @@ export class NativeAdapter {
       const result = await this.workspace.choose(); this.current(epoch); return result;
     }
     if (request.operation === 'project' && this.workspace) {
-      const result = await this.workspace.openProject(request.project!); this.current(epoch); return result;
+      const result = await this.workspace.openProject(typeof request.project === 'string' ? request.project : ''); this.current(epoch); return result;
     }
     if (request.operation === 'project' || request.operation === 'workspace' || request.operation === 'resume-job') throw new Error('This desktop session does not offer native jobs or workspace access.');
     const result = await this.local.execute(request);

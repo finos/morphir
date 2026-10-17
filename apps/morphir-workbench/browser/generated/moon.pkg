@@ -3,5 +3,17 @@ supported_targets = "js"
 import {
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/cmd",
+  "moonbit-community/rabbita/dom",
   "finos/morphir-workbench/browser/editor",
+  "finos/morphir-workbench/browser/context-menu" @context_menu,
+  "finos/morphir-workbench/browser/keys",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/debug",
 }
+
+import {
+  "finos/morphir-workbench/browser/generated",
+  "finos/morphir-workbench/browser/keys",
+  "moonbitlang/core/encoding/base64",
+  "moonrockz/expect",
+} for "test"

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "samples": [
+    {
+      "id": "examples-tutorial",
+      "title": "Rentals tutorial (morphir-examples)"
+    },
+    {
+      "id": "elm-rentals",
+      "title": "Rentals rules (morphir-elm tests)"
+    },
+    {
+      "id": "records",
+      "title": "Records (parity corpus)"
+    }
+  ]
+}

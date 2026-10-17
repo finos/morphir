@@ -1,0 +1,12 @@
+import {
+  "finos/morphir-engine/ids",
+  "moonbitlang/core/debug",
+  "finos/morphir-engine/config",
+}
+
+import {
+  "finos/morphir-workbench/project",
+  "finos/morphir-engine/ids",
+  "moonbitlang/core/json",
+  "moonrockz/expect",
+} for "test"

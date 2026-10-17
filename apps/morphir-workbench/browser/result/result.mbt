@@ -143,6 +143,8 @@ pub fn view(props : Props, on_mode : @cmd.Emit[Mode]) -> @html.Html {
           "Printed result"
         },
         read_only: true,
+        marks: "",
+        reveal: "",
       })
   }
   @html.div(class="result-view", [

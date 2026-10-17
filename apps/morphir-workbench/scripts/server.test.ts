@@ -216,3 +216,14 @@ test('authentication and body deadlines fail without invoking a job or inventing
   });
   assert.equal(status, 503); assert.equal(gateway.commands.length, 0);
 });
+
+test('built-in sample JSON is served from samples/<language>/ and nothing else under it', async t => {
+  const server = createWorkbenchServer();
+  const origin = await listen(server);
+  t.after(() => server.close());
+  const index = await get(origin + '/samples/elm/index.json');
+  assert.equal(index.status, 200);
+  assert.match(index.headers.get('content-type') ?? '', /application\/json/);
+  assert.equal((await get(origin + '/samples/elm/..%2Findex.html')).status, 404);
+  assert.equal((await get(origin + '/samples/elm/x/y.json')).status, 404);
+});

@@ -13,9 +13,14 @@ export interface WorkRequest {
   entry?: string;
   languageId?: string;
   target?: string;
-  project?: string;
+  /** A workspace project id for `project`, or the project the local worker compiles; the worker validates it. */
+  project?: string | ProjectPayload;
+  /** The text files of an `import-folder` request. */
+  files?: unknown;
   executionMode?: string;
 }
+/** A project as the browser sends it to the local worker. */
+export interface ProjectPayload { files?: unknown; [field: string]: unknown }
 export interface Language {
   languageId: string;
   irVersions: string[];

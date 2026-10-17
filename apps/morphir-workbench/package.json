@@ -6,7 +6,7 @@
   "scripts": {
     "build": "bun --check scripts/build.ts",
     "dev": "bun --check scripts/serve.ts",
-    "test": "node --test browser/transport.test.ts browser/job-descriptor.test.ts browser/native-session.test.ts browser/native-client-trace.test.ts browser/native-workspace.test.ts browser/artifact-download.test.ts scripts/server.test.ts scripts/job-provider.test.ts",
+    "test": "node --test browser/transport.test.ts browser/job-descriptor.test.ts browser/native-session.test.ts browser/native-client-trace.test.ts browser/native-workspace.test.ts browser/artifact-download.test.ts scripts/server.test.ts scripts/job-provider.test.ts browser/editor/marks.test.ts browser/project-io.test.ts",
     "test:browser": "node scripts/browser-test.ts"
   },
   "devDependencies": {

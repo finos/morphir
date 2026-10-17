@@ -94,6 +94,10 @@ run = "moon run scripts/elm-make-check.mbtx"
 description = "Run pinned morphir-elm make on the Elm parity projects and regenerate parity_data_wbtest.mbt"
 run = "moon run scripts/elm-parity-refresh.mbtx"
 
+[tasks."workbench:samples"]
+description = "Regenerate the workbench Elm samples from the Elm corpus"
+run = "moon run scripts/workbench-samples.mbtx"
+
 [tasks."e2e:scheme-moonbit"]
 description = "Scheme with inference fill to MoonBit: moon build accepts the libraries"
 run = "moon run scripts/scheme-moonbit-check.mbtx"

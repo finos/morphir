@@ -114,6 +114,7 @@ test "history is bounded and messages are truncated" {
       related: [],
       fix: "",
       stage: "",
+      place: None,
     },
   )
   let reported = state.report("12:00:02", "Compile", 3, "source", 4, many)
@@ -136,6 +137,7 @@ test "reports are current only for the newest run on the current revision" {
     related: [],
     fix: "",
     stage: "",
+    place: None,
   }
   let state = @bottom_panel.State::new()
     .report("12:00:00", "Compile", 1, "source", 4, [error])
@@ -288,4 +290,312 @@ test "the panel column follows the coordinate profile" {
       "line \{line}, column \{column + 1}",
     )
   })
+}
+
+///|
+test "a placed problem carries its path, line and display column" {
+  let reply = @json.parse(
+    (
+      #|{"success":false,"frontendDiagnostics":[{"path":"src/A/B.elm","problems":[{"code":"elm.parse","coordinateProfile":"elm-source-position-v1","detail":"x","path":"src/A/B.elm","source":{"startLine":4,"startColumn":9,"endLine":4,"endColumn":10}}]}]}
+    ),
+  ) catch {
+    _ => abort("json")
+  }
+  let found = @bottom_panel.reply_diagnostics(reply)
+  @expect.expect(found.map(d => d.place), label="place").to_equal([
+    Some({ path: "src/A/B.elm", line: 4, column: 9, }),
+  ])
+}
+
+///|
+/// Property: the display column is the reported column for one-based profiles and one more for the MoonBit parser.
+test "display_column follows the coordinate profile" {
+  @expect.for_all((c : UInt32) => {
+    let column = (c % 100000).reinterpret_as_int()
+    @expect.expect_all(s => {
+      s
+      .expect(
+        @bottom_panel.display_column("elm-source-position-v1", column),
+        label="elm",
+      )
+      .to_equal(column)
+      s
+      .expect(
+        @bottom_panel.display_column("moonbit-parser-position-v1", column),
+        label="moonbit",
+      )
+      .to_equal(column + 1)
+    })
+  })
+}
+
+///|
+test "a problem without its own path takes its file's path" {
+  let reply = @json.parse(
+    (
+      #|{"success":false,"frontendDiagnostics":[{"path":"src/A/B.elm","problems":[{"code":"elm.parse","coordinateProfile":"elm-source-position-v1","detail":"x","source":{"startLine":2,"startColumn":3,"endLine":2,"endColumn":4}}]}]}
+    ),
+  ) catch {
+    _ => abort("json")
+  }
+  @expect.expect(
+    @bottom_panel.reply_diagnostics(reply).map(d => d.place),
+    label="place",
+  ).to_equal([Some({ path: "src/A/B.elm", line: 2, column: 3, })])
+}
+
+///|
+let sample_failure : @bottom_panel.Failure = {
+  job: 7,
+  operation: "Compile",
+  code: "workbench.internal_error",
+  stage: "reply",
+  message: "The workbench failed while preparing the compile result (missing_member: entries)",
+  context: [
+    ("Language", "Elm"),
+    ("Profile", ""),
+    ("Target", "elm"),
+    ("Duration", "130 ms"),
+  ],
+  raw: "{\n  \"success\": false\n}",
+}
+
+///|
+test "a failed job's report names its code, stage, context and reply" {
+  let text = @bottom_panel.failure_text(sample_failure, "12:00:01")
+  @expect.expect_all(s => {
+    s
+    .expect(text, label="report")
+    .to_contain_substrings_in_order([
+      "Messages can quote your source.",
+      "Morphir Workbench failure",
+      "Operation: Compile (job 7)",
+      "Code: workbench.internal_error",
+      "Stage: internal (reply)",
+      "Message: The workbench failed",
+      "Language: Elm",
+      "Target: elm",
+      "Duration: 130 ms",
+      "Time: 12:00:01",
+      "Reply (" + @bottom_panel.raw_note + "):",
+      "\"success\": false",
+    ])
+    s.expect(text, label="empty context left out").not().to_contain("Profile:")
+  })
+}
+
+///|
+test "a diagnostic's report names its location and the job that reported it" {
+  let frontend : Json = {
+    "success": false,
+    "message": "elm.parse: Unexpected token",
+    "code": "elm.parse",
+    "stage": "frontend",
+    "frontendDiagnostics": [
+      {
+        "path": "src/Workbench/Main.elm",
+        "problems": [
+          {
+            "code": "elm.parse",
+            "coordinateProfile": "elm-source-position-v1",
+            "detail": "Unexpected token",
+            "source": {
+              "startLine": 3,
+              "startColumn": 7,
+              "endLine": 3,
+              "endColumn": 8,
+            },
+            "stage": "frontend",
+          },
+        ],
+      },
+    ],
+  }
+  let diagnostics = @bottom_panel.reply_diagnostics(frontend)
+  let state = @bottom_panel.State::new().report(
+    "12:00:02",
+    "Compile",
+    7,
+    "source",
+    3,
+    diagnostics,
+    failure=Some(sample_failure),
+  )
+  let report = state.reports[0]
+  let text = @bottom_panel.diagnostic_text(report.diagnostics[0], report)
+  let failed = @bottom_panel.reply_diagnostics({
+    "success": false,
+    "message": "The request is not valid (missing_member: operation)",
+    "code": "workbench.invalid_request",
+    "stage": "request",
+  })
+  @expect.expect_all(s => {
+    s.expect(diagnostics[0].stage, label="stage").to_equal("frontend")
+    s
+    .expect(text, label="report")
+    .to_contain_substrings_in_order([
+      "Messages can quote your source.", "Morphir Workbench diagnostic", "Severity: Error",
+      "Code: elm.parse", "Stage: frontend", "Location: src/Workbench/Main.elm line 3, column 7 (elm-source-position-v1 3:7–3:8)",
+      "Message: Unexpected token", "Reported by: Compile (job 7, source revision 3) at 12:00:02",
+      "Language: Elm",
+    ])
+    s
+    .expect(
+      failed.map(d => (d.code, d.stage)),
+      label="failure keeps code and stage",
+    )
+    .to_equal([("workbench.invalid_request", "request")])
+    s
+    .expect(
+      report.failure == Some(sample_failure),
+      label="report keeps the job",
+    )
+    .to_be_true()
+  })
+}
+
+///|
+test "details open and close, and a raw reply is bounded" {
+  let long = { ..sample_failure, raw: "x".repeat(@bottom_panel.max_raw + 10), }
+  let state = @bottom_panel.State::new().log(
+    "12:00:03",
+    "Compile",
+    Error,
+    "Job 7 failed",
+    failure=Some(long),
+  )
+  let (opened, _) = state.update(Toggle("log-1"))
+  let (closed, _) = opened.update(Toggle("log-1"))
+  let (copied, focus) = state.update(CopyDetails("report"))
+  @expect.expect_all(s => {
+    s.expect(opened.open, label="open").to_equal(["log-1"])
+    s.expect(closed.open, label="closed").to_be_empty()
+    s.expect(copied == state, label="copy leaves the state").to_be_true()
+    s.expect(focus, label="no focus").to_be_none()
+    s
+    .expect(state.logs[0].failure.map(f => f.raw.length()), label="bounded raw")
+    .to_satisfy(n => n is Some(length) && length < @bottom_panel.max_raw + 20)
+    s
+    .expect(state.logs[0].failure.map(f => f.raw), label="truncation noted")
+    .to_satisfy(raw => raw is Some(text) && text.has_suffix("(truncated)"))
+  })
+}
+
+///|
+/// Property: at most `max_open` details stay open, whatever is toggled.
+test "open details are bounded" {
+  @expect.for_all((keys : Array[UInt32]) => {
+    let state = keys.fold(init=@bottom_panel.State::new(), (state, key) => {
+      state.update(Toggle("log-" + (key % 80).to_string())).0
+    })
+    @expect.expect(state.open.length(), label="open").to_be_less_than_or_equal(
+      @bottom_panel.max_open,
+    )
+    @expect.expect(state.open, label="distinct").to_have_no_duplicates()
+  })
+}
+
+///|
+test "a raw reply keeps structure, codes and messages and omits source of any shape" {
+  let long_message = "elm.parse: Unexpected token where a declaration was expected"
+  let reply = @bottom_panel.redacted({
+    "success": false,
+    "code": "elm.parse",
+    "message": long_message,
+    "counts": { "errors": 1 },
+    "project": {
+      "files": [
+        { "path": "src/A.elm", "content": ["module A", "exposing (..)"] },
+      ],
+    },
+    "results": [{ "expression": "(+ 1 2)", "value": "3" }],
+    "notes": "a member no list names, with a long text",
+    "target": "elm",
+    "problems": [
+      { "code": "elm.parse", "source": "module Main exposing (main)" },
+      {
+        "code": "elm.parse",
+        "source": {
+          "startLine": 3,
+          "startColumn": 7,
+          "endLine": 3,
+          "endColumn": 8,
+        },
+      },
+      { "code": "elm.parse", "source": { "line": 3, "column": "x" } },
+    ],
+    "sourceUnitIon": { "unit": "a" },
+  })
+  @expect.expect(reply.stringify()).to_equal(
+    (
+      {
+        "success": false,
+        "code": "elm.parse",
+        "message": long_message,
+        "counts": { "errors": 1 },
+        "project": {
+          "files": [
+            { "path": "src/A.elm", "content": "<omitted: 28 characters>" },
+          ],
+        },
+        "results": [
+          {
+            "expression": "<omitted: 7 characters>",
+            "value": "<omitted: 1 characters>",
+          },
+        ],
+        "notes": "<omitted: 40 characters>",
+        "target": "elm",
+        "problems": [
+          { "code": "elm.parse", "source": "<omitted: 27 characters>" },
+          {
+            "code": "elm.parse",
+            "source": {
+              "startLine": 3,
+              "startColumn": 7,
+              "endLine": 3,
+              "endColumn": 8,
+            },
+          },
+          { "code": "elm.parse", "source": "<omitted: 23 characters>" },
+        ],
+        "sourceUnitIon": "<omitted: 12 characters>",
+      } : Json).stringify(),
+  )
+}
+
+///|
+/// Property: a long text under a member that no list keeps never reaches the raw reply, at any depth and in
+/// arrays.
+test "a raw reply never keeps long text under an unknown member" {
+  let names = ["notes", "body", "sourceText", "source", "content", "expression"]
+  @expect.for_all((case : (UInt32, UInt32)) => {
+    let (pick, depth) = case
+    let secret = "secret-" + pick.to_string() + "-" + "x".repeat(40)
+    let mut value : Json = Json::string(secret)
+    for level in 0..<(depth % 4).reinterpret_as_int() {
+      value = if level % 2 == 0 {
+        Json::array([value, Json::number(1)])
+      } else {
+        Json::object(Map([("nested", value)]))
+      }
+    }
+    let name = names[(pick % names.length().reinterpret_as_uint()).reinterpret_as_int()]
+    let reply = @bottom_panel.redacted(
+      Json::object(Map([("success", Json::boolean(false)), (name, value)])),
+    )
+    @expect.expect(reply.stringify(), label=name).not().to_contain("secret-")
+  })
+}
+
+///|
+test "details ids are prefixed for the page" {
+  @expect.expect([
+    @bottom_panel.details_id("log-12"),
+    @bottom_panel.details_id("diagnostic-4-0"),
+    @bottom_panel.details_id("raw-log-12"),
+    @bottom_panel.details_id("outcome-9"),
+  ]).to_equal([
+    "tool-details-log-12", "tool-details-diagnostic-4-0", "tool-raw-log-12", "tool-details-outcome-9",
+  ])
 }

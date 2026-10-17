@@ -74,7 +74,7 @@ export function hostOrigin(value?: string | null) {
 export function createWorkbenchServer({ root = new URL('../dist/', import.meta.url), host = null, jobs = null, jobAuthDeadlineMs = 2000, jobBodyDeadlineMs = 5000 }: { root?: URL; host?: string | null; jobs?: JobGateway | null; jobAuthDeadlineMs?: number; jobBodyDeadlineMs?: number } = {}) {
   const upstream = hostOrigin(host);
   if (jobs && !upstream) throw new Error('Workbench jobs require a configured upstream host.');
-  const mime: Record<string, string> = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml' };
+  const mime: Record<string, string> = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.json': 'application/json' };
   let authority: string;
   const allowed = (request: IncomingMessage) => request.headers.host === authority &&
     (!request.headers.origin || request.headers.origin === `http://${authority}`) &&
@@ -128,7 +128,8 @@ export function createWorkbenchServer({ root = new URL('../dist/', import.meta.u
       return;
     }
     const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
-    if (!/^[a-zA-Z0-9-]+\.(html|css|js|svg)$/.test(file)) { response.writeHead(404).end(); return; }
+    // Built-in samples are static JSON under samples/<language>/<id>.json.
+    if (!/^[a-zA-Z0-9-]+\.(html|css|js|svg)$/.test(file) && !/^samples\/[a-z0-9-]+\/[a-zA-Z0-9-]+\.json$/.test(file)) { response.writeHead(404).end(); return; }
     try {
       let content = await readFile(new URL(file, root));
       if (upstream && file === 'index.html') content = Buffer.from(content.toString().replace('</head>', '<meta name="morphir-host-mode" content="connected"></head>'));

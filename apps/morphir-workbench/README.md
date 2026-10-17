@@ -43,7 +43,7 @@ The local worker compiles through `@engine.Engine` with the MoonBit and Elm prov
 (one file) or `project` (`name`, `languageId`, `files[]`, optional `frontendProvider`, `frontendProfile`,
 `exposedModules`).
 
-Choose **Elm** in the Target dropdown, or click **Elm constant**, to generate
+Choose **Elm** in the Target dropdown, or open the **Elm constant** sample, to generate
 an Elm package from the compiled IR using the pure `morphir-elm` backend.
 The **Generated** tab shows a folder/file navigator for each module, `elm.json`
 and `morphir.json`. The reusable `browser/generated` component puts a selected-file
@@ -68,7 +68,7 @@ The example uses `(define answer 42)` with **Compile** to generate a library
 without an application entry point. Elm reserves `main` for Html, Svg or Program
 values, so Scheme's implicit numeric `main` must be renamed before Elm compilation.
 
-Choose **MoonBit** in Language, or click **MoonBit Boolean**.
+Choose **MoonBit** in Language, or open the **MoonBit Boolean** sample.
 The `moonbit-model-bool-v1` profile accepts one function with explicit `Bool`
 parameters and return type. Boolean literals, operators and `if`/`else` are
 supported; other types, calls, loops and bindings produce profile diagnostics.
@@ -80,7 +80,7 @@ action. Private functions remain inspectable.
 
 The **Source profile** selector uses the local provider's capability descriptions.
 **Single Boolean function** remains the default. Choose **Boolean library**, or
-click **MoonBit library**, for multiple explicitly typed Boolean functions,
+open the **MoonBit library** sample, for multiple explicitly typed Boolean functions,
 direct same-file acyclic calls, immutable bindings and lexical shadowing.
 Expandable profile details list supported and excluded constructs. Recursion,
 cross-file calls, mutation and other source types produce profile diagnostics.
@@ -98,8 +98,15 @@ The Scheme worksheet has its own draft and runtime. It remains Scheme even
 when the compile view has MoonBit selected. Elm is a generation target only.
 
 The **MoonBit** Target produces `library.mbt`, `moon.mod`, `moon.pkg` and binary
-`symbols.10n`. Text files have read-only highlighting; binary metadata stays
-opaque in the preview but file/ZIP downloads retain its exact bytes. The local
+`symbols.10n`. Text files have read-only highlighting; file/ZIP downloads retain the exact bytes of binary files.
+A generated file has a context menu (right-click, Shift+F10 or its ⋯ button) with Copy path and Download, and for a
+binary file **View as Ion text** and **View raw (hex)**. View as Ion text decodes a binary Ion file (one that starts
+with `E0 01 00 EA`) to pretty Ion text in the browser-local worker, as a job. Each limit stops the work before it
+grows: at most 4 MiB in (checked before base64 decoding), at most 128 levels, 100,000 values (nulls included) and
+64 KiB for one integer or decimal (checked by a walk of the binary structure before the Ion reader runs), and at
+most 4 Mi characters out (counted while the text is written). The viewer marks the decoded view and has **Show
+binary summary** to go back. Decode errors carry their `ion.*` or `workbench.*` code in the tool panel's details.
+View raw (hex) shows the first 64 KiB. The command palette offers View as Ion text for the selected file. The local
 worker explicitly declares base64 encoding; connected v1 binary artifacts remain
 opaque and unavailable for download until the host protocol defines an encoding.
 Generated projects require the pinned `finos/morphir-sdk` dependency and do not
@@ -108,7 +115,7 @@ source unit with original metadata, annotations and provenance. Semantic JSON
 export remains separate and does not carry that metadata.
 
 The global navigation retains its collapse choice per experience. Model Explorer
-shows the model tree in its contextual sidebar; Try Morphir shows examples, and
+shows the model tree in its contextual sidebar; Try Morphir shows the project explorer, and
 its page heading describes the active layout. Source, results and the selected declaration survive navigation.
 The top bar's rounded arrow button, with a **Back** tooltip, retraces experience, worksheet and declaration
 navigation, including references and Used by links. It restores the search and
@@ -322,7 +329,7 @@ does not capture the browser console or add host capabilities.
   (`moonbit-parser-position-v1`, one-based lines, zero-based columns) appear in
   the tooltip. Frontend and backend naming warnings retain their stage, code,
   related declaration owners, authored and allocated spellings, and suggested
-  fix. A compact disclosure shows the details. A warning counts once even when
+  fix. Each row's **Details** disclosure shows them. A warning counts once even when
   it has several related declarations; at most 20 related locations are retained.
   Generator refusals keep their IR node path. When a connected v1
   compile fails, the panel keeps the host's diagnostic severity, code and
@@ -334,6 +341,22 @@ does not capture the browser console or add host capabilities.
 All host text renders as text, and messages longer than 4,000 characters are
 truncated. Each tab has a Clear action. The `browser/bottom-panel` component
 owns the typed state, the actions, the reply parsing and the view.
+
+### Failure details
+
+A failed job and each diagnostic open their details in place, with the keyboard or a screen reader (disclosure
+buttons with `aria-expanded`). A diagnostic shows its code, severity, stage, location (select it to open the file at
+that place) with the original coordinates, the full message, related declarations and fix, and the job that
+reported it. A failed job in Logs or Output shows its code, stage and message with the job's context: language,
+profile, provider, target, project and file count, source revision and duration. **Copy details** copies a
+plain-text report to paste into an issue; its first line is "Messages can quote your source." **Raw reply** shows
+the reply JSON, at most 8,000 characters. It keeps names, numbers, codes, stages, paths, settings and messages;
+messages can quote the source line a failure points at.
+Source text, models and evaluated values (any shape: `content`, `irSource`, `sourceUnitIon`, `expression`, `ir`
+and similar) become `<omitted: N characters>`, a `source` member stays only as a numeric line and column location,
+and any other text longer than 32 characters becomes its size. Codes are the replies' own; a codec error in a
+request or model is `workbench.invalid_request` or `workbench.invalid_model`, anywhere else
+`workbench.internal_error`, and keeps the codec's code and detail.
 
 ## Visual identity
 
@@ -541,6 +564,77 @@ in `snapshot`; malformed envelopes now report a diagnostic while keeping compile
 capabilities available. Other installed providers, workspace watching and durable daemon recovery need
 their own acceptance. The opt-in job acceptance below exercises connected evaluation.
 
+## Projects
+
+The editor holds one project for each language. The pure model is the package
+`finos/morphir-workbench/project`.
+
+- A project keeps its files under `src/`. Paths are relative and use `/` between folders.
+- A language that compiles one file at a time (Scheme, MoonBit) holds one file. "New file" is disabled and
+  the reason names `morphir-ukvn.5.22.14`, where projects of several files are planned.
+- An Elm project holds many files. A new Elm file starts with its module header.
+- An Elm package exposes modules relative to the package name: in package `Shop.Orders`, the file
+  `src/Shop/Orders/Api.elm` is module `Api`. Renaming a file moves its exposure; deleting a file drops it.
+- A project always keeps at least one file, and the active file always exists.
+- A folder is implied by the paths of its files. Renaming a folder moves each of its files under the rules of a file
+  rename; deleting a folder deletes its files, and is refused when it holds every file.
+
+### Project explorer
+
+In Try Morphir the project is a tree in the sidebar, as in a code editor (package
+`finos/morphir-workbench/browser/project-files`). Folders come from the paths and sort before files, by code unit;
+a chain of single folders shares one row (`src/Workbench`). Rows show an icon for the file type, the problems of the
+last compile (folders show the sum) and, for Elm, an arrow on exposed modules. The header holds the package name
+(select it to rename the package) and New file, Import folder, Collapse folders and More actions.
+
+- Right-click a row, or press Shift+F10 or the menu key, for its menu: Open, New file, Rename, Delete, Copy path,
+  Expose module or Stop exposing module, Show problems. More actions holds the project menu, with Reset project.
+- New file and Rename edit the name in place; Enter commits, Escape cancels, and a refusal shows under the input.
+  A name can hold `/` to make folders. Delete asks in the row; Enter deletes, Escape keeps.
+- The tree follows the WAI-ARIA tree pattern: arrows, Home, End, Enter (open and go to the editor), Space (open and
+  stay) and a letter to jump. F2 renames and Delete or ⌘⌫ deletes the focused row.
+
+### Shortcuts and the command palette
+
+Mod is ⌘ on macOS and Ctrl elsewhere. Mod+P opens quick open over the project's files; Mod+Shift+P or F1 opens the
+command palette (a leading `>` in the same input lists commands); Mod+Enter compiles. These three work in the editor
+too; tree shortcuts work only on a focused row. The palette matches letters in order (fuzzy), marks the matched
+letters, lists recently run commands first, shows each command's shortcut and dims a command that cannot run now with
+its reason. Switch language, Set generation target and Open sample ask a second question in the same palette.
+The keymap is one table in `finos/morphir-workbench/browser/keys`; menus and the palette read it, so a shortcut is
+shown where it works. Fuzzy matching, filtering and the palette state are in
+`finos/morphir-workbench/browser/command-palette`.
+
+## Samples
+
+The Elm samples are static JSON assets under `assets/samples/elm/`: `index.json` (id and title in menu order) and
+one file for each sample (`examples-tutorial`, `elm-rentals`, `records`). The build copies them to
+`dist/samples/`, and the page fetches a sample when the person picks it. The worker and the shell do not embed them.
+
+Each asset has a `notice` with its origin and licence, taken from `pkgs/morphir-elm/conformance/SOURCES.md`; the
+page shows it with the sample. Scheme and MoonBit keep their built-in examples, which are listed from code.
+
+One list feeds both places that open a sample: the command palette has one "Open sample: …" entry for each, and the
+explorer's project menu (its ⋯ button, or a right-click on empty explorer space) has a "New from sample" section. The
+built-in examples (Pricing & arithmetic, Elm constant, MoonBit Boolean, MoonBit library) are listed for every
+language; the Elm samples follow while Elm is selected. The worksheet lists only its own example.
+
+The assets come from the Elm corpus in `pkgs/morphir-elm/conformance/projects`. Run `mise run workbench:samples` to
+regenerate them; CI fails when the committed assets differ from its output.
+
+## Folder import
+
+The local worker accepts `{"operation": "import-folder", "files": [{"path", "content"}]}` with the text files of a
+folder. A common leading folder (as `webkitdirectory` gives, `rentals/morphir.json`) is removed first. The
+folder's `morphir.json` is read with the CLI's discovery rules (`name`, `sourceDirectory`, `exposedModules`;
+`dependencies` give a warning). The reply is `{"success": true, "project": {"name", "languageId": "elm",
+"exposedModules", "files"}, "warnings", "skipped"}`: the `.elm` files under the source directory, re-rooted to
+`src/`, and the number of other files left out. The reply's project is a copy; nothing is written back.
+
+A failure is `{"success": false, "message": "<code>: <text>"}` with one of `workbench.folder_without_morphir_json`,
+`workbench.folder_too_large` (more than 2,000 files or 16 MiB of text), `workbench.folder_configuration`
+(the manifest, the package name or a path is not valid) and `workbench.folder_without_sources`.
+
 ## Typed terminal outcomes
 
 Local typed function evaluation emits admitted Workbench `0.1.0-draft.5` terminal
@@ -624,3 +718,13 @@ the existing Rust binary and, for desktop, a packaged app. They exercise real
 cookie authentication, exact Decimal fields/JSON/Ion results, Result.Err, SDK
 errors, cancellation, disconnected-query reconciliation and stale-input output.
 They do not add an evaluation or cancellation method to connected JSON-RPC v1.
+
+## Projects in the browser
+
+Each language keeps one project (its files, package name and exposed modules) in this browser's `localStorage`, under
+`morphir-workbench.project.<language>.v1`. A change is saved 600 ms after the last edit. The workbench restores the
+saved projects when it starts in local mode; a saved project that no longer parses is ignored and the Logs say so.
+When the browser refuses the save (a private window, a full quota), "Not saved" shows under the project explorer and
+the project stays in the page. "Reset project" (in the explorer's More actions menu and the command palette) asks
+inline, then restores the default project of the language and removes the saved copy. Nothing leaves the browser: a folder import is a copy, and connected mode (a Morphir host) does not use
+this storage.

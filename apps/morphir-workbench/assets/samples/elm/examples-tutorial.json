@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "id": "examples-tutorial",
+  "title": "Rentals tutorial (morphir-examples)",
+  "languageId": "elm",
+  "notice": "From finos/morphir-examples 74db4db, tutorial/step_3_catching_bugs. Apache-2.0, finos/morphir-examples.",
+  "project": {
+    "version": 1,
+    "name": "Morphir.Example.App",
+    "languageId": "elm",
+    "exposedModules": [
+      "App",
+      "Analytics",
+      "Forecast",
+      "Rentals",
+      "Winds"
+    ],
+    "files": [
+      {
+        "path": "src/Morphir/Example/App/Analytics.elm",
+        "content": "module Morphir.Example.App.Analytics exposing (..)\n\nimport Morphir.Example.App.BusinessTerms exposing (..)\n\n\ncalculateProbableReservations : ReservedQuantity -> CanceledQuantity -> ReservedQuantity -> ProbableReservations\ncalculateProbableReservations averageReservationRequests averageCancelations currentReservationCount =\n    let\n        probableReservations : ProbableReservations\n        probableReservations =\n            ceiling (toFloat currentReservationCount * (1.0 - cancelationRatio averageReservationRequests averageCancelations))\n    in\n    probableReservations\n\n\n\n-- Naive\n\n\ncancelationRatio : ReservedQuantity -> CanceledQuantity -> CancelationRatio\ncancelationRatio reservationRequests cancelations =\n    let\n        result : CancelationRatio\n        result =\n            toFloat cancelations / toFloat reservationRequests\n    in\n    result\n\n\n\n-- Safe\n\n\ncancelationRatioSafe : ReservedQuantity -> CanceledQuantity -> Result String CancelationRatio\ncancelationRatioSafe reservationRequests cancelations =\n    safeRatio cancelations reservationRequests\n\n\nsafeRatio : Int -> Int -> Result String CancelationRatio\nsafeRatio numerator denominator =\n    let\n        result : Result String CancelationRatio\n        result =\n            if numerator < 0 || denominator < 0 then\n                Err \"Only natural numbers allowed\"\n\n            else if numerator > denominator then\n                Err \"The numerator must be less than or equal to the denominator\"\n\n            else if denominator == 0 then\n                Ok 0.0\n\n            else\n                Ok (toFloat numerator / toFloat denominator)\n    in\n    result\n"
+      },
+      {
+        "path": "src/Morphir/Example/App/App.elm",
+        "content": "module Morphir.Example.App.App exposing (..)\n\nimport Morphir.Example.App.Analytics exposing (calculateProbableReservations)\nimport Morphir.Example.App.BusinessTerms exposing (..)\nimport Morphir.Example.App.Forecast exposing (..)\nimport Morphir.Example.App.Rentals exposing (..)\nimport Morphir.Example.App.Winds exposing (..)\n\n\nprocessRequest : Forecast -> CurrentInventory -> ExistingReservations -> PendingReturns -> RequestedQuantity -> AllowPartials -> ReservedQuantity -> CanceledQuantity -> Result Reason ReservedQuantity\nprocessRequest forecast inventory reservations returns requestedQuantity allowPartials historicalReservations historicalCancelations =\n    let\n        windCategory : WindCategory\n        windCategory =\n            categorizeWindForForecast forecast\n\n        probableReservations : ProbableReservations\n        probableReservations =\n            calculateProbableReservations historicalReservations historicalCancelations reservations\n    in\n    decide windCategory forecast.shortForcast inventory probableReservations returns requestedQuantity allowPartials\n\n\ncategorizeWindForForecast : Forecast -> WindCategory\ncategorizeWindForForecast forecast =\n    let\n        windCategory : WindCategory\n        windCategory =\n            categorizeWind forecast.windSpeed.max\n    in\n    windCategory\n\n\ntype Command\n    = Request RentalID RequestedQuantity AllowPartials\n    | Pickup RentalID\n    | Return RentalID\n\n\ntype Event\n    = RequestAccepted RentalID ReservedQuantity\n    | RequestRejected RentalID Reason\n    | PickupCompleted RentalID\n    | ReturnCompleted RentalID\n\n\ntype alias State =\n    { forecast : Forecast\n    , currentInventory : CurrentInventory\n    , events : List Event\n    }\n"
+      },
+      {
+        "path": "src/Morphir/Example/App/BusinessTerms.elm",
+        "content": "module Morphir.Example.App.BusinessTerms exposing (..)\n\n\ntype alias RentalID =\n    String\n\n\ntype alias CurrentInventory =\n    Int\n\n\ntype alias ExistingReservations =\n    Int\n\n\ntype alias PendingReturns =\n    Int\n\n\ntype alias RequestedQuantity =\n    Int\n\n\ntype alias ReservedQuantity =\n    Int\n\n\ntype alias ProbableReservations =\n    Int\n\n\ntype alias CanceledQuantity =\n    Int\n\n\ntype alias CancelationRatio =\n    Float\n\n\ntype alias Availability =\n    Int\n\n\ntype alias AllowPartials =\n    Bool\n\n\ntype ExpertiseLevel\n    = Novice\n    | Intermediate\n    | Expert\n"
+      },
+      {
+        "path": "src/Morphir/Example/App/Forecast.elm",
+        "content": "module Morphir.Example.App.Forecast exposing (..)\n\n\ntype alias MPH =\n    Int\n\n\ntype WindDirection\n    = North\n    | South\n    | East\n    | West\n\n\ntype alias Celcius =\n    Int\n\n\ntype ForecastDetail\n    = Showers\n    | Thunderstorms\n    | Snow\n    | Fog\n\n\ntype alias ForecastPercent =\n    Float\n\n\ntype alias Forecast =\n    { temp : { low : Celcius, high : Celcius }\n    , windSpeed : { min : MPH, max : MPH }\n    , windDirection : WindDirection\n    , shortForcast : ForecastDetail\n    , forecastPercent : ForecastPercent\n    }\n"
+      },
+      {
+        "path": "src/Morphir/Example/App/Rentals.elm",
+        "content": "module Morphir.Example.App.Rentals exposing (..)\n\nimport Morphir.Example.App.Analytics exposing (..)\nimport Morphir.Example.App.BusinessTerms exposing (..)\nimport Morphir.Example.App.Forecast exposing (..)\nimport Morphir.Example.App.Winds exposing (..)\n\n\ntype Reason\n    = InsufficientAvailability\n    | ClosedDueToConditions\n\n\ndecide : WindCategory -> ForecastDetail -> CurrentInventory -> ProbableReservations -> PendingReturns -> RequestedQuantity -> AllowPartials -> Result Reason ReservedQuantity\ndecide windCategory forecastDetail inventory probableReservations returns requestedQuantity allowPartials =\n    let\n        isClosed : Bool\n        isClosed =\n            case ( windCategory, forecastDetail ) of\n                ( DangerousWinds, _ ) ->\n                    True\n\n                ( _, Thunderstorms ) ->\n                    True\n\n                _ ->\n                    False\n\n        availability : Availability\n        availability =\n            inventory - probableReservations + returns\n    in\n    if isClosed then\n        Err ClosedDueToConditions\n\n    else if requestedQuantity <= availability then\n        Ok requestedQuantity\n\n    else if allowPartials then\n        Ok availability\n\n    else\n        Err InsufficientAvailability\n"
+      },
+      {
+        "path": "src/Morphir/Example/App/Winds.elm",
+        "content": "module Morphir.Example.App.Winds exposing (..)\n\nimport Morphir.Example.App.Forecast exposing (..)\n\n\ntype WindCategory\n    = Calm\n    | Windy\n    | HighWinds\n    | DangerousWinds\n\n\ncategorizeWind : Int -> WindCategory\ncategorizeWind windSpeed =\n    if windSpeed < 10 then\n        Calm\n\n    else if windSpeed < 20 then\n        HighWinds\n\n    else if windSpeed < 30 then\n        Windy\n\n    else\n        DangerousWinds\n"
+      }
+    ],
+    "active": "src/Morphir/Example/App/Analytics.elm"
+  }
+}

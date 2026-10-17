@@ -1,0 +1,151 @@
+// Writes the workbench's Elm samples from the Elm corpus: one asset for each sample under
+// apps/morphir-workbench/assets/samples/elm/, and index.json. Run it from the repository root with
+// `mise run workbench:samples`. CI fails when the committed assets differ from its output.
+
+///|
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+let corpus : String = "pkgs/morphir-elm/conformance/projects"
+
+///|
+let output : String = "apps/morphir-workbench/assets/samples/elm"
+
+///|
+/// The samples, in menu order: corpus id, title, and the notice from SOURCES.md.
+let samples : Array[(String, String, String)] = [
+  (
+    "examples-tutorial",
+    "Rentals tutorial (morphir-examples)",
+    "From finos/morphir-examples 74db4db, tutorial/step_3_catching_bugs. Apache-2.0, finos/morphir-examples.",
+  ),
+  (
+    "elm-rentals",
+    "Rentals rules (morphir-elm tests)",
+    "From finos/morphir-elm 71ca7ee, tests-integration/cli/test-data/rentals. Apache-2.0, finos/morphir-elm.",
+  ),
+  (
+    "records",
+    "Records (parity corpus)",
+    "From this repository's Elm parity corpus. Apache-2.0.",
+  ),
+]
+
+///|
+async fn fail(message : String) -> Unit {
+  @stdio.stderr.write("workbench-samples: \{message}\n")
+  @sys.exit(1)
+}
+
+///|
+/// Compares by code unit. `String::compare` compares the length first.
+fn lexical(a : String, b : String) -> Int {
+  let n = if a.length() < b.length() { a.length() } else { b.length() }
+  for i in 0..<n {
+    let c = a[i].compare(b[i])
+    if c != 0 {
+      return c
+    }
+  }
+  a.length().compare(b.length())
+}
+
+///|
+/// The entries of `dir` in code unit order.
+async fn entries(dir : String) -> Array[String] {
+  let names = @fs.readdir(dir)
+  names.sort_by(lexical)
+  names
+}
+
+///|
+/// Adds every `.elm` file under `dir` to `out`, as (path relative to the source directory, content), in
+/// code unit order of the path.
+async fn elm_sources(
+  dir : String,
+  prefix : String,
+  out : Array[(String, String)],
+) -> Unit {
+  for entry in entries(dir) {
+    let path = dir + "/" + entry
+    match @fs.kind(path) {
+      Directory => elm_sources(path, prefix + entry + "/", out)
+      _ =>
+        if entry.has_suffix(".elm") {
+          out.push((prefix + entry, @fs.read_file(path).text()))
+        }
+    }
+  }
+}
+
+///|
+async fn main {
+  for directory in ["apps/morphir-workbench/assets/samples", output] {
+    if !@fs.exists(directory) {
+      @fs.mkdir(directory, permission=0o755)
+    }
+  }
+  let index : Array[Json] = []
+  for sample in samples {
+    let (id, title, notice) = sample
+    let dir = corpus + "/" + id
+    if !@fs.exists(dir + "/morphir.json") {
+      fail("\{dir}/morphir.json is missing")
+    }
+    let config = @json.parse(@fs.read_file(dir + "/morphir.json").text()) catch {
+      _ => {
+        fail("\{dir}/morphir.json is not valid JSON")
+        panic()
+      }
+    }
+    guard config is Object(fields) &&
+      fields.get("name") is Some(String(name)) &&
+      fields.get("exposedModules") is Some(Array(exposed)) else {
+      fail("\{dir}/morphir.json needs name and exposedModules")
+      panic()
+    }
+    let source_dir = match fields.get("sourceDirectory") {
+      Some(String(s)) => s
+      _ => "src"
+    }
+    if !@fs.exists(dir + "/" + source_dir) {
+      fail("\{dir}/\{source_dir} is missing")
+    }
+    let sources : Array[(String, String)] = []
+    elm_sources(dir + "/" + source_dir, "", sources)
+    if sources.is_empty() {
+      fail("\{dir}/\{source_dir} holds no .elm file")
+    }
+    let files : Array[Json] = sources.map(s => {
+      ({
+        "path": Json::string("src/" + s.0),
+        "content": Json::string(s.1),
+      } : Json)
+    })
+    let asset : Json = {
+      "version": 1,
+      "id": id,
+      "title": title,
+      "languageId": "elm",
+      "notice": notice,
+      "project": {
+        "version": 1,
+        "name": name,
+        "languageId": "elm",
+        "exposedModules": Json::array(exposed),
+        "files": Json::array(files),
+        "active": Json::string("src/" + sources[0].0),
+      },
+    }
+    @fs.write_file(output + "/" + id + ".json", asset.stringify(indent=2) + "\n")
+    index.push({ "id": id, "title": title })
+  }
+  let list : Json = { "version": 1, "samples": Json::array(index) }
+  @fs.write_file(output + "/index.json", list.stringify(indent=2) + "\n")
+}

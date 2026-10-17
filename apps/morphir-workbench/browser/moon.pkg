@@ -12,8 +12,18 @@ import {
   "finos/morphir-workbench/browser/result",
   "finos/morphir-workbench/browser/generated",
   "finos/morphir-workbench/browser/source-selection" @source_selection,
+  "finos/morphir-workbench/browser/project-files" @project_files,
+  "finos/morphir-workbench/browser/command-palette" @palette,
+  "finos/morphir-workbench/browser/keys",
+  "finos/morphir-workbench/browser/context-menu" @context_menu,
+  "finos/morphir-workbench/project",
+  "finos/morphir-engine/ids",
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/cmd",
   "moonbitlang/core/json",
 }
+
+import {
+  "moonrockz/expect",
+} for "wbtest"

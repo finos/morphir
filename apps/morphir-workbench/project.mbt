@@ -150,7 +150,7 @@ fn project_request(
     optional_text(fields, "languageId").unwrap_or("scheme"),
   )
   let offer = offers.filter(o => o.language == language)
-  guard offer is [first, ..] else {
+  guard offer is [_, ..] else {
     raise @wire.Invalid(
       "workbench.unavailable_language",
       "This local input language is unavailable: " + language.to_string(),

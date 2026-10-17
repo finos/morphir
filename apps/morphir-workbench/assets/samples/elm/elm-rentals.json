@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "elm-rentals",
+  "title": "Rentals rules (morphir-elm tests)",
+  "languageId": "elm",
+  "notice": "From finos/morphir-elm 71ca7ee, tests-integration/cli/test-data/rentals. Apache-2.0, finos/morphir-elm.",
+  "project": {
+    "version": 1,
+    "name": "Morphir.Example.App",
+    "languageId": "elm",
+    "exposedModules": [
+      "Rentals"
+    ],
+    "files": [
+      {
+        "path": "src/Morphir/Example/App/Rentals.elm",
+        "content": "module Morphir.Example.App.Rentals exposing (..)\n\n\nrequest : Int -> Int -> Result String Int\nrequest availability requestedQuantity =\n    if requestedQuantity <= availability then\n        Ok requestedQuantity\n\n    else\n        Err \"Insufficient availability\"\n\n"
+      }
+    ],
+    "active": "src/Morphir/Example/App/Rentals.elm"
+  }
+}

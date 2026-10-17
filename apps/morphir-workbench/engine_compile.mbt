@@ -95,6 +95,7 @@ fn problem_json(diagnostic : @engine.Diagnostic, profile : String) -> Json {
     ("detail", @wire.text(detail)),
     ("path", @wire.text(diagnostic.path)),
     ("source", location_json(diagnostic.location())),
+    ("stage", @wire.text(diagnostic.stage)),
   ])
 }
 
@@ -109,6 +110,8 @@ fn frontend_failure(
     return @wire.obj([
       ("success", Json::boolean(false)),
       ("message", @wire.text("The engine compiled no unit")),
+      ("code", @wire.text("workbench.no_unit")),
+      ("stage", @wire.text("frontend")),
     ])
   }
   let files : Array[(String, Array[Json])] = []
@@ -125,6 +128,12 @@ fn frontend_failure(
   @wire.obj([
     ("success", Json::boolean(false)),
     ("message", @wire.text(message)),
+    // The first problem's engine code, so a failure always names one.
+    ("code", @wire.text(first.code().unwrap_or("workbench.compile_failed"))),
+    (
+      "stage",
+      @wire.text(if first.stage == "" { "frontend" } else { first.stage }),
+    ),
     ("frontendDiagnostic", problem_json(first, profile)),
     (
       "frontendDiagnostics",
@@ -258,13 +267,14 @@ fn compile_reply(
     Specs(name, _, _) => (name, "Specification")
     Application(name, _, _, _) => (name, "Application")
   }
+  let typed = typed_profiles(file)
   let result = [
     ("success", Json::boolean(true)),
     ("ir", @codec.to_json(file)),
     ("irSource", @wire.text(@codec.to_json(file).stringify())),
     ("nodes", Json::array(describe(file))),
     ("evaluations", evaluation_profiles(file)),
-    ("typedEvaluations", typed_profiles(file)),
+    ("typedEvaluations", typed),
     ("package", @wire.text(package_name.to_canonical())),
     ("distributionKind", @wire.text(distribution_kind)),
     ("formatVersion", @wire.text(file.format_version.to_release_string())),
@@ -278,18 +288,22 @@ fn compile_reply(
     }
     result.push(("sourceProfile", @wire.text(profile)))
     result.push(("sourceProvider", @wire.text(selection.provider)))
-    let entries = match
-      @wire.field(@wire.field(@wire.obj(result), "typedEvaluations"), "entries") {
-      Object(entries) => entries.keys().collect()
+    // A module whose types typed evaluation cannot take still compiles: its manifest holds a `reason` in place of
+    // `entries`, Model Explorer shows that reason, and no entry is typed.
+    let entries : Array[String] = match typed {
+      Object(fields) =>
+        match fields.get("entries") {
+          Some(Object(entries)) => entries.keys().collect()
+          _ => []
+        }
       _ => []
     }
     entries.sort()
     result.push(("sourceEntries", Json::array(entries.map(@wire.text))))
-    if profile == @moonbit_frontend.PROFILE {
-      let entry = unit.metadata[0].node_id
-        .strip_prefix("value:")
-        .unwrap()
-        .to_owned()
+    if profile == @moonbit_frontend.PROFILE &&
+      unit.metadata.get(0) is Some(first) &&
+      first.node_id.strip_prefix("value:") is Some(entry) {
+      let entry = entry.to_owned()
       result.push(("sourceEntry", @wire.text(entry)))
       result.push(("sourcePublic", Json::boolean(entries.contains(entry))))
     }

@@ -345,6 +345,17 @@ jobs:
           mise run elm:parity-refresh
           git diff --exit-code -- pkgs/morphir-elm/conformance pkgs/morphir-engine/acceptance/elm
 
+      - name: Check the workbench samples are fresh
+        run: |
+          mise run workbench:samples
+          changes="$(git status --porcelain -- apps/morphir-workbench/assets/samples)"
+          if [ -n "$changes" ]; then
+            echo "The workbench samples are stale (changed, missing or untracked files):"
+            echo "$changes"
+            echo "Run 'mise run workbench:samples' and commit the result."
+            exit 1
+          fi
+
       - name: Scheme with inference to MoonBit and Elm
         run: |
           mise run e2e:scheme-moonbit

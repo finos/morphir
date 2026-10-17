@@ -23,14 +23,19 @@ import {
   "finos/morphir-workbench/arguments",
   "finos/morphir-workbench/outcomes",
   "moonrockz/ion/ion",
+  "moonrockz/ion/binary" @ion_binary,
+  "moonrockz/ion/text" @ion_text,
 }
 
 import {
   "finos/morphir-workbench" @pipeline,
+  "finos/morphir-workbench/project",
   "finos/morphir-ir/version",
-  "moonrockz/ion/text" @ion_text,
   "finos/morphir-moonbit/fixtures",
   "moonbitlang/core/json",
+  "moonbitlang/core/encoding/base64",
+  "moonrockz/ion/binary" @ion_binary,
+  "moonrockz/ion/text" @ion_text,
   "moonrockz/expect",
 } for "test"
 

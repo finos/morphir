@@ -374,6 +374,8 @@ pub fn details(
         language: "json",
         label: "Model IR",
         read_only: true,
+        marks: "",
+        reveal: "",
         value: pretty(raw),
       }),
     )

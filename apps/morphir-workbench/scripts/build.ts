@@ -1,6 +1,6 @@
 import { checkedBuild } from '../../../tools/build.ts';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdirSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const app = fileURLToPath(new URL('../', import.meta.url));
@@ -8,8 +8,13 @@ const build = fileURLToPath(new URL('../_build/', import.meta.url));
 execFileSync('moon', ['build', '--target', 'js', '--release', '--target-dir', build,
   `${app}browser`, `${app}worker`, `${app}job-host`, `${app}job-core`], { cwd: app, stdio: 'inherit' });
 mkdirSync(new URL('../dist/', import.meta.url), { recursive: true });
-for (const name of ['browser', 'worker', 'job-core']) {
-  copyFileSync(`${build}/js/release/build/finos/morphir-workbench/${name}/${name}.js`, `${app}/dist/${name}.js`);
+// The MoonBit output keeps long mangled names, so the generated bundles are minified. bootstrap.js imports browser.js
+// and job-core.js as modules; transport.ts starts worker.js as a classic worker, so it stays a script (an IIFE).
+const generated = (name: string) => `${build}/js/release/build/finos/morphir-workbench/${name}/${name}.js`;
+for (const [name, format] of [['browser', 'esm'], ['job-core', 'esm'], ['worker', 'iife']] as const) {
+  const result = await Bun.build({ entrypoints: [generated(name)], outdir: `${app}/dist`, target: 'browser', format,
+    minify: true, env: 'disable', throw: false });
+  if (!result.success) throw new AggregateError(result.logs, `Minifying ${name}.js failed`);
 }
 for (const [source, name] of [
   ['index.html', 'index.html'], ['workbench.css', 'workbench.css'],
@@ -29,3 +34,5 @@ console.log('Workbench built in apps/morphir-workbench/dist');
 for (const name of readdirSync(`${app}/assets`)) {
   if (name.endsWith(".svg")) copyFileSync(`${app}/assets/${name}`, `${app}/dist/${name}`);
 }
+
+cpSync(`${app}/assets/samples`, `${app}/dist/samples`, { recursive: true });

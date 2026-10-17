@@ -4,6 +4,7 @@ import { workbenchError } from '../../../types/data.ts';
 import { LocalAdapter, connect } from './transport.ts';
 import { selectLocalAdapter } from './native-session.ts';
 import { downloadArtifacts } from './artifact-download.ts';
+import { fetchText, pickFolder, storage, watchDrop } from './project-io.ts';
 
 const local = new LocalAdapter();
 const requestedMode = new URLSearchParams(location.search).get('mode');
@@ -13,6 +14,7 @@ let generation = 0;
 
 globalThis.morphirWorkbench = {
   connected,
+  projectIo: { fetchText, pickFolder, storage, watchDrop },
   get runtimeLabel() { return adapter.runtimeLabel || 'Browser local'; },
   async request(request, receive) {
     const current = ++generation;

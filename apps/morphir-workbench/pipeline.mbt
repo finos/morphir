@@ -2,10 +2,19 @@
 /// Local adapter envelopes are private to the worker, not Morphir RPC methods.
 /// Decode/migrate imports explicitly; the inspector uses the current semantic model.
 pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
+  // Where a failure happened, for its reply: reading the request, compiling, building the reply, or reading a model.
+  let mut stage = "request"
   try {
     let operation = @wire.string(@wire.field(request, "operation"))
     if operation == "catalog" {
       return catalog(engine)
+    }
+    if operation == "import-folder" {
+      return import_folder(request)
+    }
+    if operation == "decode-ion" {
+      stage = "decode"
+      return decode_ion(request)
     }
     if operation == "compile" || operation == "run" {
       let project = project_request(request, engine.languages())
@@ -15,7 +24,9 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
         )
       }
       let target = optional_text(request, "target").unwrap_or("scheme")
+      stage = "compile"
       let engine_run = run_engine(engine, project, target)
+      stage = "reply"
       let result = compile_reply(engine_run, project, target) catch {
         CompileFailed(reply) => return reply
         error => raise error
@@ -95,6 +106,7 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
     } else {
       None
     }
+    stage = "model"
     let file = if imported is Some(unit) {
       unit.distribution
     } else if operation == "inspect" || operation == "evaluate" {
@@ -103,6 +115,7 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
       raise @scheme.Invalid("Unknown operation: " + operation)
     }
     if operation == "evaluate" {
+      stage = "evaluate"
       if @wire.optional(request, "executionMode") == Some(@wire.text("typed")) {
         return evaluate_typed(file, request)
       }
@@ -138,35 +151,102 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
     }
     @wire.obj(result)
   } catch {
-    @ion.Syntax(message)
-    | @ion.DataModel(message)
-    | @ion.Unsupported(message) =>
-      @wire.obj([
-        ("success", Json::boolean(false)),
-        ("message", @wire.text("Ion: " + message)),
-      ])
+    @ion.Syntax(message) => failure("Ion: " + message, "ion.syntax", stage)
+    @ion.DataModel(message) =>
+      failure("Ion: " + message, "ion.data_model", stage)
+    @ion.Unsupported(message) =>
+      failure("Ion: " + message, "ion.unsupported", stage)
     CompileFailed(reply) => reply
     @config.Invalid(message) =>
-      @wire.obj([
-        ("success", Json::boolean(false)),
-        ("message", @wire.text(message)),
-      ])
-    @protocol.Invalid(code) =>
-      @wire.obj([
-        ("success", Json::boolean(false)),
-        ("message", @wire.text(code)),
-      ])
-    @wire.Invalid(_, message) =>
-      @wire.obj([
-        ("success", Json::boolean(false)),
-        ("message", @wire.text(message)),
-      ])
-    error =>
-      @wire.obj([
-        ("success", Json::boolean(false)),
-        ("message", @wire.text(@scheme.error_message(error))),
-      ])
+      failure(message, leading_code(message, "workbench.invalid_input"), stage)
+    @protocol.Invalid(code) => failure(code, code, stage)
+    @wire.Invalid(code, detail) => codec_failure(stage, code, detail)
+    error => failure(@scheme.error_message(error), scheme_code(error), stage)
   }
+}
+
+///|
+/// A failure reply: the message for a person, a stable code and the stage where it happened.
+fn failure(message : String, code : String, stage : String) -> Json {
+  @wire.obj([
+    ("success", Json::boolean(false)),
+    ("message", @wire.text(if message == "" { code } else { message })),
+    ("code", @wire.text(code)),
+    ("stage", @wire.text(stage)),
+  ])
+}
+
+///|
+/// The code a message starts with, as in `frontend.invalid_source_path: src/../x`, else `fallback`.
+fn leading_code(message : String, fallback : String) -> String {
+  match message.find(": ") {
+    Some(colon) => {
+      let head = message.unsafe_substring(start=0, end=colon)
+      let code_like = head.contains(".") &&
+        head
+        .to_array()
+        .all(c => {
+          (c >= 'a' && c <= 'z') ||
+          (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') ||
+          c == '.' ||
+          c == '_' ||
+          c == '-'
+        })
+      if code_like {
+        head
+      } else {
+        fallback
+      }
+    }
+    None => fallback
+  }
+}
+
+///|
+fn scheme_code(error : Error) -> String {
+  match error {
+    @scheme.Syntax(_, _) => "scheme.syntax"
+    @scheme.Unbound(_) => "scheme.unbound"
+    @scheme.Invalid(_) => "scheme.invalid"
+    @scheme.Domain(code, _) => if code == "" { "scheme.domain" } else { code }
+    @scheme.Unsupported(_) => "scheme.unsupported"
+    @scheme.Limit(_) => "scheme.limit"
+    @scheme.Stage(_, _) => "scheme.stage"
+    _ => "workbench.error"
+  }
+}
+
+///|
+/// A codec error, such as a missing member. In a request or a model it is invalid input; anywhere else the workbench
+/// read its own data wrongly, so it is an internal error. The reply never shows a bare key name: it names the stage
+/// and keeps the codec's code and detail.
+fn codec_failure(stage : String, code : String, detail : String) -> Json {
+  let (failure_code, summary) = match stage {
+    "request" => ("workbench.invalid_request", "The request is not valid")
+    "model" => ("workbench.invalid_model", "The model is not valid")
+    "compile" =>
+      ("workbench.internal_error", "The workbench failed while compiling")
+    "reply" =>
+      (
+        "workbench.internal_error", "The workbench failed while preparing the compile result",
+      )
+    _ =>
+      (
+        "workbench.internal_error",
+        "The workbench failed in the " + stage + " stage",
+      )
+  }
+  @wire.obj([
+    ("success", Json::boolean(false)),
+    ("message", @wire.text(summary + " (" + code + ": " + detail + ")")),
+    ("code", @wire.text(failure_code)),
+    ("stage", @wire.text(stage)),
+    (
+      "cause",
+      @wire.obj([("code", @wire.text(code)), ("detail", @wire.text(detail))]),
+    ),
+  ])
 }
 
 ///|
@@ -180,6 +260,8 @@ pub fn execute(request : Json) -> Json {
           "message",
           @wire.text("Engine setup failed: " + @scheme.error_message(error)),
         ),
+        ("code", @wire.text("workbench.engine_setup")),
+        ("stage", @wire.text("setup")),
       ])
   }
   execute_with(engine, request)

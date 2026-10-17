@@ -3,6 +3,30 @@ extern "js" fn host_request(request : String, receive : (String) -> Unit) =
   #| (request, receive) => globalThis.morphirWorkbench.request(JSON.parse(request), receive)
 
 ///|
+extern "js" fn fetch_text(path : String, receive : (String) -> Unit) =
+  #| (path, receive) => globalThis.morphirWorkbench.projectIo.fetchText(path, receive)
+
+///|
+extern "js" fn pick_folder(receive : (String) -> Unit) =
+  #| (receive) => globalThis.morphirWorkbench.projectIo.pickFolder(receive)
+
+///|
+extern "js" fn watch_drop(selector : String, receive : (String) -> Unit) =
+  #| (selector, receive) => globalThis.morphirWorkbench.projectIo.watchDrop(selector, receive)
+
+///|
+extern "js" fn storage_load(key : String) -> String =
+  #| (key) => { try { return globalThis.morphirWorkbench.projectIo.storage.load(key) ?? "" } catch { return "" } }
+
+///|
+extern "js" fn storage_save(key : String, text : String) -> Bool =
+  #| (key, text) => { try { return globalThis.morphirWorkbench.projectIo.storage.save(key, text) } catch { return false } }
+
+///|
+extern "js" fn storage_remove(key : String) -> Bool =
+  #| (key) => { try { return globalThis.morphirWorkbench.projectIo.storage.remove(key) } catch { return false } }
+
+///|
 extern "js" fn cancel_host() =
   #| () => globalThis.morphirWorkbench.cancel()
 
@@ -120,9 +144,27 @@ struct Model {
   explorer_collapsed : Bool
   try_collapsed : Bool
   worksheet : Bool
-  source : String
+  language_projects : Map[String, @project.Project]
   worksheet_source : String
-  drafts : Map[String, String]
+  files_edit : @project_files.State
+  palette : @palette.State
+  /// macOS uses Command for shortcuts; other systems use Control.
+  mac : Bool
+  problem_counts : Map[String, Int32]
+  problem_marks : Map[String, String]
+  samples : Array[(String, String)]
+  samples_requested : Bool
+  /// The last sample asked for, and the Elm project when it was asked for. A reply for an earlier request, or one
+  /// that arrives after the Elm project changed, is dropped.
+  sample_request : Int32
+  sample_base : @project.Project?
+  storage_ok : Bool
+  dirty : Array[String]
+  removed_key : String
+  save_attempts : Array[String]
+  reset_asking : Bool
+  reveal : String
+  reveal_nonce : Int32
   source_profile : String
   profile_choices : Map[String, String]
   explorer_raw : Bool
@@ -177,6 +219,20 @@ enum Msg {
   Collapse
   Layout(Bool)
   Source(String)
+  Files(@project_files.Action)
+  Palette(@palette.Action)
+  RunCommand(@keys.CommandId)
+  Copied(String, Bool)
+  DetailsCopied(Bool)
+  PickFolder
+  FolderPicked(String)
+  FolderImported(Int32, Int32, String)
+  SampleIndex(String)
+  SaveProject(Int32)
+  ConfirmReset
+  CancelReset
+  Sample(String)
+  SampleLoaded(Int32, String, String)
   EvaluationRuntime(Bool)
   EvaluationMode(@evaluation.InputMode)
   ResultMode(@result.Mode)
@@ -232,6 +288,69 @@ extern "js" fn focus_element(id : String) =
   #|(id) => requestAnimationFrame(() => document.getElementById(id)?.focus())
 
 ///|
+extern "js" fn mac_platform() -> Bool =
+  #|() => { try { return /Mac|iPhone|iPad|iPod/.test(globalThis.navigator?.platform ?? ''); } catch { return false; } }
+
+///|
+/// Listens for shortcuts before the page and the editor see them. `handle` gets the key, Control, Meta, Shift, Alt
+/// and whether the person is typing, and returns true when it ran a command; the browser then does nothing more, so
+/// Ctrl+P opens the palette and not the print dialog.
+extern "js" fn watch_keys(
+  handle : (String, Bool, Bool, Bool, Bool, Bool) -> Bool,
+) =
+  #|(handle) => window.addEventListener('keydown', (event) => {
+  #|  if (event.defaultPrevented || event.isComposing) return;
+  #|  const path = event.composedPath();
+  #|  const editing = path.some(node => node instanceof Element &&
+  #|    (node.matches('input, textarea, select, morphir-code-editor') || node.isContentEditable));
+  #|  if (handle(event.key ?? '', event.ctrlKey, event.metaKey, event.shiftKey, event.altKey, editing)) {
+  #|    event.preventDefault();
+  #|    event.stopPropagation();
+  #|  }
+  #|}, true)
+
+///|
+/// Focuses an element after the render that made it; an element not there yet gets one more frame.
+extern "js" fn focus_now(id : String) =
+  #|(id) => { const el = document.getElementById(id); if (el) el.focus(); else requestAnimationFrame(() => document.getElementById(id)?.focus()); }
+
+///|
+extern "js" fn focus_selecting(id : String, start : Int32, end : Int32) =
+  #|(id, start, end) => { const el = document.getElementById(id); if (el) { el.focus(); try { el.setSelectionRange(start, end); } catch {} } }
+
+///|
+extern "js" fn focus_editor() =
+  #|() => requestAnimationFrame(() => document.getElementById('source')?.view?.focus?.())
+
+///|
+/// Keeps the element with the focus, inside shadow roots too, so closing the palette can return to it.
+extern "js" fn remember_focus() =
+  #|() => { let el = document.activeElement; while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement; globalThis.morphirWorkbenchFocus = { el, id: el?.id ?? '' }; }
+
+///|
+/// Returns the focus to the element kept by `remember_focus`, or to a new element with its id when a render replaced
+/// it, once the palette is gone. Only lost focus is restored: when the palette opened again, or a command moved the
+/// focus to its own input or button, nothing happens.
+extern "js" fn restore_focus() =
+  #|() => requestAnimationFrame(() => requestAnimationFrame(() => {
+  #|  const kept = globalThis.morphirWorkbenchFocus; globalThis.morphirWorkbenchFocus = null;
+  #|  if (!kept || document.getElementById('palette-input')) return;
+  #|  const active = document.activeElement;
+  #|  if (active && active !== document.body) return;
+  #|  const el = kept.el?.isConnected ? kept.el : (kept.id ? document.getElementById(kept.id) : null);
+  #|  el?.focus();
+  #|}))
+
+///|
+/// Scrolls the palette's selected option into its list; the input keeps the focus, so the browser does not.
+extern "js" fn scroll_into_view(id : String) =
+  #|(id) => document.getElementById(id)?.scrollIntoView({ block: 'nearest' })
+
+///|
+extern "js" fn copy_text(text : String, done : (Bool) -> Unit) =
+  #|(text, done) => { try { navigator.clipboard.writeText(text).then(() => done(true), () => done(false)); } catch { done(false); } }
+
+///|
 fn initial() -> Model {
   {
     history: [],
@@ -239,9 +358,24 @@ fn initial() -> Model {
     explorer_collapsed: false,
     try_collapsed: false,
     worksheet: false,
-    source: example,
+    language_projects: Map([]),
     worksheet_source: worksheet_example,
-    drafts: Map([]),
+    files_edit: @project_files.State::new(),
+    palette: @palette.State::new(),
+    mac: mac_platform(),
+    problem_counts: Map([]),
+    problem_marks: Map([]),
+    samples: [],
+    samples_requested: false,
+    sample_request: 0,
+    sample_base: None,
+    storage_ok: true,
+    dirty: [],
+    removed_key: "",
+    save_attempts: [],
+    reset_asking: false,
+    reveal: "",
+    reveal_nonce: 0,
     source_profile: "",
     profile_choices: Map([]),
     explorer_raw: false,
@@ -311,8 +445,12 @@ fn note(
   operation : String,
   severity : @bottom_panel.Severity,
   message : String,
+  failure? : @bottom_panel.Failure,
 ) -> Model {
-  { ..model, panel: model.panel.log(clock(), operation, severity, message), }
+  {
+    ..model,
+    panel: model.panel.log(clock(), operation, severity, message, failure~),
+  }
 }
 
 ///|
@@ -322,6 +460,7 @@ fn reported(
   scope : String,
   revision : Int32,
   diagnostics : Array[@bottom_panel.Diagnostic],
+  failure? : @bottom_panel.Failure,
 ) -> Model {
   {
     ..model,
@@ -332,6 +471,7 @@ fn reported(
       scope,
       revision,
       diagnostics,
+      failure~,
     ),
   }
 }
@@ -343,10 +483,18 @@ fn produced(
   severity : @bottom_panel.Severity,
   title : String,
   lines : Array[String],
+  failure? : @bottom_panel.Failure,
 ) -> Model {
   {
     ..model,
-    panel: model.panel.outcome(clock(), operation, severity, title, lines),
+    panel: model.panel.outcome(
+      clock(),
+      operation,
+      severity,
+      title,
+      lines,
+      failure~,
+    ),
   }
 }
 
@@ -367,6 +515,7 @@ fn input_problem(model : Model, message : String) -> Model {
         related: [],
         fix: "",
         stage: "",
+        place: None,
       },
     ],
   )
@@ -384,6 +533,7 @@ fn operation_label(operation : String) -> String {
     "project" => "Open project"
     "workspace" => "Open workspace"
     "initialize" => "Initialize"
+    "decode-ion" => "View as Ion text"
     other => other
   }
 }
@@ -438,52 +588,603 @@ fn frontend(model : Model, language : String) -> Json {
 }
 
 ///|
-fn source_key(model : Model, language : String, profile : String) -> String {
-  language + "|" + text(frontend(model, language), "providerId") + "|" + profile
-}
-
-///|
-fn with_selection(model : Model, language : String, profile : String) -> Model {
-  let drafts = model.drafts.copy()
-  drafts[source_key(model, model.language, model.source_profile)] = model.source
-  let profile_choices = model.profile_choices.copy()
-  profile_choices[language] = profile
-  let source = drafts
-    .get(source_key(model, language, profile))
-    .unwrap_or(
-      if model.connected {
-        ""
-      } else if profile == "moonbit-model-bool-library-v1" {
-        moonbit_library_example
-      } else if language == "moonbit" {
-        moonbit_example
-      } else if language == "elm" {
-        elm_example
-      } else {
-        example
-      },
-    )
-  {
-    ..model,
-    language,
-    source_profile: profile,
-    source,
-    drafts,
-    profile_choices,
-    revision: model.revision + 1,
+/// A value that is known to parse because the code spells it: a literal path, package or module name.
+/// Never use it for a value from the catalog or a host.
+fn[T] known(parsed : () -> T raise Error) -> T {
+  parsed() catch {
+    error => abort("The workbench built an invalid id: " + error.to_string())
   }
 }
 
 ///|
-fn with_language(model : Model, language : String) -> Model {
-  let profile = if model.connected {
+/// The profile `language` compiles with: the person's choice, else the catalog default.
+fn selected_profile(model : Model, language : String) -> String {
+  if model.connected {
     ""
   } else {
     model.profile_choices
     .get(language)
     .unwrap_or(text(frontend(model, language), "defaultProfile"))
   }
-  with_selection(model, language, profile)
+}
+
+///|
+/// The file rules of a language, from its catalog entry. The file list reads them.
+fn file_rules(model : Model, language : String) -> @project.FileRules {
+  let entry = frontend(model, language)
+  let profile = selected_profile(model, language)
+  let kind = items(field(entry, "profiles"))
+    .iter()
+    .find_first(item => text(item, "id") == profile)
+    .map(item => text(item, "compileKind"))
+    .unwrap_or("")
+  {
+    extensions: items(field(entry, "fileExtensions")).filter_map(item => {
+      match item {
+        String(extension) =>
+          Some(@ids.FileExtension::parse(extension)) catch {
+            _ => None
+          }
+        _ => None
+      }
+    }),
+    layout: if kind == "whole-project" {
+      ManyFiles
+    } else {
+      OneFile
+    },
+  }
+}
+
+///|
+fn literal_path(text : String) -> @ids.SourcePath {
+  known(() => @ids.SourcePath::parse(text))
+}
+
+///|
+/// The project a language starts with, before the person edits it.
+fn default_project(model : Model, language : String) -> @project.Project {
+  let entry = frontend(model, language)
+  let profile = selected_profile(model, language)
+  let has_profiles = !items(field(entry, "profiles")).is_empty()
+  let provider = if has_profiles && text(entry, "providerId") != "" {
+    Some(@ids.ProviderId::parse(text(entry, "providerId"))) catch {
+      _ => None
+    }
+  } else {
+    None
+  }
+  let profile_id = if has_profiles && profile != "" {
+    Some(@ids.ProfileId::parse(profile)) catch {
+      _ => None
+    }
+  } else {
+    None
+  }
+  // A language id that does not parse cannot name a project: use the Scheme default.
+  let language_id = @ids.LanguageId::parse(language) catch {
+    _ => return default_project(model, "scheme")
+  }
+  fn single(
+    name : String,
+    path : @ids.SourcePath,
+    content : String,
+    exposed : Array[String],
+  ) -> @project.Project {
+    @project.Project::single(
+      language_id,
+      known(() => @ids.SourcePackageName::parse(name)),
+      path,
+      if model.connected {
+        ""
+      } else {
+        content
+      },
+      provider~,
+      profile=profile_id,
+      exposed=exposed.map(m => known(() => @ids.SourceModuleName::parse(m))),
+    )
+  }
+
+  match language {
+    "scheme" => single("user", literal_path("src/main.scm"), example, [])
+    "moonbit" =>
+      single(
+        "user",
+        literal_path("src/main.mbt"),
+        if profile == "moonbit-model-bool-library-v1" {
+          moonbit_library_example
+        } else {
+          moonbit_example
+        },
+        [],
+      )
+    "elm" =>
+      single("Workbench", literal_path("src/Workbench/Main.elm"), elm_example, [
+        "Main",
+      ])
+    _ => {
+      let extension = match items(field(entry, "fileExtensions")).get(0) {
+        Some(String(extension)) => extension
+        _ => ".txt"
+      }
+      // An extension that gives no valid path falls back to `.txt`.
+      let path = @ids.SourcePath::parse("src/main" + extension) catch {
+        _ => literal_path("src/main.txt")
+      }
+      single("user", path, "", [])
+    }
+  }
+}
+
+///|
+fn active_project(model : Model) -> @project.Project {
+  active_project_of(model, model.language)
+}
+
+///|
+fn active_project_of(model : Model, language : String) -> @project.Project {
+  model.language_projects
+  .get(language)
+  .unwrap_or_else(() => default_project(model, language))
+}
+
+///|
+fn active_text(model : Model) -> String {
+  active_project(model).active_file().content
+}
+
+///|
+/// The path of the file in the editor.
+fn source_name(model : Model) -> String {
+  active_project(model).active.to_string()
+}
+
+///|
+/// Stores `project` as its language's project. The revision changes only when what a request sends
+/// changes (files, name, exposure, provider, profile); moving the active file does not.
+fn with_project(model : Model, project : @project.Project) -> Model {
+  let before = active_project_of(model, project.language.to_string())
+  let language_projects = model.language_projects.copy()
+  language_projects[project.language.to_string()] = project
+  let changed = before.files != project.files ||
+    before.name != project.name ||
+    before.exposed != project.exposed ||
+    before.provider != project.provider ||
+    before.profile != project.profile
+  {
+    ..model,
+    language_projects,
+    revision: if changed {
+      model.revision + 1
+    } else {
+      model.revision
+    },
+  }
+}
+
+///|
+/// The editor marks of each file with frontend problems, as the JSON the editor reads:
+/// `[{line, column, endLine, endColumn, message}]` with one-based display columns.
+fn problem_marks(reply : Json) -> Map[String, String] {
+  let marks : Map[String, Array[Json]] = Map([])
+  for file in items(field(reply, "frontendDiagnostics")) {
+    for problem in items(field(file, "problems")) {
+      let source = field(problem, "source")
+      let profile = text(problem, "coordinateProfile")
+      let path = match text(problem, "path") {
+        "" => text(file, "path")
+        path => path
+      }
+      match
+        (
+          field(source, "startLine"),
+          field(source, "startColumn"),
+          field(source, "endLine"),
+          field(source, "endColumn"),
+        ) {
+        (
+          Number(line, ..),
+          Number(column, ..),
+          Number(end_line, ..),
+          Number(end_column, ..),
+        ) if path != "" => {
+          let list = marks.get(path).unwrap_or([])
+          list.push(
+            object([
+              ("line", Json::number(line)),
+              (
+                "column",
+                Json::number(
+                  @bottom_panel.display_column(profile, column.to_int()).to_double(),
+                ),
+              ),
+              ("endLine", Json::number(end_line)),
+              (
+                "endColumn",
+                Json::number(
+                  @bottom_panel.display_column(profile, end_column.to_int()).to_double(),
+                ),
+              ),
+              ("message", Json::string(text(problem, "detail"))),
+            ]),
+          )
+          marks[path] = list
+        }
+        _ => ()
+      }
+    }
+  }
+  let found : Map[String, String] = Map([])
+  for path, list in marks {
+    found[path] = Json::array(list).stringify()
+  }
+  found
+}
+
+///|
+/// Opens the file of a problem and asks the editor to show its place. Opening a file does not change the
+/// revision. A file the project no longer has is only noted.
+fn reveal(model : Model, place : @bottom_panel.Place) -> Model {
+  let project = active_project(model)
+  let found = project.files.search_by(f => f.path.to_string() == place.path)
+  match found {
+    None =>
+      note(
+        model,
+        "Problems",
+        @bottom_panel.Warning,
+        "This file is no longer in the project: " + place.path,
+      )
+    Some(index) =>
+      {
+        ..with_project(model, { ..project, active: project.files[index].path, }),
+        reveal: place.line.to_string() +
+        ":" +
+        place.column.to_string() +
+        ":" +
+        (model.reveal_nonce + 1).to_string(),
+        reveal_nonce: model.reveal_nonce + 1,
+      }
+  }
+}
+
+///|
+/// A loaded project that names no provider or profile gets the catalog defaults of its language.
+fn with_defaults(model : Model, project : @project.Project) -> @project.Project {
+  let fresh = default_project(model, project.language.to_string())
+  {
+    ..project,
+    provider: if project.provider is None {
+      fresh.provider
+    } else {
+      project.provider
+    },
+    profile: if project.profile is None {
+      fresh.profile
+    } else {
+      project.profile
+    },
+  }
+}
+
+///|
+fn storage_key(language : String) -> String {
+  "morphir-workbench.project." + language + ".v1"
+}
+
+///|
+/// Puts the stored project of `language` into the model. Nothing stored changes nothing; text that is not a valid
+/// project of this language keeps the default and gives the note to show.
+fn restored(model : Model, language : String, text : String) -> (Model, String) {
+  if text == "" {
+    return (model, "")
+  }
+  let failure = "Could not restore the saved " + language + " project"
+  try {
+    let project = @project.Project::from_json(@json.parse(text))
+    if project.language.to_string() != language {
+      return (model, failure + ": it belongs to another language")
+    }
+    let language_projects = model.language_projects.copy()
+    language_projects[language] = project
+    ({ ..model, language_projects, }, "")
+  } catch {
+    @project.ProjectError(_, message) => (model, failure + ": " + message)
+    _ => (model, failure)
+  }
+}
+
+///|
+/// After `initialize`: the stored project of each catalog language, in local mode only.
+fn restore_all(model : Model) -> Model {
+  restore_all_with(model, storage_load)
+}
+
+///|
+/// `restore_all` with the storage read passed in, so tests need no browser. A restored profile that the catalog
+/// lists becomes the language's profile choice; one it does not list is dropped with a note.
+fn restore_all_with(model : Model, load : (String) -> String) -> Model {
+  if model.connected {
+    return model
+  }
+  let mut restored_model = model
+  for entry in items(field(model.catalog, "frontends")) {
+    let language = text(entry, "languageId")
+    if !valid_language(language) {
+      continue
+    }
+    let (next, message) = restored(
+      restored_model,
+      language,
+      load(storage_key(language)),
+    )
+    restored_model = if message != "" {
+      note(next, "Restore", @bottom_panel.Warning, message)
+    } else {
+      match next.language_projects.get(language) {
+        Some({ profile: Some(profile), .. } as project) if next.language_projects.get(
+            language,
+          ) !=
+          restored_model.language_projects.get(language) => {
+          let id = profile.to_string()
+          if items(field(entry, "profiles"))
+            .iter()
+            .any(item => text(item, "id") == id) {
+            let profile_choices = next.profile_choices.copy()
+            profile_choices[language] = id
+            {
+              ..next,
+              profile_choices,
+              source_profile: if language == next.language {
+                id
+              } else {
+                next.source_profile
+              },
+            }
+          } else {
+            let language_projects = next.language_projects.copy()
+            language_projects[language] = { ..project, profile: None, }
+            note(
+              { ..next, language_projects, },
+              "Restore",
+              @bottom_panel.Warning,
+              "The saved " +
+              language +
+              " project used the profile " +
+              id +
+              ", which is no longer available; the default profile is used",
+            )
+          }
+        }
+        _ => next
+      }
+    }
+  }
+  restored_model
+}
+
+///|
+/// The text of a `fetchText` reply, or why there is none.
+fn reply_text(reply : String) -> Result[String, String] {
+  let json = @json.parse(reply) catch {
+    _ => return Err("the reply is not JSON")
+  }
+  if field(json, "ok") == Json::boolean(true) {
+    Ok(text(json, "text"))
+  } else {
+    Err(text(json, "message"))
+  }
+}
+
+///|
+fn parse_index(body : String) -> Result[Array[(String, String)], String] {
+  Ok(@project.sample_index(@json.parse(body))) catch {
+    @project.ProjectError(_, message) => Err(message)
+    _ => Err("the sample list is not JSON")
+  }
+}
+
+///|
+fn parse_sample(body : String) -> Result[@project.Sample, String] {
+  Ok(@project.Sample::from_json(@json.parse(body))) catch {
+    @project.ProjectError(_, message) => Err(message)
+    _ => Err("the sample is not JSON")
+  }
+}
+
+///|
+/// The examples and samples the person can open, as `(id, label)`: the one list that the command palette ("Open
+/// sample: …") and the explorer's project menu ("New from sample") both read. The built-in examples come first; each
+/// opens its own language, so they are listed for every language. The worksheet opens only its own example. The Elm
+/// corpus samples load into the Elm project, so they are listed while Elm is selected and the index has arrived.
+fn sample_entries(model : Model) -> Array[(String, String)] {
+  let pricing = ("builtin:scheme", "Pricing & arithmetic")
+  if model.worksheet {
+    return [pricing]
+  }
+  let builtins = [
+    pricing,
+    ("builtin:scheme-elm", "Elm constant"),
+    ("builtin:moonbit", "MoonBit Boolean"),
+    ("builtin:moonbit-library", "MoonBit library"),
+  ]
+  if model.language == "elm" {
+    builtins + model.samples
+  } else {
+    builtins
+  }
+}
+
+///|
+/// Why no sample can open now; empty when one can. Samples replace local projects, so a host session has none.
+fn sample_reason(model : Model) -> String {
+  if model.connected {
+    "Samples open in local mode; a connected host edits its own sources"
+  } else if model.busy {
+    busy_reason
+  } else {
+    ""
+  }
+}
+
+///|
+/// True when `now` has the files, package name and exposure of `base`; opening another file does not count.
+fn same_sources(base : @project.Project?, now : @project.Project) -> Bool {
+  match base {
+    Some(base) =>
+      base.files == now.files &&
+      base.name == now.name &&
+      base.exposed == now.exposed
+    None => false
+  }
+}
+
+///|
+/// Replaces a language's project wholesale (an example, a sample, an import): the revision changes and the
+/// per-file problems of the earlier project and any inline edit are dropped.
+fn replace_project(model : Model, project : @project.Project) -> Model {
+  let language_projects = model.language_projects.copy()
+  language_projects[project.language.to_string()] = project
+  {
+    ..model,
+    language_projects,
+    revision: model.revision + 1,
+    problem_counts: Map([]),
+    problem_marks: Map([]),
+    reveal: "",
+    files_edit: @project_files.State::new(),
+  }
+}
+
+///|
+/// The editor language of a file, from its extension.
+fn editor_language(model : Model) -> String {
+  let path = active_project(model).active.to_string()
+  if path.has_suffix(".elm") {
+    "elm"
+  } else if path.has_suffix(".mbt") {
+    "moonbit"
+  } else if path.has_suffix(".scm") {
+    "scheme"
+  } else {
+    model.language
+  }
+}
+
+///|
+/// The worker or host request of an operation. The local worker gets the active project; a
+/// Morphir host and the worksheet get the text of one source.
+fn compile_request(model : Model, operation : String) -> Json {
+  let fields : Array[(String, Json)] = [("operation", Json::string(operation))]
+  if model.worksheet || model.connected {
+    fields.push(
+      (
+        "source",
+        Json::string(
+          if model.worksheet {
+            model.worksheet_source
+          } else {
+            active_text(model)
+          },
+        ),
+      ),
+    )
+  } else {
+    fields.push(("project", active_project(model).to_request()))
+  }
+  fields.push(
+    (
+      "languageId",
+      Json::string(if model.worksheet { "scheme" } else { model.language }),
+    ),
+  )
+  fields.push(("target", Json::string(model.target)))
+  object(fields)
+}
+
+///|
+/// Replaces the project of `language` with its default project holding `content`.
+fn with_example(
+  model : Model,
+  language : String,
+  profile : String,
+  content : String,
+) -> Model {
+  let selected = with_selection(model, language, profile)
+  let fresh = default_project(selected, language)
+  replace_project(selected, fresh.set_content(fresh.active, content))
+}
+
+///|
+fn with_selection(model : Model, language : String, profile : String) -> Model {
+  let profile_choices = model.profile_choices.copy()
+  profile_choices[language] = profile
+  let language_projects = model.language_projects.copy()
+  if language_projects.get(language) is Some(project) {
+    language_projects[language] = {
+      ..project,
+      // A profile id that does not parse leaves the project's profile as it is.
+      profile: if profile == "" {
+        project.profile
+      } else {
+        Some(@ids.ProfileId::parse(profile)) catch {
+          _ => project.profile
+        }
+      },
+    }
+  }
+  {
+    ..model,
+    language,
+    source_profile: profile,
+    language_projects,
+    profile_choices,
+    revision: model.revision + 1,
+    problem_counts: if language == model.language {
+      model.problem_counts
+    } else {
+      Map([])
+    },
+    problem_marks: if language == model.language {
+      model.problem_marks
+    } else {
+      Map([])
+    },
+    files_edit: if language == model.language {
+      model.files_edit
+    } else {
+      @project_files.State::new()
+    },
+  }
+}
+
+///|
+fn valid_language(language : String) -> Bool {
+  try {
+    ignore(@ids.LanguageId::parse(language))
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+/// A language id that does not parse cannot name a project: the current project stays and the person is told.
+fn refuse_language(model : Model, language : String) -> (Model, @cmd.Cmd) {
+  let message = "The language id is not valid and was not selected: " + language
+  (
+    {
+      ..note(model, "Language", @bottom_panel.Warning, message),
+      status: message,
+    },
+    @cmd.none,
+  )
+}
+
+///|
+fn with_language(model : Model, language : String) -> Model {
+  with_selection(model, language, selected_profile(model, language))
 }
 
 ///|
@@ -609,6 +1310,47 @@ fn replacement_history(model : Model) -> Array[Location] {
 
 ///|
 fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) {
+  let (next, cmd) = update_core(model, msg, emit)
+  if next.connected || msg is SaveProject(_) {
+    return (next, cmd)
+  }
+  // A reset removes its own language's stored copy, so it does not mark that language dirty. The revision it bumps
+  // makes every save already scheduled stale, so other dirty languages need a save for the new revision.
+  if msg is ConfirmReset {
+    return if next.dirty.is_empty() {
+      (next, cmd)
+    } else {
+      (
+        next,
+        @cmd.batch([cmd, @cmd.delay(emit(SaveProject(next.revision)), 600)]),
+      )
+    }
+  }
+  // Languages whose stored project changed (the active file included) stay dirty until a save writes them. A
+  // change schedules one debounced save; the save runs only if no later revision change followed.
+  let dirty = next.dirty.copy()
+  for language, project in next.language_projects {
+    if model.language_projects.get(language) != Some(project) &&
+      !dirty.contains(language) {
+      dirty.push(language)
+    }
+  }
+  if next.revision != model.revision || dirty.length() != next.dirty.length() {
+    (
+      { ..next, dirty, },
+      @cmd.batch([cmd, @cmd.delay(emit(SaveProject(next.revision)), 600)]),
+    )
+  } else {
+    (next, cmd)
+  }
+}
+
+///|
+fn update_core(
+  model : Model,
+  msg : Msg,
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
   match msg {
     Navigate(explorer) => (remember(model, { ..model, explorer, }), @cmd.none)
     Back => {
@@ -650,10 +1392,108 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             worksheet_revision: model.worksheet_revision + 1,
           }
         } else {
-          { ..model, source, revision: model.revision + 1, }
+          let project = active_project(model)
+          with_project(model, project.set_content(project.active, source))
         },
         @cmd.none,
       )
+    Files(action) => {
+      let before = active_project(model)
+      let (files_edit, project, effects) = @project_files.apply(
+        model.files_edit,
+        explorer_env(model),
+        action,
+      )
+      // A change of the file set makes earlier counts unreliable: the next compile counts again.
+      let (problem_counts, problem_marks) = if before.files.map(f => f.path) !=
+        project.files.map(f => f.path) {
+        (Map([]), Map([]))
+      } else {
+        (model.problem_counts, model.problem_marks)
+      }
+      explorer_effects(
+        {
+          ..with_project(model, project),
+          files_edit,
+          problem_counts,
+          problem_marks,
+        },
+        effects,
+        emit,
+      )
+    }
+    Palette(action) => {
+      let (palette, outcome) = model.palette.update(
+        action,
+        palette_entries(model),
+      )
+      let model = { ..model, palette, }
+      match outcome {
+        Stay => {
+          let focus = if action is (Show(_) | Ask(_, _)) {
+            focus_after_render(@palette.input_id)
+          } else {
+            @cmd.none
+          }
+          // A pointer hover selects what is already in view; keys and queries can move past the visible list.
+          let scroll = if action is Hover(_) {
+            @cmd.none
+          } else {
+            let selected = @palette.option_id(palette.index)
+            @cmd.custom_cmd(
+              _ => scroll_into_view(selected),
+              kind=@cmd.after_render,
+            )
+          }
+          (model, @cmd.batch([focus, scroll]))
+        }
+        Closed => (model, @cmd.custom_cmd(_ => restore_focus()))
+        Opened(path) => {
+          let (opened, cmd) = in_project_view(model, Open(path), emit)
+          (opened, @cmd.batch([cmd, @cmd.custom_cmd(_ => focus_editor())]))
+        }
+        Run(command) => {
+          let (ran, cmd) = run_command(model, command, emit, from_palette=true)
+          (ran, @cmd.batch([@cmd.custom_cmd(_ => restore_focus()), cmd]))
+        }
+        Chose(command, value) => {
+          let (chosen, cmd) = match command {
+            SwitchLanguage => update_core(model, Language(value), emit)
+            SetTarget => update_core(model, Target(value), emit)
+            _ => (model, @cmd.none)
+          }
+          (chosen, @cmd.batch([@cmd.custom_cmd(_ => restore_focus()), cmd]))
+        }
+      }
+    }
+    // The palette is modal: a compile chord does not run behind it.
+    RunCommand(Compile) if model.palette.open => (model, @cmd.none)
+    // In the worksheet, the compile chord runs the worksheet.
+    RunCommand(Compile) if model.worksheet => run_command(model, Run, emit)
+    RunCommand(command) => run_command(model, command, emit)
+    Copied(path, copied) => {
+      let message = if copied {
+        "Copied " + path
+      } else {
+        "This browser did not allow copying " + path
+      }
+      (
+        {
+          ..note(
+            model,
+            "Copy path",
+            if copied {
+              @bottom_panel.Info
+            } else {
+              @bottom_panel.Warning
+            },
+            message,
+          ),
+          status: message,
+        },
+        @cmd.none,
+      )
+    }
     ExplorerRaw(raw) => ({ ..model, explorer_raw: raw, }, @cmd.none)
     ToggleModule(id) => {
       let collapsed_modules = if model.collapsed_modules.contains(id) {
@@ -900,49 +1740,309 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
       )
     }
     OutputTab(generated) => ({ ..model, generated, }, @cmd.none)
-    Generated(action) =>
-      (
-        { ..model, generated_state: model.generated_state.update(action), },
-        @cmd.none,
+    Generated(action) => {
+      let (generated_state, effects) = model.generated_state.apply(
+        @generated.artifacts(model.output),
+        action,
       )
-    DownloadGenerated(project) => {
-      let files = if project {
-        @generated.artifacts(model.output)
-      } else {
-        [@generated.selected(model.output, model.generated_state.selected)]
-      }
-      let message = download_generated(Json::array(files).stringify(), project)
-      let model = note(
+      generated_effects({ ..model, generated_state, }, effects, emit)
+    }
+    DownloadGenerated(project) =>
+      downloaded(
         model,
-        "Download",
-        if message == "" {
-          @bottom_panel.Info
+        if project {
+          @generated.artifacts(model.output)
         } else {
-          @bottom_panel.Error
+          [@generated.selected(model.output, model.generated_state.selected)]
         },
-        if message != "" {
-          message
-        } else if project {
-          "Downloaded morphir-project.zip with " +
-          files.length().to_string() +
-          " generated files"
-        } else {
-          "Downloaded " + text(files[0], "path")
-        },
+        project,
       )
+    PickFolder =>
+      (
+        model,
+        @cmd.custom_cmd(scheduler => {
+          pick_folder(reply => scheduler.add(emit(FolderPicked(reply))))
+        }),
+      )
+    FolderPicked(_) if model.busy =>
       (
         {
-          ..model,
-          status: if message == "" {
-            "Generated files downloaded"
-          } else {
-            message
+          ..note(
+            model,
+            "Import folder",
+            @bottom_panel.Warning,
+            "Another job is running; import the folder when it finishes",
+          ),
+          status: "Another job is running; import the folder when it finishes",
+        },
+        @cmd.none,
+      )
+    FolderPicked(reply) => {
+      let picked = @json.parse(reply) catch { _ => Json::null() }
+      if field(picked, "ok") != Json::boolean(true) {
+        return (
+          note(
+            model,
+            "Import folder",
+            @bottom_panel.Warning,
+            match text(picked, "message") {
+              "" => "The folder could not be read"
+              message => message
+            },
+          ),
+          @cmd.none,
+        )
+      }
+      let skipped = match field(picked, "skipped") {
+        Number(n, ..) => n.to_int()
+        _ => 0
+      }
+      let request = object([
+        ("operation", Json::string("import-folder")),
+        ("files", field(picked, "files")),
+      ])
+      let job = model.job + 1
+      (
+        { ..model, busy: true, job, status: "Importing the folder…", },
+        @cmd.custom_cmd(scheduler => {
+          host_request(request.stringify(), reply => {
+            scheduler.add(emit(FolderImported(job, skipped, reply)))
+          })
+        }),
+      )
+    }
+    FolderImported(job, _, _) if job != model.job => (model, @cmd.none)
+    FolderImported(_, client_skipped, reply) => {
+      let model = { ..model, busy: false, }
+      let result = @json.parse(reply) catch { _ => Json::null() }
+      let refuse = fn(message : String) {
+        (
+          {
+            ..note(model, "Import folder", @bottom_panel.Warning, message),
+            status: message,
           },
+          @cmd.none,
+        )
+      }
+      if field(result, "success") != Json::boolean(true) {
+        return refuse(
+          match text(result, "message") {
+            "" => "The folder could not be imported"
+            message => message
+          },
+        )
+      }
+      let project = @project.Project::from_request(field(result, "project")) catch {
+        @project.ProjectError(_, message) => return refuse(message)
+      }
+      let mut loaded = replace_project(
+        with_language(model, "elm"),
+        with_defaults(model, project),
+      )
+      let notes : Array[String] = []
+      for warning in items(field(result, "warnings")) {
+        if warning is String(text) {
+          notes.push(text)
+        }
+      }
+      for name in items(field(field(result, "project"), "exposedModules")) {
+        if name is String(module_name) &&
+          !project.exposed.iter().any(m => m.to_string() == module_name) {
+          notes.push(
+            "morphir.json exposes " + module_name + ", which has no source file",
+          )
+        }
+      }
+      let skipped = client_skipped +
+        (match field(result, "skipped") {
+          Number(n, ..) => n.to_int()
+          _ => 0
+        })
+      notes.push(
+        "Imported " +
+        project.files.length().to_string() +
+        " files as " +
+        project.name.to_string() +
+        (if skipped > 0 {
+          "; skipped " + skipped.to_string() + " other files"
+        } else {
+          ""
+        }),
+      )
+      for message in notes {
+        loaded = note(loaded, "Import folder", @bottom_panel.Info, message)
+      }
+      ({ ..loaded, status: "Folder imported", }, @cmd.none)
+    }
+    SaveProject(revision) =>
+      if revision != model.revision || model.connected || model.dirty.is_empty() {
+        (model, @cmd.none)
+      } else {
+        // Every language changed since its last successful save is written, not only the one that scheduled this.
+        let attempts : Array[String] = []
+        let still_dirty : Array[String] = []
+        for dirty_language in model.dirty {
+          match model.language_projects.get(dirty_language) {
+            Some(project) => {
+              attempts.push(storage_key(dirty_language))
+              if !storage_save(
+                  storage_key(dirty_language),
+                  project.to_json().stringify(),
+                ) {
+                still_dirty.push(dirty_language)
+              }
+            }
+            None => ()
+          }
+        }
+        (
+          {
+            ..model,
+            dirty: still_dirty,
+            save_attempts: attempts,
+            storage_ok: still_dirty.is_empty(),
+          },
+          @cmd.none,
+        )
+      }
+    CancelReset => ({ ..model, reset_asking: false, }, @cmd.none)
+    ConfirmReset => {
+      let fresh = replace_project(model, default_project(model, model.language))
+      let removed = storage_remove(storage_key(model.language))
+      (
+        {
+          ..fresh,
+          reset_asking: false,
+          removed_key: storage_key(model.language),
+          dirty: fresh.dirty.filter(l => l != model.language),
+          storage_ok: removed && fresh.storage_ok,
         },
         @cmd.none,
       )
     }
-    Language(language) => (with_language(model, language), @cmd.none)
+    SampleIndex(reply) =>
+      match reply_text(reply).bind(text => parse_index(text)) {
+        Ok(samples) => ({ ..model, samples, }, @cmd.none)
+        Err(message) =>
+          (
+            {
+              ..note(
+                model,
+                "Samples",
+                @bottom_panel.Warning,
+                "The sample list is not available: " + message,
+              ),
+              samples_requested: false,
+            },
+            @cmd.none,
+          )
+      }
+    Sample("") => (model, @cmd.none)
+    Sample(id) => {
+      // Every choice is a new request, so a reply for an earlier Elm sample is dropped whatever came after it.
+      let model = { ..model, sample_request: model.sample_request + 1, }
+      match id {
+        "builtin:scheme" => update_core(model, Example, emit)
+        "builtin:scheme-elm" => update_core(model, ElmExample, emit)
+        "builtin:moonbit" => update_core(model, MoonBitExample, emit)
+        "builtin:moonbit-library" =>
+          update_core(model, MoonBitLibraryExample, emit)
+        _ =>
+          if model.samples.iter().any(entry => entry.0 == id) {
+            let request = model.sample_request
+            (
+              { ..model, sample_base: Some(active_project_of(model, "elm")), },
+              @cmd.custom_cmd(scheduler => {
+                fetch_text("samples/elm/" + id + ".json", reply => {
+                  scheduler.add(emit(SampleLoaded(request, id, reply)))
+                })
+              }),
+            )
+          } else {
+            (model, @cmd.none)
+          }
+      }
+    }
+    SampleLoaded(request, id, _) if request != model.sample_request =>
+      (
+        note(
+          model,
+          "Samples",
+          @bottom_panel.Info,
+          "The sample " +
+          id +
+          " was not opened: another sample was chosen after it",
+        ),
+        @cmd.none,
+      )
+    SampleLoaded(_, id, _) if !same_sources(
+        model.sample_base,
+        active_project_of(model, "elm"),
+      ) =>
+      (
+        {
+          ..note(
+            model,
+            "Samples",
+            @bottom_panel.Warning,
+            "The sample " +
+            id +
+            " was not opened: the Elm project changed while it loaded, and opening it would replace those edits",
+          ),
+          sample_base: None,
+        },
+        @cmd.none,
+      )
+    SampleLoaded(_, id, reply) =>
+      match reply_text(reply).bind(text => parse_sample(text)) {
+        Ok(sample) => {
+          let loaded = replace_project(
+            model,
+            with_defaults(model, sample.project),
+          )
+          (
+            note(
+              loaded,
+              "Samples",
+              @bottom_panel.Info,
+              "Opened the sample " + sample.title + ". " + sample.notice,
+            ),
+            @cmd.none,
+          )
+        }
+        Err(message) =>
+          (
+            note(
+              model,
+              "Samples",
+              @bottom_panel.Warning,
+              "The sample " + id + " was not opened: " + message,
+            ),
+            @cmd.none,
+          )
+      }
+    Language(language) =>
+      if valid_language(language) {
+        let switched = {
+          ..with_language(model, language),
+          reset_asking: false,
+        }
+        // The sample list is fetched once, when Elm is first selected.
+        if language == "elm" && !model.connected && !model.samples_requested {
+          (
+            { ..switched, samples_requested: true, },
+            @cmd.custom_cmd(scheduler => {
+              fetch_text("samples/elm/index.json", reply => {
+                scheduler.add(emit(SampleIndex(reply)))
+              })
+            }),
+          )
+        } else {
+          (switched, @cmd.none)
+        }
+      } else {
+        refuse_language(model, language)
+      }
     SourceProfile(profile) =>
       (with_selection(model, model.language, profile), @cmd.none)
     Target(target) =>
@@ -950,10 +2050,13 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
     Example =>
       (
         {
-          ..with_language(model, "scheme"),
-          source: example,
+          ..with_example(
+            model,
+            "scheme",
+            selected_profile(model, "scheme"),
+            example,
+          ),
           worksheet_source: worksheet_example,
-          revision: model.revision + 1,
           worksheet_revision: model.worksheet_revision + 1,
         },
         @cmd.none,
@@ -961,18 +2064,22 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
     ElmExample =>
       (
         {
-          ..with_language(model, "scheme"),
-          source: "; Generate an Elm library with Compile\n(define answer 42)",
+          ..with_example(
+            model,
+            "scheme",
+            selected_profile(model, "scheme"),
+            "; Generate an Elm library with Compile\n(define answer 42)",
+          ),
           target: "elm",
-          revision: model.revision + 1,
         },
         @cmd.none,
       )
     MoonBitExample =>
       (
         {
-          ..with_selection(model, "moonbit", "moonbit-model-bool-v1"),
-          source: moonbit_example,
+          ..with_example(
+            model, "moonbit", "moonbit-model-bool-v1", moonbit_example,
+          ),
           target: "moonbit",
         },
         @cmd.none,
@@ -980,8 +2087,9 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
     MoonBitLibraryExample =>
       (
         {
-          ..with_selection(model, "moonbit", "moonbit-model-bool-library-v1"),
-          source: moonbit_library_example,
+          ..with_example(
+            model, "moonbit", "moonbit-model-bool-library-v1", moonbit_library_example,
+          ),
           target: "moonbit",
         },
         @cmd.none,
@@ -1067,36 +2175,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
       }
 
       let job = model.job + 1
-      let fields : Array[(String, Json)] = [
-        ("operation", Json::string(operation)),
-        (
-          "source",
-          Json::string(
-            if model.worksheet {
-              model.worksheet_source
-            } else {
-              model.source
-            },
-          ),
-        ),
-        (
-          "languageId",
-          Json::string(if model.worksheet { "scheme" } else { model.language }),
-        ),
-        ("target", Json::string(model.target)),
-      ]
-      if !model.connected &&
-        !model.worksheet &&
-        !items(field(frontend(model, model.language), "profiles")).is_empty() {
-        fields.push(
-          (
-            "frontendProvider",
-            Json::string(text(frontend(model, model.language), "providerId")),
-          ),
-        )
-        fields.push(("frontendProfile", Json::string(model.source_profile)))
-      }
-      let request = object(fields)
+      let request = compile_request(model, operation)
       let model = note(
         model,
         operation_label(operation),
@@ -1243,11 +2322,17 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           )
         }
         let name = entry_label(model, model.evaluation_entry)
+        let failure = if succeeded || terminal is Valid(_) {
+          None
+        } else {
+          Some(failure_detail(model, operation, job, revision, took, result))
+        }
         let model = reported(
           model,
           "Evaluate " + name,
           "inputs",
           revision,
+          failure?,
           match terminal {
             Valid(_) | Invalid(_) =>
               @bottom_panel.terminal_diagnostics(terminal)
@@ -1310,6 +2395,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
               } else {
                 [text(result, "message")]
               },
+              failure?,
             )
         }
         let model = note(
@@ -1365,8 +2451,40 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           @cmd.none,
         )
       }
+      if operation == "decode-ion" && succeeded {
+        let path = text(result, "path")
+        let decoded = text(result, "text")
+        let values = match field(result, "values") {
+          Number(n, ..) => n.to_int()
+          _ => 0
+        }
+        let (generated_state, _) = model.generated_state.apply(
+          @generated.artifacts(model.output),
+          ShowIonText(path, decoded, values),
+        )
+        let message = "Decoded " +
+          path +
+          " as Ion text: " +
+          values.to_string() +
+          (if values == 1 { " value, " } else { " values, " }) +
+          decoded.length().to_string() +
+          " characters in " +
+          took
+        return (
+          {
+            ..note(model, label, @bottom_panel.Info, message),
+            generated_state,
+            generated: true,
+            busy: false,
+            status: "Decoded " + path + " as Ion text",
+          },
+          @cmd.none,
+        )
+      }
       let (scope, scope_revision) = match operation {
         "worksheet" => ("worksheet", revision)
+        // A decode belongs to the generated files it read: a new compile makes its problems previous.
+        "decode-ion" => ("decode", revision)
         "compile" | "run" => ("source", revision)
         "initialize" => ("session", 0)
         "workspace" => ("session", 0)
@@ -1381,13 +2499,29 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
             },
           )
       }
+      // A failed job, or a compile whose generation was refused, keeps its context for the panel's details.
+      let failure = if !succeeded || text(result, "generationMessage") != "" {
+        Some(failure_detail(model, operation, job, revision, took, result))
+      } else {
+        None
+      }
       let model = reported(
         model,
         label,
         scope,
         scope_revision,
         @bottom_panel.reply_diagnostics(result),
+        failure?,
       )
+      let model = if operation == "compile" || operation == "run" {
+        {
+          ..model,
+          problem_counts: @project.problem_counts(result),
+          problem_marks: problem_marks(result),
+        }
+      } else {
+        model
+      }
       if !succeeded {
         let model = note(
           model,
@@ -1399,6 +2533,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           took +
           ": " +
           text(result, "message"),
+          failure?,
         )
         let model = produced(
           model,
@@ -1406,6 +2541,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           @bottom_panel.Error,
           label + " failed",
           [text(result, "message")],
+          failure?,
         )
         return (
           { ..model, busy: false, status: text(result, "message"), },
@@ -1427,11 +2563,13 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         let catalog = field(result, "catalog")
         let frontends = items(field(catalog, "frontends"))
         let language = if frontends.length() > 0 {
-          let ids = frontends.map(f => text(f, "languageId"))
+          let ids = frontends
+            .map(f => text(f, "languageId"))
+            .filter(valid_language)
           if ids.contains("scheme") {
             "scheme"
           } else {
-            ids[0]
+            ids.get(0).unwrap_or("")
           }
         } else {
           ""
@@ -1456,35 +2594,34 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           " · " +
           took,
         )
-        return (
-          {
-            ..model,
-            busy: false,
-            connected: field(result, "connected") == Json::boolean(true),
-            jobs_available: field(result, "jobsAvailable") ==
-            Json::boolean(true),
-            workspace_available: field(result, "workspaceAvailable") ==
-            Json::boolean(true),
-            evaluation_typed: field(result, "connected") == Json::boolean(true) &&
-            field(result, "jobsAvailable") == Json::boolean(true),
-            available: !frontends.is_empty(),
-            catalog,
-            language,
-            target: if model.connected {
-              ""
-            } else {
-              "scheme"
-            },
-            source: if model.connected {
-              ""
-            } else {
-              model.source
-            },
-            projects: items(field(result, "projects")),
-            status: text(result, "message"),
+        let initialized = {
+          ..model,
+          busy: false,
+          connected: field(result, "connected") == Json::boolean(true),
+          jobs_available: field(result, "jobsAvailable") == Json::boolean(true),
+          workspace_available: field(result, "workspaceAvailable") ==
+          Json::boolean(true),
+          evaluation_typed: field(result, "connected") == Json::boolean(true) &&
+          field(result, "jobsAvailable") == Json::boolean(true),
+          available: !frontends.is_empty(),
+          catalog,
+          language,
+          // A host session starts with empty sources, as before projects.
+          language_projects: if field(result, "connected") ==
+            Json::boolean(true) {
+            Map([])
+          } else {
+            model.language_projects
           },
-          @cmd.none,
-        )
+          target: if model.connected {
+            ""
+          } else {
+            "scheme"
+          },
+          projects: items(field(result, "projects")),
+          status: text(result, "message"),
+        }
+        return (restore_all(initialized), @cmd.none)
       }
       let compiled = field(result, "ir") != Json::null()
       let worksheet_result = field(result, "results") != Json::null()
@@ -1578,6 +2715,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
           ""
         }),
         summary,
+        failure?,
       )
       let model = note(
         model,
@@ -1794,6 +2932,7 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
               related: [],
               fix: "",
               stage: "",
+              place: None,
             },
           ])
           return (
@@ -1846,6 +2985,37 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
         ),
         @cmd.custom_cmd(_ => download_ir(model_source(model.model))),
       )
+    Panel(Reveal(place)) => (reveal(model, place), @cmd.none)
+    Panel(CopyDetails(report)) =>
+      (
+        model,
+        @cmd.custom_cmd(scheduler => {
+          copy_text(report, copied => scheduler.add(emit(DetailsCopied(copied))))
+        }),
+      )
+    DetailsCopied(copied) => {
+      let message = if copied {
+        "Copied the details"
+      } else {
+        "This browser did not allow copying the details"
+      }
+      (
+        {
+          ..note(
+            model,
+            "Copy details",
+            if copied {
+              @bottom_panel.Info
+            } else {
+              @bottom_panel.Warning
+            },
+            message,
+          ),
+          status: message,
+        },
+        @cmd.none,
+      )
+    }
     Panel(action) => {
       let (panel, focus) = model.panel.update(action)
       (
@@ -1967,42 +3137,20 @@ fn sidebar(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       )
     }
   } else {
-    context.push(@html.p(class="eyebrow", "EXAMPLES"))
-    context.push(
-      @html.button(
-        class="tree-item",
-        disabled=model.connected || model.busy,
-        on_click=emit(Example),
-        "Pricing & arithmetic",
-      ),
-    )
-    context.push(
-      @html.button(
-        class="tree-item",
-        disabled=model.connected || model.busy,
-        hidden=model.worksheet,
-        on_click=emit(ElmExample),
-        "Elm constant",
-      ),
-    )
-    context.push(
-      @html.button(
-        class="tree-item",
-        disabled=model.connected || model.busy,
-        hidden=model.worksheet,
-        on_click=emit(MoonBitExample),
-        "MoonBit Boolean",
-      ),
-    )
-    context.push(
-      @html.button(
-        class="tree-item",
-        disabled=model.connected || model.busy,
-        hidden=model.worksheet,
-        on_click=emit(MoonBitLibraryExample),
-        "MoonBit library",
-      ),
-    )
+    if !model.worksheet && !model.connected {
+      context.push(
+        @project_files.view(
+          {
+            env: explorer_env(model),
+            state: model.files_edit,
+            language: language_name(model, model.language),
+            mac: model.mac,
+          },
+          emit.map(action => Files(action)),
+          extra=[project_storage(model, emit)],
+        ),
+      )
+    }
     context.push(
       @html.p(
         class="muted small context-note",
@@ -2100,7 +3248,12 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   } else if model.generated {
     body.push(
       @generated.view(
-        { output, state: model.generated_state, language: model.target, },
+        {
+          output,
+          state: model.generated_state,
+          language: model.target,
+          mac: model.mac,
+        },
         emit.map(action => Generated(action)),
         emit.map(project => DownloadGenerated(project)),
       ),
@@ -2113,6 +3266,8 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         language: "json",
         label: "Morphir IR",
         read_only: true,
+        marks: "",
+        reveal: "",
         value: if field(output, "ir") == Json::null() {
           "Your compiled model will appear here."
         } else {
@@ -2163,19 +3318,6 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
     ]),
     @html.div(class="output-body", body),
   ])
-}
-
-///|
-fn source_name(model : Model) -> String {
-  for frontend in items(field(model.catalog, "frontends")) {
-    if text(frontend, "languageId") == model.language {
-      let extensions = items(field(frontend, "fileExtensions"))
-      if extensions.length() > 0 && extensions[0] is String(extension) {
-        return "main" + extension
-      }
-    }
-  }
-  "main.scm"
 }
 
 ///|
@@ -2351,30 +3493,41 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
               ),
             ]),
           ]),
-          @editor.view(
-            {
-              id: "source",
-              document_key: if model.worksheet {
-                "worksheet-source"
-              } else {
-                "compile-source|" +
-                source_key(model, model.language, model.source_profile)
+          @html.div(class="source-body", [
+            @editor.view(
+              {
+                id: "source",
+                document_key: if model.worksheet {
+                  "worksheet-source"
+                } else {
+                  "compile-source|" + model.language + "|" + source_name(model)
+                },
+                value: if model.worksheet {
+                  model.worksheet_source
+                } else {
+                  active_text(model)
+                },
+                language: if model.worksheet {
+                  "scheme"
+                } else {
+                  editor_language(model)
+                },
+                label: "Source editor",
+                read_only: false,
+                marks: if model.worksheet {
+                  ""
+                } else {
+                  model.problem_marks.get(source_name(model)).unwrap_or("")
+                },
+                reveal: if model.worksheet {
+                  ""
+                } else {
+                  model.reveal
+                },
               },
-              value: if model.worksheet {
-                model.worksheet_source
-              } else {
-                model.source
-              },
-              language: if model.worksheet {
-                "scheme"
-              } else {
-                model.language
-              },
-              label: "Source editor",
-              read_only: false,
-            },
-            on_change=emit.map(value => Source(value)),
-          ),
+              on_change=emit.map(value => Source(value)),
+            ),
+          ]),
         ]),
         output_panel(model, emit),
       ],
@@ -2511,6 +3664,34 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 }
 
 ///|
+/// The on-screen way into the command palette, with its shortcut, for people who do not know the chord.
+fn command_center(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+  let chord = @keys.shortcut(@keys.keymap(), ShowCommands, mac=model.mac)
+  let label = chord.map(c => c.label(mac=model.mac)).unwrap_or("")
+  let attrs = @html.Attrs::build()
+    .aria_label("Command palette")
+    .aria_haspopup("dialog")
+  @html.button(
+    class="command-center",
+    title="Command palette (" + label + ")",
+    attrs=match chord {
+      Some(c) => attrs.aria_keyshortcuts(c.aria(mac=model.mac))
+      None => attrs
+    },
+    on_click=emit(RunCommand(ShowCommands)),
+    [
+      @html.span(
+        class="action-icon icon-command",
+        attrs=@html.Attrs::build().aria_hidden("true"),
+        "",
+      ),
+      @html.span(class="command-center-label", "Command palette"),
+      @html.kbd(class="shortcut", label),
+    ],
+  )
+}
+
+///|
 /// The Morphir logo. It links to the hosting site when there is one.
 /// The site links use `escape=true`: the workbench has no router, and Rabbita drops captured link clicks without one.
 fn brand(site_home : String?) -> @html.Html {
@@ -2588,6 +3769,7 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
             ),
             breadcrumb(model),
           ]),
+          command_center(model, emit),
           @html.div(class="connection", [
             @html.span(
               class="connection-dot",
@@ -2632,11 +3814,29 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
               ("worksheet", model.worksheet_revision),
               ("inputs", model.evaluation_revision),
               ("model", model.model_revision),
+              ("decode", model.output_revision),
             ]),
           },
           emit.map(action => Panel(action)),
         ),
       ]),
+      @palette.view(
+        {
+          state: model.palette,
+          entries: if model.palette.open {
+            palette_entries(model)
+          } else {
+            []
+          },
+          mac: model.mac,
+          no_files: if model.connected {
+            "This host edits one source, so there are no project files. Type > to search commands."
+          } else {
+            "The project has no files."
+          },
+        },
+        emit.map(action => Palette(action)),
+      ),
     ],
   )
 }
@@ -2648,18 +3848,102 @@ fn main {
       init=emit => {
         (
           initial(),
-          request_cmd(
-            emit,
-            0,
-            0,
-            object([("operation", Json::string("initialize"))]),
-          ),
+          @cmd.batch([
+            request_cmd(
+              emit,
+              0,
+              0,
+              object([("operation", Json::string("initialize"))]),
+            ),
+            @cmd.custom_cmd(scheduler => {
+              watch_drop("[data-drop=\"project\"]", reply => {
+                scheduler.add(emit(FolderPicked(reply)))
+              })
+            }),
+            @cmd.custom_cmd(scheduler => {
+              let mac = mac_platform()
+              watch_keys((key, ctrl, meta, shift, alt, editing) => {
+                let chord = @keys.Chord::from_event(
+                  key,
+                  ctrl~,
+                  meta~,
+                  shift~,
+                  alt~,
+                  mac~,
+                )
+                match
+                  @keys.resolve(@keys.keymap(), chord, {
+                    editing,
+                    in_tree: false,
+                  }) {
+                  Some(command) => {
+                    scheduler.add(emit(RunCommand(command)))
+                    true
+                  }
+                  None => false
+                }
+              })
+            }),
+          ]),
         )
       },
       update~,
     )
     model.view(model => view(model, emit))
   }).mount("app")
+}
+
+///|
+/// "Not saved" after a failed save, and the inline question of "Reset project".
+fn project_storage(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+  @html.div(class="project-storage", [
+    @html.p(
+      class="small file-error",
+      hidden=model.storage_ok,
+      title="This browser did not keep the project. It stays in this page until you leave.",
+      "Not saved",
+    ),
+    if model.reset_asking {
+      @html.div(
+        class="explorer-reset",
+        attrs=@html.Attrs::build()
+          .role("group")
+          .aria_label("Reset project")
+          .on_keydown(event => {
+            if event.key() == "Escape" {
+              event.prevent_default()
+              emit(CancelReset)
+            } else {
+              @cmd.none
+            }
+          }),
+        [
+          @html.span(
+            "Reset the " +
+            language_name(model, model.language) +
+            " project to its starting file? Your changes are lost.",
+          ),
+          @html.div(class="explorer-reset-actions", [
+            @html.button(
+              id="reset-confirm",
+              class="danger small",
+              attrs=@html.Attrs::build().aria_label("Confirm reset"),
+              on_click=emit(ConfirmReset),
+              "Reset",
+            ),
+            @html.button(
+              class="secondary small",
+              attrs=@html.Attrs::build().aria_label("Keep project"),
+              on_click=emit(CancelReset),
+              "Keep",
+            ),
+          ]),
+        ],
+      )
+    } else {
+      @html.nothing
+    },
+  ])
 }
 
 ///|
@@ -2777,4 +4061,710 @@ fn host_job_disconnected(model : Model) -> Bool {
 ///|
 fn host_job_blocks_replacement(model : Model) -> Bool {
   host_job_pending(model) || host_job_disconnected(model)
+}
+
+// Project explorer, shortcuts and the command palette. The explorer and the palette are pure state machines; these
+// helpers give them the workbench's data and turn their effects into commands.
+
+///|
+let busy_reason = "Wait for the running job to finish"
+
+///|
+fn explorer_env(model : Model) -> @project_files.Env {
+  {
+    project: active_project(model),
+    rules: file_rules(model, model.language),
+    counts: model.problem_counts,
+    busy: model.busy,
+    samples: sample_entries(model),
+    sample_reason: sample_reason(model),
+  }
+}
+
+///|
+fn language_name(model : Model, language : String) -> String {
+  match text(frontend(model, language), "displayName") {
+    "" => language
+    name => name
+  }
+}
+
+///|
+fn focus_after_render(id : String) -> @cmd.Cmd {
+  @cmd.custom_cmd(_ => focus_now(id), kind=@cmd.after_render)
+}
+
+///|
+/// Turns the explorer's effects into focus moves and work outside the project.
+fn explorer_effects(
+  model : Model,
+  effects : Array[@project_files.Effect],
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
+  let mut model = model
+  let cmds : Array[@cmd.Cmd] = []
+  for effect in effects {
+    match effect {
+      FocusRow(item) =>
+        cmds.push(focus_after_render(@project_files.row_id(item)))
+      FocusInput(start, end) =>
+        cmds.push(
+          @cmd.custom_cmd(
+            _ => focus_selecting(@project_files.input_id, start, end),
+            kind=@cmd.after_render,
+          ),
+        )
+      FocusName => cmds.push(focus_after_render(@project_files.name_id))
+      FocusConfirm => cmds.push(focus_after_render(@project_files.confirm_id))
+      FocusMenu(index) =>
+        cmds.push(focus_after_render(@project_files.menu_item_id(index)))
+      FocusEditor =>
+        cmds.push(@cmd.custom_cmd(_ => focus_editor(), kind=@cmd.after_render))
+      Copy(path) =>
+        cmds.push(
+          @cmd.custom_cmd(scheduler => {
+            copy_text(path, copied => scheduler.add(emit(Copied(path, copied))))
+          }),
+        )
+      ShowProblems(_) =>
+        if model.panel.size == @bottom_panel.Collapsed ||
+          model.panel.tab != @bottom_panel.Diagnostics {
+          let (panel, _) = model.panel.update(
+            @bottom_panel.Activate(@bottom_panel.Diagnostics),
+          )
+          model = { ..model, panel, }
+        }
+      ImportFolder =>
+        cmds.push(
+          @cmd.custom_cmd(scheduler => {
+            pick_folder(reply => scheduler.add(emit(FolderPicked(reply))))
+          }),
+        )
+      AskReset => {
+        model = { ..model, reset_asking: true, }
+        cmds.push(focus_after_render("reset-confirm"))
+      }
+      ShowPalette => {
+        let (opened, cmd) = open_palette(model, Show(">"), emit)
+        model = opened
+        cmds.push(cmd)
+      }
+      LoadSample(id) => {
+        let (opened, cmd) = update_core(model, Sample(id), emit)
+        model = opened
+        cmds.push(cmd)
+      }
+    }
+  }
+  (model, @cmd.batch(cmds))
+}
+
+///|
+/// Shows the project in Try Morphir (compile layout, sidebar open) and gives the explorer one action.
+fn in_project_view(
+  model : Model,
+  action : @project_files.Action,
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
+  let shown = remember(model, {
+    ..model,
+    explorer: false,
+    worksheet: false,
+    try_collapsed: false,
+  })
+  let shown = match action {
+    Open(path) => {
+      let (files_edit, _, _) = @project_files.apply(
+        shown.files_edit,
+        explorer_env(shown),
+        Reveal(path),
+      )
+      { ..shown, files_edit, }
+    }
+    _ => shown
+  }
+  update_core(shown, Files(action), emit)
+}
+
+///|
+fn runnable(model : Model) -> Bool {
+  !model.connected && (model.worksheet || model.language == "scheme")
+}
+
+///|
+/// Whether the package exposes the open file, when the language keeps packages and the file is a module.
+fn active_exposure(model : Model) -> Bool? {
+  let project = active_project(model)
+  guard file_rules(model, model.language).add_reason() is None else {
+    return None
+  }
+  project.file_module(project.active).map(found => found.1)
+}
+
+///|
+/// The commands the palette lists now. Commands that do not apply here are left out; commands that apply but cannot
+/// run now are listed with their reason.
+fn palette_commands(model : Model) -> Array[@palette.Command] {
+  let commands : Array[@palette.Command] = []
+  fn add(
+    id : @keys.CommandId,
+    title : String,
+    category : String,
+    reason : String,
+  ) -> Unit {
+    commands.push({ id, title, category, enabled: reason == "", reason, })
+  }
+
+  let busy = if model.busy { busy_reason } else { "" }
+  let projects = !model.connected
+  let rules = file_rules(model, model.language)
+  add(
+    Compile,
+    "Compile",
+    "Build",
+    if model.worksheet {
+      "Switch to Compile & inspect to compile the project"
+    } else if !model.available {
+      "No language is available yet"
+    } else {
+      busy
+    },
+  )
+  if runnable(model) {
+    add(
+      Run,
+      if model.worksheet {
+        "Run worksheet"
+      } else {
+        "Compile & run"
+      },
+      "Build",
+      busy,
+    )
+  }
+  if !model.worksheet {
+    add(SetTarget, "Set generation target…", "Build", busy)
+    add(SwitchLanguage, "Switch language…", "Project", busy)
+  }
+  if projects {
+    add(GoToFile, "Go to file…", "Go", "")
+    add(
+      NewFile,
+      "New file…",
+      "File",
+      match rules.add_reason() {
+        Some(reason) => reason
+        None => busy
+      },
+    )
+    add(RenameFile, "Rename file…", "File", busy)
+    add(DeleteFile, "Delete file", "File", busy)
+    add(CopyPath, "Copy path of the open file", "File", "")
+    match active_exposure(model) {
+      Some(true) => add(ToggleExposed, "Stop exposing module", "Project", "")
+      Some(false) => add(ToggleExposed, "Expose module", "Project", "")
+      None => ()
+    }
+    if rules.add_reason() is None {
+      add(RenamePackage, "Rename package…", "Project", "")
+    }
+    add(ImportFolder, "Import folder…", "Project", busy)
+    add(ResetProject, "Reset project…", "Project", busy)
+    add(CollapseFolders, "Collapse folders", "View", "")
+    add(ShowExplorer, "Show project explorer", "View", "")
+    add(
+      SwitchLayout,
+      if model.worksheet {
+        "Switch to Compile & inspect"
+      } else {
+        "Switch to Worksheet"
+      },
+      "View",
+      "",
+    )
+  }
+  if selected_binary_ion(model) is Some(path) {
+    add(ViewIonText, "View as Ion text: " + path, "Generated", busy)
+  }
+  // One entry for each example and sample, from the list the explorer's project menu also reads.
+  for sample in sample_entries(model) {
+    add(
+      LoadSample(sample.0),
+      "Open sample: " + sample.1,
+      "Sample",
+      sample_reason(model),
+    )
+  }
+  add(TogglePanel, "Toggle panel", "View", "")
+  add(
+    SwitchExperience,
+    if model.explorer {
+      "Open Try Morphir"
+    } else {
+      "Open Model Explorer"
+    },
+    "View",
+    "",
+  )
+  commands
+}
+
+///|
+/// The second list of a command: languages, targets or samples.
+fn palette_choices(model : Model) -> Array[@palette.Choice] {
+  let current = fn(value : String, chosen : String) {
+    if value == chosen {
+      "current"
+    } else {
+      ""
+    }
+  }
+  match model.palette.choosing {
+    Some((SwitchLanguage, _)) =>
+      items(field(model.catalog, "frontends")).map(item => @palette.Choice::{
+        value: text(item, "languageId"),
+        label: text(item, "displayName"),
+        detail: current(text(item, "languageId"), model.language),
+      })
+    Some((SetTarget, _)) =>
+      [
+        @palette.Choice::{
+          value: "",
+          label: "No generation",
+          detail: current("", model.target),
+        },
+        ..items(field(model.catalog, "targets")).map(item => @palette.Choice::{
+          value: text(item, "target"),
+          label: text(item, "displayName"),
+          detail: current(text(item, "target"), model.target),
+        }),
+      ]
+    _ => []
+  }
+}
+
+///|
+fn palette_entries(model : Model) -> Array[@palette.Entry] {
+  @palette.entries(
+    model.palette,
+    files=if model.connected {
+      []
+    } else {
+      active_project(model).files.map(f => f.path)
+    },
+    commands=palette_commands(model),
+    choices=palette_choices(model),
+    mac=model.mac,
+  )
+}
+
+///|
+/// Opens the palette. From the page it first keeps the focus so Escape can return to it; a palette that asks a
+/// second question keeps the focus it kept for the first.
+fn open_palette(
+  model : Model,
+  action : @palette.Action,
+  emit : @cmd.Emit[Msg],
+  remember~ : Bool = true,
+) -> (Model, @cmd.Cmd) {
+  let keep = if remember && !model.palette.open {
+    @cmd.custom_cmd(_ => remember_focus())
+  } else {
+    @cmd.none
+  }
+  let (opened, cmd) = update_core(model, Palette(action), emit)
+  (opened, @cmd.batch([keep, cmd]))
+}
+
+///|
+/// Runs a command from a shortcut, the palette or a menu. A command that cannot run now does nothing.
+fn run_command(
+  model : Model,
+  command : @keys.CommandId,
+  emit : @cmd.Emit[Msg],
+  from_palette~ : Bool = false,
+) -> (Model, @cmd.Cmd) {
+  let available = palette_commands(model)
+    .iter()
+    .find_first(c => c.id == command)
+  let runs = match available {
+    Some(entry) => entry.enabled
+    // Commands the palette does not list, such as Show all commands, always run.
+    None => command is (ShowCommands | GoToFile | ContextMenu)
+  }
+  guard runs else { return (model, @cmd.none) }
+  let active = active_project(model).active
+  match command {
+    Compile => update_core(model, Request("compile"), emit)
+    Run =>
+      update_core(
+        model,
+        Request(if model.worksheet { "worksheet" } else { "run" }),
+        emit,
+      )
+    GoToFile => open_palette(model, Show(""), emit, remember=!from_palette)
+    ShowCommands => open_palette(model, Show(">"), emit, remember=!from_palette)
+    SwitchLanguage =>
+      open_palette(
+        model,
+        Ask(SwitchLanguage, "Switch language"),
+        emit,
+        remember=!from_palette,
+      )
+    SetTarget =>
+      open_palette(
+        model,
+        Ask(SetTarget, "Set generation target"),
+        emit,
+        remember=!from_palette,
+      )
+    LoadSample(id) => update_core(model, Sample(id), emit)
+    ViewIonText =>
+      match selected_binary_ion(model) {
+        Some(path) => {
+          let (shown, cmd) = start_decode(
+            { ..model, explorer: false, worksheet: false, generated: true, },
+            path,
+            emit,
+          )
+          (shown, cmd)
+        }
+        None => (model, @cmd.none)
+      }
+    NewFile => in_project_view(model, StartAdd(None), emit)
+    RenameFile => in_project_view(model, StartRename(File(active)), emit)
+    DeleteFile => in_project_view(model, StartDelete(File(active)), emit)
+    CopyPath =>
+      (
+        model,
+        @cmd.custom_cmd(scheduler => {
+          copy_text(active.to_string(), copied => {
+            scheduler.add(emit(Copied(active.to_string(), copied)))
+          })
+        }),
+      )
+    CollapseFolders => in_project_view(model, CollapseAll, emit)
+    ToggleExposed =>
+      in_project_view(
+        model,
+        Exposed(active, active_exposure(model) == Some(false)),
+        emit,
+      )
+    RenamePackage => in_project_view(model, StartNaming, emit)
+    ImportFolder => update_core(model, PickFolder, emit)
+    ResetProject => {
+      let (shown, cmd) = in_project_view(model, Focus(File(active)), emit)
+      (
+        { ..shown, reset_asking: true, },
+        @cmd.batch([cmd, focus_after_render("reset-confirm")]),
+      )
+    }
+    TogglePanel =>
+      update_core(
+        model,
+        Panel(
+          if model.panel.size == @bottom_panel.Collapsed {
+            @bottom_panel.Open
+          } else {
+            @bottom_panel.Collapse
+          },
+        ),
+        emit,
+      )
+    SwitchLayout => update_core(model, Layout(!model.worksheet), emit)
+    SwitchExperience => update_core(model, Navigate(!model.explorer), emit)
+    ShowExplorer => {
+      let (shown, cmd) = in_project_view(model, Focus(File(active)), emit)
+      let row = match shown.files_edit.current(explorer_env(shown)) {
+        Some(item) => focus_after_render(@project_files.row_id(item))
+        None => @cmd.none
+      }
+      (shown, @cmd.batch([cmd, row]))
+    }
+    ContextMenu => (model, @cmd.none)
+  }
+}
+
+// Failure details for the tool panel.
+
+///|
+fn plural_files(count : Int32) -> String {
+  count.to_string() + (if count == 1 { " file" } else { " files" })
+}
+
+///|
+/// What a failed job ran and how it failed, for the panel's details and the Copy details report. The code and
+/// stage are the reply's own; a refused generation names its first problem's code.
+fn failure_detail(
+  model : Model,
+  operation : String,
+  job : Int32,
+  revision : Int32,
+  took : String,
+  result : Json,
+) -> @bottom_panel.Failure {
+  let context : Array[(String, String)] = []
+  match operation {
+    "worksheet" => {
+      context.push(("Language", "Scheme worksheet"))
+      context.push(("Worksheet revision", revision.to_string()))
+    }
+    "evaluate" | "resume-job" => {
+      context.push(("Function", entry_label(model, model.evaluation_entry)))
+      context.push(
+        (
+          "Runtime",
+          if model.evaluation_host_job {
+            "host typed invocation"
+          } else if model.evaluation_typed {
+            "typed invocation"
+          } else {
+            "local Scheme"
+          },
+        ),
+      )
+      context.push(("Inputs revision", revision.to_string()))
+    }
+    "decode-ion" => {
+      let file = @generated.selected(
+        model.output,
+        model.generated_state.selected,
+      )
+      context.push(("File", text(file, "path")))
+      context.push(
+        (
+          "Size",
+          match @generated.binary_size(file) {
+            Some(bytes) => bytes.to_string() + " bytes"
+            None => ""
+          },
+        ),
+      )
+      context.push(("Generated by", "target " + model.target))
+    }
+    "compile" | "run" => {
+      let project = active_project(model)
+      context.push(("Language", language_name(model, model.language)))
+      if !model.connected {
+        context.push(
+          (
+            "Profile",
+            project.profile
+            .map(p => p.to_string())
+            .unwrap_or(model.source_profile),
+          ),
+        )
+        context.push(
+          ("Provider", project.provider.map(p => p.to_string()).unwrap_or("")),
+        )
+      }
+      context.push(
+        ("Target", if model.target == "" { "none" } else { model.target }),
+      )
+      if !model.connected {
+        context.push(
+          (
+            "Project",
+            project.name.to_string() +
+            " (" +
+            plural_files(project.files.length()) +
+            ")",
+          ),
+        )
+      }
+      context.push(("Source revision", revision.to_string()))
+    }
+    _ => ()
+  }
+  context.push(("Duration", took))
+  let generation = match items(field(result, "generationDiagnostics")) {
+    [first, ..] => text(first, "code")
+    [] => ""
+  }
+  let failed = field(result, "success") != Json::boolean(true)
+  {
+    job,
+    operation: operation_label(operation),
+    code: if text(result, "code") != "" {
+      text(result, "code")
+    } else if failed {
+      ""
+    } else {
+      generation
+    },
+    stage: if text(result, "stage") != "" {
+      text(result, "stage")
+    } else if failed {
+      ""
+    } else {
+      "generation"
+    },
+    message: if failed {
+      text(result, "message")
+    } else {
+      text(result, "generationMessage")
+    },
+    context,
+    raw: @bottom_panel.redacted(result).stringify(indent=2),
+  }
+}
+
+// Generated files.
+
+///|
+/// Turns the generated files' effects into a decode job, the clipboard, a download and focus moves.
+fn generated_effects(
+  model : Model,
+  effects : Array[@generated.Effect],
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
+  let mut model = model
+  let cmds : Array[@cmd.Cmd] = []
+  for effect in effects {
+    match effect {
+      RequestIonText(path) => {
+        let (started, cmd) = start_decode(model, path, emit)
+        model = started
+        cmds.push(cmd)
+      }
+      Copy(path) =>
+        cmds.push(
+          @cmd.custom_cmd(scheduler => {
+            copy_text(path, copied => scheduler.add(emit(Copied(path, copied))))
+          }),
+        )
+      DownloadFile(path) => {
+        // A download from a file's menu leaves the selection and the preview as they are.
+        let (after, cmd) = downloaded(
+          model,
+          [@generated.selected(model.output, path)],
+          false,
+        )
+        model = after
+        cmds.push(cmd)
+      }
+      FocusMenu(index) =>
+        cmds.push(
+          focus_after_render(
+            @context_menu.item_id(@generated.menu_id_prefix, index),
+          ),
+        )
+      FocusFile(path) => cmds.push(focus_after_render(@generated.file_id(path)))
+    }
+  }
+  (model, @cmd.batch(cmds))
+}
+
+///|
+/// Downloads generated `files`, as one zip when `project` is set, and logs the result. The selection stays.
+fn downloaded(
+  model : Model,
+  files : Array[Json],
+  project : Bool,
+) -> (Model, @cmd.Cmd) {
+  let message = download_generated(Json::array(files).stringify(), project)
+  let model = note(
+    model,
+    "Download",
+    if message == "" {
+      @bottom_panel.Info
+    } else {
+      @bottom_panel.Error
+    },
+    if message != "" {
+      message
+    } else if project {
+      "Downloaded morphir-project.zip with " +
+      files.length().to_string() +
+      " generated files"
+    } else {
+      "Downloaded " + text(files[0], "path")
+    },
+  )
+  (
+    {
+      ..model,
+      status: if message == "" {
+        "Generated files downloaded"
+      } else {
+        message
+      },
+    },
+    @cmd.none,
+  )
+}
+
+///|
+/// Decodes a generated binary Ion file to text in the worker, as a job: the busy rule, cancellation and late replies
+/// work as for a compile.
+fn start_decode(
+  model : Model,
+  path : String,
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
+  if model.busy {
+    let message = "Another job is running; view the Ion text when it finishes"
+    return (
+      {
+        ..note(model, "View as Ion text", @bottom_panel.Warning, message),
+        status: message,
+      },
+      @cmd.none,
+    )
+  }
+  let file = @generated.selected(model.output, path)
+  guard text(file, "path") == path && @generated.is_binary_ion(file) else {
+    return (model, @cmd.none)
+  }
+  if model.connected {
+    // A connected host has no decode-ion operation; only the local worker decodes.
+    let message = "Ion text is decoded by the browser-local worker only"
+    return (
+      {
+        ..note(model, "View as Ion text", @bottom_panel.Warning, message),
+        status: message,
+      },
+      @cmd.none,
+    )
+  }
+  let job = model.job + 1
+  let model = note(
+    model,
+    "View as Ion text",
+    @bottom_panel.Info,
+    "Started job " + job.to_string() + " · decoding " + path,
+  )
+  (
+    {
+      ..model,
+      job,
+      busy: true,
+      started: now_ms(),
+      generated: true,
+      generated_state: { ..model.generated_state, selected: path, },
+      status: "Decoding " + path + "…",
+    },
+    request_cmd(
+      emit,
+      job,
+      model.output_revision,
+      object([
+        ("operation", Json::string("decode-ion")),
+        ("path", Json::string(path)),
+        ("source", field(file, "content")),
+      ]),
+    ),
+  )
+}
+
+///|
+/// The selected generated file when it is binary Ion and the local worker can decode it, for the palette's View
+/// as Ion text.
+fn selected_binary_ion(model : Model) -> String? {
+  let file = @generated.selected(model.output, model.generated_state.selected)
+  if !model.connected && @generated.is_binary_ion(file) {
+    Some(text(file, "path"))
+  } else {
+    None
+  }
 }
