@@ -2,14 +2,16 @@
 
 Exact offline Workbench MCK `0.1.0-draft.11` adds the JSON-only operation
 `run-selected-scheme` to the existing shared Rust runner and checker. Its complete
-fixed inventory qualifies a narrow witness: admission of one selected public
+fixed inventory qualifies a narrow witness: validation of one selected public
 boundary, evaluation beside unused unsupported declarations, and the required
 structural, identity, type-closure, argument and budget rejection controls.
+This is scoped capability verification evidence for this implementation and
+witness, not formal proof of correctness for all programs or business outcomes.
 
 This operation does not qualify unsupported operations in untaken or taken
 branches, terminal inventories, jobs or workers, providers, host/native mappings,
 UI capability advertisement, generated targets, or packaged platforms. The full
-admission-policy semantics require a later exact kit and operation. Draft.11 is
+runtime capability-check policy semantics require a later exact kit and operation. Draft.11 is
 not extended in place to acquire those claims. Historical MCK drafts.1 through
 .10 and existing live profiles remain unchanged.
 
@@ -80,17 +82,17 @@ The initial MoonBit selected planner accepts Library distributions only.
 
 ## Closed observations and comparison
 
-Every admitted request yields `{"status":"ok","value":...}`. The value is one
+Every request with valid fixture infrastructure yields `{"status":"ok","value":...}`. The value is one
 of three closed shapes, always recording effective `policy` and runtime `scheme`:
 
 - Success has a nonempty `boundary` string, exactly one tagged item in `values`,
   and `failure: null`. Policy comes from the actual immutable Scheme plan.
 - Decode or plan refusal has `boundary: null`, `values: null`, and failure
   `{stage: "decode" | "plan", code: ...}`.
-- Evaluate refusal retains the actual admitted `boundary` string, has
+- Evaluate refusal retains the actual validated `boundary` string, has
   `values: null`, and failure `{stage: "evaluate", code: ...}`.
 
-Failure codes contain 1–128 UTF-16 units after admission and are stable codes
+Failure codes contain 1–128 UTF-16 units after validation and are stable codes
 only. Context following a colon, source text, paths, stack traces and private
 error details are omitted. Domain refusals are completed observations and may
 match fixed expected refusals. A `status: "invalid"` envelope, malformed scalar
@@ -103,7 +105,7 @@ is `{entries:[{name,inputs,output}],definitions:[...]}`. Entry, constructor and
 definition arrays have deterministic UTF-16 lexical identity order. Only the
 selected public context and its complete custom-type closure are retained.
 The runner compares boundary text exactly and does not decode it or recreate
-selected-boundary admission. Returned tagged values use the existing structural
+selected-boundary validation. Returned tagged values use the existing structural
 Workbench output projection and its bounded canonical-value checks. Record
 fields compare by name through that existing projection; list/tuple/call order
 and opaque strings remain significant.
@@ -129,6 +131,12 @@ stable refusal codes. It includes omitted/explicit strict controls, permissive
 unused Hole/Incomplete/Native/External declarations, JSON/Ion arguments, public
 entry authorization, arity/type checks, complete recursive/custom boundary
 closure, duplicate identities, and source/input/selected-closure bounds.
+
+Capability validation checks the chosen runtime/provider against the requirements
+of a particular run, selected function and model revision under policy. Ordinary source, type,
+argument, output, receipt and authority checks remain validation. The historical
+`admission` member, profile ID and linked directory keep their names for
+compatibility; this terminology update changes no schema or policy semantics.
 
 A green report witnesses this exact inventory and the adapter implementation
 named by its capabilities. It is not permission to advertise full permissive

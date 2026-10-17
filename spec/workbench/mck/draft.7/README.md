@@ -12,11 +12,11 @@ counterparts for all 13 operations, and adds exact/excessive frame, depth and
 node boundaries, strict UTF-8, BOM preservation, nested whole model/JSON argument
 consumption, decoded-name duplicates and UTF-16 identity bounds. Generic model
 and argument payload acceptance and opaque Ion source deliberately demonstrate
-that frame acceptance does not imply IR/function/value/Ion admission.
+that frame acceptance does not imply IR/function/value/Ion validation.
 
 Every source and bounded generation recipe is inline. `cases.json` is the full
 hash closure; no adapter may read external assets to construct an input. The
-shared runner bounds and admits compact envelopes but never parses native
+shared runner bounds and validates compact envelopes but never parses native
 sources or calculates expected behavior. Tests replaying these observations
 qualify runner/report handling only.
 

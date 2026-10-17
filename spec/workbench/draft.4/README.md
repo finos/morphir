@@ -1,4 +1,6 @@
-# Declared output admission draft
+<a id="declared-output-admission-draft"></a>
+
+# Declared output validation draft
 
 Exact `0.1.0-draft.4` adds `validate-output` to the three [draft.3 operations](../draft.3/README.md).
 Earlier drafts and their corpora are unchanged. Frozen `morphir-invocations-v1`,
@@ -38,21 +40,21 @@ Declarations stay JSON, using draft.2's closed descriptors and constructor regis
 Malformed declarations remain intentional rejection inputs; the runner never
 interprets them or generates expected results from a binding.
 
-Admit the entire declaration graph before decoding the value. Unused definitions,
+Validate the entire declaration graph before decoding the value. Unused definitions,
 dormant branches, duplicate identities, missing references and function boundaries
 keep draft.2/3 strict semantics. Named recursive custom declarations remain valid.
 All existing budgets and diagnostic codes apply, including the 1 MiB compact
 input limit, 10,000 declaration nodes, depth 64 and bounded registry dimensions.
 Output value decoding/validation retains its separate 100,000-node/UTF-16 budget.
-A model error cannot bypass declaration admission or resource limits.
+A model error cannot bypass declaration validation or resource limits.
 
 Validate ordinary returned values against the declared type and constructor
 registry. This includes empty containers and ordinary typed `Result.Err` values.
-Only the five top-level enumerated SDK model errors are admitted without matching
+Only the five top-level enumerated SDK model errors are validated without matching
 an ordinary returned type: `sdk.division_by_zero`, `sdk.invalid_number`,
 `sdk.out_of_range`, `sdk.invalid_comparison`, `sdk.unrepresentable_text`.
 Unknown codes, provider/cancellation/cleanup failures and nested model errors
-cannot become admitted model outcomes. `validate-value` continues to reject
+cannot become validated model outcomes. `validate-value` continues to reject
 top-level model errors as arguments. Successful responses retain the canonical
 value projection; rejected responses contain the bounded code before the first colon.
 
@@ -65,10 +67,10 @@ codes, unrelated/unknown error codes, nested errors and strict declaration closu
 Custom constructor cases cover named recursion, owner, tag and arity.
 
 The parent runner dispatches explicit operation/draft context, sends no expectations
-or case IDs, admits operation-specific projections and compares fixed goldens.
-Report checking reloads the exact corpus SHA-256, admitted claims and ordered
+or case IDs, validates operation-specific projections and compares fixed goldens.
+Report checking reloads the exact corpus SHA-256, validated claim documents and ordered
 case/operation/format inventory, then recomputes qualification. Fixed-observation
-replay in runner tests verifies evidence admission only. Binding qualification
+replay in runner tests checks evidence handling only. Binding qualification
 requires a real adapter. Report, retained-observation and framing limits are unchanged.
 
 ```sh

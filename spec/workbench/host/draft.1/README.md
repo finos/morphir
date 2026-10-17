@@ -98,15 +98,15 @@ All five identity fields retain the jobs profile's 1 to 128 UTF-16 unit limits.
 The model field is Morphir IR JSON source text, not a filesystem path, URL,
 workspace handle or executable source. The example illustrates the wire shape;
 a runnable model also needs the selected public entry. The implementation must
-admit the declared IR revision and may migrate a private copy to its execution
+validate the declared IR revision and may migrate a private copy to its execution
 revision. It must reject unsupported or malformed IR before execution. It must
 not read a path or fetch a URL found in either source field.
 
 `entry` is a public fully qualified function name containing 1 to 1,024 UTF-16
-units. The host admits the model, public entry, declared argument types,
-constructor registry and bounded provider support before accepting an execution
-claim. A caller cannot select a host, session, provider, snapshot, job or call ID
-through this body. The accepted immutable snapshot contains this exact admitted
+units. The host validates the model, public entry, declared argument types,
+constructor registry, and checks runtime/provider capabilities and limits before accepting
+an execution claim. A caller cannot select a host, session, provider, snapshot, job or call ID
+through this body. The accepted immutable snapshot contains this exact validated
 model, entry, arguments and provider binding. Subsequent UI edits cannot alter it.
 
 `inputs` has exactly `format` and `source`:
@@ -123,13 +123,13 @@ Ion Bool, Int and Decimal use their native scalar types; Unit is
 annotation on their tagged struct. An Ion datagram containing several values,
 Ion binary source, an invocation suite envelope or an untyped JSON number array
 is not an argument-list document for this endpoint. Exactly one source value
-must consume the entire input. Codec limits and declared admission still apply,
+must consume the entire input. Codec limits and declared-call validation still apply,
 including depth 64, 100,000 aggregate value nodes/code units per call, numeric
 bounds and unique record fields. The model and argument source are part of the
 same HTTP body budget, not separate allowances. This endpoint has no extensions
 metadata field.
 
-Successful admission returns HTTP 200 and exactly:
+Successful validation returns HTTP 200 and exactly:
 
 ```json
 {
@@ -158,7 +158,7 @@ creating its receipt cursor. The initial receipt is always sequence 0,
 `submitted`, with false acknowledgement and null outcomes, even if execution
 completes before the HTTP reply arrives. A later query observes later revisions.
 
-The owner admits at most one execution claim per accepted job. Query, cancel and
+The owner accepts at most one execution claim per accepted job. Query, cancel and
 reconnect do not execute a second time. A failed submission response can leave
 submission acceptance unknown; this profile supplies no idempotency key or
 submission discovery. Clients must not automatically retry it or relabel a new
@@ -188,7 +188,7 @@ Query and cancellation return HTTP 200 and a raw existing jobs receipt, without
 a wrapper or another version field. Every receipt follows the existing binding,
 sequence, monotonic acknowledgement, immutable terminal and ordered outcome
 rules. Query does not increase sequence just because it was polled. Terminal
-outcomes contain exactly the one call ID `workbench` and must be admitted against
+outcomes contain exactly the one call ID `workbench` and must be validated against
 the submitted public manifest. `Result.Err` is returned data. SDK model errors,
 primary failures, cancellation and separate cleanup evidence remain distinct.
 
@@ -210,7 +210,7 @@ no longer need. This draft does not promise retention after owner restart.
 
 ## Disconnect and bounded failures
 
-HTTP failure, timeout, browser reload and lost transport leave the last admitted
+HTTP failure, timeout, browser reload and lost transport leave the last validated
 receipt intact. They never create cancelled or failed terminal evidence. To
 reconcile an existing job, obtain a newly authenticated descriptor and compare
 the exact previous host, session, provider, draft and operation set. Reconnect
@@ -244,12 +244,12 @@ evidence. The following statuses define the transport categories:
 
 | HTTP status | Category |
 | --- | --- |
-| 400 | Invalid shape, unsupported version, source decoding or admission failure. |
+| 400 | Invalid shape, unsupported version, source decoding or validation failure. |
 | 401 | Connected v1 cookie authentication failed. |
 | 403 | Origin, Host or cross-site request rejected. |
 | 404 | Disabled extension/operation or unknown/released job. |
 | 409 | Invalid transition, changed session or exhausted retained-job capacity. |
-| 413 | Request/frame or admission budget exceeded. |
+| 413 | Request/frame or validation budget exceeded. |
 | 503 | Required upstream authentication or execution service unavailable. |
 
 An HTTP error after submission is transport evidence only. The owner may still

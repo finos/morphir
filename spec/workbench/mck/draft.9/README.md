@@ -3,7 +3,7 @@
 This is the exact, offline **`0.1.0-draft.9`** corpus for `run-native-client`.
 Its 48 fixed scenarios run through the existing shared Rust MCK. No expected
 results or case IDs reach the adapter. See the [contract](../../draft.9/README.md)
-for input admission, canonical observations and qualification limits.
+for input validation, canonical observations and qualification limits.
 
 The scenarios cover:
 

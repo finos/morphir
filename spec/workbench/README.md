@@ -1,12 +1,12 @@
 # Workbench typed value profile
 
 Codec schema package version: `0.1.0-draft.1`. The separately negotiated
-[declared-value admission contract](draft.2/README.md) uses `0.1.0-draft.2` and
+[declared-value validation contract](draft.2/README.md) uses `0.1.0-draft.2` and
 preserves the original codec schemas and kit. These profiles adopt the MoonBit
 execution codecs. Draft readers support only an explicitly listed exact draft.
-The additive [invocation admission contract](draft.3/README.md) uses
-`0.1.0-draft.3`; [declared output admission](draft.4/README.md) uses
-`0.1.0-draft.4`; [terminal outcome admission](draft.5/README.md) uses
+The additive [invocation validation contract](draft.3/README.md) uses
+`0.1.0-draft.3`; [declared output validation](draft.4/README.md) uses
+`0.1.0-draft.4`; [terminal outcome validation](draft.5/README.md) uses
 `0.1.0-draft.5`. Each has its own exact offline MCK negotiation and kit.
 Schema identifiers identify this draft package; they are not an announcement of
 deployed URLs or runtime support.
@@ -23,9 +23,23 @@ cancellation unavailable until the host implements and advertises an agreed
 extension. Compile output and generation must use the same negotiated IR version,
 even when a client migrates a copy for local inspection.
 
+## Runtime capabilities
+
+Capability claims are provider-authored assertions about supported operations,
+features and behavior. Capability verification gathers scoped contract and MCK
+evidence that an implementation behaves as claimed. Passing a fixed kit is not
+formal proof of correctness for all programs or business outcomes.
+
+Capability validation checks whether the chosen runtime/provider meets the
+requirements of a particular run, selected function and model revision, before
+or as execution proceeds under policy. Unsupported-feature decisions are
+capability checks. Ordinary model, type, argument, output, receipt and authority
+checks remain validation. Historical profile IDs, JSON keys, operation names and
+file paths retain their names and compatibility meaning.
+
 ## JSON values
 
-`schemas/value.schema.json` describes model values admitted as typed arguments.
+`schemas/value.schema.json` describes model values validated as typed arguments.
 Every value is tagged. JSON numeric values cannot replace exact integer strings or
 Float64 bit strings.
 
@@ -39,7 +53,7 @@ Float64 bit strings.
 | `text`, `character` | `units`, an array of UTF-16 code units from 0 to 65535 |
 | `list`, `tuple` | `items`, recursively tagged values |
 | `record` | `fields`, an array of `{name, value}` entries |
-| `custom` | `owner`, `tag` and `items`; the public type registry governs admission |
+| `custom` | `owner`, `tag` and `items`; the public type registry governs validation |
 | `maybe` | `case: "nothing"`, or `case: "just"` with `value` |
 | `result` | `case: "ok"` or `case: "err"`, with `value` |
 
@@ -56,13 +70,13 @@ Unicode code points; the implementation's identity budgets count UTF-16 units, s
 the decoder must still enforce those identity limits.
 
 Decimal represents `coefficient * 10^exponent`. Input exponents range from -10,000
-to 10,000. Semantic admission removes trailing coefficient zeroes, then requires
+to 10,000. Semantic validation removes trailing coefficient zeroes, then requires
 the normalized exponent to be from -32 to 10,000. A zero coefficient normalizes to
-exponent zero. For example, coefficient `"10"` with exponent `-33` is admissible
+exponent zero. For example, coefficient `"10"` with exponent `-33` is valid
 after normalization, while coefficient `"1"` with exponent `-33` is rejected.
 Comparison normalizes decimals without truncating them through the SDK.
 
-`schemas/outcome-value.schema.json` admits a typed model value or a top-level
+`schemas/outcome-value.schema.json` validates a typed model value or a top-level
 `model-error` with one of these codes:
 
 - `sdk.division_by_zero`
@@ -115,7 +129,7 @@ After structural validation, a decoder and the execution engine must enforce:
   entry, constructor and record-field names.
 - Depth at most 64 and an aggregate budget of 100,000 value nodes/code units per
   call. Individual schema array limits do not establish that aggregate bound.
-- Exact integer bounds, normalized Decimal admission and unsigned Float64 bits
+- Exact integer bounds, normalized Decimal validation and unsigned Float64 bits
   no greater than `18446744073709551615`.
 - Unique record field names and exact declared fields; constructor ownership and
   arity; recursive registry and declared argument types.
@@ -125,7 +139,7 @@ The accepted and rejected structural fixtures are language-neutral. The
 [codec compatibility slice](mck/README.md) adds independent JSON/Ion text decode
 goldens through the shared Rust `morphir mck workbench` commands and explicit
 implementation adapters. Its test negotiation does not change host capabilities.
-The separate draft.2 kit adds declared-type admission with bounded constructor
+The separate draft.2 kit adds declared-type validation with bounded constructor
 registry closure. Ion binary/reverse-encode goldens, SDK comparison and execution
 receipts remain pending in the shared runner.
 There is no second compatibility checker here. Complete the shared fixture
@@ -137,7 +151,7 @@ The source is finos/morphir-moonbit at merged PR #36 revision
 `fd4026eff313ed0d94f7e9ccb3ec79a63864f1e0`:
 
 - [Invocation codec and limits](https://github.com/finos/morphir-moonbit/blob/fd4026eff313ed0d94f7e9ccb3ec79a63864f1e0/pkgs/morphir-execution/values.mbt)
-- [Typed value codec and manifest admission](https://github.com/finos/morphir-moonbit/blob/fd4026eff313ed0d94f7e9ccb3ec79a63864f1e0/pkgs/morphir-execution/rich_values.mbt)
+- [Typed value codec and manifest validation](https://github.com/finos/morphir-moonbit/blob/fd4026eff313ed0d94f7e9ccb3ec79a63864f1e0/pkgs/morphir-execution/rich_values.mbt)
 - [Execution contract documentation](https://github.com/finos/morphir-moonbit/blob/fd4026eff313ed0d94f7e9ccb3ec79a63864f1e0/pkgs/morphir-execution/README.md)
 - [MoonBit MCK adapter and acceptance gate](https://github.com/finos/morphir-moonbit/tree/d81eeaf0ae0123ffd76c98d7563318abd4e07c2f/apps/morphir-workbench/mck)
 
@@ -154,22 +168,22 @@ Model/revision handles, worksheet source maps, job query/cancellation/recovery,
 artifact publication and provider availability require coordinated host and UI
 contracts. Required results remain separate from observational telemetry.
 
-[Draft.3 invocation admission](draft.3/README.md) adds bounded public-entry allowlist,
+[Draft.3 invocation validation](draft.3/README.md) adds bounded public-entry allowlist,
 argument arity and declared invocation-value checks with an explicit
 [242-case kit](mck/draft.3/README.md). It preserves the historical drafts and frozen
 payload IDs.
 
-[Draft.4 output admission](draft.4/README.md) adds declared returned-value checks
-and recognized top-level SDK model-error admission with an independent
+[Draft.4 output validation](draft.4/README.md) adds declared returned-value checks
+and recognized top-level SDK model-error validation with an independent
 [291-case kit](mck/draft.4/README.md). It preserves strict declaration closure,
 historical drafts and frozen payload IDs. This offline operation does not execute
 functions or qualify complete outcome envelopes, lifecycle receipts or connected
 execution. Those remain separate work before a host advertises an extension.
 
-[Draft.5 terminal outcome admission](draft.5/README.md) binds complete ordered
-terminal evidence to an admitted invocation suite and public manifest. Its
+[Draft.5 terminal outcome validation](draft.5/README.md) binds complete ordered
+terminal evidence to a validated invocation suite and public manifest. Its
 [377-case kit](mck/draft.5/README.md) preserves returned values, SDK model errors,
-primary failures, cancellation and separate cleanup failures. Offline admission
+primary failures, cancellation and separate cleanup failures. Offline validation
 does not establish actual host execution or authoritative job cancellation.
 
 [Snapshot-bound job receipts](jobs/draft.1/README.md) define a separate exact

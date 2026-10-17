@@ -1,15 +1,19 @@
-# Terminal outcome admission draft
+<a id="terminal-outcome-admission-draft"></a>
+
+# Terminal outcome validation draft
 
 Exact `0.1.0-draft.5` adds `validate-outcomes` to the four [draft.4 operations](../draft.4/README.md).
 Earlier drafts and their fixed corpora remain unchanged. Generated-driver
 `morphir-outcomes-v1` and connected `protocolVersion: 1` remain unchanged.
 
-This operation admits supplied terminal evidence against a public-entry manifest
-and an invocation suite. Admission does not authenticate the producer, invoke a
+This operation validates supplied terminal evidence against a public-entry manifest
+and an invocation suite. Validation does not authenticate the producer, invoke a
 function, prove live cancellation, or qualify an actual host lifecycle. A response
 with `status: "ok"` means valid evidence, including failed or cancelled calls.
 
-## Wire and admission order
+<a id="wire-and-admission-order"></a>
+
+## Wire and validation order
 
 Use the existing bounded JSON-lines transport and negotiate the exact draft:
 
@@ -30,17 +34,17 @@ formats. Only `outcomes` becomes an Ion-text string when format is `ion-text`.
 {"id":2,"op":"validate-outcomes","suite":"workbench","contractVersion":"0.1.0-draft.5","format":"json","input":{"suite":{"profile":"morphir-invocations-v1","calls":[{"id":"first","entry":"demo:main#run","arguments":[]}]},"manifest":{"entries":[{"name":"demo:main#run","inputs":[],"output":{"type":"int"}}],"definitions":[]},"outcomes":{"contractVersion":"0.1.0-draft.5","calls":[{"id":"first","outcome":{"status":"returned","value":{"type":"int","value":"42"}}}],"cleanup":null,"extensions":null}}}
 ```
 
-Admit the entire declaration graph, including unused definitions and dormant
-branches, before decoding outcomes. Then admit the invocation suite, public-entry
+Validate the entire declaration graph, including unused definitions and dormant
+branches, before decoding outcomes. Then validate the invocation suite, public-entry
 membership and every argument. Public entries are supplied explicitly; the
 operation never infers visibility from names. Failed or cancelled evidence cannot
 bypass missing custom declarations, function boundaries or wrong arguments.
-Finally decode and admit the terminal envelope and validate returned outputs.
+Finally decode and validate the terminal envelope and validate returned outputs.
 
 ## Closed terminal envelope
 
 All four fields are required: `contractVersion`, `calls`, `cleanup`, `extensions`.
-There must be exactly one call per admitted invocation, with matching IDs in the
+There must be exactly one call per validated invocation, with matching IDs in the
 submitted order. Reject duplicate, missing, extra or swapped calls. Each call has
 exactly `id` and `outcome`. Each outcome is exactly one of:
 
@@ -79,7 +83,7 @@ call order and extension byte order remain significant.
 
 Extensions are absent as unannotated untyped null, or opaque Ion binary bytes.
 JSON uses `{format:"ion-binary",bytes:[...]}`; Ion uses a blob. Validate the bounded
-binary payload and require an exact byte echo of the admitted suite. Do not decode
+binary payload and require an exact byte echo of the validated suite. Do not decode
 and reserialize metadata. A blob containing encoded Ion null differs from absence.
 This operation does not claim general Ion binary or reverse-encoding qualification.
 
@@ -107,11 +111,11 @@ JSON and Ion cover exact values, typed Result.Err, all SDK codes, primary stages
 cleanup with each variant, cancellation, inventory/order, opaque metadata,
 declaration precedence, malformed fields and UTF-16 limits.
 
-The single shared Rust runner sends no expectations or case IDs. It admits an
+The single shared Rust runner sends no expectations or case IDs. It validates an
 operation-specific terminal projection, retains ordered identities and cleanup,
 and compares against fixed goldens. Report checking reloads the exact corpus
 SHA-256, capabilities and case/operation/format inventory, then recomputes verdicts.
-Runner replay tests validate evidence admission only. Real adapters qualify binding
+Runner replay tests check evidence handling only. Real adapters qualify binding
 behavior. UI adoption, live job transitions and cancellation acknowledgement,
 producer authentication, SDK semantics and connected negotiation are subsequent work.
 

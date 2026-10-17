@@ -2,10 +2,10 @@
 
 This transport-neutral profile is exactly `0.1.0-draft.1`, named
 `morphir/workbench/jobs`. It is a new contract namespace, separate from value and
-terminal admission drafts. Its terminal payload references the frozen
+terminal validation drafts. Its terminal payload references the frozen
 `0.1.0-draft.5` outcome envelope without changing it.
 
-This contribution defines receipt admission and client reduction. It does not
+This contribution defines receipt validation and client reduction. It does not
 add JSON-RPC methods, authenticate hosts, execute jobs or advertise support in
 the existing connected host. Connected `protocolVersion: 1`, generated-driver
 v1 and the five offline Workbench MCK drafts remain unchanged. A host adapter
@@ -34,7 +34,7 @@ session or provider cannot borrow the old job's authority. A snapshot handle
 denotes immutable execution input; it is not a local path or a content hash
 unless a separately qualified host contract says so.
 
-Host authentication, provider trust, public-entry admission and snapshot
+Host authentication, provider trust, public-entry validation and snapshot
 creation remain host responsibilities. The reducer checks binding and receipt
 consistency, not cryptographic provenance. New project-scoped metadata bindings
 must remain scoped when a host translates a planned engine job into this identity.
@@ -62,7 +62,7 @@ was issued. Polling may skip revisions; it does not require a complete event log
 The client captures a nonempty ordered inventory of at most 1,000 invocation
 call IDs at submission. IDs contain 1 to 128 UTF-16 units and are unique. A
 terminal must have exactly that inventory, in order. Typed values retain the
-draft.5 bounds and shape; the host must also admit every output against the
+draft.5 bounds and shape; the host must also validate every output against the
 submitted manifest. This receipt reducer alone cannot establish output types.
 `Result.Err` remains returned data. SDK errors, primary failures, cancellation
 and cleanup keep their distinct variants. Cleanup never changes primary status.
@@ -73,7 +73,7 @@ Validate the entire supplied receipt and its identity before sequence handling.
 Malformed or wrongly bound stale evidence rejects. With the exact binding:
 
 - A lower sequence is stale and leaves the cursor unchanged.
-- An equal sequence and identical admitted payload is an idempotent replay.
+- An equal sequence and identical validated payload is an idempotent replay.
 - An equal sequence with conflicting payload rejects.
 - A higher sequence can move submitted to running or directly to terminal.
   Running cannot move back to submitted. Terminal is immutable.
@@ -100,7 +100,7 @@ Connection availability is client state, separate from submitted/running/termina
 An offline cursor cannot adopt incoming receipts. Reconnect requires a newly
 authenticated offer with the exact previous host, session, provider, draft and
 operation set. It restores transport availability and permits a fresh query of
-the existing identity. The ordinary stale/replay/advance rules admit that reply.
+the existing identity. The ordinary stale/replay/advance rules validate that reply.
 
 This qualifies in-memory same-session reconciliation only. It does not promise
 durable job retention, recovery after host restart, transferable sessions,

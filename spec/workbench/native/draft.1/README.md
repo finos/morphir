@@ -16,12 +16,12 @@ HTTP host profile, HTTP status codes, cookies or an invented HTTP session.
 
 ## Trusted caller and session lifetime
 
-The desktop owner admits every command using framework-supplied window,
+The desktop owner validates every command using framework-supplied window,
 bundled-origin and page-instance identity. These values come from trusted native
 context, outside the JSON request. Renderer-supplied URLs, page labels, session
 IDs, grant IDs and job IDs are never credentials. A command from a remote page,
 iframe, different window or retired page fails before it creates authority. The
-binding must distinguish the admitted top-level page from its frames.
+binding must distinguish the authorized top-level page from its frames.
 
 Only a qualified bundled application page can open a session. The owner issues
 a fresh opaque session ID when a different page instance opens. Repeated open
@@ -81,9 +81,9 @@ Open and check return this descriptor in value:
 `offer` is required exactly when `jobs` is present and is the frozen jobs offer.
 Its session ID must equal the native session ID. The owner issues a new host ID
 on startup and binds the provider independently. No offer authorizes executable
-source or a provider selected by renderer data. A native client admits this
+source or a provider selected by renderer data. A native client validates this
 descriptor into the same jobs-offer domain as an authenticated HTTP client;
-transport-specific descriptor admission precedes the shared receipt cursor.
+transport-specific descriptor validation precedes the shared receipt cursor.
 
 Native session, grant and project IDs contain 1 to 128 ASCII letters, digits,
 underscores, periods or hyphens. Nested job identities retain their existing
@@ -107,8 +107,8 @@ HTTP envelope or authentication mechanism:
 
 The reused payload's own `contractVersion` remains required. Submission contains
 Morphir IR JSON source text, a public entry, and one JSON-tagged or Ion-text
-argument list. Admit the IR revision, entry, types, argument bounds and provider
-support before accepting execution. Model and argument source are data, never
+argument list. Validate the IR revision, entry, types and argument bounds, and
+check runtime/provider capabilities and limits before accepting execution. Model and argument source are data, never
 paths or executable authority. The accepted snapshot is immutable. UI edits,
 workspace changes, query and reconnect cannot alter it or execute it twice.
 The fixed call inventory is `["workbench"]`; bind all five returned identity
@@ -121,9 +121,9 @@ terminal evidence follows confirmed execution exit and cleanup. A committed
 result may win a cancellation race. Terminal release cannot terminate running
 work. Capacity rejection cannot silently evict retained jobs. Source, terminal,
 SDK model error, primary failure and separate cleanup evidence retain their
-existing meanings and admission rules.
+existing meanings and validation rules.
 
-A lost transport leaves the last admitted receipt intact. Reconciliation needs a
+A lost transport leaves the last validated receipt intact. Reconciliation needs a
 fresh native check and the exact same host, session, provider, version and
 operations. Only then may the client query the old identity with its existing
 cursor. Reload creates a different page authority, so it cannot adopt the old
@@ -156,7 +156,7 @@ A grant offer contains exactly `cancelled:false`, `grantId`, `projects` and
 `warnings`. Each project row has `id`, display `name`, `available` and display
 `message`. IDs are opaque and belong only to that grant. Display labels and
 warnings are plain text and grant no authority. The owner issues unique project
-IDs within each grant. Before admitting an offer, the client rejects repeated
+IDs within each grant. While validating an offer, the client rejects repeated
 IDs even if their display metadata differs. It never opens an ambiguous token.
 Unavailable rows cannot open.
 At most 128 project/model rows and 128 warning strings are returned; labels and
@@ -175,7 +175,7 @@ advertise workspace support. Limits are 4,096 entries, 256 directories, depth 16
 Prune `.git`, `node_modules`, `_build`, `.mooncakes`, `.idea` and `.vscode`.
 The selected filesystem can still impose latency outside these count limits.
 
-Open admits one capture of at most 16,777,216 original bytes, rechecking discovery
+Open captures at most 16,777,216 original bytes, rechecking discovery
 and file identity before and after reading. It returns `sequence`, `size`,
 `format` and a display-only basename `filename`. Format is `morphir-json`,
 `ion-text` or `ion-binary`; an Ion binary version marker determines binary
@@ -185,7 +185,7 @@ JavaScript is not a required intermediate step.
 
 Capture sequence is an integer from 1 through 2,147,483,647, increasing within a
 grant. The client reserves it before sending open. Release retires that sequence
-even if it arrives before a delayed open, preventing late admission. It clears
+even if it arrives before a delayed open, preventing that open from restoring it. It clears
 only a matching active capture. A stale release cannot clear a newer capture.
 The client confirms release before starting another capture. Failure to confirm
 release blocks capture reuse until cleanup is reconciled or the grant is revoked.
@@ -194,7 +194,7 @@ Read requires the exact current sequence and next byte offset. Its value has
 `sequence`, `offset`, canonical padded `content` base64 and `done`. Decode at most
 196,608 bytes per chunk, at most 262,144 base64 characters. Offsets count bytes;
 the returned offset equals the request's offset, and the next offset advances by
-decoded length. `done` agrees with the admitted total size; empty content is
+decoded length. `done` agrees with the validated total size; empty content is
 valid only at end. The host advances its cursor on read. A lost read reply cannot
 be retried as an idempotent read: release and reopen with a fresh sequence.
 Do not inspect or publish a partial model as success.
@@ -209,7 +209,7 @@ Failure has exactly this shape, with no success operation or value:
 
 | Code | Meaning |
 | --- | --- |
-| `invalid_request` | Invalid shape, version, source codec or declared admission |
+| `invalid_request` | Invalid shape, version, source codec or declared-call validation |
 | `unauthorized` | Trusted caller or page/session check failed |
 | `unavailable` | Operation absent or required service/cleanup unavailable |
 | `not_found` | Unknown/released job, project or capture |
@@ -219,9 +219,9 @@ Failure has exactly this shape, with no success operation or value:
 `effect:"none"` means the owner confirms this request caused no new effect.
 It does not deny effects of earlier requests. `effect:"unknown"` means the owner
 cannot establish this request's effect. Error category alone cannot imply
-rejection before admission. Only an authoritative `none` reply confirms a
+rejection before request acceptance. Only an authoritative `none` reply confirms a
 submission was rejected; it still never triggers automatic retry. Timeout, lost
-or malformed reply, a changed session and post-admission failure leave submission
+or malformed reply, a changed session and failure after request acceptance leave submission
 effects unknown. A new explicit submission must not masquerade as recovery.
 Errors never fabricate terminal job evidence or confirmed capture cleanup.
 Messages contain 1 to 512 code points and must omit model/argument source,
@@ -264,7 +264,7 @@ actual packaged native context tests. Synthetic caller objects cannot establish
 framework origin/page provenance or OS picker authority.
 
 Public adoption must replace the private bootstrap and HTTP-shaped internal
-native offer, admit this descriptor without weakening HTTP authentication, and
+native offer, validate this descriptor without weakening HTTP authentication, and
 retain the shared jobs cursor. Then qualify actual bundled jobs, caller rejection,
 navigation/reload revocation, picker races, capture release, cancellation and
 shutdown against the published contract. Rerun standalone browser and real

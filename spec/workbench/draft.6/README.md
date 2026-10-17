@@ -6,7 +6,7 @@ Workbench MCK `0.1.0-draft.6` qualifies the single offline operation
 receipt profile. Neither that job profile nor its nested
 [draft.5 terminal outcomes](../draft.5/README.md) changes.
 
-This kit is separate from the historical value/admission kits. Drafts.1–.5
+This kit is separate from the historical value/validation kits. Drafts.1–.5
 remain byte-identical and must be qualified separately. An adapter advertises
 exactly `operations: ["reduce-job"]`, `formats: ["json"]` for draft.6. The
 capability message describes an offline reducer; it does not advertise a live
@@ -33,12 +33,12 @@ Actions are closed shapes:
 
 | Action | Exact members | Meaning |
 | --- | --- | --- |
-| Observe | `op: "observe"`, `receipt` | Admit one host receipt. |
+| Observe | `op: "observe"`, `receipt` | Validate one host receipt. |
 | Disconnect | `op: "disconnect"` | Retain receipt; mark local transport offline. |
-| Reconnect | `op: "reconnect"`, `offer` | Admit a fresh offer for the same authority and operation set. |
+| Reconnect | `op: "reconnect"`, `offer` | Validate a fresh offer for the same authority and operation set. |
 | Cancel action | `op: "cancel-action"` | Read the permissible client action; do not acknowledge or terminate anything. |
 
-The adapter admits **all action syntax before executing any action**. Missing,
+The adapter validates **all action syntax before executing any action**. Missing,
 extra or unknown action members, unknown operation tags, a non-object trace,
 non-array `calls` or `actions`, and missing/extra root fields reject the whole
 trace as `workbench.invalid_job_trace`. Receipt and offer payloads remain
@@ -48,9 +48,9 @@ the cursor and retained receipt stay unchanged. A malformed observe payload is
 decoded before the cursor's connectivity check; a well-formed receipt supplied
 offline rejects as `workbench.job_disconnected`.
 
-The frozen reducer admits complete receipts before stale/replay handling.
+The frozen reducer validates complete receipts before stale/replay handling.
 Wrongly bound or malformed stale evidence cannot become an accepted stale
-observation. Equal sequence plus equal admitted payload is replay; equal sequence
+observation. Equal sequence plus equal validated payload is replay; equal sequence
 plus different payload is `workbench.job_conflict`. Greater sequences require
 an actual state or acknowledgement change. Running cannot regress, cancellation
 acknowledgement cannot reverse, and terminal evidence is immutable. A valid
@@ -62,7 +62,7 @@ A successful response is exactly `id`, `status: "ok"`, and `value`.
 `value` has exactly:
 
 - `identity`: the original expected five-field identity;
-- `receipt`: the final admitted full job receipt, including exact draft.5 outcomes;
+- `receipt`: the final validated full job receipt, including exact draft.5 outcomes;
 - `connected`: final local transport availability;
 - `cancelAction`: `send`, `pending`, `already-terminal`, `unavailable` or `disconnected`;
 - `observations`: one ordered bounded view per action.
@@ -107,7 +107,7 @@ and allow later actions to run. Error messages are not qualification data.
 | Observation views | Exactly one per action, at most 64 |
 
 Outer framing must reject duplicate JSON members and over-budget requests.
-The fixed corpus itself only admits inputs within the 1 MiB runner budget;
+The fixed corpus itself only contains inputs within the 1 MiB runner budget;
 oversized framing belongs to adapter/runner boundary tests. The corpus includes
 a valid in-budget input whose retained value plus bounded views exceeds the
 output limit, requiring rejection without returning a partial projection.
@@ -115,9 +115,9 @@ output limit, requiring rejection without returning a partial projection.
 Schemas are closed and operation-specific. They reference the frozen job
 identity/receipt resources, which in turn reference draft.5 terminal outcomes
 and the original value schema. Schema string length counts code points;
-portable semantic admission checks UTF-16 units. Schemas also cannot prove
+portable semantic validation checks UTF-16 units. Schemas also cannot prove
 receipt/identity equality, transition order, current-view equality, authority
-provenance or nested output type admission. The shared runner binds projections
+provenance or nested output type validation. The shared runner binds projections
 to operation context, validates canonical nested outcome shape, and recomputes
 qualification against the exact corpus hash. A report's own `qualified` flag is
 not evidence by itself.

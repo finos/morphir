@@ -1,9 +1,26 @@
-# Selected-entry admission policy
+<a id="selected-entry-admission-policy"></a>
+
+# Runtime capabilities and capability checks
 
 Profile `morphir/workbench/admission`, exact version `0.1.0-draft.1`, defines
-strict and permissive admission of selected public Morphir calls. This document
-states the full semantic requirements. It does not assert that any evaluator,
-provider, UI, host mapping or packaged platform satisfies all of them.
+strict and permissive policies for runtime capability checks on selected public
+Morphir calls. Both policies retain mandatory model, type, argument, output and
+authority validation. This document states the full semantic requirements; each
+evaluator, provider, UI, host mapping and packaged platform needs its own scoped
+evidence before claiming support.
+
+The profile ID, directory path and existing `admission` JSON key retain their
+historical names for compatibility. The prose now uses runtime capabilities and
+capability checks for unsupported-feature decisions. These terminology changes
+do not rename identifiers, change wire shapes or alter policy behavior.
+
+Capability claims are provider-authored assertions about supported behavior.
+Capability verification gathers scoped contract and MCK evidence that an
+implementation behaves as claimed. It is not formal proof of correctness for all
+programs or business outcomes. Capability validation checks whether the chosen
+runtime/provider meets the requirements of a particular run, selected function
+and model revision, before or as execution proceeds under policy. Model, type, argument, output,
+receipt and authority validation retain their ordinary meanings.
 
 The independently versioned [MCK draft.11 witness](../../draft.11/README.md)
 qualifies only the selected-boundary and unused-declaration slice. Full
@@ -13,7 +30,9 @@ MCK, jobs, native, HTTP and Rust protocol versions are not extended by this
 profile. A profile version, test-transport version, evaluator selection and
 host/native mapping version are separate identities.
 
-## Closed selection and defaults
+<a id="closed-selection-and-defaults"></a>
+
+## Capability validation policy and defaults
 
 An explicit [selection](schemas/selection.schema.json) is:
 
@@ -28,15 +47,21 @@ An explicit [selection](schemas/selection.schema.json) is:
 The only policies are `strict` and `permissive`. Exact drafts, profiles, fields,
 scalar kinds and runtime selections are checked before planning. Unknown values,
 adjacent drafts and build suffixes reject. A mapping may define omitted selection
-as strict; the mapping must say so explicitly. Resolve that default once at
-admission. Explicit permissive never silently falls back to strict or to another
+as strict; the mapping must say so explicitly. Resolve that default once before
+planning. Explicit permissive never silently falls back to strict or to another
 runtime. An existing strict-only mapping continues to reject added members.
 
 Policy is independent of source language. A frontend participates by producing
 accepted IR with a supported selected boundary. Scheme interpreter qualification
 does not imply generated JavaScript, Wasm or native execution or broader SDK
-support. A qualified capability is scoped to the actual evaluator/provider,
-selected public boundary and exact profile, rather than a global permissive flag.
+support. Capability verification evidence is scoped to the actual
+evaluator/provider, selected public boundary and exact profile. A global
+permissive flag cannot establish that scope.
+
+Strict policy retains the existing whole-library capability checks before
+execution. Permissive policy may defer unsupported-feature decisions for unused
+definitions and check represented unsupported operations when they are reached.
+Both retain the mandatory validation and execution-order requirements below.
 
 ## Invariants before any deferral
 
@@ -49,9 +74,9 @@ structural budgets may not be recovered as deferred operations.
 
 Resolve selected entries from actual IR and public visibility. A caller-supplied
 manifest never grants entry authority. Validate exact arity and tagged arguments.
-Admit the complete selected input and output type closure, including every
+Validate the complete selected input and output type closure, including every
 constructor alternative, registry reference and recursive relationship. Function,
-unsupported, private-constructor, unresolved or otherwise inadmissible selected
+unsupported, private-constructor, unresolved or otherwise invalid selected
 boundaries reject before execution, even for empty List, Nothing, another chosen
 constructor, later failure, cancellation or model error. Finite named recursive
 ADTs require bounded complete closure; generic declarations and alias cycles have
@@ -134,22 +159,25 @@ remains returned data. Unsupported execution is never a dummy value, SDK model
 error or successful `Result.Err`. MCK report `unsupported` means a missing
 capability claim; it is distinct from this reached runtime failure.
 
-Validate actual returned values and every terminal against the immutable admitted
+Validate actual returned values and every terminal against the immutable validated
 selected boundary. Check ordered call identities, exact call count, extensions
 and independent cleanup causes. Failed/cancelled evidence never excuses a bad
 selected boundary. Reuse unchanged tagged-value and terminal-envelope codecs;
 do not pass the original permissively deferred declaration graph to frozen
 whole-manifest `validate-outcomes`, then ignore its rejection. Completion needs a
-new policy-aware admission path tied to the retained sound context.
+new validation path that checks the captured context under the selected
+capability policy.
 
 Stable diagnostics contain bounded codes and existing bounded human messages,
 without source text, private paths, stack traces or secrets. Preserve primary and
 cleanup failures independently. Completed effects remain accounted for when a
 later operation fails; this policy promises no rollback.
 
-## Immutability and qualification gates
+<a id="immutability-and-qualification-gates"></a>
 
-Freeze source, selected entry, tagged arguments, admitted boundary context,
+## Immutable selection and capability verification
+
+Freeze source, selected entry, tagged arguments, validated boundary context,
 effective exact policy/profile and evaluator/provider once at submission. The
 same selection must reach actual planning, job state, claim, execution and
 completion-time replanning/validation. Edits, restored drafts, reconnects,
@@ -158,8 +186,8 @@ Replanning copies the accepted selection into a fresh plan identity or rejects
 an incompatible provider. Query, cancellation and release do not replan or
 execute again. Preserve once-only claims and uncertain-submission behavior.
 
-Before advertisement, an implementation must pass independent complete fixed
-expectations for unused/reached operations; paired branch and evaluation-order
+Before capability advertisement, verification must gather scoped evidence by
+running an implementation against independent complete fixed expectations for unused/reached operations; paired branch and evaluation-order
 cases; all selected closure alternatives; native candidate/fallback behavior;
 wrong/malformed/oversized outputs; exact scalar and JSON/Ion argument controls;
 terminal inventory, cancellation, primary/cleanup failures; and immutable policy

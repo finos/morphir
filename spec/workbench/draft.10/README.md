@@ -62,7 +62,7 @@ entry 512, and argument source 16,384. The compact encoded input is at most
 491,520 UTF-8 bytes. Literal shapes and duplicate members are checked before typed
 conversion, including JSON library private marker objects. Opaque completion
 objects remain subject to those infrastructure guards. Frozen draft.5 outcome
-admission belongs to the production `jobs.Host`, not the runner.
+validation belongs to the production `jobs.Host`, not the runner.
 
 Aliases refer to prior returned identities. An unresolved request alias produces
 an observed rejected result with `reply: null`, `cleanup: null`, and
@@ -72,7 +72,7 @@ constructs a guessed native token. An unresolved completion job yields
 
 ## Observations and fixed expectations
 
-Every admitted scenario returns `{"status":"ok","value":...}`. Domain refusals
+Every scenario with valid fixture infrastructure returns `{"status":"ok","value":...}`. Domain refusals
 are native replies in the projection. This operation has no domain-invalid
 observation. Malformed infrastructure or observations are runner errors.
 
@@ -99,7 +99,7 @@ Expected error effects may be an exact string or a fixed, nonempty, unique array
 of permitted effects, such as `["none", "unknown"]`. Use a set only where the
 accepted native contract allows either precise no-effect rejection or a
 conservative unknown rejection. Keep exact effects where uncertainty or
-pre-admission rejection is established. The Rust runner owns set membership.
+rejection with no new effect is established. The Rust runner owns set membership.
 Actual observations and saved reports always contain one string effect and
 reject effect arrays. All other projected fields compare exactly.
 

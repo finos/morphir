@@ -85,13 +85,13 @@ with the captured operation and optional session. The decoder checks:
    most 262,144 base64 characters and 196,608 decoded bytes; an empty chunk
    requires `done: true`. These runtime rules exceed structural JSON Schema.
 
-An admitted success yields exactly:
+A validated success yields exactly:
 
 ```json
 {"status":"ok","value":{"replyAccepted":true,"ok":true,"operation":"session.close"}}
 ```
 
-An admitted native failure yields exactly:
+A validated native failure yields exactly:
 
 ```json
 {"status":"ok","value":{"replyAccepted":true,"ok":false,"error":{"code":"unavailable","effect":"unknown"}}}
@@ -99,13 +99,13 @@ An admitted native failure yields exactly:
 
 Portable error codes are `invalid_request`, `unauthorized`, `unavailable`,
 `not_found`, `conflict` and `limit`. Effects are `none` or `unknown`; neither may
-be collapsed into the other. MCK `status: "ok"` means the reply was admitted,
-including an admitted native failure. It is not a claim of successful execution.
+be collapsed into the other. MCK `status: "ok"` means the reply was validated,
+including a validated native failure. It is not a claim of successful execution.
 Messages, paths, session IDs, receipts and workspace/model bytes are omitted.
 
 Decoder rejection is `{"status":"invalid","code":"…"}`:
 
-| Code | Failed admission |
+| Code | Failed validation |
 | --- | --- |
 | `native.reply.limit` | Raw byte or JSON parser budget |
 | `native.reply.utf8` | Strict UTF-8 |
@@ -126,7 +126,7 @@ published structural response fixtures with explicit runtime expectations,
 all operations, both native error effects, call correlation, byte/parser
 boundaries, exact numeric tokens, project uniqueness and base64 canonicality.
 
-This qualifies offline reply admission. It does not exercise the native client
+This qualifies offline reply validation. It does not exercise the native client
 or owner lifecycle, authenticate window/origin provenance, create real picker or
 filesystem grants, prove process exit, or qualify a packaged OS/architecture.
 Those require executable lifecycle kits and separate platform acceptance.

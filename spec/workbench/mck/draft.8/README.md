@@ -6,14 +6,14 @@ response decoding for unchanged native profile `0.1.0-draft.1`. Historical kits
 remain unchanged and qualify separately. Expected results are authored from the
 published contract, independently of adapter observations.
 
-The corpus contains 58 admitted replies and 127 decoder rejections:
+The corpus contains 58 validated replies and 127 decoder rejections:
 
 - `schema-000` through `schema-096` preserve all 97 published response structural
   fixtures. Captured operation/session context is explicit. Structural validity
-  is not runtime admission: `schema-096` rejects duplicate project IDs with
+  is not runtime validation: `schema-096` rejects duplicate project IDs with
   different metadata, as the published runtime requirement specifies. An unknown
   successful operation rejects as `native.reply.operation`.
-- Every portable native error code is admitted with both `none` and `unknown`
+- Every portable native error code is validated with both `none` and `unknown`
   effects, without including its private message in observations.
 - Raw cases cover invalid UTF-8, BOM, whole-value consumption, decoded-name
   duplicates, closed shapes, and literal objects resembling library internals.
