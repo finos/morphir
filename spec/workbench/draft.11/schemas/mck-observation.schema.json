@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-observation.schema.json",
+  "title": "Selected Scheme witness mck-observation",
+  "description": "Exact draft.11 selected-boundary and unused-declaration witness, without full policy, branch, terminal, provider or UI conformance claims",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+        "values": [
+          {
+            "type": "int",
+            "value": "42"
+          }
+        ],
+        "failure": null
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "status", "value" ],
+  "properties": {
+    "status": {
+      "const": "ok"
+    },
+    "value": {
+      "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/selected-scheme-projection.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

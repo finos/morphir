@@ -1,0 +1,1204 @@
+{
+  "formatVersion": "0.1.0-draft.11",
+  "cases": [
+    {
+      "id": "permissive-unused-hole-int42",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"doc\":\"Valid unused hole\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "supported-omitted-policy-is-strict",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "strict",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "supported-explicit-strict-int42",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "strict"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "strict",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "supported-explicit-permissive-int42",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "supported-ion-arguments-int42",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "ion-text",
+          "source": "$ion_1_0 [ ]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "omitted-strict-rejects-unused-hole",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "strict",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "moonbit.incomplete_body"
+          }
+        }
+      }
+    },
+    {
+      "id": "strict-rejects-unused-hole",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "strict"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "strict",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "moonbit.incomplete_body"
+          }
+        }
+      }
+    },
+    {
+      "id": "strict-rejects-unused-incomplete",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"IncompleteBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"incompleteness\":{\"Draft\":{}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "strict"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "strict",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "moonbit.incomplete_body"
+          }
+        }
+      }
+    },
+    {
+      "id": "permissive-unused-incomplete-int42",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"IncompleteBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"incompleteness\":{\"Draft\":{}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "strict-rejects-unused-native",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"NativeBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"nativeInfo\":{\"hint\":{\"Arithmetic\":{}}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "strict"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "strict",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "moonbit.unresolved_implementation"
+          }
+        }
+      }
+    },
+    {
+      "id": "permissive-unused-native-int42",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"NativeBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"nativeInfo\":{\"hint\":{\"Arithmetic\":{}}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "strict-rejects-unused-external",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"ExternalBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"externals\":[{\"targetPlatform\":\"javascript\",\"externalName\":\"unbound.external\"}]}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "strict"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "strict",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "moonbit.unresolved_implementation"
+          }
+        }
+      }
+    },
+    {
+      "id": "permissive-unused-external-int42",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"ExternalBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"externals\":[{\"targetPlatform\":\"javascript\",\"externalName\":\"unbound.external\"}]}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "permissive-private-entry-rejected",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Private\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.entry_not_public_or_supported"
+          }
+        }
+      }
+    },
+    {
+      "id": "permissive-missing-entry-rejected",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#absent",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.entry_not_public_or_supported"
+          }
+        }
+      }
+    },
+    {
+      "id": "permissive-wrong-arity-rejected",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"1\"}]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.wrong_arity"
+          }
+        }
+      }
+    },
+    {
+      "id": "permissive-wrong-tagged-argument-rejected",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{\"x\":\"morphir/SDK:basics#int\"},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"bool\",\"value\":true}]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.wrong_type"
+          }
+        }
+      }
+    },
+    {
+      "id": "empty-list-cannot-waive-function-boundary",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{\"x\":{\"Reference\":[\"morphir/SDK:list#list\",{\"Function\":{\"parameterType\":\"morphir/SDK:basics#int\",\"returnType\":\"morphir/SDK:basics#int\"}}]}},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"list\",\"items\":[]}]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.boundary_function"
+          }
+        }
+      }
+    },
+    {
+      "id": "empty-maybe-cannot-waive-function-boundary",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{\"x\":{\"Reference\":[\"morphir/SDK:maybe#maybe\",{\"Function\":{\"parameterType\":\"morphir/SDK:basics#int\",\"returnType\":\"morphir/SDK:basics#int\"}}]}},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"maybe\",\"case\":\"nothing\"}]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.boundary_function"
+          }
+        }
+      }
+    },
+    {
+      "id": "unselected-custom-alternative-cannot-waive-function-boundary",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"choice\":{\"Public\":{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":{\"good\":[],\"bad\":[[\"f\",{\"Function\":{\"parameterType\":\"morphir/SDK:basics#int\",\"returnType\":\"morphir/SDK:basics#int\"}}]]}}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"selected:main#choice\",\"body\":{\"Constructor\":\"selected:main#good\"}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.boundary_function"
+          }
+        }
+      }
+    },
+    {
+      "id": "nothing-cannot-waive-missing-custom-reference",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{\"x\":{\"Reference\":[\"morphir/SDK:maybe#maybe\",\"selected:main#missing\"]}},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"maybe\",\"case\":\"nothing\"}]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.unresolved_custom_type"
+          }
+        }
+      }
+    },
+    {
+      "id": "named-recursive-public-boundary-complete-and-valid",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"tree\":{\"Public\":{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":{\"branch\":[[\"children\",{\"Reference\":[\"morphir/SDK:list#list\",\"selected:main#tree\"]}]],\"leaf\":[[\"value\",\"morphir/SDK:basics#int\"]]}}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{\"x\":\"selected:main#tree\"},\"outputType\":\"selected:main#tree\",\"body\":{\"Variable\":\"x\"}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"custom\",\"owner\":\"selected:main#tree\",\"tag\":\"selected:main#leaf\",\"items\":[{\"type\":\"int\",\"value\":\"42\"}]}]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[{\"constructors\":[{\"inputs\":[{\"item\":{\"name\":\"selected:main#tree\",\"type\":\"custom\"},\"type\":\"list\"}],\"name\":\"selected:main#branch\"},{\"inputs\":[{\"type\":\"int\"}],\"name\":\"selected:main#leaf\"}],\"name\":\"selected:main#tree\"}],\"entries\":[{\"inputs\":[{\"name\":\"selected:main#tree\",\"type\":\"custom\"}],\"name\":\"selected:main#answer\",\"output\":{\"name\":\"selected:main#tree\",\"type\":\"custom\"}}]}",
+          "values": [
+            {
+              "type": "custom",
+              "owner": "selected:main#tree",
+              "tag": "selected:main#leaf",
+              "items": [
+                {
+                  "type": "int",
+                  "value": "42"
+                }
+              ]
+            }
+          ],
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "recursive-custom-closure-checks-unselected-function-constructor",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"tree\":{\"Public\":{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":{\"branch\":[[\"children\",{\"Reference\":[\"morphir/SDK:list#list\",\"selected:main#tree\"]}]],\"leaf\":[[\"value\",\"morphir/SDK:basics#int\"]],\"bad\":[[\"fn\",{\"Function\":{\"parameterType\":\"morphir/SDK:basics#int\",\"returnType\":\"morphir/SDK:basics#int\"}}]]}}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{\"x\":\"selected:main#tree\"},\"outputType\":\"selected:main#tree\",\"body\":{\"Variable\":\"x\"}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"custom\",\"owner\":\"selected:main#tree\",\"tag\":\"selected:main#leaf\",\"items\":[{\"type\":\"int\",\"value\":\"42\"}]}]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.boundary_function"
+          }
+        }
+      }
+    },
+    {
+      "id": "private-custom-constructors-cannot-cross-selected-boundary",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"hidden\":{\"Public\":{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Private\",\"constructors\":{\"hidden\":[]}}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"selected:main#hidden\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.constructor_visibility"
+          }
+        }
+      }
+    },
+    {
+      "id": "duplicate-canonical-constructor-identity-rejects-whole-source",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"one\":{\"Public\":{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":{\"same\":[]}}}},\"two\":{\"Public\":{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":{\"same\":[]}}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.ambiguous_identity"
+          }
+        }
+      }
+    },
+    {
+      "id": "generic-selected-alias-is-not-a-supported-boundary",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"alias\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[\"a\"],\"typeExp\":\"morphir/SDK:basics#int\"}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"selected:main#alias\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.unsupported_type"
+          }
+        }
+      }
+    },
+    {
+      "id": "selected-alias-cycle-rejected",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"a\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#b\"}}},\"b\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#a\"}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"selected:main#a\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.unsupported_type"
+          }
+        }
+      }
+    },
+    {
+      "id": "selected-type-depth-budget-is-not-waived",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"alias-0\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-1\"}}},\"alias-1\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-2\"}}},\"alias-2\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-3\"}}},\"alias-3\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-4\"}}},\"alias-4\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-5\"}}},\"alias-5\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-6\"}}},\"alias-6\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-7\"}}},\"alias-7\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-8\"}}},\"alias-8\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-9\"}}},\"alias-9\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-10\"}}},\"alias-10\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-11\"}}},\"alias-11\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-12\"}}},\"alias-12\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-13\"}}},\"alias-13\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-14\"}}},\"alias-14\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-15\"}}},\"alias-15\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-16\"}}},\"alias-16\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-17\"}}},\"alias-17\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-18\"}}},\"alias-18\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-19\"}}},\"alias-19\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-20\"}}},\"alias-20\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-21\"}}},\"alias-21\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-22\"}}},\"alias-22\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-23\"}}},\"alias-23\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-24\"}}},\"alias-24\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-25\"}}},\"alias-25\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-26\"}}},\"alias-26\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-27\"}}},\"alias-27\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-28\"}}},\"alias-28\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-29\"}}},\"alias-29\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-30\"}}},\"alias-30\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-31\"}}},\"alias-31\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-32\"}}},\"alias-32\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-33\"}}},\"alias-33\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-34\"}}},\"alias-34\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-35\"}}},\"alias-35\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-36\"}}},\"alias-36\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-37\"}}},\"alias-37\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-38\"}}},\"alias-38\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-39\"}}},\"alias-39\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-40\"}}},\"alias-40\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-41\"}}},\"alias-41\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-42\"}}},\"alias-42\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-43\"}}},\"alias-43\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-44\"}}},\"alias-44\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-45\"}}},\"alias-45\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-46\"}}},\"alias-46\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-47\"}}},\"alias-47\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-48\"}}},\"alias-48\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-49\"}}},\"alias-49\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-50\"}}},\"alias-50\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-51\"}}},\"alias-51\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-52\"}}},\"alias-52\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-53\"}}},\"alias-53\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-54\"}}},\"alias-54\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-55\"}}},\"alias-55\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-56\"}}},\"alias-56\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-57\"}}},\"alias-57\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-58\"}}},\"alias-58\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-59\"}}},\"alias-59\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-60\"}}},\"alias-60\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-61\"}}},\"alias-61\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-62\"}}},\"alias-62\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-63\"}}},\"alias-63\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-64\"}}},\"alias-64\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"selected:main#alias-65\"}}},\"alias-65\":{\"Public\":{\"TypeAliasDefinition\":{\"typeParams\":[],\"typeExp\":\"morphir/SDK:basics#int\"}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"selected:main#alias-0\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.type_limit"
+          }
+        }
+      }
+    },
+    {
+      "id": "selected-constructor-count-budget-is-not-waived",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"wide\":{\"Public\":{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":{\"c-0\":[],\"c-1\":[],\"c-2\":[],\"c-3\":[],\"c-4\":[],\"c-5\":[],\"c-6\":[],\"c-7\":[],\"c-8\":[],\"c-9\":[],\"c-10\":[],\"c-11\":[],\"c-12\":[],\"c-13\":[],\"c-14\":[],\"c-15\":[],\"c-16\":[],\"c-17\":[],\"c-18\":[],\"c-19\":[],\"c-20\":[],\"c-21\":[],\"c-22\":[],\"c-23\":[],\"c-24\":[],\"c-25\":[],\"c-26\":[],\"c-27\":[],\"c-28\":[],\"c-29\":[],\"c-30\":[],\"c-31\":[],\"c-32\":[],\"c-33\":[],\"c-34\":[],\"c-35\":[],\"c-36\":[],\"c-37\":[],\"c-38\":[],\"c-39\":[],\"c-40\":[],\"c-41\":[],\"c-42\":[],\"c-43\":[],\"c-44\":[],\"c-45\":[],\"c-46\":[],\"c-47\":[],\"c-48\":[],\"c-49\":[],\"c-50\":[],\"c-51\":[],\"c-52\":[],\"c-53\":[],\"c-54\":[],\"c-55\":[],\"c-56\":[],\"c-57\":[],\"c-58\":[],\"c-59\":[],\"c-60\":[],\"c-61\":[],\"c-62\":[],\"c-63\":[],\"c-64\":[],\"c-65\":[],\"c-66\":[],\"c-67\":[],\"c-68\":[],\"c-69\":[],\"c-70\":[],\"c-71\":[],\"c-72\":[],\"c-73\":[],\"c-74\":[],\"c-75\":[],\"c-76\":[],\"c-77\":[],\"c-78\":[],\"c-79\":[],\"c-80\":[],\"c-81\":[],\"c-82\":[],\"c-83\":[],\"c-84\":[],\"c-85\":[],\"c-86\":[],\"c-87\":[],\"c-88\":[],\"c-89\":[],\"c-90\":[],\"c-91\":[],\"c-92\":[],\"c-93\":[],\"c-94\":[],\"c-95\":[],\"c-96\":[],\"c-97\":[],\"c-98\":[],\"c-99\":[],\"c-100\":[],\"c-101\":[],\"c-102\":[],\"c-103\":[],\"c-104\":[],\"c-105\":[],\"c-106\":[],\"c-107\":[],\"c-108\":[],\"c-109\":[],\"c-110\":[],\"c-111\":[],\"c-112\":[],\"c-113\":[],\"c-114\":[],\"c-115\":[],\"c-116\":[],\"c-117\":[],\"c-118\":[],\"c-119\":[],\"c-120\":[],\"c-121\":[],\"c-122\":[],\"c-123\":[],\"c-124\":[],\"c-125\":[],\"c-126\":[],\"c-127\":[],\"c-128\":[],\"c-129\":[],\"c-130\":[],\"c-131\":[],\"c-132\":[],\"c-133\":[],\"c-134\":[],\"c-135\":[],\"c-136\":[],\"c-137\":[],\"c-138\":[],\"c-139\":[],\"c-140\":[],\"c-141\":[],\"c-142\":[],\"c-143\":[],\"c-144\":[],\"c-145\":[],\"c-146\":[],\"c-147\":[],\"c-148\":[],\"c-149\":[],\"c-150\":[],\"c-151\":[],\"c-152\":[],\"c-153\":[],\"c-154\":[],\"c-155\":[],\"c-156\":[],\"c-157\":[],\"c-158\":[],\"c-159\":[],\"c-160\":[],\"c-161\":[],\"c-162\":[],\"c-163\":[],\"c-164\":[],\"c-165\":[],\"c-166\":[],\"c-167\":[],\"c-168\":[],\"c-169\":[],\"c-170\":[],\"c-171\":[],\"c-172\":[],\"c-173\":[],\"c-174\":[],\"c-175\":[],\"c-176\":[],\"c-177\":[],\"c-178\":[],\"c-179\":[],\"c-180\":[],\"c-181\":[],\"c-182\":[],\"c-183\":[],\"c-184\":[],\"c-185\":[],\"c-186\":[],\"c-187\":[],\"c-188\":[],\"c-189\":[],\"c-190\":[],\"c-191\":[],\"c-192\":[],\"c-193\":[],\"c-194\":[],\"c-195\":[],\"c-196\":[],\"c-197\":[],\"c-198\":[],\"c-199\":[],\"c-200\":[],\"c-201\":[],\"c-202\":[],\"c-203\":[],\"c-204\":[],\"c-205\":[],\"c-206\":[],\"c-207\":[],\"c-208\":[],\"c-209\":[],\"c-210\":[],\"c-211\":[],\"c-212\":[],\"c-213\":[],\"c-214\":[],\"c-215\":[],\"c-216\":[],\"c-217\":[],\"c-218\":[],\"c-219\":[],\"c-220\":[],\"c-221\":[],\"c-222\":[],\"c-223\":[],\"c-224\":[],\"c-225\":[],\"c-226\":[],\"c-227\":[],\"c-228\":[],\"c-229\":[],\"c-230\":[],\"c-231\":[],\"c-232\":[],\"c-233\":[],\"c-234\":[],\"c-235\":[],\"c-236\":[],\"c-237\":[],\"c-238\":[],\"c-239\":[],\"c-240\":[],\"c-241\":[],\"c-242\":[],\"c-243\":[],\"c-244\":[],\"c-245\":[],\"c-246\":[],\"c-247\":[],\"c-248\":[],\"c-249\":[],\"c-250\":[],\"c-251\":[],\"c-252\":[],\"c-253\":[],\"c-254\":[],\"c-255\":[],\"c-256\":[]}}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"selected:main#wide\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.type_limit"
+          }
+        }
+      }
+    },
+    {
+      "id": "selected-constructor-arity-budget-is-not-waived",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{\"wide\":{\"Public\":{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":{\"wide\":[[\"x-0\",\"morphir/SDK:basics#int\"],[\"x-1\",\"morphir/SDK:basics#int\"],[\"x-2\",\"morphir/SDK:basics#int\"],[\"x-3\",\"morphir/SDK:basics#int\"],[\"x-4\",\"morphir/SDK:basics#int\"],[\"x-5\",\"morphir/SDK:basics#int\"],[\"x-6\",\"morphir/SDK:basics#int\"],[\"x-7\",\"morphir/SDK:basics#int\"],[\"x-8\",\"morphir/SDK:basics#int\"],[\"x-9\",\"morphir/SDK:basics#int\"],[\"x-10\",\"morphir/SDK:basics#int\"],[\"x-11\",\"morphir/SDK:basics#int\"],[\"x-12\",\"morphir/SDK:basics#int\"],[\"x-13\",\"morphir/SDK:basics#int\"],[\"x-14\",\"morphir/SDK:basics#int\"],[\"x-15\",\"morphir/SDK:basics#int\"],[\"x-16\",\"morphir/SDK:basics#int\"],[\"x-17\",\"morphir/SDK:basics#int\"],[\"x-18\",\"morphir/SDK:basics#int\"],[\"x-19\",\"morphir/SDK:basics#int\"],[\"x-20\",\"morphir/SDK:basics#int\"],[\"x-21\",\"morphir/SDK:basics#int\"],[\"x-22\",\"morphir/SDK:basics#int\"],[\"x-23\",\"morphir/SDK:basics#int\"],[\"x-24\",\"morphir/SDK:basics#int\"],[\"x-25\",\"morphir/SDK:basics#int\"],[\"x-26\",\"morphir/SDK:basics#int\"],[\"x-27\",\"morphir/SDK:basics#int\"],[\"x-28\",\"morphir/SDK:basics#int\"],[\"x-29\",\"morphir/SDK:basics#int\"],[\"x-30\",\"morphir/SDK:basics#int\"],[\"x-31\",\"morphir/SDK:basics#int\"],[\"x-32\",\"morphir/SDK:basics#int\"],[\"x-33\",\"morphir/SDK:basics#int\"],[\"x-34\",\"morphir/SDK:basics#int\"],[\"x-35\",\"morphir/SDK:basics#int\"],[\"x-36\",\"morphir/SDK:basics#int\"],[\"x-37\",\"morphir/SDK:basics#int\"],[\"x-38\",\"morphir/SDK:basics#int\"],[\"x-39\",\"morphir/SDK:basics#int\"],[\"x-40\",\"morphir/SDK:basics#int\"],[\"x-41\",\"morphir/SDK:basics#int\"],[\"x-42\",\"morphir/SDK:basics#int\"],[\"x-43\",\"morphir/SDK:basics#int\"],[\"x-44\",\"morphir/SDK:basics#int\"],[\"x-45\",\"morphir/SDK:basics#int\"],[\"x-46\",\"morphir/SDK:basics#int\"],[\"x-47\",\"morphir/SDK:basics#int\"],[\"x-48\",\"morphir/SDK:basics#int\"],[\"x-49\",\"morphir/SDK:basics#int\"],[\"x-50\",\"morphir/SDK:basics#int\"],[\"x-51\",\"morphir/SDK:basics#int\"],[\"x-52\",\"morphir/SDK:basics#int\"],[\"x-53\",\"morphir/SDK:basics#int\"],[\"x-54\",\"morphir/SDK:basics#int\"],[\"x-55\",\"morphir/SDK:basics#int\"],[\"x-56\",\"morphir/SDK:basics#int\"],[\"x-57\",\"morphir/SDK:basics#int\"],[\"x-58\",\"morphir/SDK:basics#int\"],[\"x-59\",\"morphir/SDK:basics#int\"],[\"x-60\",\"morphir/SDK:basics#int\"],[\"x-61\",\"morphir/SDK:basics#int\"],[\"x-62\",\"morphir/SDK:basics#int\"],[\"x-63\",\"morphir/SDK:basics#int\"],[\"x-64\",\"morphir/SDK:basics#int\"]]}}}}},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"selected:main#wide\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.type_limit"
+          }
+        }
+      }
+    },
+    {
+      "id": "dormant-source-still-counts-toward-tree-budget",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"List\":[{\"Literal\":{\"IntegerLiteral\":0}}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "decode",
+            "code": "data.tree_limit"
+          }
+        }
+      }
+    },
+    {
+      "id": "tagged-argument-depth-budget-rejects-before-plan",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"list\",\"items\":[{\"type\":\"unit\"}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "decode",
+            "code": "execution.value_limit"
+          }
+        }
+      }
+    },
+    {
+      "id": "malformed-source-is-not-deferred",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "decode",
+            "code": "invalid_json"
+          }
+        }
+      }
+    },
+    {
+      "id": "malformed-json-arguments-are-not-deferred",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "["
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "decode",
+            "code": "execution.invalid_arguments"
+          }
+        }
+      }
+    },
+    {
+      "id": "nonarray-json-arguments-are-not-deferred",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "{}"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "decode",
+            "code": "execution.invalid_arguments"
+          }
+        }
+      }
+    },
+    {
+      "id": "malformed-ion-arguments-are-not-deferred",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "ion-text",
+          "source": "["
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "decode",
+            "code": "execution.invalid_arguments"
+          }
+        }
+      }
+    },
+    {
+      "id": "duplicate-source-member-is-not-deferred",
+      "operation": "run-selected-scheme",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"packageName\":\"duplicate\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "values": null,
+          "failure": {
+            "stage": "decode",
+            "code": "duplicate_member"
+          }
+        }
+      }
+    }
+  ]
+}

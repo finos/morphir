@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-response.schema.json",
+  "title": "Selected Scheme witness mck-response",
+  "description": "Exact narrow selected-boundary witness; full policy/runtime branch qualification uses a separate later exact kit",
+  "examples": [
+    {
+      "id": 1,
+      "status": "ok",
+      "value": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+        "values": [
+          {
+            "type": "int",
+            "value": "42"
+          }
+        ],
+        "failure": null
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "suite",
+        "contractVersion",
+        "binding",
+        "language",
+        "operations",
+        "formats"
+      ],
+      "properties": {
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.11"
+        },
+        "binding": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "operations": {
+          "enum": [
+            [],
+            [ "run-selected-scheme" ]
+          ]
+        },
+        "formats": {
+          "const": [ "json" ]
+        },
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "status", "value" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/selected-scheme-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

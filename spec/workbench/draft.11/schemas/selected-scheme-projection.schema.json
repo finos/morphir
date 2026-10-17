@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/selected-scheme-projection.schema.json",
+  "title": "Selected Scheme witness selected-scheme-projection",
+  "description": "Exact draft.11 selected-boundary and unused-declaration witness, without full policy, branch, terminal, provider or UI conformance claims",
+  "examples": [
+    {
+      "policy": "permissive",
+      "runtime": "scheme",
+      "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+      "values": [
+        {
+          "type": "int",
+          "value": "42"
+        }
+      ],
+      "failure": null
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "policy", "runtime", "boundary", "values", "failure" ],
+      "properties": {
+        "policy": {
+          "enum": [ "strict", "permissive" ]
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "boundary": {
+          "type": "string",
+          "maxLength": 1048576,
+          "minLength": 1
+        },
+        "values": {
+          "type": "array",
+          "maxItems": 1,
+          "minItems": 1,
+          "items": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/outcome-value.schema.json"
+          }
+        },
+        "failure": {
+          "const": null
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "policy", "runtime", "boundary", "values", "failure" ],
+      "properties": {
+        "policy": {
+          "enum": [ "strict", "permissive" ]
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "boundary": {
+          "const": null
+        },
+        "values": {
+          "const": null
+        },
+        "failure": {
+          "type": "object",
+          "required": [ "stage", "code" ],
+          "properties": {
+            "stage": {
+              "enum": [ "decode", "plan" ]
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 128,
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "policy", "runtime", "boundary", "values", "failure" ],
+      "properties": {
+        "policy": {
+          "enum": [ "strict", "permissive" ]
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "boundary": {
+          "type": "string",
+          "maxLength": 1048576,
+          "minLength": 1
+        },
+        "values": {
+          "const": null
+        },
+        "failure": {
+          "type": "object",
+          "required": [ "stage", "code" ],
+          "properties": {
+            "stage": {
+              "const": "evaluate"
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 128,
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

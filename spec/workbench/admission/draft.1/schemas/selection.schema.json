@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json",
+  "title": "Explicit Workbench admission policy selection",
+  "description": "Exact closed selection; mappings define whether omission means strict, and runtime qualification remains separate",
+  "examples": [
+    {
+      "profile": "morphir/workbench/admission",
+      "contractVersion": "0.1.0-draft.1",
+      "policy": "permissive"
+    }
+  ],
+  "type": "object",
+  "required": [ "profile", "contractVersion", "policy" ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/admission"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "policy": {
+      "enum": [ "strict", "permissive" ]
+    }
+  },
+  "additionalProperties": false
+}

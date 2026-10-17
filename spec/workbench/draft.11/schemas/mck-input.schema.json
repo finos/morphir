@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-input.schema.json",
+  "title": "Selected Scheme witness mck-input",
+  "description": "Exact draft.11 selected-boundary and unused-declaration witness, without full policy, branch, terminal, provider or UI conformance claims",
+  "examples": [
+    {
+      "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"doc\":\"Valid unused hole\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+      "entry": "selected:main#answer",
+      "inputs": {
+        "format": "json",
+        "source": "[]"
+      },
+      "runtime": "scheme",
+      "admission": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.1",
+        "policy": "permissive"
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "model", "entry", "inputs", "runtime" ],
+  "properties": {
+    "model": {
+      "type": "string",
+      "maxLength": 262144
+    },
+    "entry": {
+      "type": "string",
+      "maxLength": 512,
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object",
+      "required": [ "format", "source" ],
+      "properties": {
+        "format": {
+          "enum": [ "json", "ion-text" ]
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 16384
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "const": "scheme"
+    },
+    "admission": {
+      "$ref": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

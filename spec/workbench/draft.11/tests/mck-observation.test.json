@@ -1,0 +1,44 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Independent selected-plan witness",
+      "data": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level shape",
+      "data": {
+        "status": "ok",
+        "value": {
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "values": [
+            {
+              "type": "int",
+              "value": "42"
+            }
+          ],
+          "failure": null
+        },
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

@@ -79,6 +79,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     let bytes = read_bounded(file, MAX_CORPUS_BYTES as usize)?;
     let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
     let mut value = crate::json::strict::parse(text)?;
+    if value["formatVersion"] == super::contract::SELECTED_SCHEME_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::selected_scheme::validate_corpus_shape(&value)?;
+    }
     if value["formatVersion"] == super::contract::NATIVE_OWNER_VERSION {
         value = crate::json::strict::parse_exact(text)?;
         super::native_owner::validate_corpus_shape(&value)?;
@@ -119,7 +123,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::RunNativeOwner {
+        let input_len = if case.operation() == Operation::RunSelectedScheme {
+            super::selected_scheme::validate_input(&case.input)?;
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::RunNativeOwner {
             super::native_owner::validate_input(&case.input)?;
             encoded_size(&case.input, MAX_INPUT_BYTES)?
         } else if case.operation() == Operation::RunNativeClient {

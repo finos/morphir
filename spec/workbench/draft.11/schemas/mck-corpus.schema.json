@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-corpus.schema.json",
+  "title": "Selected Scheme witness mck-corpus",
+  "description": "Exact narrow selected-boundary witness; full policy/runtime branch qualification uses a separate later exact kit",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.11",
+      "cases": [
+        {
+          "id": "permissive-unused-hole-int42",
+          "operation": "run-selected-scheme",
+          "format": "json",
+          "input": {
+            "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"doc\":\"Valid unused hole\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            },
+            "runtime": "scheme",
+            "admission": {
+              "profile": "morphir/workbench/admission",
+              "contractVersion": "0.1.0-draft.1",
+              "policy": "permissive"
+            }
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "policy": "permissive",
+              "runtime": "scheme",
+              "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+              "values": [
+                {
+                  "type": "int",
+                  "value": "42"
+                }
+              ],
+              "failure": null
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.11"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "run-selected-scheme"
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-input.schema.json"
+          },
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-observation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

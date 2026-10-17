@@ -1,0 +1,56 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-request.schema.json",
+  "tests": [
+    {
+      "description": "Independent selected-plan witness",
+      "data": {
+        "id": 1,
+        "op": "run-selected-scheme",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.11",
+        "format": "json",
+        "input": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"doc\":\"Valid unused hole\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level shape",
+      "data": {
+        "id": 1,
+        "op": "run-selected-scheme",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.11",
+        "format": "json",
+        "input": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"doc\":\"Valid unused hole\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

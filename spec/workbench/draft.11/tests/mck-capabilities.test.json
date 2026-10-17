@@ -1,0 +1,84 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Independent selected-plan witness",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.11",
+        "binding": "selected-plan-adapter",
+        "language": "moonbit",
+        "operations": [
+          "run-selected-scheme"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level shape",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.11",
+        "binding": "selected-plan-adapter",
+        "language": "moonbit",
+        "operations": [
+          "run-selected-scheme"
+        ],
+        "formats": [
+          "json"
+        ],
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "No claim remains Unsupported evidence",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.11",
+        "binding": "selected-plan-adapter",
+        "language": "moonbit",
+        "operations": [],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Full policy operation is not this witness",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.11",
+        "binding": "selected-plan-adapter",
+        "language": "moonbit",
+        "operations": [
+          "run-admission-policy"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "JSON only",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.11",
+        "binding": "selected-plan-adapter",
+        "language": "moonbit",
+        "operations": [
+          "run-selected-scheme"
+        ],
+        "formats": [
+          "ion-text"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}
