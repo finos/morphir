@@ -43,6 +43,14 @@ production selected Scheme execution separately from supplied-completion validat
 against its immutable context. Its [fixed corpus](mck/draft.12/README.md) does not
 qualify jobs, providers, UI, host/native negotiation or packaged platforms.
 
+The [immutable job-plan profile](job-plan/draft.1/README.md) retains a job's
+accepted runtime and checking policy without extending frozen receipts.
+[Exact MCK draft.13](draft.13/README.md) checks real in-memory ownership,
+claims, retained-source replanning and captured-context completion through a
+[fixed job corpus](mck/draft.13/README.md). Actual isolated-worker evidence is
+required separately before claiming worker propagation; UI and host offers remain
+subsequent work.
+
 ## JSON values
 
 `schemas/value.schema.json` describes model values validated as typed arguments.

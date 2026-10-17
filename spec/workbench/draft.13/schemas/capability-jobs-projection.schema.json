@@ -1,0 +1,276 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.13/capability-jobs-projection.schema.json",
+  "title": "Scheme job policy capability-jobs-projection",
+  "description": "Exact immutable Scheme job selection and accepted context; frozen receipt envelopes remain unchanged",
+  "examples": [
+    {
+      "jobs": [
+        {
+          "plan": {
+            "profile": "morphir/workbench/job-plan",
+            "contractVersion": "0.1.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "scheme",
+              "jobId": "job-1",
+              "snapshotId": "snapshot-1"
+            },
+            "planId": "plan-1",
+            "runtime": "scheme",
+            "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+            "admission": {
+              "profile": "morphir/workbench/admission",
+              "contractVersion": "0.1.0-draft.1",
+              "policy": "permissive"
+            },
+            "boundary": {
+              "entries": [
+                {
+                  "name": "selected:main#answer",
+                  "inputs": [],
+                  "output": {
+                    "type": "int"
+                  }
+                }
+              ],
+              "definitions": []
+            }
+          },
+          "receipt": {
+            "contractVersion": "0.1.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "scheme",
+              "jobId": "job-1",
+              "snapshotId": "snapshot-1"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "released": false
+        }
+      ],
+      "observations": [
+        {
+          "op": "inspect",
+          "job": 0,
+          "status": "ok",
+          "code": null,
+          "view": {
+            "planId": "plan-1",
+            "policy": "permissive",
+            "runtime": "scheme",
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false
+          }
+        }
+      ],
+      "failure": null
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "jobs", "observations", "failure" ],
+      "properties": {
+        "jobs": {
+          "type": "array",
+          "maxItems": 4,
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "plan", "receipt", "released" ],
+            "properties": {
+              "plan": {
+                "$ref": "https://morphir.finos.org/spec/workbench/job-plan/0.1.0-draft.1/plan.schema.json"
+              },
+              "receipt": {
+                "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/receipt.schema.json"
+              },
+              "released": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "observations": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "invalid"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "minLength": 1
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "code": {
+                  "type": "null"
+                }
+              }
+            },
+            "required": [ "op", "job", "status", "code", "view" ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "inspect",
+                  "query",
+                  "cancel",
+                  "release",
+                  "query-lost-reply",
+                  "mutate-plan-view",
+                  "claim",
+                  "run",
+                  "replan",
+                  "claim-lost-reply",
+                  "complete",
+                  "mutate-caller",
+                  "transport-gap"
+                ]
+              },
+              "job": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "maximum": 3,
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "enum": [ "ok", "invalid", "reply-lost" ]
+              },
+              "code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "view": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "planId",
+                      "policy",
+                      "runtime",
+                      "sequence",
+                      "state",
+                      "cancelRequested"
+                    ],
+                    "properties": {
+                      "planId": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 1
+                      },
+                      "policy": {
+                        "enum": [ "strict", "permissive" ]
+                      },
+                      "runtime": {
+                        "const": "scheme"
+                      },
+                      "sequence": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0
+                      },
+                      "state": {
+                        "enum": [ "submitted", "running", "terminal" ]
+                      },
+                      "cancelRequested": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "failure": {
+          "type": "null"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "jobs", "observations", "failure" ],
+      "properties": {
+        "jobs": {
+          "const": []
+        },
+        "observations": {
+          "const": []
+        },
+        "failure": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [ "stage", "code" ],
+              "properties": {
+                "stage": {
+                  "const": "startup"
+                },
+                "code": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "stage", "code" ],
+              "properties": {
+                "stage": {
+                  "const": "projection"
+                },
+                "code": {
+                  "const": "workbench.projection_limit"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

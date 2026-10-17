@@ -1,5 +1,6 @@
 //! Workbench codec cases with parent-owned expectations and explicit adapters.
 
+mod capability_jobs;
 mod capability_policy;
 mod contract;
 mod corpus;
@@ -14,10 +15,10 @@ mod run;
 mod selected_scheme;
 
 pub use contract::{
-    ADMISSION_VERSION, CAPABILITY_POLICY_VERSION, Capabilities, Format, INVOCATION_VERSION,
-    JOBS_VERSION, MAX_VALUE_BYTES, NATIVE_CLIENT_VERSION, NATIVE_FRAMES_VERSION,
-    NATIVE_OWNER_VERSION, NATIVE_REPLIES_VERSION, OUTCOMES_VERSION, OUTPUT_VERSION, Observation,
-    Operation, SELECTED_SCHEME_VERSION, VERSION,
+    ADMISSION_VERSION, CAPABILITY_JOBS_VERSION, CAPABILITY_POLICY_VERSION, Capabilities, Format,
+    INVOCATION_VERSION, JOBS_VERSION, MAX_VALUE_BYTES, NATIVE_CLIENT_VERSION,
+    NATIVE_FRAMES_VERSION, NATIVE_OWNER_VERSION, NATIVE_REPLIES_VERSION, OUTCOMES_VERSION,
+    OUTPUT_VERSION, Observation, Operation, SELECTED_SCHEME_VERSION, VERSION,
 };
 pub use corpus::{Corpus, load};
 pub use report::{
@@ -57,3 +58,6 @@ mod selected_scheme_tests;
 
 #[cfg(test)]
 mod capability_policy_tests;
+
+#[cfg(test)]
+mod capability_jobs_tests;

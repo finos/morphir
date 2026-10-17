@@ -1,0 +1,192 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/job-plan/0.1.0-draft.1/submission.schema.json",
+  "tests": [
+    {
+      "description": "Exact accepted profile",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job-1",
+          "snapshotId": "snapshot-1"
+        },
+        "calls": [
+          "first"
+        ],
+        "receipt": {
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "plan": {
+          "profile": "morphir/workbench/job-plan",
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject unknown member",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job-1",
+          "snapshotId": "snapshot-1"
+        },
+        "calls": [
+          "first"
+        ],
+        "receipt": {
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "plan": {
+          "profile": "morphir/workbench/job-plan",
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        },
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Frozen receipt has no added policy",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "jobId": "job-1",
+          "snapshotId": "snapshot-1"
+        },
+        "calls": [
+          "first"
+        ],
+        "receipt": {
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null,
+          "admission": {
+            "policy": "permissive"
+          }
+        },
+        "plan": {
+          "profile": "morphir/workbench/job-plan",
+          "contractVersion": "0.1.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "jobId": "job-1",
+            "snapshotId": "snapshot-1"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    }
+  ]
+}
