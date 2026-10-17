@@ -55,8 +55,10 @@ export async function explorerWorkflow(page: Page) {
   await openPalette('F1');
   assert.equal(await paletteInput.inputValue(), '>', 'F1 lists commands');
   await paletteInput.fill('>open sample');
+  // Rabbita renders on the next animation frame; fill() only waits for the input event.
+  await page.waitForFunction(count => document.querySelectorAll('#palette-list [role="option"]').length === count, menuSamples.length);
   const paletteSamples = await palette.getByRole('option').evaluateAll(items => items.map(item => item.getAttribute('aria-label')));
-  // The palette ranks by match, so compare the two lists as sets.
+  // The palette ranks by match, so ignore order while still rejecting duplicate entries.
   assert.deepEqual(paletteSamples.filter(name => name?.startsWith('Open sample: ')).map(name => name?.slice('Open sample: '.length)).sort(),
     menuSamples.map(name => name?.slice('New from sample: '.length)).sort(), 'The palette and the menu list the same samples');
   await paletteInput.fill('>rentals tutorial');
