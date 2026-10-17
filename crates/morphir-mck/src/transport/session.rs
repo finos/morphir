@@ -136,6 +136,7 @@ enum EnvelopePolicy {
     LegacyIr,
     RejectDuplicateMembers,
     PreserveLiteralMembers,
+    PreserveExactLiteralMembers,
 }
 
 /// One absolute deadline covers writing a request and reading its response.
@@ -385,6 +386,15 @@ impl Session {
         self.exchange_serializable_with_policy(request, EnvelopePolicy::PreserveLiteralMembers)
     }
 
+    /// Retain exact decimal tokens as well as literal object kinds for newly
+    /// versioned infrastructure that must reject fractional integer counts.
+    pub(crate) fn exchange_literal_exact<T: serde::Serialize>(
+        &mut self,
+        request: &T,
+    ) -> Result<Map<String, Value>, TransportError> {
+        self.exchange_serializable_with_policy(request, EnvelopePolicy::PreserveExactLiteralMembers)
+    }
+
     fn exchange_serializable_with_policy<T: serde::Serialize>(
         &mut self,
         request: &T,
@@ -482,6 +492,11 @@ impl Session {
         match deadline.receive(&self.frames)? {
             Some(Frame::Line(line)) => {
                 let (got, body) = match policy {
+                    EnvelopePolicy::PreserveExactLiteralMembers => {
+                        let value = crate::json::strict::parse_exact(&line)
+                            .map_err(TransportError::Malformed)?;
+                        split_envelope(value)
+                    }
                     EnvelopePolicy::PreserveLiteralMembers => {
                         let value =
                             crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;

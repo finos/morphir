@@ -1,0 +1,132 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.10/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Fixed authority-negative example",
+      "data": {
+        "status": "ok",
+        "value": {
+          "steps": [
+            {
+              "action": "call",
+              "attempts": [
+                {
+                  "id": "open",
+                  "state": "returned"
+                }
+              ],
+              "callCount": 0,
+              "delivery": null,
+              "completion": null
+            }
+          ],
+          "results": [
+            {
+              "id": "open",
+              "state": "returned",
+              "reply": {
+                "ok": false,
+                "code": "unauthorized",
+                "effect": "none"
+              },
+              "cleanup": null,
+              "failure": null
+            }
+          ],
+          "calls": [],
+          "usedPickers": 0,
+          "unusedPickers": 0,
+          "usedCleanups": 0,
+          "unusedCleanups": 0
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level infrastructure",
+      "data": {
+        "status": "ok",
+        "value": {
+          "steps": [
+            {
+              "action": "call",
+              "attempts": [
+                {
+                  "id": "open",
+                  "state": "returned"
+                }
+              ],
+              "callCount": 0,
+              "delivery": null,
+              "completion": null
+            }
+          ],
+          "results": [
+            {
+              "id": "open",
+              "state": "returned",
+              "reply": {
+                "ok": false,
+                "code": "unauthorized",
+                "effect": "none"
+              },
+              "cleanup": null,
+              "failure": null
+            }
+          ],
+          "calls": [],
+          "usedPickers": 0,
+          "unusedPickers": 0,
+          "usedCleanups": 0,
+          "unusedCleanups": 0
+        },
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Only expectation admits fixed effect set",
+      "data": {
+        "status": "ok",
+        "value": {
+          "steps": [
+            {
+              "action": "call",
+              "attempts": [
+                {
+                  "id": "open",
+                  "state": "returned"
+                }
+              ],
+              "callCount": 0,
+              "delivery": null,
+              "completion": null
+            }
+          ],
+          "results": [
+            {
+              "id": "open",
+              "state": "returned",
+              "reply": {
+                "ok": false,
+                "code": "unauthorized",
+                "effect": [
+                  "none",
+                  "unknown"
+                ]
+              },
+              "cleanup": null,
+              "failure": null
+            }
+          ],
+          "calls": [],
+          "usedPickers": 0,
+          "unusedPickers": 0,
+          "usedCleanups": 0,
+          "unusedCleanups": 0
+        }
+      },
+      "valid": false
+    }
+  ]
+}

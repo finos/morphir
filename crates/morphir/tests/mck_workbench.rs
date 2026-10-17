@@ -503,3 +503,56 @@ fn native_client_cli_saves_failure_evidence_and_rejects_invalid_fixtures_before_
     assert!(!report.exists());
     assert!(String::from_utf8_lossy(&rejected.stderr).contains("native client corpus"));
 }
+
+#[test]
+fn native_owner_cli_saves_failure_evidence_and_rejects_invalid_fixtures_before_spawn() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    let published: Value = serde_json::from_str(include_str!(
+        "../../../spec/workbench/mck/draft.10/cases.json"
+    ))
+    .unwrap();
+    let mut document = json!({"formatVersion":"0.1.0-draft.10","cases":[published["cases"][0]]});
+    std::fs::write(kit.join("cases.json"), document.to_string()).unwrap();
+    let report = root.path().join("report.json");
+    let run = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(1));
+    let failure =
+        morphir_mck::workbench::Report::from_json(&std::fs::read_to_string(&report).unwrap())
+            .unwrap();
+    morphir_mck::workbench::check_report(&kit, &failure).unwrap();
+    assert!(!failure.qualified);
+    assert_eq!(
+        failure.records[0].operation,
+        Some(morphir_mck::workbench::Operation::RunNativeOwner)
+    );
+    assert_eq!(check(&kit, &report).status.code(), Some(1));
+    document["cases"][0]["input"]["services"]["workspace"] =
+        json!({"$serde_json::private::RawValue":"true"});
+    std::fs::write(kit.join("cases.json"), document.to_string()).unwrap();
+    std::fs::remove_file(&report).unwrap();
+    let rejected = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(1));
+    assert!(
+        !report.exists(),
+        "invalid fixture must reject before adapter spawn"
+    );
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("native owner"));
+}
