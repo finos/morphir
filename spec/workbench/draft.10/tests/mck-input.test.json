@@ -1,0 +1,478 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.10/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "Fixed authority-negative example",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level infrastructure",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          }
+        ],
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Service flag is literal boolean",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": {
+            "$serde_json::private::RawValue": "true"
+          }
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Context page is nullable",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": null
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "No renderer frame injection",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open",
+            "payload": {
+              "window": "main"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Action variants have closed fields",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "shutdown",
+            "id": "open",
+            "operation": "session.open"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Declared complete outcomes remain opaque infrastructure",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "complete",
+            "job": "unseen",
+            "outcomes": {
+              "arbitrary": [
+                1,
+                true,
+                null
+              ]
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Opaque completion rejects reserved serde markers",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "complete",
+            "job": "unseen",
+            "outcomes": {
+              "nested": {
+                "$serde_json::private::RawValue": "true"
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "At most 32 actions",
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "jobs": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          },
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

@@ -20,7 +20,9 @@ pub(super) trait Testee {
 
 impl Testee for Session {
     fn exchange(&mut self, request: &Value) -> Result<Value, String> {
-        let response = if request["contractVersion"] == super::contract::NATIVE_FRAMES_VERSION
+        let response = if request["contractVersion"] == super::contract::NATIVE_OWNER_VERSION {
+            self.exchange_literal_exact(request)
+        } else if request["contractVersion"] == super::contract::NATIVE_FRAMES_VERSION
             || request["contractVersion"] == super::contract::NATIVE_REPLIES_VERSION
             || request["contractVersion"] == super::contract::NATIVE_CLIENT_VERSION
         {
@@ -89,6 +91,9 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                 "format":case.format,"input":case.input}),
                 )
                 .and_then(|value| {
+                    if case.operation() == super::contract::Operation::RunNativeOwner {
+                        super::native_owner::validate_observation_shape(&value)?;
+                    }
                     if case.operation() == super::contract::Operation::RunNativeClient {
                         super::native_client::validate_observation_shape(&value)?;
                     }

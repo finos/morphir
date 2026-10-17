@@ -14,6 +14,7 @@ pub const JOBS_VERSION: &str = "0.1.0-draft.6";
 pub const NATIVE_FRAMES_VERSION: &str = "0.1.0-draft.7";
 pub const NATIVE_REPLIES_VERSION: &str = "0.1.0-draft.8";
 pub const NATIVE_CLIENT_VERSION: &str = "0.1.0-draft.9";
+pub const NATIVE_OWNER_VERSION: &str = "0.1.0-draft.10";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -54,6 +55,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.7",
         "=0.1.0-draft.8",
         "=0.1.0-draft.9",
+        "=0.1.0-draft.10",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -93,10 +95,15 @@ pub enum Operation {
     ValidateNativeReply,
     #[serde(rename = "run-native-client")]
     RunNativeClient,
+    #[serde(rename = "run-native-owner")]
+    RunNativeOwner,
 }
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if (version == NATIVE_OWNER_VERSION) != (self == Self::RunNativeOwner) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if (version == NATIVE_CLIENT_VERSION) != (self == Self::RunNativeClient) {
             return Err("operation is not defined by this Workbench draft".into());
         }
@@ -128,6 +135,7 @@ impl Operation {
                 | Self::ValidateNativeFrame
                 | Self::ValidateNativeReply
                 | Self::RunNativeClient
+                | Self::RunNativeOwner
         ) && format != Format::Json
         {
             return Err("operation supports JSON only".into());
@@ -206,6 +214,13 @@ impl Capabilities {
                 "native client requires exactly run-native-client and JSON capabilities".into(),
             );
         }
+        if self.contract_version == NATIVE_OWNER_VERSION
+            && (self.operations != [Operation::RunNativeOwner] || self.formats != [Format::Json])
+        {
+            return Err(
+                "native owner requires exactly run-native-owner and JSON capabilities".into(),
+            );
+        }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
         if self.operations.iter().collect::<BTreeSet<_>>().len() != self.operations.len()
@@ -243,6 +258,9 @@ impl Observation {
                 if operation == Operation::RunNativeClient {
                     return Err("native client scenarios have no domain-invalid observation".into());
                 }
+                if operation == Operation::RunNativeOwner {
+                    return Err("native owner scenarios have no domain-invalid observation".into());
+                }
                 identity(code, 128)?;
                 if operation == Operation::ValidateNativeFrame
                     && !super::native_frames::INVALID_CODES.contains(&code.as_str())
@@ -264,11 +282,27 @@ impl Observation {
         Ok(())
     }
 
+    pub(super) fn validate_expected_for(&self, operation: Operation) -> Result<(), String> {
+        if operation == Operation::RunNativeOwner {
+            match self {
+                Self::Ok { value } => super::native_owner::validate_expected(value),
+                Self::Invalid { .. } => {
+                    Err("native owner scenarios have no domain-invalid expectation".into())
+                }
+            }
+        } else {
+            self.validate_for(operation)
+        }
+    }
+
     pub(super) fn matches(&self, other: &Self, operation: Operation) -> Result<bool, String> {
-        self.validate_for(operation)?;
+        self.validate_expected_for(operation)?;
         other.validate_for(operation)?;
         match (self, other) {
             (Self::Ok { value: left }, Self::Ok { value: right }) => {
+                if operation == Operation::RunNativeOwner {
+                    return super::native_owner::matches(left, right);
+                }
                 Ok(projection_for(left, operation)? == projection_for(right, operation)?)
             }
             _ => Ok(self == other),
@@ -284,6 +318,7 @@ fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> 
         Operation::ValidateNativeFrame => super::native_frames::projection(value),
         Operation::ValidateNativeReply => super::native_replies::projection(value),
         Operation::RunNativeClient => super::native_client::projection(value),
+        Operation::RunNativeOwner => super::native_owner::projection(value),
         _ => projection(value),
     }
 }

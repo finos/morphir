@@ -61,6 +61,34 @@ mod adapter {
 
     pub fn run(mode: &str, arg: Option<&str>) {
         match mode {
+            "workbench-owner-fractional" => {
+                for (id, line) in requests() {
+                    if is_exit(&line) {
+                        return;
+                    }
+                    if line.contains("\"op\":\"capabilities\"") {
+                        say(format!(r#"{{"id":{id},"suite":"workbench","contractVersion":"0.1.0-draft.10","binding":"hostile-test","language":"test","operations":["run-native-owner"],"formats":["json"]}}
+"#).as_bytes());
+                    } else {
+                        let corpus: Value = serde_json::from_str(include_str!(
+                            "../../../spec/workbench/mck/draft.10/cases.json"
+                        ))
+                        .unwrap();
+                        let observed = corpus["cases"][0]["expected"].as_object().unwrap();
+                        let mut reply = observed.clone();
+                        reply.insert("id".into(), Value::from(id));
+                        let count = match arg {
+                            Some("private-number") => r#"{"$serde_json::private::Number":"0"}"#,
+                            Some("private-raw") => r#"{"$serde_json::private::RawValue":"0"}"#,
+                            _ => "1.00000000000000001",
+                        };
+                        let reply = serde_json::to_string(&reply)
+                            .unwrap()
+                            .replace("\"usedPickers\":0", &format!("\"usedPickers\":{count}"));
+                        say(format!("{reply}\n").as_bytes());
+                    }
+                }
+            }
             "workbench-private-marker" => {
                 for (id, line) in requests() {
                     if is_exit(&line) {
@@ -654,6 +682,37 @@ fn native_workbench_literal_private_objects_cannot_forge_live_adapter_success() 
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
+fn native_owner_live_literal_infrastructure_faults_are_exchange_errors() {
+    use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
+    let root = tempfile::tempdir().unwrap();
+    let published: Value = serde_json::from_str(include_str!(
+        "../../../spec/workbench/mck/draft.10/cases.json"
+    ))
+    .unwrap();
+    std::fs::write(
+        root.path().join("cases.json"),
+        serde_json::json!({"formatVersion":"0.1.0-draft.10","cases":[published["cases"][0]]})
+            .to_string(),
+    )
+    .unwrap();
+    for kind in ["fractional", "private-number", "private-raw"] {
+        let options = RunOptions {
+            adapter: std::env::current_exe().unwrap().into_os_string(),
+            adapter_args: vec![
+                ADAPTER_FLAG.into(),
+                "workbench-owner-fractional".into(),
+                kind.into(),
+            ],
+            limits: quick(),
+        };
+        let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
+        assert_eq!(report.records[0].result, ResultKind::Error);
+        assert_eq!(report.errors[0].phase, Phase::Exchange);
+        assert!(!report.qualified);
+        morphir_mck::workbench::check_report(root.path(), &report).unwrap();
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some(ADAPTER_FLAG) {
@@ -662,6 +721,10 @@ fn main() {
     }
 
     let tests: &[(&str, fn())] = &[
+        (
+            "native_owner_live_literal_infrastructure_faults_are_exchange_errors",
+            native_owner_live_literal_infrastructure_faults_are_exchange_errors,
+        ),
         (
             "native_workbench_literal_private_objects_cannot_forge_live_adapter_success",
             native_workbench_literal_private_objects_cannot_forge_live_adapter_success,
