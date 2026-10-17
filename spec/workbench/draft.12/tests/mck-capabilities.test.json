@@ -1,0 +1,38 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Closed valid infrastructure",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.12",
+        "binding": "capability-policy-adapter",
+        "language": "moonbit",
+        "operations": [
+          "run-capability-policy"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject extra top-level field",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.12",
+        "binding": "capability-policy-adapter",
+        "language": "moonbit",
+        "operations": [
+          "run-capability-policy"
+        ],
+        "formats": [
+          "json"
+        ],
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

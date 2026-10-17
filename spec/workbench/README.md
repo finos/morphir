@@ -37,6 +37,12 @@ capability checks. Ordinary model, type, argument, output, receipt and authority
 checks remain validation. Historical profile IDs, JSON keys, operation names and
 file paths retain their names and compatibility meaning.
 
+The [runtime capability policy](admission/draft.1/README.md) defines whole-model
+and as-executed capability checks. [Exact MCK draft.12](draft.12/README.md) verifies
+production selected Scheme execution separately from supplied-completion validation
+against its immutable context. Its [fixed corpus](mck/draft.12/README.md) does not
+qualify jobs, providers, UI, host/native negotiation or packaged platforms.
+
 ## JSON values
 
 `schemas/value.schema.json` describes model values validated as typed arguments.

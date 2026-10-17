@@ -1,0 +1,68 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Closed valid infrastructure",
+      "data": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "returned",
+                  "value": {
+                    "type": "int",
+                    "value": "42"
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject extra top-level field",
+      "data": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "returned",
+                  "value": {
+                    "type": "int",
+                    "value": "42"
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        },
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-input.schema.json",
+  "title": "Runtime capability policy mck-input",
+  "description": "Closed capability-policy infrastructure and captured selected-context evidence",
+  "examples": [
+    {
+      "model": "opaque complete model source",
+      "calls": [
+        {
+          "id": "first",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        }
+      ],
+      "runtime": "scheme",
+      "extensions": null
+    }
+  ],
+  "type": "object",
+  "required": [ "model", "calls", "runtime", "extensions" ],
+  "properties": {
+    "model": {
+      "type": "string",
+      "maxLength": 262144
+    },
+    "calls": {
+      "type": "array",
+      "maxItems": 1000,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "entry", "inputs" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "entry": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1
+          },
+          "inputs": {
+            "type": "object",
+            "required": [ "format", "source" ],
+            "properties": {
+              "format": {
+                "enum": [ "json", "ion-text" ]
+              },
+              "source": {
+                "type": "string",
+                "maxLength": 262144
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "runtime": {
+      "const": "scheme"
+    },
+    "admission": {
+      "$ref": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [ "format", "bytes" ],
+          "properties": {
+            "format": {
+              "const": "ion-binary"
+            },
+            "bytes": {
+              "type": "array",
+              "maxItems": 65536,
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "maximum": 255,
+                "minimum": 0
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "completion": {
+      "type": "object",
+      "required": [ "format", "source" ],
+      "properties": {
+        "format": {
+          "enum": [ "json", "ion-text" ]
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 262144
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
