@@ -206,3 +206,40 @@ fn native_client_errors_and_mismatches_have_distinct_truthful_reports() {
     std::fs::write(root.path().join("cases.json"), bytes).unwrap();
     assert!(check_report(root.path(), &report).is_err());
 }
+
+#[test]
+fn native_client_projection_limit_applies_to_live_and_saved_evidence() {
+    let root = tempfile::tempdir().unwrap();
+    let case = fixture();
+    let corpus = small_corpus(root.path(), case.clone()).unwrap();
+    let mut value = case["expected"]["value"].clone();
+    value["requests"] = json!([""]);
+    let overhead = serde_json::to_vec(&value).unwrap().len();
+    let padding = " ".repeat(MAX_VALUE_BYTES - overhead);
+    value["requests"] = json!([padding]);
+    assert_eq!(serde_json::to_vec(&value).unwrap().len(), MAX_VALUE_BYTES);
+    Observation::Ok {
+        value: value.clone(),
+    }
+    .validate_for(Operation::RunNativeClient)
+    .unwrap();
+    let at_limit = execute(&corpus, &mut Reply(json!({"status":"ok","value":value})));
+    assert_eq!(at_limit.records[0].result, ResultKind::Fail);
+    check_report(root.path(), &at_limit).unwrap();
+    value["requests"][0] = json!(format!("{} ", value["requests"][0].as_str().unwrap()));
+    assert!(
+        Observation::Ok {
+            value: value.clone()
+        }
+        .validate_for(Operation::RunNativeClient)
+        .is_err()
+    );
+    let over_limit = execute(&corpus, &mut Reply(json!({"status":"ok","value":value})));
+    assert_eq!(over_limit.records[0].result, ResultKind::Error);
+    assert_eq!(over_limit.errors[0].phase, Phase::Exchange);
+    check_report(root.path(), &over_limit).unwrap();
+    let mut forged = at_limit;
+    forged.records[0].observed = Some(Observation::Ok { value });
+    let saved = Report::from_json(&forged.to_json()).unwrap();
+    assert!(check_report(root.path(), &saved).is_err());
+}

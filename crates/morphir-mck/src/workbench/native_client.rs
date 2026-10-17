@@ -79,6 +79,7 @@ pub(super) fn validate_input(value: &Value) -> Result<(), String> {
 }
 
 pub(super) fn projection(value: &Value) -> Result<Value, String> {
+    super::contract::encoded_size(value, super::contract::MAX_VALUE_BYTES)?;
     static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
     VALIDATOR
         .get_or_init(|| {
