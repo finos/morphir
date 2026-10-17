@@ -8,3 +8,7 @@ import {
 import {
   "finos/morphir-scheme" @scheme,
 } for "test"
+
+import {
+  "moonrockz/expect",
+} for "wbtest"

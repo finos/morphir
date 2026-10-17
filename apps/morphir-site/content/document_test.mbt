@@ -63,3 +63,12 @@ test "heading text keeps inline markup tight" {
     ("a-bc", "A bc"),
   ])
 }
+
+///|
+test "the first word of a fence's info string is its language" {
+  let doc = @content.render_markdown(
+    "a.mbt.md", "```mbt check\nlet x = 1\n```\n\n```scheme notest\n(+ 1 2)\n```\n",
+  )
+  assert_true(doc.html.contains("class=\"language-mbt\""))
+  assert_true(doc.html.contains("class=\"language-scheme\""))
+}

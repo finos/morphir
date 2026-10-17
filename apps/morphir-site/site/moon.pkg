@@ -12,6 +12,7 @@ import {
   "finos/morphir-site/model",
   "moonbitlang/async",
   "moonbitlang/core/json",
+  "moonrockz/expect",
 } for "test"
 
 supported_targets = "native"

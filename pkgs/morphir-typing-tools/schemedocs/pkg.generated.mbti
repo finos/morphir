@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-typing-tools/schemedocs"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn check_message(String, String, String, String) -> String?
+
+pub fn difference(String, String) -> String?
+
+pub fn parse_chapter(String) -> Chapter raise DocError
+
+pub fn render_examples(String, Chapter) -> String
+
+pub fn render_procedures(String, Chapter) -> String?
+
+// Errors
+pub(all) suberror DocError {
+  DocError(String)
+}
+
+// Types and methods
+pub(all) struct Chapter {
+  examples : Array[Example]
+  skipped : Int
+  procedures : Array[String]
+}
+
+pub(all) struct Example {
+  files : Array[(String, String)]
+  expect : Expect
+  line : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Expect {
+  Value(String)
+  Fails(String)
+  Runs
+} derive(Eq, @debug.Debug)
+
+type Plan
+
+// Type aliases
+
+// Traits

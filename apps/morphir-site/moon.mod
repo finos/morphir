@@ -18,4 +18,5 @@ import {
   "moonbit-community/rabbita@0.16.3",
   "moonbit-community/cmark@0.4.12",
   "bobzhang/beautiful_mermaid@0.2.0",
+  "moonrockz/expect@0.6.1",
 }

@@ -1,0 +1,23 @@
+// Regenerates docs_examples_test.mbt (and docs_procedures_generated_wbtest.mbt) next to each morphir-scheme README.mbt.md chapter.
+// It runs the native `schemedocs generate` tool of pkgs/morphir-typing-tools.
+
+///|
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn main {
+  let code = @process.run(
+    "moon",
+    ["run", "pkgs/morphir-typing-tools/schemedocs", "--target", "native", "--", "generate"],
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    @sys.exit(if code > 0 { code } else { 1 })
+  }
+}

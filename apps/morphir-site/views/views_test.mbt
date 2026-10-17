@@ -7,6 +7,7 @@ let config : @model.SiteConfig = {
   repo_url: "https://github.com/finos/morphir-moonbit",
   packages: [],
   nav: None,
+  chapters: [],
 }
 
 ///|

@@ -158,3 +158,16 @@ test "HTML pages are top-level entries too" {
   assert_eq(problems, [])
   assert_eq(rows(nav).map(r => r.0)[:2].to_array(), ["All", "Guide"])
 }
+
+///|
+test "a sub-package README sits one level below its package" {
+  let nav = @site.build_nav([
+    entry("packages/morphir-ir/README.md", "morphir-ir"),
+    entry("packages/morphir-ir/json/README.md", "JSON"),
+  ])
+  assert_eq(nav.map(n => (n.route, n.title, n.depth)), [
+    ("", "Packages", 0),
+    ("/docs/packages/morphir-ir/", "morphir-ir", 1),
+    ("/docs/packages/morphir-ir/json/", "JSON", 2),
+  ])
+}

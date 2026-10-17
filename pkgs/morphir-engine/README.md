@@ -170,7 +170,7 @@ not explicit `File` inputs. Output paths are relative to the input/project root.
 Precedence is manifest → workspace script → project script → explicit script.
 Scalar options override earlier values; transforms accumulate and execute in order.
 Each script returns a `pipeline` list of option records. Scripts can define helpers
-and use the [Scheme IR bridge](../morphir-scheme/README.md#transform-scripts).
+and use the [Scheme IR bridge](../morphir-scheme/pipeline/README.mbt.md#scripts).
 Each transform accepts and returns a typed IR file. During transforms, `source-path`
 and `project-root` are strings in the script session.
 
@@ -191,7 +191,7 @@ Built-in backends:
 - `ir-json`: current IR JSON, suffix `.ir.json`.
 - `scheme`: executable Scheme, suffix `.scm`; requires the Morphir Scheme runtime. From a rich unit it also writes
   `<unit>.symbols.10n` (format `ion-binary`) with the unit's metadata and comments each `define` with its source
-  name and position (see the [Scheme README](../morphir-scheme/README.md#units-sidecar-and-source-comments)).
+  name and position (see the [Scheme README](../morphir-scheme/backend/README.mbt.md#units-sidecar-and-source-comments)).
 
 `scheme` accepts rich units (MoonBit, Elm): it writes `<unit>.scm` with source comments and `<unit>.symbols.10n`
 with the unit's metadata (`morphir-ukvn.5.40`), and reports no `backend.metadata_dropped`. `ir-json` still refuses

@@ -22,6 +22,7 @@ import {
 
 import {
   "finos/morphir-scheme/backend",
+  "finos/morphir-scheme/frontend",
   "moonrockz/expect",
   "moonbitlang/core/debug",
 } for "test"

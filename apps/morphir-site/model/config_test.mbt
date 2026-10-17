@@ -104,6 +104,66 @@ test "nav problems are reported together" {
 }
 
 ///|
+/// The config with `"chapters": <chapters>` added.
+fn with_chapters(chapters : String) -> String {
+  config_json[:config_json.length() - 2].to_owned() +
+  ",\n  \"chapters\": \{chapters}\n}"
+}
+
+///|
+fn chapter_problems(chapters : String) -> Array[String] {
+  try {
+    ignore(@model.SiteConfig::parse("site/site.json", with_chapters(chapters)))
+    []
+  } catch {
+    @model.Invalid(problems) => problems.map(p => p.message)
+  }
+}
+
+///|
+test "chapters are optional" {
+  let config = @model.SiteConfig::parse("site/site.json", config_json)
+  assert_eq(config.chapters, [])
+}
+
+///|
+test "chapters give a listed package's sub-package pages their order" {
+  let config = @model.SiteConfig::parse(
+    "site/site.json",
+    with_chapters("{\"morphir-ir\": [\"json\", \"codec/wire\"]}"),
+  )
+  assert_eq(config.chapters, [
+    { name: "morphir-ir", chapters: ["json", "codec/wire"], },
+  ])
+  assert_eq(config.chapter_order("morphir-ir", "json"), Some(1))
+  assert_eq(config.chapter_order("morphir-ir", "codec/wire"), Some(2))
+  assert_eq(config.chapter_order("morphir-ir", "other"), None)
+  assert_eq(config.chapter_order("morphir-sdk", "json"), None)
+}
+
+///|
+test "chapter problems are reported together" {
+  assert_eq(chapter_problems("[]"), [
+    "`chapters` must be an object from package names to arrays of sub-package paths",
+  ])
+  assert_eq(
+    chapter_problems(
+      "{\"morphir-sdk\": [\"a\"], \"morphir-ir\": [\"json\", 1, \"\", \"/x\", \"y/\", \"json\"]}",
+    ),
+    [
+      "`chapters` names package `morphir-sdk`, which is not in `packages`", "`chapters` of `morphir-ir`: every item must be a sub-package path such as `frontend`",
+      "`chapters` of `morphir-ir`: every item must be a sub-package path such as `frontend`",
+      "`chapters` of `morphir-ir`: every item must be a sub-package path such as `frontend`",
+      "`chapters` of `morphir-ir`: every item must be a sub-package path such as `frontend`",
+      "`chapters` of `morphir-ir` lists `json` more than once",
+    ],
+  )
+  assert_eq(chapter_problems("{\"morphir-ir\": \"json\"}"), [
+    "`chapters` of `morphir-ir` must be an array of sub-package paths",
+  ])
+}
+
+///|
 test "nav items can name HTML pages" {
   let config = @model.SiteConfig::parse(
     "site/site.json",

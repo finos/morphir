@@ -8,7 +8,7 @@ repository = "https://github.com/finos/morphir-moonbit"
 
 readme = "README.md"
 
-description = "Unpublished tooling and oracle tests for Morphir IR type inference"
+description = "Unpublished tooling: type inference oracle tests, the SDK specification generator and the Scheme docs example generator"
 
 import {
   "finos/morphir-elm@0.1.0",

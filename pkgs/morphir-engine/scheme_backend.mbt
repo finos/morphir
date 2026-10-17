@@ -1,6 +1,6 @@
 ///|
 /// Scheme from a rich unit: the `.scm` text with source comments and the `.symbols.10n` sidecar that carries
-/// the unit's metadata unchanged (`pkgs/morphir-scheme/README.md`, "Units, sidecar and source comments").
+/// the unit's metadata unchanged (`pkgs/morphir-scheme/backend/README.mbt.md`, "Units, sidecar and source comments").
 fn scheme_unit_generation(
   unit : @data.IRUnit,
   source_path : String,

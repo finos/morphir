@@ -25,7 +25,7 @@ specification needs `finos/morphir-ir`, so it lives here.
 ## `sdk.scm` is the source of truth
 
 [sdk.scm](sdk.scm) holds the specification in the Morphir Scheme specification notation (see the
-[Morphir Scheme README](../morphir-scheme/README.md#specification-notation)). Edit `sdk.scm` by hand. Do not edit
+[Morphir Scheme README](../morphir-scheme/spec/README.mbt.md#the-notation)). Edit `sdk.scm` by hand. Do not edit
 `sdk_data.mbt`. It is generated canonical v4 JSON of a `Specs` distribution, which the package decodes once, on
 first use.
 

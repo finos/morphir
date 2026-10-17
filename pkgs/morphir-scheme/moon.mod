@@ -6,7 +6,7 @@ license = "Apache-2.0"
 
 repository = "https://github.com/finos/morphir-moonbit"
 
-readme = "README.md"
+readme = "README.mbt.md"
 
 description = "Embeddable Morphir Scheme for IR transformation pipelines and runtime execution"
 

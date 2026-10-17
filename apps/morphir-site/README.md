@@ -14,6 +14,16 @@ From the repository root:
 Open <http://127.0.0.1:4173/morphir-moonbit/>. `mise run check:site` checks links in the built site, and
 `mise run test:site` runs the unit tests and the browser smoke test.
 
+## Package pages
+
+A package listed in `site/site.json` is a page from its `README.md` or `README.mbt.md`. Each README below the
+package directory is a page below it, for example `pkgs/morphir-scheme/spec/README.mbt.md`. A directory with both
+README kinds fails the build. READMEs in `fixtures`, `_build`, `.mooncakes`, `node_modules` and `target` are skipped.
+`chapters` in `site/site.json` orders a package's sub-package pages; a page it does not list sorts by its `order`
+front matter, or as 1000 without one, then by title.
+[Writing for the site](../../docs/WRITING_FOR_THE_SITE.md#package-chapters) describes the chapters and their checked
+Scheme examples.
+
 ## Packages
 
 - `model`: problems, routes, configuration, search entries. All targets.

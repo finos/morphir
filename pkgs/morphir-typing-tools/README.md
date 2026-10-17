@@ -8,8 +8,9 @@ for Morphir IR type inference (`finos/morphir-typing`).
 | `vspec` | Parses morphir-elm `vSpec` signatures | all four |
 | `sdkgen` | Bootstraps, generates and checks the SDK specification | native only |
 | `oracle` | Tests inference against the classic corpus and the fixture corpora | native only |
+| `schemedocs` | Generates and checks the tests for the Scheme examples in the `finos/morphir-scheme` chapters | native only |
 
-`sdkgen` and `oracle` are native only. `sdkgen` reads and writes files. `oracle` sets
+`sdkgen`, `oracle` and `schemedocs` are native only. `sdkgen` and `schemedocs` read and write files. `oracle` sets
 `supported_targets = "native"` in its `moon.pkg`, so `moon test` on the other targets skips it.
 
 ## vspec
@@ -115,3 +116,22 @@ position becomes `()` on both sides, and a placeholder row compares only the fie
 
 Inference does not change. A let annotation that a user wrote as `t8` would also be marked, but classic IR cannot
 tell the two apart.
+
+## schemedocs
+
+`schemedocs` is an executable with two commands, run from the repository root:
+
+```shell
+moon run pkgs/morphir-typing-tools/schemedocs --target native -- generate
+moon run pkgs/morphir-typing-tools/schemedocs --target native -- check
+```
+
+- `generate` finds every `README.mbt.md` under `pkgs/morphir-scheme` and writes `docs_examples_test.mbt` next to
+  it, and `docs_procedures_generated_wbtest.mbt` next to a chapter with a `## Built-in procedures` table. It removes
+  any such generated file that no chapter writes. Run it as `mise run scheme-docs:generate`.
+- `check` fails when a generated file differs from what `generate` writes, or when no chapter writes it. Run it as
+  `mise run scheme-docs:check`.
+
+Each chapter's package must have a `docs_run_test.mbt` that defines `run_example`. Both commands fail, naming the
+chapter, when it is missing. [Writing for the site](../../docs/WRITING_FOR_THE_SITE.md) describes the chapter rules.
+

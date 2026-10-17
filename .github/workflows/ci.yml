@@ -300,6 +300,9 @@ jobs:
       - name: Check the SDK specification
         run: mise run sdk-spec:check
 
+      - name: Check Scheme docs examples
+        run: mise run scheme-docs:check
+
   installed-lifecycle:
     name: Installed lifecycle (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

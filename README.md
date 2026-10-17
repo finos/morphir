@@ -11,7 +11,7 @@ This repository contains the Moonbit implementation of Morphir, organized as a m
 
 - **morphir-sdk**: Standard library for Morphir with functional programming primitives
 - **morphir-ir**: [Versioned IR models, JSON codecs and migrations](pkgs/morphir-ir/README.md) for v1–v4
-- **morphir-scheme**: [Embeddable Scheme, IR transforms and runtime](pkgs/morphir-scheme/README.md)
+- **morphir-scheme**: [Embeddable Scheme, IR transforms and runtime](pkgs/morphir-scheme/README.mbt.md)
 - **morphir-host**: [Runtime adapters, snapshots and artifact publication](pkgs/morphir-host/README.md)
 - **morphir-engine**: [Scriptable file, directory, project and workspace pipelines](pkgs/morphir-engine/README.md)
 - **morphir-core**: Core abstractions and types for the Morphir ecosystem

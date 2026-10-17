@@ -8,7 +8,43 @@ pub(all) struct SiteConfig {
   packages : Array[String]
   /// Docs sidebar groups. `None` sorts the sidebar by `order` and title.
   nav : Array[NavGroup]?
+  /// The sidebar order of listed packages' sub-package pages; empty when `site.json` has no `chapters`.
+  chapters : Array[ChapterOrder]
 } derive(Eq, Debug)
+
+///|
+/// The sub-package pages of one listed package, in sidebar order: each is a directory below the package, such as
+/// `frontend`. A listed page takes its position as its `order`, before front matter.
+pub(all) struct ChapterOrder {
+  name : String
+  chapters : Array[String]
+} derive(Eq, Debug)
+
+///|
+pub extend ChapterOrder with Eq::{equal, not_equal}
+
+///|
+pub extend ChapterOrder with @debug.Debug::{to_repr}
+
+///|
+/// The `order` of the sub-package page `sub` of package `name` from `chapters`, counted from 1, or `None` when
+/// `chapters` does not list it.
+pub fn SiteConfig::chapter_order(
+  self : SiteConfig,
+  name : String,
+  sub : String,
+) -> Int32? {
+  for entry in self.chapters {
+    if entry.name == name {
+      for i, chapter in entry.chapters {
+        if chapter == sub {
+          return Some(i + 1)
+        }
+      }
+    }
+  }
+  None
+}
 
 ///|
 /// One labelled group of the docs sidebar. An item is a top-level page (`NAME.md` or
@@ -80,10 +116,90 @@ pub fn SiteConfig::parse(
     None => None
     Some(value) => Some(parse_nav(file, value, problems))
   }
+  let chapters = match fields.get("chapters") {
+    None => []
+    Some(value) => parse_chapters(file, value, packages, problems)
+  }
   if problems.length() > 0 {
     raise Invalid(problems)
   }
-  { title, description, base_path, site_url, repo_url, packages, nav, }
+  {
+    title,
+    description,
+    base_path,
+    site_url,
+    repo_url,
+    packages,
+    nav,
+    chapters,
+  }
+}
+
+///|
+/// A sub-package path below a package: names separated by `/`, with no empty name.
+fn is_sub_path(item : String) -> Bool {
+  item != "" && item.split("/").all(part => part != "")
+}
+
+///|
+fn parse_chapters(
+  file : String,
+  value : Json,
+  packages : Array[String],
+  problems : Array[Problem],
+) -> Array[ChapterOrder] {
+  guard value is Object(entries) else {
+    problems.push(
+      problem(
+        file, "`chapters` must be an object from package names to arrays of sub-package paths",
+      ),
+    )
+    return []
+  }
+  let orders : Array[ChapterOrder] = []
+  for name, list in entries {
+    if !packages.contains(name) {
+      problems.push(
+        problem(
+          file,
+          "`chapters` names package `\{name}`, which is not in `packages`",
+        ),
+      )
+    }
+    guard list is Array(values) else {
+      problems.push(
+        problem(
+          file,
+          "`chapters` of `\{name}` must be an array of sub-package paths",
+        ),
+      )
+      continue
+    }
+    let chapters : Array[String] = []
+    for v in values {
+      guard v is String(item) && is_sub_path(item) else {
+        problems.push(
+          problem(
+            file,
+            "`chapters` of `\{name}`: every item must be a sub-package path such as `frontend`",
+          ),
+        )
+        continue
+      }
+      if chapters.contains(item) {
+        problems.push(
+          problem(
+            file,
+            "`chapters` of `\{name}` lists `\{item}` more than once",
+          ),
+        )
+      } else {
+        chapters.push(item)
+      }
+    }
+    orders.push({ name, chapters, })
+  }
+  orders
 }
 
 ///|

@@ -1,0 +1,8 @@
+// Native only: this executable reads and writes files.
+pkgtype(kind: "executable")
+
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}

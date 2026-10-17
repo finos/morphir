@@ -7,6 +7,7 @@ let config : @model.SiteConfig = {
   repo_url: "https://github.com/finos/morphir-moonbit",
   packages: ["morphir-ir"],
   nav: None,
+  chapters: [],
 }
 
 ///|
@@ -43,6 +44,27 @@ test "classify sources" {
     Package("morphir-ir"),
   )
   assert_eq(@site.classify("pkgs/morphir-elm/README.md", config), Other)
+  assert_eq(
+    @site.classify("pkgs/morphir-ir/README.mbt.md", config),
+    Package("morphir-ir"),
+  )
+  assert_eq(
+    @site.classify("pkgs/morphir-ir/json/README.md", config),
+    PackagePart("morphir-ir", "json"),
+  )
+  assert_eq(
+    @site.classify("pkgs/morphir-ir/versions/v4/README.mbt.md", config),
+    PackagePart("morphir-ir", "versions/v4"),
+  )
+  for excluded in ["fixtures", "_build", ".mooncakes", "node_modules", "target"] {
+    assert_eq(
+      @site.classify("pkgs/morphir-ir/a/\{excluded}/README.md", config),
+      Other,
+    )
+  }
+  assert_eq(@site.classify("pkgs/morphir-ir/name.mbt.md", config), Other)
+  assert_eq(@site.classify("pkgs/morphir-elm/json/README.md", config), Other)
+  assert_true(@site.needs_text("pkgs/morphir-ir/json/README.md", config))
   assert_true(@site.needs_text("docs/a.md", config))
   assert_false(@site.needs_text("docs/a.png", config))
 }

@@ -93,6 +93,14 @@ run = "moon run scripts/sdk-spec-generate.mbtx"
 description = "Check pkgs/morphir-sdk-spec/sdk.scm against bindings.json, and check that sdk_data.mbt is fresh"
 run = "moon run scripts/sdk-spec-check.mbtx"
 
+[tasks."scheme-docs:generate"]
+description = "Regenerate the Scheme docs example tests from the morphir-scheme README.mbt.md chapters"
+run = "moon run scripts/scheme-docs-generate.mbtx"
+
+[tasks."scheme-docs:check"]
+description = "Check that the Scheme docs example tests match the morphir-scheme README.mbt.md chapters"
+run = "moon run scripts/scheme-docs-check.mbtx"
+
 [tasks."test:elm"]
 description = "Check generated Elm projects with elm make"
 run = "moon run scripts/elm-make-check.mbtx"
