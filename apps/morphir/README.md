@@ -474,7 +474,7 @@ morphir verify model.json --suite calls.ion \
   --log-file execution.ionb --json
 ```
 
-Supply SDK and execution protocol 0.1.0, Ion 0.3.0, x 0.5.5 and async 0.22.4.
+Supply SDK and execution protocol 0.1.0, Ion 0.5.0, x 0.5.5 and async 0.22.4.
 The default compiler/core pin remains `0.10.15+943464bfa`; the C lane forces
 `MOONBIT_NEW_NATIVE=0`. Preparation copies and hashes
 these explicit dependencies into a frozen workspace; it does not fetch packages.

@@ -80,6 +80,7 @@ pub fn Registry::decode(
   } catch {
     Invalid(_, _) as error => raise error
     @wire.Invalid(code, detail) => raise Invalid(code, detail)
+    @ion.LimitExceeded(detail) => raise Invalid("data.tree_limit", detail)
     @ion.Syntax(detail) | @ion.DataModel(detail) | @ion.Unsupported(detail) =>
       raise Invalid("data.decode_failed", detail)
     error =>
@@ -117,6 +118,7 @@ pub fn Registry::open_checkpoint(
     self.decode(codec, { unit_id, content, })
   } catch {
     Invalid(_, _) as error => raise error
+    @ion.LimitExceeded(message) => raise Invalid("data.tree_limit", message)
     @ion.Syntax(message)
     | @ion.DataModel(message)
     | @ion.Unsupported(message) => raise Invalid("data.decode_failed", message)

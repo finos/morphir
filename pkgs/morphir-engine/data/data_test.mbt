@@ -241,6 +241,43 @@ test "registry encoding capability conflicts and malformed bytes fail clearly" {
 }
 
 ///|
+test "Ion reader nesting limits retain tree-limit diagnostics" {
+  let registry = @data.Registry::new(limits={
+    max_bytes: 1000000,
+    max_depth: 1024,
+    max_values: 10000,
+  })
+  let original = registry.decode("morphir-json", snapshot(Text(empty_json())))
+  let mut nested = @ion.IonValue::int(1)
+  for i = 0; i < @ion.MAX_NESTING_DEPTH; i = i + 1 {
+    nested = @ion.IonValue::list([nested])
+  }
+  let unit = @data.IRUnit::{
+    ..original,
+    metadata: [{ node_id: "retained", data: nested, }],
+  }
+  for codec in ["ion-text", "ion-binary"] {
+    let checkpoint = registry.checkpoint(unit, codec~)
+    assert_eq(
+      diagnostic(fn() raise {
+        ignore(registry.decode(codec, snapshot(checkpoint)))
+      }),
+      "data.tree_limit",
+    )
+    assert_eq(
+      diagnostic(fn() raise {
+        ignore(registry.open_checkpoint(codec, checkpoint))
+      }),
+      "data.tree_limit",
+    )
+  }
+  assert_eq(
+    registry.decode("morphir-json", snapshot(Text(empty_json()))).distribution,
+    original.distribution,
+  )
+}
+
+///|
 test "byte and tree budgets are independent of codec and malformed identities" {
   let registry = @data.Registry::new()
   let unit = registry.decode("morphir-json", snapshot(Text(empty_json())))

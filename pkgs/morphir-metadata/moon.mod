@@ -12,6 +12,6 @@ description = "Scoped target-name fact interpretation with explicit provider adm
 
 import {
   "finos/morphir-ir@0.1.0",
-  "moonrockz/ion@0.3.0",
+  "moonrockz/ion@0.5.0",
   "moonbitlang/x@0.5.5",
 }

@@ -231,7 +231,7 @@ the original API's stage sequence is unchanged.
 ## Pins and acceptance
 
 The parser is `moonbitlang/parser@0.4.5`, lexer `moonbitlang/lexer@0.4.3`, and Ion
-is `moonrockz/ion@0.3.0`. Ion remains the preferred engine representation. Current
+is `moonrockz/ion@0.5.0`. Ion remains the preferred engine representation. Current
 Morphir JSON serialization remains supported and is checked in frontend tests.
 
 Run focused tests with:

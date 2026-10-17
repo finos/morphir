@@ -336,7 +336,7 @@ pub fn process_execution(
               (
                 "finos/morphir-execution", "0.1.0", "morphir-invocations-v1", "morphir-invocations-v1",
               ),
-              ("moonrockz/ion", "0.3.0", "ion-v1", "ion-0.3.0"),
+              ("moonrockz/ion", "0.5.0", "ion-v1", "ion-0.5.0"),
               ("moonbitlang/x", "0.5.5", "moonbit-x", "x-0.5.5"),
               ("moonbitlang/async", "0.22.4", "moonbit-async", "async-0.22.4"),
             ] {

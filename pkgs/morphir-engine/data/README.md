@@ -29,9 +29,15 @@ identity and receives the local default `workbench`. This logical identity grant
 no filesystem or provider authority. Use `decode` when the caller already knows
 and needs to enforce the expected unit ID.
 
-The module depends on the exact registry release `moonrockz/ion@0.3.0`, using its
+The module depends on the exact registry release `moonrockz/ion@0.5.0`, using its
 synchronous annotated value, text and binary packages. Async streaming is not
 part of this portable callback contract.
+
+The Ion readers reject containers nested deeper than 128 levels, even when the
+registry's `max_depth` is higher. This reader ceiling is separate from the
+registry's tree budget. Both `decode` and `open_checkpoint` report the reader's
+`LimitExceeded` error as `data.tree_limit`. The library's stack-safe walkers and
+writers do not provide a memory bound; the registry still checks its own budgets.
 
 `IRUnit::validate(limits?)` admits rich source-frontend output before processing.
 It checks the envelope profile, duplicate metadata, tree depth/value budgets,

@@ -7,10 +7,10 @@ import {
   "moonbitlang/async@0.22.1/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
-  "moonrockz/ion@0.3.0/binary",
-  "moonrockz/ion@0.3.0/ion",
-  "moonrockz/ion@0.3.0/text",
-  "moonrockz/ion@0.3.0/json" @ion_json,
+  "moonrockz/ion@0.5.0/binary",
+  "moonrockz/ion@0.5.0/ion",
+  "moonrockz/ion@0.5.0/text",
+  "moonrockz/ion@0.5.0/json" @ion_json,
 }
 
 ///|

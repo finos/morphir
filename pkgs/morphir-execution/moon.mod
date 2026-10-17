@@ -11,5 +11,5 @@ readme = "README.md"
 description = "Portable Morphir invocation and observation contracts"
 
 import {
-  "moonrockz/ion@0.3.0",
+  "moonrockz/ion@0.5.0",
 }
