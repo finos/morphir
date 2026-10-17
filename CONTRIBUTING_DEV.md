@@ -151,20 +151,58 @@ mise run test          # Run all tests
 ## Continuous Integration
 
 CI runs on pull requests, merge-queue commits and pushes to main. Lint, formatting and
-configuration validation always run. Documentation-only pull requests skip code jobs;
-site changes also build and test the site.
+configuration validation always run. Code changes keep four-target unit tests, portable
+builds, CLI smoke tests and a Linux native CLI/MEP process check. Documentation-only
+changes skip code checks; site inputs also build and test the site. The separate Site
+workflow handles main deployment.
 
-Code jobs qualify Wasm, Wasm GC, JavaScript and native targets. Ubuntu 24.04 producers use
-pinned Zig 0.17.0 to build the Linux x64 and macOS arm64 CLI release executables. Consumers
-run those exact bytes on Ubuntu 24.04 and macOS 15. Full native workspace release builds
-with the default C compiler and MEP process checks run independently. Compiler lifecycle,
-MoonBit frontend and conformance checks also run independently of CLI production. Native
-worker and workspace-grant checks run once per OS in installed-lifecycle.
+`scripts/ci-changes.mbtx` selects additional Linux acceptance from changed components.
+Compiler, frontend, conformance, signed-provider, installed-lifecycle, telemetry and
+Workbench checks have separate selections. Shared IR, engine, host, toolchain and unknown
+inputs conservatively select every suite. MEP-adapter changes use the baseline native
+process tests, while Workbench changes select their native ownership/grant checks.
+Renames retain deleted paths. PR/merge-queue diffs use the merge base; main pushes compare
+the actual before/after commits, including divergent pushes. Empty or unavailable push
+diffs select every suite. Run `mise run test:ci` to test these rules and aggregate gates.
 
-Jobs start after change detection, while lint and formatting run in parallel. Every check
-still gates `ci-ok`. New PR commits cancel superseded PR runs; main and merge-queue runs
-finish. The shared setup action caches the complete pinned MoonBit installation, including
-core and moonx, and installs only each job's requested mise tools.
+The independent **Full qualification** workflow runs nightly, manually and as a reusable
+release-candidate workflow. It preserves the full Linux/macOS matrix, debug/release
+installed execution, macOS LLVM, signed providers, telemetry, native workspace release
+build, compiler/frontend/conformance and native Workbench checks. Its `qualification-ok`
+job writes an Ion receipt bound to the exact candidate commit and workflow run.
+
+For a release candidate, run both ordinary CI and full qualification on that same commit.
+A release workflow can call `.github/workflows/qualification.yml` and depend on its
+success before publication. For a manual release, dispatch the workflow on the candidate
+branch/tag, verify its `headSha` equals the candidate and retain its successful receipt.
+A previous successful nightly run on another SHA does not qualify the candidate.
+Workflow, CI-policy, setup-action, workspace and toolchain configuration changes also
+select the full qualification workflow before merge. It replaces the focused native and
+installed jobs for that run, so artifacts and costly checks are not produced twice.
+
+```sh
+gh workflow run qualification.yml --ref <candidate-branch-or-tag>
+gh run view <run-id> --json headSha,conclusion,url
+```
+
+Jobs start after change detection, while lint and formatting run in parallel. `ci-ok`
+requires every selected job to succeed, including the aggregates inside reusable
+workflows. Failed/cancelled producers and unexpectedly skipped selected jobs fail the
+gate. Unselected jobs may skip. Full qualification is separate from the ordinary PR
+gate. New PR commits cancel superseded PR runs; main and merge-queue runs finish.
+
+CI and mise orchestration use pinned MoonBit `.mbtx` scripts. The `check` task is
+`scripts/check.mbtx`; new automation follows this convention, and touched legacy task
+pairs must migrate together. Compilers and existing application tests remain direct tool
+invocations. CI rejects added/modified legacy task wrappers and non-MoonBit automation
+under `scripts/`, while allowing their deletion during migration. The setup action caches
+the pinned toolchain, including core and moonx.
+
+Ubuntu 24.04 producers use pinned Zig 0.17.0 for native CLI release artifacts. Focused PR
+checks produce Linux x64; full qualification also cross-builds macOS arm64 and executes
+those exact bytes on macOS 15. Default-C-compiler native workspace release builds remain
+in full qualification. Workbench workers and workspace grants have separate parallel
+jobs, rather than extending every installed CLI lifecycle job.
 
 Released provider-tool acquisition runs in parallel with native compilation. CI downloads
 the separately packaged service and test-fixture exporter instead of installing Rust or
@@ -224,8 +262,10 @@ restrictions. Cross-build wrappers follow [Smithy's implementation](https://gith
 and remove host-only SIMD/backtrace objects, keeping MoonBit's scalar UTF runtime. Windows
 cross-builds remain disabled because MoonBit resolves platform configuration from the
 build host; see [moon#2320](https://github.com/moonbitlang/moon/issues/2320).
-The required `ci-ok` aggregate includes producers and consumers, so a failed producer
-cannot be hidden by a skipped consumer.
+The required `ci-ok` aggregate includes selected producer/consumer workflow results.
+Their nested gates require each selected producer and consumer to pass, so a failed
+producer cannot be hidden by a skipped consumer. `qualification-ok` applies the same
+rule to the complete platform matrix.
 
 ## Pull Request Process
 

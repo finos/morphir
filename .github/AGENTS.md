@@ -76,8 +76,11 @@ To add a new skill:
 
 ## Task Scripts
 
-Write task and automation scripts in MoonBit, as standalone `.mbtx` scripts, not as bash and PowerShell pairs. One
-script then works on every platform, and it uses the toolchain that mise already installs.
+Use standalone MoonBit `.mbtx` scripts for scripting and automation, especially mise tasks and CI orchestration.
+One script then works on every platform with the pinned toolchain that mise already installs. Do not add Bash,
+PowerShell, Python or JavaScript orchestration scripts, or move that logic into inline workflow shell blocks.
+Direct invocations of existing compilers, package tools and application tests can remain declarative workflow
+steps. Keep the bootstrap needed to install MoonBit small and separate from task logic.
 
 - Put the script in `scripts/` and run it with `moonx scripts/<name>.mbtx` (Wasm) or `moon run scripts/<name>.mbtx`.
 - Declare its mise task in `.config/mise/config.toml`, for example `run = "moonx scripts/beads-check.mbtx"`.
@@ -85,7 +88,14 @@ script then works on every platform, and it uses the toolchain that mise already
 - Pin the version of each import: `"moonbitlang/async@0.22.1/process"`. Use `moonbitlang/async` for processes
   (`collect_output`, `run`), files (`fs`) and `stdio`, and `moonbitlang/x/sys` for `exit`.
 - The older tasks in `.config/mise/tasks/` are still bash and PowerShell pairs. When you change one, move it to a
-  MoonBit script.
+  MoonBit script, declare its task in `.config/mise/config.toml`, and remove both old wrappers. Track remaining
+  legacy migrations in beads; do not introduce another platform-specific variant.
+- CI rejects added/modified legacy mise wrappers and non-MoonBit automation in `scripts/`.
+  Deletions remain allowed during migration. Existing application-language tests and build tools under `apps/`
+  and `pkgs/` are separate from this automation policy.
+- CI selection and aggregate checks live in `scripts/ci-changes.mbtx` and `scripts/ci-gate.mbtx`. Run
+  `mise run test:ci` after editing CI policy. Full installation/platform qualification lives in
+  `.github/workflows/qualification.yml`; routine PR checks use the tested component dependency rules.
 
 The `cli/*` modules on mooncakes.io are POSIX-style commands for `moonx`: `cli/sh`, `cli/jq`, `cli/grep`,
 `cli/find`, `cli/curl`, `cli/make` and more (`moon view cli` lists them). Use them as portable commands, for example

@@ -2,7 +2,7 @@
 # This file defines the tools and configurations needed for development
 
 [tools]
-# Bun for fast JavaScript/TypeScript scripting
+# Bun for TypeScript checks and application builds
 bun = "1.4.3"
 
 # Node.js and npm for the CLI package and target smoke tests
@@ -13,6 +13,9 @@ zig = "0.17.0"
 
 # YAML linting
 yamllint = "latest"
+
+# GitHub Actions expressions, reusable workflow contracts and embedded shell.
+actionlint = "1.7.12"
 
 # Python package manager
 uv = "latest"
@@ -34,6 +37,27 @@ windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/
 [env]
 # Environment variables for the project
 _.path = ["./node_modules/.bin"]
+
+[tasks.check]
+description = "Run lint, CI policy tests, workspace tests and builds"
+run = "moonx scripts/check.mbtx"
+
+[tasks."test:ci"]
+description = "Test focused CI selection and fail-closed aggregate gates"
+run = [
+  "actionlint",
+  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/check.mbtx",
+  "moonx scripts/ci-changes.mbtx --self-test",
+  "moonx scripts/ci-gate.mbtx --self-test",
+]
+
+[tasks."ci:changes"]
+description = "Select focused CI jobs from the GitHub event and exact commits"
+run = "moonx scripts/ci-changes.mbtx --event"
+
+[tasks."ci:gate"]
+description = "Require every selected CI job to pass"
+run = "moonx scripts/ci-gate.mbtx"
 
 [tasks."beads:check"]
 description = "Check that this checkout or worktree uses the bootstrapped shared beads database"

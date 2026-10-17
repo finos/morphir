@@ -2,12 +2,41 @@
 /// Qualify native read-only grants against actual files and adversarial mutation.
 import {
   "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
   "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
   "moonbitlang/x@0.5.5/sys",
 }
 
 ///|
 async fn main {
-  let code = @process.run("moon", ["run", "pkgs/morphir-workbench-native/workspace-acceptance", "--target", "native", "--release"])
+  let built = @process.run(
+    "moon",
+    [
+      "build", "pkgs/morphir-workbench-native/workspace-acceptance", "--target",
+      "native", "--release",
+    ],
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if built != 0 {
+    @sys.exit(if built < 0 { 1 } else { built })
+  }
+  let binary = @fs.realpath(
+    "_build/native/release/build/finos/morphir-workbench-native/workspace-acceptance/workspace-acceptance.exe",
+  )
+  // A fresh runner has no .dev directory. Exercise the actual acceptance binary
+  // in that condition every time, without changing the developer's own .dev.
+  let code = {
+    let root = @fs.tmpdir(prefix="morphir-native-workspace-check-")
+    defer @fs.rmdir(root, recursive=true)
+    @process.run(
+      binary,
+      [],
+      cwd=root,
+      stdout=@stdio.stdout,
+      stderr=@stdio.stderr,
+    )
+  }
   @sys.exit(if code < 0 { 1 } else { code })
 }

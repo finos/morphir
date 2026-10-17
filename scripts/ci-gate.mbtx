@@ -1,0 +1,247 @@
+///|
+/// Reject failed/cancelled jobs and skipped/absent required jobs. Qualification
+/// receipts bind the exact candidate SHA and workflow run.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonrockz/ion@0.5.0/binary",
+  "moonrockz/ion@0.5.0/ion",
+  "moonrockz/ion@0.5.0/json" @ion_json,
+}
+
+///|
+fn check(needs : Json, required : Json) -> Unit raise {
+  guard needs is Object(jobs) && required is Array(names) && !names.is_empty() else {
+    fail("Expected jobs and a nonempty required-job array")
+  }
+  for name in names {
+    guard name is String(name) &&
+      jobs.get(name) is Some(Object(job)) &&
+      job.get("result") == Some(Json::string("success")) else {
+      fail(
+        "Required job missing, failed, cancelled or skipped: " +
+        name.stringify(),
+      )
+    }
+  }
+  for name, job in jobs {
+    guard job is Object(job) &&
+      job.get("result") is Some(String(result)) &&
+      (result == "success" || result == "skipped") else {
+      fail("Job did not pass: " + name)
+    }
+  }
+}
+
+///|
+fn accepts(needs : Json, required : Json) -> Bool {
+  try {
+    check(needs, required)
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+async fn self_test() -> Unit {
+  let required : Json = ["changes", "build"]
+  let good : Json = {
+    "changes": { "result": "success" },
+    "build": { "result": "success" },
+    "optional": { "result": "skipped" },
+  }
+  guard accepts(good, required) else {
+    fail("Successful selected jobs refused")
+  }
+  for state in ["failure", "cancelled", "skipped", "pending", "unknown"] {
+    let needs : Json = {
+      "changes": { "result": "success" },
+      "build": { "result": state },
+    }
+    guard !accepts(needs, required) else { fail("Accepted required \{state}") }
+  }
+  for
+    needs in [
+      Json::null(),
+      { "changes": { "result": "success" } },
+      {
+        "changes": { "result": "success" },
+        "build": { "result": "success" },
+        "other": { "result": "failure" },
+      },
+      { "changes": { "result": "skipped" }, "build": { "result": "skipped" } },
+    ] {
+    guard !accepts(needs, required) else {
+      fail("Accepted invalid job results")
+    }
+  }
+  guard !accepts(good, []) && !accepts(good, [42]) else {
+    fail("Accepted malformed required jobs")
+  }
+  let focused : Json = {
+    "runner": "ubuntu-24.04",
+    "full": false,
+    "provider": false,
+    "acceptance-lanes": "[]",
+  }
+  guard selected_jobs("--native", focused) ==
+    Json(["native-cli", "mep-process", "native-cli-acceptance"]) else {
+    fail("Wrong focused native requirements")
+  }
+  let full : Json = {
+    "runner": "ubuntu-24.04",
+    "full": true,
+    "provider": true,
+    "acceptance-lanes": "[\"frontend\"]",
+  }
+  let full_jobs = selected_jobs("--native", full)
+  guard full_jobs is Array(jobs) && jobs.length() == 7 else {
+    fail("Full native requirements omitted a producer or consumer")
+  }
+  let statuses : Map[String, Json] = Map([])
+  for job in jobs {
+    guard job is String(name) else { fail("Invalid job name") }
+    statuses.set(name, { "result": "success" })
+  }
+  statuses.set("installed-provider", { "result": "skipped" })
+  guard !accepts(Json::object(statuses), full_jobs) else {
+    fail("A skipped selected provider consumer passed the reusable workflow")
+  }
+  guard selected_jobs("--installed", { "workbench": true }) ==
+    Json(["workbench"]) else {
+    fail("Wrong focused installed requirements")
+  }
+  let (status, out, _) = @process.collect_output("git", ["rev-parse", "HEAD"])
+  guard status == 0 else { fail("Missing candidate fixture checkout") }
+  verify_candidate(out.text().trim().to_owned())
+  let mismatch_refused = try {
+    verify_candidate("0000000000000000000000000000000000000000")
+    false
+  } catch {
+    _ => true
+  }
+  guard mismatch_refused else {
+    fail("Accepted qualification for a different commit")
+  }
+  println("ci-gate: success, optional skip and 11 refusal cases pass")
+  println("ci-gate: focused/full native and installed nested requirements pass")
+  println("ci-gate: exact candidate match and mismatch refusal pass")
+}
+
+///|
+async fn verify_candidate(revision : String) -> Unit {
+  let (status, out, _) = @process.collect_output("git", ["rev-parse", "HEAD"])
+  guard status == 0 && out.text().trim() == revision else {
+    fail("Qualification checkout differs from candidate GITHUB_SHA")
+  }
+}
+
+///|
+fn environment(name : String) -> String raise {
+  match @env.get_env_var(name) {
+    Some(value) => value
+    None => fail("Missing " + name)
+  }
+}
+
+///|
+fn selected_jobs(mode : String, inputs : Json) -> Json raise {
+  guard inputs is Object(fields) else {
+    fail("Expected reusable workflow inputs")
+  }
+  let jobs : Array[String] = []
+  if mode == "--native" {
+    guard fields.get("runner") is Some(String(runner)) &&
+      ["ubuntu-24.04", "macos-15"].contains(runner) else {
+      fail("Unqualified native runner")
+    }
+    jobs.append(["native-cli", "mep-process"])
+    if fields.get("runner") == Some(Json::string("ubuntu-24.04")) {
+      jobs.push("native-cli-acceptance")
+      if fields.get("full") == Some(Json::boolean(true)) {
+        jobs.push("native-workspace")
+      }
+      guard fields.get("acceptance-lanes") is Some(String(lanes)) &&
+        @json.parse(lanes) is Array(lanes) else {
+        fail("Expected acceptance-lanes JSON array")
+      }
+      guard lanes
+        .iter()
+        .all(lane => {
+          [
+            Json::string("compiler"),
+            Json::string("frontend"),
+            Json::string("conformance"),
+          ].contains(lane)
+        }) else {
+        fail("Unknown acceptance lane")
+      }
+      if !lanes.is_empty() {
+        jobs.push("native-acceptance")
+      }
+    }
+    if fields.get("provider") == Some(Json::boolean(true)) {
+      jobs.append(["provider-tools", "installed-provider"])
+    }
+  } else if mode == "--installed" {
+    for job in ["lifecycle", "telemetry", "workbench"] {
+      if fields.get(job) == Some(Json::boolean(true)) {
+        jobs.push(job)
+      }
+    }
+  } else {
+    fail("Unknown workflow mode")
+  }
+  Json(jobs)
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  if args == ["--self-test"] {
+    self_test()
+    return
+  }
+  guard args == [] ||
+    args == ["--qualification"] ||
+    args == ["--native"] ||
+    args == ["--installed"] else {
+    fail(
+      "Usage: ci-gate.mbtx [--self-test|--qualification|--native|--installed]",
+    )
+  }
+  let needs = @json.parse(environment("CI_NEEDS"))
+  let required = if args == ["--native"] || args == ["--installed"] {
+    selected_jobs(args[0], @json.parse(environment("CI_INPUTS")))
+  } else {
+    @json.parse(environment("CI_REQUIRED_JOBS"))
+  }
+  check(needs, required)
+  if args == ["--qualification"] {
+    let revision = environment("GITHUB_SHA")
+    verify_candidate(revision)
+    let receipt : Json = {
+      "profile": "morphir-ci-qualification-v1",
+      "revision": revision,
+      "repository": environment("GITHUB_REPOSITORY"),
+      "runId": environment("GITHUB_RUN_ID"),
+      "runAttempt": environment("GITHUB_RUN_ATTEMPT"),
+      "requiredJobs": required,
+      "results": needs,
+    }
+    @fs.mkdir(".dev/qualification", recursive=true)
+    let ion = @ion_json.to_ion(receipt).with_annotations([
+      @ion.SymbolToken::new("morphir_ci_qualification_v1"),
+    ])
+    @fs.write_file(
+      ".dev/qualification/receipt.ionb",
+      @binary.write_binary_value(ion),
+    )
+    println(receipt.stringify())
+  }
+  println("All selected checks passed; unselected checks may be skipped.")
+}

@@ -1,0 +1,25 @@
+///|
+/// Portable mise check orchestration. Qualification is selected separately in CI.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn main {
+  for task in ["lint", "test:ci", "test", "build"] {
+    println("Checking \{task}")
+    let status = @process.run(
+      "mise",
+      ["run", task],
+      stdout=@stdio.stdout,
+      stderr=@stdio.stderr,
+    )
+    if status != 0 {
+      @sys.exit(if status > 0 { status } else { 1 })
+    }
+  }
+  println("All checks passed.")
+}

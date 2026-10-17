@@ -7,6 +7,18 @@ on:
         description: Qualified native runner label
         required: true
         type: string
+      acceptance-lanes:
+        description: JSON array of compiler, frontend and conformance lanes
+        type: string
+        default: '[]'
+      provider:
+        description: Qualify installed signed providers
+        type: boolean
+        default: false
+      full:
+        description: Include the full workspace native release build
+        type: boolean
+        default: false
 
 # Build CLI artifacts on Linux; execute acceptance on each qualified target OS.
 # Keep fresh fixture/trust state and same-run artifact admission.
@@ -56,7 +68,7 @@ jobs:
   native-workspace:
     name: Native workspace release
     runs-on: ubuntu-24.04
-    if: inputs.runner == 'ubuntu-24.04'
+    if: inputs.full && inputs.runner == 'ubuntu-24.04'
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -120,12 +132,12 @@ jobs:
   native-acceptance:
     name: Native acceptance (${{ matrix.lane }})
     runs-on: ubuntu-24.04
-    if: inputs.runner == 'ubuntu-24.04'
+    if: inputs.runner == 'ubuntu-24.04' && inputs.acceptance-lanes != '[]'
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        lane: [compiler, frontend, conformance]
+        lane: ${{ fromJSON(inputs.acceptance-lanes) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -140,7 +152,7 @@ jobs:
 
       - name: Resolve pinned workspace packages
         run: moon update
-      # Native workers and workspace grants run once per OS in installed-lifecycle.
+      # Native workers and workspace grants have separate selected jobs.
       - name: Compile generated libraries and verify private build lifecycle
         if: matrix.lane == 'compiler'
         run: moonx scripts/typescript-tooling.mbtx test-compiler
@@ -174,6 +186,7 @@ jobs:
           if-no-files-found: warn
 
   provider-tools:
+    if: inputs.provider
     permissions:
       contents: read
       attestations: read
@@ -215,6 +228,7 @@ jobs:
           overwrite: true
 
   installed-provider:
+    if: inputs.provider
     name: Installed signed provider (${{ inputs.runner }})
     runs-on: ${{ inputs.runner }}
     needs: [native-cli, provider-tools]
@@ -256,3 +270,20 @@ jobs:
           name: installed-provider-${{ inputs.runner }}
           path: .dev/installed-provider-ci/
           if-no-files-found: error
+
+  native-ok:
+    name: native-ok (${{ inputs.runner }})
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [native-cli, native-workspace, mep-process, native-cli-acceptance, native-acceptance, provider-tools, installed-provider]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for pinned gate dependencies
+        run: moon update
+      - name: Require selected native producers and consumers
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+          CI_INPUTS: ${{ toJSON(inputs) }}
+        run: moonx scripts/ci-gate.mbtx --native

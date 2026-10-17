@@ -18,10 +18,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Docs and project-site changes skip the long jobs below; lint, format-check and validate-config
-  # always run. `site` builds and tests the project site when a site input changes. Pushes to main
-  # and manual runs run every job; on main the Site workflow builds the site. The path rules are
-  # in `scripts/ci-changes.mbtx`.
+  # Tested MoonBit rules select focused checks for PRs, merge-queue and main.
+  # Full platform/mode qualification runs through qualification.yml.
   changes:
     name: Detect code changes
     runs-on: ubuntu-latest
@@ -29,6 +27,13 @@ jobs:
     outputs:
       code: ${{ steps.detect.outputs.code }}
       site: ${{ steps.detect.outputs.site }}
+      acceptance-lanes: ${{ steps.detect.outputs.acceptance-lanes }}
+      provider: ${{ steps.detect.outputs.provider }}
+      lifecycle: ${{ steps.detect.outputs.lifecycle }}
+      telemetry: ${{ steps.detect.outputs.telemetry }}
+      workbench: ${{ steps.detect.outputs.workbench }}
+      required: ${{ steps.detect.outputs.required }}
+      full: ${{ steps.detect.outputs.full }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -37,14 +42,16 @@ jobs:
 
       - name: Set up cached MoonBit
         uses: ./.github/actions/setup-moonbit
+        with:
+          tools: http:moonbit actionlint
 
       - name: Update Mooncakes registry
         run: moon update
 
-      - name: Test the change rules
-        run: moonx scripts/ci-changes.mbtx --self-test
+      - name: Test CI selection and aggregate gates
+        run: mise run test:ci
 
-      - name: Detect code changes
+      - name: Select focused checks
         id: detect
         env:
           EVENT: ${{ github.event_name }}
@@ -52,26 +59,8 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
           QUEUE_HEAD: ${{ github.event.merge_group.head_sha }}
-        run: |
-          set -euo pipefail
-          case "$EVENT" in
-            pull_request) base="$PR_BASE" head="$PR_HEAD" ;;
-            merge_group) base="$QUEUE_BASE" head="$QUEUE_HEAD" ;;
-            push)
-              # The Site workflow builds and deploys main.
-              printf 'code=true\nsite=false\n' >> "$GITHUB_OUTPUT"
-              echo "push runs every job; the Site workflow builds the site"
-              exit 0
-              ;;
-            *)
-              printf 'code=true\nsite=true\n' >> "$GITHUB_OUTPUT"
-              echo "$EVENT runs every job"
-              exit 0
-              ;;
-          esac
-          moonx scripts/ci-changes.mbtx "$base" "$head" | tee changes.txt
-          grep -E '^(code|site)=(true|false)$' changes.txt >> "$GITHUB_OUTPUT"
-          test "$(grep -cE '^(code|site)=' changes.txt)" -eq 2
+          PUSH_BASE: ${{ github.event.before }}
+        run: mise run ci:changes
 
   supervision:
     name: Process supervision (${{ matrix.os }})
@@ -229,16 +218,38 @@ jobs:
     permissions:
       contents: read
       attestations: read
-    name: Native qualification (${{ matrix.os }})
+    name: Native checks
     needs: changes
-    if: needs.changes.outputs.code == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15]
+    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.full != 'true'
     uses: ./.github/workflows/ci-native.yml
     with:
-      runner: ${{ matrix.os }}
+      runner: ubuntu-24.04
+      acceptance-lanes: ${{ needs.changes.outputs.acceptance-lanes }}
+      provider: ${{ needs.changes.outputs.provider == 'true' }}
+
+  installed-qualification:
+    name: Focused installed checks
+    needs: changes
+    if: >-
+      needs.changes.outputs.full != 'true' &&
+      (needs.changes.outputs.lifecycle == 'true' ||
+      needs.changes.outputs.telemetry == 'true' ||
+      needs.changes.outputs.workbench == 'true')
+    uses: ./.github/workflows/ci-installed.yml
+    with:
+      runner: ubuntu-24.04
+      lifecycle: ${{ needs.changes.outputs.lifecycle == 'true' }}
+      telemetry: ${{ needs.changes.outputs.telemetry == 'true' }}
+      workbench: ${{ needs.changes.outputs.workbench == 'true' }}
+
+  full-qualification:
+    name: Qualify CI policy and toolchain changes
+    permissions:
+      contents: read
+      attestations: read
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
+    uses: ./.github/workflows/qualification.yml
 
   # The Elm and Scheme checks compile their own programs and do not use the output of the native
   # build, so they run beside `build` instead of after the native leg's steps.
@@ -302,108 +313,6 @@ jobs:
 
       - name: Check Scheme docs examples
         run: mise run scheme-docs:check
-
-  installed-lifecycle:
-    name: Installed lifecycle (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-      - name: Install Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24.22.0'
-      - name: Set up Bun and portable runtime JavaScript
-        uses: ./.github/actions/setup-typescript
-      - name: Set up cached MoonBit
-        uses: ./.github/actions/setup-moonbit
-
-      - name: Resolve pinned workspace packages
-        run: moon update && moon build --target js
-      - name: Acquire required isolated LLVM pin
-        if: runner.os == 'macOS'
-        env:
-          MORPHIR_LLVM_HOME: ${{ github.workspace }}/.dev/llvm-toolchain
-          MORPHIR_LLVM_PIN: ${{ github.workspace }}/.dev/llvm-pin.json
-        run: mise run setup:llvm
-      - name: Installed JS, Wasm GC and native C debug/release acceptance
-        if: runner.os != 'macOS'
-        env:
-          MORPHIR_REQUIRED_TARGETS: js,wasm-gc,native
-          MORPHIR_INSTALLED_RECEIPTS: .dev/installed-ci
-        run: mise run test:installed-lifecycle
-      - name: Installed required LLVM and other lanes debug/release acceptance
-        if: runner.os == 'macOS'
-        env:
-          MORPHIR_REQUIRED_TARGETS: js,wasm-gc,native,llvm
-          MORPHIR_LLVM_HOME: ${{ github.workspace }}/.dev/llvm-toolchain
-          MORPHIR_LLVM_PIN: ${{ github.workspace }}/.dev/llvm-pin.json
-          MORPHIR_INSTALLED_RECEIPTS: .dev/installed-ci
-        run: mise run test:installed-lifecycle
-      - name: Qualify owned native Workbench workers without CEF
-        run: mise run test:workbench-native-workers
-      - name: Qualify read-only native Workbench workspace grants without CEF
-        run: mise run test:workbench-native-workspaces
-      - name: Retain installed identity and comparison receipts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: installed-lifecycle-${{ matrix.os }}
-          path: |
-            .dev/installed-ci/
-            .dev/llvm-pin.json
-          if-no-files-found: error
-
-  native-telemetry:
-    name: Native telemetry (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-      - name: Install Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24.22.0'
-      - name: Set up Bun and portable runtime JavaScript
-        uses: ./.github/actions/setup-typescript
-      - name: Set up cached MoonBit
-        uses: ./.github/actions/setup-moonbit
-
-      - name: Resolve pinned workspace packages
-        run: moon update && moon build --target js
-      - name: Build native adapter from accepted archive pins
-        env:
-          MORPHIR_OTEL_OUTPUT: .dev/native-otel
-        run: mise run setup:native-otel
-      - name: Installed OTLP capture, bounded flush and overhead baseline
-        env:
-          MORPHIR_OTEL_BINARY: .dev/native-otel/morphir-otel
-          MORPHIR_OTEL_PIN: .dev/native-otel/pin.json
-          MORPHIR_TELEMETRY_RECEIPTS: .dev/telemetry-ci
-        run: mise run test:native-telemetry
-      - name: Retain telemetry capture and baseline
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: native-telemetry-${{ matrix.os }}
-          path: |
-            .dev/telemetry-ci/
-            .dev/native-otel/pin.json
-          if-no-files-found: error
 
   test:
     name: Test
@@ -471,10 +380,8 @@ jobs:
   # The only check that branch protection and the merge queue require, so job renames and matrix
   # changes need no settings change. Add every new job to `needs`.
   #
-  # `if: always()` is required: without it this job is skipped when a needed job fails, and
-  # GitHub counts a skipped required check as passed. A needed job that is skipped (a job with
-  # an `if:` condition, or one whose dependency failed) passes here; the failed dependency still
-  # fails this job. Failed and cancelled jobs fail it.
+  # Always evaluate failures. The MoonBit gate requires selected jobs to succeed,
+  # permits unselected skips and rejects all failed/cancelled dependency results.
   ci-ok:
     name: ci-ok
     runs-on: ubuntu-latest
@@ -492,20 +399,16 @@ jobs:
       - build
       - native-qualification
       - elm-scheme
-      - installed-lifecycle
-      - native-telemetry
+      - installed-qualification
+      - full-qualification
       - test
     steps:
-      - name: Check that every job passed or was skipped
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for pinned gate dependencies
+        run: moon update
+      - name: Require every selected job to pass
         env:
-          NEEDS: ${{ toJSON(needs) }}
-        run: |
-          failed="$(jq -r 'to_entries[]
-            | select(.value.result != "success" and .value.result != "skipped")
-            | "\(.key): \(.value.result)"' <<<"$NEEDS")"
-          if [ -n "$failed" ]; then
-            echo "::error::Some CI jobs did not pass"
-            echo "$failed"
-            exit 1
-          fi
-          echo "All CI jobs passed or were skipped."
+          CI_NEEDS: ${{ toJSON(needs) }}
+          CI_REQUIRED_JOBS: ${{ needs.changes.outputs.required }}
+        run: mise run ci:gate

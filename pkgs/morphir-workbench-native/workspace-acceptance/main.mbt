@@ -106,7 +106,7 @@ async fn main {
   let base = @env.current_dir().unwrap() +
     "/.dev/native-workspace-" +
     @env.now().to_string()
-  @fs.mkdir(base)
+  @fs.mkdir(base, recursive=true)
   defer @fs.rmdir(base, recursive=true)
   @fs.mkdir(base + "/root")
   @fs.mkdir(base + "/outside")

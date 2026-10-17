@@ -1,0 +1,67 @@
+name: Full qualification
+
+# Each run checks its exact github.sha. Release callers must use that candidate,
+# including the workflow's own artifacts, rather than a previous main result.
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  attestations: read
+
+concurrency:
+  group: qualification-${{ github.sha }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  native:
+    name: Full native (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    uses: ./.github/workflows/ci-native.yml
+    with:
+      runner: ${{ matrix.os }}
+      acceptance-lanes: '["compiler","frontend","conformance"]'
+      provider: true
+      full: true
+
+  installed:
+    name: Full installed (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    uses: ./.github/workflows/ci-installed.yml
+    with:
+      runner: ${{ matrix.os }}
+      lifecycle: true
+      telemetry: true
+      workbench: true
+
+  qualification-ok:
+    name: qualification-ok
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [native, installed]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for pinned gate dependencies
+        run: moon update
+      - name: Require the full matrix and bind its candidate receipt
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+          CI_REQUIRED_JOBS: '["native","installed"]'
+        run: moonx scripts/ci-gate.mbtx --qualification
+      - name: Retain exact candidate qualification receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: qualification-${{ github.sha }}
+          path: .dev/qualification/receipt.ionb
+          if-no-files-found: error

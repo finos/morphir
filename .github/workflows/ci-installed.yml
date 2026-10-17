@@ -1,0 +1,151 @@
+name: Installed qualification checks
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        required: true
+        type: string
+      lifecycle:
+        type: boolean
+        default: false
+      telemetry:
+        type: boolean
+        default: false
+      workbench:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    name: Installed lifecycle (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    if: inputs.lifecycle
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
+      - name: Set up cached MoonBit
+        uses: ./.github/actions/setup-moonbit
+
+      - name: Resolve pinned workspace packages
+        run: moon update
+      - name: Build JavaScript workspace
+        run: moon build --target js
+      - name: Acquire required isolated LLVM pin
+        if: runner.os == 'macOS'
+        env:
+          MORPHIR_LLVM_HOME: ${{ github.workspace }}/.dev/llvm-toolchain
+          MORPHIR_LLVM_PIN: ${{ github.workspace }}/.dev/llvm-pin.json
+        run: mise run setup:llvm
+      - name: Installed JS, Wasm GC and native C debug/release acceptance
+        if: runner.os != 'macOS'
+        env:
+          MORPHIR_REQUIRED_TARGETS: js,wasm-gc,native
+          MORPHIR_INSTALLED_RECEIPTS: .dev/installed-ci
+        run: mise run test:installed-lifecycle
+      - name: Installed required LLVM and other lanes debug/release acceptance
+        if: runner.os == 'macOS'
+        env:
+          MORPHIR_REQUIRED_TARGETS: js,wasm-gc,native,llvm
+          MORPHIR_LLVM_HOME: ${{ github.workspace }}/.dev/llvm-toolchain
+          MORPHIR_LLVM_PIN: ${{ github.workspace }}/.dev/llvm-pin.json
+          MORPHIR_INSTALLED_RECEIPTS: .dev/installed-ci
+        run: mise run test:installed-lifecycle
+      - name: Retain installed identity and comparison receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: installed-lifecycle-${{ inputs.runner }}
+          path: |
+            .dev/installed-ci/
+            .dev/llvm-pin.json
+          if-no-files-found: error
+
+  telemetry:
+    name: Native telemetry (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    if: inputs.telemetry
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
+      - name: Set up cached MoonBit
+        uses: ./.github/actions/setup-moonbit
+
+      - name: Resolve pinned workspace packages
+        run: moon update
+      - name: Build JavaScript workspace
+        run: moon build --target js
+      - name: Build native adapter from accepted archive pins
+        env:
+          MORPHIR_OTEL_OUTPUT: .dev/native-otel
+        run: mise run setup:native-otel
+      - name: Installed OTLP capture, bounded flush and overhead baseline
+        env:
+          MORPHIR_OTEL_BINARY: .dev/native-otel/morphir-otel
+          MORPHIR_OTEL_PIN: .dev/native-otel/pin.json
+          MORPHIR_TELEMETRY_RECEIPTS: .dev/telemetry-ci
+        run: mise run test:native-telemetry
+      - name: Retain telemetry capture and baseline
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-telemetry-${{ inputs.runner }}
+          path: |
+            .dev/telemetry-ci/
+            .dev/native-otel/pin.json
+          if-no-files-found: error
+
+  workbench:
+    name: Native Workbench (${{ matrix.kind }}, ${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    if: inputs.workbench
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [workers, workspaces]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - uses: ./.github/actions/setup-typescript
+      - uses: ./.github/actions/setup-moonbit
+      - run: moon update
+      - run: moon build --target js
+      - name: Qualify native ownership and grants without CEF
+        run: mise run test:workbench-native-${{ matrix.kind }}
+
+  installed-ok:
+    name: installed-ok (${{ inputs.runner }})
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [lifecycle, telemetry, workbench]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for pinned gate dependencies
+        run: moon update
+      - name: Require selected installed checks
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+          CI_INPUTS: ${{ toJSON(inputs) }}
+        run: moonx scripts/ci-gate.mbtx --installed
