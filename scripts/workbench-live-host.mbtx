@@ -31,7 +31,7 @@ async fn main {
   }
   let status = @process.run(
     "node",
-    ["apps/morphir-workbench/scripts/browser-test.js"],
+    ["apps/morphir-workbench/scripts/browser-test.ts"],
     extra_env=environment,
   )
   @sys.exit(if status < 0 { 1 } else { status })

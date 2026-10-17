@@ -8,21 +8,26 @@
     "morphir": "bin/morphir.js"
   },
   "files": [
-    "bin/",
+    "bin/*.js",
+    "bin/*.js.map",
     "dist/",
-    "build-provider/",
+    "build-provider/*.mjs",
+    "build-provider/*.mjs.map",
+    "build-provider/*.cs",
+    "build-provider/*.ps1",
     "LICENSE",
     "NOTICE"
   ],
   "scripts": {
-    "build": "node scripts/build.js",
+    "build": "bun --check scripts/build.ts",
     "start": "node bin/morphir.js",
-    "test": "node scripts/test.js",
-    "prepack": "npm run build"
+    "test": "node scripts/test.ts",
+    "prepack": "bun run build"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/finos/morphir-moonbit.git",
     "directory": "apps/morphir"
-  }
+  },
+  "packageManager": "bun@1.4.3"
 }

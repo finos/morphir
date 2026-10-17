@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Install workbench dependencies and Chromium for UI verification"
-set -euo pipefail
-npm ci --prefix apps/morphir-workbench
-if [[ "${1:-}" == "--ci" ]]; then
-  npm exec --prefix apps/morphir-workbench -- playwright install --with-deps chromium
-else
-  npm exec --prefix apps/morphir-workbench -- playwright install chromium
-fi

@@ -5,28 +5,45 @@
   "description": "Embeddable MoonBit compiler and runtime host adapters",
   "license": "Apache-2.0",
   "exports": {
-    ".": "./index.mjs",
-    "./node": "./node.mjs",
-    "./browser": "./browser.mjs",
+    ".": {
+      "types": "./dist/types/index.d.mts",
+      "default": "./index.mjs"
+    },
+    "./node": {
+      "types": "./dist/types/node.d.mts",
+      "default": "./node.mjs"
+    },
+    "./browser": {
+      "types": "./dist/types/browser.d.mts",
+      "default": "./browser.mjs"
+    },
     "./browser-worker": "./dist/browser-worker.js"
   },
-  "files": ["*.mjs", "dist/", "README.md", "NOTICE", "THIRD_PARTY_LICENSE.txt"],
+  "files": [
+    "*.mjs",
+    "*.mjs.map",
+    "dist/",
+    "README.md",
+    "NOTICE",
+    "THIRD_PARTY_LICENSE.txt"
+  ],
   "scripts": {
-    "build": "node build.mjs",
-    "test": "node --test test/*.test.mjs",
-    "test:browser": "node test/browser.mjs",
-    "prepack": "npm run build"
+    "build": "bun --check build.mts",
+    "test": "node --test test/*.test.mts",
+    "test:browser": "node test/browser.mts",
+    "prepack": "bun run build"
   },
   "dependencies": {
     "@moonbit/moonc-worker": "0.1.202610123"
   },
   "devDependencies": {
-    "esbuild": "0.28.2",
     "playwright": "1.64.1"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/finos/morphir-moonbit.git",
     "directory": "pkgs/morphir-host/embedding"
-  }
+  },
+  "packageManager": "bun@1.4.3",
+  "types": "./dist/types/index.d.mts"
 }

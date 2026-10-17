@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "bun"
+    ]
+  },
+  "include": [
+    "tools/**/*.ts",
+    "apps/morphir/scripts/build.ts",
+    "apps/morphir-workbench/scripts/build.ts",
+    "apps/morphir-site/scripts/build.ts",
+    "apps/morphir-workbench-desktop/scripts/**/*.ts",
+    "pkgs/morphir-host/embedding/build.mts",
+    "types/**/*.d.ts"
+  ]
+}

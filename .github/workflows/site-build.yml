@@ -49,18 +49,20 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
 
       - name: Update Mooncakes registry
         run: moon update
 
       - name: Install site dependencies
         run: |
-          npm ci --prefix apps/morphir-site
-          npm ci --prefix apps/morphir-workbench
-          npm exec --prefix apps/morphir-site -- playwright install --with-deps chromium
+          bun install --frozen-lockfile --cwd apps/morphir-site
+          bun install --frozen-lockfile --cwd apps/morphir-workbench
+          bun run --cwd apps/morphir-site playwright install --with-deps chromium
 
       - name: Build site
-        run: node apps/morphir-site/scripts/build.js
+        run: bun --check apps/morphir-site/scripts/build.ts
 
       - name: Check site
         working-directory: apps/morphir-site
@@ -72,8 +74,8 @@ jobs:
             -p finos/morphir-site/model finos/morphir-site/content finos/morphir-site/views \
             finos/morphir-site/site finos/morphir-site/generate)
           (cd apps/morphir-site && moon test --target js -p finos/morphir-site/model)
-          npm test --prefix apps/morphir-site
-          npm run test:browser --prefix apps/morphir-site
+          bun run --cwd apps/morphir-site test
+          bun run --cwd apps/morphir-site test:browser
 
       - name: Upload Pages artifact
         if: inputs.pages

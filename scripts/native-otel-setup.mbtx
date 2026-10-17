@@ -14,7 +14,7 @@ import {
 async fn output(
   program : String,
   args : Array[String],
-  cwd? : String = ".",
+  cwd~ : String = ".",
 ) -> String {
   let (code, out, err) = @process.collect_output(program, args, cwd~)
   if code != 0 {
@@ -34,6 +34,14 @@ fn text(json : Json, key : String) -> String {
 
 ///|
 async fn main {
+  // These development gates consume portable provider modules on a fresh checkout.
+  let (runtime_status, _, runtime_error) = @process.collect_output("bun", [
+    "run", "build:runtimes",
+  ])
+  guard runtime_status == 0 else {
+    fail("Runtime JavaScript build failed: " + runtime_error.text())
+  }
+
   let home = @env.get_env_var("MOON_HOME").unwrap_or("")
   guard home != "" else { abort("Explicit pinned MOON_HOME required") }
   let host = @json.parse(

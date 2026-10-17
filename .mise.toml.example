@@ -4,7 +4,7 @@
 # Examples:
 # [tools]
 # # Override tool versions locally
-# bun = "1.4.0"  # Use a different bun version
+# bun = "1.4.3"  # Use a different bun version
 # 
 # [env]
 # # Add local environment variables

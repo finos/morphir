@@ -46,3 +46,13 @@ website/yarn-error.log*
 
 # morphir-elm incremental build state of the Elm parity projects
 pkgs/morphir-elm/conformance/projects/*/morphir-hashes.json
+
+# TypeScript emits these stable Node runtime entrypoints; author the .ts/.mts files.
+/apps/morphir/bin/*.js
+/apps/morphir/bin/*.js.map
+/apps/morphir/build-provider/*.mjs
+/apps/morphir/build-provider/*.mjs.map
+/pkgs/morphir-host/runners/*.mjs
+/pkgs/morphir-host/runners/*.mjs.map
+/pkgs/morphir-host/embedding/*.mjs
+/pkgs/morphir-host/embedding/*.mjs.map

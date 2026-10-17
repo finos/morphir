@@ -97,13 +97,10 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
-      - name: Test process lifecycle on Unix
-        if: runner.os != 'Windows'
-        run: bash .config/mise/tasks/test/supervision
-      - name: Test process lifecycle on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./.config/mise/tasks/test/supervision.ps1
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
+      - name: Test process lifecycle
+        run: node apps/morphir/build-provider/test-supervision.mts
 
   embedding:
     name: Embedded Toolchain
@@ -118,8 +115,39 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
       - name: Test Node, npm and browser embedding
-        run: bash .config/mise/tasks/test/embedding
+        run: |
+          bun install --frozen-lockfile --cwd pkgs/morphir-host/embedding
+          bun run --cwd pkgs/morphir-host/embedding build
+          bun run --cwd pkgs/morphir-host/embedding test
+          bun run --cwd pkgs/morphir-host/embedding playwright install --with-deps chromium
+          bun run --cwd pkgs/morphir-host/embedding test:browser
+
+  typescript:
+    name: TypeScript (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.site == 'true'
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-typescript
+      - name: Install frozen package dependencies
+        run: |
+          bun install --frozen-lockfile --cwd apps/morphir-workbench
+          bun install --frozen-lockfile --cwd apps/morphir-site
+          bun install --frozen-lockfile --cwd pkgs/morphir-host/embedding
+          bun install --frozen-lockfile --cwd pkgs/morphir-elm/scripts
+      - name: Check every TypeScript project
+        run: bun check --all
+      - name: Prove checker and checked builds reject invalid types
+        run: bun run test:types
 
   lint:
     name: Lint
@@ -227,17 +255,19 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
 
       - name: Smoke-test CLI for ${{ matrix.target }}
-        run: npm --prefix apps/morphir test -- ${{ matrix.target }}
+        run: bun run --cwd apps/morphir test ${{ matrix.target }}
 
       - name: Install workbench browser dependencies
         if: matrix.target == 'js'
-        run: bash .config/mise/tasks/setup/workbench --ci
+        run: moonx scripts/typescript-tooling.mbtx setup-workbench --ci
 
       - name: Test shared workbench and connected protocol
         if: matrix.target == 'js'
-        run: bash .config/mise/tasks/test/workbench
+        run: moonx scripts/typescript-tooling.mbtx test-workbench
 
       - name: Upload ${{ matrix.target }} artifacts
         uses: actions/upload-artifact@v7
@@ -304,6 +334,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
 
       - name: Check generated Elm projects with elm make
         run: mise run test:elm
@@ -343,6 +375,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
       - name: Install pinned complete MoonBit toolchain
         shell: bash
         run: |
@@ -410,6 +444,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
       - name: Install pinned complete MoonBit toolchain
         shell: bash
         run: |
@@ -487,6 +523,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
 
       - name: Run tests
         run: moon test --target ${{ matrix.target }}
@@ -564,6 +602,7 @@ jobs:
       - changes
       - site
       - supervision
+      - typescript
       - embedding
       - lint
       - format-check

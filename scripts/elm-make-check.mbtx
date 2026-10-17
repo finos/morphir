@@ -9,13 +9,21 @@ import {
 ///|
 async fn main {
   let install = @process.run(
-    "npm", ["ci", "--prefix", "pkgs/morphir-elm/scripts"],
-    stdout=@stdio.stdout, stderr=@stdio.stderr,
+    "bun",
+    ["install", "--frozen-lockfile", "--cwd", "pkgs/morphir-elm/scripts"],
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
   )
-  if install != 0 { @sys.exit(if install > 0 { install } else { 1 }) }
+  if install != 0 {
+    @sys.exit(if install > 0 { install } else { 1 })
+  }
   let code = @process.run(
-    "node", ["pkgs/morphir-elm/scripts/test-elm-make.mjs"],
-    stdout=@stdio.stdout, stderr=@stdio.stderr,
+    "node",
+    ["pkgs/morphir-elm/scripts/test-elm-make.mts"],
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
   )
-  if code != 0 { @sys.exit(if code > 0 { code } else { 1 }) }
+  if code != 0 {
+    @sys.exit(if code > 0 { code } else { 1 })
+  }
 }

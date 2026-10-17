@@ -25,7 +25,7 @@ mise exec -- moon build apps/morphir --target native --release
 ## npm package
 
 ```sh
-mise exec -- npm --prefix apps/morphir run build
+mise exec -- bun run --cwd apps/morphir build
 node apps/morphir/bin/morphir.js --help
 node apps/morphir/bin/morphir.js run path/to/workspace --all
 ```
@@ -519,7 +519,9 @@ are supported by the pricing slice described below.
 Run the scalar CLI acceptance with:
 
 ```sh
-MOON_HOME=/path/to/pinned/moon-home node apps/morphir/scripts/test-execution.js
+mise exec -- bun install --frozen-lockfile
+mise exec -- bun run build:runtimes
+MOON_HOME=/path/to/pinned/moon-home node apps/morphir/scripts/test-execution.ts
 ```
 
 For the LLVM lane, prepare an isolated compiler/core installation, bundle its

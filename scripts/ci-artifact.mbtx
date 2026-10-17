@@ -361,6 +361,14 @@ async fn main {
       "Usage: ci-artifact.mbtx pack|pack-release|verify native-cli|provider-tools DIRECTORY",
     )
   }
+
+  // These development gates consume portable provider modules on a fresh checkout.
+  let (runtime_status, _, runtime_error) = @process.collect_output("bun", [
+    "run", "build:runtimes",
+  ])
+  guard runtime_status == 0 else {
+    fail("Runtime JavaScript build failed: " + runtime_error.text())
+  }
   ignore(names(args[2]))
   let result = match args[1] {
     "pack" => pack(args[2], args[3])

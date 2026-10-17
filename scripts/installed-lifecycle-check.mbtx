@@ -9,9 +9,17 @@ import {
 
 ///|
 async fn main {
+  // These development gates consume portable provider modules on a fresh checkout.
+  let (runtime_status, _, runtime_error) = @process.collect_output("bun", [
+    "run", "build:runtimes",
+  ])
+  guard runtime_status == 0 else {
+    fail("Runtime JavaScript build failed: " + runtime_error.text())
+  }
+
   let code = @process.run(
     "node",
-    ["apps/morphir/scripts/test-installed-lifecycle.js"],
+    ["apps/morphir/scripts/test-installed-lifecycle.ts"],
     stdout=@stdio.stdout,
     stderr=@stdio.stderr,
   )

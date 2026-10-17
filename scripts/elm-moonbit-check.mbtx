@@ -12,7 +12,7 @@ import {
 async fn main {
   let code = @process.run(
     "node", [
-      "pkgs/morphir-engine/scripts/check-generated.mjs", "moonbit", "pkgs/morphir-engine/acceptance/elm",
+      "pkgs/morphir-engine/scripts/check-generated.mts", "moonbit", "pkgs/morphir-engine/acceptance/elm",
     ],
     stdout=@stdio.stdout, stderr=@stdio.stderr,
   )

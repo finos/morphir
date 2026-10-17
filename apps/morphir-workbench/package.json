@@ -4,13 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.js",
-    "dev": "node scripts/serve.js",
-    "test": "node --test browser/transport.test.js browser/job-descriptor.test.js browser/native-session.test.js browser/native-workspace.test.js browser/artifact-download.test.js scripts/server.test.js scripts/job-provider.test.js",
-    "test:browser": "node scripts/browser-test.js"
+    "build": "bun --check scripts/build.ts",
+    "dev": "bun --check scripts/serve.ts",
+    "test": "node --test browser/transport.test.ts browser/job-descriptor.test.ts browser/native-session.test.ts browser/native-workspace.test.ts browser/artifact-download.test.ts scripts/server.test.ts scripts/job-provider.test.ts",
+    "test:browser": "node scripts/browser-test.ts"
   },
   "devDependencies": {
-    "esbuild": "0.28.2",
     "playwright": "1.64.1"
   },
   "dependencies": {
@@ -25,5 +24,6 @@
     "@lezer/highlight": "1.2.5",
     "codemirror": "6.0.2",
     "fflate": "0.8.3"
-  }
+  },
+  "packageManager": "bun@1.4.3"
 }

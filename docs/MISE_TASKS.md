@@ -292,7 +292,7 @@ For task categories (like `lint` or `build`), the main task should be named `_de
   resumptions, opaque metadata, JSON loss guards and preserved publication after
   strict or unavailable-provider failure. That lifecycle task uses simulated provider capabilities. The separate
   `test:installed-provider` task exercises real signed restoration. For focused diagnosis, run
-  `node apps/morphir/scripts/test-installed-lifecycle.js --naming-only` with the
+  `node apps/morphir/scripts/test-installed-lifecycle.ts --naming-only` with the
   same environment. The required task always runs the complete lifecycle.
   Set `MOON_HOME`; LLVM additionally requires home/pin. Set
   `MORPHIR_INSTALLED_RECEIPTS` to retain evidence.
@@ -317,3 +317,13 @@ See [provider operations](PROVIDER_OPERATIONS.md#reproduce-installed-qualificati
 for setup, exact scope and remaining qualification work.
 
 `mise run test:workbench-live-host -- --host-bin /absolute/path/to/morphir` verifies single-use launch authentication, native Gleam compilation/generation and workspace-model opening through the loopback proxy against a real Rust host. Supply a host with native Gleam available; see [Workbench verification](../apps/morphir-workbench/README.md#verification) for setup and version evidence. This optional check is separate from the default test suite.
+
+
+### TypeScript qualification
+
+`mise run check:typescript` installs every Bun dependency root from its frozen
+lockfile, checks all four TypeScript projects, runs the intentional type-error
+and environment-isolation gates, and emits portable runtime JavaScript. Existing
+Workbench, CLI, compiler, supervision and embedding tasks use the same portable
+`scripts/typescript-tooling.mbtx` entry point. Append `--ci` to setup tasks when
+Chromium system dependencies must also be installed.

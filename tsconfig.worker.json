@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "WebWorker"
+    ],
+    "types": []
+  },
+  "include": [
+    "pkgs/morphir-host/embedding/browser-worker.mts",
+    "types/**/*.d.ts"
+  ]
+}

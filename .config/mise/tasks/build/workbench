@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Build the shared MoonBit/Rabbita browser workbench"
-set -euo pipefail
-node apps/morphir-workbench/scripts/build.js

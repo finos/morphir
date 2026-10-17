@@ -79,14 +79,16 @@ The [upstream toolchain documentation](https://www.moonbitlang.com/blog/moonbit-
 also describes matching compiler/core versions.
 
 ```sh
-npm ci
-npm run build
-npm test
-npm exec -- playwright install chromium
-npm run test:browser
+# From the repository root.
+bun install --frozen-lockfile
+bun install --frozen-lockfile --cwd pkgs/morphir-host/embedding
+bun run --cwd pkgs/morphir-host/embedding build
+bun run --cwd pkgs/morphir-host/embedding test
+bun run --cwd pkgs/morphir-host/embedding playwright install chromium
+bun run --cwd pkgs/morphir-host/embedding test:browser
 ```
 
 Tests compile real source and execute it in Node and Chromium, report type errors,
 recover after failed compilations, supply host imports, and cancel running workers.
 The browser fixture demonstrates a host with no CLI. Node demonstrates general
-application embedding. `npm test` also checks the installed package.
+application embedding. `bun run test` also checks the installed package.

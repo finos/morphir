@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": []
+  },
+  "include": [
+    "apps/morphir-workbench/browser/**/*.ts",
+    "pkgs/morphir-host/embedding/index.mts",
+    "pkgs/morphir-host/embedding/browser.mts",
+    "types/**/*.d.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/native-test-fixture.ts"
+  ]
+}

@@ -124,7 +124,7 @@ An explicit connected launch registers no native commands.
 
 For a headless packaged-app smoke check, enable Proton's CDP port using
 `PROTON_REMOTE_DEBUGGING_PORT` and `PROTON_HEADLESS=1`, then run the browser
-package's `scripts/desktop-test.js <cdp-url>`. Keep that debugging port confined
+package's `scripts/desktop-test.ts <cdp-url>`. Keep that debugging port confined
 to local development.
 
 Run `mise run test:workbench-native-workers` from the repository root for real

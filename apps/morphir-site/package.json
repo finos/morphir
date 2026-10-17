@@ -4,15 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.js",
-    "dev": "node scripts/serve.js --watch",
-    "test": "node --test scripts/highlight.test.js scripts/try-page.test.js scripts/link-escape.test.js",
-    "test:browser": "node scripts/browser-test.js"
+    "build": "bun --check scripts/build.ts",
+    "dev": "bun --check scripts/serve.ts --watch",
+    "test": "node --test scripts/highlight.test.ts scripts/try-page.test.ts scripts/link-escape.test.ts",
+    "test:browser": "node scripts/browser-test.ts"
   },
   "devDependencies": {
-    "esbuild": "0.28.2",
     "mermaid": "12.2.0",
     "playwright": "1.64.1",
     "shiki": "4.5.0"
-  }
+  },
+  "packageManager": "bun@1.4.3"
 }

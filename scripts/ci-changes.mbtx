@@ -40,11 +40,14 @@ fn is_docs_like(path : String) -> Bool {
 /// the workbench and the package pages use, and the workflows that build it.
 fn is_site_input(path : String) -> Bool {
   starts_with_any(path, [
-    "docs/", "site/", "apps/morphir-site/", "apps/morphir-workbench/", "pkgs/",
-    ".config/mise/",
+    "docs/", "site/", "apps/morphir-site/", "apps/morphir-workbench/", "pkgs/", ".config/mise/",
+    "tools/", "types/", "tests/", ".github/actions/",
   ]) ||
   (path.has_prefix("apps/") && path.has_suffix("/README.md")) ||
   path == "moon.work" ||
+  path.has_prefix("tsconfig") ||
+  path == "package.json" ||
+  path == "bun.lock" ||
   path == ".github/workflows/site.yml" ||
   path == ".github/workflows/site-build.yml" ||
   path == ".github/workflows/ci.yml"
@@ -57,14 +60,11 @@ fn classify(paths : Array[String]) -> (Bool, Bool) {
   if paths.is_empty() {
     return (true, true)
   }
-  (
-    paths.iter().any(p => !is_docs_like(p)),
-    paths.iter().any(is_site_input),
-  )
+  (paths.iter().any(p => !is_docs_like(p)), paths.iter().any(is_site_input))
 }
 
 ///|
-fn self_test() -> Int {
+fn self_test() -> Int32 {
   let cases : Array[(Array[String], Bool, Bool)] = [
     (["docs/ARCHITECTURE.md"], false, true),
     (["site/site.json", "site/blog/2026-10-13-post.md"], false, true),
@@ -80,6 +80,8 @@ fn self_test() -> Int {
     ([".github/workflows/ci.yml"], true, true),
     (["scripts/ci-changes.mbtx"], true, false),
     (["moon.work"], true, true),
+    (["tsconfig.node.json", "bun.lock", "tools/build.ts"], true, true),
+    ([".github/actions/setup-typescript/action.yml"], true, true),
     (["apps/morphir-sitex/main.mbt"], true, false),
     // A rename from code to docs lists both paths.
     (["src/main.mbt", "docs/main.md"], true, true),
@@ -120,7 +122,10 @@ async fn main {
     return
   }
   let (status, out, err) = @process.collect_output("git", [
-    "diff", "--name-only", "--no-renames", "\{base}...\{head}",
+    "diff",
+    "--name-only",
+    "--no-renames",
+    "\{base}...\{head}",
   ])
   if status != 0 {
     @stdio.stderr.write("ci-changes: git diff failed: \{err.text()}\n")

@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Smoke-test the CLI on all targets and from its npm package"
-set -euo pipefail
-
-npm --prefix apps/morphir test

@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Test the Morphir workbench runtime, protocol and browser workflows"
-set -euo pipefail
-moon test --target js -p finos/morphir-workbench finos/morphir-workbench/arguments
-node apps/morphir-workbench/scripts/build.js
-npm --prefix apps/morphir-workbench test
-npm --prefix apps/morphir-workbench run test:browser

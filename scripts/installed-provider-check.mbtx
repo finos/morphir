@@ -129,6 +129,14 @@ async fn main {
       @fs.remove(receipts + "/" + file)
     }
   }
+  // These development gates consume portable provider modules on a fresh checkout.
+  let (runtime_status, _, runtime_error) = @process.collect_output("bun", [
+    "run", "build:runtimes",
+  ])
+  guard runtime_status == 0 else {
+    fail("Runtime JavaScript build failed: " + runtime_error.text())
+  }
+
   guard @env.get_env_var("MOON_HOME") is Some(home) else {
     fail("Explicit pinned MOON_HOME required")
   }
@@ -263,7 +271,7 @@ async fn main {
     "installed-qualification",
     "node",
     [
-      "apps/morphir/scripts/test-installed-authenticated.js", root, service, exporter,
+      "apps/morphir/scripts/test-installed-authenticated.ts", root, service, exporter,
       native, service_revision, receipts, rust_compiler, service_build_mode,
     ],
     receipts~,

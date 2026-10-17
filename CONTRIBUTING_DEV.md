@@ -316,3 +316,40 @@ Please note that this project is released with a [Contributor Code of Conduct](h
 ## License
 
 By contributing to Morphir Moonbit, you agree that your contributions will be licensed under the Apache License, Version 2.0.
+
+
+## TypeScript and Bun
+
+Use the pinned Bun 1.4.3 toolchain through mise. Each existing dependency root
+keeps its own `bun.lock`; install with `bun install --frozen-lockfile`. The root
+package provides shared types and declaration emission. Browser, Web Worker,
+Node and Bun build scripts have separate strict TypeScript projects.
+
+```sh
+mise run check:typescript
+mise run setup:workbench
+mise run test:workbench
+mise run test:embedding
+```
+
+`bun check --all` checks every project, including scripts and tests that no entry
+point imports. `bun run test:types` proves that invalid types fail both whole
+project checks and checked builds, and that Bun globals stay out of browser,
+worker and Node projects. Build scripts use `Bun.build({ check: true })`.
+Running TypeScript alone does not replace these checks.
+
+Write handwritten UI and JavaScript tooling in `.ts` or `.mts`. Build the
+portable runtime files with `bun run build:runtimes` before invoking Node hosts.
+The emitted `.js` and `.mjs` paths preserve the installed CLI and embedding
+contracts. Do not commit those generated files. MoonBit compiler output, JavaScript
+FFI strings and JavaScript snippets executed in Node/browser acceptance tests
+remain JavaScript. Runtime JSON/Ion validation and admission are still required.
+
+Published npm packages contain JavaScript. Consumers need Node, not Bun or
+TypeScript. Acceptance tests deliberately run Node and the real npm CLI to check
+that boundary. The embedding build uses TypeScript 7 only to emit declarations;
+Bun supplies the whole-project checker and checked bundler.
+
+Changed task automation lives in portable MoonBit `.mbtx` scripts. The Bun build
+scripts implement JavaScript bundling; `scripts/typescript-tooling.mbtx` wires
+installation, builds and compatibility tests into mise.

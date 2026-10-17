@@ -1,0 +1,31 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "apps/morphir/**/*.ts",
+    "apps/morphir/**/*.mts",
+    "apps/morphir-workbench/**/*.test.ts",
+    "apps/morphir-workbench/browser/native-test-fixture.ts",
+    "apps/morphir-workbench/scripts/**/*.ts",
+    "apps/morphir-site/scripts/**/*.ts",
+    "pkgs/**/scripts/**/*.mts",
+    "pkgs/morphir-host/runners/**/*.mts",
+    "pkgs/morphir-host/embedding/node*.mts",
+    "pkgs/morphir-host/embedding/test/**/*.mts",
+    "pkgs/morphir-sdk/string/tools/**/*.mts",
+    "types/**/*.d.ts",
+    "tests/**/*.d.ts"
+  ],
+  "exclude": [
+    "**/scripts/build.ts"
+  ]
+}

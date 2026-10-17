@@ -434,11 +434,11 @@ first-pass signatures of unannotated values (`un : t0`) are annotations that Elm
 (morphir-ukvn.5.22.3.9).
 
 After you change a project, run `mise run elm:parity-refresh` from the repository root. It needs network access
-for `npm ci`. It runs `morphir-elm make` on every project and writes `expected/morphir-ir.json` and
+for `bun install --frozen-lockfile`. It runs `morphir-elm make` on every project and writes `expected/morphir-ir.json` and
 `parity_data_wbtest.mbt`, both with the IR as compact JSON. Commit both. CI runs the refresh in the native build job and fails when `pkgs/morphir-elm/conformance` changes.
 
 `mise run test:elm` installs the pinned npm `elm` 0.19.1 package in `scripts/` and runs
-`scripts/test-elm-make.mjs`. The script runs `pkgs/morphir-elm/acceptance`, which prints the generated projects for
+`scripts/test-elm-make.mts`. The script runs `pkgs/morphir-elm/acceptance`, which prints the generated projects for
 the fixtures `rentals`, `shapes` and `specs` as JSON. It writes each project to a temporary directory and runs
 `elm make` on its modules. The `specs` project uses `placeholders = "debug-todo"`. The first run needs network access,
 because `elm make` downloads its packages. CI runs this task in the native build job.

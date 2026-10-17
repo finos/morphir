@@ -27,9 +27,9 @@ gate takes an explicit Rust runner and offline corpus; it adds no connected RPCs
 From the repository root, with the pinned mise toolchain installed:
 
 ```sh
-mise exec -- npm ci --prefix apps/morphir-workbench
+mise run setup:workbench
 mise run build:workbench
-mise exec -- npm run dev --prefix apps/morphir-workbench
+mise exec -- bun run --cwd apps/morphir-workbench dev
 ```
 
 Open `http://127.0.0.1:5173`. Compile & inspect lowers the functional Scheme
@@ -420,7 +420,7 @@ flow first. The development server can keep the frontend and authenticated host 
 browser origin through an explicit loopback proxy:
 
 ```sh
-MORPHIR_WORKBENCH_HOST_URL=http://127.0.0.1:HOST_PORT mise exec -- npm run dev --prefix apps/morphir-workbench
+MORPHIR_WORKBENCH_HOST_URL=http://127.0.0.1:HOST_PORT mise exec -- bun run --cwd apps/morphir-workbench dev
 ```
 
 Start the upstream Morphir UI/playground host first. Open its one-time launch URL
@@ -566,7 +566,7 @@ acquisition/disposal and authoritative daemon job transitions are subsequent wor
 Build the app first, then explicitly enable the gateway's bounded Scheme provider:
 
 ```sh
-MORPHIR_WORKBENCH_HOST_URL=http://127.0.0.1:HOST_PORT MORPHIR_WORKBENCH_JOBS=1 mise exec -- npm run dev --prefix apps/morphir-workbench
+MORPHIR_WORKBENCH_HOST_URL=http://127.0.0.1:HOST_PORT MORPHIR_WORKBENCH_JOBS=1 mise exec -- bun run --cwd apps/morphir-workbench dev
 ```
 
 Authenticate through the upstream one-use `/launch` URL with its origin changed

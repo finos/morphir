@@ -5,8 +5,8 @@
     "path": ".",
     "dev_url": "http://127.0.0.1:5173",
     "dist": "frontend/dist",
-    "before_dev": "node scripts/dev-frontend.js",
-    "before_build": "node scripts/build-frontend.js"
+    "before_dev": "bun --check scripts/dev-frontend.ts",
+    "before_build": "bun --check scripts/build-frontend.ts"
   },
   "package": {
     "product_name": "Morphir Workbench",

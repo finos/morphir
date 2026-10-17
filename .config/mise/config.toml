@@ -136,28 +136,24 @@ run = "moon run scripts/workbench-mck.mbtx"
 
 [tasks."setup:site"]
 description = "Install site build dependencies and Chromium for the smoke test"
-run = [
-  "npm ci --prefix apps/morphir-site",
-  "npm ci --prefix apps/morphir-workbench",
-  "npm exec --prefix apps/morphir-site -- playwright install chromium",
-]
+run = "moonx scripts/typescript-tooling.mbtx setup-site"
 
 [tasks."build:site"]
 description = "Build the project site into _site/ (SITE_MAIN=1 fails on draft pages)"
-run = "node apps/morphir-site/scripts/build.js"
+run = "bun --check apps/morphir-site/scripts/build.ts"
 
 [tasks."dev:site"]
 description = "Serve _site/ at http://127.0.0.1:4173/morphir-moonbit/ and rebuild on content changes"
 depends = ["build:site"]
-run = "node apps/morphir-site/scripts/serve.js --watch"
+run = "bun --check apps/morphir-site/scripts/serve.ts --watch"
 
 [tasks."test:site"]
 description = "Site unit tests, highlight tests and the browser smoke test against _site/"
 run = [
   "moon test --target native -p finos/morphir-site/model finos/morphir-site/content finos/morphir-site/views finos/morphir-site/site finos/morphir-site/generate",
   "moon test --target js -p finos/morphir-site/model",
-  "npm test --prefix apps/morphir-site",
-  "npm run test:browser --prefix apps/morphir-site",
+  "bun run --cwd apps/morphir-site test",
+  "bun run --cwd apps/morphir-site test:browser",
 ]
 
 [hooks]
@@ -172,3 +168,35 @@ experimental = true
 description = "Check links, titles, the Atom feed and forbidden paths in the built _site/"
 dir = "apps/morphir-site"
 run = "moon run --target native check -- --dir ../../_site"
+
+[tasks."setup:workbench"]
+description = "Install Workbench dependencies and Chromium"
+run = "moonx scripts/typescript-tooling.mbtx setup-workbench"
+
+[tasks."build:workbench"]
+description = "Build the shared browser Workbench"
+run = "moonx scripts/typescript-tooling.mbtx build-workbench"
+
+[tasks."test:workbench"]
+description = "Test Workbench runtime and browser workflows"
+run = "moonx scripts/typescript-tooling.mbtx test-workbench"
+
+[tasks."test:embedding"]
+description = "Test Node, npm and browser embedding"
+run = "moonx scripts/typescript-tooling.mbtx test-embedding"
+
+[tasks."test:compiler"]
+description = "Compile libraries and validate private build leases"
+run = "moonx scripts/typescript-tooling.mbtx test-compiler"
+
+[tasks."test:supervision"]
+description = "Verify owned process cleanup"
+run = "moonx scripts/typescript-tooling.mbtx test-supervision"
+
+[tasks."test:cli"]
+description = "Smoke-test CLI targets and installed package"
+run = "moonx scripts/typescript-tooling.mbtx test-cli"
+
+[tasks."check:typescript"]
+description = "Install frozen dependencies and check all TypeScript projects"
+run = "moonx scripts/typescript-tooling.mbtx check"

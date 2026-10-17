@@ -1,0 +1,127 @@
+///|
+/// Portable Bun setup, checked builds and Node compatibility gates.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn run(command : String, args : Array[String]) -> Unit {
+  let status = @process.run(
+    command,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if status != 0 {
+    @sys.exit(if status > 0 { status } else { 1 })
+  }
+}
+
+///|
+async fn install(path : String) -> Unit {
+  run("bun", ["install", "--frozen-lockfile", "--cwd", path])
+}
+
+///|
+async fn browser(path : String, ci : Bool) -> Unit {
+  let args = ["run", "--cwd", path, "playwright", "install"]
+  if ci {
+    args.push("--with-deps")
+  }
+  args.push("chromium")
+  run("bun", args)
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  let ci = args.contains("--ci")
+  guard args is [mode, ..] else {
+    @sys.exit(2)
+    return
+  }
+  match mode {
+    "setup-workbench" => {
+      install(".")
+      install("apps/morphir-workbench")
+      browser("apps/morphir-workbench", ci)
+    }
+    "setup-site" => {
+      install(".")
+      install("apps/morphir-site")
+      install("apps/morphir-workbench")
+      browser("apps/morphir-site", ci)
+    }
+    "build-workbench" =>
+      run("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"])
+    "test-workbench" => {
+      run("moon", [
+        "test", "--target", "js", "-p", "finos/morphir-workbench", "finos/morphir-workbench/arguments",
+      ])
+      run("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"])
+      run("bun", ["run", "--cwd", "apps/morphir-workbench", "test"])
+      run("bun", ["run", "--cwd", "apps/morphir-workbench", "test:browser"])
+    }
+    "test-embedding" => {
+      install(".")
+      install("pkgs/morphir-host/embedding")
+      run("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"])
+      run("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "test"])
+      browser("pkgs/morphir-host/embedding", ci)
+      run("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "test:browser"])
+    }
+    "test-compiler" => {
+      if @env.get_env_var("MOON_HOME") is None {
+        let (status, out, _) = @process.collect_output("mise", [
+          "where", "http:moonbit",
+        ])
+        if status != 0 {
+          @sys.exit(1)
+        }
+        @env.set_env_var("MOON_HOME", out.text().trim().to_owned())
+      }
+      run("bun", ["run", "build:runtimes"])
+      for
+        script in [
+          "apps/morphir/build-provider/test-capability-pins.mts", "apps/morphir/build-provider/test-supervision.mts",
+          "pkgs/morphir-moonbit/scripts/test-compiler.mts", "apps/morphir/scripts/test-library-provider.ts",
+          "apps/morphir/scripts/test-execution.ts", "apps/morphir/scripts/test-execution-faults.ts",
+          "apps/morphir/scripts/test-rich-execution.ts",
+        ] {
+        let args = [script]
+        if script.has_suffix("test-compiler.mts") {
+          args.push("pkgs/morphir-sdk")
+        }
+        run("node", args)
+      }
+    }
+    "test-supervision" => {
+      run("bun", ["run", "build:runtimes"])
+      run("node", ["apps/morphir/build-provider/test-supervision.mts"])
+    }
+    "test-cli" => {
+      run("bun", ["run", "build:runtimes"])
+      run("bun", ["run", "--cwd", "apps/morphir", "test"])
+    }
+    "check" => {
+      for
+        path in [
+          ".", "apps/morphir-workbench", "apps/morphir-site", "pkgs/morphir-host/embedding",
+          "pkgs/morphir-elm/scripts",
+        ] {
+        install(path)
+      }
+      run("bun", ["check", "--all"])
+      run("bun", ["run", "test:types"])
+      run("bun", ["run", "build:runtimes"])
+    }
+    _ => {
+      println("Unknown TypeScript task: \{mode}")
+      @sys.exit(2)
+    }
+  }
+}

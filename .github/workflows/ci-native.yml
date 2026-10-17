@@ -22,6 +22,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
       - name: Install pinned MoonBit
         shell: bash
         env:
@@ -88,6 +90,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
       - name: Install pinned MoonBit
         shell: bash
         env:
@@ -117,9 +121,9 @@ jobs:
       - name: Admit native executable
         run: moon run scripts/ci-artifact.mbtx verify native-cli "$MORPHIR_CI_NATIVE"
       - name: Smoke-test admitted native CLI without rebuilding
-        run: npm --prefix apps/morphir test -- native
+        run: bun run --cwd apps/morphir test native
       - name: Test acquisition without a MoonBit installation
-        run: node apps/morphir/scripts/test-acquisition.js "$MORPHIR_CI_NATIVE/morphir-native"
+        run: node apps/morphir/scripts/test-acquisition.ts "$MORPHIR_CI_NATIVE/morphir-native"
 
       - name: Qualify owned native Workbench workers without CEF
         run: mise run test:workbench-native-workers
@@ -127,7 +131,7 @@ jobs:
         run: mise run test:workbench-native-workspaces
 
       - name: Compile generated libraries and verify private build lifecycle
-        run: bash .config/mise/tasks/test/compiler
+        run: moonx scripts/typescript-tooling.mbtx test-compiler
 
       - name: Compare original MoonBit source and lowered Boolean libraries
         env:
@@ -172,6 +176,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
       - name: Install pinned MoonBit
         shell: bash
         env:
@@ -227,6 +233,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
       - name: Install pinned MoonBit
         shell: bash
         env:

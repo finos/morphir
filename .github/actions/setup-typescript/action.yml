@@ -1,0 +1,14 @@
+name: Set up checked TypeScript runtimes
+description: Install pinned Bun and frozen root dependencies, then emit portable JavaScript
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: '1.4.3'
+    - name: Install tooling dependencies
+      shell: bash
+      run: bun install --frozen-lockfile
+    - name: Build runtime JavaScript
+      shell: bash
+      run: bun run build:runtimes

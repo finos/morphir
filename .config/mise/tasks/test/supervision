@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Verify owned process-tree termination and bounded cleanup"
-set -euo pipefail
-node apps/morphir/build-provider/test-supervision.mjs
