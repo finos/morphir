@@ -136,7 +136,7 @@ Nonfinite Float literals and document literals are unsupported.
 
 ## Node identities and Ion preservation
 
-The `morphir-moonbit-symbols-v1` profile has annotation `morphir_moonbit_symbols`.
+The `morphir-moonbit-symbols-2026-10-17` profile has annotation `morphir_moonbit_symbols`.
 It records source annotation tokens in order, retained rich metadata, source node
 IDs and generated symbols. A symbol's generated declaration is derived from its
 source declaration and body. Stable source IDs for this slice are:
@@ -152,6 +152,23 @@ unknown annotations and rich data. A canonical current Morphir JSON snapshot in
 `source_ir_json` retains semantic IR attributes, extensions, documentation and
 literal lexemes as an explicit compatibility record within the Ion artifact.
 Rich Ion metadata never passes through that JSON record.
+
+The profile uses a fixed `YYYY-MM-DD` suffix so profile names sort by date.
+It identifies the format revision, not the date each artifact is generated.
+Node IDs appear in the metadata they own and in records that reference them:
+symbol mappings, origins, naming allocations and consumed naming facts. There
+is no separate `source_nodes` inventory. Attributes embedded in the retained IR
+do not need additional entries. Metadata ownership is still validated against
+the complete source model before serialization.
+
+The current encoding uses full strings. A future encoding may use aliases,
+anchors or interning to share repeated IDs and names, trading readability and
+expansion work for smaller output. Such an encoding must be explicitly declared,
+use deterministic document-local references, reject dangling or cyclic
+references, and expand to the exact original strings. It must not reinterpret
+ordinary strings or rewrite opaque Ion metadata. The earlier flat and
+parent-relative `source_nodes` inventories are superseded by explicit references
+in the records that use them.
 
 Generation defaults to 10,000 declarations and 4 MiB of total artifacts. These
 are acceptance budgets for trusted typed input, not allocation or streaming

@@ -256,16 +256,45 @@ test "review I2: the unit limits are the identity limits, which an if with 54 br
 }
 
 ///|
-test "review I2: the MoonBit metadata budget stops an if with 45 branches" {
-  let report = elm_report(if_chain_files(40), backend="moonbit")
-  if !report.successful() {
-    fail(messages(report))
+test "review I2: MoonBit accepts if chains through the frontend depth limit" {
+  for branches in [45, 53] {
+    let report = elm_report(if_chain_files(branches), backend="moonbit")
+    if !report.successful() {
+      fail("\{branches} branches: " + messages(report))
+    }
+    guard report.artifacts.search_by(a => a.path.has_suffix("symbols.10n"))
+      is Some(i) &&
+      report.artifacts[i].content is Binary(bytes) else {
+      fail("symbols.10n")
+    }
+    assert_true(
+      bytes.length() < 128 * 1024,
+      msg="Metadata should stay below 128 KiB",
+    )
   }
-  // Pinned: symbols.10n grows with the square of the depth (morphir-ukvn.5.22.3.27).
-  assert_eq(
-    messages(elm_report(if_chain_files(45), backend="moonbit")),
-    "src [backend] moonbit.byte_limit at my/pkg: Generated artifacts exceed the byte budget",
-  )
+}
+
+///|
+test "review I2: MoonBit metadata grows linearly with an if chain" {
+  let mut previous = 0
+  for branches in [10, 20, 40] {
+    let report = elm_report(if_chain_files(branches), backend="moonbit")
+    if !report.successful() {
+      fail(messages(report))
+    }
+    guard report.artifacts.search_by(a => a.path.has_suffix("symbols.10n"))
+      is Some(i) &&
+      report.artifacts[i].content is Binary(bytes) else {
+      fail("symbols.10n")
+    }
+    if previous > 0 {
+      assert_true(
+        bytes.length() < 3 * previous,
+        msg="Doubling the chain must not quadruple metadata",
+      )
+    }
+    previous = bytes.length()
+  }
 }
 
 ///|

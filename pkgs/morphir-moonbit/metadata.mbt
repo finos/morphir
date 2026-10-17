@@ -36,10 +36,8 @@ fn symbol_metadata(
     }
     seen[entry.node_id] = true
   }
-  let nodes = owned.keys().collect()
-  nodes.sort()
   let value = record([
-    ("profile", ion_text("morphir-moonbit-symbols-v1")),
+    ("profile", ion_text("morphir-moonbit-symbols-2026-10-17")),
     (
       "naming_policy",
       ion_text(
@@ -117,7 +115,6 @@ fn symbol_metadata(
         ),
       ),
     ),
-    ("source_nodes", texts(nodes)),
     (
       "metadata",
       @ion.IonValue::new(

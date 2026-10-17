@@ -433,6 +433,102 @@ test "Ion symbols retain node metadata ordered annotations and source lexemes" {
 }
 
 ///|
+test "metadata-free constants retain symbol references without a node inventory" {
+  let input = single(
+    @fixtures.scalar("morphir/SDK:basics#int"),
+    @ir.Value::Literal(@fixtures.attrs(), @ir.Literal::IntegerLiteral("42")),
+  )
+  let result = @generator.generate(input)
+  guard result.artifacts[3].content is Binary(bytes) else { fail("symbols") }
+  let value = @ion_binary.read_binary_value(bytes[:])
+  guard value.kind() is Struct(fields) else { fail("symbol profile") }
+  let by_name = Map([])
+  for field in fields {
+    by_name[field.name().text().unwrap()] = field.value()
+  }
+  assert_false(by_name.contains("source_nodes"))
+  assert_true(by_name["metadata"].equals(@ion.IonValue::list([])))
+  guard by_name["symbols"].kind() is List([symbol]) &&
+    symbol.kind() is Struct(symbol_fields) else {
+    fail("symbol references")
+  }
+  let references = Map([])
+  for field in symbol_fields {
+    references[field.name().text().unwrap()] = field.value()
+  }
+  assert_true(
+    references["source_node"].equals(
+      @ion.IonValue::string("value:sample:main#value"),
+    ),
+  )
+  assert_true(
+    references["origins"].equals(
+      @ion.IonValue::list([
+        @ion.IonValue::string("value:sample:main#value"),
+        @ion.IonValue::string("value:sample:main#value/body"),
+      ]),
+    ),
+  )
+}
+
+///|
+test "dated symbol metadata retains explicit references and attributes without a node inventory" {
+  let attrs = {
+    ..@fixtures.attrs(),
+    extensions: Map::from_array([("/snow~雪😀", @ir.Data::Text("opaque"))]),
+  }
+  let scalar = single(
+    @fixtures.scalar("morphir/SDK:basics#int"),
+    @ir.Value::Literal(attrs, @ir.Literal::IntegerLiteral("1")),
+  )
+  let data = @ion_text.read_ion("audit::{rule:\"retained\", amount:12.340d0}")
+  for
+    original in [
+      @generator.Input::new("unit/雪😀~", @fixtures.library()),
+      @generator.Input::new("pricing", @fixtures.pricing()),
+      scalar,
+    ] {
+    // Metadata can address a structural leaf, not just an emitted declaration.
+    let node_id = @identities.nodes(original.unit_id, original.ir)
+      .last()
+      .unwrap()
+    let input = { ..original, metadata: [{ node_id, data, }], }
+    let result = @generator.generate(input)
+    guard result.artifacts[3].content is Binary(bytes) else { fail("symbols") }
+    let value = @ion_binary.read_binary_value(bytes[:])
+    guard value.kind() is Struct(fields) else { fail("symbol profile") }
+    let by_name = Map([])
+    for field in fields {
+      by_name[field.name().text().unwrap()] = field.value()
+    }
+    assert_true(
+      by_name["profile"].equals(
+        @ion.IonValue::string("morphir-moonbit-symbols-2026-10-17"),
+      ),
+    )
+    assert_false(by_name.contains("source_nodes"))
+    guard by_name["metadata"].kind() is List([entry]) &&
+      entry.kind() is Struct(metadata_fields) else {
+      fail("metadata")
+    }
+    assert_true(
+      metadata_fields[0].value().equals(@ion.IonValue::string(node_id)),
+    )
+    assert_true(metadata_fields[1].value().equals(data))
+    guard by_name["source_ir_json"].kind() is String(source) else {
+      fail("source IR")
+    }
+    assert_eq(@json.parse(source), @ir_json.to_json(input.ir))
+    guard by_name["symbols"].kind() is List(symbols) else {
+      fail("symbol references")
+    }
+    assert_eq(symbols.length(), result.symbols.length())
+    let invalid = { ..input, metadata: [input.metadata[0], input.metadata[0]], }
+    assert_eq(error(invalid).0, "moonbit.metadata_identity")
+  }
+}
+
+///|
 test "limits and cancellation stop generation before it returns artifacts" {
   let input = @generator.Input::new("scalars", @fixtures.library())
   let failure = try {
@@ -459,6 +555,36 @@ test "limits and cancellation stop generation before it returns artifacts" {
     @generator.Invalid(code, _, _) => code
   }
   assert_eq(failure, "moonbit.byte_limit")
+  let generated = @generator.generate(input)
+  let mut total_bytes = 0
+  for artifact in generated.artifacts {
+    total_bytes += match artifact.content {
+      Text(text) => @utf8.encode(text).length()
+      Binary(bytes) => bytes.length()
+    }
+  }
+  let failure = try {
+    ignore(
+      @generator.generate(
+        input,
+        limits=Some({ max_declarations: 100, max_bytes: total_bytes - 1, }),
+      ),
+    )
+    ("", "")
+  } catch {
+    @generator.Invalid(code, _, message) => (code, message)
+  }
+  assert_eq(
+    failure,
+    ("moonbit.byte_limit", "Generated artifacts exceed the byte budget"),
+  )
+  assert_eq(
+    @generator.generate(
+      input,
+      limits=Some({ max_declarations: 100, max_bytes: total_bytes, }),
+    ).artifacts,
+    generated.artifacts,
+  )
   let failure = try {
     ignore(@generator.generate(input, cancelled=fn() { true }))
     ""

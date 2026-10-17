@@ -21,4 +21,5 @@ import {
   "finos/morphir-metadata/fixtures" @metadata_fixtures,
   "finos/morphir-moonbit/fixtures",
   "moonrockz/ion/text" @ion_text,
+  "moonbitlang/core/json",
 } for "test"

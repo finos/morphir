@@ -166,7 +166,7 @@ every symbol is its fqname. Fields, in order: `profile`, `naming_policy`, `unit_
 unit's order) and `symbols`. A symbol has `fqname`, `generated_name` (the same), `scheme_symbol` (the `r:` symbol
 as written), `public` (value and module both public), `source_node` (`value:<fqname>`), `generated_node`
 (`scheme:define:<fqname>`) and `origins` (`source_node` and `source_node/body`, each only when the unit owns it, so
-a native or external value lists no body and an application's declarations list none). Unlike `morphir-moonbit-symbols-v1` it has no `warnings`,
+a native or external value lists no body and an application's declarations list none). Unlike `morphir-moonbit-symbols-2026-10-17` it has no `warnings`,
 `naming_allocations`, `consumed_naming_facts`, `unvalidated_predicates` or `source_ir_json`: Scheme recovers no
 names and the checkpoint backend carries IR. Metadata is copied without ownership validation; the engine validates
 rich units when a frontend returns them. The bytes are a pure function of the unit.
