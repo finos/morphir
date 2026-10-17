@@ -1,0 +1,144 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/selected-scheme-projection.schema.json",
+  "tests": [
+    {
+      "description": "Independent selected-plan witness",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+        "values": [
+          {
+            "type": "int",
+            "value": "42"
+          }
+        ],
+        "failure": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level shape",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+        "values": [
+          {
+            "type": "int",
+            "value": "42"
+          }
+        ],
+        "failure": null,
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Exactly one returned value",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+        "values": [],
+        "failure": null
+      },
+      "valid": false
+    },
+    {
+      "description": "No dummy returned value on admission failure",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": null,
+        "values": [
+          {
+            "type": "int",
+            "value": "42"
+          }
+        ],
+        "failure": {
+          "stage": "plan",
+          "code": "execution.wrong_arity"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Plan rejection has null boundary and values",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": null,
+        "values": null,
+        "failure": {
+          "stage": "plan",
+          "code": "execution.wrong_arity"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Evaluate rejection preserves actual boundary",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+        "values": null,
+        "failure": {
+          "stage": "evaluate",
+          "code": "scheme.unbound"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Evaluate rejection requires boundary",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": null,
+        "values": null,
+        "failure": {
+          "stage": "evaluate",
+          "code": "scheme.unbound"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Boundary is literal captured JSON string",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": {
+          "entries": [],
+          "definitions": []
+        },
+        "values": [
+          {
+            "type": "int",
+            "value": "42"
+          }
+        ],
+        "failure": null
+      },
+      "valid": false
+    },
+    {
+      "description": "No private tagged value marker",
+      "data": {
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+        "values": [
+          {
+            "$serde_json::private::RawValue": "{\"type\":\"int\",\"value\":\"42\"}"
+          }
+        ],
+        "failure": null
+      },
+      "valid": false
+    }
+  ]
+}

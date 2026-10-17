@@ -1,0 +1,60 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json",
+  "tests": [
+    {
+      "description": "Exact explicit permissive policy",
+      "data": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.1",
+        "policy": "permissive"
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject changed policy",
+      "data": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.1",
+        "policy": "unknown"
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject changed contractVersion",
+      "data": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.2",
+        "policy": "permissive"
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject changed contractVersion",
+      "data": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.1+local",
+        "policy": "permissive"
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject changed profile",
+      "data": {
+        "profile": "other",
+        "contractVersion": "0.1.0-draft.1",
+        "policy": "permissive"
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject changed extra",
+      "data": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.1",
+        "policy": "permissive",
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

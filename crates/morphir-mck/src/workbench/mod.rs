@@ -10,11 +10,12 @@ mod native_replies;
 mod outcomes;
 mod report;
 mod run;
+mod selected_scheme;
 
 pub use contract::{
     ADMISSION_VERSION, Capabilities, Format, INVOCATION_VERSION, JOBS_VERSION, MAX_VALUE_BYTES,
     NATIVE_CLIENT_VERSION, NATIVE_FRAMES_VERSION, NATIVE_OWNER_VERSION, NATIVE_REPLIES_VERSION,
-    OUTCOMES_VERSION, OUTPUT_VERSION, Observation, Operation, VERSION,
+    OUTCOMES_VERSION, OUTPUT_VERSION, Observation, Operation, SELECTED_SCHEME_VERSION, VERSION,
 };
 pub use corpus::{Corpus, load};
 pub use report::{
@@ -48,3 +49,6 @@ mod native_client_tests;
 
 #[cfg(test)]
 mod native_owner_tests;
+
+#[cfg(test)]
+mod selected_scheme_tests;

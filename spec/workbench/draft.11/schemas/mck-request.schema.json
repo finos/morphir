@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-request.schema.json",
+  "title": "Selected Scheme witness mck-request",
+  "description": "Exact narrow selected-boundary witness; full policy/runtime branch qualification uses a separate later exact kit",
+  "examples": [
+    {
+      "id": 1,
+      "op": "run-selected-scheme",
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.11",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"doc\":\"Valid unused hole\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "capabilities"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.11"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "run-selected-scheme"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.11"
+        },
+        "format": {
+          "const": "json"
+        },
+        "input": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.11/mck-input.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "exit"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

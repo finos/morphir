@@ -15,6 +15,7 @@ pub const NATIVE_FRAMES_VERSION: &str = "0.1.0-draft.7";
 pub const NATIVE_REPLIES_VERSION: &str = "0.1.0-draft.8";
 pub const NATIVE_CLIENT_VERSION: &str = "0.1.0-draft.9";
 pub const NATIVE_OWNER_VERSION: &str = "0.1.0-draft.10";
+pub const SELECTED_SCHEME_VERSION: &str = "0.1.0-draft.11";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -56,6 +57,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.8",
         "=0.1.0-draft.9",
         "=0.1.0-draft.10",
+        "=0.1.0-draft.11",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -97,10 +99,15 @@ pub enum Operation {
     RunNativeClient,
     #[serde(rename = "run-native-owner")]
     RunNativeOwner,
+    #[serde(rename = "run-selected-scheme")]
+    RunSelectedScheme,
 }
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if (version == SELECTED_SCHEME_VERSION) != (self == Self::RunSelectedScheme) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if (version == NATIVE_OWNER_VERSION) != (self == Self::RunNativeOwner) {
             return Err("operation is not defined by this Workbench draft".into());
         }
@@ -136,6 +143,7 @@ impl Operation {
                 | Self::ValidateNativeReply
                 | Self::RunNativeClient
                 | Self::RunNativeOwner
+                | Self::RunSelectedScheme
         ) && format != Format::Json
         {
             return Err("operation supports JSON only".into());
@@ -221,6 +229,16 @@ impl Capabilities {
                 "native owner requires exactly run-native-owner and JSON capabilities".into(),
             );
         }
+        if self.contract_version == SELECTED_SCHEME_VERSION
+            && (!matches!(
+                self.operations.as_slice(),
+                [] | [Operation::RunSelectedScheme]
+            ) || self.formats != [Format::Json])
+        {
+            return Err(
+                "selected Scheme witness supports only run-selected-scheme and JSON".into(),
+            );
+        }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
         if self.operations.iter().collect::<BTreeSet<_>>().len() != self.operations.len()
@@ -260,6 +278,11 @@ impl Observation {
                 }
                 if operation == Operation::RunNativeOwner {
                     return Err("native owner scenarios have no domain-invalid observation".into());
+                }
+                if operation == Operation::RunSelectedScheme {
+                    return Err(
+                        "selected Scheme domain failures belong in the witness projection".into(),
+                    );
                 }
                 identity(code, 128)?;
                 if operation == Operation::ValidateNativeFrame
@@ -319,6 +342,7 @@ fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> 
         Operation::ValidateNativeReply => super::native_replies::projection(value),
         Operation::RunNativeClient => super::native_client::projection(value),
         Operation::RunNativeOwner => super::native_owner::projection(value),
+        Operation::RunSelectedScheme => super::selected_scheme::projection(value),
         _ => projection(value),
     }
 }
