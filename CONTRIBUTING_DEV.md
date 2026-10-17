@@ -154,16 +154,29 @@ CI runs on pull requests, merge-queue commits and pushes to main. Lint, formatti
 configuration validation always run. Documentation-only pull requests skip code jobs;
 site changes also build and test the site.
 
-Code jobs qualify Wasm, Wasm GC, JavaScript and native targets. Native producers build a
-release executable on Ubuntu 24.04 and macOS 15 and publish it before acceptance tests
-start. Linux native acceptance and installed signed-provider qualification reuse those
-executables. Released provider-tool acquisition runs in parallel with native compilation. CI downloads
+Code jobs qualify Wasm, Wasm GC, JavaScript and native targets. Ubuntu 24.04 producers use
+pinned Zig 0.17.0 to build the Linux x64 and macOS arm64 CLI release executables. Consumers
+run those exact bytes on Ubuntu 24.04 and macOS 15. Full native workspace release builds
+with the default C compiler and MEP process checks run independently. Compiler lifecycle,
+MoonBit frontend and conformance checks also run independently of CLI production. Native
+worker and workspace-grant checks run once per OS in installed-lifecycle.
+
+Jobs start after change detection, while lint and formatting run in parallel. Every check
+still gates `ci-ok`. New PR commits cancel superseded PR runs; main and merge-queue runs
+finish. The shared setup action caches the complete pinned MoonBit installation, including
+core and moonx, and installs only each job's requested mise tools.
+
+Released provider-tool acquisition runs in parallel with native compilation. CI downloads
 the separately packaged service and test-fixture exporter instead of installing Rust or
 compiling Cargo targets.
 
 Each executable artifact has a binary Ion catalog. Consumers verify the repository,
-commit, workflow run, platform, architecture, runner image and executable SHA-256.
-Native consumers also verify the pinned compiler and core source identities. Artifacts
+commit, workflow run, target platform, architecture and executable SHA-256. Cross-built
+CLI catalogs also check the binary's ELF or Mach-O header, pinned compiler version and
+core source identity. They retain the producer's compiler executable hash, runner image,
+Zig version, target triple and build duration separately from the target identity. A
+consumer's different-platform compiler executable does not have the producer's hash.
+Same-host native artifacts and provider tools retain their exact context checks. Artifacts
 are scoped to a workflow run, including reruns of individual jobs. They never reuse
 trust state, signed fixtures, grants, project outputs or qualification receipts.
 
@@ -199,13 +212,18 @@ To reproduce CI reuse, first build from a clean MoonBit checkout with the pinned
 toolchain and Node available. Keep all artifact directories outside tracked paths:
 
 ```sh
-moon build --target native --release
-moon run scripts/ci-artifact.mbtx pack native-cli .dev/ci/native
+mise run build:ci-native -- linux-x64 # use darwin-arm64 on macOS
+moon run scripts/ci-artifact.mbtx pack-cross native-cli .dev/ci/native linux-x64
 moon run scripts/ci-provider-release.mbtx
 MORPHIR_CI_NATIVE="$PWD/.dev/ci/native" MORPHIR_CI_PROVIDER_TOOLS="$PWD/.dev/ci/provider-tools" mise run test:installed-provider
 ```
 
 `moon run scripts/ci-artifact.mbtx --self-test` checks artifact admission and rejection.
+`moonx scripts/ci-native-build.mbtx --self-test` checks wrapper argument handling and target
+restrictions. Cross-build wrappers follow [Smithy's implementation](https://github.com/moonrockz/smithy/tree/main/apps/zig-cross)
+and remove host-only SIMD/backtrace objects, keeping MoonBit's scalar UTF runtime. Windows
+cross-builds remain disabled because MoonBit resolves platform configuration from the
+build host; see [moon#2320](https://github.com/moonbitlang/moon/issues/2320).
 The required `ci-ok` aggregate includes producers and consumers, so a failed producer
 cannot be hidden by a skipped consumer.
 

@@ -109,6 +109,52 @@ async fn context(kind : String) -> Json {
 }
 
 ///|
+/// Cross-build consumers share source/core/version identity, but run a different
+/// compiler executable and runner image. Keep the full producer identity in metadata.
+fn cross_context(identity : Json, target~ : String? = None) -> Json raise {
+  guard @json.parse(identity.stringify()) is Object(fields) else {
+    fail("Expected artifact identity")
+  }
+  fields.remove("compilerIdentity")
+  fields.remove("imageVersion")
+  if target is Some(target) {
+    let (platform, arch) = match target {
+      "linux-x64" => ("linux", "x64")
+      "darwin-arm64" => ("darwin", "arm64")
+      _ => fail("Unsupported native CI cross target")
+    }
+    fields.set("platform", Json::string(platform))
+    fields.set("arch", Json::string(arch))
+  }
+  Json::object(fields)
+}
+
+///|
+async fn check_native_format(path : String, identity : Json) -> Unit {
+  ignore(
+    output("node", [
+      "--input-type=module",
+      "-e",
+      (
+        #|import assert from 'node:assert/strict';
+        #|import {readFileSync} from 'node:fs';
+        #|const [path,platform,arch]=process.argv.slice(1), h=readFileSync(path);
+        #|if(platform==='linux'&&arch==='x64') {
+        #| assert.ok(h.length>=64);assert.equal(h.subarray(0,4).toString('hex'),'7f454c46');
+        #| assert.equal(h[4],2);assert.equal(h[5],1);assert.equal(h.readUInt16LE(18),62);
+        #|} else {
+        #| assert.equal(platform,'darwin');assert.equal(arch,'arm64');assert.ok(h.length>=32);
+        #| assert.equal(h.readUInt32LE(0),0xfeedfacf);assert.equal(h.readUInt32LE(4),0x100000c);
+        #|}
+      ),
+      path,
+      text(identity, "platform"),
+      text(identity, "arch"),
+    ]),
+  )
+}
+
+///|
 async fn write_catalog(
   kind : String,
   directory : String,
@@ -152,7 +198,38 @@ async fn admit(kind : String, directory : String, expected : Json) -> Json {
     text(manifest, "kind") == kind else {
     fail("Artifact profile/kind")
   }
-  guard field(manifest, "context") == expected else {
+  let metadata = field(manifest, "metadata")
+  let cross = field(metadata, "buildStrategy") == Json::string("zig-cross")
+  let accepted = if cross {
+    guard kind == "native-cli" &&
+      text(metadata, "buildMode") == "release" &&
+      text(metadata, "zigVersion") == "0.17.0" else {
+      fail("Unsupported cross-build provenance")
+    }
+    let builder = field(metadata, "builder")
+    let target = text(metadata, "target")
+    guard cross_context(builder, target=Some(target)) == cross_context(expected) else {
+      fail("Cross-build source/run/core/toolchain mismatch")
+    }
+    // Hashes of producer executables are evidence, not hashes of the consumer's
+    // different-platform compiler. Native same-host artifacts keep exact comparison.
+    guard text(builder, "compilerIdentity").length() == 64 else {
+      fail("Missing producer compiler identity")
+    }
+    if field(builder, "platform") == field(expected, "platform") &&
+      field(builder, "arch") == field(expected, "arch") &&
+      field(expected, "compilerIdentity") != Json::null() {
+      guard field(builder, "compilerIdentity") ==
+        field(expected, "compilerIdentity") else {
+        fail("Same-platform producer compiler mismatch")
+      }
+    }
+    check_native_format(directory + "/morphir-native", expected)
+    cross_context(expected)
+  } else {
+    expected
+  }
+  guard field(manifest, "context") == accepted else {
     fail("Artifact source/run/platform/toolchain mismatch")
   }
   let expected_names = names(kind, metadata=field(manifest, "metadata"))
@@ -183,6 +260,7 @@ async fn pack(
   kind : String,
   directory : String,
   released~ : Bool = false,
+  cross_target~ : String? = None,
 ) -> Json {
   if !@fs.exists(directory) {
     @fs.mkdir(directory, recursive=true)
@@ -195,7 +273,34 @@ async fn pack(
     fail("Publish CI artifacts only from a clean checkout")
   }
   let identity = context(kind)
-  let metadata : Json = if released {
+  let metadata : Json = if cross_target is Some(target) {
+    guard kind == "native-cli" else { fail("Only native CLI is cross-built") }
+    let expected = cross_context(identity, target=Some(target))
+    let cross = ".dev/ci/cross/" + target
+    let receipt = @fs.read_file(cross + "/build.json").json()
+    guard text(receipt, "target") == target &&
+      field(receipt, "platform") == field(expected, "platform") &&
+      field(receipt, "arch") == field(expected, "arch") &&
+      text(receipt, "zigVersion") == "0.17.0" else {
+      fail("Cross-build receipt target/version mismatch")
+    }
+    let source = cross + "/native/release/build/morphir/morphir/morphir.exe"
+    check_native_format(source, expected)
+    @fs.write_file(
+      directory + "/morphir-native",
+      @fs.read_file(source),
+      permission=0o755,
+    )
+    {
+      "buildMode": "release",
+      "buildStrategy": "zig-cross",
+      "builder": identity,
+      "target": target,
+      "zigVersion": "0.17.0",
+      "triple": field(receipt, "triple"),
+      "elapsedMs": field(receipt, "elapsedMs"),
+    }
+  } else if released {
     guard kind == "provider-tools" else {
       fail("Only provider tools have released artifacts")
     }
@@ -276,8 +381,13 @@ async fn pack(
       },
     }
   }
-  ignore(write_catalog(kind, directory, identity, metadata))
-  admit(kind, directory, identity)
+  let catalog_identity = if cross_target is Some(target) {
+    cross_context(identity, target=Some(target))
+  } else {
+    identity
+  }
+  ignore(write_catalog(kind, directory, catalog_identity, metadata))
+  admit(kind, directory, catalog_identity)
 }
 
 ///|
@@ -344,8 +454,97 @@ async fn self_test() -> Unit {
   } noraise {
     _ => fail("Expected release proof integrity rejection")
   }
+  let builder : Json = {
+    "repository": "fixture/repo",
+    "revision": "accepted",
+    "runId": "123",
+    "platform": "linux",
+    "arch": "x64",
+    "compilerVersion": "pinned",
+    "compilerIdentity": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "coreSourceIdentity": "pinned-core",
+    "imageVersion": "linux-image",
+  }
+  let target_identity = cross_context(builder, target=Some("darwin-arm64"))
+  guard @json.parse(target_identity.stringify()) is Object(consumer_fields) else {
+    fail("Expected test identity")
+  }
+  consumer_fields.set("compilerIdentity", Json::string("macos-compiler"))
+  consumer_fields.set("imageVersion", Json::string("macos-image"))
+  let consumer = Json::object(consumer_fields)
+  let cross_metadata : Json = {
+    "buildMode": "release",
+    "buildStrategy": "zig-cross",
+    "target": "darwin-arm64",
+    "zigVersion": "0.17.0",
+    "builder": builder,
+  }
+  // Minimal Mach-O header, including the CPU type, for admission protocol tests.
+  ignore(
+    output("node", [
+      "-e",
+      "const h=Buffer.alloc(32);h.writeUInt32LE(0xfeedfacf);h.writeUInt32LE(0x100000c,4);require('fs').writeFileSync(process.argv[1],h)",
+      root + "/morphir-native",
+    ]),
+  )
+  ignore(write_catalog(kind, root, target_identity, cross_metadata))
+  ignore(admit(kind, root, consumer))
+  for
+    (key, value) in [
+      ("repository", "other/repo"),
+      ("runId", "124"),
+      ("revision", "stale"),
+      ("arch", "x64"),
+      ("platform", "linux"),
+      ("compilerVersion", "other"),
+      ("coreSourceIdentity", "other-core"),
+    ] {
+    guard @json.parse(consumer.stringify()) is Object(fields) else {
+      fail("Expected test identity")
+    }
+    fields.set(key, Json::string(value))
+    try ignore(admit(kind, root, Json::object(fields))) catch {
+      _ => ()
+    } noraise {
+      _ => fail("Expected cross-build rejection: " + key)
+    }
+  }
+  // A catalog with a matching digest must still reject a binary of the wrong CPU.
+  @fs.write_file(root + "/morphir-native", "wrong binary format")
+  ignore(write_catalog(kind, root, target_identity, cross_metadata))
+  try ignore(admit(kind, root, consumer)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected cross binary header rejection")
+  }
+  let linux_identity = cross_context(builder, target=Some("linux-x64"))
+  let linux_metadata : Json = {
+    "buildMode": "release",
+    "buildStrategy": "zig-cross",
+    "target": "linux-x64",
+    "zigVersion": "0.17.0",
+    "builder": builder,
+  }
+  ignore(
+    output("node", [
+      "-e",
+      "const h=Buffer.alloc(64);h.write('7f454c460201','hex');h.writeUInt16LE(62,18);require('fs').writeFileSync(process.argv[1],h)",
+      root + "/morphir-native",
+    ]),
+  )
+  ignore(write_catalog(kind, root, linux_identity, linux_metadata))
+  ignore(admit(kind, root, builder))
+  guard @json.parse(builder.stringify()) is Object(changed_compiler) else {
+    fail("Expected builder identity")
+  }
+  changed_compiler.set("compilerIdentity", Json::string("changed"))
+  try ignore(admit(kind, root, Json::object(changed_compiler))) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected same-platform compiler identity rejection")
+  }
   println(
-    "CI artifact admission: valid reuse, stale revision, host/run mismatch, wrong kind, executable symlink, tampered bytes, missing catalog and release proof integrity passed",
+    "CI artifact admission: native/released/cross reuse, source/run/core/target mismatch, wrong kind, symlink, tampering, missing catalog, release proof and binary format checks passed",
   )
 }
 
@@ -356,9 +555,10 @@ async fn main {
     self_test()
     return
   }
-  guard args.length() == 4 else {
+  guard (args.length() == 4 && args[1] != "pack-cross") ||
+    (args.length() == 5 && args[1] == "pack-cross") else {
     fail(
-      "Usage: ci-artifact.mbtx pack|pack-release|verify native-cli|provider-tools DIRECTORY",
+      "Usage: ci-artifact.mbtx pack|pack-release|verify KIND DIRECTORY | pack-cross native-cli DIRECTORY TARGET",
     )
   }
 
@@ -371,6 +571,7 @@ async fn main {
   }
   ignore(names(args[2]))
   let result = match args[1] {
+    "pack-cross" => pack(args[2], args[3], cross_target=Some(args[4]))
     "pack" => pack(args[2], args[3])
     "pack-release" => pack(args[2], args[3], released=true)
     "verify" => admit(args[2], @fs.realpath(args[3]), context(args[2]))

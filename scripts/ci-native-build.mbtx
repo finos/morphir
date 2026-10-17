@@ -1,0 +1,165 @@
+///|
+/// Build only the CI CLI, with isolated output for each target. Based on Smithy's
+/// zig-cross wrappers: https://github.com/moonrockz/smithy/tree/main/apps/zig-cross
+/// Workarounds track https://github.com/moonbitlang/moon/issues/2320.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn target_info(target : String) -> (String, String, String) raise {
+  match target {
+    "linux-x64" => ("x86_64-linux-musl", "linux", "x64")
+    "darwin-arm64" => ("aarch64-macos", "darwin", "arm64")
+    // MoonBit resolves platform cfg from the build host. Windows must be built
+    // on Windows until upstream supports target-specific core bundles.
+    _ => fail("Supported CI targets: linux-x64, darwin-arm64")
+  }
+}
+
+///|
+fn cc_wrapper(triple : String) -> String {
+  (
+    #|#!/bin/sh
+    #|set -eu
+    #|for arg in "$@"; do
+    #|  shift
+    #|  case "$arg" in
+    #|    -DMOONBIT_USE_SIMDUTF|*/moonbit_simdutf.o|*/simdutf.o|*/libbacktrace.a) ;;
+    #|    *) set -- "$@" "$arg" ;;
+    #|  esac
+    #|done
+    #|
+  ) +
+  "exec zig cc -target " +
+  triple +
+  " -D_CRT_RAND_S \"$@\"\n"
+}
+
+///|
+fn ar_wrapper() -> String {
+  (
+    #|#!/bin/sh
+    #|set -eu
+    #|for arg in "$@"; do
+    #|  shift
+    #|  case "$arg" in
+    #|    */moonbit_simdutf.o|*/simdutf.o|moonbit_simdutf.o|simdutf.o) ;;
+    #|    *) set -- "$@" "$arg" ;;
+    #|  esac
+    #|done
+    #|exec zig ar "$@"
+    #|
+  )
+}
+
+///|
+async fn main {
+  if @env.args() is [_, "--self-test"] {
+    self_test()
+    return
+  }
+  guard @env.args() is [_, target] else {
+    fail("Usage: moonx scripts/ci-native-build.mbtx linux-x64|darwin-arm64")
+  }
+  let (triple, platform, arch) = target_info(target)
+  let (status, version, err) = @process.collect_output("zig", ["version"])
+  guard status == 0 && version.text().trim() == "0.17.0" else {
+    fail("Expected pinned Zig 0.17.0: " + err.text() + version.text())
+  }
+  let root = @fs.realpath(".") + "/.dev/ci/cross/" + target
+  if !@fs.exists(root + "/zig") {
+    @fs.mkdir(root + "/zig", recursive=true)
+  }
+  for (name, content) in [("cc", cc_wrapper(triple)), ("ar", ar_wrapper())] {
+    @fs.write_file(root + "/zig/" + name, content)
+    @fs.chmod(root + "/zig/" + name, 0o755)
+  }
+  let started = @async.now()
+  let status = @process.run(
+    "moon",
+    [
+      "build", "apps/morphir", "--target", "native", "--release", "--target-dir",
+      root,
+    ],
+    extra_env={ "MOON_CC": root + "/zig/cc", "MOON_AR": root + "/zig/ar" },
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  guard status == 0 else { fail("Zig CLI build failed") }
+  let source = root + "/native/release/build/morphir/morphir/morphir.exe"
+  let metadata : Json = {
+    "target": target,
+    "platform": platform,
+    "arch": arch,
+    "triple": triple,
+    "zigVersion": "0.17.0",
+    "elapsedMs": @json.parse((@async.now() - started).to_string()),
+    "source": source,
+  }
+  @fs.write_file(root + "/build.json", metadata.stringify())
+  println(metadata.stringify())
+}
+
+///|
+async fn self_test() -> Unit {
+  let root = @fs.tmpdir(prefix="morphir-zig-test-")
+  defer @fs.rmdir(root, recursive=true)
+  let dir = root + "/tools with spaces"
+  @fs.mkdir(dir)
+  @fs.write_file(
+    dir + "/zig",
+    "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$MORPHIR_TEST_ARGS\"\n",
+    permission=0o755,
+  )
+  let extra_env = {
+    "PATH": dir + ":" + @env.get_env_var("PATH").unwrap_or(""),
+    "MORPHIR_TEST_ARGS": root + "/args",
+  }
+  for target in ["linux-x64", "darwin-arm64"] {
+    let (triple, _, _) = target_info(target)
+    @fs.write_file(dir + "/cc", cc_wrapper(triple), permission=0o755)
+    let (code, _, err) = @process.collect_output(
+      dir + "/cc",
+      [
+        "-DMOONBIT_USE_SIMDUTF", "/tool with spaces/moonbit_simdutf.o", "/tool/simdutf.o",
+        "/tool/libbacktrace.a", "-I/include with spaces", "source with spaces.c",
+        "-O2",
+      ],
+      extra_env~,
+    )
+    guard code == 0 else { fail("cc wrapper: " + err.text()) }
+    guard @fs.read_file(root + "/args").text() ==
+      "cc\n-target\n" +
+      triple +
+      "\n-D_CRT_RAND_S\n-I/include with spaces\nsource with spaces.c\n-O2\n" else {
+      fail("Compiler wrapper changed arguments or retained host objects")
+    }
+  }
+  @fs.write_file(dir + "/ar", ar_wrapper(), permission=0o755)
+  let (code, _, err) = @process.collect_output(
+    dir + "/ar",
+    [
+      "rcs", "out with spaces.a", "moonbit_simdutf.o", "/tool/simdutf.o", "keep with spaces.o",
+    ],
+    extra_env~,
+  )
+  guard code == 0 else { fail("ar wrapper: " + err.text()) }
+  guard @fs.read_file(root + "/args").text() ==
+    "ar\nrcs\nout with spaces.a\nkeep with spaces.o\n" else {
+    fail("Archiver wrapper changed arguments or retained host objects")
+  }
+  try ignore(target_info("windows-x64")) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Windows cross-builds must stay disabled")
+  }
+  println(
+    "CI Zig wrappers: targets, host-object filtering, argument quoting and Windows rejection passed",
+  )
+}

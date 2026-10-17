@@ -8,12 +8,12 @@ on:
         required: true
         type: string
 
-# Each caller owns one platform's graph. macOS never waits for the Linux Rust build.
-# Publish compiled tools before acceptance, and preserve fresh fixture/trust state.
+# Build CLI artifacts on Linux; execute acceptance on each qualified target OS.
+# Keep fresh fixture/trust state and same-run artifact admission.
 jobs:
   native-cli:
     name: Native CLI artifact (${{ inputs.runner }})
-    runs-on: ${{ inputs.runner }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Checkout code
@@ -24,37 +24,25 @@ jobs:
           node-version: '24.22.0'
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
-      - name: Install pinned MoonBit
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          curl -fsSL https://mise.run | sh
-          export PATH="$HOME/.local/bin:$PATH"
-          mise install http:moonbit
-          moonbit_dir="$(mise where http:moonbit)"
-          moonbit_version="$(mise current http:moonbit)"
-          # The binary archive omits core; install the matching complete toolchain.
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
-            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
-          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+      - name: Set up cached MoonBit and Zig
+        uses: ./.github/actions/setup-moonbit
+        with:
+          tools: http:moonbit zig
 
       - name: Resolve pinned workspace packages
         run: moon update
       - name: Test artifact admission
         run: moon run scripts/ci-artifact.mbtx --self-test
-      - name: Build native workspace release
-        if: runner.os == 'Linux'
-        run: moon build --target native --release
-      - name: Build native CLI release
-        if: runner.os == 'macOS'
-        run: moon -C apps/morphir build --target native --release
-      - name: Catalog native executable
-        run: moon run scripts/ci-artifact.mbtx pack native-cli .dev/ci/native
+      - name: Test cross-compiler wrappers
+        run: moonx scripts/ci-native-build.mbtx --self-test
+      - name: Cross-build the native CLI release
+        env:
+          CI_NATIVE_TARGET: ${{ inputs.runner == 'macos-15' && 'darwin-arm64' || 'linux-x64' }}
+        run: mise run build:ci-native -- "$CI_NATIVE_TARGET"
+      - name: Catalog native executable and build provenance
+        env:
+          CI_NATIVE_TARGET: ${{ inputs.runner == 'macos-15' && 'darwin-arm64' || 'linux-x64' }}
+        run: moon run scripts/ci-artifact.mbtx pack-cross native-cli .dev/ci/native "$CI_NATIVE_TARGET"
       - name: Publish native executable immediately
         uses: actions/upload-artifact@v7
         with:
@@ -65,6 +53,26 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+  native-workspace:
+    name: Native workspace release
+    runs-on: ubuntu-24.04
+    if: inputs.runner == 'ubuntu-24.04'
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - run: moon update
+      # Preserve the full workspace/default-compiler release check off the artifact path.
+      - run: moon build --target native --release
+
+  mep-process:
+    name: Native MEP process (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - run: moon update
       - name: Qualify the native MoonBit MEP backend process
         run: mise run test:mep-process
       - name: Retain MEP process qualification receipts
@@ -75,12 +83,12 @@ jobs:
           path: .dev/mep-process/
           if-no-files-found: warn
 
-  native-acceptance:
-    name: Native acceptance
+  native-cli-acceptance:
+    name: Native CLI acceptance
     runs-on: ubuntu-24.04
     needs: native-cli
     if: inputs.runner == 'ubuntu-24.04'
-    timeout-minutes: 45
+    timeout-minutes: 30
     env:
       MORPHIR_CI_NATIVE: ${{ github.workspace }}/.dev/ci/native
     steps:
@@ -92,24 +100,8 @@ jobs:
           node-version: '24.22.0'
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
-      - name: Install pinned MoonBit
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          curl -fsSL https://mise.run | sh
-          export PATH="$HOME/.local/bin:$PATH"
-          mise install http:moonbit
-          moonbit_dir="$(mise where http:moonbit)"
-          moonbit_version="$(mise current http:moonbit)"
-          # The binary archive omits core; install the matching complete toolchain.
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
-            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
-          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+      - name: Set up cached MoonBit
+        uses: ./.github/actions/setup-moonbit
 
       - name: Resolve pinned workspace packages
         run: moon update
@@ -125,21 +117,42 @@ jobs:
       - name: Test acquisition without a MoonBit installation
         run: node apps/morphir/scripts/test-acquisition.ts "$MORPHIR_CI_NATIVE/morphir-native"
 
-      - name: Qualify owned native Workbench workers without CEF
-        run: mise run test:workbench-native-workers
-      - name: Qualify read-only native Workbench workspace grants without CEF
-        run: mise run test:workbench-native-workspaces
+  native-acceptance:
+    name: Native acceptance (${{ matrix.lane }})
+    runs-on: ubuntu-24.04
+    if: inputs.runner == 'ubuntu-24.04'
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [compiler, frontend, conformance]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
+      - name: Set up cached MoonBit
+        uses: ./.github/actions/setup-moonbit
 
+      - name: Resolve pinned workspace packages
+        run: moon update
+      # Native workers and workspace grants run once per OS in installed-lifecycle.
       - name: Compile generated libraries and verify private build lifecycle
+        if: matrix.lane == 'compiler'
         run: moonx scripts/typescript-tooling.mbtx test-compiler
 
       - name: Compare original MoonBit source and lowered Boolean libraries
+        if: matrix.lane == 'frontend'
         env:
           MORPHIR_FRONTEND_RECEIPTS: .dev/frontend-ci
         run: mise run test:moonbit-frontend
 
       - name: Retain Boolean frontend acceptance identities
-        if: always()
+        if: always() && matrix.lane == 'frontend'
         uses: actions/upload-artifact@v7
         with:
           name: moonbit-frontend-native
@@ -147,18 +160,18 @@ jobs:
           if-no-files-found: error
 
       - name: Independent semantic conformance and evaluator codec
+        if: matrix.lane == 'conformance'
         env:
           MORPHIR_CONFORMANCE_RECEIPTS: .dev/conformance-ci
         run: mise run test:conformance
 
       - name: Retain separate evaluator coverage receipts
-        if: always()
+        if: always() && matrix.lane == 'conformance'
         uses: actions/upload-artifact@v7
         with:
           name: conformance-native
           path: .dev/conformance-ci/
           if-no-files-found: warn
-
 
   provider-tools:
     permissions:
@@ -178,24 +191,8 @@ jobs:
           node-version: '24.22.0'
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
-      - name: Install pinned MoonBit
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          curl -fsSL https://mise.run | sh
-          export PATH="$HOME/.local/bin:$PATH"
-          mise install http:moonbit
-          moonbit_dir="$(mise where http:moonbit)"
-          moonbit_version="$(mise current http:moonbit)"
-          # The binary archive omits core; install the matching complete toolchain.
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
-            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
-          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+      - name: Set up cached MoonBit
+        uses: ./.github/actions/setup-moonbit
 
       - name: Resolve pinned workspace packages
         run: moon update
@@ -235,24 +232,8 @@ jobs:
           node-version: '24.22.0'
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
-      - name: Install pinned MoonBit
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          curl -fsSL https://mise.run | sh
-          export PATH="$HOME/.local/bin:$PATH"
-          mise install http:moonbit
-          moonbit_dir="$(mise where http:moonbit)"
-          moonbit_version="$(mise current http:moonbit)"
-          # The binary archive omits core; install the matching complete toolchain.
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
-            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
-          echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+      - name: Set up cached MoonBit
+        uses: ./.github/actions/setup-moonbit
 
       - name: Resolve pinned workspace packages
         run: moon update

@@ -1,0 +1,33 @@
+name: Set up pinned MoonBit
+description: Cache the complete pinned toolchain and install only the tools this job needs
+inputs:
+  tools:
+    description: Space-separated mise tools to install
+    default: http:moonbit
+runs:
+  using: composite
+  steps:
+    - name: Install cached mise tools
+      uses: jdx/mise-action@v5
+      with:
+        install_args: ${{ inputs.tools }}
+        cache_save_post: true
+        cache_key_prefix: morphir-tools-v1-${{ hashFiles('.github/actions/setup-moonbit/action.yml') }}
+    - name: Complete and check the pinned MoonBit toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        moonbit_dir="$(mise where http:moonbit)"
+        moonbit_version="$(mise current http:moonbit)"
+        # mise's archive omits core and moonx. Cache the completed installation too.
+        if [ ! -f "$moonbit_dir/lib/core/moon.mod" ] || [ ! -x "$moonbit_dir/bin/moonx" ]; then
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
+        fi
+        chmod +x "$moonbit_dir"/bin/moon*
+        export MOON_HOME="$moonbit_dir"
+        [[ "$("$moonbit_dir/bin/moonc" -v)" == "v$moonbit_version "* ]]
+        grep -F "version = \"$moonbit_version\"" "$moonbit_dir/lib/core/moon.mod"
+        echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
+        echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
+        "$moonbit_dir/bin/moon" version --all

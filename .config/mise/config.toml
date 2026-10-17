@@ -8,6 +8,9 @@ bun = "1.4.3"
 # Node.js and npm for the CLI package and target smoke tests
 node = "24.22.0"
 
+# C compiler and archiver for reproducible Linux/macOS CI cross-builds.
+zig = "0.17.0"
+
 # YAML linting
 yamllint = "latest"
 
@@ -36,6 +39,10 @@ _.path = ["./node_modules/.bin"]
 description = "Check that this checkout or worktree uses the bootstrapped shared beads database"
 # A MoonBit script, so one file works on every platform; see AGENTS.md (Task scripts).
 run = "moonx scripts/beads-check.mbtx"
+
+[tasks."build:ci-native"]
+description = "Cross-build the CI CLI for linux-x64 or darwin-arm64 with pinned Zig"
+run = "moonx scripts/ci-native-build.mbtx"
 
 [tasks."validate:packages"]
 description = "Verify package structure is valid"
