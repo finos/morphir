@@ -15,6 +15,7 @@ pub const NATIVE_FRAMES_VERSION: &str = "0.1.0-draft.7";
 pub const NATIVE_REPLIES_VERSION: &str = "0.1.0-draft.8";
 pub const NATIVE_CLIENT_VERSION: &str = "0.1.0-draft.9";
 pub const NATIVE_OWNER_VERSION: &str = "0.1.0-draft.10";
+pub const CAPABILITY_JOBS_VERSION: &str = "0.1.0-draft.13";
 pub const CAPABILITY_POLICY_VERSION: &str = "0.1.0-draft.12";
 pub const SELECTED_SCHEME_VERSION: &str = "0.1.0-draft.11";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
@@ -60,6 +61,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.10",
         "=0.1.0-draft.11",
         "=0.1.0-draft.12",
+        "=0.1.0-draft.13",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -105,10 +107,15 @@ pub enum Operation {
     RunSelectedScheme,
     #[serde(rename = "run-capability-policy")]
     RunCapabilityPolicy,
+    #[serde(rename = "run-capability-jobs")]
+    RunCapabilityJobs,
 }
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if (version == CAPABILITY_JOBS_VERSION) != (self == Self::RunCapabilityJobs) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if (version == CAPABILITY_POLICY_VERSION) != (self == Self::RunCapabilityPolicy) {
             return Err("operation is not defined by this Workbench draft".into());
         }
@@ -150,6 +157,7 @@ impl Operation {
                 | Self::ValidateNativeReply
                 | Self::RunNativeClient
                 | Self::RunNativeOwner
+                | Self::RunCapabilityJobs
                 | Self::RunCapabilityPolicy
                 | Self::RunSelectedScheme
         ) && format != Format::Json
@@ -255,6 +263,14 @@ impl Capabilities {
         {
             return Err("capability policy supports only run-capability-policy and JSON".into());
         }
+        if self.contract_version == CAPABILITY_JOBS_VERSION
+            && (!matches!(
+                self.operations.as_slice(),
+                [] | [Operation::RunCapabilityJobs]
+            ) || self.formats != [Format::Json])
+        {
+            return Err("capability jobs support only run-capability-jobs and JSON".into());
+        }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
         if self.operations.iter().collect::<BTreeSet<_>>().len() != self.operations.len()
@@ -294,6 +310,9 @@ impl Observation {
                 }
                 if operation == Operation::RunNativeOwner {
                     return Err("native owner scenarios have no domain-invalid observation".into());
+                }
+                if operation == Operation::RunCapabilityJobs {
+                    return Err("capability job failures belong in the projection".into());
                 }
                 if operation == Operation::RunCapabilityPolicy {
                     return Err("capability policy domain failures belong in the projection".into());
@@ -361,6 +380,7 @@ fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> 
         Operation::ValidateNativeReply => super::native_replies::projection(value),
         Operation::RunNativeClient => super::native_client::projection(value),
         Operation::RunNativeOwner => super::native_owner::projection(value),
+        Operation::RunCapabilityJobs => super::capability_jobs::projection(value),
         Operation::RunCapabilityPolicy => super::capability_policy::projection(value),
         Operation::RunSelectedScheme => super::selected_scheme::projection(value),
         _ => projection(value),

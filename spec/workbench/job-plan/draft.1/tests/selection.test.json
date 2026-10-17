@@ -1,0 +1,46 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/job-plan/0.1.0-draft.1/selection.schema.json",
+  "tests": [
+    {
+      "description": "Exact accepted profile",
+      "data": {
+        "planId": "plan-1",
+        "runtime": "scheme",
+        "policy": "permissive",
+        "providerId": "scheme"
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject unknown member",
+      "data": {
+        "planId": "plan-1",
+        "runtime": "scheme",
+        "policy": "permissive",
+        "providerId": "scheme",
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject unknown runtime",
+      "data": {
+        "planId": "plan-1",
+        "runtime": "javascript",
+        "policy": "permissive",
+        "providerId": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject unknown policy",
+      "data": {
+        "planId": "plan-1",
+        "runtime": "scheme",
+        "policy": "future",
+        "providerId": "scheme"
+      },
+      "valid": false
+    }
+  ]
+}

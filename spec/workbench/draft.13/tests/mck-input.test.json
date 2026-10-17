@@ -1,0 +1,260 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.13/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "Closed valid infrastructure",
+      "data": {
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "submission": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "calls": [
+            {
+              "id": "first",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              }
+            }
+          ],
+          "runtime": "scheme",
+          "extensions": null,
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "inspect",
+            "job": 0
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject unknown top-level member",
+      "data": {
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "submission": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "calls": [
+            {
+              "id": "first",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              }
+            }
+          ],
+          "runtime": "scheme",
+          "extensions": null,
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "inspect",
+            "job": 0
+          }
+        ],
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject caller manifest",
+      "data": {
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "submission": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "calls": [
+            {
+              "id": "first",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              }
+            }
+          ],
+          "runtime": "scheme",
+          "extensions": null,
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "manifest": {}
+        },
+        "actions": [
+          {
+            "op": "inspect",
+            "job": 0
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject marker source",
+      "data": {
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "submission": {
+          "model": {
+            "$serde_json::private::RawValue": "\"x\""
+          },
+          "calls": [
+            {
+              "id": "first",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              }
+            }
+          ],
+          "runtime": "scheme",
+          "extensions": null,
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "inspect",
+            "job": 0
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject fourth replan operation",
+      "data": {
+        "offer": {
+          "profile": "morphir/workbench/jobs",
+          "contractVersion": "0.1.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "submission": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "calls": [
+            {
+              "id": "first",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              }
+            }
+          ],
+          "runtime": "scheme",
+          "extensions": null,
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "replan",
+            "job": 0,
+            "selection": {
+              "planId": "plan-1",
+              "runtime": "scheme",
+              "policy": "permissive",
+              "providerId": "scheme"
+            }
+          },
+          {
+            "op": "replan",
+            "job": 0,
+            "selection": {
+              "planId": "plan-1",
+              "runtime": "scheme",
+              "policy": "permissive",
+              "providerId": "scheme"
+            }
+          },
+          {
+            "op": "replan",
+            "job": 0,
+            "selection": {
+              "planId": "plan-1",
+              "runtime": "scheme",
+              "policy": "permissive",
+              "providerId": "scheme"
+            }
+          },
+          {
+            "op": "replan",
+            "job": 0,
+            "selection": {
+              "planId": "plan-1",
+              "runtime": "scheme",
+              "policy": "permissive",
+              "providerId": "scheme"
+            }
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

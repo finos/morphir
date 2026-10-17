@@ -61,6 +61,40 @@ mod adapter {
 
     pub fn run(mode: &str, arg: Option<&str>) {
         match mode {
+            "workbench-capability-jobs" => {
+                for (id, line) in requests() {
+                    if is_exit(&line) {
+                        return;
+                    }
+                    let request: Value = serde_json::from_str(&line).unwrap();
+                    assert!(request.get("expected").is_none() && request.get("caseId").is_none());
+                    if request["op"] == "capabilities" {
+                        let operations = if arg == Some("unclaimed") {
+                            serde_json::json!([])
+                        } else {
+                            serde_json::json!(["run-capability-jobs"])
+                        };
+                        say(format!("{}\n",serde_json::json!({"id":id,"suite":"workbench","contractVersion":"0.1.0-draft.13","binding":"replay-infrastructure-only","language":"test","operations":operations,"formats":["json"]})).as_bytes());
+                    } else {
+                        assert_ne!(
+                            arg,
+                            Some("unclaimed"),
+                            "missing capability must not execute"
+                        );
+                        assert_eq!(request["op"], "run-capability-jobs");
+                        let corpus: Value = serde_json::from_str(include_str!(
+                            "../../../spec/workbench/mck/draft.13/cases.json"
+                        ))
+                        .unwrap();
+                        let mut response = corpus["cases"][0]["expected"].clone();
+                        response["id"] = Value::from(id);
+                        if arg == Some("marker") {
+                            response["value"] = serde_json::json!({"$serde_json::private::RawValue":corpus["cases"][0]["expected"]["value"].to_string()});
+                        }
+                        say(format!("{response}\n").as_bytes());
+                    }
+                }
+            }
             "workbench-capability-policy" => {
                 for (id, line) in requests() {
                     if is_exit(&line) {
@@ -855,6 +889,43 @@ fn capability_policy_live_transport_preserves_missing_claim_and_literal_projecti
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
 }
+fn capability_jobs_live_transport_preserves_missing_claim_and_literal_projection_evidence() {
+    use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
+    let root = tempfile::tempdir().unwrap();
+    let fixture: Value = serde_json::from_str(include_str!(
+        "../../../spec/workbench/mck/draft.13/cases.json"
+    ))
+    .unwrap();
+    std::fs::write(
+        root.path().join("cases.json"),
+        serde_json::json!({"formatVersion":"0.1.0-draft.13","cases":[fixture["cases"][0]]})
+            .to_string(),
+    )
+    .unwrap();
+    for (kind, result) in [
+        ("replay", ResultKind::Pass),
+        ("marker", ResultKind::Error),
+        ("unclaimed", ResultKind::Unsupported),
+    ] {
+        let options = RunOptions {
+            adapter: std::env::current_exe().unwrap().into_os_string(),
+            adapter_args: vec![
+                ADAPTER_FLAG.into(),
+                "workbench-capability-jobs".into(),
+                kind.into(),
+            ],
+            limits: quick(),
+        };
+        let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
+        assert_eq!(report.records[0].result, result, "{kind}");
+        if kind == "marker" {
+            assert_eq!(report.errors[0].phase, Phase::Exchange);
+        } else {
+            assert!(report.errors.is_empty());
+        }
+        morphir_mck::workbench::check_report(root.path(), &report).unwrap();
+    }
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -864,6 +935,7 @@ fn main() {
     }
 
     let tests: &[(&str, fn())] = &[
+        ("capability_jobs_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_jobs_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         ("capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         (
             "selected_scheme_live_transport_preserves_missing_claim_and_literal_projection_evidence",

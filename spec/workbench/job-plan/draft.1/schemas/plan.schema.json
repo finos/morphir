@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/job-plan/0.1.0-draft.1/plan.schema.json",
+  "title": "Accepted Scheme job plan",
+  "description": "Exact immutable Scheme job selection and accepted context; frozen receipt envelopes remain unchanged",
+  "examples": [
+    {
+      "profile": "morphir/workbench/job-plan",
+      "contractVersion": "0.1.0-draft.1",
+      "identity": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "jobId": "job-1",
+        "snapshotId": "snapshot-1"
+      },
+      "planId": "plan-1",
+      "runtime": "scheme",
+      "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+      "admission": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.1",
+        "policy": "permissive"
+      },
+      "boundary": {
+        "entries": [
+          {
+            "name": "selected:main#answer",
+            "inputs": [],
+            "output": {
+              "type": "int"
+            }
+          }
+        ],
+        "definitions": []
+      }
+    }
+  ],
+  "type": "object",
+  "required": [
+    "profile",
+    "contractVersion",
+    "identity",
+    "planId",
+    "runtime",
+    "evaluator",
+    "admission",
+    "boundary"
+  ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/job-plan"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "identity": {
+      "$ref": "https://morphir.finos.org/spec/workbench/jobs/0.1.0-draft.1/identity.schema.json"
+    },
+    "planId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "runtime": {
+      "const": "scheme"
+    },
+    "evaluator": {
+      "const": "scheme-portable-v1/shared-sdk/bounded"
+    },
+    "admission": {
+      "$ref": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json"
+    },
+    "boundary": {
+      "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.3/manifest.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

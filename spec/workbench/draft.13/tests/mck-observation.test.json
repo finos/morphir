@@ -1,0 +1,158 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.13/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Closed valid infrastructure",
+      "data": {
+        "status": "ok",
+        "value": {
+          "jobs": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/job-plan",
+                "contractVersion": "0.1.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "scheme",
+                  "jobId": "job-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "entries": [
+                    {
+                      "name": "selected:main#answer",
+                      "inputs": [],
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ],
+                  "definitions": []
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.1.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "scheme",
+                  "jobId": "job-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "outcomes": null
+              },
+              "released": false
+            }
+          ],
+          "observations": [
+            {
+              "op": "inspect",
+              "job": 0,
+              "status": "ok",
+              "code": null,
+              "view": {
+                "planId": "plan-1",
+                "policy": "permissive",
+                "runtime": "scheme",
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false
+              }
+            }
+          ],
+          "failure": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject unknown top-level member",
+      "data": {
+        "status": "ok",
+        "value": {
+          "jobs": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/job-plan",
+                "contractVersion": "0.1.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "scheme",
+                  "jobId": "job-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "entries": [
+                    {
+                      "name": "selected:main#answer",
+                      "inputs": [],
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ],
+                  "definitions": []
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.1.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "scheme",
+                  "jobId": "job-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "outcomes": null
+              },
+              "released": false
+            }
+          ],
+          "observations": [
+            {
+              "op": "inspect",
+              "job": 0,
+              "status": "ok",
+              "code": null,
+              "view": {
+                "planId": "plan-1",
+                "policy": "permissive",
+                "runtime": "scheme",
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false
+              }
+            }
+          ],
+          "failure": null
+        },
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

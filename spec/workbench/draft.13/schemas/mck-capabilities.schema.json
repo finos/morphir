@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.13/mck-capabilities.schema.json",
+  "title": "Scheme job policy mck-capabilities",
+  "description": "Exact immutable Scheme job selection and accepted context; frozen receipt envelopes remain unchanged",
+  "examples": [
+    {
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.13",
+      "binding": "scheme-job-policy-adapter",
+      "language": "moonbit",
+      "operations": [ "run-capability-jobs" ],
+      "formats": [ "json" ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "binding",
+    "language",
+    "operations",
+    "formats"
+  ],
+  "properties": {
+    "suite": {
+      "const": "workbench"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.13"
+    },
+    "binding": {
+      "type": "string",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "enum": [
+        [],
+        [ "run-capability-jobs" ]
+      ]
+    },
+    "formats": {
+      "const": [ "json" ]
+    }
+  },
+  "additionalProperties": false
+}
