@@ -149,8 +149,17 @@ export class NativeAdapter {
     const epoch = ++this.epoch;
     await this.session.check();
     this.current(epoch);
-    if (request.operation === 'resume-job' && this.jobsAvailable) return this.jobs!.resume(progress);
-    if (request.operation === 'evaluate' && request.executionMode === 'typed' && this.jobsAvailable) return this.jobs!.execute(request, progress);
+    if (this.jobsAvailable && (request.operation === 'resume-job' ||
+        (request.operation === 'evaluate' && request.executionMode === 'typed'))) {
+      const currentProgress: Progress = job => {
+        if (!this.disposed && epoch === this.epoch) progress?.(job);
+      };
+      const result = request.operation === 'resume-job'
+        ? await this.jobs!.resume(currentProgress)
+        : await this.jobs!.execute(request, currentProgress);
+      this.current(epoch);
+      return result;
+    }
     if (request.operation === 'workspace' && this.workspace) {
       const result = await this.workspace.choose(); this.current(epoch); return result;
     }

@@ -1,0 +1,115 @@
+///|
+/// Explicit parent-owned client scenarios through the one shared Rust MCK.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn checked(
+  program : String,
+  args : Array[String],
+  environment~ : Map[String, String] = {},
+) -> Unit {
+  let code = @process.run(
+    program,
+    args,
+    extra_env=environment,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    @sys.exit(1)
+  }
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+async fn main {
+  guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
+    @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
+    @stdio.stderr.write(
+      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and draft.9 kit.\n",
+    )
+    @sys.exit(1)
+  }
+  let corpus = @fs.read_file(kit + "/cases.json").json()
+  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.9") &&
+    field(corpus, "cases") is Array(cases) &&
+    !cases.is_empty() else {
+    @sys.exit(1)
+  }
+  let evidence = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
+    ".dev/native-client-mck/reports",
+  )
+  if !@fs.exists(evidence) {
+    @fs.mkdir(evidence, recursive=true)
+  }
+  checked("bun", ["--check", "tools/build-native-client-mck.ts"])
+  for target in ["js", "native", "wasm", "wasm-gc"] {
+    checked("moon", ["test", "apps/morphir-workbench/jobs", "--target", target])
+  }
+  let app = "apps/morphir-workbench/"
+  let built = app + "_build/native-client-mck/"
+  let worker = app +
+    "_build/js/release/build/finos/morphir-workbench/worker/worker.js"
+  checked("node", [app + "scripts/native-client-assets.ts", kit, worker])
+  for runtime in ["node", "chromium"] {
+    for mode in ["debug", "release"] {
+      let core = app +
+        "_build/js/" +
+        mode +
+        "/build/finos/morphir-workbench/job-core/job-core.js"
+      let report = evidence + "/" + runtime + "-" + mode + ".json"
+      checked(
+        runner,
+        [
+          "--no-banner",
+          "mck",
+          "workbench",
+          "run",
+          "--kit",
+          kit,
+          "--adapter",
+          "node",
+          "--adapter-arg",
+          built + "native-client-mck.mjs",
+          "--report",
+          report,
+        ],
+        environment={
+          "MORPHIR_WORKBENCH_CLIENT_CORE": core,
+          "MORPHIR_WORKBENCH_CLIENT_DRIVER": built + "native-client-trace.js",
+          "MORPHIR_WORKBENCH_CLIENT_BROWSER": if runtime == "chromium" {
+            "1"
+          } else {
+            "0"
+          },
+        },
+      )
+      checked(runner, [
+        "--no-banner", "mck", "workbench", "check", "--kit", kit, "--report", report,
+      ])
+      let result = @fs.read_file(report).json()
+      guard field(result, "qualified") == Json::boolean(true) &&
+        field(result, "records") is Array(records) &&
+        records.length() == cases.length() else {
+        @sys.exit(1)
+      }
+    }
+  }
+  @stdio.stdout.write(
+    "Native client scenarios pass Node and Chromium with debug/release cores; all reports independently checked.\n",
+  )
+}
