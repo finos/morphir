@@ -1,0 +1,718 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.9/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "formatVersion": "0.1.0-draft.9",
+        "cases": [
+          {
+            "id": "lost-submit-no-blind-retry",
+            "operation": "run-native-client",
+            "format": "json",
+            "input": {
+              "evaluation": {
+                "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                "entry": "client:main#answer",
+                "inputs": {
+                  "format": "json",
+                  "source": "[]"
+                }
+              },
+              "inspectionSuccess": true,
+              "checkSource": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+              "invocations": [
+                {
+                  "id": "call-0",
+                  "operation": "session.open",
+                  "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+                  "held": false
+                },
+                {
+                  "id": "call-1",
+                  "operation": "job.submit",
+                  "source": null,
+                  "held": false
+                }
+              ],
+              "actions": [
+                {
+                  "op": "initialize",
+                  "id": "init"
+                },
+                {
+                  "op": "evaluate",
+                  "id": "first"
+                },
+                {
+                  "op": "evaluate",
+                  "id": "retry"
+                }
+              ]
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "initialize",
+                    "requestCount": 1,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": false,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      }
+                    ],
+                    "delivery": null
+                  },
+                  {
+                    "action": "evaluate",
+                    "requestCount": 2,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": true,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      },
+                      {
+                        "id": "first",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": true,
+                          "jobTransport": true
+                        },
+                        "result": null
+                      }
+                    ],
+                    "delivery": null
+                  },
+                  {
+                    "action": "evaluate",
+                    "requestCount": 2,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": true,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      },
+                      {
+                        "id": "first",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": true,
+                          "jobTransport": true
+                        },
+                        "result": null
+                      },
+                      {
+                        "id": "retry",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": false,
+                          "jobTransport": false
+                        },
+                        "result": null
+                      }
+                    ],
+                    "delivery": null
+                  }
+                ],
+                "requests": [
+                  "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
+                  "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+                ],
+                "progress": [],
+                "localCalls": [
+                  "{\"operation\":\"initialize\"}"
+                ],
+                "consumed": 2,
+                "remaining": 0
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed literal shape",
+      "data": {
+        "formatVersion": "0.1.0-draft.9",
+        "cases": [
+          {
+            "id": "lost-submit-no-blind-retry",
+            "operation": "run-native-client",
+            "format": "json",
+            "input": {
+              "evaluation": {
+                "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                "entry": "client:main#answer",
+                "inputs": {
+                  "format": "json",
+                  "source": "[]"
+                }
+              },
+              "inspectionSuccess": true,
+              "checkSource": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+              "invocations": [
+                {
+                  "id": "call-0",
+                  "operation": "session.open",
+                  "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+                  "held": false
+                },
+                {
+                  "id": "call-1",
+                  "operation": "job.submit",
+                  "source": null,
+                  "held": false
+                }
+              ],
+              "actions": [
+                {
+                  "op": "initialize",
+                  "id": "init"
+                },
+                {
+                  "op": "evaluate",
+                  "id": "first"
+                },
+                {
+                  "op": "evaluate",
+                  "id": "retry"
+                }
+              ]
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "initialize",
+                    "requestCount": 1,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": false,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      }
+                    ],
+                    "delivery": null
+                  },
+                  {
+                    "action": "evaluate",
+                    "requestCount": 2,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": true,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      },
+                      {
+                        "id": "first",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": true,
+                          "jobTransport": true
+                        },
+                        "result": null
+                      }
+                    ],
+                    "delivery": null
+                  },
+                  {
+                    "action": "evaluate",
+                    "requestCount": 2,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": true,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      },
+                      {
+                        "id": "first",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": true,
+                          "jobTransport": true
+                        },
+                        "result": null
+                      },
+                      {
+                        "id": "retry",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": false,
+                          "jobTransport": false
+                        },
+                        "result": null
+                      }
+                    ],
+                    "delivery": null
+                  }
+                ],
+                "requests": [
+                  "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
+                  "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+                ],
+                "progress": [],
+                "localCalls": [
+                  "{\"operation\":\"initialize\"}"
+                ],
+                "consumed": 2,
+                "remaining": 0
+              }
+            }
+          }
+        ],
+        "unpublished": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.9",
+        "cases": [
+          {
+            "id": "lost-submit-no-blind-retry",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "input": {
+              "evaluation": {
+                "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                "entry": "client:main#answer",
+                "inputs": {
+                  "format": "json",
+                  "source": "[]"
+                }
+              },
+              "inspectionSuccess": true,
+              "checkSource": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+              "invocations": [
+                {
+                  "id": "call-0",
+                  "operation": "session.open",
+                  "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+                  "held": false
+                },
+                {
+                  "id": "call-1",
+                  "operation": "job.submit",
+                  "source": null,
+                  "held": false
+                }
+              ],
+              "actions": [
+                {
+                  "op": "initialize",
+                  "id": "init"
+                },
+                {
+                  "op": "evaluate",
+                  "id": "first"
+                },
+                {
+                  "op": "evaluate",
+                  "id": "retry"
+                }
+              ]
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "initialize",
+                    "requestCount": 1,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": false,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      }
+                    ],
+                    "delivery": null
+                  },
+                  {
+                    "action": "evaluate",
+                    "requestCount": 2,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": true,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      },
+                      {
+                        "id": "first",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": true,
+                          "jobTransport": true
+                        },
+                        "result": null
+                      }
+                    ],
+                    "delivery": null
+                  },
+                  {
+                    "action": "evaluate",
+                    "requestCount": 2,
+                    "progressCount": 0,
+                    "localCount": 1,
+                    "session": {
+                      "id": "session",
+                      "disposed": false
+                    },
+                    "disposed": false,
+                    "jobs": {
+                      "job": null,
+                      "active": false,
+                      "polling": false,
+                      "releasePending": false,
+                      "uncertainSubmission": true,
+                      "suspended": false,
+                      "cancelOnSubmit": false
+                    },
+                    "workspace": null,
+                    "attempts": [
+                      {
+                        "id": "init",
+                        "status": "returned",
+                        "error": null,
+                        "result": {
+                          "success": true,
+                          "operation": null,
+                          "cancelled": null,
+                          "typed": null,
+                          "terminalOutcomes": null,
+                          "artifact": null
+                        }
+                      },
+                      {
+                        "id": "first",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": true,
+                          "jobTransport": true
+                        },
+                        "result": null
+                      },
+                      {
+                        "id": "retry",
+                        "status": "rejected",
+                        "error": {
+                          "native": false,
+                          "code": null,
+                          "effect": null,
+                          "submissionUnknown": false,
+                          "jobTransport": false
+                        },
+                        "result": null
+                      }
+                    ],
+                    "delivery": null
+                  }
+                ],
+                "requests": [
+                  "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
+                  "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+                ],
+                "progress": [],
+                "localCalls": [
+                  "{\"operation\":\"initialize\"}"
+                ],
+                "consumed": 2,
+                "remaining": 0
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "No domain-invalid golden",
+      "data": {
+        "formatVersion": "0.1.0-draft.9",
+        "cases": [
+          {
+            "id": "lost-submit-no-blind-retry",
+            "operation": "run-native-client",
+            "format": "json",
+            "input": {
+              "evaluation": {
+                "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                "entry": "client:main#answer",
+                "inputs": {
+                  "format": "json",
+                  "source": "[]"
+                }
+              },
+              "inspectionSuccess": true,
+              "checkSource": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+              "invocations": [
+                {
+                  "id": "call-0",
+                  "operation": "session.open",
+                  "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+                  "held": false
+                },
+                {
+                  "id": "call-1",
+                  "operation": "job.submit",
+                  "source": null,
+                  "held": false
+                }
+              ],
+              "actions": [
+                {
+                  "op": "initialize",
+                  "id": "init"
+                },
+                {
+                  "op": "evaluate",
+                  "id": "first"
+                },
+                {
+                  "op": "evaluate",
+                  "id": "retry"
+                }
+              ]
+            },
+            "expected": {
+              "status": "invalid",
+              "code": "unknown"
+            }
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

@@ -22,6 +22,7 @@ impl Testee for Session {
     fn exchange(&mut self, request: &Value) -> Result<Value, String> {
         let response = if request["contractVersion"] == super::contract::NATIVE_FRAMES_VERSION
             || request["contractVersion"] == super::contract::NATIVE_REPLIES_VERSION
+            || request["contractVersion"] == super::contract::NATIVE_CLIENT_VERSION
         {
             self.exchange_literal(request)
         } else {
@@ -88,6 +89,9 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                 "format":case.format,"input":case.input}),
                 )
                 .and_then(|value| {
+                    if case.operation() == super::contract::Operation::RunNativeClient {
+                        super::native_client::validate_observation_shape(&value)?;
+                    }
                     if case.operation() == super::contract::Operation::ValidateNativeReply {
                         super::native_replies::validate_observation_shape(&value)?;
                     }

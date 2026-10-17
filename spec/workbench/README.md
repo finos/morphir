@@ -212,6 +212,14 @@ response handling and packaged platform qualification remain separate.
 [185-case kit](mck/draft.8/README.md). The adapter passes original bytes and
 captured call context to its production response decoder. Closed observations
 retain successful operation or native error code/effect, omitting private
-payloads. This uses the same runner and independent report check. Native client
-and owner lifecycle execution and packaged platform qualification remain pending;
+payloads. This uses the same runner and independent report check. Native owner lifecycle execution and packaged platform qualification remain pending;
 the live native protocol stays at draft.1.
+
+[Offline native client qualification](draft.9/README.md) adds exact MCK
+`0.1.0-draft.9`, only `run-native-client` and JSON, with a fixed
+[48-case kit](mck/draft.9/README.md). Controlled raw replies and explicit actions
+exercise the production client, retained receipts, cancellation, disposal and
+workspace byte transfers. Node and Chromium with debug/release MoonBit cores
+qualify the TypeScript client shared with Proton CEF. The existing Rust runner
+and independent checker retain all verdict authority. This does not qualify
+the native owner, real picker grants, caller provenance or packaged platforms.

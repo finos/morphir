@@ -13,6 +13,7 @@ pub const OUTCOMES_VERSION: &str = "0.1.0-draft.5";
 pub const JOBS_VERSION: &str = "0.1.0-draft.6";
 pub const NATIVE_FRAMES_VERSION: &str = "0.1.0-draft.7";
 pub const NATIVE_REPLIES_VERSION: &str = "0.1.0-draft.8";
+pub const NATIVE_CLIENT_VERSION: &str = "0.1.0-draft.9";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -52,6 +53,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.6",
         "=0.1.0-draft.7",
         "=0.1.0-draft.8",
+        "=0.1.0-draft.9",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -89,10 +91,15 @@ pub enum Operation {
     ValidateNativeFrame,
     #[serde(rename = "validate-native-reply")]
     ValidateNativeReply,
+    #[serde(rename = "run-native-client")]
+    RunNativeClient,
 }
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if (version == NATIVE_CLIENT_VERSION) != (self == Self::RunNativeClient) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if (version == NATIVE_REPLIES_VERSION) != (self == Self::ValidateNativeReply) {
             return Err("operation is not defined by this Workbench draft".into());
         }
@@ -117,7 +124,10 @@ impl Operation {
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
         if matches!(
             self,
-            Self::ReduceJob | Self::ValidateNativeFrame | Self::ValidateNativeReply
+            Self::ReduceJob
+                | Self::ValidateNativeFrame
+                | Self::ValidateNativeReply
+                | Self::RunNativeClient
         ) && format != Format::Json
         {
             return Err("operation supports JSON only".into());
@@ -189,6 +199,13 @@ impl Capabilities {
                 "native replies require exactly validate-native-reply and JSON capabilities".into(),
             );
         }
+        if self.contract_version == NATIVE_CLIENT_VERSION
+            && (self.operations != [Operation::RunNativeClient] || self.formats != [Format::Json])
+        {
+            return Err(
+                "native client requires exactly run-native-client and JSON capabilities".into(),
+            );
+        }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
         if self.operations.iter().collect::<BTreeSet<_>>().len() != self.operations.len()
@@ -223,6 +240,9 @@ impl Observation {
                 projection_for(value, operation)?;
             }
             Self::Invalid { code } => {
+                if operation == Operation::RunNativeClient {
+                    return Err("native client scenarios have no domain-invalid observation".into());
+                }
                 identity(code, 128)?;
                 if operation == Operation::ValidateNativeFrame
                     && !super::native_frames::INVALID_CODES.contains(&code.as_str())
@@ -263,6 +283,7 @@ fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> 
         Operation::ReduceJob => super::jobs::projection(value),
         Operation::ValidateNativeFrame => super::native_frames::projection(value),
         Operation::ValidateNativeReply => super::native_replies::projection(value),
+        Operation::RunNativeClient => super::native_client::projection(value),
         _ => projection(value),
     }
 }

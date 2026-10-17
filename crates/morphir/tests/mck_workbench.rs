@@ -456,3 +456,50 @@ fn native_reply_cli_preserves_failure_evidence_and_rechecks_effects_and_literal_
     );
     assert!(String::from_utf8_lossy(&rejected.stderr).contains("native reply corpus"));
 }
+
+#[test]
+fn native_client_cli_saves_failure_evidence_and_rejects_invalid_fixtures_before_spawn() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    let mut published: Value = serde_json::from_str(include_str!(
+        "../../../spec/workbench/mck/draft.9/cases.json"
+    ))
+    .unwrap();
+    let first = published["cases"][0].clone();
+    published["cases"] = json!([first]);
+    std::fs::write(kit.join("cases.json"), published.to_string()).unwrap();
+    let report = root.path().join("report.json");
+    let run = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(1));
+    let failure =
+        morphir_mck::workbench::Report::from_json(&std::fs::read_to_string(&report).unwrap())
+            .unwrap();
+    morphir_mck::workbench::check_report(&kit, &failure).unwrap();
+    assert!(!failure.qualified);
+    assert_eq!(check(&kit, &report).status.code(), Some(1));
+    published["cases"][0]["input"]["invocations"][0]["held"] =
+        json!({"$serde_json::private::RawValue":"false"});
+    std::fs::write(kit.join("cases.json"), published.to_string()).unwrap();
+    std::fs::remove_file(&report).unwrap();
+    let rejected = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(1));
+    assert!(!report.exists());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("native client corpus"));
+}
