@@ -21,6 +21,7 @@ import {
   "moonbitlang/core/encoding/base64",
   "moonbitlang/core/encoding/utf8",
   "finos/morphir-workbench/arguments",
+  "finos/morphir-workbench/jobs",
   "finos/morphir-workbench/outcomes",
   "moonrockz/ion/ion",
   "moonrockz/ion/binary" @ion_binary,

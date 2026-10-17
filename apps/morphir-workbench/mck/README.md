@@ -273,3 +273,18 @@ offline draft.12 with actual selected Scheme execution and explicitly labelled
 captured-completion validation. Its independent 182-case kit qualifies the named
 Node/Chromium/native debug/release lanes. Existing draft.1–.11 contracts stay
 unchanged; this does not add a UI, job or live provider offer.
+## Immutable Scheme job selection
+
+The separate [`capability-jobs`](capability-jobs/README.md) adapter drives real
+host-owned Session state under exact Workbench MCK `0.1.0-draft.13`. It qualifies
+captured runtime/policy, immutable source and selected boundaries, once-only
+claims, independent replans and typed completion. Execute actions and supplied
+completion evidence are distinct. The parent Rust CLI owns fixed cases and every
+verdict. Frozen adapters and receipts retain their formats.
+
+Run `mise run test:workbench-capability-job-mck` with explicit `MORPHIR_MCK_BIN`
+and `MORPHIR_WORKBENCH_KIT`. Reports cover Node, Chromium and native, debug and
+release. The private Node job provider also has actual isolated-worker tests in
+`scripts/capability-job.test.ts`. These controlled traces and process tests add no
+browser, connected HTTP or native capability offer; those integrations remain
+separate tasks.

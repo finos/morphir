@@ -1,0 +1,48 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "selected",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "main": {
+            "Public": {
+              "types": {},
+              "values": {
+                "answer": {
+                  "Public": {
+                    "doc": "Fixed capability-policy fixture",
+                    "ExpressionBody": {
+                      "inputTypes": {},
+                      "outputType": "morphir/SDK:basics#int",
+                      "body": {
+                        "IfThenElse": {
+                          "condition": false,
+                          "then": {
+                            "Hole": {
+                              "reason": {
+                                "DeletedDuringRefactor": {
+                                  "tx-id": "fixed-unsupported"
+                                }
+                              }
+                            }
+                          },
+                          "else": {
+                            "Literal": {
+                              "IntegerLiteral": 42
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

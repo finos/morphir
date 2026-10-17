@@ -32,7 +32,7 @@ and does not authenticate an offer or establish provider trust.
 5. After the worker and cleanup finish, `complete(identity, outcomes)` reconstructs
    the submitted public declarations and validates all terminal outputs before
    publication. A worker cannot widen output types by editing its plan. Ordinary
-   `Result.Err` remains returned data; SDK errors, failures, cancellation and
+`Result.Err` remains returned data; SDK errors, failures, cancellation and
    cleanup retain their separate variants. Completion may occur before a claim
    for a host policy rejection or cancellation. An identical terminal is an
    idempotent replay; a different terminal rejects.
@@ -63,6 +63,40 @@ client disconnect only while the composing host retains this owner. There is no
 durable storage, restart recovery, retry lease, deduplicated submission or
 exactly-once execution guarantee.
 
+## Scheme runtime and capability checking policy
+
+The parallel `submit_scheme(unit, suite, policy=...)` route captures the bounded
+Library Scheme runtime and its shared SDK. Omitted policy resolves to `Strict`
+once, at acceptance. Explicit `Permissive` uses the qualified reached-only
+capability checks. The legacy `submit` and `claim` methods keep their existing
+compiled-plan validation; claims cannot cross between these routes.
+
+`describe_scheme(identity)` returns a fresh domain projection containing the full
+job identity, opaque `plan_id`, runtime, effective policy and selected boundary.
+It adds no fields to the frozen receipt or offer. A composing adapter supplies
+its own exact negotiated projection and authenticates the provider.
+
+`claim_scheme(identity, plan_id, provider_id, runtime, policy)` requires every
+selection component to match the accepted job before advancing its cursor. It
+returns the immutable `SchemePlan` once. `SchemePlan.unit()` and `.suite()` decode
+fresh copies for an isolated worker; edits to these copies, the original input
+or a projection cannot change accepted source, arguments, policy or boundary.
+Completion reconstructs from retained bytes and policy, compares the selected
+boundary, then validates every terminal against that context. Retained boundary
+bytes count toward the session quota alongside the source, suite and reserved
+terminal space.
+
+`replan_scheme(identity, plan_id, provider_id, runtime, policy)` reconstructs only
+the original accepted inputs. It preserves policy and allocates fresh job,
+snapshot and plan identities. It never claims or schedules either job and leaves
+the original history and once-only eligibility unchanged. Editing source or
+arguments requires a new submission. An incompatible replacement selection
+rejects explicitly; it cannot downgrade policy or silently switch a provider.
+
+Query, cancellation, completion replay and release use the same receipt cursor
+for both routes. These core methods do not authenticate a worker, establish
+cleanup truth, advertise native or HTTP support, or grant execution authority.
+
 ## Validation and remaining integration
 
 Tests run on JS, native, Wasm and Wasm GC. They exercise actual bounded Scheme
@@ -72,8 +106,8 @@ validation failures and retention quotas. The unchanged receipt reducer has shar
 MCK draft.6 qualification. These producer tests do not independently qualify an
 authenticated host adapter.
 
-Authenticated snapshot/submission/query/cancel transport, shared browser/Proton
-UI adoption and actual provider scheduling remain the next integration slice.
-Proton native IPC, generated browser execution and durable recovery remain
-separate work. This package does not automatically use metadata host grants or
-advertise trusted naming providers.
+The existing Workbench job bridge and native owner compose this core with their
+own transport and scheduling. Policy-aware UI, native and HTTP capability offers
+still require separate integration and qualification. Generated browser execution
+and durable recovery remain separate work. This package does not automatically
+use metadata host grants or advertise trusted naming providers.

@@ -1,7 +1,8 @@
-import type { Claim, Failure, JobOperation, JobProvider, JobRecord, JobValues, Offer, Outcome, Outcomes, ProviderOptions, Receipt, Submission } from './job-contracts.ts';
+import type { Claim, Failure, JobOperation, JobProvider, JobRecord, JobValues, Offer, Outcome, Outcomes, ProviderOptions, Receipt, SchemeJobOperation, SchemeJobPlan, SchemeJobValues, SchemeSubmission, Submission } from './job-contracts.ts';
 import type { Core, CoreReply } from '../browser/contracts.ts';
 import { randomUUID } from 'node:crypto';
 import { Worker } from 'node:worker_threads';
+import { isDeepStrictEqual } from 'node:util';
 
 const version = '0.1.0-draft.1';
 const terminalVersion = '0.1.0-draft.5';
@@ -40,7 +41,7 @@ export async function createJobProvider({
     catch { throw new JobProviderError('workbench.provider_failure', 503); }
     if (!reply?.ok) {
       const code = safeCode(reply?.code);
-      const status = ['workbench.host_capacity', 'workbench.host_already_claimed', 'workbench.host_not_terminal'].includes(code) ? 409 : ['workbench.host_unknown_job', 'workbench.host_cancel_unavailable'].includes(code) ? 404 : /limit|budget/.test(code) ? 413 : 400;
+      const status = ['workbench.host_capacity', 'workbench.host_already_claimed', 'workbench.host_not_terminal', 'workbench.host_selection_mismatch'].includes(code) ? 409 : ['workbench.host_unknown_job', 'workbench.host_cancel_unavailable'].includes(code) ? 404 : /limit|budget/.test(code) ? 413 : 400;
       throw new JobProviderError(code, status);
     }
     return reply.value;
@@ -84,7 +85,8 @@ export async function createJobProvider({
     }
     let outcomes = record.captured;
     if (!outcomes) {
-      if (record.stopReason === 'cancel' || record.stopReason === 'close') outcomes = evidence({ status: 'cancelled' });
+      if (record.selectionMismatch) outcomes = failed('workbench.worker_selection', 'The worker did not preserve the accepted job plan.');
+      else if (record.stopReason === 'cancel' || record.stopReason === 'close') outcomes = evidence({ status: 'cancelled' });
       else if (record.stopReason === 'deadline') outcomes = failed('workbench.worker_deadline', 'The host worker deadline expired.');
       else outcomes = failed(exitCode === 0 ? 'workbench.worker_result' : 'workbench.worker_crash', 'The worker did not return terminal evidence.');
     } else if (exitCode !== 0 && (!record.stopReason || record.stopReason === 'crash')) cleanup = failure('workbench.worker_cleanup', 'The worker exited unexpectedly after returning a result.', 'cleanup');
@@ -96,14 +98,23 @@ export async function createJobProvider({
   };
   const start = (record: JobRecord) => {
     let request: Claim;
-    try { request = command<Claim>({ op: 'claim', identity: record.identity }); }
+    try { request = command<Claim>(record.schemePlan ? {
+      op: 'claim-scheme', identity: record.identity, selection: {
+        planId: record.schemePlan.planId, providerId: record.schemePlan.identity.providerId,
+        runtime: record.schemePlan.runtime, policy: record.schemePlan.admission.policy,
+      },
+    } : { op: 'claim', identity: record.identity }); }
     catch (error) { record.failure = error; return; }
     active++;
     try {
       record.worker = spawnWorker();
       record.exited = new Promise<void>(resolve => record.worker!.once('exit', code => { resolve(); void finish(record, code); }));
       record.worker.on('message', message => {
-        if (message?.id === 1 && message?.result?.terminalOutcomes && !record.captured) record.captured = structuredClone(message.result.terminalOutcomes);
+        if (message?.id !== 1 || record.captured || record.selectionMismatch) return;
+        if (record.schemePlan && !isDeepStrictEqual(message.result?.jobPlan, record.schemePlan)) {
+          record.selectionMismatch = true; return;
+        }
+        if (message.result?.terminalOutcomes) record.captured = structuredClone(message.result.terminalOutcomes);
       });
       record.worker.on('error', () => { void stop(record, 'crash'); });
       record.timer = setTimeout(() => { void stop(record, 'deadline'); }, deadlineMs);
@@ -150,6 +161,15 @@ export async function createJobProvider({
         records.delete(identity.jobId);
       }
       return value as JobValues[K];
+    },
+    async schemeCommand<K extends SchemeJobOperation>(op: K, body: string, sessionId: string): Promise<SchemeJobValues[K]> {
+      bind(sessionId);
+      const value = command<SchemeSubmission & SchemeJobPlan>({ op, body });
+      if (op === 'submit-scheme' || op === 'replan-scheme') {
+        const record: JobRecord = { identity: structuredClone(value.identity), schemePlan: structuredClone(value.plan), done: false, worker: null };
+        records.set(value.identity.jobId, record); queue.push(record); queueMicrotask(drain);
+      }
+      return value as SchemeJobValues[K];
     },
     async close() {
       closed = true;

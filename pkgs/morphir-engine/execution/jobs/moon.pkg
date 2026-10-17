@@ -3,9 +3,12 @@ import {
   "finos/morphir-engine/data",
   "finos/morphir-execution" @protocol,
   "finos/morphir-execution/jobs" @receipts,
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
 }
 
 import {
   "finos/morphir-engine/execution/jobs" @host,
   "finos/morphir-moonbit/fixtures",
+  "finos/morphir-ir" @ir,
 } for "test"

@@ -422,3 +422,18 @@ fn SelectedBoundary::read(
     }
   }
 }
+
+///|
+/// Return a newly decoded source snapshot. Editing it cannot change this plan.
+pub fn SchemePlan::unit(self : SchemePlan) -> @data.IRUnit raise {
+  @data.Registry::new(limits=self.limits).decode("ion-binary", {
+    unit_id: self.unit_id,
+    content: Binary(self.source),
+  })
+}
+
+///|
+/// Return a newly decoded invocation suite, independent of retained arguments.
+pub fn SchemePlan::suite(self : SchemePlan) -> @protocol.Suite raise {
+  @protocol.Suite::decode(self.suite, "json")
+}

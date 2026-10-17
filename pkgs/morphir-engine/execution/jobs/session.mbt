@@ -23,6 +23,7 @@ priv struct Job {
   suite : Bytes
   cursor : @receipts.Cursor
   reserved : Int32
+  kind : JobKind
 }
 
 ///|
@@ -63,6 +64,16 @@ pub fn Session::submit(
   unit : @data.IRUnit,
   suite : @protocol.Suite,
 ) -> @receipts.Receipt raise {
+  self.submit_with(unit, suite, None)
+}
+
+///|
+fn Session::submit_with(
+  self : Session,
+  unit : @data.IRUnit,
+  suite : @protocol.Suite,
+  policy : @execution.AdmissionPolicy?,
+) -> @receipts.Receipt raise {
   if self.jobs.length() >= self.max_jobs || self.next == 2147483647 {
     raise Invalid("workbench.host_capacity")
   }
@@ -74,7 +85,7 @@ pub fn Session::submit(
   let encoded_suite = suite.encode("json")
   // Decode through the bounded public codec before any provider can acquire.
   let admitted_suite = @protocol.Suite::decode(encoded_suite, "json")
-  let reserved = snapshot.length() + encoded_suite.length() + 1024 * 1024
+  let mut reserved = snapshot.length() + encoded_suite.length() + 1024 * 1024
   if reserved > self.max_bytes - self.reserved {
     raise Invalid("workbench.host_capacity")
   }
@@ -83,7 +94,25 @@ pub fn Session::submit(
     content: Binary(snapshot),
   })
   captured.validate()
-  ignore(@execution.plan(captured, admitted_suite))
+  let kind = match policy {
+    None => {
+      ignore(@execution.plan(captured, admitted_suite))
+      Legacy
+    }
+    Some(policy) => {
+      let plan = @execution.plan_scheme_capabilities(
+        captured,
+        admitted_suite,
+        policy~,
+      )
+      let boundary = @utf8.encode(plan.boundary_json().stringify())
+      reserved += boundary.length()
+      if reserved > self.max_bytes - self.reserved {
+        raise Invalid("workbench.host_capacity")
+      }
+      Scheme("plan-" + self.next.to_string(), Scheme, policy, boundary)
+    }
+  }
   guard self.offer.to_json() is Object(authority) else {
     raise Invalid("workbench.host_authority")
   }
@@ -108,6 +137,7 @@ pub fn Session::submit(
     suite: encoded_suite,
     cursor,
     reserved,
+    kind,
   }
   // All operations that can raise precede changes to the owner.
   self.jobs[key(identity)] = job
@@ -140,6 +170,7 @@ pub fn Session::query(
 
 ///|
 fn Job::plan(self : Job) -> @execution.Plan raise {
+  guard self.kind is Legacy else { raise Invalid("workbench.host_job_kind") }
   let unit = @data.Registry::new().decode("ion-binary", {
     unit_id: self.unit_id,
     content: Binary(self.snapshot),
@@ -214,17 +245,22 @@ pub fn Session::complete(
   outcomes : @protocol.Outcomes,
 ) -> @receipts.Receipt raise {
   let job = self.lookup(identity)
-  let plan = job.plan()
-  @protocol.validate_outcomes(
-    outcomes,
-    plan.suite,
-    plan.library.invocations.map(e => @protocol.PublicEntry::{
-      name: e.fqname,
-      inputs: e.inputs,
-      output: e.output,
-    }),
-    plan.library.invocation_types,
-  )
+  match job.kind {
+    Legacy => {
+      let plan = job.plan()
+      @protocol.validate_outcomes(
+        outcomes,
+        plan.suite,
+        plan.library.invocations.map(e => @protocol.PublicEntry::{
+          name: e.fqname,
+          inputs: e.inputs,
+          output: e.output,
+        }),
+        plan.library.invocation_types,
+      )
+    }
+    Scheme(_, _, _, _) => job.scheme_plan().validate_outcomes(outcomes)
+  }
   let latest = job.cursor.latest()
   let sequence = if latest.state() is Terminal(_) {
     latest.sequence()

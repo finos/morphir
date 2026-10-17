@@ -1,0 +1,7 @@
+supported_targets = "js"
+
+pkgtype(kind: "executable")
+
+import {
+  "finos/morphir-workbench/mck/capability-jobs" @mck,
+}

@@ -6,6 +6,9 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
   let mut stage = "request"
   try {
     let operation = @wire.string(@wire.field(request, "operation"))
+    if operation == "evaluate-scheme-job" {
+      return @jobs.evaluate_scheme_claim(request)
+    }
     if operation == "catalog" {
       return catalog(engine)
     }

@@ -45,6 +45,7 @@ This document provides a reference for all available mise tasks in the Morphir M
 | `mise run test:workbench-native-owner-mck` | Qualify production owner draft.10 traces in native debug/release with independent report checks | Bun and explicit parent runner/kit |
 | `mise run test:workbench-native-workspaces` | Qualify real read-only grants, traversal/link/replacement refusals, original-byte chunks and revocation without CEF | macOS/Linux |
 | `mise run test:workbench-capability-policy-mck` | Opt-in exact draft.12 capability-policy qualification through the shared Rust runner in Node/Chromium/native debug/release; requires explicit runner/kit and Workbench Chromium dependencies | All |
+| `mise run test:workbench-capability-job-mck` | Opt-in exact draft.13 immutable Scheme job traces in Node/Chromium/native debug/release; requires explicit parent runner/kit and Workbench Chromium dependencies. Actual isolated-worker acceptance is separate | All |
 | `mise run test:conformance` | Compare versioned independent Ion expectations, live Scheme and explicitly pinned optional Rust; retain separate coverage receipts | All |
 | `mise run test:cli` | Run CLI target and npm package smoke tests | All |
 | `mise run test:moonbit-frontend` | Compare original Boolean MoonBit, Scheme and generated libraries across four targets in debug and release; requires pinned `MOON_HOME` and retains identities | All |

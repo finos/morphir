@@ -16,10 +16,20 @@ export interface Receipt {
   cancelRequested: boolean; outcomes: Outcomes | null;
 }
 export interface Submission { identity: Identity; calls: string[]; receipt: Receipt; }
+export interface SchemeJobPlan {
+  profile: 'morphir/workbench/job-plan'; contractVersion: '0.1.0-draft.1';
+  identity: Identity; planId: string; runtime: 'scheme';
+  evaluator: 'scheme-portable-v1/shared-sdk/bounded';
+  admission: { profile: 'morphir/workbench/admission'; contractVersion: '0.1.0-draft.1'; policy: 'strict' | 'permissive' };
+  boundary: Json;
+}
+export interface SchemeSubmission extends Submission { plan: SchemeJobPlan; }
+export interface SchemeJobValues { 'submit-scheme': SchemeSubmission; 'plan-scheme': SchemeJobPlan; 'replan-scheme': SchemeSubmission; }
+export type SchemeJobOperation = keyof SchemeJobValues;
 export interface JobValues { submit: Submission; query: Receipt; cancel: Receipt; release: { released: boolean }; }
 export type JobOperation = keyof JobValues;
 export interface ProviderWorker {
-  on(type: 'message', listener: (message: { id?: number; result?: { terminalOutcomes?: Outcomes } }) => void): unknown;
+  on(type: 'message', listener: (message: { id?: number; result?: { terminalOutcomes?: Outcomes; jobPlan?: SchemeJobPlan } }) => void): unknown;
   on(type: 'error', listener: (error: Error) => void): unknown;
   once(type: 'exit', listener: (code: number) => void): unknown;
   postMessage(message: unknown): void;
@@ -33,12 +43,15 @@ export interface JobProvider {
   decode(source: string): unknown;
   session(sessionId: string): Promise<{ profile: string; contractVersion: string; offer: Offer }>;
   command<K extends JobOperation>(operation: K, body: string, sessionId: string): Promise<JobValues[K]>;
+  /** Private policy-aware path. Not advertised by HTTP/native descriptors. */
+  schemeCommand<K extends SchemeJobOperation>(operation: K, body: string, sessionId: string): Promise<SchemeJobValues[K]>;
   close(): Promise<void>;
 }
 export interface JobRecord {
   identity: Identity; done: boolean; worker: ProviderWorker | null;
   failure?: unknown; captured?: Outcomes | null; stopReason?: string;
   stopping?: Promise<number>; finished?: boolean; timer?: ReturnType<typeof setTimeout>; exited?: Promise<void>;
+  schemePlan?: SchemeJobPlan; selectionMismatch?: boolean;
 }
 export type Claim = WorkRequest;
 

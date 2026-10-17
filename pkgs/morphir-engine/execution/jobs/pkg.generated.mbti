@@ -5,6 +5,7 @@ import {
   "finos/morphir-engine/data",
   "finos/morphir-engine/execution",
   "finos/morphir-execution",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -15,17 +16,36 @@ pub(all) suberror Invalid {
 }
 
 // Types and methods
+pub(all) struct SchemeJobProjection {
+  identity : @finos/morphir-execution/jobs.Identity
+  plan_id : String
+  runtime : SchemeRuntime
+  policy : @execution.AdmissionPolicy
+  boundary : Json
+}
+
+pub(all) enum SchemeRuntime {
+  Scheme
+} derive(Eq, @debug.Debug)
+pub fn SchemeRuntime::equal(Self, Self) -> Bool
+pub fn SchemeRuntime::not_equal(Self, Self) -> Bool
+pub fn SchemeRuntime::to_repr(Self) -> @debug.Repr
+
 pub struct Session {
   // private fields
 }
 pub fn Session::cancel(Self, @finos/morphir-execution/jobs.Identity) -> @finos/morphir-execution/jobs.Receipt raise
 pub fn Session::claim(Self, @finos/morphir-execution/jobs.Identity) -> @execution.Plan raise
+pub fn Session::claim_scheme(Self, @finos/morphir-execution/jobs.Identity, String, String, SchemeRuntime, @execution.AdmissionPolicy) -> @execution.SchemePlan raise
 pub fn Session::complete(Self, @finos/morphir-execution/jobs.Identity, @morphir-execution.Outcomes) -> @finos/morphir-execution/jobs.Receipt raise
+pub fn Session::describe_scheme(Self, @finos/morphir-execution/jobs.Identity) -> SchemeJobProjection raise
 pub fn Session::new(@finos/morphir-execution/jobs.Offer, max_jobs? : Int, max_bytes? : Int) -> Self raise
 pub fn Session::offer(Self) -> @finos/morphir-execution/jobs.Offer
 pub fn Session::query(Self, @finos/morphir-execution/jobs.Identity) -> @finos/morphir-execution/jobs.Receipt raise
 pub fn Session::release(Self, @finos/morphir-execution/jobs.Identity) -> Unit raise
+pub fn Session::replan_scheme(Self, @finos/morphir-execution/jobs.Identity, String, String, SchemeRuntime, @execution.AdmissionPolicy) -> @finos/morphir-execution/jobs.Receipt raise
 pub fn Session::submit(Self, @data.IRUnit, @morphir-execution.Suite) -> @finos/morphir-execution/jobs.Receipt raise
+pub fn Session::submit_scheme(Self, @data.IRUnit, @morphir-execution.Suite, policy? : @execution.AdmissionPolicy) -> @finos/morphir-execution/jobs.Receipt raise
 
 // Type aliases
 

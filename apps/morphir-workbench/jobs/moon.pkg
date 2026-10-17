@@ -2,6 +2,7 @@ import {
   "finos/morphir-execution" @protocol,
   "finos/morphir-execution/jobs" @receipts,
   "finos/morphir-engine/execution/jobs" @owner,
+  "finos/morphir-engine/execution",
   "finos/morphir-engine/data",
   "finos/morphir-ir/wire",
   "finos/morphir-workbench-native-session/response" @native_reply,
@@ -11,6 +12,7 @@ import {
   "finos/morphir-workbench/arguments",
   "finos/morphir-workbench/outcomes",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
   "moonrockz/ion/text" @ion_text,
 }
 

@@ -109,6 +109,8 @@ pub fn Host::handle(self : Host, source : String) -> Json {
     let fields = command(source)
     let op = string(fields["op"])
     let value = match op {
+      "submit-scheme" | "plan-scheme" | "claim-scheme" | "replan-scheme" =>
+        self.scheme_command(op, fields)
       "submit" => {
         ignore(closed(Json::object(fields), ["op", "body"]))
         let body = closed(decode(string(fields["body"])), [

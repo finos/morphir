@@ -104,6 +104,8 @@ pub fn SchemePlan::boundary_json(Self) -> Json
 pub fn SchemePlan::evaluate(Self) -> Array[@morphir-execution.Value] raise
 pub fn SchemePlan::evaluate_outcomes(Self, cancelled? : () -> Bool) -> @morphir-execution.Outcomes raise
 pub fn SchemePlan::policy(Self) -> AdmissionPolicy
+pub fn SchemePlan::suite(Self) -> @morphir-execution.Suite raise
+pub fn SchemePlan::unit(Self) -> @data.IRUnit raise
 pub fn SchemePlan::validate_outcomes(Self, @morphir-execution.Outcomes) -> Unit raise
 pub fn SchemePlan::validate_outputs(Self, Array[@morphir-execution.Value]) -> Unit raise
 
