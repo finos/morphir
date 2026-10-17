@@ -217,3 +217,19 @@ pub fn run_file_in(
     call_entry(rt, entry, arguments)
   })
 }
+
+///|
+/// Execute the statically validated selected closure under reached-only capability
+/// checks. Legacy run_file_in/link_file retain whole-file eager binding checks.
+pub fn run_selected_in(
+  runtime : @scheme.Runtime,
+  file : @ir.IRFile,
+  entry : @ir.FQName,
+  arguments : Array[@scheme.Value],
+) -> @scheme.Value raise {
+  let source = emit_selected(file, entry)
+  runtime.with_budget(rt => {
+    ignore(rt.eval(source))
+    call_entry(rt, entry, arguments)
+  })
+}

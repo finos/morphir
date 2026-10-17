@@ -1,0 +1,15 @@
+import {
+  "finos/morphir-ir/wire",
+  "moonbitlang/core/encoding/utf8",
+  "finos/morphir-engine/execution" @engine,
+  "finos/morphir-engine/data",
+  "finos/morphir-execution" @protocol,
+  "finos/morphir-moonbit" @generator,
+  "finos/morphir-scheme" @scheme,
+  "finos/morphir-workbench/arguments",
+  "moonrockz/ion/ion",
+}
+
+import {
+  "finos/morphir-workbench/mck/capabilities",
+} for "test"

@@ -5,7 +5,7 @@ pub(all) suberror SelectedReferenceError {
 
 ///|
 /// Prepare a static declaration-reference closure for one selected call. This
-/// does not defer unsupported expressions inside a retained definition.
+/// walks dormant code too; deferred emission does not relax identity or access checks.
 pub fn selected_file(file : @ir.IRFile, entry : @ir.FQName) -> @ir.IRFile raise {
   guard file.distribution is Library(package_name, dependencies, package_def) else {
     raise @scheme.Unsupported("Selected Scheme planning requires a library")
@@ -149,23 +149,27 @@ fn SelectedReferences::pattern(
   self : SelectedReferences,
   pattern : @ir.Pattern,
   bound : Map[@ir.Name, Bool],
+  depth : Int32,
 ) -> Unit raise {
+  if depth > 256 {
+    raise @scheme.Limit("Pattern depth")
+  }
   match pattern {
     AsPattern(_, pattern, name) => {
       bound[name] = true
-      self.pattern(pattern, bound)
+      self.pattern(pattern, bound, depth + 1)
     }
     TuplePattern(_, patterns) | ConstructorPattern(_, _, patterns) => {
       if pattern is ConstructorPattern(_, name, _) {
         self.include_constructor(name)
       }
       for pattern in patterns {
-        self.pattern(pattern, bound)
+        self.pattern(pattern, bound, depth + 1)
       }
     }
     HeadTailPattern(_, head, tail) => {
-      self.pattern(head, bound)
-      self.pattern(tail, bound)
+      self.pattern(head, bound, depth + 1)
+      self.pattern(tail, bound, depth + 1)
     }
     _ => ()
   }
@@ -179,7 +183,9 @@ fn SelectedReferences::definition(
   depth : Int32,
 ) -> Unit raise {
   match definition {
-    ExpressionBody(inputs, _, body) | ExternalBody(inputs, _, _, Some(body)) => {
+    ExpressionBody(inputs, _, body)
+    | ExternalBody(inputs, _, _, Some(body))
+    | IncompleteBody(inputs, _, _, Some(body)) => {
       let scope = bound.copy()
       for input in inputs {
         scope[input.0] = true
@@ -205,8 +211,11 @@ fn SelectedReferences::value(
   }
   match value {
     Variable(_, name) =>
-      if !bound.contains(name) && self.globals.get(name) is Some(name) {
-        self.pending.push(name)
+      if !bound.contains(name) {
+        match self.globals.get(name) {
+          Some(global) => self.pending.push(global)
+          None => raise @scheme.Unbound(name.to_canonical())
+        }
       }
     Reference(_, name) =>
       if name.package_name.to_canonical() != "morphir/SDK" {
@@ -227,7 +236,7 @@ fn SelectedReferences::value(
     }
     Lambda(_, pattern, body) => {
       let scope = bound.copy()
-      self.pattern(pattern, scope)
+      self.pattern(pattern, scope, 0)
       self.value(body, scope, depth + 1)
     }
     LetDefinition(_, name, definition, body) => {
@@ -249,7 +258,7 @@ fn SelectedReferences::value(
     Destructure(_, pattern, value, body) => {
       child(value)
       let scope = bound.copy()
-      self.pattern(pattern, scope)
+      self.pattern(pattern, scope, 0)
       self.value(body, scope, depth + 1)
     }
     IfThenElse(_, condition, yes, no) => {
@@ -261,7 +270,7 @@ fn SelectedReferences::value(
       child(value)
       for (pattern, body) in cases {
         let scope = bound.copy()
-        self.pattern(pattern, scope)
+        self.pattern(pattern, scope, 0)
         self.value(body, scope, depth + 1)
       }
     }

@@ -117,6 +117,20 @@ pub fn install(
   accelerators~ : Bool = true,
   model_errors~ : Bool = false,
 ) -> Unit raise {
+  runtime.define_native("%morphir-unsupported-reached", fn(_rt, args) raise {
+    @scheme.arity(args, 0, "unsupported operation")
+    raise @scheme.Stage("evaluate", "execution.unsupported_reached")
+  })
+  runtime.define_native("%morphir-check-native", fn(rt, args) raise {
+    @scheme.arity(args, 2, "native binding arity")
+    let expected = match args[1] {
+      Number(Integer(n)) if n.compare_int(0) >= 0 &&
+        n.compare_int(2147483647) <= 0 => n.to_int()
+      _ => raise @scheme.Invalid("Expected bounded native arity")
+    }
+    native_arity(rt, args[0].as_text(), expected)
+    @scheme.Unit
+  })
   runtime.define_native("%morphir-tag", fn(_rt, args) raise {
     if args.is_empty() {
       raise @scheme.Invalid("Tag requires a name")

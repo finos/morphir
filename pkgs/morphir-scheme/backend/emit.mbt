@@ -30,9 +30,24 @@ fn curried_native(
 }
 
 ///|
+fn checked_native(
+  inputs : Array[(@ir.Name, @ir.Type)],
+  binding : String,
+) -> String {
+  "(begin (%morphir-check-native " +
+  text(binding) +
+  " " +
+  inputs.length().to_string() +
+  ") " +
+  curried_native(inputs, binding) +
+  ")"
+}
+
+///|
 priv struct Emitter {
   mut next : Int32
   globals : Map[@ir.Name, @ir.FQName]
+  deferred : Bool
 }
 
 ///|
@@ -180,7 +195,11 @@ fn Emitter::definition(
         result = "(if (%morphir-has-native " +
           text(native) +
           ") " +
-          curried_native(inputs, native) +
+          (if self.deferred {
+            checked_native(inputs, native)
+          } else {
+            curried_native(inputs, native)
+          }) +
           " " +
           result +
           ")"
@@ -188,11 +207,30 @@ fn Emitter::definition(
       result
     }
     NativeBody(_, _, _) =>
-      raise @scheme.Unsupported(
-        "Native bodies require a registered runtime implementation",
-      )
-    IncompleteBody(_, _, _, _) =>
-      raise @scheme.Unsupported("Cannot execute incomplete definition")
+      if self.deferred {
+        "(%morphir-require-native \"local native binding\")"
+      } else {
+        raise @scheme.Unsupported(
+          "Native bodies require a registered runtime implementation",
+        )
+      }
+    IncompleteBody(inputs, _, _, partial) => {
+      if !self.deferred {
+        raise @scheme.Unsupported("Cannot execute incomplete definition")
+      }
+      let scope = bound.copy()
+      for (name, _) in inputs {
+        scope[name] = true
+      }
+      if partial is Some(partial) {
+        ignore(self.value(partial, scope, depth + 1))
+      }
+      let mut result = "(%morphir-unsupported-reached)"
+      for i = inputs.length() - 1; i >= 0; i = i - 1 {
+        result = "(lambda (" + variable(inputs[i].0) + ") " + result + ")"
+      }
+      result
+    }
   }
 }
 
@@ -384,13 +422,22 @@ fn Emitter::value(
       body
     }
     Unit(_) => "(unit)"
-    Hole(_, _, _) => raise @scheme.Unsupported("Cannot execute a hole")
+    Hole(_, _, _) =>
+      if self.deferred {
+        "(%morphir-unsupported-reached)"
+      } else {
+        raise @scheme.Unsupported("Cannot execute a hole")
+      }
   }
 }
 
 ///|
 pub fn emit_expression(value : @ir.Value) -> String raise {
-  Emitter::{ next: 0, globals: Map([]), }.value(value, Map([]), 0)
+  Emitter::{ next: 0, globals: Map([]), deferred: false, }.value(
+    value,
+    Map([]),
+    0,
+  )
 }
 
 ///|
@@ -414,13 +461,14 @@ fn emit_package(
   package_def : @ir.PackageDefinition,
   hints : Map[String, String],
   emitted : Emitted,
+  deferred : Bool,
 ) -> Unit raise {
   for module_name, module_def in package_def.modules {
     let globals : Map[@ir.Name, @ir.FQName] = Map([])
     for name, _ in module_def.value.values {
       globals[name] = { package_name, module_name, local_name: name, }
     }
-    let emitter = Emitter::{ next: 0, globals, }
+    let emitter = Emitter::{ next: 0, globals, deferred, }
     for name, definition in module_def.value.values {
       let fq : @ir.FQName = { package_name, module_name, local_name: name, }
       let body = match definition.value.value {
@@ -445,7 +493,11 @@ fn emit_package(
           "(if (%morphir-has-native " +
           text(binding) +
           ") " +
-          curried_native(inputs, binding) +
+          (if deferred {
+            checked_native(inputs, binding)
+          } else {
+            curried_native(inputs, binding)
+          }) +
           " " +
           implementation +
           ")"
@@ -470,6 +522,11 @@ fn emit_package(
       if definition.value.value
         is @ir.TypeDefinition::CustomTypeDefinition(_, constructors) {
         for name, params in constructors.value {
+          // Retained constructor metadata remains subject to the installation
+          // resource cap, including references in dormant executable branches.
+          if deferred && params.length() > 256 {
+            raise @scheme.Limit("Constructor arity")
+          }
           let fq : @ir.FQName = { package_name, module_name, local_name: name, }
           emitted.forms.push(
             "(%morphir-register-constructor " +
@@ -488,16 +545,17 @@ fn emit_package(
 fn emit_distribution(
   file : @ir.IRFile,
   hints : Map[String, String],
+  deferred~ : Bool = false,
 ) -> Emitted raise {
   let emitted : Emitted = { forms: [], symbols: [], }
   match file.distribution {
     Library(name, _, definition) =>
-      emit_package(name, definition, hints, emitted)
+      emit_package(name, definition, hints, emitted, deferred)
     Application(name, dependencies, definition, _) => {
       for dependency, implementation in dependencies {
-        emit_package(dependency, implementation, hints, emitted)
+        emit_package(dependency, implementation, hints, emitted, deferred)
       }
-      emit_package(name, definition, hints, emitted)
+      emit_package(name, definition, hints, emitted, deferred)
     }
     Specs(_, _, _) =>
       raise @scheme.Unsupported("A Specs distribution has no executable bodies")
@@ -522,4 +580,13 @@ pub fn call_entry(
     value = runtime.call(value, [argument])
   }
   value
+}
+
+///|
+/// Validate selected references and emit known unsupported operations as reached-only traps.
+/// Structural checks, including retained constructor limits, still run eagerly.
+pub fn emit_selected(file : @ir.IRFile, entry : @ir.FQName) -> String raise {
+  emit_distribution(selected_file(file, entry), Map([]), deferred=true).forms.join(
+    "\n",
+  )
 }

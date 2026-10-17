@@ -17,6 +17,8 @@ pub fn plan(@data.IRUnit, @morphir-execution.Suite, target? : String, available_
 
 pub fn plan_scheme(@data.IRUnit, @morphir-execution.Suite, policy? : AdmissionPolicy, limits? : @data.Limits) -> SchemePlan raise
 
+pub fn plan_scheme_capabilities(@data.IRUnit, @morphir-execution.Suite, policy? : AdmissionPolicy, limits? : @data.Limits) -> SchemePlan raise
+
 pub fn run(Plan, Provider, evaluator? : Evaluator?, observer? : @observability.Observer, cancelled? : () -> Bool, comparison? : @morphir-execution.ComparisonPolicy) -> Report raise
 
 pub fn run_report(Plan, Provider, evaluator? : Evaluator?, observer? : @observability.Observer, cancelled? : () -> Bool, comparison? : @morphir-execution.ComparisonPolicy) -> Report raise
@@ -100,7 +102,9 @@ pub struct SchemePlan {
 }
 pub fn SchemePlan::boundary_json(Self) -> Json
 pub fn SchemePlan::evaluate(Self) -> Array[@morphir-execution.Value] raise
+pub fn SchemePlan::evaluate_outcomes(Self, cancelled? : () -> Bool) -> @morphir-execution.Outcomes raise
 pub fn SchemePlan::policy(Self) -> AdmissionPolicy
+pub fn SchemePlan::validate_outcomes(Self, @morphir-execution.Outcomes) -> Unit raise
 pub fn SchemePlan::validate_outputs(Self, Array[@morphir-execution.Value]) -> Unit raise
 
 pub(all) struct Session {

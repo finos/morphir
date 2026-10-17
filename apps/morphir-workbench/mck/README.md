@@ -265,3 +265,11 @@ The separate [native owner adapter](../../../pkgs/morphir-workbench-native/READM
 adds exact offline draft.10 for production owner orchestration with controlled
 host dependencies. It runs natively and does not add owner operations to this
 portable codec adapter. Both use the same shared Rust runner.
+
+## Runtime capability checking
+
+The separate [capability policy adapter](capabilities/README.md) implements exact
+offline draft.12 with actual selected Scheme execution and explicitly labelled
+captured-completion validation. Its independent 182-case kit qualifies the named
+Node/Chromium/native debug/release lanes. Existing draft.1–.11 contracts stay
+unchanged; this does not add a UI, job or live provider offer.
