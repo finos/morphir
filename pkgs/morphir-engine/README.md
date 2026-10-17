@@ -511,8 +511,9 @@ context acquisition and naming interpreter capabilities described in
 [the metadata contract](../morphir-metadata/README.md). The built-in MoonBit generation
 backend captures them at registration. Default capabilities are unavailable; neither
 metadata nor configuration supplies provider trust. Known requests fail before artifacts
-are returned when admission or required interpretation is missing. Rich Ion checkpoints
-retain the authored payload, and Morphir JSON retains its checked loss boundary.
+are returned when provider declaration validation or required interpretation is missing.
+Rich Ion checkpoints retain the authored payload, and Morphir JSON retains its checked
+loss boundary.
 
 ### Project-scoped metadata providers
 
@@ -577,13 +578,13 @@ stored receipt cannot substitute for freshly authenticated provider bytes.
 
 The release identifies the authority-qualified publisher package in the shared
 registry, such as `example.com/morphir/naming@1.0.0`. It is distinct from the
-provider's native IR package name, `morphir/naming`, which admission must check
+provider's native IR package name, `morphir/naming`, which validation must check
 independently. The example authority is a placeholder, not a default trust grant.
 
 ## Host-owned execution jobs
 
 The [execution jobs package](execution/jobs/README.md) owns bounded in-memory
-snapshot-bound receipts around admitted engine plans. It captures rich inputs,
+snapshot-bound receipts around validated engine plans. It captures rich inputs,
 allows one execution claim, acknowledges cooperative cancellation and validates
 terminal outputs against the retained public declarations. Authenticated host
 transport and shared Workbench UI adoption are separate integrations.

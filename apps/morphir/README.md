@@ -200,7 +200,7 @@ indirect or qualified calls, imports and other source types. Each `.mbt` file re
 an independent unit; this option does not link files. An all-private library has no
 public execution entry. The seed remains the default for existing configuration.
 
-The provider publishes its supported profiles and configured admission budgets.
+The provider publishes its supported profiles and configured validation budgets.
 A provider must offer the selected language and profile. Multiple providers for a
 language require `--frontend-provider`; planning does not guess by registration
 order or profile name. `--frontend-provider` and `--frontend-profile` apply to

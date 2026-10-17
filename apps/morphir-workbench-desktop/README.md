@@ -106,7 +106,7 @@ command grant. The framework, contract package, CLI and helpers remain pinned
 to Proton 0.3.4.
 
 Run `mise run test:workbench-native-session` from the repository root to test
-session admission/revocation without CEF. The dependency-free model lives in
+session validation/revocation without CEF. The dependency-free model lives in
 `pkgs/morphir-workbench-native-session`; the normal portable CI test matrix
 covers it on all four targets without loading the desktop module's prebuild.
 
@@ -137,4 +137,4 @@ all 13 wire operations, actual child evaluation, stable service authority,
 read-only capture retirement and late picker rejection after a replacement page.
 This is implementation acceptance, not an independent MCK qualification or a
 packaged GUI result. The shared renderer tests use the actual compiled reply
-admission and receipt cursor, including raw duplicates and transport uncertainty.
+validation and receipt cursor, including raw duplicates and transport uncertainty.

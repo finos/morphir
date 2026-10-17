@@ -231,7 +231,7 @@ The existing destination and bounded flush worker carry separate
 Each record identifies the run, operation and project, phase, outcome and
 duration. Evidence distinguishes the granted service digest from verification,
 and the requested portable MVP profile from a successful capability probe.
-The native revision appears only after snapshot validation. Declaration admission
+The native revision appears only after snapshot validation. Declaration validation
 is a separate pure-consumer notification; it does not mean generation or
 publication succeeded. Cleanup records follow the existing disposal gate.
 

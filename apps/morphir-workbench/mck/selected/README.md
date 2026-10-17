@@ -11,7 +11,8 @@ constructs a typed invocation, calls the actual immutable `SchemePlan`, observes
 its retained policy and fresh boundary projection, then evaluates and validates
 actual returned values. It never receives expected results or computes verdicts.
 The independent shared Rust runner owns fixtures, comparisons, corpus hashes and
-report checking.
+report checking. This supplies scoped capability verification evidence for
+this witness, rather than a proof for all programs or business outcomes.
 
 Model source and JSON/Ion-text arguments remain separate bounded source strings.
 Planning retains mandatory source integrity, public visibility, complete selected
@@ -26,10 +27,10 @@ reached first. Both are resource refusals, distinct from malformed argument synt
 The selected Scheme planner currently accepts Library distributions only.
 
 This witness does not qualify untaken/reached expression semantics, complete
-policy conformance, asynchronous job retention, terminal inventory, UI support,
+capability-check policy conformance, asynchronous job retention, terminal inventory, UI support,
 generated targets or a packaged platform. A later exact kit qualifies those
 additional semantics without changing this frozen inventory. The application
-continues to use strict admission until its separately tracked integration gates
+continues to use strict capability checks until its separately tracked integration gates
 are complete.
 
 Build the explicit process with `moon build --target js` or

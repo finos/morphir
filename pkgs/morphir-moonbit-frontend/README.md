@@ -92,7 +92,7 @@ underscores and camel-case boundaries into Morphir words and retain multi-letter
 initialisms. `eligible` stays `eligible`; `is_ready` and `isReady` each normalize
 to `is-ready`; `readHTTP` becomes `read-HTTP` and `readHttp` becomes `read-http`.
 Digits stay attached to their current word. Canonical IR parsing remains strict.
-Spellings the parser admits but the portable name grammar cannot represent retain
+Spellings the parser accepts but the portable name grammar cannot represent retain
 their source origins and receive an escape with a warning. Lexically invalid
 source is rejected before parsing can discard characters. The pinned compiler
 and lexer reject Greek suffixes such as `readyλ`; these are syntax failures,
@@ -188,9 +188,9 @@ library. Diagnostic order follows fixed phases: input, parse, signatures and syn
 adaptation, lexical resolution, body/call-graph checks, then lowering. Each body pass
 uses declaration order and source expression order. Cancellation is polled between
 phases and during bounded walks. Acyclic calls can still produce expensive runtime
-evaluation; admission budgets are not an execution deadline.
+evaluation; validation budgets are not an execution deadline.
 
-These are admission and lowering limits. The parser is synchronous and does not
+These are validation and lowering limits. The parser is synchronous and does not
 offer a cancellation callback or a hard internal allocation budget. Hosts that
 accept untrusted source need their own execution isolation and deadline.
 

@@ -9,18 +9,31 @@ uses browser workers for compilation and explicitly selected Local Scheme evalua
 On qualified macOS Apple Silicon packages, Typed invocation uses owned native
 workers. The explorer also offers read-only workspace grants. Explicit connected launches take precedence over this bootstrap.
 
-`browser/job-session.js` owns shared job observation and receipt admission.
+`browser/job-session.js` owns shared job observation and receipt validation.
 `browser/job-transport.js` carries bounded HTTP text frames; an injected transport
 uses the same decoder, cursor, cancellation and release logic. Native desktop
 transport supplies raw business frames to that same client after page-bound
 session checks. See the desktop README for budgets and platform qualification.
 
+## Runtime capabilities
+
+Capability claims are provider-authored assertions about supported operations,
+features and behavior. Capability verification gathers scoped contract and MCK
+evidence that an implementation behaves as claimed. It is not formal proof of
+correctness for all programs or business outcomes.
+
+Capability validation checks that the chosen runtime/provider meets the
+requirements of a particular run, selected function and model revision, before or as execution
+proceeds under policy. Unsupported-feature decisions are capability checks.
+Model, type, argument, output, receipt and authority checks remain ordinary
+validation. Existing protocol identifiers and public offers are unchanged.
+
 ## Run locally
 
 The [MCK adapter](mck/README.md) exposes the same typed JSON/Ion execution codec
 to parent-owned compatibility fixtures. Exact MCK draft.3 adds public-entry
-manifest and invocation admission for JSON/Ion text. Draft.1 decoding and draft.2
-declared-value admission remain supported. This is an offline
+manifest and invocation validation for JSON/Ion text. Draft.1 decoding and draft.2
+declared-value validation remain supported. This is an offline
 compatibility boundary; connected protocol v1 remains unchanged. Its opt-in `mise run test:workbench-mck`
 gate takes an explicit Rust runner and offline corpus; it adds no connected RPCs.
 
@@ -73,7 +86,7 @@ The `moonbit-model-bool-v1` profile accepts one function with explicit `Bool`
 parameters and return type. Boolean literals, operators and `if`/`else` are
 supported; other types, calls, loops and bindings produce profile diagnostics.
 Use **Compile**, then select a public function in **Model Explorer** to enter
-Boolean inputs and evaluate through typed admission. **Evaluate in Explorer**
+Boolean inputs and evaluate through typed validation. **Evaluate in Explorer**
 is disabled in the compile toolbar because the frontend does not create an
 implicit Scheme `main` entry, so **Compile** becomes the toolbar's primary
 action. Private functions remain inspectable.
@@ -202,7 +215,7 @@ The full printed view remains available in Local Scheme mode.
 
 **Typed invocation** uses the merged `morphir-invocations-v1` codec and the
 `morphir-engine/execution` bounded Scheme evaluator. It is available for public
-entries admitted by the MoonBit generator's manifest. **Input and output types**
+entries listed in the MoonBit generator's manifest. **Input and output types**
 shows the manifest and custom constructor registry. Generator rejection leaves
 local inspection and Scheme evaluation available with an explanation in typed mode.
 This mode evaluates through the shared interpreter; generated-code execution and
@@ -484,23 +497,25 @@ The separate live job profile is contributed to
 [finos/morphir](https://github.com/finos/morphir/tree/98f9ad980b2c64a89ce550c6eee45e69834d300f/spec/workbench/host/draft.1).
 It preserves connected v1 and the existing job receipt and terminal contracts.
 
-## Native descriptor admission
+<a id="native-descriptor-admission"></a>
+
+## Native descriptor validation
 
 The shared job client accepts paired `nativeDescriptor()` and
 `nativeRequest(source)` hooks. The descriptor hook supplies JSON descriptor text
 after the binding checks its current page and session. If it extracts a descriptor
-from a public reply, it must admit the complete original reply with bounded,
+from a public reply, it must validate the complete original reply with bounded,
 duplicate-aware decoding before projecting that descriptor. The compiled
 `native-descriptor` command uses the shared native reply codec to check the exact
 profile, closed capabilities and directly nested frozen jobs offer. Its session
 must match the current page session. HTTP retains separate authenticated
-host-descriptor admission.
+host-descriptor validation.
 
 The request hook receives a complete public native job request as JSON text,
 including profile, version, operation, session and payload. Preflight bounds the
 whole 1-MiB envelope before sending. The hook returns the complete raw native
-reply text for compiled `native-response` admission against that originating
-operation and session. Initial session-open admission may use a null expected
+reply text for compiled `native-response` validation against that originating
+operation and session. Initial session-open validation may use a null expected
 session; later calls require the known session. The binding must correlate its
 own concurrent invocations and enforce deadlines and current-page checks.
 
@@ -508,17 +523,17 @@ Both transports use the existing receipt cursor. Only a closed native error
 with `effect:none` proves that this submission caused no new effect; the client
 allows a later explicit submit and never retries automatically. Unknown effects,
 malformed/lost replies and transport exceptions leave submission uncertain.
-Transport exceptions cannot manufacture an admitted effect. Native errors carry
+Transport exceptions cannot manufacture a validated effect. Native errors carry
 no fabricated HTTP status. Terminal release absence can confirm cleanup only
-after fresh, matching authority admission and an authoritative no-effect error.
+after fresh, matching authority validation and an authoritative no-effect error.
 
 Reconciliation checks the same job authority and stable native capabilities
 before observing a retained identity. Missing jobs are explicit absence, and
 malformed negotiation never falls back to another transport. The bundled Proton
 host and renderer now use this raw mapping through `app:workbench_native` for
-all session, job and workspace operations. The session binding admits complete
+all session, job and workspace operations. The session binding validates complete
 replies before extracting descriptors and rechecks stable authority after each
-request. Independent MCK drafts.7 through .10 cover raw frames, reply admission,
+request. Independent MCK drafts.7 through .10 cover raw frames, reply validation,
 production client lifecycle and controlled production owner orchestration. Fresh
 packaged-target lifecycle qualification remains separate before public
 conformance advertisement. Controlled context does not establish native caller
@@ -645,7 +660,7 @@ A failure is `{"success": false, "message": "<code>: <text>"}` with one of `work
 
 ## Typed terminal outcomes
 
-Local typed function evaluation emits admitted Workbench `0.1.0-draft.5` terminal
+Local typed function evaluation emits validated Workbench `0.1.0-draft.5` terminal
 evidence after strict invocation planning. A shared outcome component shows
 returned values, SDK model errors, evaluation failures and separate cleanup
 evidence in the result area and bottom Output/Diagnostics panels. Ordinary
@@ -683,17 +698,17 @@ Import the typed pricing fixture and evaluate a public entry with fields,
 JSON or Ion. The UI captures one immutable model/entry/input snapshot and binds
 its cursor to the authenticated host, session, provider, job and snapshot.
 `finos/morphir-engine/execution/jobs` owns authoritative receipts; the portable
-`finos/morphir-execution/jobs` cursor admits incoming evidence. JavaScript handles
-HTTP and worker scheduling, while shared MoonBit code admits values and receipts.
+`finos/morphir-execution/jobs` cursor validates incoming evidence. JavaScript handles
+HTTP and worker scheduling, while shared MoonBit code validates values and receipts.
 Private host code is built outside the public `dist` directory.
 
 The provider runs at most two isolated Node workers at once, with a 128 MiB
 V8 old-generation limit and a 30-second execution deadline. This is not a total
 process-memory quota. It retains at most eight
 jobs within the owner's 16 MiB serialized-evidence budget. Terminal jobs require
-explicit release; the UI releases them after admitting their evidence. The raw
+explicit release; the UI releases them after validating their evidence. The raw
 HTTP body and receipt each have a 1 MiB limit. Duplicate JSON keys and invalid
-UTF-8 reject before admission. Ion uses the library's flat lexer to reject more
+UTF-8 reject during framing validation. Ion uses the library's flat lexer to reject more
 than 300,000 tokens or structural depth above 512 before recursive parsing;
 typed values still obey depth 64 and 100,000-node/code-unit limits.
 
@@ -705,7 +720,7 @@ queries the same identity without submitting again. A lost submission response
 has unknown acceptance, so blind resubmission is blocked. Retention is in memory;
 owner restart, browser reload recovery and durable retry are separate work.
 
-The bottom Output and Diagnostics panels show admitted terminal evidence,
+The bottom Output and Diagnostics panels show validated terminal evidence,
 including ordinary `Result.Err`, SDK model errors and separate cleanup failures.
 Editing inputs marks earlier output outdated while the accepted snapshot stays
 unchanged. Model replacement is blocked while a job needs reconciliation, including a

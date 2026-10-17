@@ -5,14 +5,21 @@ validator to the shared Rust MCK. It supports exact contracts
 `0.1.0-draft.1` through `0.1.0-draft.7`. It has no goldens, evaluator or separate
 conformance runner. The parent `finos/morphir` repository owns the specification,
 corpora and verdict calculation. Draft.1/.2 are merged; draft.3 adds invocation
-admission; draft.4 adds output admission; draft.5 adds terminal outcome admission.
+validation; draft.4 adds output validation; draft.5 adds terminal outcome validation.
+
+Capability verification uses scoped contract and MCK evidence for provider
+claims. Passing these fixed cases is not formal proof of correctness for every
+program or business result. Capability validation checks the chosen runtime or
+provider against a particular run, selected function and model revision under policy. The value,
+type, invocation, output, receipt and authority checks below remain ordinary
+validation. Historical code and wire identifiers retain their names.
 
 `protocol.mbt` handles capabilities and `decode-value`, echoes correlation IDs
 and rejects unknown/duplicate JSON members. Draft.1 capabilities and its original
 64-case corpus remain unchanged. JSON calls `Value::from_json`; Ion text calls
 the Ion parser and `Value::from_ion`. Both return `Value::to_json`, preserving
 exact numbers, Float64 bits and UTF-16 units. Successful decode of a model error
-is an outcome projection, without argument admission.
+is an outcome projection, without argument validation.
 
 Draft.2 also supports `validate-value` in both formats. Its `input` has exactly
 `value`, `type` and `definitions`. `value` is tagged JSON or a single Ion text
@@ -30,8 +37,8 @@ must be declared, including dormant Maybe/Result branches and unused definitions
 Named recursion is allowed without expanding declarations. Function types are
 rejected throughout the graph. Record-field, definition and constructor names
 must be unique within their containing declaration. A top-level model error is
-forbidden as an argument; ordinary `Result.Err` values remain admissible.
-Successful admission returns the canonical value projection, without evaluation.
+forbidden as an argument; ordinary `Result.Err` values remain valid.
+Successful validation returns the canonical value projection, without evaluation.
 
 Draft.3 retains both value operations and adds `validate-invocations`. Its input
 is exactly `{suite,manifest}`. `suite` is the existing `morphir-invocations-v1`
@@ -48,7 +55,7 @@ against that list, without inferring hidden declarations or model visibility.
 ],"definitions":[]}}
 ```
 
-Every entry input/output and unused registry declaration is admitted before
+Every entry input/output and unused registry declaration is validated before
 suite decoding. Duplicate entry names and malformed manifest shapes use
 `workbench.invalid_manifest`. There are at most 1,000 entries, 64 inputs per
 entry and 1–1,024 UTF-16 units per name. Entry nodes share the declaration budget.
@@ -98,24 +105,28 @@ toolchain is downloaded. Live execution, SDK comparison,
 general Ion binary or reverse encoding remain separate work. These offline
 operations advertise no connected-host protocol extension.
 
-## Declared output admission
+<a id="declared-output-admission"></a>
+
+## Declared output validation
 
 Exact draft.4 adds `validate-output` with the same closed `value`, `type` and
-`definitions` input as `validate-value`. Complete declaration admission precedes
+`definitions` input as `validate-value`. Complete declaration validation precedes
 decoding, then the shipped `validate_as(output=true)` checks returned values.
 Only the five recognized top-level SDK model errors bypass ordinary type matching.
 Typed `Result.Err` must match its declared error type; nested model errors and
-provider/cancellation/cleanup codes reject. Argument admission remains unchanged.
+provider/cancellation/cleanup codes reject. Argument validation remains unchanged.
 The new operation is unavailable under earlier drafts. The parent owns independent
 goldens, corpus inventory and report rechecking; no connected RPC is advertised.
 Select `spec/workbench/mck/draft.4` with the existing gate to qualify this draft.
 Live job lifecycle and authoritative cleanup behavior remain separate.
 
-## Terminal outcome admission
+<a id="terminal-outcome-admission"></a>
+
+## Terminal outcome validation
 
 Exact draft.5 adds `validate-outcomes` with closed `{suite,manifest,outcomes}`
 input. Suite and manifest stay JSON in both formats; outcomes is a tagged JSON
-envelope or Ion-text string. Strict declaration and argument admission precede
+envelope or Ion-text string. Strict declaration and argument validation precede
 outcome decoding. The portable `Outcomes` codec preserves ordered call IDs and
 `returned`, enumerated `model-error`, primary `failed`, or `cancelled` evidence,
 with a separate optional cleanup failure. It validates returned values against
@@ -127,7 +138,7 @@ Select `spec/workbench/mck/draft.5` with the existing gate for the upstream
 377-case corpus. The parent owns the specification, independent expectations
 and all verdicts. Pure codec tests cover round trips, duplicate fields, typed
 null/annotations, UTF-16 and value budgets. Earlier exact drafts remain supported.
-Admission of failed/cancelled evidence means valid evidence, not successful or
+Validation of failed/cancelled evidence means valid evidence, not successful or
 authenticated execution. UI adoption, live daemon jobs, acknowledged cancellation
 and connected protocol extensions remain subsequent work.
 
@@ -138,9 +149,9 @@ unchanged `morphir/workbench/jobs` `0.1.0-draft.1` profile and its nested draft.
 terminal outcomes. It does not add operations to the five historical drafts or
 define an Ion receipt mapping. Requalify historical kits separately.
 
-Input is exactly `{offer,identity,calls,initial,actions}`. The adapter admits the
+Input is exactly `{offer,identity,calls,initial,actions}`. The adapter validates the
 offer, caller-owned expected identity, ordered call IDs and initial submitted
-receipt through `finos/morphir-execution/jobs`. It preadmits closed action syntax
+receipt through `finos/morphir-execution/jobs`. It validates closed action syntax
 before executing up to 64 actions. Actions are `observe` with a receipt,
 `reconnect` with an offer, `disconnect`, or `cancel-action`. Invalid receipt or
 offer payloads produce a bounded per-action rejection and leave the cursor
@@ -152,7 +163,7 @@ Each step includes its operation, disposition or rejection code, and a bounded
 view of sequence, state, acknowledgement, connection and cancellation action.
 Values and cleanup appear only in the final receipt, not in every view. Input
 and output are each capped at 1 MiB. The parent owns all fixed expectations,
-observation admission, comparisons and report rechecking. No expected data or
+observation validation, comparisons and report rechecking. No expected data or
 case ID is sent to this adapter.
 
 Select `spec/workbench/mck/draft.6` with the existing gate. Set
@@ -186,7 +197,7 @@ rejection codes are `native.frame.limit`, `native.frame.utf8`,
 `native.frame.arguments`. Source, paths and authority are absent from observations.
 
 This tests frame acceptance through an implementation decoder. It does not
-activate the public IPC endpoint, authenticate caller context, admit a Morphir
+activate the public IPC endpoint, authenticate caller context, validate a Morphir
 function or Ion values, create workspace grants or qualify a packaged platform.
 The live native protocol remains draft.1.
 
@@ -199,12 +210,12 @@ with `expectedOperation` and required nullable `expectedSession` captures. These
 are closed fixture context, not caller authentication. Encoding, source and the
 optional bounded ASCII-space prefix recipe follow draft.7; compact input is
 limited to 1 MiB and materialization to 2 MiB. Exact decimal recipe tokens are
-preserved before fixture admission.
+preserved before fixture validation.
 
 The production decoder checks strict UTF-8, whole duplicate-aware JSON, byte and
 parser budgets, operation/session correlation, closed payloads, job receipt
-consistency, unique project IDs and canonical base64 chunks. An admitted success
-projects to `{replyAccepted:true,ok:true,operation}`. An admitted native failure
+consistency, unique project IDs and canonical base64 chunks. A validated success
+projects to `{replyAccepted:true,ok:true,operation}`. A validated native failure
 projects to `{replyAccepted:true,ok:false,error:{code,effect}}`, preserving
 `none` versus `unknown`. Private messages, paths, session credentials and payload
 bytes never appear in observations. Decoder rejection uses exactly
@@ -213,7 +224,7 @@ Malformed fixture infrastructure terminates the adapter instead of fabricating a
 domain rejection. The shared runner owns expectations, verdicts and saved-report
 rechecking; it does not parse native replies.
 
-This qualifies offline response admission only. The live native profile remains
+This qualifies offline response validation only. The live native profile remains
 `0.1.0-draft.1`; executable client/owner lifecycle MCK and actual platform
 acceptance remain separate work. Historical MCK drafts.1–.7 remain supported.
 

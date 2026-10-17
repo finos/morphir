@@ -39,10 +39,10 @@ registry's tree budget. Both `decode` and `open_checkpoint` report the reader's
 `LimitExceeded` error as `data.tree_limit`. The library's stack-safe walkers and
 writers do not provide a memory bound; the registry still checks its own budgets.
 
-`IRUnit::validate(limits?)` admits rich source-frontend output before processing.
+`IRUnit::validate(limits?)` validates rich source-frontend output before processing.
 It checks the envelope profile, duplicate metadata, tree depth/value budgets,
 metadata ownership against the distribution's stable node IDs, and the canonical
-binary Ion byte budget. These are admission limits; serialization allocates before
+binary Ion byte budget. These are validation limits; serialization allocates before
 the byte check and does not provide a streaming memory bound. Codec import/export
 behavior remains governed by the selected registry format.
 

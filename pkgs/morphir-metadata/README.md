@@ -34,7 +34,7 @@ The schema facts must occur in the restored provider's own document `$meta.@grap
 and name its declaration as subject. A companion schema file cannot replace them.
 A predicate URI may pin `rev=sha256:<digest>`; the restored revision must match.
 Every interpretation run invokes the restoration capability anew. Restores are reused
-only for equal expanded predicates within that run. A digest alone never admits a provider.
+only for equal expanded predicates within that run. A digest alone never authorizes a provider.
 
 `RestoredLibrary.core` is the supported semantic projection of the restored Library.
 The host must supply its native `$meta` and authenticated identity together. The core's
@@ -112,8 +112,8 @@ Pass `Capabilities` to `interpret`, `generate(metadata_capabilities=...)`, or
 code. Metadata and CLI configuration cannot install a restoration callback.
 
 The defaults have no provider or context loader and no required naming interpreter.
-Generation fails clearly on a known naming fact without admission or interpretation;
-it never silently substitutes an automatic spelling. The installed CLI currently has
+Generation fails clearly on a known naming fact without provider declaration validation
+or interpretation; it never silently substitutes an automatic spelling. The installed CLI currently has
 no signed-Library restore integration. It can preserve these payloads in checkpoints,
 but cannot generate from known naming facts until a host integrates that service.
 Unknown syntactically valid predicates remain preserved and are listed as unvalidated.
@@ -138,13 +138,15 @@ profile refuses node-local linked metadata and nonlexical parameter maps.
 The [shared signed fixture](https://github.com/finos/morphir-rust/blob/3b55adfa831c6dcfb749e4e74c301e924124490c/crates/morphir-package/tests/local_registry/naming-snapshot-fixture/README.md)
 pins the source corpus used by the consumer test.
 
-### Observing provider declaration admission
+<a id="observing-provider-declaration-admission"></a>
+
+### Observing provider declaration validation
 
 `Capabilities.provider_observer` receives `Started`, `Succeeded`,
 `Refused(code)` or `Cancelled` for declaration validation after restoration.
 The observer receives no provider data and grants no authority. Its exceptions
-are contained, preserving the original admission result and diagnostic. No facts
-means no restoration or admission events.
+are contained, preserving the original validation result and diagnostic. No facts
+means no restoration or validation events.
 
 When constructing capabilities explicitly, use
 `{ ..Capabilities::unavailable(), ... }` to keep the no-op observer, or supply
@@ -154,5 +156,5 @@ without adding clocks or filesystem access to this pure package.
 `is_target_names_predicate` recognizes the supported declaration identity and
 optional native revision pin. It does not authorize a provider or assert that
 the pin matches. Process hosts use this same parser before restoration; pure
-admission compares the authored pin with the freshly authenticated native
+validation compares the authored pin with the freshly authenticated native
 revision and retains `metadata.provider_revision_mismatch` on disagreement.

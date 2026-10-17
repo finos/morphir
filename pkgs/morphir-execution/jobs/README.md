@@ -1,6 +1,6 @@
 # Snapshot-bound Workbench jobs
 
-This portable package admits the exact `morphir/workbench/jobs`
+This portable package validates data for the exact `morphir/workbench/jobs`
 `0.1.0-draft.1` profile. The normative profile is contributed to finos/morphir at
 `spec/workbench/jobs/draft.1/`. Existing terminal outcomes retain draft.5.
 
@@ -23,9 +23,9 @@ Returned receipt copies and caller-owned arrays cannot mutate accepted history.
 Only the latest receipt is retained; there is no growing event log.
 
 The caller must cap raw framing at 1 MiB, reject duplicate JSON members, obtain
-authority from authenticated submission and admit outputs against the submitted
+authority from authenticated submission and validate outputs against the submitted
 public manifest. This package enforces receipt shape, bounded identities,
-draft.5 payload admission, ordered terminal inventory and state consistency.
+draft.5 payload validation, ordered terminal inventory and state consistency.
 It does not establish host authenticity, snapshot provenance, durable recovery
 or declared output types on its own.
 

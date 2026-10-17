@@ -1,13 +1,13 @@
 # Workbench native session state
 
-Pure state for the Proton desktop owner. Its internal bootstrap admits the trusted main
+Pure state for the Proton desktop owner. Its internal bootstrap validates the trusted main
 window/app-origin/page context supplied by the native host, negotiates the exact
 bridge version, and binds opaque identities to that page. Navigation revokes a
 binding; shutdown prevents reopening it. The default descriptor has no operations.
 A host can explicitly enable jobs discovery after qualifying its worker service.
-Every business command still needs native caller/session admission. Filesystem
+Every business command still needs native caller/session validation. Filesystem
 operations belong to the composing native owner. That owner builds the public
-descriptor from actual services after admission and awaited cleanup.
+descriptor from actual services after validation and awaited cleanup.
 
 This module has no Proton or platform dependencies. The portable workspace
 tests it on JavaScript, native, Wasm and Wasm GC. The isolated desktop workspace
@@ -25,10 +25,10 @@ command byte limits, strict UTF-8, bounded duplicate-aware whole JSON, the close
 request shape, and whole nested model/JSON argument documents. It preserves
 source strings and original number tokens. Workspace sequence/offset checks use
 exact decimal integrality, preventing rounded fractions and underflow from
-passing integer bounds. Request copies cannot mutate the admitted value.
+passing integer bounds. Request copies cannot mutate the validated value.
 
 Exact offline Workbench MCK draft.7 exercises this decoder through the existing
-explicit adapter. Frame acceptance grants no authority, admits no function and
+explicit adapter. Frame acceptance grants no authority, selects no execution entry and
 executes nothing. Ion input remains opaque at this boundary. Trusted caller and
 session binding, actual OS grants and packaged lifecycle qualification remain
 separate. The bundled Proton host and renderer use this decoder through the
@@ -37,19 +37,19 @@ reply/client/owner lifecycle MCK and packaged-target qualification.
 
 ## Native reply boundary
 
-The portable `response` package admits the public native draft.1 reply from
+The portable `response` package validates the public native draft.1 reply from
 complete UTF-8 bytes. It rejects malformed encoding, BOMs, duplicate members,
 excessive parsing budgets, unknown fields and mismatched originating operations.
 Whole replies fit 1 MiB and grant offers fit 512 KiB, including their wrappers.
-It validates all 13 operation payloads, shares descriptor admission with the job
+It validates all 13 operation payloads, shares descriptor validation with the job
 client, binds optional expected sessions and checks initial submission identity
 and receipt agreement. The receipt cursor still owns retained-job transitions.
 
-Grant admission requires unique project IDs. Labels and error messages use the
+Grant validation requires unique project IDs. Labels and error messages use the
 published Unicode character limits; nested jobs retain their UTF-16 limits.
 Workspace chunks use exact integers and canonical padded base64, with at most
 196,608 decoded bytes. Capture totals, offsets and retirement still require the
-stateful workspace client and owner. A reply copy cannot mutate admitted data.
+stateful workspace client and owner. A reply copy cannot mutate validated data.
 
 `success` validates and reserves the complete reply envelope before publication.
 `failure` takes closed `Code` and `Effect` types and emits fixed public messages,

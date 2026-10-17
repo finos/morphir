@@ -55,9 +55,9 @@ keeps terminal publication independent of later submissions. The existing data
 boundary limits each checkpoint to 4 MiB, and invocation and receipt codecs each
 limit their encoded payloads to 1 MiB. Quotas describe retained serialized data,
 not allocator overhead or temporary planning allocations. A quota too small for
-one admitted snapshot simply refuses submissions.
+one validated snapshot simply refuses submissions.
 
-Admission, capacity and transition failures leave retained work unchanged.
+Validation, capacity and transition failures leave retained work unchanged.
 IDs advance only on successful submissions and never wrap. State survives a
 client disconnect only while the composing host retains this owner. There is no
 durable storage, restart recovery, retry lease, deduplicated submission or
@@ -68,7 +68,7 @@ exactly-once execution guarantee.
 Tests run on JS, native, Wasm and Wasm GC. They exercise actual bounded Scheme
 evaluation, exact arithmetic, returned errors, SDK errors, mutation isolation,
 all identity dimensions, cancellation races, replay/conflicts, terminal cleanup,
-admission failures and retention quotas. The unchanged receipt reducer has shared
+validation failures and retention quotas. The unchanged receipt reducer has shared
 MCK draft.6 qualification. These producer tests do not independently qualify an
 authenticated host adapter.
 

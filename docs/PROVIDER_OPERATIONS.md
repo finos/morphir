@@ -87,9 +87,10 @@ do not acquire a provider or create logs.
 
 Binary Ion audit records carry annotation `morphir_metadata_invocation_v1` and
 profile `morphir-metadata-invocation-v1`. JSON Lines uses that profile field.
-Filter it to inspect acquisition, probe, restore, decode, context, admission and
-cleanup records. Correlate `run_id`, `operation` and `project` before comparing
-phases from different projects.
+Filter it to inspect acquisition, probe, restore, decode, context, `admission` and
+cleanup records. The historical `admission` audit event records validation.
+Correlate `run_id`, `operation` and `project` before comparing phases from
+different projects.
 
 A selected executable digest can appear before it has been checked.
 `service_verified` and `profile_verified` state what the current operation has
@@ -106,7 +107,7 @@ this audit profile is not qualified by the local-sink tests.
 | `metadata.restore_path_not_granted` | Compare selected paths and their configuration origins with the grant. |
 | `metadata.restore_executable_changed` | Compare the installed Node, helper bundle and service with accepted pins. |
 | `metadata.restore_authentication_failed` | Investigate policy, full lock, signed registry metadata, publisher authorization, expiry, rollback and trust-state status in the shared component. |
-| `metadata.provider_revision_mismatch` | Compare the authored predicate pin with the freshly admitted native payload revision. |
+| `metadata.provider_revision_mismatch` | Compare the authored predicate pin with the freshly validated native payload revision. |
 | `metadata.restore_invalid_response` | Inspect the selected wire/projection profile and retained context inventory. |
 | `data.lossy_conversion` | Retain the rich metadata in an Ion checkpoint or choose a supported checked JSON conversion. |
 
@@ -122,6 +123,14 @@ component's recovery procedure. Do not copy an old trust database over current
 state or restore older timestamp files to make an operation pass.
 
 ## Reproduce installed qualification
+
+The qualification gate gathers scoped capability verification evidence for the
+provider behavior claimed by the tested profile. It does not formally prove
+correctness for every model, program or business outcome. Runtime capability
+validation asks whether the chosen provider meets the requirements of a
+particular run, selected function and model revision under policy. Authentication,
+digest, metadata
+type, receipt and authority checks remain ordinary validation.
 
 Check out shared Rust source revision
 `ce68e7d1861b35bf51b6ddcaf6d48d5f93824893` into a separate, clean directory.
@@ -154,12 +163,12 @@ qualified only after that exact job passes; adding it to the matrix does not
 establish qualification. The gate covers 60 cases, 30 per installed client,
 including genuinely signed incompatible type, subject-role, object-form and
 interpreter declarations. Those cases require successful fresh authentication
-and snapshot decoding before semantic admission refuses, preserving all
+and snapshot decoding before semantic validation refuses, preserving all
 previously published files for both projects.
 
 The signed context fixture inventories identical bytes at two distinct paths.
 Digest-only lookup refuses ambiguity. Selecting either inventory-relative path
-from the admitted native document base succeeds and the generated public API
+from the validated native document base succeeds and the generated public API
 passes independent JS/native consumers for both projects.
 
 The receipt's `completeTask6` reports coverage for that execution's exact

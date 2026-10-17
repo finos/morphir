@@ -19,12 +19,12 @@ provider `finos/morphir-moonbit-frontend`, exported as `PROVIDER`, for language
 
 Both profiles process one document per unit and do not support incremental
 compilation, cross-file imports or other source types. The library excludes
-recursion, mutation, indirect and qualified calls. Profile names describe admission
-rules; the source language remains `moonbit`.
+recursion, mutation, indirect and qualified calls. Profile names describe supported source
+forms; the source language remains `moonbit`.
 
 `provider()` exposes these same descriptors and callbacks to in-process clients.
 `register` registers that provider with the engine; it accepts optional `limits` for the seed, `library_limits` for the library,
-and `unit_limits` for rich envelope admission. It validates source budgets before
+and `unit_limits` for rich envelope validation. It validates source budgets before
 registering and reports their configured values in capability descriptors. Parser
 0.4.5 and lexer 0.4.3 remain explicit dependency pins. Both profiles report local
 acceptance evidence; this is separate from ecosystem MCK qualification.

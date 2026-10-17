@@ -47,7 +47,7 @@ A property established for a model revision within a stated scope and dependency
 _Avoid_: Unchecked state label, capability claim
 
 **Model enrichment**:
-Information added to a Morphir model, such as source origins, naming facts, numeric precision or analysis results. An enrichment establishes a guarantee only when its evidence has been admitted.
+Information added to a Morphir model, such as source origins, naming facts, numeric precision or analysis results. An enrichment establishes a guarantee only when its evidence has been validated.
 
 **Model envelope**:
 The representation used to store or transmit a Morphir model, with the format and integrity information required by that representation.
@@ -80,6 +80,27 @@ The resolved projects, sources, configuration and stages for one invocation.
 **Publication**:
 Making a completed set of artifacts available at its destination.
 
+## Runtime capabilities
+
+**Runtime capabilities**:
+The operations, features and behavior a runtime/provider supports under stated conditions. They are separate from model guarantees, host authority and business correctness.
+
+**Capability claim**:
+A provider-authored assertion about supported operations, features or behavior. The claim and the evidence checking it are distinct.
+
+**Capability claim set**:
+A provider-authored collection of capability claims, including the provider's identity and available operations, languages and supported behavior.
+_Avoid_: Capability statement, verified support without scoped evidence
+
+**Capability verification**:
+Gathering scoped contract and compatibility evidence that an implementation behaves as its provider claims. This evidence is not formal proof of correctness for all programs or business outcomes.
+
+**Capability validation**:
+Checking that a chosen runtime/provider's capabilities meet the requirements of a particular run, selected function and model revision, before or as execution proceeds under policy.
+
+**Capability check**:
+A check of a required runtime feature against the chosen runtime/provider's capabilities. Policy determines when an unsupported requirement must refuse a run.
+
 ## Frontend selection
 
 **Source language**:
@@ -93,10 +114,6 @@ _Avoid_: Source language, frontend profile
 **Frontend profile**:
 A named, versioned contract defining an accepted source subset and its lowering semantics. A provider may offer several profiles for the same source language.
 _Avoid_: Language variant, provider identity
-
-**Capability claim set**:
-An extension-authored description of its identity and available operations, languages and supported behavior. Claims and the evidence checking them are distinct.
-_Avoid_: Capability statement, verified support without evidence
 
 **IR capability set**:
 A declaration of the IR features a frontend emits, a backend accepts or a transform consumes and produces, using the IR specification's feature vocabulary.

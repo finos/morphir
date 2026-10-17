@@ -191,7 +191,7 @@ and successful attestation results. Installed-provider evidence includes that re
 
 The installed-provider job still runs all qualification cases against both the npm and
 native clients. Long phases stream their output and report elapsed milliseconds.
-The `installed-provider-<os>` artifact retains `phase-timings.ionb`, the admitted tool
+The `installed-provider-<os>` artifact retains `phase-timings.ionb`, the validated tool
 catalogs, the qualification summary and audit evidence. Its summary records the actual
 Rust compiler and service build mode.
 
@@ -218,7 +218,7 @@ moon run scripts/ci-provider-release.mbtx
 MORPHIR_CI_NATIVE="$PWD/.dev/ci/native" MORPHIR_CI_PROVIDER_TOOLS="$PWD/.dev/ci/provider-tools" mise run test:installed-provider
 ```
 
-`moon run scripts/ci-artifact.mbtx --self-test` checks artifact admission and rejection.
+`moon run scripts/ci-artifact.mbtx --self-test` checks artifact validation and rejection.
 `moonx scripts/ci-native-build.mbtx --self-test` checks wrapper argument handling and target
 restrictions. Cross-build wrappers follow [Smithy's implementation](https://github.com/moonrockz/smithy/tree/main/apps/zig-cross)
 and remove host-only SIMD/backtrace objects, keeping MoonBit's scalar UTF runtime. Windows
@@ -361,7 +361,7 @@ portable runtime files with `bun run build:runtimes` before invoking Node hosts.
 The emitted `.js` and `.mjs` paths preserve the installed CLI and embedding
 contracts. Do not commit those generated files. MoonBit compiler output, JavaScript
 FFI strings and JavaScript snippets executed in Node/browser acceptance tests
-remain JavaScript. Runtime JSON/Ion validation and admission are still required.
+remain JavaScript. Runtime JSON/Ion validation is still required.
 
 Published npm packages contain JavaScript. Consumers need Node, not Bun or
 TypeScript. Acceptance tests deliberately run Node and the real npm CLI to check

@@ -52,7 +52,7 @@ It preserves call order and returns the first invalid call or argument.
 Output declarations do not constitute output value validation or evaluation.
 
 The entry list and constructor registry must come from a trusted generator or
-bounded manifest admission that establishes unique identities, supported
+bounded manifest validation that establishes unique identities, supported
 descriptors and complete reference closure. The Workbench draft.3 guard checks
 all input/output and unused declarations before decoding a suite. Names alone
 do not prove an entry's visibility in a model. The engine supplies optional
@@ -128,10 +128,10 @@ Result.Err, five SDK model errors, primary failures, cancellation and a separate
 cleanup failure. Failure stages are typed; codes/messages have UTF-16 bounds.
 Opaque extension bytes use the existing JSON binary wrapper or an Ion blob.
 
-`validate_outcomes` binds evidence to an admitted Suite and public entries, checks
+`validate_outcomes` binds evidence to a validated Suite and public entries, checks
 complete call inventory/order and declared outputs, and requires exact metadata
-echo. Callers must admit the whole declaration graph before decoding evidence;
-the MCK adapter does so. Successful admission includes well-formed failure and
+echo. Callers must validate the whole declaration graph before decoding evidence;
+the MCK adapter does so. Successful validation includes well-formed failure and
 cancellation claims. It does not run/authenticate a job or prove cancellation.
 The parent finos/morphir specification and single Rust MCK own independent
 expectations and report checking; UI and live-host adoption are separate.
