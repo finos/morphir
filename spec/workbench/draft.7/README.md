@@ -14,7 +14,7 @@ morphir mck workbench run --kit spec/workbench/mck/draft.7 \
 morphir mck workbench check --kit spec/workbench/mck/draft.7 --report report.json
 ```
 
-The runner admits the corpus and infrastructure envelope, negotiates this exact
+The runner validates the corpus and infrastructure envelope, negotiates this exact
 draft, sends only inputs and compares fixed observations. It never decodes a
 native source, links an implementation codec or derives expected results from
 the implementation. `check` loads the corpus again, verifies its byte hash,
@@ -22,10 +22,10 @@ operation and format inventory, capabilities and observations, and recomputes
 every result and qualification. A saved transcript tests this boundary; it does
 not establish that an implementation performed decoding.
 
-Literal JSON token kinds are preserved across corpus admission, live adapter
+Literal JSON token kinds are preserved across corpus validation, live adapter
 observations and saved reports. An object cannot impersonate a number, string,
 boolean or projection, including when its member names resemble a JSON library's
-private representation markers. Closed raw shapes are admitted before typed
+private representation markers. Closed raw shapes are validated before typed
 conversion; malformed observations remain adapter exchange errors.
 
 ## Transport and compact inputs
@@ -55,7 +55,7 @@ cannot be null and contains exactly `prefix`, which contains exactly `repeat`
 and `count`. `repeat` is exactly one ASCII space; `count` is an integer from zero
 through 1,048,576. Decimal and exponent spellings such as `1.0`, `1e0`
 and `10e-1` denote the same integer. Counts are checked against their exact
-decimal value, so rounding and underflow cannot admit fractional values. Prefix
+decimal value, so rounding and underflow cannot make fractional values pass validation. Prefix
 bytes precede the materialized source.
 
 The compact encoded input, including recipe, must fit the existing 1 MiB input
@@ -87,17 +87,17 @@ creating any native authority. Stage precedence is:
    1,048,576 UTF-16 units, including member names. Member names are not nodes.
    Whitespace can precede/follow the value; a second value or BOM cannot.
 4. For any of the six recognized `workspace.*` operations, bound the complete
-   raw command to 4,096 bytes before closed-shape admission.
+   raw command to 4,096 bytes before closed-shape validation.
 5. Check the closed public native draft.1 request shape, including operation,
    version, tokens, frozen payload shapes, integer ranges and UTF-16 identity
    bounds. Session equality and active capability ownership are not authenticated
    by this stage.
 6. For `job.submit`, decode `payload.model` as exactly one duplicate-aware,
    budgeted generic JSON document. This is not IR, definition or function
-   admission. Even a generic scalar may pass this stage.
+   validation. Even a generic scalar may pass this stage.
 7. If the submission input format is `json`, decode `inputs.source` in the same
    bounded whole-value manner and require its root to be an array. Typed argument
-   admission is separate. `ion-text` remains an opaque source string here.
+   validation is separate. `ion-text` remains an opaque source string here.
 
 The successful observation is exactly:
 
@@ -118,7 +118,7 @@ Rejections are exactly `{"status":"invalid","code":"…"}` with one of:
 
 There are no diagnostic messages, parsed values, paths, session credentials or
 submission effects in this projection. A rejection does not dispatch a request.
-The outer budget takes precedence over later syntax; after outer admission,
+The outer budget takes precedence over later syntax; after outer validation,
 shape precedes nested model, and nested model precedes JSON arguments.
 
 ## Evidence and remaining qualification
@@ -127,7 +127,7 @@ The [138-case independent corpus](../mck/draft.7/README.md) includes all 16
 published raw rejection expectations, all 78 published structural request cases,
 valid counterparts, every native operation, exact and excessive byte/depth/node
 boundaries, decoded-name duplicates, nested whole-value consumption, UTF-16
-identity bounds and deliberate separation from IR/value/Ion admission.
+identity bounds and deliberate separation from IR/value/Ion validation.
 
 This qualifies offline request-frame acceptance only. It does not authenticate
 window/origin/top-level caller context; open a session; choose an OS directory;

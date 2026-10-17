@@ -17,7 +17,7 @@ not link a client, parse native reply text, or compute expected lifecycle result
 The independent checker reloads the original corpus bytes, verifies their hash,
 inventory and capabilities, and recomputes verdicts. Transcript replay tests the
 runner, not a production implementation. An explicit adapter must use the actual
-client, receipt cursor and native response admission code.
+client, receipt cursor and native response validation code.
 
 ## Controlled input
 
@@ -49,7 +49,7 @@ and this input:
 Validly framed `session.check` calls are transparent: they use the current
 `checkSource` without consuming an invocation or appearing in request counts.
 This permits implementations to repeat authority checks. Changed or malformed
-check replies still pass through production admission. Invalid command names or
+check replies still pass through production validation. Invalid command names or
 check wrappers are recorded as unconfigured calls, so they cannot silently pass.
 Delivery of a declared held call that the client has not made is observed as
 `unavailable`, allowing the runner to report a compatibility mismatch.
@@ -68,7 +68,7 @@ in `cases.json`; its original byte hash closes over the complete fixture.
 
 ## Observations and failure evidence
 
-Every admitted scenario returns `{"status":"ok","value":...}`. There is no
+Every scenario with valid fixture infrastructure returns `{"status":"ok","value":...}`. There is no
 `status: "invalid"` for this operation. Client refusals and native failures are
 observed attempt outcomes; malformed fixture, framing, observation or report
 shapes are infrastructure failures.

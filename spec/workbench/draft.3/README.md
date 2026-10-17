@@ -1,15 +1,17 @@
-# Workbench invocation admission
+<a id="workbench-invocation-admission"></a>
+
+# Workbench invocation validation
 
 Test contract version: `0.1.0-draft.3`. This exact draft adds public-entry invocation
-admission to the shared Rust Workbench MCK runner. Historical draft.1 and draft.2
+validation to the shared Rust Workbench MCK runner. Historical draft.1 and draft.2
 contracts, schemas, cases and kits remain unchanged and supported. The frozen
 `morphir-invocations-v1` and `morphir-outcomes-v1` payload IDs and connected
 `protocolVersion: 1` remain unchanged.
 
-This is an offline admission test. It accepts an explicitly supplied public-entry
+This is an offline validation test. It accepts an explicitly supplied public-entry
 allowlist, checks complete declarations and validates existing invocation values.
 It does not derive an allowlist from a model, prove that a supplied entry is public
-in an actual model, execute a function, acquire a provider, admit output values,
+in an actual model, execute a function, acquire a provider, validate output values,
 compare SDK results or advertise a connected RPC method.
 
 ## Adapter wire
@@ -49,24 +51,24 @@ manifest remains JSON. For example:
 The input envelope contains exactly `suite` and `manifest`. The manifest contains
 exactly `entries` and `definitions`. Each public-entry descriptor contains exactly
 `name`, ordered `inputs` and `output`; there is no visibility flag. Entries are an
-allowlist with unique bounded names. An empty allowlist is valid but cannot admit
+allowlist with unique bounded names. An empty allowlist is valid but cannot validate
 any call from a nonempty suite. Missing selected entries return
 `execution.entry_not_public_or_supported`; exact argument-count mismatch returns
 `execution.wrong_arity`.
 
 Types and constructor definitions use the [draft.2 descriptors](../draft.2/README.md),
 with the same closed shapes and registry limits. Parse all entries in array order,
-parsing each input in order and then its output, followed by definitions. Admit the
+parsing each input in order and then its output, followed by definitions. Validate the
 complete declaration graph before decoding the suite. This includes unused
 entries, unused definitions and dormant branches. All custom references must name
 a supplied definition; named recursive cycles remain valid. Function descriptors
-are forbidden in inputs, outputs and registry constructors. Admitting an output
+are forbidden in inputs, outputs and registry constructors. Validating an output
 *declaration* does not test an output *value*.
 
-After declaration admission, use the existing suite codec and its validation,
+After declaration validation, use the existing suite codec and its validation,
 then public-entry lookup, exact arity and declared argument validation in call
 order. SDK model errors cannot be arguments; ordinary typed `Result.Err` values
-remain admissible. A successful observation contains the canonical decoded
+remain valid. A successful observation contains the canonical decoded
 `Suite::to_json` projection, including call identities and ordered arguments.
 Failures return only the stable bounded code, before the first colon.
 
@@ -74,7 +76,7 @@ Failures return only the stable bounded code, before the first colon.
 
 - The entire compact `input` JSON encoding is at most 1 MiB, including escaped Ion
   text and all manifest declarations. Overflow is `workbench.input_limit`.
-- At most 1,000 public entries are admitted. Each name is 1–1,024 UTF-16 code units;
+- At most 1,000 public entries are allowed. Each name is 1–1,024 UTF-16 code units;
   names are unique. Each entry has at most 64 inputs and one required output.
 - Type depth remains 64 with every input, output and constructor input starting at
   depth zero. The shared 10,000-node declaration budget counts every entry, type
@@ -121,7 +123,7 @@ exact bytes remain part of report identity.
 Requests contain only operation, selected draft, format and input, never case IDs
 or expected results. Cases and report records carry explicit operations. Report
 checking reloads the exact corpus SHA-256 and ordered case/operation/format
-inventory, re-admits exact-draft capabilities and operation-specific observations,
+inventory, revalidates exact-draft capability documents and operation-specific observations,
 and recomputes every verdict and qualification. Replaying fixed observations in
 runner tests verifies evidence handling, not implementation qualification.
 
@@ -143,5 +145,5 @@ structural fixtures and corpus documents. Runner and subprocess tests use
 `cargo test --locked -p morphir-mck --lib workbench` and
 `cargo test --locked -p morphir --test mck_workbench`.
 
-Output-value admission, evaluation, SDK comparisons, independent adapters,
+Output-value validation, evaluation, SDK comparisons, independent adapters,
 Ion binary compatibility and connected-host negotiation remain follow-up work.

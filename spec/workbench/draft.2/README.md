@@ -1,7 +1,9 @@
-# Workbench declared-value admission
+<a id="workbench-declared-value-admission"></a>
+
+# Workbench declared-value validation
 
 Test contract version: `0.1.0-draft.2`. This exact draft adds bounded declared-value
-admission to the shared Rust Workbench MCK runner. The historical
+validation to the shared Rust Workbench MCK runner. The historical
 `0.1.0-draft.1` codec contract, schemas and 64-case kit remain unchanged and
 supported. Readers never substitute one draft for another. The frozen
 `morphir-invocations-v1` and `morphir-outcomes-v1` payloads and connected
@@ -45,7 +47,7 @@ annotations, duplicate value fields and malformed Ion text are rejected by the
 existing value codec. Invalid values return `{"id":2,"status":"invalid","code":"…"}`.
 
 The input envelope has exactly `value`, `type` and `definitions`. There is no
-output-admission switch: an SDK model error is forbidden as an argument.
+output-validation switch: an SDK model error is forbidden as an argument.
 `Result.Err` remains an ordinary value whose error branch has a declared type.
 A successful observation contains the canonical decoded JSON projection, not a
 boolean, an inferred type or a normalized Decimal comparison result.
@@ -78,15 +80,15 @@ unique within their definition. The registry has no inferred definitions or
 parameter substitution. Custom references recurse by name; finite mutually
 recursive and self-recursive definitions are allowed.
 
-Admission checks the compact input byte budget first, then parses the root type
+Validation checks the compact input byte budget first, then parses the root type
 and definitions in array order with a shared budget. Function descriptors are
-rejected wherever encountered. Once all shapes are admitted, every custom type
+rejected wherever encountered. Once all shapes are validated, every custom type
 reference in the root and every definition input must name an existing registry
 entry, including unused definitions and dormant branches. Named cycles do not
 consume inline descriptor depth. Only after that closure check does the adapter
 decode the supplied value and apply the shipped `validate_as` semantics.
 
-This closure guard is new bounded adapter admission. The older `validate_as`
+This closure guard is new bounded adapter validation. The older `validate_as`
 function alone validates only branches reached through a concrete value; it does
 not establish whole-registry closure. An empty list, `Nothing` or an unselected
 Result branch therefore still requires a closed declared type under this draft.
@@ -96,10 +98,10 @@ Result branch therefore still requires a closed declared type under this draft.
 - The entire compact `input` JSON encoding is at most 1 MiB, including an escaped
   Ion text value, the declared type and registry. Overflow is `workbench.input_limit`.
 - Inline type depth is at most 64, counting the root descriptor at depth zero.
-  Each registry input starts at depth zero. A shared budget admits at most 10,000
+  Each registry input starts at depth zero. A shared budget allows at most 10,000
   descriptor/record-field/definition/constructor nodes across the root and registry.
 - At most 256 definitions, 256 constructors per definition, 64 constructor inputs,
-  and 1,024 fields/items per record/tuple descriptor are admitted.
+  and 1,024 fields/items per record/tuple descriptor are allowed.
 - Every field, custom owner, definition and constructor name contains 1 to 1,024
   UTF-16 code units. Duplicate names are rejected in their respective scopes.
 - Type depth, aggregate node, dimension or identity upper-bound overflow is
@@ -111,7 +113,7 @@ Result branch therefore still requires a closed declared type under this draft.
   custom name is `execution.unresolved_custom_type`.
 - The existing value codec limits remain: depth 64, 100,000 aggregate value
   nodes/UTF-16 units, 10,000-character integer strings, exact UInt64 Float64 bits,
-  bounded constructor identities and normalized Decimal admission.
+  bounded constructor identities and normalized Decimal validation.
 
 Typed value mismatch retains the shipped stable codes:
 `execution.wrong_type`, `execution.tuple_arity`,
@@ -121,12 +123,12 @@ Typed value mismatch retains the shipped stable codes:
 Codec rejections remain unchanged. Malformed Ion text is `workbench.invalid_ion`.
 Only the bounded code before the first colon is returned; input names and paths
 are diagnostic details. Transport failures and unexpected runtime failures do
-not become model errors or admitted values.
+not become model errors or validated values.
 
 ## Corpus and evidence
 
 The explicit [draft.2 kit](../mck/draft.2/cases.json) has 162 cases: 64 historical
-codec inputs/goldens plus 98 independently authored admission cases. It covers
+codec inputs/goldens plus 98 independently authored validation cases. It covers
 JSON/Ion equivalence, primitive and container types, empty values, exact record
 fields, recursive ADTs, constructor identity and arity, dormant closure,
 function rejection, model errors, malformed declarations and structural budgets.
@@ -136,8 +138,8 @@ Draft.2 cases and report records carry an explicit `operation`. Draft.1 records
 retain their original wire shape with implicit `decode-value`. The runner sends
 only the operation, selected draft, format and input, never case IDs or goldens.
 Saved report checking reloads the exact corpus bytes and ordered
-case/operation/format inventory, re-admits same-draft capabilities and observations,
-and recomputes verdicts and qualification. An admitted value cannot be a top-level
+case/operation/format inventory, revalidates same-draft capability documents and observations,
+and recomputes verdicts and qualification. A validated value cannot be a top-level
 model error. Report checking validates evidence consistency, not report origin.
 
 Both drafts retain the 16 MiB corpus, 1,024 cases, 1 MiB per input/projection,
@@ -161,4 +163,4 @@ structural tests and both actual corpus documents. Use
 `cargo test --locked -p morphir-mck --lib workbench` and
 `cargo test --locked -p morphir --test mck_workbench` for runner and CLI boundaries.
 Ion binary, reverse encoding, independent Rust/TypeScript adapters, public entry
-manifest admission, host negotiation and evaluation remain separate follow-up work.
+manifest validation, host negotiation and evaluation remain separate follow-up work.

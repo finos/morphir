@@ -3,7 +3,7 @@
 This immutable exact `0.1.0-draft.11` kit contains 37 fixed cases for
 `run-selected-scheme`. The [contract](../../draft.11/README.md) defines its narrow
 selected-public-boundary and unused-declaration scope. A later exact kit qualifies
-full admission-policy branch semantics; it does not add cases to this version.
+full runtime capability-check policy branch semantics; it does not add cases to this version.
 
 All models, arguments and expected observations are complete inline values in
 `cases.json`. Expected results were authored from the accepted requirements and

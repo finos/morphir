@@ -1,22 +1,22 @@
 # Workbench codec compatibility slice
 
 Contract version: `0.1.0-draft.1`. The shared Rust `morphir mck` runner owns this
-corpus, transport admission and verdict calculation. Implementations provide an
+corpus, transport validation and verdict calculation. Implementations provide an
 explicit adapter. The runner never loads an implementation's codec to calculate
 expected values, and never sends case IDs or expectations to the adapter.
 
 `cases.json` contains 64 independently authored inputs and expected observations.
 It covers JSON and Ion text decoding into the typed JSON projection, including
-exact integers above JavaScript's safe range, Decimal admission and retained scale,
+exact integers above JavaScript's safe range, Decimal validation and retained scale,
 Float64 signed zero/NaN payloads/infinity/subnormals, UTF-16 surrogate units,
 records, containers, constructor identities, Maybe, Result and top-level SDK model
 errors. Rejection cases cover numeric bounds, annotations, duplicate fields,
 unknown fields, invalid model-error codes and depth limits.
 
 This qualifies the listed codec projections. It does not establish declared-type
-argument admission, constructor registry membership, evaluation, SDK comparison,
+argument validation, constructor registry membership, evaluation, SDK comparison,
 Ion binary decoding or reverse encoding. The generic MoonBit codec accepts model
-errors before declared-type admission; these fixtures exercise only top-level
+errors before declared-type validation; these fixtures exercise only top-level
 outcome errors. Nested errors and model errors used as arguments require the
 execution engine's separate type validation. Rust and TypeScript adapters remain
 pending. These test capabilities do not advertise connected-host RPC support.
@@ -40,7 +40,7 @@ The first request negotiates this test contract:
 
 Operation and format arrays contain unique supported claims. Empty arrays are
 allowed and produce unsupported cases. A missing claim skips the case; it cannot
-qualify the full corpus. An unknown claim or malformed negotiation fails admission.
+qualify the full corpus. An unknown claim or malformed negotiation fails validation.
 
 The runner then sends inputs without goldens:
 
@@ -64,11 +64,13 @@ successfully and closes stdout without a response. An extra line, nonzero exit,
 timeout or failed cleanup prevents qualification even if every case passed.
 The shared transport bounds messages and deadlines and terminates the process
 tree on failure or interruption.
-Its duplicate-aware JSON admission has a separate limit of 127 nested containers.
+Its duplicate-aware JSON validation has a separate limit of 127 nested containers.
 That framing bound also applies to corpus and report documents; it can be stricter
 than the value-node depth limit for records with deeply nested field wrappers.
 
-## Corpus and report admission
+<a id="corpus-and-report-admission"></a>
+
+## Corpus and report validation
 
 The offline corpus directory must be explicit and contain a regular `cases.json`
 file of at most 16 MiB. The document is closed, duplicate JSON members are rejected,
@@ -79,7 +81,7 @@ Expected and observed successful projections must pass the parent-owned outcome
 schema and output limits. Integer coefficients and Float64 bit strings use their
 canonical output spellings. Record fields compare by name recursively and must
 be distinct; list and tuple order remains significant. Decimal projection retains
-the admitted coefficient and exponent, so `1200` at exponent `-3` remains that
+the validated coefficient and exponent, so `1200` at exponent `-3` remains that
 pair. This is a projection golden, not normalized Decimal SDK comparison.
 
 Each output projection is at most 1 MiB, with an aggregate budget of 100,000
@@ -87,10 +89,10 @@ nodes/code units and depth 64. Total retained compact observations are at most
 16 MiB. An overflow stops further requests and produces failure evidence.
 
 Reports use compact JSON and `formatVersion: "0.1.0-draft.1"`, record the SHA-256 of the exact corpus
-bytes, admitted capabilities, every case observation/verdict, failures and the
+bytes, validated capability documents, every case observation/verdict, failures and the
 computed `qualified` flag. Reading a saved report is bounded at 32 MiB. The check
-command reloads the corpus, verifies its digest and ordered inventory, re-admits
-capabilities and observations, and recomputes every verdict and qualification.
+command reloads the corpus, verifies its digest and ordered inventory, revalidates
+capability documents and observations, and recomputes every verdict and qualification.
 Changing a claimed result, dropping an observation or forging `qualified` fails.
 A well-formed unqualified report remains failure evidence and returns exit code 1.
 Checking is evidence consistency validation, not proof of who produced a report.

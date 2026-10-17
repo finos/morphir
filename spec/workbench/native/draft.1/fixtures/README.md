@@ -22,7 +22,7 @@ runner is defined here.
 - For `utf8`, encode `source` as UTF-8 without changing escapes or whitespace.
   The string is the complete request frame, not an object to parse and reserialize.
 - For `hex`, decode each pair of hexadecimal digits to one byte. Do not pass the
-  bytes through a replacement-character decoder before the admission boundary.
+  bytes through a replacement-character decoder before the validation boundary.
 - A `generate.prefix` instruction means prepend `repeat`, repeated exactly
   `count` times, to `source` before UTF-8 encoding. It keeps the byte-budget case
   small in version control. Those prefix bytes count toward the frame limit.
@@ -43,7 +43,7 @@ test-driver actions and required effects, not new wire operations:
 - `call` names a public operation. `session` resolves a captured session ID;
   `payload` supplies its operation arguments. The common profile and version are
   those at the document root. `identity` resolves the full captured immutable job
-  identity. `fixture: "Q"` means an admitted immutable model, public entry and
+  identity. `fixture: "Q"` means a validated immutable model, public entry and
   argument submission supplied by a future host qualification fixture.
 - `capture` names a symbolic session, picker, grant, job, or call correlation for
   later steps. These labels are not literal wire identifiers. `P1` denotes an
@@ -51,9 +51,9 @@ test-driver actions and required effects, not new wire operations:
 - `host_event` describes a controlled native event, delivery schedule, transport
   fault, or hostile incoming response. `hostPath` is supplied by the simulated
   trusted picker, never a renderer command. `read_all_chunks` abbreviates reads
-  at consecutive admitted offsets until the declared byte count is exhausted.
+  at consecutive validated offsets until the declared byte count is exhausted.
 - `expect` contains fixed assertions. Assertions about a response describe its
-  admitted contents or error code/effect. They do not imply that lost responses
+  validated contents or error code/effect. They do not imply that lost responses
   become visible to the client. A `held-before-admission` call has no effect until
   its later `deliver_held_call` event.
 
