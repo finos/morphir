@@ -1,0 +1,595 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.9/native-client-projection.schema.json",
+  "title": "Offline native client native-client-projection",
+  "description": "Exact Workbench MCK draft.9. Controlled client lifecycle observations do not establish native host or OS authority",
+  "examples": [
+    {
+      "steps": [
+        {
+          "action": "initialize",
+          "requestCount": 1,
+          "progressCount": 0,
+          "localCount": 1,
+          "session": {
+            "id": "session",
+            "disposed": false
+          },
+          "disposed": false,
+          "jobs": {
+            "job": null,
+            "active": false,
+            "polling": false,
+            "releasePending": false,
+            "uncertainSubmission": false,
+            "suspended": false,
+            "cancelOnSubmit": false
+          },
+          "workspace": null,
+          "attempts": [
+            {
+              "id": "init",
+              "status": "returned",
+              "error": null,
+              "result": {
+                "success": true,
+                "operation": null,
+                "cancelled": null,
+                "typed": null,
+                "terminalOutcomes": null,
+                "artifact": null
+              }
+            }
+          ],
+          "delivery": null
+        },
+        {
+          "action": "evaluate",
+          "requestCount": 2,
+          "progressCount": 0,
+          "localCount": 1,
+          "session": {
+            "id": "session",
+            "disposed": false
+          },
+          "disposed": false,
+          "jobs": {
+            "job": null,
+            "active": false,
+            "polling": false,
+            "releasePending": false,
+            "uncertainSubmission": true,
+            "suspended": false,
+            "cancelOnSubmit": false
+          },
+          "workspace": null,
+          "attempts": [
+            {
+              "id": "init",
+              "status": "returned",
+              "error": null,
+              "result": {
+                "success": true,
+                "operation": null,
+                "cancelled": null,
+                "typed": null,
+                "terminalOutcomes": null,
+                "artifact": null
+              }
+            },
+            {
+              "id": "first",
+              "status": "rejected",
+              "error": {
+                "native": false,
+                "code": null,
+                "effect": null,
+                "submissionUnknown": true,
+                "jobTransport": true
+              },
+              "result": null
+            }
+          ],
+          "delivery": null
+        },
+        {
+          "action": "evaluate",
+          "requestCount": 2,
+          "progressCount": 0,
+          "localCount": 1,
+          "session": {
+            "id": "session",
+            "disposed": false
+          },
+          "disposed": false,
+          "jobs": {
+            "job": null,
+            "active": false,
+            "polling": false,
+            "releasePending": false,
+            "uncertainSubmission": true,
+            "suspended": false,
+            "cancelOnSubmit": false
+          },
+          "workspace": null,
+          "attempts": [
+            {
+              "id": "init",
+              "status": "returned",
+              "error": null,
+              "result": {
+                "success": true,
+                "operation": null,
+                "cancelled": null,
+                "typed": null,
+                "terminalOutcomes": null,
+                "artifact": null
+              }
+            },
+            {
+              "id": "first",
+              "status": "rejected",
+              "error": {
+                "native": false,
+                "code": null,
+                "effect": null,
+                "submissionUnknown": true,
+                "jobTransport": true
+              },
+              "result": null
+            },
+            {
+              "id": "retry",
+              "status": "rejected",
+              "error": {
+                "native": false,
+                "code": null,
+                "effect": null,
+                "submissionUnknown": false,
+                "jobTransport": false
+              },
+              "result": null
+            }
+          ],
+          "delivery": null
+        }
+      ],
+      "requests": [
+        "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
+        "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"job.submit\",\"payload\":{\"contractVersion\":\"0.1.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+      ],
+      "progress": [],
+      "localCalls": [ "{\"operation\":\"initialize\"}" ],
+      "consumed": 2,
+      "remaining": 0
+    }
+  ],
+  "type": "object",
+  "required": [
+    "steps",
+    "requests",
+    "progress",
+    "localCalls",
+    "consumed",
+    "remaining"
+  ],
+  "properties": {
+    "steps": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": [
+          "action",
+          "requestCount",
+          "progressCount",
+          "localCount",
+          "session",
+          "disposed",
+          "jobs",
+          "workspace",
+          "attempts",
+          "delivery"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "initialize",
+              "evaluate",
+              "resume",
+              "cancel",
+              "choose",
+              "open",
+              "deliver",
+              "poll",
+              "dispose",
+              "set-check"
+            ]
+          },
+          "requestCount": {
+            "type": "integer",
+            "maximum": 512,
+            "minimum": 0
+          },
+          "progressCount": {
+            "type": "integer",
+            "maximum": 512,
+            "minimum": 0
+          },
+          "localCount": {
+            "type": "integer",
+            "maximum": 512,
+            "minimum": 0
+          },
+          "session": {
+            "type": "object",
+            "required": [ "id", "disposed" ],
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "not": {
+                      "pattern": "[^A-Za-z0-9_.-]"
+                    },
+                    "maxLength": 128,
+                    "minLength": 1
+                  }
+                ]
+              },
+              "disposed": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "disposed": {
+            "type": "boolean"
+          },
+          "jobs": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "job",
+                  "active",
+                  "polling",
+                  "releasePending",
+                  "uncertainSubmission",
+                  "suspended",
+                  "cancelOnSubmit"
+                ],
+                "properties": {
+                  "job": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 1048576
+                      }
+                    ]
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "polling": {
+                    "type": "boolean"
+                  },
+                  "releasePending": {
+                    "type": "boolean"
+                  },
+                  "uncertainSubmission": {
+                    "type": "boolean"
+                  },
+                  "suspended": {
+                    "type": "boolean"
+                  },
+                  "cancelOnSubmit": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "grant",
+                  "projects",
+                  "pendingRelease",
+                  "choosing",
+                  "opening",
+                  "sequence",
+                  "disposed"
+                ],
+                "properties": {
+                  "grant": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "string",
+                        "not": {
+                          "pattern": "[^A-Za-z0-9_.-]"
+                        },
+                        "maxLength": 128,
+                        "minLength": 1
+                      }
+                    ]
+                  },
+                  "projects": {
+                    "type": "string",
+                    "maxLength": 1048576
+                  },
+                  "pendingRelease": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 1048576
+                      }
+                    ]
+                  },
+                  "choosing": {
+                    "type": "boolean"
+                  },
+                  "opening": {
+                    "type": "boolean"
+                  },
+                  "sequence": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 0
+                  },
+                  "disposed": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "attempts": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": [ "id", "status", "error", "result" ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "not": {
+                        "pattern": "[^A-Za-z0-9_.-]"
+                      },
+                      "maxLength": 128,
+                      "minLength": 1
+                    },
+                    "status": {
+                      "const": "pending"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "result": {
+                      "type": "null"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [ "id", "status", "error", "result" ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "not": {
+                        "pattern": "[^A-Za-z0-9_.-]"
+                      },
+                      "maxLength": 128,
+                      "minLength": 1
+                    },
+                    "status": {
+                      "const": "rejected"
+                    },
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "native",
+                        "code",
+                        "effect",
+                        "submissionUnknown",
+                        "jobTransport"
+                      ],
+                      "properties": {
+                        "native": {
+                          "type": "boolean"
+                        },
+                        "code": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "maxLength": 128,
+                              "minLength": 1
+                            }
+                          ]
+                        },
+                        "effect": {
+                          "enum": [ null, "none", "unknown" ]
+                        },
+                        "submissionUnknown": {
+                          "type": "boolean"
+                        },
+                        "jobTransport": {
+                          "type": "boolean"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "result": {
+                      "type": "null"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [ "id", "status", "error", "result" ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "not": {
+                        "pattern": "[^A-Za-z0-9_.-]"
+                      },
+                      "maxLength": 128,
+                      "minLength": 1
+                    },
+                    "status": {
+                      "const": "returned"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "result": {
+                      "type": "object",
+                      "required": [
+                        "success",
+                        "operation",
+                        "cancelled",
+                        "typed",
+                        "terminalOutcomes",
+                        "artifact"
+                      ],
+                      "properties": {
+                        "success": {
+                          "type": "boolean"
+                        },
+                        "operation": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "maxLength": 128,
+                              "minLength": 1
+                            }
+                          ]
+                        },
+                        "cancelled": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ]
+                        },
+                        "typed": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "maxLength": 1048576
+                            }
+                          ]
+                        },
+                        "terminalOutcomes": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "maxLength": 1048576
+                            }
+                          ]
+                        },
+                        "artifact": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "maxLength": 1048576
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "delivery": {
+            "enum": [ null, "delivered", "unavailable" ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "requests": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "string",
+        "maxLength": 1048576
+      }
+    },
+    "progress": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "string",
+        "maxLength": 1048576
+      }
+    },
+    "localCalls": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "string",
+        "maxLength": 1048576
+      }
+    },
+    "consumed": {
+      "type": "integer",
+      "maximum": 512,
+      "minimum": 0
+    },
+    "remaining": {
+      "type": "integer",
+      "maximum": 512,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

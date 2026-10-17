@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.9/mck-request.schema.json",
+  "title": "Offline Workbench native client lifecycle mck-request",
+  "description": "Closed exact draft.9 JSON run-native-client contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+  "examples": [
+    {
+      "id": 1,
+      "op": "run-native-client",
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.9",
+      "format": "json",
+      "input": {
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          }
+        },
+        "inspectionSuccess": true,
+        "checkSource": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+        "invocations": [
+          {
+            "id": "call-0",
+            "operation": "session.open",
+            "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"jobs\"],\"offer\":{\"profile\":\"morphir/workbench/jobs\",\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+            "held": false
+          },
+          {
+            "id": "call-1",
+            "operation": "job.submit",
+            "source": null,
+            "held": false
+          }
+        ],
+        "actions": [
+          {
+            "op": "initialize",
+            "id": "init"
+          },
+          {
+            "op": "evaluate",
+            "id": "first"
+          },
+          {
+            "op": "evaluate",
+            "id": "retry"
+          }
+        ]
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "capabilities"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.9"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "run-native-client"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.9"
+        },
+        "format": {
+          "const": "json"
+        },
+        "input": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.9/mck-input.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "exit"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
