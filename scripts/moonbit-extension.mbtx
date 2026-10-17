@@ -28,6 +28,9 @@ async fn main {
   let action = args[1]
   if action == "test" {
     checked("moon", ["test", "--target", "native", "pkgs/morphir-moonbit/mep"])
+    checked("moon", [
+      "test", "--target", "native", "apps/morphir-extension/frontend",
+    ])
   }
   let packages = if action == "test" {
     ["apps/morphir-extension", "apps/morphir-extension/acceptance"]

@@ -12,12 +12,12 @@ import {
   "finos/morphir-metadata" @linked_metadata,
   "moonrockz/ion/ion",
   "moonrockz/ion/binary" @ion_binary,
+  "moonrockz/ion/json" @ion_json,
 }
 
 import {
   "finos/morphir-moonbit/mep",
   "finos/morphir-moonbit/fixtures",
   "moonrockz/ion/text" @ion_text,
-  "moonrockz/ion/json" @ion_json,
   "finos/morphir-metadata/fixtures" @metadata_fixtures,
 } for "test"

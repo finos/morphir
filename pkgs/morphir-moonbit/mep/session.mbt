@@ -11,6 +11,8 @@ pub struct Session {
   priv mut lifecycle : Lifecycle
   priv mut models : ModelTransport?
   priv metadata_capabilities : @linked_metadata.Capabilities
+  priv frontend : Frontend?
+  priv cancelled : () -> Bool
 }
 
 ///|
@@ -18,8 +20,16 @@ pub struct Session {
 /// native stdio adapter leaves them unavailable until authenticated integration.
 pub fn Session::new(
   metadata_capabilities~ : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
+  frontend~ : Frontend? = None,
+  cancelled~ : () -> Bool = fn() { false },
 ) -> Session {
-  { lifecycle: BeforeInitialize, models: None, metadata_capabilities, }
+  {
+    lifecycle: BeforeInitialize,
+    models: None,
+    metadata_capabilities,
+    frontend,
+    cancelled,
+  }
 }
 
 ///|
@@ -28,18 +38,22 @@ pub fn Session::exited(self : Session) -> Bool {
 }
 
 ///|
-fn info() -> Json {
+fn Session::info(self : Session) -> Json {
   {
     "id": "morphir-moonbit",
     "name": "Morphir MoonBit",
     "version": "0.1.0",
-    "types": ["backend"],
+    "types": if self.frontend is Some(_) {
+      ["frontend", "backend"]
+    } else {
+      ["backend"]
+    },
     "license": "Apache-2.0",
   }
 }
 
 ///|
-fn capabilities(models : ModelTransport?) -> Json {
+fn Session::capabilities(self : Session, models : ModelTransport?) -> Json {
   let value : Json = {
     "backend": { "targets": ["moonbit"], "irVersions": ["4"], "generate": true },
     "streaming": false,
@@ -49,6 +63,23 @@ fn capabilities(models : ModelTransport?) -> Json {
   }
   if models is Some(support) && value is Object(fields) {
     fields["modelTransport"] = support.to_json()
+  }
+  if self.frontend is Some(frontend) && value is Object(fields) {
+    fields["frontend"] = {
+      "languages": [
+        {
+          "id": frontend.language_id,
+          "fileExtensions": frontend.file_extensions,
+        },
+      ],
+      "irVersions": ["4.0.0"],
+      "compile": false,
+      "incremental": false,
+      "fragments": false,
+    }
+    // Root capability extras survive the typed SDK; nested frontend extras do
+    // not. Keep this vendor profile vocabulary out of the canonical record.
+    fields["moonbitFrontendProfiles"] = Json(frontend.profiles)
   }
   value
 }
@@ -176,8 +207,10 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
               result(id, {
                 "claimsVersion": "0.1.0-draft.2",
                 "protocolVersions": [MODEL_PROTOCOL, "0.1"],
-                "extension": info(),
-                "capabilities": capabilities(Some(model_support())),
+                "extension": self.info(),
+                "capabilities": self.capabilities(
+                  Some(model_support(frontend=self.frontend is Some(_))),
+                ),
               })
             } else {
               let versions = field(params, "protocolVersions")
@@ -188,7 +221,10 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
                 has_offer
               let models = if rich {
                 Some(
-                  select_models(field(params, "modelTransport")) catch {
+                  select_models(
+                    field(params, "modelTransport"),
+                    frontend=self.frontend is Some(_),
+                  ) catch {
                     _ =>
                       return Some(
                         rpc_error(id, -32602, "Invalid model transport offer"),
@@ -214,20 +250,22 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
                 } else {
                   "0.1"
                 },
-                "extension": info(),
-                "capabilities": capabilities(models),
+                "extension": self.info(),
+                "capabilities": self.capabilities(models),
               })
             }
         }
       "morphir.ping" => result(id, { "ok": true })
-      "morphir.extension.info" => result(id, info())
-      "morphir.extension.capabilities" => result(id, capabilities(self.models))
+      "morphir.extension.info" => result(id, self.info())
+      "morphir.extension.capabilities" =>
+        result(id, self.capabilities(self.models))
       "morphir.shutdown" => {
         self.lifecycle = Shutdown
         result(id, Json::object({}))
       }
       "morphir.backend.generate" => generate(id, params)
       "morphir.backend.generateModel" => self.generate_model(id, params)
+      "morphir.frontend.compileModel" => self.compile_model(id, params)
       _ => rpc_error(id, -32601, "Unknown MEP operation")
     },
   )

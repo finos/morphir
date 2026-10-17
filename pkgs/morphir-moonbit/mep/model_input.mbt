@@ -147,7 +147,8 @@ fn retain_input(
   }
   ignore(model_digest(@wire.field(params, "contextDigest")))
   let tuple = @wire.field(params, "input")
-  guard transport.tuples.contains(tuple) else {
+  guard transport.tuples.contains(tuple) &&
+    field(tuple, "operation") == Json::string(GENERATE_MODEL) else {
     raise Refused("unsupported_tuple")
   }
   let model = @wire.field(params, "model")

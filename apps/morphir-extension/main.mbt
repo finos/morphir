@@ -8,7 +8,7 @@ async fn main {
       @sys.exit(2)
     }
     let decoder = @mep.Decoder::new()
-    let session = @mep.Session::new()
+    let session = @mep.Session::new(frontend=Some(@frontend.provider()))
     while @stdio.stdin.read_some(max_len=65536) is Some(chunk) {
       for body in decoder.feed(chunk) {
         if session.receive(body) is Some(response) {

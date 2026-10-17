@@ -1,6 +1,6 @@
 # MoonBit MEP process extension
 
-Native stdio adapter for the existing pure MoonBit generator. Protocol output is
+Native stdio adapter composing the pure MoonBit frontend and generator. Protocol output is
 reserved for Content-Length framed JSON-RPC messages. Transport errors go to
 stderr, and the process writes no generated files itself.
 
@@ -11,14 +11,68 @@ base64 binary artifact under the existing MEP artifact contract.
 
 MEP `0.1` and claims `0.1.0-draft.2` are supported. Hosts can explicitly opt into
 MEP `0.2.0-draft.1` with a `modelTransport` offer to use
-`morphir.backend.generateModel`. The extension advertises backend generation,
-without frontend compilation, streaming or cancellation.
+`morphir.frontend.compileModel` and `morphir.backend.generateModel`. The extension
+advertises rich frontend compilation and backend generation. Legacy frontend
+`compile`, incremental compilation, fragments, streaming and wire cancellation
+remain unavailable. The frontend language is `moonbit`; its Boolean library
+profile is a separate capability, not a language name.
+
+## Rich source compilation
+
+The application supplies a typed frontend provider to the protocol session.
+`pkgs/morphir-moonbit` has no dependency on the frontend or engine. Backend-only
+embedders can continue using `Session::new()`; the native executable supplies
+`frontend=Some(...)`. Compilation and generation tuples are negotiated separately:
+permission for one operation never authorizes the other.
+
+The qualified source profile is `moonbit-model-bool-library-v1`. The vendor root
+capability `moonbitFrontendProfiles` describes it alongside the canonical
+frontend language capability. Keeping the vendor declaration at the capability
+root lets the typed SDK retain it as an extension member. A host that only knows
+legacy MEP must not infer legacy compile support from the frontend type.
+
+Compile requests use the canonical `languageId`, `sources`, `package`, `options`,
+`contextDigest` and `output` fields. Exactly one `moonbit` document is accepted,
+with a nonnegative integer version and its complete text. External dependencies,
+imports and incremental baselines are refused. Supported options are
+`typesOnly=false`, `irVersion="4.0.0"` and an optional `profile` selecting the
+Boolean library profile, which is also the default. Unknown options fail.
+
+When supplied, `sources.root` must be absolute. Relative document paths retain
+their nesting; absolute `.mbt` document paths are resolved relative to that root.
+Without a root, supply a relative path. A URI is accepted beneath an explicit matching root;
+it is never opened or fetched. Traversal, encoded path segments and ambiguous
+identities are refused. `package.exposedModules` may be omitted or contain exactly
+that one module. Empty/private or other exposure selections are refused rather
+than ignored.
+
+Successful Ion compilation returns a `MorphirModel` with the semantic IR, the
+versioned node carrier described below, source annotations and frontend provenance.
+Additional compilation provenance records document URI/version, source root,
+package, options and the declared context digest. That attribution establishes no
+remote guarantee or host authority. The stable model ID binds package and document
+URI. Its logical revision binds source content/version, options and context using
+canonical object ordering, independently of the chosen payload codec or bytes.
+
+Both compile codecs use the same negotiated limits as generation. Explicit JSON
+compilation runs a loss check: the real frontend's source/naming provenance cannot
+be represented by plain Morphir JSON, so it returns `data.lossy_conversion`.
+No metadata is discarded and no Ion retry happens implicitly. A plain injected
+provider with no extra metadata can produce checked JSON successfully. Existing
+JSON generation remains supported.
+
+Compilation is a result sum. Success always includes a model; every compilation
+failure, including source errors, lossy export, cancellation and output limits,
+omits the model entirely. Malformed or unsupported protocol context returns a
+JSON-RPC error. Refusals preserve the session. Source diagnostics retain URI and
+zero-based ranges. Embedded callers may supply a cooperative `cancelled` callback;
+the sequential stdio guest does not advertise wire cancellation.
 
 ## Rich model generation
 
 Initialization intersects complete transport tuples and takes the lower value
 of each peer's resource limits. The selected support is frozen for the session.
-The two supported generation tuples use envelope `0.1.0-draft.1` and draft IR
+The two codecs for each supported model operation use envelope `0.1.0-draft.1` and draft IR
 `4.0.0`: profile `morphir-model` with `ion-binary`, and profile `morphir-ir` with
 `morphir-json`. Target language remains `moonbit`. The JSON payload is a complete
 UTF-8 Morphir JSON document; both codecs use canonical padded base64 on the wire.
@@ -90,13 +144,19 @@ mise run build:extension
 mise run test:mep-process
 ```
 
-The second command runs the pure protocol tests on the native target and starts
-real guest processes to check lifecycle messages, rich generation, bad-digest
-recovery, exact Ion retention, legacy compatibility and malformed-frame refusal.
+The second command runs the pure protocol and application-provider tests on the
+native target and starts real guest processes to check lifecycle messages, rich
+compilation and generation, bad-digest recovery, exact Ion retention, checked JSON
+refusal, legacy compatibility and malformed-frame refusal. It compiles source,
+passes the returned model to generation in the same framed session, then builds
+and invokes a generated consumer with the checked-in SDK. The guest writes no
+files; only the acceptance host publishes returned artifacts in its scratch space.
 Native CI runs it on Linux and macOS. Receipts under `.dev/mep-process/` default to
 Ion binary and Ion text, with a JSON view. Process-only receipts explicitly say
 that installation was not exercised. Rich process fixtures are retained as
-`rich-model.ionb`, `rich-model-request.json` and `rich-model-offer.json`.
+`rich-model.ionb`, `rich-model-request.json` and `rich-model-offer.json`. The source
+flow also retains `compiled-model.ionb`, `compiled-envelope.json` and
+`compiled-symbols.ionb`.
 
 For the installed flow, set these environment variables before running
 `mise run test:mep-process`:
@@ -118,8 +178,9 @@ dirty state, executable digests and the actual target; retained descriptor,
 catalog and Ion sidecar evidence accompany a successful installed run.
 
 This gate acquires no host or SDK release and publishes nothing publicly. A
-single native target's receipt does not qualify other operating systems, rich
-frontend transport, WASM or component guests.
+legacy installed-generation receipt does not qualify the installed rich frontend
+flow, other operating systems, WASM or component guests. The source-to-consumer
+process checks establish the native framed adapter independently of installation.
 
 ## Bundle an already-built guest
 

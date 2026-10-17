@@ -8,6 +8,9 @@ const MODEL_ENVELOPE : String = "0.1.0-draft.1"
 const GENERATE_MODEL : String = "morphir.backend.generateModel"
 
 ///|
+const COMPILE_MODEL : String = "morphir.frontend.compileModel"
+
+///|
 priv suberror ModelError {
   Refused(String)
 }
@@ -27,9 +30,13 @@ priv struct ModelTransport {
 }
 
 ///|
-fn model_tuple(profile : String, codec : String) -> Json {
+fn model_tuple(
+  profile : String,
+  codec : String,
+  operation~ : String = GENERATE_MODEL,
+) -> Json {
   {
-    "operation": GENERATE_MODEL,
+    "operation": operation,
     "profile": profile,
     "codec": codec,
     "envelopeVersion": MODEL_ENVELOPE,
@@ -38,12 +45,19 @@ fn model_tuple(profile : String, codec : String) -> Json {
 }
 
 ///|
-fn model_support() -> ModelTransport {
+fn model_support(frontend~ : Bool = false) -> ModelTransport {
+  let tuples = [
+    model_tuple("morphir-model", "ion-binary"),
+    model_tuple("morphir-ir", "morphir-json"),
+  ]
+  if frontend {
+    tuples.append([
+      model_tuple("morphir-model", "ion-binary", operation=COMPILE_MODEL),
+      model_tuple("morphir-ir", "morphir-json", operation=COMPILE_MODEL),
+    ])
+  }
   {
-    tuples: [
-      model_tuple("morphir-model", "ion-binary"),
-      model_tuple("morphir-ir", "morphir-json"),
-    ],
+    tuples,
     // MEP counts every value, including scalar leaves, from root depth one.
     // This bound also stays within Ion's separate container-depth ceiling.
     limits: { encoded: 5592408, decoded: 4194304, depth: 128, nodes: 100000, },
@@ -125,9 +139,12 @@ fn read_support(value : Json) -> ModelTransport raise {
 }
 
 ///|
-fn select_models(value : Json) -> ModelTransport raise {
+fn select_models(
+  value : Json,
+  frontend~ : Bool = false,
+) -> ModelTransport raise {
   let host = read_support(value)
-  let guest = model_support()
+  let guest = model_support(frontend~)
   {
     tuples: host.tuples
     .filter(t => guest.tuples.contains(t))

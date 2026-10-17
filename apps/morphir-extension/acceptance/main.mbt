@@ -301,6 +301,8 @@ async fn main {
   process_cases(guest, root + "/process")
   @fs.mkdir(root + "/rich-process")
   rich_process_cases(guest, root + "/rich-process", evidence)
+  @fs.mkdir(root + "/compile-process")
+  compile_process_cases(guest, root + "/compile-process", repository, evidence)
   let mut installation : Json = {
     "installed": false,
     "reason": "explicit pinned host not supplied",
@@ -341,6 +343,8 @@ async fn main {
     "platform": platform,
     "processCases": "passed",
     "richProcessCases": "passed",
+    "compileModelProcessCases": "passed",
+    "sourceConsumer": "passed",
     "installation": installation,
   }
   let ion = @ion_json.to_ion(receipt)

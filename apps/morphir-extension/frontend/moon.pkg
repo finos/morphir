@@ -1,0 +1,13 @@
+import {
+  "finos/morphir-moonbit-frontend" @source_frontend,
+  "finos/morphir-moonbit/mep",
+  "finos/morphir-ir/wire",
+  "finos/morphir-ir" @ir,
+}
+
+import {
+  "finos/morphir-extension/frontend" @adapter,
+  "moonrockz/ion/binary",
+  "moonrockz/ion/text",
+  "moonbitlang/core/encoding/base64",
+} for "test"
