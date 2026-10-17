@@ -50,7 +50,7 @@ cucumber = "0.23"
 vfs = "0.13"
 shell-words = "1"
 pulldown-cmark = { version = "0.13", default-features = false }
-regorus = { version = "=0.12.0", default-features = false, features = ["std"] }
+regorus = { version = "=0.13.0", default-features = false, features = ["std"] }
 sha2 = "0.11"
 # `morphir mck run --filter` uses Rust regex syntax (spec/mck/cli-contract.md)
 regex = "1"
@@ -83,7 +83,7 @@ windows-sys = { version = "0.61", features = [
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 # Offline draft MCK report validation; no HTTP or filesystem reference retrieval.
-jsonschema = { version = "=0.26.2", default-features = false }
+jsonschema = { version = "=0.59.0", default-features = false }
 serde-saphyr = { version = "1", default-features = false, features = ["deserialize", "serialize"] }
 # The IR YAML profile reader in `morphir-core` walks this parser's event stream. `morphir-core`
 # takes it from the workspace, and a path dependency on it inherits from this root, so the pin
