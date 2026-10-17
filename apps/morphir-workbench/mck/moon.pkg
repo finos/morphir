@@ -1,6 +1,7 @@
 import {
   "finos/morphir-ir/wire",
   "finos/morphir-workbench-native-session/request" @native_frame,
+  "finos/morphir-workbench-native-session/response" @native_reply,
   "finos/morphir-execution" @execution,
   "finos/morphir-execution/jobs",
   "moonrockz/ion/text",

@@ -189,3 +189,30 @@ This tests frame acceptance through an implementation decoder. It does not
 activate the public IPC endpoint, authenticate caller context, admit a Morphir
 function or Ion values, create workspace grants or qualify a packaged platform.
 The live native protocol remains draft.1.
+
+## Native reply qualification
+
+Exact offline draft.8 advertises only `validate-native-reply` and JSON. Select
+`spec/workbench/mck/draft.8` in the existing parent-owned gate. The adapter calls
+`finos/morphir-workbench-native-session/response.decode` on the original bytes,
+with `expectedOperation` and required nullable `expectedSession` captures. These
+are closed fixture context, not caller authentication. Encoding, source and the
+optional bounded ASCII-space prefix recipe follow draft.7; compact input is
+limited to 1 MiB and materialization to 2 MiB. Exact decimal recipe tokens are
+preserved before fixture admission.
+
+The production decoder checks strict UTF-8, whole duplicate-aware JSON, byte and
+parser budgets, operation/session correlation, closed payloads, job receipt
+consistency, unique project IDs and canonical base64 chunks. An admitted success
+projects to `{replyAccepted:true,ok:true,operation}`. An admitted native failure
+projects to `{replyAccepted:true,ok:false,error:{code,effect}}`, preserving
+`none` versus `unknown`. Private messages, paths, session credentials and payload
+bytes never appear in observations. Decoder rejection uses exactly
+`native.reply.limit`, `.utf8`, `.json`, `.shape`, `.operation` or `.authority`.
+Malformed fixture infrastructure terminates the adapter instead of fabricating a
+domain rejection. The shared runner owns expectations, verdicts and saved-report
+rechecking; it does not parse native replies.
+
+This qualifies offline response admission only. The live native profile remains
+`0.1.0-draft.1`; executable client/owner lifecycle MCK and actual platform
+acceptance remain separate work. Historical MCK drafts.1–.7 remain supported.

@@ -22,7 +22,7 @@ fn hex_digit(c : Char) -> Int32 {
 }
 
 ///|
-fn native_frame(id : Json, input : Json) -> Json {
+fn native_fixture_bytes(input : Json, keys : Array[String]) -> Bytes {
   guard @utf8.encode(input.stringify()).length() <= 1048576 else {
     abort("workbench: native frame fixture exceeds compact input limit")
   }
@@ -33,9 +33,9 @@ fn native_frame(id : Json, input : Json) -> Json {
     fixture_fields(
       input,
       if fields.contains("generate") {
-        ["encoding", "source", "generate"]
+        keys + ["generate"]
       } else {
-        ["encoding", "source"]
+        keys
       },
     ),
   )
@@ -61,7 +61,7 @@ fn native_frame(id : Json, input : Json) -> Json {
     }
     _ => abort("workbench: invalid native frame fixture encoding")
   }
-  let bytes = if fields.get("generate") is Some(generate) {
+  if fields.get("generate") is Some(generate) {
     let generate = fixture_fields(generate, ["prefix"])
     let prefix = fixture_fields(generate["prefix"], ["repeat", "count"])
     guard prefix["repeat"] == Json::string(" ") &&
@@ -77,6 +77,11 @@ fn native_frame(id : Json, input : Json) -> Json {
   } else {
     body
   }
+}
+
+///|
+fn native_frame(id : Json, input : Json) -> Json {
+  let bytes = native_fixture_bytes(input, ["encoding", "source"])
   try {
     ignore(@native_frame.decode(bytes))
     { "id": id, "status": "ok", "value": { "frameAccepted": true } }

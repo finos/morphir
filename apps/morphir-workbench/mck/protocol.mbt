@@ -46,7 +46,8 @@ pub fn handle_line(source : String) -> Json? raise {
   // The exact new draft preserves compact recipe number tokens as well as
   // embedded native source bytes. Historical adapters retain their parser.
   let request = if field(request, "contractVersion") ==
-    Json::string("0.1.0-draft.7") {
+    Json::string("0.1.0-draft.7") ||
+    field(request, "contractVersion") == Json::string("0.1.0-draft.8") {
     @wire.parse(source)
   } else {
     request
@@ -83,6 +84,7 @@ pub fn handle(request : Json) -> Json {
     ["id", "op", "suite", "contractVersion", "format", "input"]
   }
   let version = field(request, "contractVersion")
+  let draft8 = version == Json::string("0.1.0-draft.8")
   let draft7 = version == Json::string("0.1.0-draft.7")
   let draft6 = version == Json::string("0.1.0-draft.6")
   let draft2 = version == Json::string("0.1.0-draft.2")
@@ -98,7 +100,8 @@ pub fn handle(request : Json) -> Json {
       draft3 ||
       draft4 ||
       draft6 ||
-      draft7
+      draft7 ||
+      draft8
     ) else {
     return invalid(id, "workbench.invalid_request")
   }
@@ -109,7 +112,9 @@ pub fn handle(request : Json) -> Json {
       "contractVersion": version,
       "binding": "morphir-moonbit",
       "language": "moonbit",
-      "operations": if draft7 {
+      "operations": if draft8 {
+        ["validate-native-reply"]
+      } else if draft7 {
         ["validate-native-frame"]
       } else if draft6 {
         ["reduce-job"]
@@ -129,12 +134,19 @@ pub fn handle(request : Json) -> Json {
       } else {
         ["decode-value"]
       },
-      "formats": if draft6 || draft7 {
+      "formats": if draft6 || draft7 || draft8 {
         ["json"]
       } else {
         ["json", "ion-text"]
       },
     }
+  }
+  if draft8 {
+    guard op == Json::string("validate-native-reply") &&
+      field(request, "format") == Json::string("json") else {
+      return invalid(id, "workbench.invalid_request")
+    }
+    return native_reply(id, field(request, "input"))
   }
   if draft7 {
     guard op == Json::string("validate-native-frame") &&
