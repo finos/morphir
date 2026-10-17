@@ -8,6 +8,11 @@ pub fn plan_scheme_capabilities(
   limits~ : @data.Limits = @data.Limits::default(),
 ) -> SchemePlan raise {
   let selected = plan_scheme(unit, suite, policy~, limits~)
+  for call in selected.suite().calls {
+    for argument in call.arguments {
+      validate_sdk_boundary(argument)
+    }
+  }
   if policy is Permissive {
     let captured = @data.Registry::new(limits=selected.limits).decode(
       "ion-binary",
@@ -34,6 +39,11 @@ pub fn SchemePlan::validate_outcomes(
 ) -> Unit raise {
   let suite = @protocol.Suite::decode(self.suite, "json")
   @protocol.validate_outcomes(outcomes, suite, self.entries, self.definitions)
+  for call in outcomes.calls {
+    if call.outcome is Returned(value) {
+      validate_sdk_boundary(value)
+    }
+  }
   if @utf8.encode(outcomes.to_json().stringify()).length() > 1048576 {
     raise AdmissionInvalid("execution.output_limit")
   }
@@ -124,6 +134,7 @@ pub fn SchemePlan::evaluate_outcomes(
         error => raise error
       }
       @protocol.validate_as(value, entry.output, self.definitions, output=true)
+      validate_sdk_boundary(value)
       match value {
         ModelError(code) => @protocol.ModelError(code)
         _ => @protocol.Returned(value)

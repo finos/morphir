@@ -135,7 +135,10 @@ export class JobClient {
     if (this.job) { this.command({ op: 'disconnect' }); this.emit(); }
     return Object.assign(error, { job: this.job, jobTransport: true });
   }
-  async execute(request: Pick<WorkRequest, 'source' | 'entry' | 'arguments' | 'argumentsIon'>, progress: Progress = () => {}): Promise<WorkResult> {
+  async execute(request: Pick<WorkRequest, 'source' | 'entry' | 'arguments' | 'argumentsIon' | 'executionMode' | 'admission'>, progress: Progress = () => {}): Promise<WorkResult> {
+    if (request.executionMode === 'capability' || request.admission != null) {
+      throw new Error('This host mapping does not offer checking-policy selection.');
+    }
     if (!this.offer) throw new Error('This host does not offer job evaluation.');
     if (this.active || this.polling) throw new Error('A host job is already active. Resume it instead of submitting again.');
     if (this.uncertainSubmission) throw new Error('Submission status is unknown. No second job was submitted. Reopen the host session to recover.');

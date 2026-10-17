@@ -779,3 +779,53 @@ test('a folder import is bounded like a project request', async () => {
   await assert.rejects(adapter.execute({ operation: 'import-folder' }), /smaller than 16 MiB/);
   await assert.rejects(adapter.execute({ operation: 'import-folder', files: [file('p/morphir.json', '{}')] }), /timed out/);
 });
+
+test('local capability results must echo the submitted policy before publication', async () => {
+  for (const policy of ['strict', 'permissive']) {
+    for (const echoed of [policy, 'other', null]) {
+      let stopped = false;
+      const adapter = new LocalAdapter(() => {
+        const port: WorkerPort = { terminate() { stopped = true; }, postMessage(message) {
+          queueMicrotask(() => port.onmessage?.({ data: { id: message.id, result: {
+            success: true, ...(echoed === null ? {} : { admission: { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: echoed } }),
+          } } }));
+        } };
+        return port;
+      });
+      const pending = adapter.execute({ operation: 'evaluate', source: '{}', executionMode: 'capability',
+        admission: { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy } });
+      if (echoed === policy) assert.equal((await pending).success, true);
+      else await assert.rejects(pending, /different checking policy/);
+      assert.equal(stopped, true);
+    }
+  }
+});
+
+test('connected mapping refuses explicit policy instead of silently running strict', async () => {
+  let calls = 0;
+  const adapter = new ConnectedAdapter({ async call() { calls++; return {}; } }, manifest,
+    { async execute() { calls++; return { success: true }; }, cancel() {} });
+  for (const request of [
+    { operation: 'evaluate', source: '{}', executionMode: 'capability' },
+    { operation: 'evaluate', source: '{}', executionMode: 'typed', admission: { policy: 'permissive' } },
+  ]) await assert.rejects(adapter.execute(request), /does not offer checking-policy/);
+  assert.equal(calls, 0);
+});
+
+test('local policy echo checks retain the submitted selection after caller edits', async () => {
+  for (const changeMode of [false, true]) {
+    let port: WorkerPort | undefined;
+    let id = 0;
+    const adapter = new LocalAdapter(() => (port = { terminate() {}, postMessage(message) { id = message.id; } }));
+    const admission = { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: 'strict' };
+    const request = { operation: 'evaluate', source: '{}', executionMode: 'capability', admission };
+    const pending = adapter.execute(request);
+    admission.policy = 'permissive';
+    if (changeMode) request.executionMode = 'typed';
+    port!.onmessage!({ data: { id, result: { success: true,
+      admission: { ...admission, policy: changeMode ? 'permissive' : 'strict' },
+    } } });
+    if (changeMode) await assert.rejects(pending, /different checking policy/);
+    else assert.equal((await pending).success, true);
+  }
+});

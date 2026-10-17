@@ -259,6 +259,8 @@ struct Model {
   query : String
   selected : String
   evaluation_typed : Bool
+  evaluation_policy : String
+  local_evaluator : String
   evaluation_host_job : Bool
   evaluation_mode : @evaluation.InputMode
   result_mode : @result.Mode
@@ -321,6 +323,7 @@ enum Msg {
   Sample(String)
   SampleLoaded(Int32, String, String)
   EvaluationRuntime(Bool)
+  EvaluationPolicy(String)
   EvaluationMode(@evaluation.InputMode)
   ResultMode(@result.Mode)
   EvaluationEdit(@arguments.Edit)
@@ -472,6 +475,8 @@ fn initial() -> Model {
     query: "",
     selected: "",
     evaluation_typed: false,
+    evaluation_policy: "strict",
+    local_evaluator: "",
     evaluation_host_job: false,
     evaluation_mode: @evaluation.Fields,
     result_mode: @result.Value,
@@ -1374,6 +1379,7 @@ fn select(model : Model, selected : String) -> Model {
     model.model,
     selected,
     model.evaluation_typed,
+    standalone=local_capabilities(model),
   )
   {
     ..model,
@@ -1641,6 +1647,7 @@ fn update_core(
         model.model,
         model.selected,
         evaluation_typed,
+        standalone=local_capabilities(model),
       )
       // Invalidate the request ID as well as resetting the argument document.
       // A held reply from the previous runtime must not replace this result.
@@ -1677,11 +1684,32 @@ fn update_core(
         @cmd.custom_cmd(_ => cancel_host()),
       )
     }
+    EvaluationPolicy(policy) => {
+      if policy == model.evaluation_policy ||
+        (policy != "strict" && policy != "permissive") ||
+        (policy == "permissive" && !checking_available(model)) ||
+        host_job_pending(model) ||
+        host_job_disconnected(model) ||
+        model.submission_unknown {
+        return (model, @cmd.none)
+      }
+      // Editing a selection never changes an in-flight request or its result.
+      (
+        {
+          ..model,
+          evaluation_policy: policy,
+          evaluation_revision: model.evaluation_revision + 1,
+          status: "Checking policy changed",
+        },
+        @cmd.none,
+      )
+    }
     EvaluationMode(evaluation_mode) => {
       let profile = evaluation_profile(
         model.model,
         model.selected,
         model.evaluation_typed,
+        standalone=local_capabilities(model),
       )
       let evaluation_arguments = @arguments.convert_inputs(
         profile,
@@ -1731,8 +1759,14 @@ fn update_core(
         model.model,
         model.selected,
         model.evaluation_typed,
+        standalone=local_capabilities(model),
       )
-      if model.busy ||
+      if (
+          model.evaluation_typed &&
+          model.evaluation_policy == "permissive" &&
+          !checking_available(model)
+        ) ||
+        model.busy ||
         host_job_pending(model) ||
         host_job_disconnected(model) ||
         model.submission_unknown ||
@@ -1838,6 +1872,18 @@ fn update_core(
             ),
             ("arguments", arguments),
             (
+              "admission",
+              if model.evaluation_typed && local_capabilities(model) {
+                object([
+                  ("profile", Json::string("morphir/workbench/admission")),
+                  ("contractVersion", Json::string("0.1.0-draft.1")),
+                  ("policy", Json::string(model.evaluation_policy)),
+                ])
+              } else {
+                Json::null()
+              },
+            ),
+            (
               "argumentsIon",
               if model.evaluation_mode == @evaluation.Ion {
                 Json::string(model.evaluation_arguments)
@@ -1848,7 +1894,9 @@ fn update_core(
             (
               "executionMode",
               Json::string(
-                if model.evaluation_typed {
+                if model.evaluation_typed && local_capabilities(model) {
+                  "capability"
+                } else if model.evaluation_typed {
                   "typed"
                 } else {
                   "local"
@@ -2742,6 +2790,13 @@ fn update_core(
           ..model,
           busy: false,
           connected: field(result, "connected") == Json::boolean(true),
+          local_evaluator: if field(result, "connected") != Json::boolean(true) &&
+            field(result, "jobsAvailable") != Json::boolean(true) &&
+            field(result, "nativeSession") != Json::boolean(true) {
+            text(result, "capabilityEvaluator")
+          } else {
+            ""
+          },
           jobs_available: field(result, "jobsAvailable") == Json::boolean(true),
           workspace_available: field(result, "workspaceAvailable") ==
           Json::boolean(true),
@@ -3768,12 +3823,15 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       @evaluation.view(
         {
           typed: model.evaluation_typed,
+          policy: model.evaluation_policy,
+          policy_available: checking_available(model),
           input_mode: model.evaluation_mode,
           result_mode: model.result_mode,
           profile: evaluation_profile(
             model.model,
             model.selected,
             model.evaluation_typed,
+            standalone=local_capabilities(model),
           ),
           document_key: "evaluation-" +
           model.model_revision.to_string() +
@@ -3802,6 +3860,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         emit.map(edit => EvaluationEdit(edit)),
         emit.map(mode => ResultMode(mode)),
         emit.map(mode => EvaluationRuntime(mode)),
+        emit.map(policy => EvaluationPolicy(policy)),
       ),
     ),
   ])
@@ -4102,14 +4161,66 @@ fn explorer_props(model : Model) -> @explorer.Props {
 }
 
 ///|
-fn evaluation_profile(data : Json, selected : String, typed : Bool) -> Json {
+fn local_capabilities(model : Model) -> Bool {
+  !model.connected &&
+  !model.jobs_available &&
+  model.local_evaluator == "scheme-portable-v1/shared-sdk/bounded"
+}
+
+///|
+fn checking_available(model : Model) -> Bool {
+  let offer = field(model.model, "capabilityEvaluations")
+  let policy = field(offer, "admission")
+  model.evaluation_typed &&
+  local_capabilities(model) &&
+  text(offer, "evaluator") == model.local_evaluator &&
+  text(policy, "profile") == "morphir/workbench/admission" &&
+  text(policy, "contractVersion") == "0.1.0-draft.1" &&
+  field(policy, "policies") == (["strict", "permissive"] : Json) &&
+  field(
+    field(
+      field(offer, "entries"),
+      model.selected
+      .strip_prefix("value|")
+      .unwrap_or(model.selected[:])
+      .to_owned(),
+    ),
+    "supported",
+  ) ==
+  Json::boolean(true)
+}
+
+///|
+fn evaluation_profile(
+  data : Json,
+  selected : String,
+  typed : Bool,
+  standalone~ : Bool = false,
+) -> Json {
   let profiles = if typed {
-    let manifest = field(data, "typedEvaluations")
+    let manifest = field(
+      data,
+      if standalone {
+        "capabilityEvaluations"
+      } else {
+        "typedEvaluations"
+      },
+    )
     let entry = field(
       field(manifest, "entries"),
       selected.strip_prefix("value|").unwrap_or(selected[:]).to_owned(),
     )
     if entry == Json::null() {
+      // A bounded local description inventory must not remove a previously
+      // supported strict entry from the complete generated manifest. It grants
+      // no permissive offer; checking_available uses the selected local closure.
+      let legacy = field(
+        field(field(data, "typedEvaluations"), "entries"),
+        selected.strip_prefix("value|").unwrap_or(selected[:]).to_owned(),
+      )
+      if standalone && field(legacy, "supported") == Json::boolean(true) {
+        return legacy
+      }
       return object([
         ("supported", Json::boolean(false)),
         (

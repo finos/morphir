@@ -82,6 +82,53 @@ test "a module typed evaluation cannot take still compiles, and keeps the reason
 }
 
 ///|
+test "selected typed evaluation keeps a compiled model whose generation failed" {
+  let reply = compile_records("moonbit")
+  assert_eq(@wire.field(reply, "success"), Json::boolean(true))
+  assert_true(
+    @wire.array(@wire.field(reply, "generationDiagnostics")).length() > 0,
+  )
+  let entries = @wire.field(
+    @wire.field(reply, "capabilityEvaluations"),
+    "entries",
+  )
+  assert_eq(
+    @wire.field(
+      @wire.field(entries, "parity/records:points#origin"),
+      "supported",
+    ),
+    Json::boolean(true),
+  )
+  assert_eq(
+    @wire.field(
+      @wire.field(entries, "parity/records:points#read-x"),
+      "supported",
+    ),
+    Json::boolean(false),
+  )
+  let result = @pipeline.execute({
+    "operation": "evaluate",
+    "executionMode": "capability",
+    "source": @wire.field(reply, "irSource"),
+    "entry": "parity/records:points#origin",
+    "arguments": [],
+    "admission": {
+      "profile": "morphir/workbench/admission",
+      "contractVersion": "0.1.0-draft.1",
+      "policy": "permissive",
+    },
+  })
+  assert_eq(@wire.field(result, "success"), Json::boolean(true))
+  assert_eq(@wire.field(result, "typed"), {
+    "type": "record",
+    "fields": [
+      { "name": "x", "value": { "type": "int", "value": "0" } },
+      { "name": "y", "value": { "type": "int", "value": "0" } },
+    ],
+  })
+}
+
+///|
 fn failed_with_code(reply : Json) -> Bool {
   match
     (

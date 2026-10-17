@@ -119,6 +119,14 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
     }
     if operation == "evaluate" {
       stage = "evaluate"
+      if @wire.optional(request, "executionMode") ==
+        Some(@wire.text("capability")) {
+        return evaluate_capabilities(file, request)
+      }
+      if @wire.optional(request, "admission").unwrap_or(Json::null()) !=
+        Json::null() {
+        raise @scheme.Invalid("Checking policy is unavailable for this runtime")
+      }
       if @wire.optional(request, "executionMode") == Some(@wire.text("typed")) {
         return evaluate_typed(file, request)
       }
@@ -136,6 +144,7 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
       ("nodes", Json::array(describe(file))),
       ("evaluations", evaluation_profiles(file)),
       ("typedEvaluations", typed_profiles(file)),
+      ("capabilityEvaluations", capability_profiles(file)),
       ("package", @wire.text(package_name.to_canonical())),
       ("distributionKind", @wire.text(distribution_kind)),
       ("formatVersion", @wire.text(file.format_version.to_release_string())),

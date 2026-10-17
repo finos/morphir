@@ -23,10 +23,12 @@ export class LocalAdapter {
   async initialize() {
     const catalog = await this.execute({ operation: 'catalog', source: '' });
     if (!catalog.success || !Array.isArray(catalog.frontends) || !Array.isArray(catalog.targets)) throw new Error(catalog.message || 'The local compiler catalog is unavailable.');
-    return { success: true, operation: 'initialize', connected: false, catalog: { ...catalog, frontends: catalog.frontends, targets: catalog.targets }, projects: [], message: 'Browser local · ready to compile' };
+    return { success: true, operation: 'initialize', connected: false, capabilityEvaluator: catalog.capabilityEvaluator, catalog: { ...catalog, frontends: catalog.frontends, targets: catalog.targets }, projects: [], message: 'Browser local · ready to compile' };
   }
   execute(request: WorkRequest, _progress?: Progress): Promise<WorkResult> {
     this.cancel();
+    const capability = request.executionMode === 'capability';
+    const checkingPolicy = isRecord(request.admission) ? request.admission.policy : 'strict';
     if (request.sourceBase64 !== undefined && (typeof request.sourceBase64 !== 'string' || request.sourceBase64.length > Math.ceil(16 * 1024 * 1024 / 3) * 4 ||
         request.operation !== 'inspect' || !['morphir-json', 'ion-text', 'ion-binary'].includes(request.sourceCodec ?? ''))) {
       return Promise.reject(new Error('Model bytes must use a supported codec and fit the 16 MiB import limit.'));
@@ -60,7 +62,16 @@ export class LocalAdapter {
       const timer = setTimeout(() => finish(new Error('Local execution timed out after 15 seconds.')), this.timeout);
       this.active = { id, cancel: () => finish(new Error('Cancelled')) };
       worker.onmessage = ({ data }) => {
-        if (data.id === id) finish(null, data.result);
+        if (data.id !== id) return;
+        if (capability && (data.result.success || data.result.terminalOutcomes || data.result.admission)) {
+          const actual = data.result.admission;
+          if (!isRecord(actual) || Object.keys(actual).length !== 3 || actual.profile !== 'morphir/workbench/admission'
+              || actual.contractVersion !== '0.1.0-draft.1' || actual.policy !== checkingPolicy) {
+            finish(new Error('The local runtime returned a different checking policy.'));
+            return;
+          }
+        }
+        finish(null, data.result);
       };
       worker.onerror = () => finish(new Error('The local runtime worker failed.'));
       try { worker.postMessage({ id, request }); } catch (cause) { const error = workbenchError(cause); finish(error); }
@@ -205,6 +216,9 @@ export class ConnectedAdapter {
       message: this.workspaceMessage || (this.catalog.frontends.length ? 'Connected · ready to compile' : 'Connected · no compiler is advertised') };
   }
   async execute(request: WorkRequest, progress?: Progress): Promise<WorkResult> {
+    if (request.executionMode === 'capability' || request.admission != null) {
+      throw new Error('This connected session does not offer checking-policy selection.');
+    }
     if (request.operation === 'resume-job') return this.jobs!.resume(progress);
     if (request.operation === 'evaluate' && this.jobsAvailable) return this.jobs!.execute(request, progress);
     const epoch = this.epoch;

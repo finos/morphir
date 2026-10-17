@@ -23,6 +23,7 @@ import { explorerWorkflow } from './explorer-workflow.ts';
 import { detailsWorkflow } from './details-workflow.ts';
 import { unzipSync, strFromU8 } from 'fflate';
 import { openSample } from './workbench-steps.ts';
+import { capabilityWorkflow } from './capability-workflow.ts';
 
 // Opt-in acceptance uses a real Rust binary and an isolated provider/workspace.
 // Keep the ordinary fixture workflow independent of Rust tooling.
@@ -555,6 +556,7 @@ try {
   await page.getByRole('button', { name: 'Toggle sidebar' }).click();
 
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await capabilityWorkflow(browser, url);
   await elmWorkflow(page);
   await moonbitWorkflow(page);
   await libraryWorkflow(page);
@@ -759,7 +761,7 @@ try {
   const exportedText = await readFile(await (await typedDownload).path(), 'utf8');
   assert.ok(exportedText.includes('1234567890123456789012345678901234567890'), 'IR export preserves exact integer lexemes');
   await page.locator('.tree-item[title="pricing:quotes#captured"]').click();
-  await page.getByText('Typed evaluation requires a public entry', { exact: false }).waitFor();
+  await page.getByText('Unsupported input/output boundary: execution.boundary_function', { exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Evaluate', exact: true }).count(), 0);
   await page.locator('.tree-item[title="pricing:quotes#difference"]').click();
   // Hold a worker callback across a runtime switch; the new request ID rejects it.

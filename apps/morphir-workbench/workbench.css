@@ -477,3 +477,6 @@ kbd.shortcut { display:inline-block; min-width:18px; padding:0 5px; border:1px s
 @media (hover:none),(pointer:coarse) { .artifact-more { opacity:1; } }
 .artifact-readonly.artifact-view { color:var(--link-strong); font-weight:600; }
 .artifact-back { font-size:11px; min-height:24px; padding:2px 6px; white-space:nowrap; }
+
+.checking-policy { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-block: .75rem; }
+.checking-policy select { max-width: 100%; min-width: 0; }

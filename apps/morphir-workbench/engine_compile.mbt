@@ -275,6 +275,7 @@ fn compile_reply(
     ("nodes", Json::array(describe(file))),
     ("evaluations", evaluation_profiles(file)),
     ("typedEvaluations", typed),
+    ("capabilityEvaluations", capability_profiles(file)),
     ("package", @wire.text(package_name.to_canonical())),
     ("distributionKind", @wire.text(distribution_kind)),
     ("formatVersion", @wire.text(file.format_version.to_release_string())),

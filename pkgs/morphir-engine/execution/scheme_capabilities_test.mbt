@@ -287,3 +287,67 @@ test "capability checking retains omitted strict and frozen selected behavior" {
     ),
   )
 }
+
+///|
+test "capability plans validate SDK Int32 inputs and captured completion bounds" {
+  let unit = @data.IRUnit::new("bounded", @fixtures.invocation_library())
+  for policy in [@execution.Strict, @execution.Permissive] {
+    for value in ["-2147483649", "2147483648"] {
+      let suite : @protocol.Suite = {
+        extensions: None,
+        calls: [
+          {
+            id: "bounded",
+            entry: "calls:main#signed32",
+            arguments: [int32_boundary(value)],
+          },
+        ],
+      }
+      try
+        ignore(@execution.plan_scheme_capabilities(unit, suite, policy~))
+      catch {
+        @protocol.Invalid(code) => assert_eq(code, "execution.int32_range")
+        error => raise error
+      } noraise {
+        _ => fail("Invalid SDK input must fail before execution")
+      }
+    }
+    let suite : @protocol.Suite = {
+      extensions: None,
+      calls: [
+        {
+          id: "bounded",
+          entry: "calls:main#signed32",
+          arguments: [int32_boundary("0")],
+        },
+      ],
+    }
+    let plan = @execution.plan_scheme_capabilities(unit, suite, policy~)
+    for value in ["-2147483649", "2147483648"] {
+      try plan.validate_outputs([int32_boundary(value)]) catch {
+        @protocol.Invalid(code) => assert_eq(code, "execution.int32_range")
+        error => raise error
+      } noraise {
+        _ => fail("Invalid SDK output must not be published")
+      }
+      let outcomes : @protocol.Outcomes = {
+        calls: [{ id: "bounded", outcome: Returned(int32_boundary(value)), }],
+        cleanup: None,
+        extensions: None,
+      }
+      try plan.validate_outcomes(outcomes) catch {
+        @protocol.Invalid(code) => assert_eq(code, "execution.int32_range")
+        error => raise error
+      } noraise {
+        _ => fail("Invalid SDK completion must not be published")
+      }
+    }
+    for value in ["-2147483648", "2147483647"] {
+      plan.validate_outcomes({
+        calls: [{ id: "bounded", outcome: Returned(int32_boundary(value)), }],
+        cleanup: None,
+        extensions: None,
+      })
+    }
+  }
+}

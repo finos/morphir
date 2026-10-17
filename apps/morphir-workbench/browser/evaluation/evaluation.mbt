@@ -21,6 +21,8 @@ pub(all) struct Props {
   jobs_available : Bool
   job_pending : Bool
   typed : Bool
+  policy : String
+  policy_available : Bool
   input_mode : InputMode
   result_mode : @result.Mode
 }
@@ -338,6 +340,7 @@ pub fn view(
   on_edit : @cmd.Emit[@arguments.Edit],
   on_result_mode : @cmd.Emit[@result.Mode],
   on_runtime : @cmd.Emit[Bool],
+  on_policy : @cmd.Emit[String],
 ) -> @html.Html {
   let heading : Array[@html.Html] = [@html.h3("Evaluate function")]
   if !props.connected {
@@ -369,6 +372,48 @@ pub fn view(
   let contents : Array[@html.Html] = [
     @html.div(class="evaluation-heading", heading),
   ]
+  let incompatible = props.typed &&
+    props.policy == "permissive" &&
+    !props.policy_available
+  if props.typed {
+    contents.push(
+      @html.label(class="checking-policy small", [
+        @html.span("Capability checks"),
+        @html.select(
+          disabled=props.job_pending,
+          attrs=@html.Attrs::build()
+            .aria_label("Capability checks")
+            .value_prop(props.policy),
+          on_change=on_policy,
+          [
+            @html.option(
+              value="strict",
+              selected=props.policy == "strict",
+              "Whole model before running",
+            ),
+            @html.option(
+              value="permissive",
+              selected=props.policy == "permissive",
+              disabled=!props.policy_available,
+              "As code executes",
+            ),
+          ],
+        ),
+      ]),
+    )
+    if incompatible || !props.policy_available {
+      contents.push(
+        @html.p(
+          class="small muted",
+          if incompatible {
+            "The selected checking policy is unavailable for this runtime or function. Choose whole-model checks or return to a supported local typed function. Your inputs are retained."
+          } else {
+            "Checking as code executes is unavailable for this runtime or function. Whole-model checks remain selected."
+          },
+        ),
+      )
+    }
+  }
   let supported = field(props.profile, "supported") == Json::boolean(true)
   if props.connected && !props.jobs_available {
     contents.push(
@@ -508,7 +553,7 @@ pub fn view(
       @html.div(class="evaluation-actions", [
         @html.button(
           class="primary",
-          disabled=props.busy || props.job_pending,
+          disabled=props.busy || props.job_pending || incompatible,
           on_click=on_run,
           "Evaluate",
         ),
@@ -522,61 +567,71 @@ pub fn view(
         ),
       ]),
     )
-    if props.result != Json::null() {
-      contents.push(
-        @html.div(
-          class=if props.stale {
-            "evaluation-result stale"
-          } else if props.terminal is Valid(summary) && summary.has_value() {
-            "evaluation-result"
-          } else if props.terminal is Valid(summary) &&
-            summary.calls.all(c => c.kind == @outcomes.Cancelled) {
-            "evaluation-result cancelled"
-          } else if field(props.result, "success") != Json::boolean(true) {
-            "evaluation-result failed"
-          } else {
-            "evaluation-result"
-          },
-          [
-            @html.p(
-              class="small muted",
-              if props.stale {
-                "Inputs changed · evaluate again"
-              } else if props.terminal is Valid(summary) && !summary.has_value() {
-                summary.heading()
-              } else if props.terminal is Valid(summary) &&
-                summary.cleanup != None {
-                "Result · " + text(props.result, "profile")
-              } else if field(props.result, "success") == Json::boolean(true) {
-                if props.typed {
-                  "Result · " +
-                  text(props.result, "profile") +
-                  (if text(props.result, "outcome") == "model-error" {
-                    " · model error"
-                  } else {
-                    ""
-                  })
+  }
+  if props.result != Json::null() {
+    contents.push(
+      @html.div(
+        class=if props.stale {
+          "evaluation-result stale"
+        } else if props.terminal is Valid(summary) && summary.has_value() {
+          "evaluation-result"
+        } else if props.terminal is Valid(summary) &&
+          summary.calls.all(c => c.kind == @outcomes.Cancelled) {
+          "evaluation-result cancelled"
+        } else if field(props.result, "success") != Json::boolean(true) {
+          "evaluation-result failed"
+        } else {
+          "evaluation-result"
+        },
+        [
+          @html.p(
+            class="small muted evaluation-result-heading",
+            if props.stale {
+              "Inputs changed · evaluate again"
+            } else if props.terminal is Valid(summary) && !summary.has_value() {
+              summary.heading()
+            } else if props.terminal is Valid(summary) &&
+              summary.cleanup != None {
+              "Result · " + text(props.result, "profile")
+            } else if field(props.result, "success") == Json::boolean(true) {
+              if props.typed {
+                "Result · " +
+                text(props.result, "profile") +
+                (if text(props.result, "outcome") == "model-error" {
+                  " · model error"
                 } else {
-                  "Result · local runtime"
-                }
+                  ""
+                })
               } else {
-                "Evaluation failed"
-              },
-            ),
-            @terminal_view.view(props.terminal),
-            @result.view(
-              {
-                result: props.result,
-                terminal: props.terminal,
-                document_key: props.document_key + "-result",
-                mode: props.result_mode,
-              },
-              on_result_mode,
-            ),
-          ],
-        ),
-      )
-    }
+                "Result · local runtime"
+              }
+            } else {
+              "Evaluation failed"
+            },
+          ),
+          @html.p(
+            hidden=text(field(props.result, "admission"), "policy") == "",
+            class="small muted captured-policy",
+            "Run checks · " +
+            (if text(field(props.result, "admission"), "policy") == "permissive" {
+              "As code executes"
+            } else {
+              "Whole model before running"
+            }),
+          ),
+          @terminal_view.view(props.terminal),
+          @result.view(
+            {
+              result: props.result,
+              terminal: props.terminal,
+              document_key: props.document_key + "-result",
+              mode: props.result_mode,
+            },
+            on_result_mode,
+          ),
+        ],
+      ),
+    )
   }
   @html.section(class="declaration-section function-evaluation", contents)
 }

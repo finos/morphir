@@ -146,6 +146,9 @@ export class NativeAdapter {
     return { ...result, nativeSession: true, workspaceAvailable: !!this.workspace, jobsAvailable: !!this.jobsAvailable, message: 'Desktop local · ready to compile' };
   }
   async execute(request: WorkRequest, progress?: Progress): Promise<WorkResult> {
+    if (request.executionMode === 'capability' || request.admission != null) {
+      throw new Error('This native session does not offer checking-policy selection.');
+    }
     const epoch = ++this.epoch;
     await this.session.check();
     this.current(epoch);

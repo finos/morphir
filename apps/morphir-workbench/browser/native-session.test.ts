@@ -155,3 +155,14 @@ test('equivalent descriptor and nested offer member order preserves authority', 
   const s = session(f => f.operation === 'session.open' ? d : reordered);
   await s.open(); await s.check();
 });
+
+test('native mapping refuses checking-policy requests before any local fallback', async () => {
+  const worker = local();
+  const adapter = new NativeAdapter(worker, bridge(), undefined, { core: core() });
+  for (const request of [
+    { operation: 'evaluate', source: '{}', executionMode: 'capability' },
+    { operation: 'evaluate', source: '{}', executionMode: 'typed', admission: { policy: 'permissive' } },
+  ]) await assert.rejects(adapter.execute(request), /does not offer checking-policy/);
+  assert.equal(worker.calls.length, 0);
+  adapter.dispose();
+});

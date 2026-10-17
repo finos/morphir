@@ -5,6 +5,7 @@ import {
   "finos/morphir-engine/data",
   "finos/morphir-execution",
   "finos/morphir-execution/observability",
+  "finos/morphir-ir/versions/v4",
   "finos/morphir-moonbit",
   "moonbitlang/core/debug",
   "moonrockz/ion/ion",
@@ -22,6 +23,8 @@ pub fn plan_scheme_capabilities(@data.IRUnit, @morphir-execution.Suite, policy? 
 pub fn run(Plan, Provider, evaluator? : Evaluator?, observer? : @observability.Observer, cancelled? : () -> Bool, comparison? : @morphir-execution.ComparisonPolicy) -> Report raise
 
 pub fn run_report(Plan, Provider, evaluator? : Evaluator?, observer? : @observability.Observer, cancelled? : () -> Bool, comparison? : @morphir-execution.ComparisonPolicy) -> Report raise
+
+pub fn scheme_entry_boundary(@v4.IRFile, String) -> (@morphir-execution.PublicEntry, Array[@morphir-execution.CustomType]) raise
 
 // Errors
 pub(all) suberror LifecycleError {

@@ -309,7 +309,7 @@ export async function terminalOutcomeWorkflow(page: Page, { resize = true, scree
     await fixture({status:'failed',failure:{stage:'evaluate',code:'execution.evaluate',message:'Fixture evaluation failed'}}, cleanup);
     await result.locator('.terminal-call.failed').waitFor();
     assert.equal(await result.locator('.terminal-kind').textContent(), 'Failed');
-    assert.equal(await result.locator(':scope > p').textContent(), 'Failed · Cleanup failed');
+    assert.equal(await result.locator('.evaluation-result-heading').textContent(), 'Failed · Cleanup failed');
     assert.equal(await page.locator('#evaluation-output').count(), 0, 'A failed terminal has no invented value editor');
     await open(diagnostics);
     const causes = body.locator('.tool-report.current').filter({hasText:'execution.evaluate'});
@@ -318,7 +318,7 @@ export async function terminalOutcomeWorkflow(page: Page, { resize = true, scree
     await fixture({status:'cancelled'}, cleanup);
     await result.locator('.terminal-call.cancelled').waitFor();
     assert.equal(await result.locator('.terminal-kind').textContent(), 'Cancelled');
-    assert.equal(await result.locator(':scope > p').textContent(), 'Cancelled · Cleanup failed');
+    assert.equal(await result.locator('.evaluation-result-heading').textContent(), 'Cancelled · Cleanup failed');
     assert.match((await result.locator('.terminal-cleanup').textContent()!)!, /provider.dispose/);
     await fixture({status:'returned',value:{type:'bool',value:true}}, null, 'wrong-call');
     await result.locator('.terminal-invalid').waitFor();

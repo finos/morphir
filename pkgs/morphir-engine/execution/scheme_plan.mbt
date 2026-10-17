@@ -36,8 +36,16 @@ pub fn SchemePlan::policy(self : SchemePlan) -> AdmissionPolicy {
 ///|
 /// Fresh observation only; editing it cannot change the admitted declarations.
 pub fn SchemePlan::boundary_json(self : SchemePlan) -> Json {
+  scheme_boundary_json(self.entries, self.definitions)
+}
+
+///|
+fn scheme_boundary_json(
+  entries : Array[@protocol.PublicEntry],
+  definitions : Array[@protocol.CustomType],
+) -> Json {
   {
-    "entries": self.entries.map(entry => {
+    "entries": entries.map(entry => {
       (
         {
           "name": entry.name,
@@ -45,7 +53,7 @@ pub fn SchemePlan::boundary_json(self : SchemePlan) -> Json {
           "output": entry.output.to_json(),
         } : Json)
     }),
-    "definitions": self.definitions.map(definition => {
+    "definitions": definitions.map(definition => {
       (
         {
           "name": definition.name,
@@ -135,6 +143,7 @@ pub fn SchemePlan::validate_outputs(
       self.definitions,
       output=true,
     )
+    validate_sdk_boundary(values[i])
   }
 }
 
@@ -243,6 +252,26 @@ fn selected_boundaries(
   let names = context.definitions.keys().collect()
   names.sort_by(fn(a, b) { a.lexical_compare(b) })
   (entries, names.map(name => context.definitions[name]))
+}
+
+///|
+/// Discover one complete public type boundary without compiling executable code.
+/// This is an input-editor description, not permission to execute. A run must
+/// still use plan_scheme_capabilities to validate its source, inputs and policy.
+pub fn scheme_entry_boundary(
+  file : @ir.IRFile,
+  entry : String,
+) -> (@protocol.PublicEntry, Array[@protocol.CustomType]) raise {
+  let suite = @protocol.Suite::from_json({
+    "profile": "morphir-invocations-v1",
+    "calls": [{ "id": "boundary", "entry": entry, "arguments": [] }],
+  })
+  let (entries, definitions) = selected_boundaries(file, suite)
+  if @utf8.encode(scheme_boundary_json(entries, definitions).stringify()).length() >
+    1048576 {
+    raise AdmissionInvalid("execution.type_limit")
+  }
+  (entries[0], definitions)
 }
 
 ///|

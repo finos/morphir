@@ -18,6 +18,7 @@ export interface WorkRequest {
   /** The text files of an `import-folder` request. */
   files?: unknown;
   executionMode?: string;
+  admission?: Json;
 }
 /** A project as the browser sends it to the local worker. */
 export interface ProjectPayload { files?: unknown; [field: string]: unknown }
@@ -35,9 +36,11 @@ export interface WorkResult {
   value?: Json;
   typed?: { type: string; value?: Json; [field: string]: Json | undefined };
   terminalOutcomes?: Json;
+  admission?: Json;
   operation?: string;
   message?: string;
   connected?: boolean;
+  capabilityEvaluator?: string;
   catalog?: Catalog;
   frontends?: Language[];
   targets?: Target[];

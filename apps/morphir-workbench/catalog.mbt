@@ -89,6 +89,7 @@ fn catalog(engine : @engine.Engine) -> Json {
   ]
   @wire.obj([
     ("success", Json::boolean(true)),
+    ("capabilityEvaluator", @wire.text("scheme-portable-v1/shared-sdk/bounded")),
     ("frontends", Json::array(frontends)),
     ("targets", Json::array(targets)),
   ])
