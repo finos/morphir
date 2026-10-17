@@ -509,6 +509,23 @@ fn emit_package(
       if hints.get(canonical) is Some(comment) {
         emitted.forms.push(comment)
       }
+      if definition.value.doc is Some(doc) && doc != "" {
+        for
+          line in doc
+          .split("\r\n")
+          .join("\n")
+          .split("\r")
+          .join("\n")
+          .split("\n") {
+          emitted.forms.push(
+            if line == "" {
+              ";"
+            } else {
+              "; " + line.to_owned()
+            },
+          )
+        }
+      }
       emitted.forms.push(
         "(define " + symbol + " (lambda () " + implementation + "))",
       )

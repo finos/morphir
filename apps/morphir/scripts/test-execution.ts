@@ -23,7 +23,7 @@ try {
   const fixture=JSON.parse(run(moon,['run','--target','js','pkgs/morphir-moonbit/acceptance']).stdout);
   const model=join(root,'model.json'), suite=join(root,'calls.ion'), binary=join(root,'calls.ionb');
   writeFileSync(model,fixture.invocationIR);writeFileSync(binary,Buffer.from(fixture.invocationSuite));
-  writeFileSync(suite,'{profile:"morphir-invocations-v1",calls:[{id:"subtract",entry:"calls:main#subtract",arguments:[9007199254741035,9007199254740993]},{id:"boolean",entry:"calls:main#boolean",arguments:[false]},{id:"unit",entry:"calls:main#unit",arguments:[morphir_unit::null]}]}');
+  writeFileSync(suite,'{profile:"morphir-invocations-v1",calls:[{id:"subtract",entry:"calls:main#subtract",arguments:[9007199254741035,9007199254740993]},{id:"boolean",entry:"calls:main#boolean",arguments:[false]},{id:"unit",entry:"calls:main#unit",arguments:[morphir_unit::null]},{id:"int32-min",entry:"calls:main#signed32",arguments:[morphir_value::{type:"custom",owner:"morphir/SDK:int#int-32",tag:"morphir/SDK:int#int32",items:[{type:"int",value:"-2147483648"}]}]},{id:"int32-max",entry:"calls:main#signed32",arguments:[morphir_value::{type:"custom",owner:"morphir/SDK:int#int-32",tag:"morphir/SDK:int#int32",items:[{type:"int",value:"2147483647"}]}]}]}');
   const helper=join(app,'build-provider/execution.mjs');
   const dependencies=['finos/morphir-sdk=pkgs/morphir-sdk','finos/morphir-execution=pkgs/morphir-execution','moonrockz/ion=.mooncakes/moonrockz/ion','moonbitlang/x=.mooncakes/moonbitlang/x','moonbitlang/async=.mooncakes/moonbitlang/async'].flatMap(v=>['--dependency',v]);
   const options=['--home',home,...dependencies];
@@ -41,9 +41,15 @@ try {
     const result=JSON.parse(run(program!,[...prefix,'verify',model,'--suite',suite,'--execution-helper',helper,...targetOptions(target),'--target',target,'--log-file',log,'--json']).stdout);
     assert.equal(result.successful,true);assert.equal(result.calls[0].actual.value,'42');assert.equal(result.calls[1].actual.value,false);assert.equal(result.calls[2].actual.type,'unit');
     assert.deepEqual([...readFileSync(log).subarray(0,4)],[0xe0,1,0,0xea]);
+    assert.equal(result.calls[3].actual.owner,'morphir/SDK:int#int-32');assert.equal(result.calls[3].actual.items[0].value,'-2147483648');assert.equal(result.calls[4].actual.items[0].value,'2147483647');
     assert.equal(result.target,target);assert.equal(result.evidence.capability.backend,target==='native'?'c':target);
     assert.equal(result.evidence.capability.protocol,'morphir-invocations-v1/ion-binary');
     assert.ok(!existsSync(result.evidence.executable),'Disposed session retains executable');
+    }
+    for (const value of ['-2147483649','2147483648']) {
+      const invalid32=join(root,'invalid-int32.ion');
+      writeFileSync(invalid32,`{profile:"morphir-invocations-v1",calls:[{id:"outside",entry:"calls:main#signed32",arguments:[morphir_value::{type:"custom",owner:"morphir/SDK:int#int-32",tag:"morphir/SDK:int#int32",items:[{type:"int",value:"${value}"}]}]}]}`);
+      assert.match(run(program,[...prefix,'verify',model,'--suite',invalid32,'--execution-helper',helper,...options,'--target','js','--json'],2).stderr,/execution.int32_range/);
     }
     const dry=join(root,'dry-log');
     const plan=JSON.parse(run(program!,[...prefix,'verify',model,'--suite',suite,'--dry-run','--log-file',dry,'--json']).stdout);
@@ -172,8 +178,8 @@ process.stdout.write(result.stdout);process.stderr.write(result.stderr);process.
   npm(['install','--ignore-scripts','--no-audit','--no-fund','--offline','--prefix',install,join(root,packed.filename)],repo);
   const installed=join(install,'node_modules/@morphir/morphir');
   for(const target of targets) {
-  const output=JSON.parse(run(process.execPath,[join(installed,'bin/morphir.js'),'verify',model,'--suite',binary,'--execution-helper',join(installed,'build-provider/execution.mjs'),...targetOptions(target),'--target',target,'--json']).stdout);
-  assert.equal(output.calls[0].actual.value,'42');assert.equal(output.successful,true);
+  const output=JSON.parse(run(process.execPath,[join(installed,'bin/morphir.js'),'verify',model,'--suite',suite,'--execution-helper',join(installed,'build-provider/execution.mjs'),...targetOptions(target),'--target',target,'--json']).stdout);
+  assert.equal(output.calls[0].actual.value,'42');assert.equal(output.successful,true);assert.equal(output.calls[3].actual.items[0].value,'-2147483648');assert.equal(output.calls[4].actual.items[0].value,'2147483647');
   }
-  console.log(JSON.stringify({successful:true,hosts:['native','node','installed-npm'],targets,llvm:llvmHome?'explicit-pin':'not-selected',exactIntegers:true,bool:true,unit:true,ionLogs:true,jsonLines:true,dryRun:true,failedSink:true,cleanup:true,mismatchExit:true,driverReuse:true}));
+  console.log(JSON.stringify({successful:true,hosts:['native','node','installed-npm'],targets,llvm:llvmHome?'explicit-pin':'not-selected',exactIntegers:true,signedInt32:true,int32RangeRefusal:true,bool:true,unit:true,ionLogs:true,jsonLines:true,dryRun:true,failedSink:true,cleanup:true,mismatchExit:true,driverReuse:true}));
 } finally {rmSync(root,{recursive:true,force:true});}

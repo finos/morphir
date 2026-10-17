@@ -180,3 +180,131 @@ test "planning requires an explicitly available LLVM capability" {
     assert_eq(@execution.plan(unit, suite, target~).target, target)
   }
 }
+
+///|
+test "Scheme Int32 boundary preserves min and max and rejects out of range identity inputs" {
+  let unit = @fixtures.invocation_library()
+  let library = @moonbit.generate(@moonbit.Input::new("bounded", unit))
+  let expected = @protocol.Custom("morphir/SDK:int#int-32")
+  fn bounded(value : String) -> @protocol.Value raise {
+    @protocol.Value::from_json({
+      "type": "custom",
+      "owner": "morphir/SDK:int#int-32",
+      "tag": "morphir/SDK:int#int32",
+      "items": [{ "type": "int", "value": value }],
+    })
+  }
+  for value in ["-2147483648", "0", "2147483647"] {
+    let argument = bounded(value)
+    let call : @protocol.Call = {
+      id: "bounded",
+      entry: "calls:main#signed32",
+      arguments: [argument],
+    }
+    assert_eq(
+      (@execution.Evaluator::scheme().evaluate)(
+        @data.IRUnit::new("bounded", unit),
+        call,
+        expected,
+        library.invocation_types,
+      ),
+      argument,
+    )
+  }
+  for value in ["-2147483649", "2147483648"] {
+    let call : @protocol.Call = {
+      id: "bounded",
+      entry: "calls:main#signed32",
+      arguments: [bounded(value)],
+    }
+    try
+      ignore(
+        (@execution.Evaluator::scheme().evaluate)(
+          @data.IRUnit::new("bounded", unit),
+          call,
+          expected,
+          library.invocation_types,
+        ),
+      )
+    catch {
+      @protocol.Invalid(code) => assert_eq(code, "execution.int32_range")
+      error => raise error
+    } noraise {
+      _ => fail("Expected bounded Int32 rejection")
+    }
+  }
+}
+
+///|
+fn int32_boundary(value : String) -> @protocol.Value raise {
+  @protocol.Value::from_json({
+    "type": "custom",
+    "owner": "morphir/SDK:int#int-32",
+    "tag": "morphir/SDK:int#int32",
+    "items": [{ "type": "int", "value": value }],
+  })
+}
+
+///|
+test "Int32 planning rejects out of range arguments before acquiring a provider" {
+  for value in ["-2147483649", "2147483648"] {
+    let suite : @protocol.Suite = {
+      extensions: None,
+      calls: [
+        {
+          id: "outside",
+          entry: "calls:main#signed32",
+          arguments: [int32_boundary(value)],
+        },
+      ],
+    }
+    try
+      ignore(
+        @execution.plan(
+          @data.IRUnit::new("bounded", @fixtures.invocation_library()),
+          suite,
+        ),
+      )
+    catch {
+      @protocol.Invalid(code) => assert_eq(code, "execution.int32_range")
+      error => raise error
+    } noraise {
+      _ => fail("Expected bounded argument refusal during planning")
+    }
+  }
+}
+
+///|
+test "Int32 results are range checked without a comparison evaluator" {
+  let suite : @protocol.Suite = {
+    extensions: None,
+    calls: [
+      {
+        id: "bounded",
+        entry: "calls:main#signed32",
+        arguments: [int32_boundary("0")],
+      },
+    ],
+  }
+  let plan = @execution.plan(
+    @data.IRUnit::new("bounded", @fixtures.invocation_library()),
+    suite,
+  )
+  let disposed = Ref(false)
+  let provider : @execution.Provider = {
+    targets: ["js"],
+    acquire: () => {
+      id: "bounded-result",
+      build: fn(_, _) { Json::null() },
+      invoke: (_, _) => {
+        values: [int32_boundary("2147483648")],
+        evidence: Json::null(),
+      },
+      dispose: fn() { disposed.val = true },
+    },
+  }
+  let report = @execution.run_report(plan, provider)
+  assert_false(report.successful())
+  assert_true(report.to_json().stringify().contains("execution.int32_range"))
+  assert_true(disposed.val)
+}

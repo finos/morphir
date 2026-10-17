@@ -1,4 +1,5 @@
 import {
+  "finos/morphir-sdk-spec" @sdk_spec,
   "finos/morphir-execution/diagnostics",
   "finos/morphir-execution/observability" @observe,
   "finos/morphir-ir" @ir,

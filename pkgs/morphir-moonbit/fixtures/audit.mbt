@@ -7,6 +7,12 @@ pub fn acceptance_library() -> @ir.IRFile raise {
   }
   let modules = def.modules.copy()
   let int = scalar("morphir/SDK:basics#int")
+  let int32 = scalar("morphir/SDK:int#int-32")
+  let maybe_int32 = @ir.Type::Reference(
+    ta(),
+    @ir.FQName::parse("morphir/SDK:maybe#maybe"),
+    [int32],
+  )
   let dec = scalar("morphir/SDK:decimal#decimal")
   let bool = scalar("morphir/SDK:basics#bool")
   let float = scalar("morphir/SDK:basics#float")
@@ -27,7 +33,173 @@ pub fn acceptance_library() -> @ir.IRFile raise {
     @ir.FQName::parse("morphir/SDK:maybe#maybe"),
     [dec],
   )
+  let list_text = @ir.Type::Reference(
+    ta(),
+    @ir.FQName::parse("morphir/SDK:list#list"),
+    [text],
+  )
+  let list_character = @ir.Type::Reference(
+    ta(),
+    @ir.FQName::parse("morphir/SDK:list#list"),
+    [character],
+  )
+  let maybe_float = @ir.Type::Reference(
+    ta(),
+    @ir.FQName::parse("morphir/SDK:maybe#maybe"),
+    [float],
+  )
+  let maybe_pair = @ir.Type::Reference(
+    ta(),
+    @ir.FQName::parse("morphir/SDK:maybe#maybe"),
+    [@ir.Type::Tuple(ta(), [character, text])],
+  )
   let rows = [
+    (
+      "string-all",
+      "morphir/SDK:string#all",
+      arrow(arrow(character, bool), arrow(text, bool)),
+    ),
+    (
+      "string-any",
+      "morphir/SDK:string#any",
+      arrow(arrow(character, bool), arrow(text, bool)),
+    ),
+    (
+      "string-append",
+      "morphir/SDK:string#append",
+      arrow(text, arrow(text, text)),
+    ),
+    ("string-concat", "morphir/SDK:string#concat", arrow(list_text, text)),
+    (
+      "string-cons",
+      "morphir/SDK:string#cons",
+      arrow(character, arrow(text, text)),
+    ),
+    (
+      "string-contains",
+      "morphir/SDK:string#contains",
+      arrow(text, arrow(text, bool)),
+    ),
+    (
+      "string-drop-left",
+      "morphir/SDK:string#drop-left",
+      arrow(int, arrow(text, text)),
+    ),
+    (
+      "string-drop-right",
+      "morphir/SDK:string#drop-right",
+      arrow(int, arrow(text, text)),
+    ),
+    (
+      "string-ends-with",
+      "morphir/SDK:string#ends-with",
+      arrow(text, arrow(text, bool)),
+    ),
+    (
+      "string-filter",
+      "morphir/SDK:string#filter",
+      arrow(arrow(character, bool), arrow(text, text)),
+    ),
+    (
+      "string-foldl",
+      "morphir/SDK:string#foldl",
+      arrow(arrow(character, arrow(text, text)), arrow(text, arrow(text, text))),
+    ),
+    (
+      "string-foldr",
+      "morphir/SDK:string#foldr",
+      arrow(arrow(character, arrow(text, text)), arrow(text, arrow(text, text))),
+    ),
+    ("string-from-char", "morphir/SDK:string#from-char", arrow(character, text)),
+    ("string-from-float", "morphir/SDK:string#from-float", arrow(float, text)),
+    ("string-from-int", "morphir/SDK:string#from-int", arrow(int, text)),
+    (
+      "string-from-list",
+      "morphir/SDK:string#from-list",
+      arrow(list_character, text),
+    ),
+    (
+      "string-indexes",
+      "morphir/SDK:string#indexes",
+      arrow(text, arrow(text, list_int)),
+    ),
+    (
+      "string-indices",
+      "morphir/SDK:string#indices",
+      arrow(text, arrow(text, list_int)),
+    ),
+    ("string-is-empty", "morphir/SDK:string#is-empty", arrow(text, bool)),
+    (
+      "string-join",
+      "morphir/SDK:string#join",
+      arrow(text, arrow(list_text, text)),
+    ),
+    ("string-left", "morphir/SDK:string#left", arrow(int, arrow(text, text))),
+    ("string-length", "morphir/SDK:string#length", arrow(text, int)),
+    ("string-lines", "morphir/SDK:string#lines", arrow(text, list_text)),
+    (
+      "string-map",
+      "morphir/SDK:string#map",
+      arrow(arrow(character, character), arrow(text, text)),
+    ),
+    (
+      "string-pad",
+      "morphir/SDK:string#pad",
+      arrow(int, arrow(character, arrow(text, text))),
+    ),
+    (
+      "string-pad-left",
+      "morphir/SDK:string#pad-left",
+      arrow(int, arrow(character, arrow(text, text))),
+    ),
+    (
+      "string-pad-right",
+      "morphir/SDK:string#pad-right",
+      arrow(int, arrow(character, arrow(text, text))),
+    ),
+    (
+      "string-repeat",
+      "morphir/SDK:string#repeat",
+      arrow(int, arrow(text, text)),
+    ),
+    (
+      "string-replace",
+      "morphir/SDK:string#replace",
+      arrow(text, arrow(text, arrow(text, text))),
+    ),
+    ("string-reverse", "morphir/SDK:string#reverse", arrow(text, text)),
+    ("string-right", "morphir/SDK:string#right", arrow(int, arrow(text, text))),
+    (
+      "string-slice",
+      "morphir/SDK:string#slice",
+      arrow(int, arrow(int, arrow(text, text))),
+    ),
+    (
+      "string-split",
+      "morphir/SDK:string#split",
+      arrow(text, arrow(text, list_text)),
+    ),
+    (
+      "string-starts-with",
+      "morphir/SDK:string#starts-with",
+      arrow(text, arrow(text, bool)),
+    ),
+    ("string-to-float", "morphir/SDK:string#to-float", arrow(text, maybe_float)),
+    ("string-to-int", "morphir/SDK:string#to-int", arrow(text, maybe_int)),
+    (
+      "string-to-list",
+      "morphir/SDK:string#to-list",
+      arrow(text, list_character),
+    ),
+    ("string-to-lower", "morphir/SDK:string#to-lower", arrow(text, text)),
+    ("string-to-upper", "morphir/SDK:string#to-upper", arrow(text, text)),
+    ("string-trim", "morphir/SDK:string#trim", arrow(text, text)),
+    ("string-trim-left", "morphir/SDK:string#trim-left", arrow(text, text)),
+    ("string-trim-right", "morphir/SDK:string#trim-right", arrow(text, text)),
+    ("string-uncons", "morphir/SDK:string#uncons", arrow(text, maybe_pair)),
+    ("string-words", "morphir/SDK:string#words", arrow(text, list_text)),
+    ("int-to-int32", "morphir/SDK:int#to-int-32", arrow(int, maybe_int32)),
+    ("int-from-int32", "morphir/SDK:int#from-int-32", arrow(int32, int)),
     ("char-to-upper", "morphir/SDK:char#to-upper", arrow(character, character)),
     ("basics-add", "morphir/SDK:basics#add", arrow(int, arrow(int, int))),
     (

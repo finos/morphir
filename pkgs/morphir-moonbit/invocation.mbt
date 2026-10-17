@@ -120,7 +120,7 @@ pub fn invocation_driver(
       content: Text(
         "import {\n" +
         quote(output.project.module_name) +
-        " @model,\n\"finos/morphir-sdk\" @sdk,\n\"finos/morphir-sdk/integer\",\n\"finos/morphir-sdk/decimal\",\n\"finos/morphir-sdk/list\",\n\"finos/morphir-execution\" @execution,\n\"moonbitlang/core/bigint\",\n}\nwarnings = \"-16-29\"\n",
+        " @model,\n\"finos/morphir-sdk\" @sdk,\n\"finos/morphir-sdk/int\",\n\"finos/morphir-sdk/integer\",\n\"finos/morphir-sdk/decimal\",\n\"finos/morphir-sdk/list\",\n\"finos/morphir-execution\" @execution,\n\"moonbitlang/core/bigint\",\n}\nwarnings = \"-16-29\"\n",
       ),
     },
     {

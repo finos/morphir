@@ -11,6 +11,7 @@ readme = "README.md"
 description = "Pure restricted MoonBit source frontend for typed Morphir IR"
 
 import {
+  "finos/morphir-sdk-spec@0.1.0",
   "finos/morphir-execution@0.1.0",
   "finos/morphir-ir@0.1.0",
   "finos/morphir-moonbit@0.1.0",

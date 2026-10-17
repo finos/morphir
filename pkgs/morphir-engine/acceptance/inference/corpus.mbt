@@ -25,9 +25,7 @@ let corpus : Array[(String, String)] = [
 
 ///|
 /// Corpus programs that the MoonBit generator does not support yet, with the error code it must raise. Elm checks
-/// them; `moon build` does not. Follow-ups: `morphir-ukvn.5.22.9` (string SDK), `morphir-ukvn.5.22.10`
-/// (LetRecursion).
+/// them; `moon build` does not. Follow-up: `morphir-ukvn.5.22.10` (LetRecursion).
 let moonbit_gaps : Map[String, String] = {
-  "strings": "moonbit.unsupported_sdk",
   "recursion": "moonbit.unsupported_expression",
 }

@@ -684,3 +684,158 @@ test "a MoonBit library through the scheme backend keeps its metadata and commen
     s.expect(zero, label="zero()").to_equal("#t")
   })
 }
+
+///|
+test "typed foundation and String profiles preserve source facts through Ion checkpoints" {
+  for
+    (profile, source) in [
+      (
+        "moonbit-model-typed-library-foundation-v1", "pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let picked : Int = if flag { a } else { b }; identity(picked) }\nfn identity(value : Int32) -> Int { value }",
+      ),
+      (
+        "moonbit-model-string-library-v1", "// λ😀\npub fn greet(name : String) -> String { let prefix : String = \"Hello, \\u{1f600} \"; prefix + name }",
+      ),
+      (
+        "moonbit-model-library-v1", "pub fn choose(s : String, flag : Bool, a : Int32, b : Int) -> Int32 { let text : String = \"Hello, \" + s; if flag && text == \"Hello, Morphir\" { a } else { b } }",
+      ),
+      (
+        "moonbit-model-library-v2", "pub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }",
+      ),
+      (
+        "moonbit-model-library-2026-10-17", "/// Select by name order.\n///\n/// Preserve signed values. λ😀\npub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }",
+      ),
+    ] {
+    let snapshot = files()
+    snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+      old="language='moonbit'",
+      new="language='moonbit'\nprofile='" + profile + "'",
+    )
+    snapshot["src/Main.mbt"] = source
+    let engine = @engine.Engine::new()
+    @adapter.register(engine)
+    let result = execute(engine, snapshot)
+    assert_true(result.successful())
+    let registry = @data.Registry::new()
+    let unit = registry.decode("ion-binary", {
+      unit_id: "Main",
+      content: result.artifacts[0].content,
+    })
+    let unknown = @ion.IonValue::string("preserve me")
+    let unit = {
+      ..unit,
+      metadata: unit.metadata +
+      [{ node_id: "neighbor:unknown", data: unknown, }],
+    }
+    for format in ["ion-text", "ion-binary"] {
+      let restored = registry.decode(format, {
+        unit_id: "Main",
+        content: registry.encode(format, unit),
+      })
+      assert_eq(restored.distribution, unit.distribution)
+      assert_true(restored.metadata.last().unwrap().data.equals(unknown))
+    }
+  }
+}
+
+///|
+test "source scalar libraries use strict and selected Scheme invocation plans" {
+  let cases : Array[(String, String, Array[Json], Json)] = [
+    (
+      "moonbit-model-typed-library-foundation-v1",
+      "pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { if flag { a } else { b } }",
+      [
+        { "type": "bool", "value": true },
+        {
+          "type": "custom",
+          "owner": "morphir/SDK:int#int-32",
+          "tag": "morphir/SDK:int#int32",
+          "items": [{ "type": "int", "value": "-2147483648" }],
+        },
+        {
+          "type": "custom",
+          "owner": "morphir/SDK:int#int-32",
+          "tag": "morphir/SDK:int#int32",
+          "items": [{ "type": "int", "value": "2147483647" }],
+        },
+      ],
+      (
+        {
+          "type": "custom",
+          "owner": "morphir/SDK:int#int-32",
+          "tag": "morphir/SDK:int#int32",
+          "items": [{ "type": "int", "value": "-2147483648" }],
+        } : Json),
+    ),
+    (
+      "moonbit-model-string-library-v1",
+      "pub fn choose(s : String) -> String { \"Hello \" + s }",
+      [{ "type": "text", "units": [55357, 56832] }],
+      (
+        { "type": "text", "units": [72, 101, 108, 108, 111, 32, 55357, 56832] } :
+        Json),
+    ),
+    (
+      "moonbit-model-library-v1",
+      "pub fn choose(name : String, enabled : Bool, first : Int32, second : Int) -> Int32 { let greeting : String = if enabled { \"Hello, \" + name } else { \"\" }; if greeting == \"Hello, Morphir\" { first } else { second } }",
+      [
+        { "type": "text", "units": [77, 111, 114, 112, 104, 105, 114] },
+        { "type": "bool", "value": true },
+        {
+          "type": "custom",
+          "owner": "morphir/SDK:int#int-32",
+          "tag": "morphir/SDK:int#int32",
+          "items": [{ "type": "int", "value": "-2147483648" }],
+        },
+        {
+          "type": "custom",
+          "owner": "morphir/SDK:int#int-32",
+          "tag": "morphir/SDK:int#int32",
+          "items": [{ "type": "int", "value": "2147483647" }],
+        },
+      ],
+      (
+        {
+          "type": "custom",
+          "owner": "morphir/SDK:int#int-32",
+          "tag": "morphir/SDK:int#int32",
+          "items": [{ "type": "int", "value": "-2147483648" }],
+        } : Json),
+    ),
+    (
+      "moonbit-model-library-v2",
+      "pub fn choose(a : String, b : String) -> Bool { a < b && a <= b && !(a > b) && !(a >= b) }",
+      [{ "type": "text", "units": [98] }, { "type": "text", "units": [97, 97] }],
+      ({ "type": "bool", "value": true } : Json),
+    ),
+  ]
+  for (profile, source, arguments, expected) in cases {
+    let snapshot = files()
+    snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+      old="language='moonbit'",
+      new="language='moonbit'\nprofile='" + profile + "'",
+    )
+    snapshot["src/Main.mbt"] = source
+    let engine = @engine.Engine::new()
+    @adapter.register(engine)
+    let result = execute(engine, snapshot)
+    assert_true(result.successful())
+    let unit = @data.Registry::new().decode("ion-binary", {
+      unit_id: "Main",
+      content: result.artifacts[0].content,
+    })
+    let suite = @protocol.Suite::from_json({
+      "profile": "morphir-invocations-v1",
+      "calls": [
+        {
+          "id": "one",
+          "entry": "pricing:app/main#choose",
+          "arguments": arguments,
+        },
+      ],
+    })
+    for policy in [@execution.Strict, @execution.Permissive] {
+      let plan = @execution.plan_scheme(unit, suite, policy~)
+      assert_eq(plan.evaluate().map(@protocol.Value::to_json), [expected])
+    }
+  }
+}

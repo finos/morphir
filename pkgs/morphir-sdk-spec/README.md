@@ -58,3 +58,13 @@ The IR refuses two parameters with one name, but some morphir-elm signatures hav
 `map5` have `result2` twice. A repeated parameter name takes the next free number, so `result-1`, `result-2`,
 `result-2` becomes `result-1`, `result-2`, `result-3`. The bootstrap and the check use the same rule, so these
 three values have parameter names that differ from `bindings.json`.
+
+## MoonBit source String extension
+
+`source_string_package_name()` and `source_string_specification()` expose the
+separate `morphir/moonbit-source:string` package with `require-valid` and
+`append-bounded`. Their explicit runtime inventory is
+`../morphir-sdk/conformance/moonbit_source_string_extension.json`, profile
+`morphir-moonbit-source-string-v1`. They are compiler lowering targets, not source
+imports or part of the 248 classic SDK values. String source IR carries this
+specification as an explicit dependency.

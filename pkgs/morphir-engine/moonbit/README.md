@@ -1,6 +1,6 @@
 # MoonBit source adapter
 
-This package connects the pure [Boolean frontend](../../morphir-moonbit-frontend/README.md)
+This package connects the pure [source frontend](../../morphir-moonbit-frontend/README.md)
 to the engine's rich source callback. Applications opt in explicitly:
 
 ```moonbit
@@ -10,23 +10,35 @@ let engine = @engine.Engine::new()
 
 Import `finos/morphir-engine/moonbit` as `moonbit_frontend`. The adapter registers
 provider `finos/morphir-moonbit-frontend`, exported as `PROVIDER`, for language
-`moonbit` and `.mbt` files. It offers two profiles:
+`moonbit` and `.mbt` files. It offers seven profiles:
 
 | Profile | Source behavior |
 | --- | --- |
-| `moonbit-model-bool-v1`, default | One function with explicit Bool signature, literals, parameters, Boolean operators and conditionals |
+| `moonbit-model-library-2026-10-17`, opt-in | Current cumulative qualification snapshot, including Bool, bounded String operations and ordering, and Int32 identity/selection/calls |
+| `moonbit-model-library-v2`, opt-in | Cumulative v1 plus UTF-16 shortlex String comparisons, with the same String guards |
+| `moonbit-model-library-v1`, opt-in | Pinned v1 source union: Bool, String basics and Int32 identity/selection/calls in one library, including mixed signatures |
+| `moonbit-model-bool-v1`, engine/CLI compatibility default | One function with explicit Bool signature, literals, parameters, Boolean operators and conditionals |
 | `moonbit-model-bool-library-v1`, opt-in | Multiple explicit Bool functions, public and unexported helpers, immutable local bindings, lexical shadowing, direct same-file calls, forward and zero-input calls |
+| `moonbit-model-typed-library-foundation-v1`, opt-in | Narrow Bool/Int32 typed signatures, bindings, conditionals and direct calls; numeric arithmetic remains separate |
+| `moonbit-model-string-library-v1`, opt-in | String/Bool libraries, quoted literals, bounded concatenation and exact equality with executable public String guards |
 
-Both profiles process one document per unit and do not support incremental
-compilation, cross-file imports or other source types. The library excludes
+The workbench prefers **Supported MoonBit library 2026-10-17** for fresh local projects. Engine
+and CLI callers select it explicitly with `frontend.profile = "moonbit-model-library-2026-10-17"`
+or `--frontend-profile moonbit-model-library-2026-10-17`. Existing saved profile choices and
+the engine/CLI Boolean default remain compatible. This cumulative version covers
+local source conformance; numeric arithmetic, String indexing/methods, imports and
+installed ecosystem qualification remain outside its advertised capabilities.
+
+All profiles process one document per unit and do not support incremental
+compilation or cross-file imports. The library excludes
 recursion, mutation, indirect and qualified calls. Profile names describe supported source
 forms; the source language remains `moonbit`.
 
 `provider()` exposes these same descriptors and callbacks to in-process clients.
 `register` registers that provider with the engine; it accepts optional `limits` for the seed, `library_limits` for the library,
-and `unit_limits` for rich envelope validation. It validates source budgets before
+`max_string_code_units` for a String limit from 0 through 1048576, and `unit_limits` for rich envelope validation. It validates source budgets before
 registering and reports their configured values in capability descriptors. Parser
-0.4.5 and lexer 0.4.3 remain explicit dependency pins. Both profiles report local
+0.4.5 and lexer 0.4.3 remain explicit dependency pins. All profiles report local
 acceptance evidence; this is separate from ecosystem MCK qualification.
 
 An optional host-owned `observer` instruments frontend stages and defaults to a

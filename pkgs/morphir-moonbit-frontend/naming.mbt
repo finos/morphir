@@ -277,7 +277,8 @@ fn collect_bindings(
       collect_bindings(value, names)
       collect_bindings(body, names)
     }
-    Negation(value, _) => collect_bindings(value, names)
+    Negation(value, _) | Constraint(value, _, _) =>
+      collect_bindings(value, names)
     Binary(_, lhs, rhs, _) => {
       collect_bindings(lhs, names)
       collect_bindings(rhs, names)

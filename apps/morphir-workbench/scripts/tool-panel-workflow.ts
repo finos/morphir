@@ -38,7 +38,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
   await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
   if (await body.isVisible()) await page.getByRole('button', { name: 'Collapse panel', exact: true }).click();
-  await openSample(page, 'MoonBit library');
+  await openSample(page, 'MoonBit Boolean library');
   const source = page.getByRole('textbox', { name: 'Source editor', exact: true });
   const compile = page.getByRole('button', { name: 'Compile', exact: true });
   await compile.click();
@@ -229,7 +229,7 @@ export async function terminalOutcomeWorkflow(page: Page, { resize = true, scree
   };
   await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
   await page.getByRole('heading', {name:'Try Morphir',exact:true}).waitFor();
-  await openSample(page, 'MoonBit library');
+  await openSample(page, 'MoonBit Boolean library');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForFunction(() => ![...document.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent.trim() === 'Compile')?.disabled && document.querySelector<HTMLElement>('.statusbar')?.textContent === 'Model ready');

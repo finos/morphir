@@ -217,6 +217,7 @@ test "one list of samples feeds the palette and the project menu" {
   let connected = { ..ready_model(), connected: true, }
   let builtins = [
     "Pricing & arithmetic", "Elm constant", "MoonBit Boolean", "MoonBit library",
+    "MoonBit Boolean library", "MoonBit String library",
   ]
   let titles = fn(model : Model) {
     palette_commands(model).filter(c => c.id is LoadSample(_)).map(c => c.title)

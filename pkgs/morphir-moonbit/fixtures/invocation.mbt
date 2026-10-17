@@ -2,6 +2,7 @@
 pub fn invocation_library() -> @ir.IRFile raise {
   let int = scalar("morphir/SDK:basics#int")
   let bool = scalar("morphir/SDK:basics#bool")
+  let int32 = scalar("morphir/SDK:int#int-32")
   let unit = @ir.Type::Unit({
     source: None,
     constraints: Map([]),
@@ -35,7 +36,13 @@ pub fn invocation_library() -> @ir.IRFile raise {
       ),
     },
   }
-  for (name, tpe) in [("boolean", bool), ("unit", unit), ("integer", int)] {
+  for
+    (name, tpe) in [
+      ("boolean", bool),
+      ("unit", unit),
+      ("integer", int),
+      ("signed32", int32),
+    ] {
     values[@ir.Name::parse(name)] = {
       access: @ir.Access::Public,
       value: {

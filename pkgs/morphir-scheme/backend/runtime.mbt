@@ -204,7 +204,10 @@ pub fn install(
     @scheme.Unit
   })
   install_sdk(runtime, accelerators, model_errors)
-  for (fq, count) in sdk_registry() {
+  for
+    (fq, count) in sdk_registry() +
+    source_string_registry() +
+    sdk_int_canonical_aliases() {
     let parameters : Array[String] = []
     for i = 0; i < count; i = i + 1 {
       parameters.push("x" + i.to_string())

@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-sdk/source_string"
+
+import {
+  "finos/morphir-sdk",
+}
+
+// Values
+pub const MAX_CODE_UNITS : Int = 1048576
+
+pub const PROFILE : String = "morphir-moonbit-source-string-v1"
+
+pub fn append_bounded(@morphir-sdk.Text, @morphir-sdk.Text, Int) -> @morphir-sdk.Text raise @morphir-sdk.SdkError
+
+pub fn require_valid(@morphir-sdk.Text, Int) -> @morphir-sdk.Text raise @morphir-sdk.SdkError
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -8,6 +8,7 @@ fn boundary_type(t : Lowered) -> @execution.ValueType? {
   }
   Some(
     match t {
+      Atom(SignedInt32) => @execution.Custom("morphir/SDK:int#int-32")
       Atom(Integer) => @execution.Int
       Atom(Boolean) => @execution.Bool
       Atom(Unit) => @execution.Unit
@@ -74,6 +75,20 @@ fn invocation_codecs(
     }
     visited[key] = true
     let (decode, encode) = match t {
+      Atom(SignedInt32) => {
+        definitions.push(@execution.CustomType::{
+          name: "morphir/SDK:int#int-32",
+          constructors: [
+            { name: "morphir/SDK:int#int32", inputs: [@execution.Int], },
+          ],
+        })
+        (
+          "match v { Constructor(\"morphir/SDK:int#int-32\", \"morphir/SDK:int#int32\", [Integer(n)]) => { guard @int.to_int32(@integer.from_bigint(n)) is Some(value) else { raise @execution.Invalid(\"execution.int32_range\") }; value }; _ => " +
+          invalid +
+          " }",
+          "@execution.Constructor(\"morphir/SDK:int#int-32\", \"morphir/SDK:int#int32\", [@execution.Integer(@integer.to_bigint(@int.from_int32(v)))])",
+        )
+      }
       Atom(Integer) =>
         (
           "match v { Integer(n) => @integer.from_bigint(n); _ => " +

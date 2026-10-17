@@ -127,6 +127,12 @@ try {
       assert_eq(${call('results#safe-and')}, false)
       let error = try { ignore(${call('results#failure')}); false } catch { @sdk.DivisionByZero => true; _ => false }
       assert_true(error)
+      for expected in ["-2147483648", "0", "2147483647"] {
+        guard ${call('audit#int-to-int32')}(@integer.parse(expected)) is Some(bounded) else { fail("checked Int32 boundary") }
+        assert_eq(@integer.to_string(${call('audit#int-from-int32')}(bounded)), expected)
+      }
+      assert_true(${call('audit#int-to-int32')}(@integer.parse("-2147483649")) is None)
+      assert_true(${call('audit#int-to-int32')}(@integer.parse("2147483648")) is None)
       assert_eq(${call('audit#basics-xor')}(true)(false), true)
       assert_eq(${call('audit#basics-power-float')}(9.0)(0.5), 3.0)
       assert_eq(${call('audit#basics-power-float')}(2.0)(-2.0), 0.25)
@@ -137,17 +143,92 @@ try {
       let identity = ${call('audit#basics-identity-function')}
       let captured = ${call('quotes#captured')}(@integer.from_int(10))
       assert_eq(@integer.to_string(identity(captured)(@integer.from_int(1))), "11")
+      fn t(value : String) -> @sdk.Text { @sdk.Text::from_string(value) }
+      fn n(value : Int) -> @integer.Integer { @integer.from_int(value) }
+      let emoji = @sdk.Character::from_char('😀')
+      let a = @sdk.Character::from_char('a')
+      let b = @sdk.Character::from_char('b')
+      let empty = t("")
+      let sample = t("a😀b")
+      assert_eq(${call('audit#string-append')}(t("Hello, "))(t("Morphir")), t("Hello, Morphir"))
+      let greet = ${call('audit#string-append')}(t("Hello, "))
+      assert_eq(greet(sample), t("Hello, a😀b"))
+      let lone = @sdk.Text::from_units([(55296).to_uint16()])
+      assert_eq(${call('audit#string-append')}(lone)(lone).to_units(), [(55296).to_uint16(), (55296).to_uint16()])
+      assert_eq(${call('audit#string-is-empty')}(empty), true)
+      assert_eq(${call('audit#string-is-empty')}(lone), false)
+      assert_eq(${call('audit#string-length')}(sample), n(4))
+      assert_eq(${call('audit#string-reverse')}(sample), t("b😀a"))
+      assert_eq(${call('audit#string-repeat')}(n(2))(t("😀")), t("😀😀"))
+      assert_eq(${call('audit#string-repeat')}(n(-1))(sample), empty)
+      assert_eq(${call('audit#string-replace')}(t("a"))(t("z"))(t("aba")), t("zbz"))
+      assert_eq(${call('audit#string-concat')}(@list.from_array([t("a"), t("😀"), t("b")])), sample)
+      assert_eq(@list.to_array(${call('audit#string-split')}(t(","))(t("a,,b"))), [t("a"), empty, t("b")])
+      assert_eq(${call('audit#string-join')}(t(","))(@list.from_array([t("a"), empty, t("b")])), t("a,,b"))
+      assert_eq(@list.to_array(${call('audit#string-words')}(t("  a  b  "))), [t("a"), t("b")])
+      assert_eq(@list.to_array(${call('audit#string-lines')}(t("a\\n\\r\\nb"))), [t("a"), empty, t("b")])
+      assert_eq(${call('audit#string-slice')}(n(1))(n(-1))(sample), t("😀"))
+      assert_eq(${call('audit#string-left')}(n(3))(sample), t("a😀"))
+      assert_eq(${call('audit#string-right')}(n(3))(sample), t("😀b"))
+      assert_eq(${call('audit#string-drop-left')}(n(1))(sample), t("😀b"))
+      assert_eq(${call('audit#string-drop-right')}(n(1))(sample), t("a😀"))
+      assert_eq(${call('audit#string-contains')}(t("😀"))(sample), true)
+      assert_eq(${call('audit#string-starts-with')}(t("a"))(sample), true)
+      assert_eq(${call('audit#string-ends-with')}(t("b"))(sample), true)
+      assert_eq(@list.to_array(${call('audit#string-indexes')}(t("b"))(sample)), [n(3)])
+      assert_eq(@list.to_array(${call('audit#string-indices')}(t("aa"))(t("aaaaa"))), [n(0), n(2)])
+      let huge = @integer.parse("900719925474099312345678901234567890")
+      assert_eq(${call('audit#string-from-int')}(huge), t("900719925474099312345678901234567890"))
+      assert_eq(${call('audit#string-to-int')}(t("900719925474099312345678901234567890")), Some(huge))
+      assert_eq(${call('audit#string-to-int')}(t("no")), None)
+      assert_eq(${call('audit#string-from-float')}(1.25), t("1.25"))
+      assert_eq(${call('audit#string-to-float')}(t("1.25")), Some(1.25))
+      assert_eq(${call('audit#string-to-float')}(t("no")), None)
+      assert_eq(${call('audit#string-from-char')}(emoji), t("😀"))
+      assert_eq(${call('audit#string-cons')}(emoji)(t("b")), t("😀b"))
+      assert_eq(${call('audit#string-uncons')}(t("😀b")), Some((emoji, t("b"))))
+      assert_eq(${call('audit#string-uncons')}(empty), None)
+      assert_eq(@list.to_array(${call('audit#string-to-list')}(sample)), [a, emoji, b])
+      assert_eq(${call('audit#string-from-list')}(@list.from_array([a, emoji, b])), sample)
+      assert_eq(${call('audit#string-to-upper')}(t("ab")), t("AB"))
+      assert_eq(${call('audit#string-to-lower')}(t("AB")), t("ab"))
+      assert_eq(${call('audit#string-pad')}(n(5))(a)(t("b")), t("aabaa"))
+      assert_eq(${call('audit#string-pad-left')}(n(3))(a)(t("b")), t("aab"))
+      assert_eq(${call('audit#string-pad-right')}(n(3))(a)(t("b")), t("baa"))
+      assert_eq(${call('audit#string-trim')}(t(" a ")), t("a"))
+      assert_eq(${call('audit#string-trim-left')}(t(" a ")), t("a "))
+      assert_eq(${call('audit#string-trim-right')}(t(" a ")), t(" a"))
+      assert_eq(${call('audit#string-map')}(fn(c) { if c == a { b } else { c } })(sample), t("b😀b"))
+      assert_eq(${call('audit#string-filter')}(fn(c) { c != emoji })(sample), t("ab"))
+      let append_char = fn(c : @sdk.Character) raise @sdk.SdkError { fn(state : @sdk.Text) raise @sdk.SdkError { ${call('audit#string-append')}(state)(c.to_text()) } }
+      assert_eq(${call('audit#string-foldl')}(append_char)(empty)(sample), sample)
+      assert_eq(${call('audit#string-foldr')}(append_char)(empty)(sample), t("b😀a"))
+      assert_eq(${call('audit#string-any')}(fn(c) { c == emoji })(sample), true)
+      assert_eq(${call('audit#string-all')}(fn(c) { c == emoji })(sample), false)
+      // Counts never wrap, and callback errors propagate through curried adapters.
+      let overflow = try { ignore(${call('audit#string-left')}(huge)(sample)); false } catch { @sdk.OutOfRange(_) => true; _ => false }
+      assert_true(overflow)
+      let failing = fn(_c : @sdk.Character) -> Bool raise @sdk.SdkError { raise @sdk.DivisionByZero }
+      let callback_error = try { ignore(${call('audit#string-filter')}(failing)(sample)); false } catch { @sdk.DivisionByZero => true; _ => false }
+      assert_true(callback_error)
+      let mut visited = 0
+      assert_eq(${call('audit#string-any')}(fn(_) { visited += 1; true })(sample), true)
+      assert_eq(visited, 1)
+
     }
   `;
   writeFileSync(join(project,'acceptance_test.mbt'),test);
   writeFileSync(join(project,'moon.pkg'),readFileSync(join(project,'moon.pkg'),'utf8')+`import { "${output.moduleName}" @generated, "finos/morphir-sdk" @sdk } for "test"\n`);
   const results=[];
   for (const target of ['native','js','wasm','wasm-gc']) {
-    const build=spawnSync(moon,['build','--frozen','--target',target],{cwd:workspace,encoding:'utf8'});
-    assert.equal(build.status,0,`generated ${target} build: ${build.stdout}\n${build.stderr}`);
-    const result=spawnSync(moon,['test','--frozen','--target',target,'-p',output.moduleName],{cwd:workspace,encoding:'utf8'});
-    assert.equal(result.status,0,`generated ${target} tests: ${result.stdout}\n${result.stderr}`);
-    assert.match(result.stdout,/passed: 1, failed: 0/);
+    for (const mode of ['debug','release']) {
+      const modeArgs=mode==='release'?['--release']:[];
+      const build=spawnSync(moon,['build','--frozen','--target',target,...modeArgs],{cwd:workspace,encoding:'utf8'});
+      assert.equal(build.status,0,`generated ${target}/${mode} build: ${build.stdout}\n${build.stderr}`);
+      const result=spawnSync(moon,['test','--frozen','--target',target,...modeArgs,'-p',output.moduleName],{cwd:workspace,encoding:'utf8'});
+      assert.equal(result.status,0,`generated ${target}/${mode} tests: ${result.stdout}\n${result.stderr}`);
+      assert.match(result.stdout,/passed: 1, failed: 0/);
+    }
     const namingResult=spawnSync(moon,['test','--frozen','--target',target,'-p',output.namingModule+'/consumer'],{cwd:workspace,encoding:'utf8'});
     assert.equal(namingResult.status,0,`readable naming ${target}: ${namingResult.stdout}\n${namingResult.stderr}`);
     assert.match(namingResult.stdout,/passed: 1, failed: 0/);
@@ -195,5 +276,5 @@ try {
   for (const historical of output.historicalSources) {
     writeFileSync(join(fixture,'src/Main.json'),historical);validate('ir-json','wasm');
   }
-  console.log(JSON.stringify({successful:true,compiler,compilerDigest:createHash('sha256').update(readFileSync(moonc)).digest('hex'),coreDigest,sdk:{module:'finos/morphir-sdk',version:'0.1.0',treeDigest:sdkDigest,semanticPin:'bc99af69a8b24d391311fae3822a87eafef3c334'},generatedModule:output.moduleName,targets:results,privateAccessChecked:true,readablePublicConsumer:true,declaredTargetNamesConsumer:true,captureAndRecoveryChecked:true,sdkAdapters:audited.length,sdkSpecializationFixtures:output.symbols.filter((s: {fqname: string})=>s.fqname.startsWith("pricing:audit#")).length,pipelineFormats:['morphir-json','ion-text','ion-binary'],historicalVersions:[1,2,3]}));
+  console.log(JSON.stringify({successful:true,compiler,compilerDigest:createHash('sha256').update(readFileSync(moonc)).digest('hex'),coreDigest,sdk:{module:'finos/morphir-sdk',version:'0.1.0',treeDigest:sdkDigest,semanticPin:'bc99af69a8b24d391311fae3822a87eafef3c334'},generatedModule:output.moduleName,targets:results,buildModes:["debug","release"],signedInt32SDK:true,privateAccessChecked:true,readablePublicConsumer:true,declaredTargetNamesConsumer:true,captureAndRecoveryChecked:true,sdkAdapters:audited.length,sdkSpecializationFixtures:output.symbols.filter((s: {fqname: string})=>s.fqname.startsWith("pricing:audit#")).length,pipelineFormats:['morphir-json','ion-text','ion-binary'],historicalVersions:[1,2,3]}));
 } finally { rmSync(workspace,{recursive:true,force:true}); }

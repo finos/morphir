@@ -264,7 +264,7 @@ fn compile_scoped(
                 @ir.Access::Private
               },
               value: {
-                doc: None,
+                doc: source_documentation(decl.doc),
                 value: @ir.ValueDefinition::ExpressionBody(
                   inputs, boolean, lowered,
                 ),

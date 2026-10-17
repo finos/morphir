@@ -2,6 +2,7 @@
 /// Parser-owned nodes remain inside this adapter until declarations are admitted.
 priv struct ParsedLibrary {
   nodes : Array[@ast.Impl]
+  source_chars : Array[Char]
 }
 
 ///|
@@ -12,11 +13,13 @@ fn library_parse(input : Input, cancelled : () -> Bool) -> ParsedLibrary raise {
   if !reports.is_empty() {
     reject("syntax", reports[0].msg, reports[0].loc)
   }
-  { nodes: nodes.to_array(), }
+  { nodes: nodes.to_array(), source_chars: input.source.to_array(), }
 }
 
 ///|
 priv struct LibraryAdapter {
+  source_chars : Array[Char]
+  mode : LibraryMode
   limits : LibraryLimits
   cancelled : () -> Bool
   mut expressions : Int32
@@ -49,12 +52,30 @@ fn LibraryAdapter::expression(
   self.visit(loc, depth)
   match expr {
     @ast.Constant(c=@ast.Bool(value), ..) => Boolean(value, source)
+    @ast.Constant(c=@ast.String(repr), ..) if self.mode.supports_strings() => {
+      // The pinned lexer counts Unicode scalar positions, not UTF-8 bytes or UTF-16 units.
+      let start = loc.start.cnum
+      let end = loc.end.cnum
+      if start < 0 || end < start || end > self.source_chars.length() {
+        reject("source_coordinate", "Invalid literal coordinate", loc)
+      }
+      let authored = String::from_array(self.source_chars[start:end].to_owned())
+      if authored != "\"" + repr + "\"" {
+        reject(
+          "source_coordinate", "Literal token does not match pinned lexer coordinates",
+          loc,
+        )
+      }
+      Text(library_cook_string(repr, loc), authored, source)
+    }
     @ast.Ident(id~, ..) => Identifier(identifier(id), source)
     @ast.Group(expr~, ..) => self.expression(expr, depth + 1)
-    @ast.Constraint(expr~, ty~, ..) => {
-      require_bool(Some(ty), loc)
-      self.expression(expr, depth + 1)
-    }
+    @ast.Constraint(expr~, ty~, ..) =>
+      Constraint(
+        self.expression(expr, depth + 1),
+        library_type(Some(ty), ty.loc(), self.mode),
+        source,
+      )
     @ast.Unary(op~, expr~, ..) => {
       if identifier(op) != "!" {
         reject(
@@ -65,7 +86,10 @@ fn LibraryAdapter::expression(
     }
     @ast.Infix(op~, lhs~, rhs~, ..) => {
       let op = identifier(op)
-      if !["&&", "||", "==", "!="].contains(op) {
+      if !["&&", "||", "==", "!="].contains(op) &&
+        !(self.mode.supports_strings() && op == "+") &&
+        !(self.mode.supports_string_order() &&
+        ["<", "<=", ">", ">="].contains(op)) {
         reject(
           "unsupported_operator", "Only Boolean operators are supported", loc,
         )
@@ -89,10 +113,11 @@ fn LibraryAdapter::expression(
       if self.lets > self.limits.max_lets {
         reject("let_limit", "Function binding budget exceeded", loc)
       }
+      let mut annotation = None
       let binder = match pattern {
         @ast.Var(binder) => binder
         @ast.Constraint(pat=@ast.Var(binder), ty~, ..) => {
-          require_bool(Some(ty), loc)
+          annotation = Some(library_type(Some(ty), ty.loc(), self.mode))
           binder
         }
         _ => {
@@ -106,7 +131,10 @@ fn LibraryAdapter::expression(
       Binding(
         binder.name,
         span(binder.loc),
-        self.expression(expr, depth + 1),
+        match annotation {
+          Some(ty) => Constraint(self.expression(expr, depth + 1), ty, source)
+          None => self.expression(expr, depth + 1)
+        },
         self.expression(body, depth + 1),
         source,
       )
@@ -152,6 +180,7 @@ fn library_adapt(
   parsed : ParsedLibrary,
   limits : LibraryLimits,
   cancelled : () -> Bool,
+  mode : LibraryMode,
 ) -> Array[LibraryFunction] raise {
   let nodes = parsed.nodes
   if nodes.is_empty() || nodes.length() > limits.max_functions {
@@ -206,7 +235,11 @@ fn library_adapt(
       )
     }
     names[decl.name.name] = true
-    require_bool(decl.return_type, decl.loc)
+    let output_type = library_type(
+      decl.return_type,
+      decl.return_type.map(t => t.loc()).unwrap_or(decl.loc),
+      mode,
+    )
     guard decl.decl_params is Some(parameters) else {
       reject(
         "unsupported_parameters",
@@ -220,6 +253,7 @@ fn library_adapt(
     }
     let parameter_names : Map[String, Bool] = Map([])
     let inputs = []
+    let input_types = []
     for parameter in parameters {
       guard parameter is @ast.Positional(binder~, ty~) else {
         reject(
@@ -229,7 +263,9 @@ fn library_adapt(
         )
         abort("unreachable")
       }
-      require_bool(ty, binder.loc)
+      input_types.push(
+        library_type(ty, ty.map(t => t.loc()).unwrap_or(binder.loc), mode),
+      )
       if parameter_names.contains(binder.name) {
         reject(
           "duplicate_parameter",
@@ -248,9 +284,22 @@ fn library_adapt(
       )
       abort("unreachable")
     }
-    signatures.push((decl.name.name, public, inputs, expr, span(decl.name.loc)))
+    signatures.push(
+      (
+        decl.name.name,
+        public,
+        inputs,
+        input_types,
+        output_type,
+        expr,
+        span(decl.name.loc),
+        source_documentation(decl.doc),
+      ),
+    )
   }
   let adapter = LibraryAdapter::{
+    source_chars: parsed.source_chars,
+    mode,
     limits,
     cancelled,
     expressions: 0,
@@ -258,12 +307,16 @@ fn library_adapt(
     lets: 0,
   }
   let functions = []
-  for (name, public, parameters, body, source) in signatures {
+  for
+    (name, public, parameters, input_types, output_type, body, source, doc) in signatures {
     adapter.lets = 0
     functions.push({
       name,
+      doc,
       public,
       parameters,
+      input_types,
+      output_type,
       body: adapter.expression(body, 0),
       body_source: span(body.loc()),
       source,

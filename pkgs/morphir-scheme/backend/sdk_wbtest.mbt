@@ -1,4 +1,36 @@
 ///|
+test "canonical SDK Int32 declarations share the historical runtime ABI" {
+  for accelerators in [false, true] {
+    let runtime = @scheme.Runtime::new()
+    install(runtime, accelerators~)
+    let to_int32 = runtime.call(runtime.lookup("r:morphir/SDK:int#to-int-32"), [])
+    let from_int32 = runtime.call(
+      runtime.lookup("r:morphir/SDK:int#from-int-32"),
+      [],
+    )
+    for text in ["-2147483648", "0", "2147483647"] {
+      guard runtime.call(to_int32, [@scheme.integer(text)])
+        is Tagged("morphir/SDK:maybe#just", [bounded]) else {
+        fail("Expected Int32")
+      }
+      guard bounded is Tagged("morphir/SDK:int#int32", [_]) else {
+        fail("Expected historical opaque tag")
+      }
+      guard runtime.call(from_int32, [bounded]) is Number(Integer(value)) else {
+        fail("Expected Integer")
+      }
+      assert_eq(value.to_string(), text)
+    }
+    for text in ["-2147483649", "2147483648"] {
+      guard runtime.call(to_int32, [@scheme.integer(text)])
+        is Tagged("morphir/SDK:maybe#nothing", []) else {
+        fail("Expected checked refusal")
+      }
+    }
+  }
+}
+
+///|
 test "all pinned SDK values install with the declared arity" {
   let runtime = @scheme.Runtime::new()
   install(runtime)

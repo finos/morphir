@@ -159,6 +159,11 @@ fn validate_calls(
     library.invocation_types,
     rejections=library.invocation_rejections,
   )
+  for call in suite.calls {
+    for argument in call.arguments {
+      validate_sdk_boundary(argument)
+    }
+  }
 }
 
 ///|
@@ -288,6 +293,7 @@ pub fn run_report(
           plan.library.invocation_types,
           output=true,
         )
+        validate_sdk_boundary(actual[i])
         actual[i] = @protocol.Value::from_ion(actual[i].to_ion())
         results.push({
           id: call.id,

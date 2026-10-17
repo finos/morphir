@@ -11,6 +11,8 @@ import {
   "finos/morphir-ir" @ir,
   "finos/morphir-sdk" @sdk,
   "finos/morphir-sdk/decimal",
+  "finos/morphir-sdk/int" @sdk_int,
+  "finos/morphir-sdk/integer",
   "finos/morphir-scheme" @scheme,
   "finos/morphir-scheme/backend",
 }

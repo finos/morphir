@@ -116,6 +116,10 @@ run = "moon run scripts/moonbit-extension.mbtx build"
 description = "Bundle the MoonBit guest using an explicit canonical host and target"
 run = "moon run scripts/moonbit-extension.mbtx bundle"
 
+[tasks."test:typed-source"]
+description = "Qualify mixed typed libraries and String source consumers"
+run = "moon run scripts/typed-source-check.mbtx"
+
 [tasks."test:mep-process"]
 description = "Qualify MEP stdio; add explicit host/digest/target pins for installed acceptance"
 run = "moon run scripts/moonbit-extension.mbtx test"

@@ -19,10 +19,20 @@ fn library_attributes(
 }
 
 ///|
-fn library_arrow(boolean : @ir.Type, arity : Int32) -> @ir.Type {
-  let mut result = boolean
-  for i = 0; i < arity; i = i + 1 {
-    result = @ir.Type::Function(@ir.TypeAttributes::default(), boolean, result)
+fn library_arrow(
+  signature : LibrarySignature,
+  remaining : Int32,
+  metadata : Bool,
+) -> @ir.Type raise {
+  let mut result = signature.output_type.to_ir(metadata)
+  for i = signature.input_types.length() - 1
+      i >= signature.input_types.length() - remaining
+      i = i - 1 {
+    result = @ir.Type::Function(
+      @ir.TypeAttributes::default(),
+      signature.input_types[i].to_ir(metadata),
+      result,
+    )
   }
   result
 }
@@ -32,6 +42,9 @@ priv struct LibraryLowerer {
   functions : Array[ResolvedFunction]
   entries : Array[@ir.FQName]
   boolean : @ir.Type
+  types : Map[@ir.Name, LibraryTypeUse]
+  metadata : Bool
+  string_limit : Int32
   cancelled : () -> Bool
   origins : Array[@ion.IonValue]
   mut names : BinderNames
@@ -93,12 +106,51 @@ fn LibraryLowerer::expression(
   library_poll(self.cancelled)
   match expr {
     Boolean(value, source) => self.literal(value, source)
+    Text(value, authored, source) => {
+      let attrs = library_attributes(source, self.expr_type(expr))
+      attrs.extensions["moonbit-source-string-v1"] = @ir.Data::Object(
+        Map::from_array([
+          ("kind", @ir.Data::Text("literal")),
+          ("authored_token", @ir.Data::Text(authored)),
+          ("cooked", @ir.Data::Text(value)),
+          ("utf16_code_units", @ir.Data::Number(value.length().to_string())),
+        ]),
+      )
+      self.require_string(
+        @ir.Value::Literal(attrs, @ir.Literal::StringLiteral(value)),
+        source,
+        "literal-boundary",
+      )
+    }
+    Constraint(value, ty, source) => {
+      let value = self.expression(value)
+      if !self.metadata {
+        return value
+      }
+      self.origins.push(
+        ion_record([("constraint", library_origin(ty.spelling, ty.source))]),
+      )
+      // Retain this authored type use even when the constrained expression is a
+      // reference whose own type metadata belongs to a different declaration.
+      let name = self.fresh(value, "constraint-value", source)
+      let ty = ty.to_ir(true)
+      let attrs = library_attributes(source, ty)
+      @ir.Value::LetDefinition(
+        attrs,
+        name,
+        @ir.ValueDefinition::ExpressionBody([], ty, value),
+        @ir.Value::Variable(attrs, name),
+      )
+    }
     Variable(name, source) =>
-      @ir.Value::Variable(library_attributes(source, self.boolean), name)
+      @ir.Value::Variable(
+        library_attributes(source, self.types[name].to_ir(self.metadata)),
+        name,
+      )
     Negation(value, source) => self.negate(self.expression(value), source)
     Conditional(cond, yes, no, source) =>
       @ir.Value::IfThenElse(
-        library_attributes(source, self.boolean),
+        library_attributes(source, self.expr_type(yes)),
         self.expression(cond),
         self.expression(yes),
         self.expression(no),
@@ -121,11 +173,11 @@ fn LibraryLowerer::expression(
         ]),
       )
       @ir.Value::LetDefinition(
-        library_attributes(source, self.boolean),
+        library_attributes(source, self.expr_type(body)),
         name,
         @ir.ValueDefinition::ExpressionBody(
           [],
-          self.boolean,
+          self.types[name].to_ir(self.metadata),
           self.expression(value),
         ),
         self.expression(body),
@@ -140,10 +192,20 @@ fn LibraryLowerer::expression(
           ),
         ]),
       )
+      let arguments = arguments.map(arg => self.expression(arg))
+      let temporaries = if self.metadata {
+        arguments.map(arg => self.fresh(arg, "call-argument", source))
+      } else {
+        []
+      }
       let mut value = @ir.Value::Reference(
         library_attributes(
           source,
-          library_arrow(self.boolean, arguments.length()),
+          library_arrow(
+            self.functions[index].declaration,
+            arguments.length(),
+            self.metadata,
+          ),
         ),
         self.entries[index],
       )
@@ -151,10 +213,43 @@ fn LibraryLowerer::expression(
         value = @ir.Value::Apply(
           library_attributes(
             source,
-            library_arrow(self.boolean, arguments.length() - i - 1),
+            library_arrow(
+              self.functions[index].declaration,
+              arguments.length() - i - 1,
+              self.metadata,
+            ),
           ),
           value,
-          self.expression(arguments[i]),
+          if self.metadata {
+            @ir.Value::Variable(
+              library_attributes(
+                source,
+                self.functions[index].declaration.input_types[i].to_ir(
+                  self.metadata,
+                ),
+              ),
+              temporaries[i],
+            )
+          } else {
+            arguments[i]
+          },
+        )
+      }
+      for i = temporaries.length() - 1; i >= 0; i = i - 1 {
+        value = @ir.Value::LetDefinition(
+          library_attributes(
+            source,
+            self.functions[index].declaration.output_type.to_ir(self.metadata),
+          ),
+          temporaries[i],
+          @ir.ValueDefinition::ExpressionBody(
+            [],
+            self.functions[index].declaration.input_types[i].to_ir(
+              self.metadata,
+            ),
+            arguments[i],
+          ),
+          value,
         )
       }
       value
@@ -163,6 +258,37 @@ fn LibraryLowerer::expression(
       let attrs = library_attributes(source, self.boolean)
       let left = self.expression(lhs)
       let right = self.expression(rhs)
+      if self.expr_type(lhs) is @ir.Type::Reference(_, name, _) &&
+        name.to_canonical() == "morphir/SDK:string#string" {
+        let text = self.expr_type(lhs)
+        return if op == "+" {
+          self.invoke(
+            "morphir/moonbit-source:string#append-bounded",
+            [
+              (left, text),
+              (right, text),
+              (self.bound(source), library_integer_type()),
+            ],
+            text,
+            source,
+            "bounded-concatenation",
+          )
+        } else if ["<", "<=", ">", ">="].contains(op) {
+          self.string_order(op, left, right, text, source)
+        } else {
+          self.invoke(
+            if op == "==" {
+              "morphir/SDK:basics#equal"
+            } else {
+              "morphir/SDK:basics#not-equal"
+            },
+            [(left, text), (right, text)],
+            self.boolean,
+            source,
+            "string-equality",
+          )
+        }
+      }
       match op {
         "&&" =>
           @ir.Value::IfThenElse(attrs, left, right, self.literal(false, source))
@@ -203,6 +329,8 @@ fn library_lower(
   module_name : @ir.Path,
   checked : CheckedLibrary,
   cancelled : () -> Bool,
+  mode : LibraryMode,
+  string_limit : Int32,
 ) -> LibraryOutput raise {
   let boolean = boolean_type()
   let allocated = allocate_source_names(
@@ -226,6 +354,9 @@ fn library_lower(
     functions: checked.functions,
     entries,
     boolean,
+    types: Map([]),
+    metadata: mode != BooleanOnly,
+    string_limit,
     cancelled,
     origins: [],
     names: BinderNames::new([], ""),
@@ -242,7 +373,41 @@ fn library_lower(
     let declaration = function.declaration
     lowerer.origins.clear()
     lowerer.names = function.names
-    let body = lowerer.expression(function.body)
+    lowerer.types.clear()
+    for name, ty in function.types {
+      lowerer.types[name] = ty
+    }
+    let mut body = lowerer.expression(function.body)
+    if mode.supports_strings() && declaration.public {
+      if declaration.output_type.scalar == Text {
+        body = lowerer.require_string(
+          body,
+          declaration.body_source,
+          "public-result",
+        )
+      }
+      for j = function.parameters.length() - 1; j >= 0; j = j - 1 {
+        if declaration.input_types[j].scalar == Text {
+          let ty = declaration.input_types[j].to_ir(true)
+          let name = function.parameters[j]
+          let source = declaration.parameters[j].1
+          let value = lowerer.require_string(
+            @ir.Value::Variable(library_attributes(source, ty), name),
+            source,
+            "public-argument",
+          )
+          body = @ir.Value::LetDefinition(
+            library_attributes(
+              declaration.body_source,
+              declaration.output_type.to_ir(true),
+            ),
+            name,
+            @ir.ValueDefinition::ExpressionBody([], ty, value),
+            body,
+          )
+        }
+      }
+    }
     values[allocated.names[declaration.name]] = {
       access: if declaration.public {
         @ir.Access::Public
@@ -250,10 +415,12 @@ fn library_lower(
         @ir.Access::Private
       },
       value: {
-        doc: None,
+        doc: declaration.doc,
         value: @ir.ValueDefinition::ExpressionBody(
-          function.parameters.map(name => (name, boolean)),
-          boolean,
+          function.parameters.mapi((j, name) => {
+            (name, declaration.input_types[j].to_ir(mode != BooleanOnly))
+          }),
+          declaration.output_type.to_ir(mode != BooleanOnly),
           body,
         ),
       },
@@ -308,11 +475,24 @@ fn library_lower(
   public_entries.sort_by(fn(a, b) { a.to_canonical().compare(b.to_canonical()) })
   let module_def : @ir.ModuleDefinition = { types: Map([]), doc: None, values, }
   let ir = @ir.IRFile::new(
-    @ir.Distribution::Library(package_name, Map([]), {
-      modules: Map::from_array([
-        (module_name, { access: @ir.Access::Public, value: module_def, }),
-      ]),
-    }),
+    @ir.Distribution::Library(
+      package_name,
+      if mode.supports_strings() {
+        Map::from_array([
+          (
+            @sdk_spec.source_string_package_name(),
+            @sdk_spec.source_string_specification(),
+          ),
+        ])
+      } else {
+        Map([])
+      },
+      {
+        modules: Map::from_array([
+          (module_name, { access: @ir.Access::Public, value: module_def, }),
+        ]),
+      },
+    ),
   )
   {
     unit_id: input.unit_id,
@@ -324,7 +504,7 @@ fn library_lower(
     provenance: [
       ion_record([
         ("language", @ion.IonValue::string("moonbit")),
-        ("profile", @ion.IonValue::string(LIBRARY_PROFILE)),
+        ("profile", @ion.IonValue::string(mode.profile())),
         ("parser_version", @ion.IonValue::string(PARSER_VERSION)),
         ("naming_policy", @ion.IonValue::string(NAMING_POLICY)),
         ("unit_id", @ion.IonValue::string(input.unit_id)),
@@ -332,4 +512,202 @@ fn library_lower(
     ] +
     warnings.map(w => w.to_ion()),
   }
+}
+
+///|
+fn LibraryLowerer::expr_type(
+  self : LibraryLowerer,
+  expr : ResolvedExpr,
+) -> @ir.Type raise {
+  match expr {
+    Boolean(_, _) | Negation(_, _) => self.boolean
+    Text(_, _, source) =>
+      LibraryTypeUse::{ scalar: Text, spelling: "String", source, }.to_ir(
+        self.metadata,
+      )
+    Binary(op, lhs, _, _) =>
+      if op == "+" {
+        self.expr_type(lhs)
+      } else {
+        self.boolean
+      }
+    Variable(name, _) => self.types[name].to_ir(self.metadata)
+    Constraint(_, ty, _) => ty.to_ir(self.metadata)
+    Conditional(_, yes, _, _) => self.expr_type(yes)
+    Binding(_, _, _, _, body, _) => self.expr_type(body)
+    Call(index, _, _) =>
+      self.functions[index].declaration.output_type.to_ir(self.metadata)
+  }
+}
+
+///|
+fn library_integer_type() -> @ir.Type raise {
+  @ir.Type::Reference(
+    @ir.TypeAttributes::default(),
+    @ir.FQName::parse("morphir/SDK:basics#int"),
+    [],
+  )
+}
+
+///|
+/// MoonBit compares String lengths before UTF-16 lexical ties. Bind source
+/// operands in order, then lengths, so each source expression executes once.
+fn LibraryLowerer::string_order(
+  self : LibraryLowerer,
+  op : String,
+  left : @ir.Value,
+  right : @ir.Value,
+  text : @ir.Type,
+  source : @ir.SourceLocation,
+) -> @ir.Value raise {
+  let int = library_integer_type()
+  let attrs = library_attributes(source, self.boolean)
+  let l = self.fresh(left, "string-order-left", source)
+  let r = self.fresh(right, "string-order-right", source)
+  let lv = @ir.Value::Variable(library_attributes(source, text), l)
+  let rv = @ir.Value::Variable(library_attributes(source, text), r)
+  let ll = self.invoke(
+    "morphir/SDK:string#length",
+    [(lv, text)],
+    int,
+    source,
+    "order-length",
+  )
+  let rl = self.invoke(
+    "morphir/SDK:string#length",
+    [(rv, text)],
+    int,
+    source,
+    "order-length",
+  )
+  let ln = self.fresh(ll, "string-order-left-length", source)
+  let rn = self.fresh(rl, "string-order-right-length", source)
+  let lengths = [
+    (@ir.Value::Variable(library_attributes(source, int), ln), int),
+    (@ir.Value::Variable(library_attributes(source, int), rn), int),
+  ]
+  let operation_name = match op {
+    "<" => "less-than"
+    "<=" => "less-than-or-equal"
+    ">" => "greater-than"
+    _ => "greater-than-or-equal"
+  }
+  let operation = "morphir/SDK:basics#" + operation_name
+  let mut result = @ir.Value::IfThenElse(
+    attrs,
+    self.invoke(
+      "morphir/SDK:basics#equal",
+      lengths,
+      self.boolean,
+      source,
+      "order-equal-lengths",
+    ),
+    self.invoke(
+      operation,
+      [(lv, text), (rv, text)],
+      self.boolean,
+      source,
+      "order-lexical-tie",
+    ),
+    self.invoke(operation, lengths, self.boolean, source, "order-length-first"),
+  )
+  let bindings = [
+    (l, text, left),
+    (r, text, right),
+    (ln, int, ll),
+    (rn, int, rl),
+  ]
+  for i = bindings.length() - 1; i >= 0; i = i - 1 {
+    let (name, ty, value) = bindings[i]
+    let owner = library_attributes(source, self.boolean)
+    if i == 0 {
+      owner.extensions["moonbit-source-string-order-v1"] = @ir.Data::Object(
+        Map::from_array([
+          ("operator", @ir.Data::Text(op)),
+          ("ordering", @ir.Data::Text("utf16-shortlex")),
+          ("lowering", @ir.Data::Text("length-first-lexical-tie")),
+        ]),
+      )
+    }
+    result = @ir.Value::LetDefinition(
+      owner,
+      name,
+      @ir.ValueDefinition::ExpressionBody([], ty, value),
+      result,
+    )
+  }
+  result
+}
+
+///|
+fn LibraryLowerer::bound(
+  self : LibraryLowerer,
+  source : @ir.SourceLocation,
+) -> @ir.Value raise {
+  @ir.Value::Literal(
+    library_attributes(source, library_integer_type()),
+    @ir.Literal::IntegerLiteral(self.string_limit.to_string()),
+  )
+}
+
+///|
+fn LibraryLowerer::invoke(
+  _self : LibraryLowerer,
+  name : String,
+  arguments : Array[(@ir.Value, @ir.Type)],
+  result : @ir.Type,
+  source : @ir.SourceLocation,
+  role : String,
+) -> @ir.Value raise {
+  let attrs = library_attributes(source, result)
+  attrs.extensions["moonbit-source-string-v1"] = @ir.Data::Object(
+    Map::from_array([
+      ("kind", @ir.Data::Text("synthetic")),
+      ("role", @ir.Data::Text(role)),
+      ("runtime_extension", @ir.Data::Text("morphir-moonbit-source-string-v1")),
+    ]),
+  )
+  let mut signature = result
+  for i = arguments.length() - 1; i >= 0; i = i - 1 {
+    signature = @ir.Type::Function(
+      @ir.TypeAttributes::default(),
+      arguments[i].1,
+      signature,
+    )
+  }
+  let mut value = @ir.Value::Reference(
+    { ..attrs, inferred_type: Some(signature), },
+    @ir.FQName::parse(name),
+  )
+  for arg in arguments {
+    guard signature is @ir.Type::Function(_, _, remaining) else {
+      abort("invalid internal signature")
+    }
+    signature = remaining
+    value = @ir.Value::Apply(
+      { ..attrs, inferred_type: Some(signature), },
+      value,
+      arg.0,
+    )
+  }
+  value
+}
+
+///|
+fn LibraryLowerer::require_string(
+  self : LibraryLowerer,
+  value : @ir.Value,
+  source : @ir.SourceLocation,
+  role : String,
+) -> @ir.Value raise {
+  let text = LibraryTypeUse::{ scalar: Text, spelling: "String", source, }.to_ir(
+    self.metadata,
+  )
+  self.invoke(
+    "morphir/moonbit-source:string#require-valid",
+    [(value, text), (self.bound(source), library_integer_type())],
+    text,
+    source,
+    role,
+  )
 }

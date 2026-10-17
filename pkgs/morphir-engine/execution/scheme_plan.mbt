@@ -348,6 +348,15 @@ fn SelectedBoundary::read(
         raise AdmissionInvalid("execution.unsupported_type")
       }
       match key {
+        "morphir/SDK:int#int-32" => {
+          self.definitions[key] = {
+            name: key,
+            constructors: [
+              { name: "morphir/SDK:int#int32", inputs: [@protocol.Int], },
+            ],
+          }
+          @protocol.Custom(key)
+        }
         "morphir/SDK:basics#int" => @protocol.Int
         "morphir/SDK:basics#float" => @protocol.Float64
         "morphir/SDK:basics#bool" => @protocol.Bool

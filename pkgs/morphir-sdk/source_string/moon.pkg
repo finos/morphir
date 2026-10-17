@@ -1,0 +1,4 @@
+import {
+  "finos/morphir-sdk" @sdk,
+  "finos/morphir-sdk/string" @text,
+}

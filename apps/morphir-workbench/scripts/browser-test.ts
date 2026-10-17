@@ -17,7 +17,7 @@ import { jobWorkflow } from './job-workflow.ts';
 import { createServer as createPortReservation } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { elmWorkflow, moonbitWorkflow, libraryWorkflow } from './elm-workflow.ts';
+import { elmWorkflow, moonbitWorkflow, libraryWorkflow, stringWorkflow, supportedWorkflow } from './elm-workflow.ts';
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.ts';
 import { explorerWorkflow } from './explorer-workflow.ts';
 import { detailsWorkflow } from './details-workflow.ts';
@@ -558,6 +558,8 @@ try {
   await elmWorkflow(page);
   await moonbitWorkflow(page);
   await libraryWorkflow(page);
+  await stringWorkflow(page);
+  await supportedWorkflow(page);
   await toolPanelWorkflow(page);
   await terminalOutcomeWorkflow(page, { resize: true, screenshot: process.env.MORPHIR_WORKBENCH_OUTCOME_SCREENSHOT });
   await explorerWorkflow(page);

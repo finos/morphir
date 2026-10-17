@@ -142,6 +142,7 @@ pub fn Limits::default() -> Limits {
 
 ///|
 priv enum Scalar {
+  SignedInt32
   Integer
   Float
   Boolean
@@ -154,6 +155,7 @@ priv enum Scalar {
 ///|
 priv struct Declaration {
   fqname : @ir.FQName
+  doc : String?
   module_name : @ir.ModuleName
   public : Bool
   /// Visible to the other modules of the package: the value's own access is Public.

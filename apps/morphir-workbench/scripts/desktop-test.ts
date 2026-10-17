@@ -9,7 +9,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { readFile, readdir } from 'node:fs/promises';
 import { basename, join, relative, sep } from 'node:path';
-import { elmWorkflow, moonbitWorkflow, libraryWorkflow } from './elm-workflow.ts';
+import { elmWorkflow, moonbitWorkflow, libraryWorkflow, stringWorkflow, supportedWorkflow } from './elm-workflow.ts';
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.ts';
 
 // CEF cancels CDP directory enumeration even though ordinary file uploads work.
@@ -242,6 +242,8 @@ try {
   await elmWorkflow(page, { nativeDownloads: false, selectFolder: selectCefFolder });
   await moonbitWorkflow(page, { nativeDownloads: false });
   await libraryWorkflow(page, { nativeDownloads: false });
+  await stringWorkflow(page);
+  await supportedWorkflow(page);
   await toolPanelWorkflow(page, { resize: false });
   // Native job availability must not apply host retention rules to Local Scheme.
   await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();

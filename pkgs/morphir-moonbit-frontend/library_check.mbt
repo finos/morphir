@@ -1,41 +1,94 @@
 ///|
-/// Every expression in this closed grammar produces Bool. Calls require exact
-/// signature arity; function values and partial applications never enter it.
+fn library_expect(
+  actual : LibraryTypeUse,
+  expected : LibraryTypeUse,
+  source : @ir.SourceLocation,
+) -> Unit raise {
+  if actual.scalar != expected.scalar {
+    library_error(
+      "type_mismatch",
+      "Expected " + expected.spelling + ", received " + actual.spelling,
+      Some(source),
+    )
+  }
+}
+
+///|
+fn library_boolean(source : @ir.SourceLocation) -> LibraryTypeUse {
+  { scalar: Boolean, spelling: "Bool", source, }
+}
+
+///|
 fn library_check_body(
   expr : ResolvedExpr,
   functions : Array[ResolvedFunction],
+  types : Map[@ir.Name, LibraryTypeUse],
   edges : Map[Int32, Bool],
   cancelled : () -> Bool,
-) -> Unit raise {
+) -> LibraryTypeUse raise {
   library_poll(cancelled)
+  fn check(e) raise {
+    library_check_body(e, functions, types, edges, cancelled)
+  }
   match expr {
-    Boolean(_, _) | Variable(_, _) => ()
-    Negation(value, _) => library_check_body(value, functions, edges, cancelled)
-    Binary(_, lhs, rhs, _) => {
-      library_check_body(lhs, functions, edges, cancelled)
-      library_check_body(rhs, functions, edges, cancelled)
+    Boolean(_, source) => library_boolean(source)
+    Text(_, _, source) => { scalar: Text, spelling: "String", source, }
+    Variable(name, _) => types[name]
+    Constraint(value, ty, source) => {
+      library_expect(check(value), ty, source)
+      ty
     }
-    Conditional(cond, yes, no, _) => {
-      library_check_body(cond, functions, edges, cancelled)
-      library_check_body(yes, functions, edges, cancelled)
-      library_check_body(no, functions, edges, cancelled)
+    Negation(value, source) => {
+      let ty = library_boolean(source)
+      library_expect(check(value), ty, source)
+      ty
     }
-    Binding(_, _, _, value, body, _) => {
-      library_check_body(value, functions, edges, cancelled)
-      library_check_body(body, functions, edges, cancelled)
+    Binary(op, lhs, rhs, source) => {
+      let left = check(lhs)
+      let right = check(rhs)
+      library_expect(right, left, source)
+      if op == "+" || ["<", "<=", ">", ">="].contains(op) {
+        library_expect(
+          left,
+          { scalar: Text, spelling: "String", source, },
+          source,
+        )
+        if op == "+" {
+          left
+        } else {
+          library_boolean(source)
+        }
+      } else {
+        if (op == "&&" || op == "||") || left.scalar != Text {
+          library_expect(left, library_boolean(source), source)
+        }
+        library_boolean(source)
+      }
+    }
+    Conditional(cond, yes, no, source) => {
+      library_expect(check(cond), library_boolean(source), source)
+      let ty = check(yes)
+      library_expect(check(no), ty, source)
+      ty
+    }
+    Binding(name, _, _, value, body, _) => {
+      types[name] = check(value)
+      check(body)
     }
     Call(index, arguments, source) => {
-      if arguments.length() != functions[index].parameters.length() {
+      let signature = functions[index].declaration
+      if arguments.length() != signature.parameters.length() {
         library_error(
           "call_arity",
-          "Library calls must supply every positional Boolean argument",
+          "Library calls must supply every positional argument",
           Some(source),
         )
       }
       edges[index] = true
-      for arg in arguments {
-        library_check_body(arg, functions, edges, cancelled)
+      for i = 0; i < arguments.length(); i = i + 1 {
+        library_expect(check(arguments[i]), signature.input_types[i], source)
       }
+      signature.output_type
     }
   }
 }
@@ -50,7 +103,22 @@ fn library_check(
 ) -> CheckedLibrary raise {
   let edges = functions.map(_ => Map([]))
   for i = 0; i < functions.length(); i = i + 1 {
-    library_check_body(functions[i].body, functions, edges[i], cancelled)
+    let function = functions[i]
+    for j = 0; j < function.parameters.length(); j = j + 1 {
+      function.types[function.parameters[j]] = function.declaration.input_types[j]
+    }
+    let result = library_check_body(
+      function.body,
+      functions,
+      function.types,
+      edges[i],
+      cancelled,
+    )
+    library_expect(
+      result,
+      function.declaration.output_type,
+      function.declaration.body_source,
+    )
   }
   let remaining = edges.map(e => e.length())
   let depth = functions.map(_ => 0)

@@ -685,3 +685,82 @@ test "a sample reply for an earlier choice, or after an edit, does not replace t
     .to_equal("Tiny.Pkg")
   })
 }
+
+///|
+test "fresh MoonBit projects prefer the supported union while explicit profiles stay pinned" {
+  let catalog = catalog_fixture()
+  guard catalog is Object(fields) &&
+    fields["frontends"] is Array(frontends) &&
+    frontends[1] is Object(moonbit) &&
+    moonbit["profiles"] is Array(profiles) else {
+    fail("catalog fixture")
+  }
+  moonbit["profiles"] = Json::array(
+    profiles +
+    [{ "id": "moonbit-model-library-v1", "compileKind": "each-file" }],
+  )
+  let model = { ..scope_model(), catalog, }
+  assert_eq(selected_profile(model, "moonbit"), "moonbit-model-library-v1")
+  assert_true(
+    default_project(model, "moonbit").active_file().content.contains(
+      "choose_for",
+    ),
+  )
+  assert_false(
+    default_project(model, "moonbit").active_file().content.contains("precedes"),
+  )
+  moonbit["profiles"] = Json::array(
+    profiles +
+    [
+      { "id": "moonbit-model-library-v1", "compileKind": "each-file" },
+      { "id": "moonbit-model-library-v2", "compileKind": "each-file" },
+    ],
+  )
+  assert_eq(selected_profile(model, "moonbit"), "moonbit-model-library-v2")
+  assert_true(
+    default_project(model, "moonbit").active_file().content.contains("precedes"),
+  )
+  moonbit["profiles"] = Json::array(
+    profiles +
+    [
+      { "id": "moonbit-model-library-v2", "compileKind": "each-file" },
+      { "id": "moonbit-model-library-2026-10-17", "compileKind": "each-file" },
+    ],
+  )
+  assert_eq(
+    selected_profile(model, "moonbit"),
+    "moonbit-model-library-2026-10-17",
+  )
+  let example = default_project(model, "moonbit").active_file().content
+  for
+    feature in [
+      "/// Build a greeting", "choose_earlier", "in_name_range", "should_welcome",
+      "unicode_sample", "compare_names",
+    ] {
+    assert_true(example.contains(feature))
+  }
+  assert_eq(
+    selected_profile(
+      with_selection(model, "moonbit", "moonbit-model-library-v2"),
+      "moonbit",
+    ),
+    "moonbit-model-library-v2",
+  )
+  assert_eq(
+    selected_profile(
+      with_selection(model, "moonbit", "moonbit-model-library-v1"),
+      "moonbit",
+    ),
+    "moonbit-model-library-v1",
+  )
+  let pinned = with_selection(model, "moonbit", "moonbit-model-bool-library-v1")
+  assert_eq(
+    selected_profile(pinned, "moonbit"),
+    "moonbit-model-bool-library-v1",
+  )
+  assert_eq(selected_profile({ ..model, connected: true, }, "moonbit"), "")
+  assert_eq(
+    selected_profile({ ..model, catalog: catalog_fixture(), }, "moonbit"),
+    "moonbit-model-bool-v1",
+  )
+}

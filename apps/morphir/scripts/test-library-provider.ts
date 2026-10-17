@@ -82,5 +82,10 @@ try {
   const stale=JSON.parse(snapshot);stale.push(['_build/stale',['text','stale']]);const staleSnapshot=JSON.stringify(stale);
   run({snapshot:staleSnapshot,sourceIdentity:createHash('sha256').update(staleSnapshot).digest('hex')},/Stale build outputs/);
   run({dependencies:[{moduleName:'finos/morphir-sdk',version:'0.1.0',apiProfile:'morphir-sdk-concrete-v1',semanticPin:'bc99af69a8b24d391311fae3822a87eafef3c334'}]},/build.unresolved_dependency/);
+  const missingExtension=join(root,'missing-source-string-extension');
+  mkdirSync(join(missingExtension,'conformance'),{recursive:true});
+  writeFileSync(join(missingExtension,'moon.mod'),'name="finos/morphir-sdk"\nversion="0.1.0"\n');
+  writeFileSync(join(missingExtension,'conformance/bindings.json'),JSON.stringify({pin:'bc99af69a8b24d391311fae3822a87eafef3c334'}));
+  run({dependencies:[{moduleName:'finos/morphir-sdk',version:'0.1.0',apiProfile:'morphir-sdk-concrete-v1+moonbit-source-string-v1',semanticPin:'bc99af69a8b24d391311fae3822a87eafef3c334'}],suppliedDependencies:{'finos/morphir-sdk':missingExtension}},/build.missing_source_string_extension/);
   console.log(JSON.stringify({successful:true,targets,deadline:true,identityChecks:true,outputLimit:true,staleOutputs:true,cleanup:true,sdkAncestors:true,pathPlatforms:['posix','win32-drive','win32-unc']}));
 } finally {rmSync(root,{recursive:true,force:true});}

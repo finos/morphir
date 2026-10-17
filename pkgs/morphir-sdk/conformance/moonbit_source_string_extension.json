@@ -1,0 +1,9 @@
+{
+  "profile": "morphir-moonbit-source-string-v1",
+  "classification": "MoonBit source runtime extension; excluded from the 248 classic SDK bindings",
+  "maxCodeUnits": 1048576,
+  "bindings": [
+    {"fqName": "morphir/moonbit-source:string#require-valid", "inputs": ["String", "Int"], "output": "String"},
+    {"fqName": "morphir/moonbit-source:string#append-bounded", "inputs": ["String", "String", "Int"], "output": "String"}
+  ]
+}

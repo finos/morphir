@@ -151,7 +151,7 @@ No outputs are published if any selected project's transformation fails. A publi
 
 ## MoonBit source models
 
-The CLI explicitly registers the [Boolean source frontend](../../pkgs/morphir-moonbit-frontend/README.md)
+The CLI explicitly registers the [source frontend](../../pkgs/morphir-moonbit-frontend/README.md)
 through the separate [engine adapter](../../pkgs/morphir-engine/moonbit/README.md).
 For a `src/Main.mbt` file containing `pub fn eligible(active : Bool, vip : Bool) -> Bool { active && !vip }`:
 
@@ -192,6 +192,28 @@ profile = "moonbit-model-bool-library-v1"
 morphir run . --frontend moonbit --frontend-profile moonbit-model-bool-library-v1 --dry-run
 morphir run . --frontend-provider finos/morphir-moonbit-frontend --frontend-profile moonbit-model-bool-library-v1 --json
 ```
+
+For the full currently qualified source subset, select
+`--frontend-profile moonbit-model-library-2026-10-17`. It combines Bool, String basics and
+shortlex ordering, and Int32 identity/selection/call paths in one library. Mixed
+signatures work across these types. String ordering compares UTF-16 length first,
+then lexical code units for ties; `"b" < "aa"` is true. Cumulative v1 remains pinned
+to its earlier contract without ordering.
+This matches the workbench's **Supported MoonBit library 2026-10-17** choice. Existing profile
+IDs and the CLI Boolean default remain compatible. This profile's version describes
+a finite tested source contract; it does not imply full MoonBit or installed
+conformance. New features require qualification in a new dated cumulative snapshot.
+A revision suffix distinguishes multiple snapshots qualified on the same day.
+Function doc comments remain in IR and generated MoonBit/Scheme output.
+
+Select `moonbit-model-string-library-v1` for String/Bool libraries with quoted
+literals, bounded concatenation, exact equality, immutable lets, conditionals and
+direct same-file calls. Public String inputs and outputs enforce well-formed UTF-16
+and a 1,048,576-unit bound through the separate source String runtime extension.
+Ordering, indexing, methods and imports are not admitted by this profile.
+`moonbit-model-typed-library-foundation-v1` separately exposes narrow Bool/Int32
+identity, conditional and call paths for shared qualification. Numeric arithmetic
+remains separate work. Both are opt-in; the Boolean default stays compatible.
 
 The library profile accepts multiple explicit Bool functions in one file, public and
 unexported helpers, direct same-file calls including forward and zero-input calls,

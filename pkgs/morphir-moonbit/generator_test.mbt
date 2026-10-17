@@ -638,6 +638,41 @@ test "compound lowering rejects generic open and unsupported SDK types" {
 }
 
 ///|
+test "String adapters reject incorrect signatures and arities" {
+  let file = @fixtures.acceptance_library()
+  guard file.distribution is Library(_, _, def) else { fail("library") }
+  let int = @fixtures.scalar("morphir/SDK:basics#int")
+  let a : @ir.TypeAttributes = {
+    source: None,
+    constraints: Map([]),
+    extensions: Map([]),
+  }
+  let mut checked = 0
+  for name, entry in def.modules[@ir.Path::parse("audit")].value.values {
+    if !name.to_canonical().has_prefix("string-") {
+      continue
+    }
+    guard entry.value.value is ExpressionBody([], signature, Reference(_, sdk)) else {
+      fail("String fixture")
+    }
+    // A spurious leading integer changes every adapter's input/output contract.
+    for wrong in [int, @ir.Type::Function(a, int, signature)] {
+      let reference = @ir.Value::Reference(
+        { ..@fixtures.attrs(), inferred_type: Some(wrong), },
+        sdk,
+      )
+      assert_eq(
+        error(single(wrong, reference)).0,
+        "moonbit.sdk_signature",
+        msg=sdk.to_canonical(),
+      )
+    }
+    checked += 1
+  }
+  assert_eq(checked, 44)
+}
+
+///|
 test "power dispatch accepts integer and float signatures and rejects mixed inputs" {
   let a : @ir.TypeAttributes = {
     source: None,
@@ -1029,5 +1064,83 @@ test "review I1: a private value or constructor of a private module is still out
       ]),
     ).0,
     "moonbit.inaccessible_reference",
+  )
+}
+
+///|
+test "SDK Int32 invocation uses its bounded wrapper and a distinct transport type" {
+  let result = @generator.generate(
+    @generator.Input::new("bounded", @fixtures.invocation_library()),
+  )
+  let entry = result.invocations.filter(e => e.fqname == "calls:main#signed32")[0]
+  assert_eq(entry.inputs, [@execution.Custom("morphir/SDK:int#int-32")])
+  assert_eq(entry.output, @execution.Custom("morphir/SDK:int#int-32"))
+  assert_eq(result.invocation_types.length(), 1)
+  assert_eq(result.invocation_types[0].name, "morphir/SDK:int#int-32")
+  assert_true(result.invocation_codecs.contains("@int.Int32Value"))
+  assert_true(result.invocation_codecs.contains("execution.int32_range"))
+}
+
+///|
+test "SDK Int32 conversion requires its classic checked signature" {
+  let int = @fixtures.scalar("morphir/SDK:basics#int")
+  let wrong = @ir.Type::Function(@ir.TypeAttributes::default(), int, int)
+  let reference = @ir.Value::Reference(
+    { ..@fixtures.attrs(), inferred_type: Some(wrong), },
+    @ir.FQName::parse("morphir/SDK:int#to-int32"),
+  )
+  assert_eq(error(single(wrong, reference)).0, "moonbit.sdk_signature")
+}
+
+///|
+test "source String extension admits only its exact versioned signatures" {
+  let text = @fixtures.scalar("morphir/SDK:string#string")
+  let int = @fixtures.scalar("morphir/SDK:basics#int")
+  let attrs = @ir.TypeAttributes::default()
+  for
+    (binding, inputs) in [
+      ("require-valid", [text, int]),
+      ("append-bounded", [text, text, int]),
+    ] {
+    let mut signature = text
+    for i = inputs.length() - 1; i >= 0; i = i - 1 {
+      signature = @ir.Type::Function(attrs, inputs[i], signature)
+    }
+    let name = @ir.FQName::parse("morphir/moonbit-source:string#" + binding)
+    let reference = @ir.Value::Reference(
+      { ..@fixtures.attrs(), inferred_type: Some(signature), },
+      name,
+    )
+    let generated = @generator.generate(single(signature, reference))
+    assert_eq(
+      generated.project.dependencies[0].api_profile,
+      "morphir-sdk-concrete-v1+moonbit-source-string-v1",
+    )
+    let wrong = @ir.Type::Function(attrs, text, text)
+    assert_eq(
+      error(
+        single(
+          wrong,
+          @ir.Value::Reference(
+            { ..@fixtures.attrs(), inferred_type: Some(wrong), },
+            name,
+          ),
+        ),
+      ).0,
+      "moonbit.source_extension_signature",
+    )
+  }
+  let name = @ir.FQName::parse("morphir/moonbit-source:string#unknown")
+  assert_eq(
+    error(
+      single(
+        text,
+        @ir.Value::Reference(
+          { ..@fixtures.attrs(), inferred_type: Some(text), },
+          name,
+        ),
+      ),
+    ).0,
+    "moonbit.unsupported_source_extension",
   )
 }

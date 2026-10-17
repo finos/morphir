@@ -9,6 +9,28 @@ fn span(loc : @location.Location) -> @ir.SourceLocation {
 }
 
 ///|
+/// Parser attachment owns comment/declaration association. Remove only the doc
+/// marker's conventional space and empty separator edges, retaining Markdown.
+fn source_documentation(doc : @ast.DocString) -> String? {
+  let lines = doc.content
+    .to_array()
+    .map(line => line.strip_prefix(" ").unwrap_or(line[:]).to_owned())
+  let mut first = 0
+  let mut last = lines.length()
+  while first < last && lines[first] == "" {
+    first += 1
+  }
+  while last > first && lines[last - 1] == "" {
+    last -= 1
+  }
+  if first == last {
+    None
+  } else {
+    Some(lines[first:last].to_owned().join("\n"))
+  }
+}
+
+///|
 fn reject(
   code : String,
   detail : String,

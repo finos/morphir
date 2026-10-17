@@ -48,6 +48,11 @@ test "local catalog exposes one MoonBit language and the registered profile desc
   assert_eq(profiles.map(p => @wire.string(@wire.field(p, "id"))), [
     @moonbit_frontend.PROFILE,
     @moonbit_frontend.LIBRARY_PROFILE,
+    @moonbit_frontend.TYPED_FOUNDATION_PROFILE,
+    @moonbit_frontend.STRING_LIBRARY_PROFILE,
+    @moonbit_frontend.SUPPORTED_LIBRARY_PROFILE,
+    @moonbit_frontend.SUPPORTED_LIBRARY_PROFILE_V2,
+    @moonbit_frontend.CURRENT_LIBRARY_PROFILE,
   ])
   assert_eq(
     @wire.field(profiles[1], "displayName"),
@@ -204,4 +209,46 @@ test "all-private libraries remain inspectable with an empty public manifest" {
     Json::object(Map([])),
   )
   assert_true(!@wire.array(@wire.field(result, "nodes")).is_empty())
+}
+
+///|
+test "String source compiles and executes typed public entries in the workbench" {
+  let compiled = @pipeline.execute({
+    "operation": "compile",
+    "languageId": "moonbit",
+    "frontendProfile": "moonbit-model-string-library-v1",
+    "target": "moonbit",
+    "source": "fn prefix() -> String { \"Hello, \" }\npub fn welcome(name : String, enabled : Bool) -> String { if enabled { prefix() + name } else { \"\" } }",
+  })
+  assert_eq(
+    @wire.field(compiled, "success"),
+    Json::boolean(true),
+    msg=compiled.stringify(),
+  )
+  let entry = library_entry(compiled, "welcome")
+  for
+    (enabled, units) in [
+      (true, [72, 101, 108, 108, 111, 44, 32, 55357, 56832]),
+      (false, []),
+    ] {
+    let evaluated = @pipeline.execute({
+      "operation": "evaluate",
+      "executionMode": "typed",
+      "source": @wire.string(@wire.field(compiled, "irSource")),
+      "entry": entry,
+      "arguments": [
+        { "type": "text", "units": [55357, 56832] },
+        { "type": "bool", "value": enabled },
+      ],
+    })
+    assert_eq(
+      @wire.field(evaluated, "success"),
+      Json::boolean(true),
+      msg=evaluated.stringify(),
+    )
+    assert_eq(@wire.field(evaluated, "typed"), {
+      "type": "text",
+      "units": units,
+    })
+  }
 }

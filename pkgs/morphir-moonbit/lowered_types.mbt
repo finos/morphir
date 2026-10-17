@@ -132,6 +132,7 @@ fn lower_key(tpe : Lowered) -> String {
   match tpe {
     Atom(s) =>
       match s {
+        SignedInt32 => "sdk-int32"
         Integer => "int"
         Float => "float"
         Boolean => "bool"

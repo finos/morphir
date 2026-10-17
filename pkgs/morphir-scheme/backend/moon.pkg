@@ -14,6 +14,7 @@ import {
   "finos/morphir-sdk/maybe" @sdk_maybe,
   "finos/morphir-sdk/result" @sdk_result,
   "finos/morphir-sdk/set" @sdk_set,
+  "finos/morphir-sdk/source_string",
   "finos/morphir-sdk/string" @sdk_string,
   "finos/morphir-ir/identities",
   "moonrockz/ion/ion",

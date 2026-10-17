@@ -1,4 +1,20 @@
 ///|
+/// Pinned SDK declarations separate the numeric word; historical runtime
+/// bindings and opaque transport tags retain their compact spelling.
+fn sdk_int_binding(name : String) -> String {
+  match name {
+    "morphir/SDK:int#from-int-32" => "morphir/SDK:int#from-int32"
+    "morphir/SDK:int#to-int-32" => "morphir/SDK:int#to-int32"
+    _ => name
+  }
+}
+
+///|
+fn sdk_int_canonical_aliases() -> Array[(String, Int32)] {
+  [("morphir/SDK:int#from-int-32", 1), ("morphir/SDK:int#to-int-32", 1)]
+}
+
+///|
 fn sdk_char_dispatch(
   name : String,
   args : Array[@scheme.Value],
