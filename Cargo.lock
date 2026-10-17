@@ -5042,12 +5042,15 @@ dependencies = [
 name = "morphir-extension-sdk"
 version = "0.2.0"
 dependencies = [
+ "base64 0.22.1",
  "extism-pdk",
+ "ion-rs",
  "morphir-workspace",
  "percent-encoding",
  "semver",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "thiserror 2.0.20",
  "url",
 ]
@@ -5224,6 +5227,7 @@ dependencies = [
  "ed25519-zebra",
  "fs2",
  "futures",
+ "ion-rs",
  "jiff",
  "jsonschema 0.56.0",
  "libc",

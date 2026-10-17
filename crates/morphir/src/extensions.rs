@@ -324,13 +324,16 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn host_initialize_identifies_cli_kind() {
+    fn host_initialize_identifies_cli_and_preserves_legacy_defaults() {
         let params = crate::commands::extension::host_config().initialize_params();
         assert_eq!(
             params.host.kind,
             morphir_extension_sdk::protocol::PeerKind::Cli
         );
         assert_eq!(params.host.name, "morphir-cli");
+        let wire = serde_json::to_value(params).unwrap();
+        assert_eq!(wire["protocolVersions"], json!(["0.1"]));
+        assert!(wire.get("modelTransport").is_none());
     }
 
     #[test]
