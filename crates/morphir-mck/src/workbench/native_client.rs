@@ -56,15 +56,15 @@ pub(super) fn validate_input(value: &Value) -> Result<(), String> {
     let mut attempts = std::collections::BTreeSet::new();
     let mut delivered = std::collections::BTreeSet::new();
     for action in value["actions"].as_array().expect("schema checked actions") {
-        if let Some(id) = action["id"].as_str() {
-            if !attempts.insert(id) {
-                return Err("duplicate native client attempt id".into());
-            }
+        if let Some(id) = action["id"].as_str()
+            && !attempts.insert(id)
+        {
+            return Err("duplicate native client attempt id".into());
         }
-        if let Some(id) = action["call"].as_str() {
-            if !held.contains(id) || !delivered.insert(id) {
-                return Err("invalid native client delivery reference".into());
-            }
+        if let Some(id) = action["call"].as_str()
+            && (!held.contains(id) || !delivered.insert(id))
+        {
+            return Err("invalid native client delivery reference".into());
         }
     }
     if value["evaluation"]["inputs"]["format"] == "json" {

@@ -6,7 +6,9 @@ are **unexecuted data**. Executable request expectations are published separatel
 in exact [MCK draft.7](../../../mck/draft.7/README.md). Structural response
 fixtures and additional runtime expectations are exercised by exact
 [MCK draft.8](../../../mck/draft.8/README.md), using the shared Rust runner and
-explicit implementation adapters. The abstract lifecycle traces remain pending.
+explicit implementation adapters. The original abstract lifecycle traces remain unexecuted. Concrete client lifecycle
+scenarios run separately in exact [MCK draft.9](../../../mck/draft.9/README.md).
+Owner lifecycle and packaged platform qualification remain pending.
 These files' presence,
 valid JSON syntax, and the separate schema fixtures establish no implementation,
 transport, operating-system, or packaged-platform qualification. No additional
