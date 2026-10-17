@@ -7,9 +7,17 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/encoding/base64",
   "moonbitlang/core/buffer",
+  "moonbitlang/x/crypto",
+  "finos/morphir-ir/version",
+  "finos/morphir-metadata" @linked_metadata,
+  "moonrockz/ion/ion",
+  "moonrockz/ion/binary" @ion_binary,
 }
 
 import {
   "finos/morphir-moonbit/mep",
   "finos/morphir-moonbit/fixtures",
+  "moonrockz/ion/text" @ion_text,
+  "moonrockz/ion/json" @ion_json,
+  "finos/morphir-metadata/fixtures" @metadata_fixtures,
 } for "test"

@@ -18,4 +18,9 @@ import {
   "finos/morphir-scheme" @scheme,
   "finos/morphir-scheme/backend",
   "moonrockz/ion/binary" @ion_binary,
+  "finos/morphir-moonbit/mep",
+  "finos/morphir-ir/wire",
+  "moonrockz/ion/json" @ion_json,
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/x/crypto",
 } for "test"

@@ -16,4 +16,5 @@ import {
   "finos/morphir-ir@0.1.0",
   "finos/morphir-sdk@0.1.0",
   "moonrockz/ion@0.5.0",
+  "moonbitlang/x@0.5.5",
 }

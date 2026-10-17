@@ -9,11 +9,17 @@ priv enum Lifecycle {
 ///|
 pub struct Session {
   priv mut lifecycle : Lifecycle
+  priv mut models : ModelTransport?
+  priv metadata_capabilities : @linked_metadata.Capabilities
 }
 
 ///|
-pub fn Session::new() -> Session {
-  { lifecycle: BeforeInitialize, }
+/// Capabilities come from the embedding host, never from a MEP request. The
+/// native stdio adapter leaves them unavailable until authenticated integration.
+pub fn Session::new(
+  metadata_capabilities~ : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
+) -> Session {
+  { lifecycle: BeforeInitialize, models: None, metadata_capabilities, }
 }
 
 ///|
@@ -33,14 +39,18 @@ fn info() -> Json {
 }
 
 ///|
-fn capabilities() -> Json {
-  {
+fn capabilities(models : ModelTransport?) -> Json {
+  let value : Json = {
     "backend": { "targets": ["moonbit"], "irVersions": ["4"], "generate": true },
     "streaming": false,
     "incremental": false,
     "cancellation": false,
     "progress": false,
   }
+  if models is Some(support) && value is Object(fields) {
+    fields["modelTransport"] = support.to_json()
+  }
+  value
 }
 
 ///|
@@ -80,7 +90,8 @@ fn negotiation(params : Json, initialize~ : Bool = false) -> Int32? {
       return Some(-32602)
     }
   }
-  if versions.contains(Json::string("0.1")) {
+  if versions.contains(Json::string("0.1")) ||
+    versions.contains(Json::string(MODEL_PROTOCOL)) {
     None
   } else {
     Some(-32011)
@@ -164,27 +175,59 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
             if operation == "morphir.extension.describe" {
               result(id, {
                 "claimsVersion": "0.1.0-draft.2",
-                "protocolVersions": ["0.1"],
+                "protocolVersions": [MODEL_PROTOCOL, "0.1"],
                 "extension": info(),
-                "capabilities": capabilities(),
+                "capabilities": capabilities(Some(model_support())),
               })
             } else {
+              let versions = field(params, "protocolVersions")
+              let has_offer = params is Object(fields) &&
+                fields.contains("modelTransport")
+              let rich = versions is Array(items) &&
+                items.contains(Json::string(MODEL_PROTOCOL)) &&
+                has_offer
+              let models = if rich {
+                Some(
+                  select_models(field(params, "modelTransport")) catch {
+                    _ =>
+                      return Some(
+                        rpc_error(id, -32602, "Invalid model transport offer"),
+                      )
+                  },
+                )
+              } else {
+                guard versions is Array(items) &&
+                  items.contains(Json::string("0.1")) else {
+                  return Some(
+                    rpc_error(
+                      id, -32011, "Rich initialization requires a model transport offer",
+                    ),
+                  )
+                }
+                None
+              }
+              self.models = models
               self.lifecycle = Ready
               result(id, {
-                "protocolVersion": "0.1",
+                "protocolVersion": if rich {
+                  MODEL_PROTOCOL
+                } else {
+                  "0.1"
+                },
                 "extension": info(),
-                "capabilities": capabilities(),
+                "capabilities": capabilities(models),
               })
             }
         }
       "morphir.ping" => result(id, { "ok": true })
       "morphir.extension.info" => result(id, info())
-      "morphir.extension.capabilities" => result(id, capabilities())
+      "morphir.extension.capabilities" => result(id, capabilities(self.models))
       "morphir.shutdown" => {
         self.lifecycle = Shutdown
         result(id, Json::object({}))
       }
       "morphir.backend.generate" => generate(id, params)
+      "morphir.backend.generateModel" => self.generate_model(id, params)
       _ => rpc_error(id, -32601, "Unknown MEP operation")
     },
   )
@@ -235,6 +278,15 @@ fn generate(id : Json, params : Json) -> Json {
       )
   }
   let artifacts = []
+  generation_result(id, output, artifacts)
+}
+
+///|
+fn generation_result(
+  id : Json,
+  output : @generator.Output,
+  artifacts : Array[Json],
+) -> Json {
   for artifact in output.artifacts {
     let (content, binary) = match artifact.content {
       Text(text) => (text, false)

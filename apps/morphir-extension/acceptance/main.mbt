@@ -299,6 +299,8 @@ async fn main {
   defer @fs.rmdir(root, recursive=true)
   @fs.mkdir(root + "/process")
   process_cases(guest, root + "/process")
+  @fs.mkdir(root + "/rich-process")
+  rich_process_cases(guest, root + "/rich-process", evidence)
   let mut installation : Json = {
     "installed": false,
     "reason": "explicit pinned host not supplied",
@@ -338,6 +340,7 @@ async fn main {
     "hostSha256": host_digest,
     "platform": platform,
     "processCases": "passed",
+    "richProcessCases": "passed",
     "installation": installation,
   }
   let ion = @ion_json.to_ion(receipt)
