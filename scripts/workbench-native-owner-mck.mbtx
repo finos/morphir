@@ -1,0 +1,93 @@
+///|
+/// Opt-in native owner qualification through the shared parent Rust MCK.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn checked(program : String, args : Array[String]) -> Unit {
+  let code = @process.run(
+    program,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    @sys.exit(1)
+  }
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+async fn main {
+  guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
+    @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
+    @stdio.stderr.write(
+      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and draft.10 kit.\n",
+    )
+    @sys.exit(1)
+  }
+  let corpus = @fs.read_file(kit + "/cases.json").json()
+  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.10") &&
+    field(corpus, "cases") is Array(cases) &&
+    !cases.is_empty() else {
+    @sys.exit(1)
+  }
+  let evidence = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
+    ".dev/native-owner-mck/reports",
+  )
+  @fs.mkdir(evidence, recursive=true, allow_exist=true)
+  checked("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"])
+  checked("bun", [
+    "--check", "apps/morphir-workbench/scripts/native-owner-assets.ts", kit, "apps/morphir-workbench/_build/js/release/build/finos/morphir-workbench/worker/worker.js",
+  ])
+  for target in ["js", "native", "wasm", "wasm-gc"] {
+    checked("moon", [
+      "test", "pkgs/morphir-workbench-native-session", "apps/morphir-workbench/jobs",
+      "--target", target,
+    ])
+  }
+  checked("moon", [
+    "test", "pkgs/morphir-workbench-native/bridge", "pkgs/morphir-workbench-native/workspace",
+    "pkgs/morphir-workbench-native/mck", "--target", "native",
+  ])
+  for mode in ["debug", "release"] {
+    checked(
+      "moon",
+      [
+        "build", "pkgs/morphir-workbench-native/mck/native", "--target", "native",
+      ] +
+      (if mode == "release" { ["--release"] } else { [] }),
+    )
+    let artifact = "_build/native/\{mode}/build/finos/morphir-workbench-native/mck/native/native.exe"
+    let report = "\{evidence}/native-\{mode}.json"
+    checked(runner, [
+      "--no-banner", "mck", "workbench", "run", "--kit", kit, "--adapter", artifact,
+      "--report", report,
+    ])
+    checked(runner, [
+      "--no-banner", "mck", "workbench", "check", "--kit", kit, "--report", report,
+    ])
+    let result = @fs.read_file(report).json()
+    guard field(result, "qualified") == Json::boolean(true) &&
+      field(result, "records") is Array(records) &&
+      records.length() == cases.length() else {
+      @sys.exit(1)
+    }
+  }
+  @stdio.stdout.write(
+    "Native owner scenarios pass debug/release; both reports independently checked.\n",
+  )
+}

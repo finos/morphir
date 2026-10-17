@@ -9,7 +9,8 @@ priv struct Project {
 
 ///|
 pub struct Service {
-  priv mut root : Root?
+  priv open_root : (String) -> RootAccess raise
+  priv mut root : RootAccess?
   priv mut snapshot : Snapshot?
   priv mut projects : Array[Project]
   priv mut generation : Int32
@@ -23,8 +24,12 @@ pub struct Service {
 }
 
 ///|
-pub fn Service::new() -> Service {
+/// The root factory is trusted host wiring, never renderer-supplied data.
+pub fn Service::new(
+  open_root~ : (String) -> RootAccess raise = native_root,
+) -> Service {
   {
+    open_root,
     root: None,
     snapshot: None,
     projects: [],
@@ -42,7 +47,7 @@ pub fn Service::new() -> Service {
 ///|
 pub fn Service::revoke(self : Service) -> Unit {
   if self.root is Some(root) {
-    root.close()
+    (root.close)()
   }
   self.root = None
   self.snapshot = None
@@ -144,10 +149,10 @@ pub fn Service::finish_choose(
   }
   self.chooser = None
   guard path is Some(path) else { return { "ok": true, "cancelled": true } }
-  let root = Root::open(path)
+  let root = (self.open_root)(path)
   let mut retained = false
-  defer (if !retained { root.close() })
-  let snapshot = root.snapshot()
+  defer (if !retained { (root.close)() })
+  let snapshot = (root.snapshot)()
   let workspace = @engine.discover(snapshot.tree)
   guard workspace.projects.length() <= 128 else {
     raise Rejected("workbench.workspace_quota")
@@ -282,7 +287,7 @@ pub fn Service::request(self : Service, source : String) -> Json {
       self.revoke()
       return { "ok": true }
     }
-    root.current()
+    (root.current)()
     let sequence = sequence(fields)
     if action == "open" {
       guard fields.length() == 4 else {
@@ -302,11 +307,11 @@ pub fn Service::request(self : Service, source : String) -> Json {
       guard project.error == "" else {
         raise Rejected("workbench.workspace_model_missing")
       }
-      let fresh = root.snapshot()
+      let fresh = (root.snapshot)()
       guard self.snapshot is Some(old) && fresh.tree.files == old.tree.files else {
         raise Rejected("workbench.workspace_changed")
       }
-      let bytes = root.read(project.path)
+      let bytes = (root.read)(project.path)
       let codec = if project.format != "morphir-json" &&
         bytes.length() >= 4 &&
         bytes[:4] == b"\xe0\x01\x00\xea"[:] {

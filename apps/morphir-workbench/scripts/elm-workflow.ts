@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import type { Page, Locator, Request, Response, WebSocket, Browser, BrowserContext } from 'playwright';
+import type { Page, Locator, Request, Response, WebSocket, Browser, BrowserContext, FileChooser } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -8,7 +8,10 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { openSample } from './workbench-steps.ts';
 
 // The same generated-file component and worker run in Chromium and packaged CEF.
-export async function elmWorkflow(page: Page, { nativeDownloads = true } = {}) {
+export async function elmWorkflow(page: Page, {
+  nativeDownloads = true,
+  selectFolder = (chooser: FileChooser, directory: string) => chooser.setFiles(directory),
+} = {}) {
   await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
   await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
   await openSample(page, 'Elm constant');
@@ -209,7 +212,7 @@ export async function elmWorkflow(page: Page, { nativeDownloads = true } = {}) {
   // Import a morphir.json folder: the project opens as Elm with its package name and exposed module.
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import folder', exact: true }).click();
-  await (await chooser).setFiles(fileURLToPath(new URL('./fixtures/folder-import/rentals', import.meta.url)));
+  await selectFolder(await chooser, fileURLToPath(new URL('./fixtures/folder-import/rentals', import.meta.url)));
   await row('src/Morphir/Example/App/Rentals.elm').waitFor();
   assert.equal(await page.getByRole('combobox', { name: 'Language', exact: true }).inputValue(), 'elm');
   assert.equal(await page.locator('.explorer-name').textContent(), 'Morphir.Example.App');
@@ -259,14 +262,17 @@ export async function elmWorkflow(page: Page, { nativeDownloads = true } = {}) {
   await reopenElm();
   await row('src/Workbench/Main.elm').waitFor();
   assert.equal(await files.locator('.explorer-row.is-file').count(), 1, 'The default stays after a reload');
-  const failing = await page.context().browser()!.newPage();
-  await failing.addInitScript(() => { Storage.prototype.setItem = () => { throw new Error('quota'); }; });
-  await failing.goto(page.url());
-  await failing.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
-  await failing.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  await failing.getByRole('textbox', { name: 'Source editor', exact: true }).fill('(+ 8 9)');
-  await failing.getByText('Not saved', { exact: true }).waitFor();
-  await failing.close();
+  // Quota can fail after initialization. Use the existing window, since CEF
+  // does not provide Playwright's new browser contexts. Reload restores Storage.
+  await page.evaluate(() => { Storage.prototype.setItem = () => { throw new Error('quota'); }; });
+  try {
+    await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('scheme');
+    await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('(+ 8 9)');
+    await page.getByText('Not saved', { exact: true }).waitFor();
+  } finally {
+    await page.reload();
+    await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  }
   await page.evaluate(() => localStorage.clear());
   await reopenElm();
   // Records has an extensible record, which typed evaluation cannot take: it still compiles for every target.

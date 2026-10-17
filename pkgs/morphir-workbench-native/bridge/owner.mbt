@@ -1,13 +1,29 @@
 ///|
+/// Trusted host wiring for an owned job service. These callbacks cannot be
+/// constructed or selected by renderer requests.
+pub(all) struct JobsService {
+  offer : () -> Json raise
+  request : (String, Json) -> Bytes
+  close : () -> Unit
+  shutdown : async () -> Unit
+}
+
+///|
+/// A present factory enables the corresponding capability. The owner publishes
+/// it only after construction and awaited predecessor cleanup succeed.
+pub(all) struct ServiceFactories {
+  jobs : ((String) -> JobsService raise)?
+  workspace : (() -> @workspace.Service)?
+}
+
+///|
 /// The embedding host supplies caller context, executable and native picker.
 /// Renderer input never supplies any of these authorities.
 pub struct Owner {
   priv session : @session.Session
   priv group : @async.TaskGroup[Unit]
-  priv executable : String
-  priv jobs_enabled : Bool
-  priv workspace_enabled : Bool
-  priv services : Map[String, @native.Service]
+  priv factories : ServiceFactories
+  priv services : Map[String, JobsService]
   priv workspaces : Map[String, @workspace.Service]
   priv mut cleanup_failed : Bool
 }
@@ -19,12 +35,46 @@ pub fn Owner::new(
   jobs~ : Bool,
   workspace~ : Bool,
 ) -> Owner {
+  let job_factory : ((String) -> JobsService raise)? = if jobs {
+    Some(fn(id) raise {
+      let service = @native.Service::new(group, executable, id)
+      {
+        offer: fn() { service.offer() },
+        request: fn(operation, payload) {
+          service.native_request(operation, payload)
+        },
+        close: fn() { service.close() },
+        shutdown: async fn() { service.shutdown() },
+      }
+    })
+  } else {
+    None
+  }
+  let workspace_factory : (() -> @workspace.Service)? = if workspace {
+    Some(fn() { @workspace.Service::new() })
+  } else {
+    None
+  }
+  Owner::with_services(group, {
+    jobs: job_factory,
+    workspace: workspace_factory,
+  })
+}
+
+///|
+/// Native host composition point. Capability factories and their resources are
+/// trusted dependencies; they never come from the native wire envelope.
+pub fn Owner::with_services(
+  group : @async.TaskGroup[Unit],
+  factories : ServiceFactories,
+) -> Owner {
   {
-    session: @session.Session::new(jobs~, workspace~),
+    session: @session.Session::new(
+      jobs=factories.jobs is Some(_),
+      workspace=factories.workspace is Some(_),
+    ),
     group,
-    executable,
-    jobs_enabled: jobs,
-    workspace_enabled: workspace,
+    factories,
     services: Map([]),
     workspaces: Map([]),
     cleanup_failed: false,
@@ -55,14 +105,14 @@ fn Owner::descriptor(self : Owner, id : String) -> Json raise {
     "sessionId": Json::string(id),
     "operations": Json::array(operations),
   }
-  if self.jobs_enabled {
+  if self.factories.jobs is Some(_) {
     guard self.services.get(id) is Some(service) else {
       raise @session.Rejected("workbench.native_jobs_unavailable")
     }
     operations.push(Json::string("jobs"))
-    fields["offer"] = service.offer()
+    fields["offer"] = (service.offer)()
   }
-  if self.workspace_enabled {
+  if self.factories.workspace is Some(_) {
     guard self.workspaces.contains(id) else {
       raise @session.Rejected("workbench.workspace_unavailable")
     }
@@ -104,7 +154,7 @@ pub async fn Owner::request(
       category = @reply.Unavailable
       for (old_id, old) in self.services.to_array() {
         if old_id != id {
-          old.shutdown()
+          (old.shutdown)()
           self.services.remove(old_id)
         }
       }
@@ -116,15 +166,12 @@ pub async fn Owner::request(
       category = @reply.Unauthorized
       ignore(self.session.check(caller(), id))
       category = @reply.Unavailable
-      if self.jobs_enabled && !self.services.contains(id) {
-        self.services[id] = @native.Service::new(
-          self.group,
-          self.executable,
-          id,
-        )
+      if self.factories.jobs is Some(factory) && !self.services.contains(id) {
+        self.services[id] = factory(id)
       }
-      if self.workspace_enabled && !self.workspaces.contains(id) {
-        self.workspaces[id] = @workspace.Service::new()
+      if self.factories.workspace is Some(factory) &&
+        !self.workspaces.contains(id) {
+        self.workspaces[id] = factory()
       }
       return raw(@reply.success(operation, self.descriptor(id)))
     }
@@ -143,7 +190,7 @@ pub async fn Owner::request(
       }
       category = @reply.Unavailable
       if self.services.get(id) is Some(service) {
-        service.shutdown()
+        (service.shutdown)()
         self.services.remove(id)
       }
       return raw(@reply.success(operation, {}))
@@ -155,7 +202,7 @@ pub async fn Owner::request(
       guard self.services.get(id) is Some(service) else {
         return raw(@reply.failure(category, effect))
       }
-      return raw(service.native_request(operation, payload))
+      return raw((service.request)(operation, payload))
     }
     guard self.workspaces.get(id) is Some(service) else {
       return raw(@reply.failure(category, effect))
@@ -191,10 +238,10 @@ pub fn Owner::revoke(self : Owner) -> Unit {
   }
   self.workspaces.clear()
   for (id, service) in self.services.to_array() {
-    service.close()
+    (service.close)()
     self.group.spawn_bg(async fn() {
       try {
-        service.shutdown()
+        (service.shutdown)()
         self.services.remove(id)
       } catch {
         _ => self.cleanup_failed = true
@@ -218,7 +265,7 @@ pub async fn Owner::shutdown(self : Owner) -> Unit {
   }
   self.workspaces.clear()
   for (id, service) in self.services.to_array() {
-    service.shutdown()
+    (service.shutdown)()
     self.services.remove(id)
   }
   self.cleanup_failed = false

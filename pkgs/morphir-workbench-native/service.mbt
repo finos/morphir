@@ -525,7 +525,8 @@ pub fn Service::offer(self : Service) -> Json {
 }
 
 ///|
-fn native_code(code : String) -> @reply.Code {
+/// The native bridge mapping for explicit production jobs.Host rejections.
+pub fn native_code(code : String) -> @reply.Code {
   if [
       "workbench.host_capacity", "workbench.host_already_claimed", "workbench.host_not_terminal",
     ].contains(code) {

@@ -3,14 +3,46 @@ import type { Invoke, NativeReply, NativeDescriptor, CoreReply, WorkResult } fro
 import type { AddressInfo } from 'node:net';
 import { malformed } from '../../../tests/helpers.ts';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
+import { chromium, type FileChooser } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { readFile, readdir } from 'node:fs/promises';
+import { basename, join, relative, sep } from 'node:path';
 import { elmWorkflow, moonbitWorkflow, libraryWorkflow } from './elm-workflow.ts';
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.ts';
+
+// CEF cancels CDP directory enumeration even though ordinary file uploads work.
+// Replay the selected files at the DOM input boundary; production readFiles,
+// bounded import and compilation still run. Chromium tests the real directory
+// upload. This does not qualify the OS folder dialog or native workspace grants.
+async function selectCefFolder(chooser: FileChooser, directory: string): Promise<void> {
+  const files: { name: string; path: string; bytes: number[] }[] = [];
+  for (const entry of await readdir(directory, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const path = join(entry.parentPath, entry.name);
+    files.push({ name: entry.name, path: basename(directory) + '/' + relative(directory, path).split(sep).join('/'),
+      bytes: Array.from(await readFile(path)) });
+  }
+  assert.equal(files.length, 2, 'The complete rentals folder fixture is selected');
+  // File metadata added in Playwright's utility world is invisible to the app.
+  await chooser.page().evaluate(({ input, files }) => {
+    if (!(input instanceof HTMLInputElement) || input.type !== 'file' || !input.webkitdirectory) {
+      throw new Error('Folder import must request a directory file input');
+    }
+    const selection = new DataTransfer();
+    for (const { name, path, bytes } of files) {
+      const file = new File([new Uint8Array(bytes)], name);
+      Object.defineProperty(file, 'webkitRelativePath', { value: path });
+      selection.items.add(file);
+    }
+    input.files = selection.files;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, { input: chooser.element(), files });
+  const mainPaths = await chooser.page().evaluate(input => Array.from((input as HTMLInputElement).files!, file => file.webkitRelativePath), chooser.element());
+  assert.deepEqual(mainPaths, files.map(file => file.path), 'The application sees the selected directory-relative paths');
+}
 
 if (!process.argv[2]) throw new Error('Usage: node scripts/desktop-test.js http://127.0.0.1:<cdp-port>');
 const browser = await chromium.connectOverCDP(process.argv[2]);
@@ -203,7 +235,11 @@ try {
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), { type: 'int', value: '1234567890123456789012345678901234567890' });
-  await elmWorkflow(page, { nativeDownloads: false });
+  const nativeJobCalls = await page.evaluate(() => globalThis.nativeJobCalls);
+  for (const operation of ['submit', 'query', 'release']) assert.ok(nativeJobCalls.includes(operation), `Native ${operation} was used by real typed evaluation`);
+  // The shared project workflow deliberately reloads the document for storage
+  // acceptance, so check this page's native-call recorder before those reloads.
+  await elmWorkflow(page, { nativeDownloads: false, selectFolder: selectCefFolder });
   await moonbitWorkflow(page, { nativeDownloads: false });
   await libraryWorkflow(page, { nativeDownloads: false });
   await toolPanelWorkflow(page, { resize: false });
@@ -245,8 +281,6 @@ try {
     await page.getByRole('status').filter({ hasText: 'Finished for another function' }).waitFor();
     assert.equal(await page.locator('.evaluation-result').count(), 0);
   } finally { await page.evaluate(() => globalThis.restoreLocalScopeRequests!()); }
-  const nativeJobCalls = await page.evaluate(() => globalThis.nativeJobCalls);
-  for (const operation of ['submit', 'query', 'release']) assert.ok(nativeJobCalls.includes(operation), `Native ${operation} was used by real typed evaluation`);
   // Presentation fixtures model standalone callbacks without host receipts.
   await page.goto(originalUrl + '?mode=standalone');
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();

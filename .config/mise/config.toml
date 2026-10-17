@@ -142,6 +142,10 @@ run = "moon run scripts/workbench-mck.mbtx"
 description = "Opt-in production native client scenarios in Node and Chromium through the shared Rust MCK"
 run = "moonx scripts/workbench-native-client-mck.mbtx"
 
+[tasks."test:workbench-native-owner-mck"]
+description = "Opt-in production native owner lifecycle through the shared Rust MCK"
+run = "moonx scripts/workbench-native-owner-mck.mbtx"
+
 [tasks."setup:site"]
 description = "Install site build dependencies and Chromium for the smoke test"
 run = "moonx scripts/typescript-tooling.mbtx setup-site"

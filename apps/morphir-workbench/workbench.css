@@ -170,7 +170,7 @@ pre { margin:0; padding:20px; font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,C
 .icon-download { --icon:url("./icon-download.svg"); }
 .icon-expand { --icon:url("./icon-expand.svg"); }
 .icon-restore { --icon:url("./icon-restore.svg"); }
-.artifact-workspace { display:grid; grid-template-columns:fit-content(200px) minmax(0,1fr); flex:1 1 0; min-width:0; min-height:200px; }
+.artifact-workspace { display:grid; grid-template-columns:fit-content(min(200px,24%)) minmax(0,1fr); flex:1 1 0; min-width:0; min-height:200px; }
 .artifact-workspace.files-hidden { grid-template-columns:minmax(0,1fr); }
 .artifact-files { display:block; min-width:96px; padding:8px 6px; background:var(--surface-alt); border-right:1px solid var(--line); overflow-y:auto; overflow-x:hidden; min-width:0; min-height:0; }
 .artifact-tree { list-style:none; margin:0; padding:0; }
@@ -194,7 +194,7 @@ pre { margin:0; padding:20px; font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,C
 .generation-message { color:var(--warn-ink); overflow-wrap:anywhere; }
 .editor-grid.output-expanded { grid-template-columns:minmax(0,1fr); }
 .editor-grid.output-expanded > .source-panel { display:none; }
-.output-expanded .artifact-workspace { grid-template-columns:fit-content(260px) minmax(0,1fr); }
+.output-expanded .artifact-workspace { grid-template-columns:fit-content(min(260px,24%)) minmax(0,1fr); }
 .output-expanded .artifact-workspace.files-hidden { grid-template-columns:minmax(0,1fr); }
 @media (max-width:650px) {
   .artifact-toolbar-actions { flex-wrap:wrap; }

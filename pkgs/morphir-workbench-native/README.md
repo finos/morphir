@@ -20,8 +20,9 @@ The native service has macOS and Linux process acceptance. Packaged Proton job
 discovery is enabled on macOS Apple Silicon. Linux and Windows retain browser
 workers until their packaged GUI/lifecycle lanes are independently qualified.
 The bundled host/renderer pair uses the accepted native draft.1 wire mapping.
-Public conformance advertisement still waits for independent reply/client/owner
-lifecycle MCK and packaged target qualification.
+Public conformance advertisement still waits for fresh packaged target
+qualification. Independent wire, reply, client and controlled owner MCK evidence
+does not establish a platform's packaged lifecycle behavior.
 
 `bridge.Owner` composes the actual job and workspace services with the portable
 session and raw request/reply codecs. Only trusted host callbacks supply caller
@@ -31,3 +32,42 @@ effects and fixed messages; workspace owner failures are conservatively unknown.
 The internal `request` helpers remain for existing CEF-free service acceptance;
 they are not the renderer transport. Terminal budgets include the complete native
 reply wrapper, and a workspace grant is validated before replacing the old one.
+
+`Owner::with_services` accepts typed trusted job/workspace factories. Their
+presence enables the capability; construction and predecessor cleanup must
+succeed before an offer is published. `Owner::new` preserves the production
+native services. `workspace.RootAccess` supplies host IO while the production
+workspace service retains discovery, picker generations, immutable captures,
+offset checks and sequence retirement.
+
+## Controlled owner qualification
+
+Exact offline MCK draft.10 drives production `bridge.Owner`, portable session
+policy, `workspace.Service` and the production `jobs.Host`. The shared Rust MCK
+owns the corpus, verdicts and independent saved-report checks. The native adapter
+only drives requests and records observations. It receives no expectations or
+case IDs.
+
+```sh
+MORPHIR_MCK_BIN=/path/to/morphir \
+MORPHIR_WORKBENCH_KIT=/path/to/finos/morphir/spec/workbench/mck/draft.10 \
+mise run test:workbench-native-owner-mck
+```
+
+The task checks debug/release reports, portable session/job tests on all four
+targets, and complete JSON/Ion fixture inputs through the production importer
+and evaluator. `MORPHIR_WORKBENCH_EVIDENCE` overrides the default evidence folder
+`.dev/native-owner-mck/reports`.
+
+Context, in-memory roots, picker delivery, job completion and shared cleanup
+confirmation are controlled host inputs. Scoped opaque-identity aliases preserve
+equality and freshness; unresolved fixture references remain visible failures.
+Held effects advance only through explicit actions. Shutdown waiters share one
+memoized cleanup result. Final teardown drains controlled resources outside the
+recorded observation.
+
+These traces qualify owner coordination. They do not establish authenticated OS
+caller provenance, filesystem containment or races, actual native worker
+scheduling/exit, or packaged platform conformance. Real worker, bridge, workspace
+and packaged acceptance remain separate. Live native draft.1 and historical MCK
+drafts.1 through .9 stay unchanged.

@@ -165,25 +165,54 @@ test "a small file whose text passes the limit is refused" {
 }
 
 ///|
-test "a file too deep or with too many values is refused before it is read" {
-  let deep = binary_of("[".repeat(130) + "]".repeat(130))
-  let deepest_allowed = binary_of("[".repeat(129) + "]".repeat(129))
-  let many = binary_of("[" + "0,".repeat(100000) + "]")
-  let annotated = binary_of("a::" + "[".repeat(129) + "]".repeat(129))
-  @expect.expect_all(s => {
-    s
-    .expect(code_of(decode(deep)), label="deep")
-    .to_equal(Json::string("workbench.ion_too_deep"))
-    s
-    .expect(decode(deepest_allowed), label="128 levels")
-    .to_contain_json({ "success": true })
-    s
-    .expect(code_of(decode(annotated)), label="an annotation adds no level")
-    .to_equal(Json::null())
-    s
-    .expect(code_of(decode(many)), label="many")
-    .to_equal(Json::string("workbench.ion_too_many_values"))
-  })
+test "container depth is bounded before reading even an empty innermost container" {
+  // Build bytes directly: the Ion 0.5 text reader independently rejects depth
+  // 129, so parsing text here would never exercise Workbench's binary guard.
+  for type_code in [11, 12, 13] {
+    for annotated in [false, true] {
+      for
+        (leaf_name, leaf) in [
+          ("empty", []),
+          ("scalar", [b'\x20']),
+          ("null.list", [b'\xBF']),
+          ("null.sexp", [b'\xCF']),
+          ("null.struct", [b'\xDF']),
+          ("annotated scalar", [b'\xE3', b'\x81', b'\x84', b'\x20']),
+          ("annotated typed null", [b'\xE3', b'\x81', b'\x84', b'\xBF']),
+        ] {
+        let label = "type " +
+          type_code.to_string() +
+          ", annotated " +
+          annotated.to_string() +
+          ", leaf " +
+          leaf_name
+        assert_eq(
+          json_member(
+            decode(nested_binary(type_code, 128, leaf, annotated~)),
+            "success",
+          ),
+          Json::boolean(true),
+          msg=label,
+        )
+        assert_eq(
+          code_of(decode(nested_binary(type_code, 129, leaf, annotated~))),
+          Json::string("workbench.ion_too_deep"),
+          msg=label,
+        )
+      }
+    }
+  }
+}
+
+///|
+test "a file with too many values is refused before it is read" {
+  let many = after_marker(
+    [..long_header(11, 100000), ..Array::make(100000, b'\x20')],
+  )
+  assert_eq(
+    code_of(decode(many)),
+    Json::string("workbench.ion_too_many_values"),
+  )
 }
 
 ///|
@@ -253,6 +282,30 @@ fn long_header(type_code : Int32, length : Int32) -> Array[Byte] {
 }
 
 ///|
+/// Direct binary fixture, independent of the Ion readers' nesting limit.
+/// Each annotation uses system symbol 4 (`name`) and adds no container level.
+fn nested_binary(
+  type_code : Int32,
+  depth : Int32,
+  leaf : Array[Byte],
+  annotated~ : Bool = false,
+) -> String {
+  let mut body = leaf
+  for _ in 0..<depth {
+    let contents = if type_code == 13 && !body.is_empty() {
+      [b'\x84', ..body]
+    } else {
+      body
+    }
+    body = [..long_header(type_code, contents.length()), ..contents]
+    if annotated {
+      body = [..long_header(14, body.length() + 2), b'\x81', b'\x84', ..body]
+    }
+  }
+  after_marker(body)
+}
+
+///|
 test "untyped nulls count as values and NOP pads do not" {
   let nulls = fn(count : Int32) { Array::make(count, b'\x0F') }
   @expect.expect_all(s => {
@@ -274,6 +327,27 @@ test "untyped nulls count as values and NOP pads do not" {
     )
     .to_contain_json({ "success": true, "values": 100000 })
   })
+}
+
+///|
+test "annotation wrappers count as values but annotation symbols add no values" {
+  // Three system-symbol annotations around one zero: one wrapper plus one
+  // scalar, independent of the number of annotation symbols in the wrapper.
+  let annotated = [b'\xE5', b'\x83', b'\x84', b'\x84', b'\x84', b'\x20']
+  let body : Array[Byte] = []
+  for _ in 0..<50000 {
+    for byte in annotated {
+      body.push(byte)
+    }
+  }
+  assert_eq(
+    json_member(decode(after_marker(body)), "success"),
+    Json::boolean(true),
+  )
+  assert_eq(
+    code_of(decode(after_marker([..body, ..annotated]))),
+    Json::string("workbench.ion_too_many_values"),
+  )
 }
 
 ///|

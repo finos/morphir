@@ -249,3 +249,8 @@ This qualifies client behavior with controlled replies. It does not qualify nati
 owner lifecycle, real picker grants, authenticated caller authority, process exit
 or packaged platforms. Live native draft.1 and historical MCK drafts.1 through .8
 remain unchanged. See the upstream `spec/workbench/draft.9/README.md` contract.
+
+The separate [native owner adapter](../../../pkgs/morphir-workbench-native/README.md#controlled-owner-qualification)
+adds exact offline draft.10 for production owner orchestration with controlled
+host dependencies. It runs natively and does not add owner operations to this
+portable codec adapter. Both use the same shared Rust runner.

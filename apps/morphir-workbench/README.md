@@ -518,9 +518,11 @@ malformed negotiation never falls back to another transport. The bundled Proton
 host and renderer now use this raw mapping through `app:workbench_native` for
 all session, job and workspace operations. The session binding admits complete
 replies before extracting descriptors and rechecks stable authority after each
-request. Independent reply/client/owner lifecycle MCK and fresh packaged-target
-qualification remain pending before public conformance advertisement. Text hooks alone do not establish raw UTF-8 decoding or native caller
-authority; the byte-oriented codec provides the earlier framing boundary.
+request. Independent MCK drafts.7 through .10 cover raw frames, reply admission,
+production client lifecycle and controlled production owner orchestration. Fresh
+packaged-target lifecycle qualification remains separate before public
+conformance advertisement. Controlled context does not establish native caller
+authority; the byte-oriented codec supplies the earlier UTF-8 framing boundary.
 
 ## Verification
 
@@ -544,6 +546,12 @@ its single-use launch token through the proxy, then negotiates a session and
 catalog. It compiles Gleam, generates an artifact and opens that model through
 workspace/project-model RPC and Explorer. No provider installation is needed
 for the built-in Gleam provider. The test cleans up its processes and fixtures.
+
+Chromium acceptance includes a real directory upload. CEF cancels CDP directory
+enumeration, so the packaged smoke test supplies the fixture's selected `File`
+objects and relative paths through the requested folder input. The production
+file reader, bounded import and compilation still run. OS folder-dialog selection
+and native workspace grants retain their separate acceptance requirements.
 
 Build the Rust binary from a compatible finos/morphir checkout, then run from
 this repository root:

@@ -140,7 +140,11 @@ fn ion_shape_refusal(bytes : BytesView) -> Json? raise @ion.IonError {
         ),
       )
     }
-    if depth > ion_depth_limit {
+    // `depth` counts enclosing containers. Enter the current container before
+    // checking, including an empty one whose frame has no child to visit.
+    // Typed null containers and annotations do not introduce a container level.
+    let container = type_code >= 11 && type_code <= 13 && nibble != 0x0F
+    if depth + (if container { 1 } else { 0 }) > ion_depth_limit {
       return Some(
         failure(
           "This file nests Ion containers deeper than \{ion_depth_limit} levels, the most the workbench decodes",

@@ -144,9 +144,31 @@ fn Root::list(self : Root, path : String) -> Array[Entry] raise {
 }
 
 ///|
-priv struct Snapshot {
+/// Discovery input supplied by the host; it does not establish OS authority.
+pub(all) struct Snapshot {
   tree : @engine.Tree
   files : Array[String]
+}
+
+///|
+/// Trusted host access to a picked workspace. Renderer requests cannot create
+/// this access or choose its callbacks. The service owns its retained lifetime.
+pub(all) struct RootAccess {
+  current : () -> Unit raise
+  snapshot : () -> Snapshot raise
+  read : (String) -> Bytes raise
+  close : () -> Unit
+}
+
+///|
+fn native_root(native_path : String) -> RootAccess raise {
+  let root = Root::open(native_path)
+  {
+    current: fn() raise { root.current() },
+    snapshot: fn() raise { root.snapshot() },
+    read: fn(relative) raise { root.read(relative) },
+    close: fn() { root.close() },
+  }
 }
 
 ///|
