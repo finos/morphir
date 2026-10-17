@@ -1,0 +1,118 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "Closed valid infrastructure",
+      "data": {
+        "formatVersion": "0.1.0-draft.12",
+        "cases": [
+          {
+            "id": "fixed-first",
+            "operation": "run-capability-policy",
+            "format": "json",
+            "input": {
+              "model": "opaque complete model source",
+              "calls": [
+                {
+                  "id": "first",
+                  "entry": "selected:main#answer",
+                  "inputs": {
+                    "format": "json",
+                    "source": "[]"
+                  }
+                }
+              ],
+              "runtime": "scheme",
+              "extensions": null
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "mode": "execute",
+                "policy": "permissive",
+                "runtime": "scheme",
+                "boundary": "{\"definitions\":[],\"entries\":[]}",
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "first",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                },
+                "failure": null
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject extra top-level field",
+      "data": {
+        "formatVersion": "0.1.0-draft.12",
+        "cases": [
+          {
+            "id": "fixed-first",
+            "operation": "run-capability-policy",
+            "format": "json",
+            "input": {
+              "model": "opaque complete model source",
+              "calls": [
+                {
+                  "id": "first",
+                  "entry": "selected:main#answer",
+                  "inputs": {
+                    "format": "json",
+                    "source": "[]"
+                  }
+                }
+              ],
+              "runtime": "scheme",
+              "extensions": null
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "mode": "execute",
+                "policy": "permissive",
+                "runtime": "scheme",
+                "boundary": "{\"definitions\":[],\"entries\":[]}",
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "first",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                },
+                "failure": null
+              }
+            }
+          }
+        ],
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/capability-policy-projection.schema.json",
+  "title": "Runtime capability policy capability-policy-projection",
+  "description": "Closed capability-policy infrastructure and captured selected-context evidence",
+  "examples": [
+    {
+      "mode": "execute",
+      "policy": "permissive",
+      "runtime": "scheme",
+      "boundary": "{\"definitions\":[],\"entries\":[]}",
+      "outcomes": {
+        "contractVersion": "0.1.0-draft.5",
+        "calls": [
+          {
+            "id": "first",
+            "outcome": {
+              "status": "returned",
+              "value": {
+                "type": "int",
+                "value": "42"
+              }
+            }
+          }
+        ],
+        "cleanup": null,
+        "extensions": null
+      },
+      "failure": null
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "mode",
+        "policy",
+        "runtime",
+        "boundary",
+        "outcomes",
+        "failure"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [ "execute", "validate-completion" ]
+        },
+        "policy": {
+          "enum": [ "strict", "permissive" ]
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "boundary": {
+          "type": "string",
+          "maxLength": 1048576,
+          "minLength": 1
+        },
+        "outcomes": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json"
+        },
+        "failure": {
+          "type": "null"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "mode",
+        "policy",
+        "runtime",
+        "boundary",
+        "outcomes",
+        "failure"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [ "execute", "validate-completion" ]
+        },
+        "policy": {
+          "enum": [ "strict", "permissive" ]
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "boundary": {
+          "type": "null"
+        },
+        "outcomes": {
+          "type": "null"
+        },
+        "failure": {
+          "type": "object",
+          "required": [ "stage", "code" ],
+          "properties": {
+            "stage": {
+              "enum": [ "decode", "plan" ]
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 128,
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "mode",
+        "policy",
+        "runtime",
+        "boundary",
+        "outcomes",
+        "failure"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [ "execute", "validate-completion" ]
+        },
+        "policy": {
+          "enum": [ "strict", "permissive" ]
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "boundary": {
+          "type": "string",
+          "maxLength": 1048576,
+          "minLength": 1
+        },
+        "outcomes": {
+          "type": "null"
+        },
+        "failure": {
+          "type": "object",
+          "required": [ "stage", "code" ],
+          "properties": {
+            "stage": {
+              "const": "complete"
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 128,
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "Closed valid infrastructure",
+      "data": {
+        "formatVersion": "0.1.0-draft.12",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.12",
+          "binding": "capability-policy-adapter",
+          "language": "moonbit",
+          "operations": [
+            "run-capability-policy"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "fixed-first",
+            "operation": "run-capability-policy",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "mode": "execute",
+                "policy": "permissive",
+                "runtime": "scheme",
+                "boundary": "{\"definitions\":[],\"entries\":[]}",
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "first",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                },
+                "failure": null
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject extra top-level field",
+      "data": {
+        "formatVersion": "0.1.0-draft.12",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.12",
+          "binding": "capability-policy-adapter",
+          "language": "moonbit",
+          "operations": [
+            "run-capability-policy"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "fixed-first",
+            "operation": "run-capability-policy",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "mode": "execute",
+                "policy": "permissive",
+                "runtime": "scheme",
+                "boundary": "{\"definitions\":[],\"entries\":[]}",
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "first",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                },
+                "failure": null
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true,
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

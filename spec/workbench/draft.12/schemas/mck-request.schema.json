@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-request.schema.json",
+  "title": "Runtime capability policy mck-request",
+  "description": "Exact capability-policy execution and captured-context completion verification; no host, job, provider, UI or platform qualification",
+  "examples": [
+    {
+      "id": 1,
+      "op": "run-capability-policy",
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.12",
+      "format": "json",
+      "input": {
+        "model": "opaque complete model source",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "extensions": null
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "capabilities"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.12"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "run-capability-policy"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.12"
+        },
+        "format": {
+          "const": "json"
+        },
+        "input": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-input.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "exit"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

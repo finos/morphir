@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-report.schema.json",
+  "title": "Runtime capability policy mck-report",
+  "description": "Exact capability-policy execution and captured-context completion verification; no host, job, provider, UI or platform qualification",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.12",
+      "suite": "workbench",
+      "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "capabilities": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.12",
+        "binding": "capability-policy-adapter",
+        "language": "moonbit",
+        "operations": [ "run-capability-policy" ],
+        "formats": [ "json" ]
+      },
+      "records": [
+        {
+          "caseId": "fixed-first",
+          "operation": "run-capability-policy",
+          "format": "json",
+          "result": "pass",
+          "observed": {
+            "status": "ok",
+            "value": {
+              "mode": "execute",
+              "policy": "permissive",
+              "runtime": "scheme",
+              "boundary": "{\"definitions\":[],\"entries\":[]}",
+              "outcomes": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "first",
+                    "outcome": {
+                      "status": "returned",
+                      "value": {
+                        "type": "int",
+                        "value": "42"
+                      }
+                    }
+                  }
+                ],
+                "cleanup": null,
+                "extensions": null
+              },
+              "failure": null
+            }
+          }
+        }
+      ],
+      "errors": [],
+      "qualified": true
+    }
+  ],
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "suite",
+    "corpusHash",
+    "capabilities",
+    "records",
+    "errors",
+    "qualified"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.12"
+    },
+    "suite": {
+      "const": "workbench"
+    },
+    "corpusHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capabilities": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-capabilities.schema.json"
+        }
+      ]
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "caseId", "operation", "format", "result", "observed" ],
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "run-capability-policy"
+          },
+          "format": {
+            "const": "json"
+          },
+          "result": {
+            "enum": [ "pass", "fail", "unsupported", "error" ]
+          },
+          "observed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-observation.schema.json"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "phase", "message" ],
+        "properties": {
+          "phase": {
+            "enum": [ "spawn", "capabilities", "exchange", "shutdown" ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 16384,
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "qualified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

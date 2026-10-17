@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/mck-response.schema.json",
+  "title": "Runtime capability policy mck-response",
+  "description": "Exact capability-policy execution and captured-context completion verification; no host, job, provider, UI or platform qualification",
+  "examples": [
+    {
+      "id": 1,
+      "status": "ok",
+      "value": {
+        "mode": "execute",
+        "policy": "permissive",
+        "runtime": "scheme",
+        "boundary": "{\"definitions\":[],\"entries\":[]}",
+        "outcomes": {
+          "contractVersion": "0.1.0-draft.5",
+          "calls": [
+            {
+              "id": "first",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "int",
+                  "value": "42"
+                }
+              }
+            }
+          ],
+          "cleanup": null,
+          "extensions": null
+        },
+        "failure": null
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "suite",
+        "contractVersion",
+        "binding",
+        "language",
+        "operations",
+        "formats"
+      ],
+      "properties": {
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.12"
+        },
+        "binding": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "operations": {
+          "enum": [
+            [],
+            [ "run-capability-policy" ]
+          ]
+        },
+        "formats": {
+          "const": [ "json" ]
+        },
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "status", "value" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.12/capability-policy-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
