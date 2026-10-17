@@ -1,8 +1,13 @@
 # Native qualification expectations
 
 These parent-owned files record expected behavior for the exact
-`morphir/workbench/native` `0.1.0-draft.1` contract. They are **unexecuted data**.
-The shared Rust `morphir mck` runner does not execute them yet. Their presence,
+`morphir/workbench/native` `0.1.0-draft.1` contract. These original fixture files
+are **unexecuted data**. Executable request expectations are published separately
+in exact [MCK draft.7](../../../mck/draft.7/README.md). Structural response
+fixtures and additional runtime expectations are exercised by exact
+[MCK draft.8](../../../mck/draft.8/README.md), using the shared Rust runner and
+explicit implementation adapters. The abstract lifecycle traces remain pending.
+These files' presence,
 valid JSON syntax, and the separate schema fixtures establish no implementation,
 transport, operating-system, or packaged-platform qualification. No additional
 runner is defined here.

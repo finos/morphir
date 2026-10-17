@@ -79,6 +79,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     let bytes = read_bounded(file, MAX_CORPUS_BYTES as usize)?;
     let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
     let mut value = crate::json::strict::parse(text)?;
+    if value["formatVersion"] == super::contract::NATIVE_REPLIES_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::native_replies::validate_corpus_shape(&value)?;
+    }
     if value["formatVersion"] == super::contract::NATIVE_FRAMES_VERSION {
         // Keep duplicate-aware infrastructure admission above, but retain exact
         // decimal tokens for compact generation counts in this new draft. The
@@ -107,7 +111,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::ValidateNativeFrame {
+        let input_len = if case.operation() == Operation::ValidateNativeReply {
+            super::native_replies::validate_input(&case.input)?;
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::ValidateNativeFrame {
             super::native_frames::validate_input(&case.input)?;
             encoded_size(&case.input, MAX_INPUT_BYTES)?
         } else if case.operation() == Operation::ReduceJob {
