@@ -1,0 +1,477 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.8/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed outer shape",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "authority": "private"
+      },
+      "valid": false
+    },
+    {
+      "description": "Captured session.open",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured session.check",
+      "data": {
+        "expectedOperation": "session.check",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured session.close",
+      "data": {
+        "expectedOperation": "session.close",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured job.submit",
+      "data": {
+        "expectedOperation": "job.submit",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured job.query",
+      "data": {
+        "expectedOperation": "job.query",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured job.cancel",
+      "data": {
+        "expectedOperation": "job.cancel",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured job.release",
+      "data": {
+        "expectedOperation": "job.release",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured workspace.choose",
+      "data": {
+        "expectedOperation": "workspace.choose",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured workspace.cancel-picker",
+      "data": {
+        "expectedOperation": "workspace.cancel-picker",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured workspace.revoke",
+      "data": {
+        "expectedOperation": "workspace.revoke",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured workspace.open",
+      "data": {
+        "expectedOperation": "workspace.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured workspace.read",
+      "data": {
+        "expectedOperation": "workspace.read",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Captured workspace.release",
+      "data": {
+        "expectedOperation": "workspace.release",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Missing operation",
+      "data": {
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown operation",
+      "data": {
+        "expectedOperation": "eval",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Private number operation",
+      "data": {
+        "expectedOperation": {
+          "$serde_json::private::Number": "1"
+        },
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Missing session capture",
+      "data": {
+        "expectedOperation": "session.open",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Valid captured session",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": "s._-9",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Valid captured session",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Invalid captured session \"\"",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": "",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid captured session \"aaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid captured session \"s\\n\"",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": "s\n",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid captured session \"é\"",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": "é",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid captured session {}",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": {},
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid captured session 42",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": 42,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+      },
+      "valid": false
+    },
+    {
+      "description": "Opaque hex bytes",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "hex",
+        "source": ""
+      },
+      "valid": true
+    },
+    {
+      "description": "Opaque hex bytes",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "hex",
+        "source": "C328"
+      },
+      "valid": true
+    },
+    {
+      "description": "Opaque hex bytes",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "hex",
+        "source": "ff00"
+      },
+      "valid": true
+    },
+    {
+      "description": "Invalid hex",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "hex",
+        "source": "F"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid hex",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "hex",
+        "source": "zz"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid hex",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "hex",
+        "source": "00\n"
+      },
+      "valid": false
+    },
+    {
+      "description": "Bounded recipe count 0",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 0
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Bounded recipe count 1",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Bounded recipe count 1048576",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1048576
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Invalid recipe count",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": -1
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid recipe count",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1.5
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid recipe count",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1048577
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid recipe count",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": {
+              "$serde_json::private::Number": "1"
+            }
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Null recipe",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Non-space recipe",
+      "data": {
+        "expectedOperation": "session.open",
+        "expectedSession": null,
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "generate": {
+          "prefix": {
+            "repeat": "x",
+            "count": 1
+          }
+        }
+      },
+      "valid": false
+    }
+  ]
+}

@@ -206,3 +206,12 @@ independent [138-case kit](mck/draft.7/README.md). The existing shared Rust runn
 compares fixed raw request expectations through an explicit production adapter
 and independently rechecks reports. Runtime authority, native lifecycle,
 response handling and packaged platform qualification remain separate.
+
+[Offline native reply qualification](draft.8/README.md) adds exact MCK
+`0.1.0-draft.8`, only `validate-native-reply` and JSON, with an independent
+[185-case kit](mck/draft.8/README.md). The adapter passes original bytes and
+captured call context to its production response decoder. Closed observations
+retain successful operation or native error code/effect, omitting private
+payloads. This uses the same runner and independent report check. Native client
+and owner lifecycle execution and packaged platform qualification remain pending;
+the live native protocol stays at draft.1.

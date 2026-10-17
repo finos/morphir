@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.8/mck-input.schema.json",
+  "title": "Offline Workbench native reply mck-input",
+  "description": "Closed exact draft.8 JSON validate-native-reply contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+  "examples": [
+    {
+      "expectedOperation": "session.open",
+      "expectedSession": null,
+      "encoding": "utf8",
+      "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+    }
+  ],
+  "type": "object",
+  "if": {
+    "properties": {
+      "encoding": {
+        "const": "hex"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "source": {
+        "not": {
+          "pattern": "[^0-9A-Fa-f]"
+        },
+        "pattern": "^(?:[0-9A-Fa-f]{2})*$"
+      }
+    }
+  },
+  "required": [ "expectedOperation", "expectedSession", "encoding", "source" ],
+  "properties": {
+    "encoding": {
+      "enum": [ "utf8", "hex" ]
+    },
+    "source": {
+      "type": "string"
+    },
+    "generate": {
+      "type": "object",
+      "required": [ "prefix" ],
+      "properties": {
+        "prefix": {
+          "type": "object",
+          "required": [ "repeat", "count" ],
+          "properties": {
+            "repeat": {
+              "const": " "
+            },
+            "count": {
+              "type": "integer",
+              "maximum": 1048576,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "expectedOperation": {
+      "enum": [
+        "session.open",
+        "session.check",
+        "session.close",
+        "job.submit",
+        "job.query",
+        "job.cancel",
+        "job.release",
+        "workspace.choose",
+        "workspace.cancel-picker",
+        "workspace.revoke",
+        "workspace.open",
+        "workspace.read",
+        "workspace.release"
+      ]
+    },
+    "expectedSession": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "not": {
+            "pattern": "[^A-Za-z0-9_.-]"
+          },
+          "maxLength": 128,
+          "minLength": 1
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

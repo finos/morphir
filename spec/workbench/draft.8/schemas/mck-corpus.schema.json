@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.8/mck-corpus.schema.json",
+  "title": "Offline Workbench native reply mck-corpus",
+  "description": "Closed exact draft.8 JSON validate-native-reply contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.8",
+      "cases": [
+        {
+          "id": "open",
+          "operation": "validate-native-reply",
+          "format": "json",
+          "input": {
+            "expectedOperation": "session.open",
+            "expectedSession": null,
+            "encoding": "utf8",
+            "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "replyAccepted": true,
+              "ok": true,
+              "operation": "session.open"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.8"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "validate-native-reply"
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.8/mck-input.schema.json"
+          },
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.8/mck-observation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

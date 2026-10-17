@@ -383,3 +383,76 @@ fn native_frame_check_rejects_literal_object_success_marker() {
     assert_eq!(rejected.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&rejected.stderr).contains("native frame report shape"));
 }
+
+#[test]
+fn native_reply_cli_preserves_failure_evidence_and_rechecks_effects_and_literal_shapes() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    let corpus = json!({"formatVersion":"0.1.0-draft.8","cases":[{
+        "id":"reply","operation":"validate-native-reply","format":"json",
+        "input":{"expectedOperation":"job.submit","expectedSession":"session","encoding":"utf8","source":"opaque"},
+        "expected":{"status":"ok","value":{"replyAccepted":true,"ok":false,"error":{"code":"unavailable","effect":"unknown"}}}}]});
+    std::fs::write(kit.join("cases.json"), corpus.to_string()).unwrap();
+    let report = root.path().join("report.json");
+    let run = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(1));
+    let text = std::fs::read_to_string(&report).unwrap();
+    let failure = morphir_mck::workbench::Report::from_json(&text).unwrap();
+    morphir_mck::workbench::check_report(&kit, &failure).unwrap();
+    assert!(!failure.qualified);
+    assert_eq!(check(&kit, &report).status.code(), Some(1));
+    let mut saved: Value = serde_json::from_str(&text).unwrap();
+    saved["capabilities"] = json!({"suite":"workbench","contractVersion":"0.1.0-draft.8",
+        "binding":"transcript","language":"test","operations":["validate-native-reply"],"formats":["json"]});
+    saved["errors"] = json!([]);
+    saved["qualified"] = json!(true);
+    saved["records"][0]["result"] = json!("pass");
+    saved["records"][0]["observed"] = corpus["cases"][0]["expected"].clone();
+    std::fs::write(&report, saved.to_string()).unwrap();
+    assert_eq!(check(&kit, &report).status.code(), Some(0));
+    for change in ["effect", "private", "version", "hash"] {
+        let mut forged = saved.clone();
+        match change {
+            "effect" => {
+                forged["records"][0]["observed"]["value"]["error"]["effect"] = json!("none")
+            }
+            "private" => {
+                forged["records"][0]["observed"]["value"] = json!({"$serde_json::private::RawValue":corpus["cases"][0]["expected"]["value"].to_string()})
+            }
+            "version" => forged["formatVersion"] = json!("0.1.0-draft.9"),
+            "hash" => forged["corpusHash"] = json!("0".repeat(64)),
+            _ => unreachable!(),
+        }
+        std::fs::write(&report, forged.to_string()).unwrap();
+        assert_eq!(check(&kit, &report).status.code(), Some(1), "{change}");
+    }
+    let mut invalid = corpus;
+    invalid["cases"][0]["input"]["generate"] =
+        json!({"prefix":{"repeat":" ","count":{"$serde_json::private::Number":"1"}}});
+    std::fs::write(kit.join("cases.json"), invalid.to_string()).unwrap();
+    std::fs::remove_file(&report).unwrap();
+    let rejected = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(1));
+    assert!(
+        !report.exists(),
+        "invalid corpus must reject before adapter spawn"
+    );
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("native reply corpus"));
+}

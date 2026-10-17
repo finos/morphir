@@ -1,0 +1,180 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.8/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed outer shape",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": [
+          "json"
+        ],
+        "authority": "private"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid operation inventory",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid operation inventory",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-frame"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid operation inventory",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply",
+          "decode-value"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid format inventory",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": []
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid format inventory",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": [
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid format inventory",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact version required",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.7",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact version required",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.9",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact version required",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.8+build",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}
