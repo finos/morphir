@@ -9,8 +9,8 @@ Thank you for your interest in contributing to Morphir Moonbit! This document pr
 1. **Install mise**: Follow the [official installation guide](https://mise.jdx.dev/getting-started.html)
 
 2. **Install development tools**: Run `mise install` in the repository root to install all required tools:
-   - Moonbit toolchain (latest)
-   - Bun 1.3.7
+   - MoonBit toolchain pinned in `.config/mise/config.toml`
+   - Bun pinned in `.config/mise/config.toml`
    - yamllint
    - uv (Python package manager)
 
@@ -24,6 +24,11 @@ cd morphir-moonbit
 # Install all development tools
 mise install
 ```
+
+On Linux x64, Linux ARM64 and Apple Silicon, mise completes the MoonBit archive
+with the official installer, including matching core libraries and `moonx`.
+To repair an installation made before this setup step was added, run
+`mise install --force http:moonbit`. CI keeps a completion check for older caches.
 
 **Note**: Git hooks are automatically installed when you enter the directory (via mise hooks). The pre-push hook runs lint, format check, and validation before allowing any push.
 

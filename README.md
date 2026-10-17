@@ -53,6 +53,11 @@ for our tooling. These are foundational libraries within a broader dependency se
    mise install
    ```
 
+   Linux x64, Linux ARM64 and Apple Silicon use the pinned MoonBit release.
+   mise runs the official installer to include core and `moonx`. If you already
+   installed the compiler archive with an older checkout, run
+   `mise install --force http:moonbit` once to complete that installation.
+
 **Note**: Git hooks are automatically installed when you enter the directory via mise. The pre-push hook enforces lint, format, and validation checks before allowing pushes, preventing CI failures by catching issues locally.
 
 ## Development

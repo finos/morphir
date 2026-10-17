@@ -205,10 +205,12 @@ mise run build
 ## CI/CD Integration
 
 The lint, format-check, and configuration-validation workflows delegate to mise
-tasks. The build and test jobs install the MoonBit toolchain directly through
-the official installer and run `moon build` / `moon test`, because the mise
-`http:moonbit` tool provides the compiler only and does not bundle the
-`moonbitlang/core` standard library needed to compile.
+tasks. On Linux x64, Linux ARM64 and Apple Silicon, the mise `http:moonbit`
+postinstall runs the official installer for the pinned release, including the
+matching `moonbitlang/core` standard library and `moonx`. Local `mise install`
+and CI therefore use the same complete Unix toolchain. CI's setup action also
+repairs older cached installations before running `moon build` / `moon test`.
+Full qualification checks uncached mise installs on all three Unix platforms.
 
 ### Main CI Workflow (`.github/workflows/ci.yml`)
 

@@ -28,9 +28,20 @@ uv = "latest"
 [tools."http:moonbit"]
 version = "0.10.15+943464bfa"
 bin_path = "bin"
+# The archive alone has no core or moonx. Complete Unix installs the same way
+# locally and in CI, using the upstream installer and the exact mise version.
+# The upstream Unix installer supports Linux x64/ARM64 and Apple Silicon.
+postinstall = """
+{% if os() != "windows" %}
+bash -c 'set -euo pipefail; export PATH="$MISE_TOOL_INSTALL_PATH/bin:$PATH"; curl -fsSL https://cli.moonbitlang.com/install/unix.sh | MOON_HOME="$MISE_TOOL_INSTALL_PATH" bash -s -- "$MISE_TOOL_VERSION"'
+{% else %}
+echo MoonBit archive installed
+{% endif %}
+"""
 
 [tools."http:moonbit".platforms]
 linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-linux-x86_64.tar.gz" }
+linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-linux-aarch64.tar.gz" }
 macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-darwin-aarch64.tar.gz" }
 windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-windows-x86_64.zip", format = "zip" }
 
