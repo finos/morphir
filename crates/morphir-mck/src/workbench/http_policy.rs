@@ -68,10 +68,11 @@ impl Kit {
                 let mut attempts = BTreeSet::new();
                 let mut delivered = BTreeSet::new();
                 for action in value["actions"].as_array().expect("checked actions") {
-                    if let Some(id) = action["id"].as_str()
-                        && !attempts.insert(id)
-                    {
-                        return Err("duplicate HTTP client attempt id".into());
+                    if let Some(id) = action["id"].as_str() {
+                        super::contract::identity(id, 128)?;
+                        if !attempts.insert(id) {
+                            return Err("duplicate HTTP client attempt id".into());
+                        }
                     }
                     if let Some(id) = action["call"].as_str()
                         && (!held.contains(id) || !delivered.insert(id))

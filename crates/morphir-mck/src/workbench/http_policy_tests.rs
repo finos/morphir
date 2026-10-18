@@ -2,6 +2,19 @@ use super::*;
 use serde_json::json;
 
 #[test]
+fn http_client_attempt_ids_observe_utf16_identity_bounds() {
+    let corpus: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../spec/workbench/mck/draft.24/cases.json"
+    ))
+    .unwrap();
+    for (characters, valid) in [(64, true), (65, false)] {
+        let mut input = corpus["cases"][0]["input"].clone();
+        input["actions"] = json!([{"op":"initialize","id":"😀".repeat(characters)}]);
+        assert_eq!(super::http_policy::Kit::Client.input(&input).is_ok(), valid);
+    }
+}
+
+#[test]
 fn http_policy_versions_negotiate_exact_operations_without_native_aliases() {
     for (draft, operation) in [
         (23, "validate-http-policy-boundary"),
