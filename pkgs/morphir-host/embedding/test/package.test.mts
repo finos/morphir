@@ -20,6 +20,9 @@ test("installed npm package compiles without a CLI",()=>{
     writeFileSync(join(directory,"check.mjs"), `
       import {createNodeToolchain} from '@morphir/moonbit-toolchain/node';
       import {pinPackage,assemblyIdentity,executeAssembly,compilerVersion} from '@morphir/moonbit-toolchain';
+      import {prepareArtifact,publishArtifact} from '@morphir/moonbit-toolchain';
+      import {createDirectoryArtifactStore} from '@morphir/moonbit-toolchain/node';
+      import {fileURLToPath} from 'node:url';
       const tools=createNodeToolchain();
       try {
         const built=await tools.request({operation:'compile',files:[['main.mbt','pub fn answer() -> Int { 42 }']],exports:['answer']});
@@ -30,6 +33,8 @@ test("installed npm package compiles without a CLI",()=>{
         const packages=[root,dependency];
         const assembly=await executeAssembly(tools,{root:root.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['answer']});
         if((await tools.request({operation:'run',artifact:assembly.artifact,export:'answer'})).value!==42) throw new Error('Unexpected assembly result');
+        const profile={id:'installed/scalar-v1',sha256:'a'.repeat(64)};
+        await publishArtifact(createDirectoryArtifactStore(fileURLToPath(new URL('./saved',import.meta.url))),await prepareArtifact(assembly,profile));
         console.log('installed embedding passed');
       } finally {tools.dispose();}
     `);
@@ -53,5 +58,18 @@ test("installed npm package compiles without a CLI",()=>{
     const env: NodeJS.ProcessEnv={...process.env,PATH:''};
     delete env.MOON_HOME;
     assert.equal(execFileSync(process.execPath,[join(directory,"check.mjs")],{cwd:directory,env,encoding:"utf8"}).trim(),'installed embedding passed');
+    // A fresh runtime needs no compiler payload at all, even when installed as npm.
+    rmSync(join(directory,'node_modules/@moonbit/moonc-worker'),{recursive:true,force:true});
+    writeFileSync(join(directory,'load.mjs'),`
+      import {loadArtifact} from '@morphir/moonbit-toolchain';
+      import {readDirectoryArtifact} from '@morphir/moonbit-toolchain/node';
+      import {fileURLToPath} from 'node:url';
+      const profile={id:'installed/scalar-v1',sha256:'a'.repeat(64)};
+      const loaded=await loadArtifact(await readDirectoryArtifact(fileURLToPath(new URL('./saved',import.meta.url))),{
+        targets:['wasm'],profiles:[profile],encodings:['ion']});
+      try {if(loaded.invoke('answer')!==42) throw new Error('Wrong persisted result');console.log('installed loader passed');}
+      finally {loaded.dispose();}
+    `);
+    assert.equal(execFileSync(process.execPath,[join(directory,'load.mjs')],{cwd:directory,env,encoding:'utf8'}).trim(),'installed loader passed');
   } finally {rmSync(directory,{recursive:true,force:true});}
 });

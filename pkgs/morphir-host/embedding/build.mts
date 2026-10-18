@@ -17,6 +17,7 @@ await mkdir(new URL("./dist/", import.meta.url), {recursive: true});
 await copyFile(`${build}/js/release/build/finos/morphir-host/embedding/bridge/bridge.js`,
   new URL("./dist/bridge.mjs", import.meta.url));
 await copyFile(new URL("./bridge.d.mts", import.meta.url), new URL("./dist/bridge.d.mts", import.meta.url));
+await copyFile(new URL("../../../LICENSE", import.meta.url), new URL("./dist/LICENSE-APACHE-2.0.txt", import.meta.url));
 
 await checkedBuild({entrypoints: [fileURLToPath(new URL("./browser-worker.mts", import.meta.url))],
   outdir: fileURLToPath(new URL("./dist/", import.meta.url)),

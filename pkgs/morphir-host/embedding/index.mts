@@ -1,6 +1,7 @@
 import type { BrowserWorkerPort, CompilerFactory, Interface, NodeWorkerPort, Options, Request, RequestOptions, Result, ResultFor, Toolchain, WorkerReply, WorkerRequest } from './api.mjs';
 export type * from './api.mjs';
 export * from './assembly.mjs';
+export * from './artifacts.mjs';
 export const compilerVersion = "0.10.15+943464bfa";
 export const capabilities = Object.freeze({protocolVersion: 1, mode: "embedded",
   operations: Object.freeze(["info", "compile", "build", "link", "run"]), targets: Object.freeze(["wasm", "wasm-gc"])});

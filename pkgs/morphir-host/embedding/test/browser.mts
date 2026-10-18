@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'node:net';
 import type { createBrowserToolchain as BrowserFactory } from '../browser.mjs';
 import type * as Assembly from '../assembly.mjs';
+import type * as Artifacts from '../artifacts.mjs';
 import assert from "node:assert/strict";
 import {createServer} from "node:http";
 import {readFile} from "node:fs/promises";
@@ -36,6 +37,12 @@ try {
       const assembled=await executeAssembly(tools,{root:root.pin,packages,identity:await assemblyIdentity(info.compilerVersion,packages),
         target:'wasm',exports:['answer']});
       const assemblyValue=(await tools.request({operation:'run',artifact:assembled.artifact,export:'answer'})).value;
+      const {prepareArtifact,loadArtifact}=await import(new URL('/artifacts.mjs',location.href).href) as typeof Artifacts;
+      const profile={id:'browser/scalar-v1',sha256:'a'.repeat(64)};
+      const saved=await prepareArtifact(assembled,profile,{metadataIon:'source::123456789012345678901234567890'});
+      const loaded=await loadArtifact(saved,{targets:['wasm'],profiles:[profile],encodings:['ion']});
+      const persistedValue=loaded.invoke('answer');loaded.dispose();
+      if (!loaded.metadataIon.includes('source::123456789012345678901234567890')) throw new Error('Ion metadata changed');
       const results=[];
       for (const target of ['wasm','wasm-gc'] as const) {
         const built=await tools.request({operation:'compile',files:[['main.mbt','pub fn answer() -> Int { 42 }']],exports:['answer'],target});
@@ -49,9 +56,9 @@ try {
       setTimeout(()=>controller.abort(),50);
       let cancellation;
       try {await running;} catch(e) {cancellation=e instanceof Error ? e.name : String(e); }
-      return {mode:info.mode,assemblyValue,results,invalid:invalid.successful,diagnostics:invalid.diagnostics.length,cancellation};
+      return {mode:info.mode,assemblyValue,persistedValue,results,invalid:invalid.successful,diagnostics:invalid.diagnostics.length,cancellation};
     } finally {tools.dispose();}
   });
-  assert.deepEqual(result,{mode:'embedded',assemblyValue:42,results:[42,42],invalid:false,diagnostics:1,cancellation:'AbortError'});
+  assert.deepEqual(result,{mode:'embedded',assemblyValue:42,persistedValue:42,results:[42,42],invalid:false,diagnostics:1,cancellation:'AbortError'});
   console.log('Browser embedded compilation, execution, diagnostics and cancellation passed');
 } finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}

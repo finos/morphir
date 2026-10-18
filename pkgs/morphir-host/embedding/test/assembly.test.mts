@@ -101,7 +101,11 @@ test('verified prebuilt interface/core is reused, target/context mismatch is ref
     assert.equal((await tools.request({operation:'run',artifact:result.artifact,export:'answer'})).value,42);
     assert.equal(result.packages[0]!.form,'prebuilt');
     await assert.rejects(executeAssembly(tools,{...request,...replaced,target:'wasm-gc'}),/Prebuilt context mismatch/);
-    await assert.rejects(executeAssembly(tools,{...request,...replaced,optimization:'unoptimized'}),/Prebuilt context mismatch/);
+    const unoptimized=await executeAssembly(tools,{...request,...replaced,optimization:'unoptimized'});
+    assert.equal((await tools.request({operation:'run',artifact:unoptimized.artifact,export:'answer'})).value,42);
+    assert.equal(unoptimized.optimization,'unoptimized');
+    assert.equal(unoptimized.packages[0]!.optimization,'optimized');
+    assert.ok(unoptimized.packages.filter(p=>p.form === 'source').every(p=>p.optimization === 'unoptimized'));
   } finally {tools.dispose();}
 });
 

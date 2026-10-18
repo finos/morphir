@@ -45,7 +45,9 @@ files, or prebuilt interface/core bytes plus build context. Core/SDK set hashes
 use `morphir-assembly-set-v1` over sorted names, import names/targets and actual
 assets, excluding their context assertions to avoid circular hashes. Every
 prebuilt context must separately match those verified set hashes, compiler
-revision, target and optimization. Empty sets are explicit hashes, suitable for
+revision and target. Each prebuilt package retains its own optimization setting
+in the manifest; the selected assembly setting controls source builds and the
+final link. Empty sets are explicit hashes, suitable for
 programs that require no standard-library assets. These identities establish
 content consistency, not authorship or execution authority.
 
@@ -53,6 +55,64 @@ Low-level providers also expose `build` and `link`. Existing `compile` continues
 to build and link one package. The assembly executor retains package-scoped
 diagnostics and refuses partial outputs or a missing retained export. Worker
 cancellation and disposal retain the lifecycle rules below.
+
+## Persisted artifacts
+
+`prepareArtifact` creates a draft manifest from an assembly result, including the
+complete graph, exact compiler/core/SDK and package pins, selected exports, actual
+Wasm imports, execution-profile identity, optimization setting, byte length and
+SHA-256. An optional identified Morphir model contributes a digest computed from
+its supplied bytes. This local manifest schema does not stabilize draft IR 4.0.0.
+
+```ts
+import {prepareArtifact, publishArtifact, loadArtifact}
+  from '@morphir/moonbit-toolchain';
+import {createDirectoryArtifactStore, readDirectoryArtifact}
+  from '@morphir/moonbit-toolchain/node';
+
+const saved = await prepareArtifact(result, profile, {
+  metadataIon: 'source::{language:"MoonBit", precision:128}',
+});
+await publishArtifact(createDirectoryArtifactStore(destination), saved, {signal});
+
+// A separate process needs only the saved pair and explicitly selected host services.
+const loaded = await loadArtifact(await readDirectoryArtifact(destination), {
+  targets: ['wasm'], profiles: [profile], encodings: ['ion'], imports: {},
+});
+try { console.log(loaded.invoke('answer')); }
+finally { loaded.dispose(); }
+```
+
+`profile` is an explicit `{id, sha256}` execution-interface contract selected by
+the producer and consumer. `destination` is an explicit output directory. Hosts
+can supply other transactional stores through `ArtifactStore`; their commit must
+expose the complete set atomically. The Node store writes and flushes both files
+in private sibling staging, then renames the directory. It uses an exclusive
+cooperative-writer lock and refuses existing destinations. A crash may leave a
+`.publish.lock` file; inspect its owner before removing a stale lock. Failed or
+cancelled writes clean up their staging. Cancellation is checked before commit.
+
+Binary Ion is the default, using the pinned MoonBit Ion codecs. Ordered
+annotations, repeated metadata fields, exact integers, decimals, typed nulls and
+binary values stay in Ion. Metadata crosses the JavaScript boundary as Ion text.
+`encoding: 'json'` explicitly selects a checked JSON manifest; it refuses metadata
+that would lose Ion meaning or integer precision. Read it with
+`readDirectoryArtifact(destination, 'json')` and permit `json` in the host policy.
+This restriction concerns this manifest's JSON encoding; Morphir JSON models
+remain supported inputs.
+
+The loader checks the schema, full graph/order, artifact checksum and length,
+target, encoding, exact profile contract and actual imports/retained exports.
+`WebAssembly.compile` checks the actual module's instruction/proposal support
+before instantiation. Required services must already have matching host bindings.
+No compiler, registry, source files or build cache is consulted. Integrity and
+capability checks do not authenticate the publisher or provide a sandbox.
+
+Loaded artifacts expose only declared exports and release their instance on
+`dispose`. In-process Wasm cannot be interrupted during a synchronous export or
+start function; use an isolated worker when interruption is required. Disposal
+does not dispose host-owned imported resources. Component/native ABIs and shared
+MEP/MCK integration remain separate work.
 
 `@morphir/moonbit-toolchain` embeds the pinned MoonBit package compiler and a Wasm
 execution adapter in browser and non-browser applications. It requires no system

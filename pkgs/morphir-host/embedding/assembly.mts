@@ -34,6 +34,7 @@ export interface PackageEvidence {
   readonly role: PackageRole;
   readonly dependencies: readonly PackageImport[];
   readonly form: PackageInput['kind'];
+  readonly optimization: Optimization;
 }
 export interface AssemblyResult {
   readonly artifact: Artifact;
@@ -75,7 +76,8 @@ function normalize(description: PackageDescription): PackageDescription {
     }
   } else if (entry.input.kind === 'prebuilt') {
     if (!(entry.input.core instanceof Uint8Array) || !entry.input.core.length ||
-      !(entry.input.interface instanceof Uint8Array) || !entry.input.interface.length) fail('input', `Empty prebuilt package: ${entry.name}`);
+      !(entry.input.interface instanceof Uint8Array) || !entry.input.interface.length ||
+      !['optimized','unoptimized'].includes(entry.input.optimization)) fail('input', `Invalid prebuilt package: ${entry.name}`);
   } else fail('input', `Invalid package form: ${entry.name}`);
   return {...entry,dependencies:[...entry.dependencies].sort((a,b) => compare(a.name,b.name)),
     input:entry.input.kind === 'source' ? {...entry.input,files:[...entry.input.files].sort((a,b) => compare(a[0],b[0]))} : entry.input};
@@ -134,7 +136,7 @@ export async function executeAssembly(toolchain: Toolchain, request: AssemblyReq
     if (entry.name !== entry.pin.name || await contentDigest(entry) !== entry.pin.sha256)
       fail('integrity', `Package content mismatch: ${entry.name}`);
     if (entry.input.kind === 'prebuilt' && (!sameIdentity(entry.input.identity, identity) ||
-      entry.input.target !== target || entry.input.optimization !== optimization))
+      entry.input.target !== target))
       fail('compatibility', `Prebuilt context mismatch: ${entry.name}`);
     active(options.signal);
   }
@@ -176,7 +178,8 @@ export async function executeAssembly(toolchain: Toolchain, request: AssemblyReq
         throw new AssemblyFailure('compiler', `Package compilation failed: ${name}`, output.diagnostics);
       outputs.set(name, {core:output.core,interface:output.interface});
     }
-    evidence.push({pin:entry.pin,role:entry.role,dependencies:entry.dependencies,form:entry.input.kind});
+    evidence.push({pin:entry.pin,role:entry.role,dependencies:entry.dependencies,form:entry.input.kind,
+      optimization:entry.input.kind === 'prebuilt' ? entry.input.optimization : optimization});
   }
   active(options.signal);
   const linked = await toolchain.request({operation:'link',package:root.name,target,

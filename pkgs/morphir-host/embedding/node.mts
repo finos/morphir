@@ -3,6 +3,7 @@ import type { Compiler, Options } from "./api.mjs";
 import {Worker} from "node:worker_threads";
 import {createRequire} from "node:module";
 import {createEmbeddedToolchain, createWorkerToolchain} from "./index.mjs";
+export {createDirectoryArtifactStore, readDirectoryArtifact} from './node-artifacts.mjs';
 
 const require = createRequire(import.meta.url);
 export function createCompiler(): Compiler {
