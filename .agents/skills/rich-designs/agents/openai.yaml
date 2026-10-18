@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rich designs"
+  short_description: "Create and land readable, durable HTML designs"
+  default_prompt: "Use $rich-designs to create, validate, preserve and land this HTML design."

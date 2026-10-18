@@ -13,6 +13,23 @@ This repository includes AI agent skills to enhance development workflows. The s
 
 ## Available Skills
 
+### Rich designs and frontend design
+
+- [Rich designs](../.agents/skills/rich-designs/SKILL.md) covers HTML authoring, diagrams, browser review,
+  durable storage, site integration and PR landing. Follow its repository-specific reference.
+- [Frontend design](../.agents/skills/frontend-design/SKILL.md) is vendored unchanged from Anthropic,
+  with its license and pinned provenance. Apply it within this repository's template and user requirements.
+
+Both skills have discovery links under `.github/skills` and `.claude/skills`, with canonical sources in `.agents/skills`.
+
+### Beads companion
+
+**Location**: [.agents/skills/beads-companion/SKILL.md](../.agents/skills/beads-companion/SKILL.md)
+
+Preserve rich HTML designs, capture reusable discoveries and handoff notes, and sync the shared tracker.
+Its portable helpers run through `moonx scripts/beads-companion.mbtx` or `mise run beads:companion -- ...`.
+The same skill is exposed through `.agents/skills`, `.github/skills` and `.claude/skills`.
+
 ### Code Reviewer
 
 **Location**: `.github/skills/code-reviewer/`

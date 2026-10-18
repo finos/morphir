@@ -1,0 +1,4 @@
+interface:
+  display_name: "Beads companion"
+  short_description: "Preserve designs, knowledge and shared tracker context"
+  default_prompt: "Use $beads-companion to preserve this design and its handoff context in shared beads."

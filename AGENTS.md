@@ -54,6 +54,10 @@ The MoonBit work is Track 5, `morphir-ukvn.5`: its notes are the handoff, and th
 
 ### Specs and plans are HTML documents
 
+Use the [rich-designs skill](.agents/skills/rich-designs/SKILL.md) for creating, validating, preserving and landing
+these artifacts. The installed [Anthropic frontend-design skill](.agents/skills/frontend-design/SKILL.md) supports
+visual choices within the approved template and the user's brief; it does not override the template requirements.
+
 Write superpowers specs, implementation plans and other documents a person reviews as HTML pages, not Markdown.
 Thariq Shihipar of Anthropic's Claude Code team makes the case in "Using Claude Code: The Unreasonable
 Effectiveness of HTML" (May 2026; examples at <https://thariqs.github.io/html-effectiveness>) and on the How I AI
@@ -92,6 +96,12 @@ overrides the superpowers skill defaults for spec, plan and ledger location.
 - Close each task bead with its commit range and test result as the reason.
 
 `beads:plan` fetches `bd-plan` from finos/morphir at a pinned commit and runs it with Bun.
+
+For rich-design retrieval and reusable discoveries, use the
+[beads companion skill](.agents/skills/beads-companion/SKILL.md). For example,
+`moonx scripts/beads-companion.mbtx design export <bead>` restores HTML as `.html`, preserving embedded SVG.
+`design inspect <bead>` gives compact context without printing the full document. The helper also supports
+`design store`, `note` and `remember`; run it with `--help` for arguments. Sync tracker changes with `bd dolt push`.
 
 ### Working rules
 

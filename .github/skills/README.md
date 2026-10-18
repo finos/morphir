@@ -4,6 +4,22 @@ This directory contains AI agent skills following the [Agent Skills specificatio
 
 ## Available Skills
 
+### rich-designs and frontend-design
+
+- [rich-designs](rich-designs/SKILL.md): author, validate, preserve and land rich HTML designs.
+- [frontend-design](frontend-design/SKILL.md): Anthropic's visual-design guidance, applied within the existing brief
+  and repository conventions. [Pinned upstream source and license](frontend-design/UPSTREAM.md).
+
+Canonical files live under `.agents/skills/`; `.github/skills/` and `.claude/skills/` expose the same definitions.
+
+### beads-companion
+
+Preserve rich HTML designs, capture reusable discoveries and handoff notes, and sync the shared Morphir tracker.
+The canonical skill is in `.agents/skills/beads-companion/`; this catalog and `.claude/skills/` link to it.
+Run its helpers with `moonx scripts/beads-companion.mbtx` or `mise run beads:companion -- ...`.
+
+**Location**: [beads-companion/SKILL.md](beads-companion/SKILL.md)
+
 ### code-reviewer
 
 Comprehensive code review capabilities for the Morphir Moonbit monorepo.

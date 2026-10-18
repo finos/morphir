@@ -57,10 +57,11 @@ run = "moonx scripts/check.mbtx"
 description = "Test focused CI selection and fail-closed aggregate gates"
 run = [
   "actionlint",
-  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx",
+  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx",
   "moonx scripts/ci-changes.mbtx --self-test",
   "moonx scripts/ci-gate.mbtx --self-test",
   "moonx scripts/ci-measure.mbtx --self-test",
+  "moonx scripts/beads-companion.mbtx --self-test",
 ]
 
 [tasks."ci:measure"]
@@ -79,6 +80,14 @@ run = "moonx scripts/ci-gate.mbtx"
 description = "Check that this checkout or worktree uses the bootstrapped shared beads database"
 # A MoonBit script, so one file works on every platform; see AGENTS.md (Task scripts).
 run = "moonx scripts/beads-check.mbtx"
+
+[tasks."beads:companion"]
+description = "Inspect, store and export rich bead designs or capture durable knowledge"
+run = "moonx scripts/beads-companion.mbtx"
+
+[tasks."test:beads-companion"]
+description = "Check rich-design preservation without opening a beads database"
+run = "moonx scripts/beads-companion.mbtx --self-test"
 
 [tasks."build:ci-native"]
 description = "Cross-build the CI CLI for linux-x64 or darwin-arm64 with pinned Zig"

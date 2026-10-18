@@ -1,0 +1,474 @@
+///|
+/// Preserve rich bead designs and capture durable knowledge without shell pipelines.
+/// Run from the repository root with moonx scripts/beads-companion.mbtx --help.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+enum WriteMode {
+  Create
+  Replace
+}
+
+///|
+enum Command {
+  Inspect(String)
+  Export(String, String?, WriteMode)
+  Store(String, String, WriteMode)
+  Note(String, String)
+  Remember(String, String)
+  SelfTest
+  SelfTestWrite(String, String)
+  Help
+}
+
+///|
+enum StoreOutcome {
+  Unchanged
+  Written
+  Conflict
+}
+
+///|
+struct Issue {
+  id : String
+  title : String
+  status : String
+  design : String
+}
+
+///|
+fn parse_command(args : Array[String]) -> Result[Command, String] {
+  match args {
+    [] | ["--help"] => Ok(Help)
+    ["--self-test"] => Ok(SelfTest)
+    ["--self-test-write", directory, content] =>
+      Ok(SelfTestWrite(directory, content))
+    ["design", "inspect", id] => Ok(Inspect(id))
+    ["design", "export", id] => Ok(Export(id, None, Create))
+    ["design", "export", id, path] if path != "--replace" =>
+      Ok(Export(id, Some(path), Create))
+    ["design", "export", id, "--replace"] => Ok(Export(id, None, Replace))
+    ["design", "export", id, path, "--replace"] =>
+      Ok(Export(id, Some(path), Replace))
+    ["design", "store", id, path] => Ok(Store(id, path, Create))
+    ["design", "store", id, path, "--replace"] => Ok(Store(id, path, Replace))
+    ["note", id, path] => Ok(Note(id, path))
+    ["remember", key, path] => Ok(Remember(key, path))
+    _ => Err("Unknown command or arguments; use --help.")
+  }
+}
+
+///|
+fn decode_issue(source : String, expected_id : String) -> Result[Issue, String] {
+  let value = @json.parse(source) catch {
+    _ => return Err("bd did not return valid JSON.")
+  }
+  guard value is Array([Object(fields)]) else {
+    return Err("Expected exactly one issue object from bd show.")
+  }
+  guard fields.get("id") is Some(String(id)) && id == expected_id else {
+    return Err("bd returned a different issue; refusing to use its design.")
+  }
+  let design = match fields.get("design") {
+    Some(String(value)) => value
+    None | Some(Null) => ""
+    _ => return Err("The issue design is not text.")
+  }
+  let title = match fields.get("title") {
+    Some(String(value)) => value
+    _ => ""
+  }
+  let status = match fields.get("status") {
+    Some(String(value)) => value
+    _ => ""
+  }
+  Ok({ id, title, status, design, })
+}
+
+///|
+fn extension(design : String) -> String {
+  let trimmed = design.trim().to_owned()
+  let mut root = trimmed
+  if root.has_prefix("\u{FEFF}") {
+    root = root[1:].trim().to_owned()
+  }
+  while root.has_prefix("<!--") {
+    match root.find("-->") {
+      Some(end) => root = root[end + 3:].trim().to_owned()
+      None => return "md"
+    }
+  }
+  let prefix = root.to_lower()
+  if prefix.has_prefix("<html>") ||
+    prefix.has_prefix("<html ") ||
+    prefix.has_prefix("<html\n") ||
+    prefix.has_prefix("<html\t") ||
+    prefix.has_prefix("<!doctype html") {
+    "html"
+  } else {
+    // JSON is a supported boundary format, including bd's own output.
+    let parsed = @json.parse(trimmed) catch { _ => return "md" }
+    match parsed {
+      Object(_) | Array(_) => "json"
+      _ => "md"
+    }
+  }
+}
+
+///|
+fn replacement_allowed(
+  existing : String,
+  incoming : String,
+  mode : WriteMode,
+) -> Bool {
+  existing.is_empty() || existing == incoming || mode is Replace
+}
+
+///|
+async fn fail(message : String) -> Unit {
+  @stdio.stderr.write("beads:companion: \{message}\n")
+  @sys.exit(1)
+}
+
+///|
+async fn bd_output(args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output("bd", args)
+  if !err.text().is_empty() {
+    @stdio.stderr.write(err.text())
+  }
+  if code != 0 {
+    fail("bd failed with exit status \{code}.")
+  }
+  out.text()
+}
+
+///|
+fn valid_id(id : String) -> Bool {
+  !(id.is_empty() ||
+  id.has_prefix("-") ||
+  id.contains("/") ||
+  id.contains("\\") ||
+  id.contains("..") ||
+  id.contains(":"))
+}
+
+///|
+async fn issue(id : String) -> Issue {
+  if !valid_id(id) {
+    fail("Expected an explicit bead ID, got \{id}.")
+  }
+  let source = bd_output(["show", id, "--json"])
+  match decode_issue(source, id) {
+    Ok(value) => value
+    Err(message) => {
+      fail(message)
+      abort(message)
+    }
+  }
+}
+
+///|
+async fn nonempty_file(path : String) -> String {
+  let content = @fs.read_file(path).text()
+  if content.trim().is_empty() {
+    fail("\{path} is empty; nothing was stored.")
+  }
+  content
+}
+
+///|
+async fn export_design(value : Issue, path : String, mode : WriteMode) -> Unit {
+  if value.design.is_empty() {
+    fail("\{value.id} has no design. No file was written.")
+  }
+  if @fs.exists(path) && mode is Create {
+    fail("\{path} already exists. Choose another path or use --replace.")
+  }
+  // No extra newline, reformatting, template replacement or HTML evaluation.
+  @fs.write_file(path, value.design)
+  println(path)
+}
+
+///|
+async fn export_path(
+  value : Issue,
+  output : String?,
+  directory : String,
+) -> String {
+  match output {
+    Some(path) => path
+    None => {
+      if !@fs.exists(directory) {
+        @fs.mkdir(directory, recursive=true)
+      }
+      "\{directory}/\{value.id}.\{extension(value.design)}"
+    }
+  }
+}
+
+///|
+/// All companion writers for one bead lock the same persistent file in the shared
+/// database directory. Never unlink the file: doing so can split locks by inode.
+async fn store_locked(
+  lock_path : String,
+  incoming : String,
+  mode : WriteMode,
+  load : async () -> String,
+  persist : async () -> Unit,
+) -> StoreOutcome {
+  let lock = @fs.open(lock_path, mode=ReadWrite, create_mode=OpenOrCreate)
+  defer lock.close()
+  @async.with_timeout(30_000, () => lock.lock(Exclusive))
+  defer lock.unlock()
+  let existing = load()
+  if !replacement_allowed(existing, incoming, mode) {
+    return Conflict
+  }
+  if existing == incoming {
+    return Unchanged
+  }
+  persist()
+  if load() != incoming {
+    fail(
+      "Stored design differs from the source. Inspect external/concurrent updates.",
+    )
+  }
+  Written
+}
+
+///|
+async fn shared_lock_path(id : String) -> String {
+  if !valid_id(id) {
+    fail("Expected an explicit bead ID, got \{id}.")
+  }
+  let location = @json.parse(bd_output(["where", "--json"]))
+  guard location is Object(fields) && fields.get("path") is Some(String(path)) else {
+    fail("Cannot locate the shared database for the design write lock.")
+    abort("missing database location")
+  }
+  @fs.realpath(path) + "/companion-design-\{id}.lock"
+}
+
+///|
+/// Offline subprocess fixture: the same critical section with file-backed data,
+/// so CI can exercise actual competing processes without opening a tracker.
+async fn self_test_write(directory : String, incoming : String) -> Unit {
+  let state = directory + "/state"
+  let result = store_locked(
+    directory + "/writer.lock",
+    incoming,
+    Create,
+    () => {
+      let value = @fs.read_file(state).text()
+      @async.sleep(200)
+      value
+    },
+    () => @fs.write_file(state, incoming),
+  )
+  if result is Conflict {
+    fail("Another writer stored a different design.")
+  }
+}
+
+///|
+async fn run(command : Command) -> Unit {
+  match command {
+    Inspect(id) => {
+      let value = issue(id)
+      let summary : Json = {
+        "id": value.id,
+        "title": value.title,
+        "status": value.status,
+        "hasDesign": !value.design.is_empty(),
+        "designFormat": if value.design.is_empty() {
+          "none"
+        } else {
+          extension(value.design)
+        },
+        "embeddedSvgCount": value.design.split("<svg").count() - 1,
+      }
+      println(summary.stringify())
+    }
+    Export(id, output, mode) => {
+      let value = issue(id)
+      let path = export_path(value, output, ".dev/beads-specs")
+      export_design(value, path, mode)
+    }
+    Store(id, path, mode) => {
+      let content = nonempty_file(path)
+      let lock_path = shared_lock_path(id)
+      let result = store_locked(
+        lock_path,
+        content,
+        mode,
+        () => issue(id).design,
+        () => {
+          let snapshot = @fs.tmpdir(prefix="beads-design-store-")
+          defer @fs.rmdir(snapshot, recursive=true)
+          let source = snapshot + "/design"
+          @fs.write_file(source, content)
+          ignore(bd_output(["update", id, "--design-file", source]))
+        },
+      )
+      match result {
+        Conflict =>
+          fail(
+            "\{id} already has a different design. Export and merge it, then use --replace.",
+          )
+        Unchanged => println("\{id}: design already matches; no update needed.")
+        Written =>
+          println("\{id}: design stored and checked. Run bd dolt push to sync.")
+      }
+    }
+    Note(id, path) => {
+      ignore(issue(id))
+      ignore(nonempty_file(path))
+      let source = @fs.realpath(path)
+      ignore(bd_output(["note", id, "--file", source]))
+      println("\{id}: note appended. Run bd dolt push to sync.")
+    }
+    Remember(key, path) => {
+      if key.is_empty() || key.has_prefix("-") {
+        fail("Expected an explicit memory key.")
+      }
+      let content = nonempty_file(path)
+      // The separator keeps leading dashes in memory text from becoming bd flags.
+      ignore(bd_output(["remember", "--key", key, "--", content]))
+      println("\{key}: memory saved. Run bd dolt push to sync.")
+    }
+    Help | SelfTest | SelfTestWrite(_, _) => ()
+  }
+}
+
+///|
+async fn self_test() -> Unit {
+  let html = "<!DOCTYPE html>\n<html><body>\"Ion\" λ &amp; 日本語<svg></svg></body></html>\n"
+  let payload : Json = [
+    { "id": "test-1", "title": "Test design", "status": "open", "design": html },
+  ]
+  let value = match decode_issue(payload.stringify(), "test-1") {
+    Ok(value) => value
+    Err(message) => {
+      fail(message)
+      return
+    }
+  }
+  assert_eq(value.design, html)
+  assert_eq(extension(html), "html")
+  assert_eq(extension("<!-- intro -->\n<HTML lang=\"en\"></HTML>"), "html")
+  assert_eq(extension("\u{FEFF}<!-- intro --><hTmL></hTmL>"), "html")
+  assert_eq(extension("# Guide\nExample: <html></html>"), "md")
+  assert_eq(extension("{\"format\":\"json\"}"), "json")
+  assert_eq(extension("# Markdown\n\nText\n"), "md")
+  assert_true(decode_issue(payload.stringify(), "another-issue") is Err(_))
+  assert_true(decode_issue("[]", "test-1") is Err(_))
+  assert_true(decode_issue("not json", "test-1") is Err(_))
+  assert_true(
+    decode_issue("[{\"id\":\"test-1\",\"design\":42}]", "test-1") is Err(_),
+  )
+  assert_true(!replacement_allowed(html, "changed", Create))
+  assert_true(replacement_allowed(html, "changed", Replace))
+  assert_true(replacement_allowed(html, html, Create))
+  assert_true(replacement_allowed("", html, Create))
+  assert_true(
+    parse_command(["design", "export", "test-1", "--replace"])
+    is Ok(Export("test-1", None, Replace)),
+  )
+  assert_true(parse_command(["design", "store", "test-1"]) is Err(_))
+  let root = @fs.tmpdir(prefix="morphir-beads-companion-")
+  defer @fs.rmdir(root, recursive=true)
+  let directory = root + "/exports"
+  let default_path = export_path(value, None, directory)
+  assert_eq(default_path, directory + "/test-1.html")
+  // Reusing the default directory must not fail with File exists.
+  assert_eq(export_path(value, None, directory), default_path)
+  let destination = root + "/design with spaces.html"
+  export_design(value, destination, Create)
+  assert_eq(@fs.read_file(destination).text(), html)
+  @fs.write_file(destination, "older local content")
+  export_design(value, destination, Replace)
+  assert_eq(@fs.read_file(destination).text(), html)
+  @fs.write_file(root + "/state", "")
+  let script = @fs.realpath("scripts/beads-companion.mbtx")
+  let results = @async.all([
+    () => {
+      @process.collect_output("moonx", [
+        script, "--self-test-write", root, "first",
+      ])
+    },
+    () => {
+      @process.collect_output("moonx", [
+        script, "--self-test-write", root, "second",
+      ])
+    },
+  ])
+  let codes = results.map(result => result.0)
+  assert_true(
+    (codes[0] == 0 && codes[1] == 1) || (codes[0] == 1 && codes[1] == 0),
+  )
+  let winner = if codes[0] == 0 { "first" } else { "second" }
+  assert_eq(@fs.read_file(root + "/state").text(), winner)
+  // Both the winning writer and the refusing writer must release the OS lock.
+  let lock = @fs.open(root + "/writer.lock", mode=ReadWrite)
+  defer lock.close()
+  assert_true(lock.try_lock(Exclusive))
+  lock.unlock()
+  println("beads:companion: self-test passed; no beads database was opened.")
+}
+
+///|
+async fn main {
+  let command = match parse_command(@env.args()[1:].to_owned()) {
+    Ok(command) => command
+    Err(message) => {
+      fail(message)
+      return
+    }
+  }
+  match command {
+    Help =>
+      println(
+        (
+          #|moonx scripts/beads-companion.mbtx COMMAND
+          #|  design inspect ID
+          #|  design export ID [PATH] [--replace]
+          #|  design store ID FILE [--replace]
+          #|  note ID FILE
+          #|  remember KEY FILE
+          #|  --self-test
+          #|
+          #|Run from the repository root after bd dolt pull. Export defaults to
+          #|.dev/beads-specs/ID.html, .json or .md according to the stored content.
+          #|Parent directories for an explicit PATH must already exist.
+          #|Writes remain local until bd dolt push; no command merges or releases.
+        ),
+      )
+    SelfTest => self_test()
+    SelfTestWrite(directory, content) => self_test_write(directory, content)
+    _ => {
+      // Check for an existing bootstrapped DB before any bd command can create one.
+      let status = @process.run(
+        "moonx",
+        ["scripts/beads-check.mbtx"],
+        stdout=@stdio.stderr,
+        stderr=@stdio.stderr,
+      )
+      if status != 0 {
+        fail(
+          "Shared database check failed. Follow beads:check's repair guidance.",
+        )
+      }
+      run(command) catch {
+        error => fail(error.to_string())
+      }
+    }
+  }
+}
