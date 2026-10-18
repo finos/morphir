@@ -1,0 +1,50 @@
+{
+  "manifestVersion": "0.1.0-draft.1",
+  "assets": [
+    {
+      "path": "cases.json",
+      "bytes": 26080,
+      "sha256": "4c5221944009daa3d04ce30d158aa54d318afe7d895be356ea5a8dfc175527d1"
+    },
+    {
+      "path": "fixtures/prose-only.json",
+      "bytes": 4205,
+      "sha256": "de87d9708bee1b4163aabe7adc745d36d1a48e308ad6ea3e2a95037187655f63"
+    },
+    {
+      "path": "fixtures/mixed.json",
+      "bytes": 12777,
+      "sha256": "ab322276dc6551b88c29b046eccb4caf5b755cd464971cdfede0f06c06e583aa"
+    },
+    {
+      "path": "fixtures/independent-concerns.json",
+      "bytes": 3415,
+      "sha256": "9b0feeeac56cc33442ace97c44e50f8109c5036aa0738d24133c703451e9bdc3"
+    },
+    {
+      "path": "fixtures/contract-kinds.json",
+      "bytes": 5714,
+      "sha256": "719157cb9370cac786e5805d599e7ea871df02867df5ea8809bad149a4976d75"
+    },
+    {
+      "path": "fixtures/prose-only.ir.json",
+      "bytes": 145,
+      "sha256": "93ee60f7a61753b6d9ef373317a14fa348700a9d2bf943f2aefe2c9670dd6d91"
+    },
+    {
+      "path": "fixtures/mixed.ir.json",
+      "bytes": 258,
+      "sha256": "5de187b8f5a3621239bb7b5ae6582bc7f29af832df54865d5f7eea59f3557aec"
+    },
+    {
+      "path": "fixtures/identity-implementation.ir.json",
+      "bytes": 428,
+      "sha256": "d92cad05cc13d667f5646505b5afa127861794466250dc6ebbb42b73a0af0290"
+    },
+    {
+      "path": "fixtures/unknown-descriptive.ion",
+      "bytes": 223,
+      "sha256": "c4e69697eaf6d00a9d8d16fac84da9f98f761a492f6f97b5fe16229dfe4b716f"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "recordVersion": "0.1.0-draft.1", "profile": "morphir-conceptual/0.1.0-draft.1",
+  "model": { "id": "urn:example:concerns", "revision": "m1" },
+  "dependencies": [], "requiredSemantics": [],
+  "sources": [{
+    "recordVersion": "0.1.0-draft.1", "id": "urn:example:source:editor",
+    "document": { "id": "urn:example:editor", "revision": "edit-1" },
+    "resolution": "retained", "locator": "editor.spec",
+    "fragments": [{ "anchor": "draft", "text": "fn draft(x: Int) -> Int { renamed( }\n" }]
+  }],
+  "entities": [
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:concept:party", "revision": "c1", "kind": "concept", "name": "Party", "sourceRefs": [],
+      "content": { "definition": "A participant in a loan.", "aliases": [] },
+      "elaboration": { "state": "open", "aspects": [{ "id": "representation", "question": "Which identifiers?", "rationale": "Domain work remains.", "sourceRefs": [] }] }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:declaration:draft", "revision": "d1", "kind": "declaration", "name": "draft", "sourceRefs": [{ "sourceId": "urn:example:source:editor", "anchor": "draft" }],
+      "content": { "role": "function", "typeParameters": [], "signature": { "inputs": { "x": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" } },
+      "elaboration": { "state": "open", "aspects": [{ "id": "zero-policy", "question": "What does zero mean?", "rationale": "Independent of the broken editor reference.", "sourceRefs": [] }] },
+      "definition": { "state": "authoredPartial", "reason": "The author has started the body.", "sourceRefs": [{ "sourceId": "urn:example:source:editor", "anchor": "draft" }] },
+      "recovery": { "state": "recovering", "sourceRef": { "sourceId": "urn:example:source:editor", "anchor": "draft" }, "diagnostics": [{ "code": "fixture.syntax.expected-expression", "message": "An expression is missing after the opening parenthesis.", "span": { "start": 34, "end": 35, "unit": "utf8-byte" } }] },
+      "review": { "state": "pending", "entityRevision": "d1", "modelRevision": "m1" },
+      "implementation": { "state": "unbound" }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:declaration:identity", "revision": "d1", "kind": "declaration", "name": "identity", "sourceRefs": [],
+      "content": { "role": "function", "fqName": "example/concerns:api#identity", "typeParameters": ["a"], "signature": { "inputs": { "value": "a" }, "output": "a" } },
+      "definition": { "state": "completeSpecification" }, "recovery": { "state": "clean" }, "implementation": { "state": "unbound" }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:declaration:loan-id", "revision": "t1", "kind": "declaration", "name": "LoanId", "sourceRefs": [],
+      "content": { "role": "type", "fqName": "example/concerns:api#loan-id", "typeParameters": [], "visibility": "opaque", "representation": { "state": "known", "type": "morphir/SDK:string#string", "access": "defining-module" }, "publicSpecification": { "OpaqueTypeSpecification": {} } },
+      "definition": { "state": "completeSpecification" }, "recovery": { "state": "clean" }
+    }
+  ],
+  "relationships": [], "capabilities": [],
+  "projectionGaps": [{ "entityId": "urn:example:declaration:draft", "reason": "Compiler recovery has no resolved declaration to project.", "requiredCapability": "morphir:recovery-projection" }]
+}

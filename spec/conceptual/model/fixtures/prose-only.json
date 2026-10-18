@@ -1,0 +1,75 @@
+{
+  "recordVersion": "0.1.0-draft.1",
+  "profile": "morphir-conceptual/0.1.0-draft.1",
+  "model": { "id": "urn:example:lending", "revision": "model-1" },
+  "dependencies": [],
+  "requiredSemantics": [],
+  "sources": [
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:source:workshop",
+      "document": { "id": "urn:example:workshop-notes", "revision": "notes-1" },
+      "resolution": "retained", "locator": "notes/workshop.txt",
+      "fragments": [
+        { "anchor": "return", "text": "Track what borrowers still owe.\n\n  Retain the loan identity.\n" }
+      ]
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:source:external",
+      "document": { "id": "urn:example:external-policy" },
+      "resolution": "unresolved", "locator": "https://example.invalid/policy",
+      "reason": "Caller has not supplied a pinned source snapshot.", "fragments": []
+    }
+  ],
+  "entities": [
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:intent:returns", "revision": "i1",
+      "kind": "intent", "name": "Track returns",
+      "sourceRefs": [{ "sourceId": "urn:example:source:workshop", "anchor": "return" }],
+      "content": { "text": "Track what borrowers still owe.", "rationale": "Keep a loan's remaining obligation visible." }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:requirement:balance", "revision": "r1",
+      "kind": "requirement", "name": "Retain loan identity",
+      "sourceRefs": [{ "sourceId": "urn:example:source:workshop", "anchor": "return" }],
+      "content": { "category": "morphir:requirement-kind/functional", "text": "An accepted return retains the loan identity." },
+      "review": { "state": "pending", "entityRevision": "r1", "modelRevision": "model-1" }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:concept:borrower", "revision": "c1",
+      "kind": "concept", "name": "Borrower", "sourceRefs": [],
+      "content": { "definition": "The party that owes the loaned asset.", "aliases": ["Borrowing party"] },
+      "elaboration": { "state": "open", "aspects": [{ "id": "identity", "question": "Which identifying information is needed?", "rationale": "The domain meaning is known; its representation is undecided.", "sourceRefs": [] }] }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:fragment:return", "revision": "f1",
+      "kind": "sourceFragment", "name": "Workshop return paragraph",
+      "sourceRefs": [{ "sourceId": "urn:example:source:workshop", "anchor": "return" }],
+      "content": { "sourceId": "urn:example:source:workshop", "anchor": "return" }
+    }
+  ],
+  "relationships": [
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:link:refines",
+      "predicate": "morphir:refines",
+      "subject": { "state": "resolved", "modelId": "urn:example:lending", "modelRevision": "model-1", "entityId": "urn:example:requirement:balance", "entityRevision": "r1" },
+      "target": { "state": "resolved", "modelId": "urn:example:lending", "modelRevision": "model-1", "entityId": "urn:example:intent:returns", "entityRevision": "i1" },
+      "sourceRefs": []
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:link:source",
+      "predicate": "morphir:derivedFrom",
+      "subject": { "state": "resolved", "modelId": "urn:example:lending", "modelRevision": "model-1", "entityId": "urn:example:requirement:balance", "entityRevision": "r1" },
+      "target": { "state": "resolved", "modelId": "urn:example:lending", "modelRevision": "model-1", "entityId": "urn:example:fragment:return", "entityRevision": "f1" },
+      "sourceRefs": []
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:link:external",
+      "predicate": "morphir:derivedFrom",
+      "subject": { "state": "resolved", "modelId": "urn:example:lending", "modelRevision": "model-1", "entityId": "urn:example:requirement:balance", "entityRevision": "r1" },
+      "target": { "state": "unresolved", "locator": "https://example.invalid/policy#return", "expectedKind": "sourceFragment", "reason": "External document has not been supplied." },
+      "sourceRefs": []
+    }
+  ],
+  "capabilities": [],
+  "projectionGaps": []
+}

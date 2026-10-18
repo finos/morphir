@@ -531,6 +531,15 @@ description = "Run the Bun specification tooling tests"
 run = "bun test tools"
 depends = ["tools:install"]
 
+[tasks."conceptual:fixtures-check"]
+description = "Check the conceptual model reference corpus and fixture builders"
+depends = ["tools:install"]
+run = [
+    "bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/model/tsconfig.json",
+    "bun test spec/conceptual/model/fixture-builders.test.ts",
+    "jsonschema validate website/static/schemas/morphir-ir-v4.json spec/conceptual/model/fixtures/prose-only.ir.json spec/conceptual/model/fixtures/mixed.ir.json spec/conceptual/model/fixtures/identity-implementation.ir.json",
+]
+
 [tasks."vendor:morphir-web"]
 description = "Build and vendor a clean morphir-web worktree twice with provenance"
 run = "bun run tools/vendor-morphir-web.ts"

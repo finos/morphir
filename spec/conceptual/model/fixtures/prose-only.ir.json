@@ -1,0 +1,6 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Specs": { "packageName": "example/prose", "dependencies": {}, "spec": { "modules": {} } }
+  }
+}

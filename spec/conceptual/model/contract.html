@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Conceptual model contract</h1>
+<p class="meta">morphir-ukvn.7.7.1 · M1 · 18 October 2026 · Proposed exact draft 0.1.0-draft.1</p>
+<p class="note">This is the shared reference contract for <code>morphir-conceptual/0.1.0-draft.1</code>. It specifies records, boundaries and authored examples. It does not deliver a compiler, semantic checker, evaluator, model transport implementation or compatibility runner. The concrete record choices below are local draft proposals, not a claim of maintainer approval of syntax, trait names or implementation details.</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#scope">Scope and versions</a></li>
+<li><a href="#records">Record conventions and graph</a></li>
+<li><a href="#identity">Identity, references and sources</a></li>
+<li><a href="#entities">Entity records</a></li>
+<li><a href="#concerns">Independent concerns</a></li>
+<li><a href="#relationships">Relationship records</a></li>
+<li><a href="#contracts">Contracts, claims and evidence</a></li>
+<li><a href="#capabilities">Capability records and admission</a></li>
+<li><a href="#carrier">Rich carrier and projection</a></li>
+<li><a href="#preservation">Preservation and loss</a></li>
+<li><a href="#diagnostics">Diagnostics and inspection</a></li>
+<li><a href="#fixtures">Reference corpus and builders</a></li>
+<li><a href="#walkthrough">Paper round-trips</a></li>
+<li><a href="#open">Open decisions and handoff</a></li>
+<li><a href="#references">Pinned design and existing contracts</a></li>
+</ul></nav>
+
+<section id="scope"><h2>Scope and versions</h2>
+<p>A conceptual model can describe an agreed concept before anyone chooses its data representation. It can also retain requirements as prose, complete function specifications without implementations, source snapshots, typed contracts, claims and observations. A valid graph does not imply that its contracts are executable or that its requirements have been met.</p>
+<p>This draft chooses a finite built-in graph vocabulary and an existing rich IRUnit carrier. It makes no changes to the IR Distribution variants, IR format-version contract or MEP envelope. The conceptual profile, graph record version, model revision, semantic IR format, transport envelope, expression dialect and provider capability versions are independent.</p>
+<table><thead><tr><th>Identifier</th><th>Rule</th></tr></thead><tbody>
+<tr><td><code>morphir-conceptual/0.1.0-draft.1</code></td><td>Exact conceptual profile; an offered draft.2 does not match.</td></tr>
+<tr><td><code>recordVersion: "0.1.0-draft.1"</code></td><td>Required on the graph and each entity, source, relationship and capability record. Nested references and concern variants inherit their enclosing record version.</td></tr>
+<tr><td>Model, entity, source and artifact revisions</td><td>Opaque snapshot identities, compared exactly. They are not version ranges. A caller must not reuse a revision for changed content.</td></tr>
+<tr><td>IR format</td><td>The examples use canonical <code>formatVersion: 4</code> for the existing draft IR 4.0.0. No IR 4.1.0 format is introduced.</td></tr>
+</tbody></table>
+<p>Follow repository SemVer policy for future contract versions. Parse versions with the language's established SemVer library; released 0.y versions use minor compatibility and prereleases match exactly. Nothing in M1 implements version negotiation. A consumer cannot advertise conformance from passing the fixture-construction tests.</p>
+<p>The first preview may use built-in semantics for this vocabulary without authenticating a metadata provider. That does not change the trust rules for separate linked-metadata providers, nor does it authenticate an author or make a claim true.</p>
+</section>
+
+<section id="records"><h2>Record conventions and graph</h2>
+<p>The following tables define a concrete draft data shape. Names are case-sensitive. A field is required unless followed by <code>?</code>. Empty lists are written explicitly. <code>String</code> means Unicode text; <code>Id</code> and <code>Revision</code> are nonempty strings. IDs in these examples are absolute URIs. Consumers treat them as opaque identities and never derive an ID from a label, file position, normalized name or local alias. <code>Nat</code> means an exact nonnegative integer. Record member names occur at most once. Variant tags select exactly one shape; fields belonging to another variant are invalid.</p>
+<p><code>IonValue</code> means the full Ion value model, including annotations, exact numbers, symbols and typed nulls. The JSON graph fixtures deliberately use its JSON-compatible subset. They are data examples, not a JSON replacement for the rich carrier. Unknown members are descriptive unless named in the containing record's <code>critical</code> list; readers retain their Ion values. Unknown critical members or semantic profiles prevent a required interpretation, with an unsupported result. This retention rule does not permit an unsupported discriminator to be interpreted as a known variant.</p>
+<table><thead><tr><th>Graph field</th><th>Type and meaning</th></tr></thead><tbody>
+<tr><td><code>recordVersion</code>, <code>profile</code></td><td>The exact versions above.</td></tr>
+<tr><td><code>model</code></td><td><code>{id: Id, revision: Revision}</code>, the graph snapshot.</td></tr>
+<tr><td><code>dependencies</code></td><td>List of <code>{model: {id, revision}, inputId: Id}</code>. Each input is explicitly supplied in the build context; no ambient lookup or fetching is permitted.</td></tr>
+<tr><td><code>requiredSemantics</code></td><td>List of exact, versioned semantic profile identifiers required to interpret this graph. Empty means storage does not require a particular expression interpreter; a requested check still admits the profiles of the clauses it uses.</td></tr>
+<tr><td><code>sources</code></td><td>List of Source records.</td></tr>
+<tr><td><code>entities</code></td><td>List of Entity records.</td></tr>
+<tr><td><code>relationships</code></td><td>List of Relationship records.</td></tr>
+<tr><td><code>capabilities</code></td><td>List of Capability records. These are advertisements, never observations of a successful check.</td></tr>
+<tr><td><code>projectionGaps</code></td><td>List of <code>{entityId: Id, reason: String, requiredCapability: Id}</code>. Every omitted public declaration or dependent signature has its own entry.</td></tr>
+<tr><td><code>descriptive?</code></td><td>Struct of application-defined descriptive Ion values. Unknown descriptions remain opaque.</td></tr>
+<tr><td><code>critical?</code></td><td>List of distinct member names at this record level whose interpretation is required. Every named member must exist.</td></tr>
+</tbody></table>
+<p>Record list order is retained for round-trips and diagnostics. Identity and relationship semantics do not depend on that order. Duplicate IDs across the graph's four record lists are invalid, including duplicates whose revisions differ. A later version of an entity belongs in another model snapshot or in explicitly identified historical evidence, not in a second same-ID row. Dependencies may contain another revision of the same logical model, but every reference must select one exact snapshot.</p>
+</section>
+
+<section id="identity"><h2>Identity, references and sources</h2>
+<p>An entity reference uses one of these variants. A resolved subject must point into the local graph or its declared, supplied dependency closure. There is no fallback to the newest matching name.</p>
+<pre><code class="language-json">{
+  "state": "resolved",
+  "modelId": "urn:example:lending", "modelRevision": "model-1",
+  "entityId": "urn:example:requirement:balance", "entityRevision": "r1"
+}
+{
+  "state": "unresolved",
+  "locator": "https://example.invalid/policy#return",
+  "expectedKind": "sourceFragment",
+  "reason": "The caller has not supplied this source."
+}</code></pre>
+<p>The resolved variant requires all five fields. The unresolved variant requires <code>state</code>, nonempty <code>locator</code>, <code>expectedKind</code> and nonempty <code>reason</code>; it may additionally retain <code>proposedId</code>. Its locator is descriptive and never an acquisition instruction. A declared unresolved target is a visible gap. A resolved target that is absent, of the wrong kind or at a different revision is invalid. The unresolved target's expected kind must also satisfy the relationship signature.</p>
+<table><thead><tr><th>Source field</th><th>Type and meaning</th></tr></thead><tbody>
+<tr><td><code>recordVersion</code>, <code>id</code></td><td>Source-record version and identity within this graph.</td></tr>
+<tr><td><code>document</code></td><td><code>{id: Id, revision?: Revision, digest?: {algorithm: "sha256", value: String}}</code>. A digest is lowercase 64-digit hexadecimal of the supplied original document bytes. A digest establishes byte identity, not authenticity. At least a revision or verified digest is needed for pinned evidence.</td></tr>
+<tr><td><code>resolution</code></td><td><code>"retained"</code> or <code>"unresolved"</code>. Retained requires at least one retained fragment. Unresolved requires a <code>reason</code> and may retain an excerpt without claiming the full document resolved.</td></tr>
+<tr><td><code>locator</code></td><td>String identifying a caller-supplied location, URL, KB document or OKF document. Never implicitly dereferenced.</td></tr>
+<tr><td><code>fragments</code></td><td>List of <code>{anchor: Id, text: String}</code>. Anchors are unique within this source. Exact wording is retained, including spaces, line endings and final LF. An empty text is valid.</td></tr>
+<tr><td><code>reason?</code>, <code>descriptive?</code>, <code>critical?</code></td><td>Unresolved explanation and ordinary extension fields.</td></tr>
+</tbody></table>
+<p>A <code>SourceRef</code> is <code>{sourceId: Id, anchor: Id}</code>. Both select a local Source record and retained fragment exactly; the document revision comes from that Source record. A SourceRef to a missing fragment is invalid. An unavailable external source is represented by an unresolved relationship target or an unresolved Source with no SourceRef to absent text. Inspection reports unpinned sources even when some wording has been retained.</p>
+<p>A <code>sourceFragment</code> entity gives retained wording a graph identity and can be a <code>derivedFrom</code> target. It does not become an IR metadata owner. An explicit source refresh creates a new snapshot, source revision and reassessment context. Moving or renaming a file preserves IDs. Changing logical IDs requires an explicit old-to-new mapping owned by a separate transformation; this draft defines no automatic identity migration.</p>
+</section>
+
+<section id="entities"><h2>Entity records</h2>
+<p>Every Entity has <code>recordVersion</code>, <code>id</code>, <code>revision</code>, <code>kind</code>, <code>name: String</code>, <code>sourceRefs: SourceRef[]</code> and <code>content</code>. It may have the independent concern fields in the next section, <code>descriptive</code> and <code>critical</code>. Names and aliases have no identity semantics. An unknown kind is retainable but unsupported for kind-dependent checking. The content shape is selected by <code>kind</code>.</p>
+<table><thead><tr><th>Kind</th><th>Required content; optional fields marked ?</th></tr></thead><tbody>
+<tr><td><code>intent</code></td><td><code>{text: String, rationale?: String}</code>. Desired outcome and its reason.</td></tr>
+<tr><td><code>requirement</code></td><td><code>{category: Id, text: String, notation?: IonValue}</code>. Initial categories are <code>morphir:requirement-kind/functional</code>, <code>data</code>, <code>performance</code>, <code>operational</code> and <code>regulatory</code> with that same prefix. Other namespaced categories are retained. EARS pattern classification belongs in notation, independently of category.</td></tr>
+<tr><td><code>concept</code></td><td><code>{definition?: String, aliases: String[], context?: String}</code>. Absence of definition is reported; a generated view must not invent one. A concept is not an IR type.</td></tr>
+<tr><td><code>dataElement</code></td><td><code>{definition?: String, type?: IonValue, units?: Id, format?: Id}</code>. A named representation linked to a concept by <code>represents</code>. A missing type remains a representation gap.</td></tr>
+<tr><td><code>sourceFragment</code></td><td><code>{sourceId: Id, anchor: Id}</code>. Same resolution rules as SourceRef.</td></tr>
+<tr><td><code>declaration</code></td><td><code>{role, fqName?, typeParameters?, signature?, visibility?, representation?, publicSpecification?}</code>, detailed below.</td></tr>
+<tr><td><code>contract</code></td><td><code>{clauseKind, subject, notation, binders, expression, compiledArtifact?}</code>, detailed in <a href="#contracts">Contracts, claims and evidence</a>.</td></tr>
+<tr><td><code>scenario</code></td><td><code>{valueProfile: Id, inputs: IonValue, expected: IonValue, origin, typeArguments?: {parameter: Type}}</code>. Origin is <code>{kind: "authored", author: Id}</code> or <code>{kind: "generated", generator: {id, version}, configuration: IonValue, seed?: String}</code>. A test definition is not run evidence.</td></tr>
+<tr><td><code>implementation</code></td><td><code>{artifact: {id, revision}, fqName: String, availability: "declared" | "supplied"}</code>. Supplied means the caller supplied the exact artifact in the current context; identity alone does not make code executable.</td></tr>
+<tr><td><code>claim</code></td><td><code>{subject: ResolvedRef, proposition: String, author: Id, scope: IonValue, context: RevisionContext}</code>. Evidence links are independent graph relationships.</td></tr>
+<tr><td><code>evidence</code></td><td><code>{evidenceKind, origin, context, ...}</code>, detailed below. Observations may support and contradict the same claim.</td></tr>
+</tbody></table>
+<p>Declaration <code>role</code> is <code>function</code>, <code>type</code>, <code>field</code>, <code>parameter</code> or <code>result</code>. A resolved function has a declared <code>typeParameters: String[]</code> and a <code>signature</code> in the existing v4 ValueSpecification shape. Argument names and their declared order remain available to contract binders. A projected declaration requires an explicit <code>fqName</code>; a checker does not infer the package from a dotted source namespace. A type declaration has <code>typeParameters</code> and its existing IR <code>publicSpecification</code> when supported. The <code>visibility</code> can be <code>transparent</code> or <code>opaque</code>. A known representation is <code>{state: "known", type: IonValue, access: "public" | "defining-module"}</code>; an undecided one is <code>{state: "undecided", reason: String}</code>. Known opaque representation data stays in the defining model, while public IR hides it.</p>
+<p>Field, parameter and result declarations can retain a <code>type</code> and a resolved <code>parent</code> reference as additional content fields. This records dictionary links without inventing standalone IR nodes. These roles have no additional lowering rule in M1. A generic parameter is declared, not missing; a bodyless function can be a complete public specification.</p>
+</section>
+
+<section id="concerns"><h2>Independent concerns</h2>
+<p>These fields are separate tagged sums. Omission means no fact was recorded about that concern. It never means complete, approved or implemented. Combining fields does not suppress any diagnostic.</p>
+<table><thead><tr><th>Field</th><th>Variants and obligations</th></tr></thead><tbody>
+<tr><td><code>elaboration?</code></td><td><code>{state: "open", aspects: [{id, question, rationale, sourceRefs}]}</code> with at least one aspect; or <code>{state: "settled", rationale: String}</code>. Aspect IDs are local to the entity. This concerns domain knowledge, not parser validity.</td></tr>
+<tr><td><code>definition?</code></td><td><code>{state: "completeSpecification"}</code>; <code>{state: "completeDefinition"}</code>; or <code>{state: "authoredPartial", reason: String, sourceRefs: SourceRef[]}</code>. Applies to declarations. A partial definition is authored work in progress and does not require an editor error.</td></tr>
+<tr><td><code>recovery?</code></td><td><code>{state: "clean"}</code>; or <code>{state: "recovering", sourceRef: SourceRef, diagnostics: Diagnostic[]}</code> with at least one diagnostic. A recovery diagnostic has <code>code</code>, <code>message</code> and optional half-open <code>span: {start: Nat, end: Nat, unit: "utf8-byte"}</code> relative to the retained fragment's UTF-8 bytes. Syntax recovery may exist before typed IR exists.</td></tr>
+<tr><td><code>review?</code></td><td><code>{state: "unreviewed" | "pending", entityRevision, modelRevision}</code>; or <code>{state: "accepted" | "rejected", entityRevision, modelRevision, reviewer: Id, rationale: String}</code>. These are assertions about the stated revision, not execution observations. A changed applicable revision makes the review historical.</td></tr>
+<tr><td><code>implementation?</code></td><td><code>{state: "unbound"}</code>; or <code>{state: "bound", binding: ResolvedRef}</code> targeting an implementation entity. Applies to a declaration. A bound artifact must declare the same FQName and a compatible signature before invocation. The availability field and consumer evaluator still govern whether execution is possible.</td></tr>
+</tbody></table>
+<p>A concept with an undecided representation remains valid conceptual knowledge. Using it as an executable type requires an explicit representation mapping. A checker reports that missing mapping instead of manufacturing <code>Any</code>, a type variable, an opaque representation or a passing result.</p>
+<p>The existing IR <code>IncompleteTypeDefinition</code>, <code>IncompleteBody</code>, <code>Hole</code> and <code>Draft</code> forms keep their existing meanings. This contract does not automatically lower elaboration, review state, opacity or polymorphism into any of them. A future compiler can reuse a form only where the origin and semantics match; it must retain the reason and original source in the graph. Domain elaboration and compiler recovery can both apply to one declaration.</p>
+</section>
+
+<section id="relationships"><h2>Relationship records</h2>
+<p>A Relationship has <code>recordVersion</code>, <code>id</code>, <code>predicate: Id</code>, <code>subject: ResolvedRef</code>, <code>target: EntityRef</code> and <code>sourceRefs: SourceRef[]</code>. Optional <code>descriptive</code> and <code>critical</code> fields follow the record rules. The relationship ID belongs to its enclosing model revision; it needs no independent revision field. Its direction is significant.</p>
+<table><thead><tr><th>Predicate</th><th>Subject</th><th>Target</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>morphir:derivedFrom</code></td><td>requirement</td><td>sourceFragment</td><td>Retains the source of an interpretation.</td></tr>
+<tr><td><code>morphir:refines</code></td><td>requirement</td><td>intent</td><td>States an obligation associated with the intent.</td></tr>
+<tr><td><code>morphir:formalizes</code></td><td>contract</td><td>requirement</td><td>Asserts a formalization; does not prove equivalence to prose.</td></tr>
+<tr><td><code>morphir:governedBy</code></td><td>declaration with function or type role</td><td>contract</td><td>Associates obligations with the exact declaration named by the contract subject. Clause kind determines the permitted declaration role.</td></tr>
+<tr><td><code>morphir:exercises</code></td><td>scenario</td><td>contract</td><td>Identifies what a case examines.</td></tr>
+<tr><td><code>morphir:implements</code></td><td>implementation</td><td>declaration with function role</td><td>Asserts an implementation relationship. Does not establish fulfillment or grant a binding by itself.</td></tr>
+<tr><td><code>morphir:supports</code>, <code>morphir:contradicts</code></td><td>evidence</td><td>claim</td><td>Scopes observations to claims, without precedence between supporting and contradicting observations.</td></tr>
+<tr><td><code>morphir:represents</code></td><td>dataElement or declaration</td><td>concept</td><td>Explicit connection between meaning and representation. Does not grant assignability or conversion.</td></tr>
+</tbody></table>
+<p>The graph may have multiple relationships to the same subject or target. It is not a maturity ladder and no transitive proof is implied. Duplicate relationship IDs are invalid; distinct assertion records with identical endpoints are preserved. Self-links, cycles and multiplicity have no extra inference rules in this bounded vocabulary; endpoints must still satisfy their signature.</p>
+<p>Extension predicates use namespaced identities and an explicitly supplied, versioned signature/interpreter profile. An unknown descriptive predicate can remain opaque without semantic validation. An unknown required predicate is unsupported. A relationship cannot claim a known built-in predicate while bypassing its endpoint checks through descriptive metadata. Semantic dictionary mapping directions such as exact, close, broader and narrower need their own named profile with revision, provenance and review rules; M1 does not silently treat them as equality or coercions.</p>
+</section>
+
+<section id="contracts"><h2>Contracts, claims and evidence</h2>
+<p>A Contract keeps authored notation and a resolved expression together. Its required <code>subject: ResolvedRef</code> names the declaration being constrained. Its required <code>clauseKind</code> is <code>refinement</code>, <code>invariant</code>, <code>precondition</code> or <code>postcondition</code>. Refinement constrains a type declaration and binds <code>self</code> to one value of its representation. Invariant constrains a record type declaration and binds <code>self</code> to the complete record. Preconditions constrain a function and bind only its input arguments. Postconditions constrain a function and bind its inputs and <code>result</code>. A frame condition is an explicit postcondition about retained fields, with no implicit preservation rule. A <code>governedBy</code> edge, when present, must agree with the contract subject; the edge alone never supplies a missing clause kind. <code>notation</code> is <code>{profile: Id, text: String}</code>. Each binder is <code>{id: Id, role: "argument" | "result" | "self", name: String, type: IonValue, position?: Nat}</code>. Argument binders require a unique zero-based position matching the declaration's argument order and name. Result and self binders do not have positions. Their presence must match clauseKind; argument names cannot use the reserved <code>result</code> name. Binder IDs are unique within the contract. Expression references name binder IDs; they cannot capture an ambient name.</p>
+<p><code>expression</code> is <code>{state: "unresolved", reason: String}</code> or <code>{state: "resolved", profile: Id, ast: IonValue}</code>. Resolved means the expression is represented in a specified typed dialect; a consumer still needs that dialect and its typing/evaluation capability. The fixture equality dialect is test vocabulary and does not define Morphir predicate syntax. An optional <code>compiledArtifact</code> is <code>{artifact: {id, revision}, compiler: {id, version, profile}, contractRevision: Revision, argumentMap: [{binderId, position}]}</code>. It identifies a derived executable artifact, retaining linkage to its authored contract. The authored contract remains authoritative.</p>
+<p>A <code>RevisionContext</code> is the following shape. Each list contains distinct IDs. Revision matching compares all IDs and revisions, including the relevant subject set, rather than selecting a matching subset.</p>
+<pre><code class="language-json">{
+  "model": { "id": "urn:example:mixed", "revision": "model-2" },
+  "entities": [
+    { "id": "urn:example:requirement:identity", "revision": "r2" },
+    { "id": "urn:example:contract:identity", "revision": "k2" },
+    { "id": "urn:example:declaration:identity", "revision": "d2" },
+    { "id": "urn:example:scenario:identity", "revision": "s2" },
+    { "id": "urn:example:implementation:identity", "revision": "impl-2" }
+  ],
+  "sources": [{ "id": "urn:example:identity-source", "revision": "source-2" }],
+  "implementations": [{ "id": "urn:example:identity-library", "revision": "library-2" }]
+}</code></pre>
+<p>Context source IDs identify documents, not local Source record IDs. When a source uses a digest as its snapshot identity, write its canonical <code>sha256:&lt;hex&gt;</code> string as the context revision and verify those bytes on admission. The context must include every source, entity and implementation on which the claim or observation depends. Missing required context is an inconclusive evidence assessment, never a current proof. Evidence for another context remains a valid historical record and is stale for the requested assessment. This draft offers no fine-grained preservation proof across changed revisions.</p>
+<table><thead><tr><th>Evidence content</th><th>Fields</th></tr></thead><tbody>
+<tr><td>Common</td><td><code>evidenceKind: "run" | "analysis" | "review"</code>, <code>origin: String</code>, <code>context: RevisionContext</code>. Origin describes the producer; it is not authentication.</td></tr>
+<tr><td>Run</td><td><code>valueProfile: Id</code>, <code>input: IonValue</code>, <code>output: {state: "observed", value: IonValue} | {state: "absent", reason: "notInvoked" | "executionError" | "missingResult"}</code>, <code>clauses: [{entityId, entityRevision, observation}]</code>, <code>evaluator: {id, version, profile}</code>, <code>environment: {target: String, configuration: IonValue}</code>, <code>limits: {steps: Nat, depth: Nat}</code>. Limits must be positive for a claimed run. An observed output can be an actual Ion null. An absent output has no value and cannot count as a satisfied result obligation. A false precondition, invalid input, error or missing candidate must not fabricate an output. Clause observation is <code>satisfied</code>, <code>violated</code>, <code>not_applicable</code>, <code>invalid-input</code>, <code>unsupported</code>, <code>error</code> or <code>inconclusive</code>. A false operation precondition yields <code>not_applicable</code>, not a business rejection or violated postcondition. Invalid typed inputs yield <code>invalid-input</code> with a diagnostic before evaluating applicable postconditions. Missing inputs or results are <code>inconclusive</code>; unsupported semantics and evaluator/resource errors are separate outcomes. None is a passing observation. Ordinary business rejection remains a Result alternative governed by postconditions. Optional generated-case provenance retains generator ID/version, configuration and seed. Generic scenarios and runs must record <code>typeArguments</code>, an explicit substitution for every declared parameter used in that execution. The mixed fixture records <code>a := morphir/SDK:basics#int</code>. Missing concrete substitutions prevent execution; they do not turn declared parameters into holes.</td></tr>
+<tr><td>Analysis</td><td><code>analyzer: {id, version, profile}</code>, <code>scope: IonValue</code> and <code>result: IonValue</code>. A type-check result is not behavioral evidence.</td></tr>
+<tr><td>Review</td><td><code>reviewer: Id</code>, <code>decision: "accepted" | "rejected"</code>, <code>rationale: String</code>. Human acceptance of an interpretation remains a review assertion.</td></tr>
+</tbody></table>
+<p>No evidence is created by preserving a graph, generating a test, advertising a capability, adding an <code>implements</code> edge or accepting a review. Missing evidence is unknown. A consumer may report both support and contradiction without claiming general contradiction detection or proof of prose equivalence. Hand-authored evidence in this corpus is a test input, explicitly marked <code>hand-authored-fixture</code>; no observation in M1 represents a real evaluator run.</p>
+</section>
+
+<section id="capabilities"><h2>Capability records and admission</h2>
+<p>A Capability has <code>recordVersion</code>, <code>id</code>, <code>provider: {id, revision}</code>, exact <code>profile</code>, <code>operations</code>, <code>semanticProfiles</code> and <code>limits</code>. Operations are a list drawn from <code>preserve</code>, <code>inspect</code>, <code>check</code>, <code>project</code> and <code>execute</code>. Semantic profiles are exact, versioned interpreter identifiers. Limits are positive exact integers <code>{bytes, depth, values}</code>. Optional <code>descriptive</code> and <code>critical</code> follow the extension rules.</p>
+<p>These records describe conceptual consumer support. They are separate from MEP runtime provider capability claims and from domain claims. They do not authorize a protocol method, establish a guarantee, or prove that the provider has been qualified. Each requested operation needs the matching capability, the exact conceptual profile and every required semantic profile. Checking additionally needs resolved, well-typed clauses; execution also needs a resolved supplied implementation and an admitted evaluator. The consumer's prerequisites cannot be disabled by an empty caller requirement list.</p>
+<p>A preservation-only reader can retain a contract whose evaluator it does not support. It must refuse a request to check that contract with <code>conceptual.unsupported_semantics</code>. Unsupported operations, profiles, critical fields or limits produce an unsupported/refused result without a successful artifact or passing evidence. Readability, structural validity, typing, evaluation support, implementation binding, review and evidence are distinct reported facts.</p>
+</section>
+
+<section id="carrier"><h2>Rich carrier and projection</h2>
+<p>The conceptual graph is the typed Ion value in one existing IRUnit NodeMetadata entry owned by <code>unit:&lt;unit-id&gt;</code>. For this draft, that entry's <code>data</code> is the Graph struct itself, including its exact profile. Unknown descriptions can be nested in the graph. Other existing metadata owners, annotations and provenance remain intact. A transform that finds unrelated pre-existing data at the same unit owner must refuse a conflicting composition rather than overwrite it; defining a general multi-profile container is outside M1.</p>
+<table><thead><tr><th>Fixture recipe</th><th>Existing MoonBit carrier field</th></tr></thead><tbody>
+<tr><td><code>unitId</code></td><td><code>IRUnit.id</code> and the SourceSnapshot <code>unit_id</code> passed to decode.</td></tr>
+<tr><td><code>ir</code></td><td><code>IRUnit.distribution</code>, an existing IRFile containing <code>formatVersion</code> and <code>distribution</code>.</td></tr>
+<tr><td><code>metadata[].nodeId</code></td><td><code>NodeMetadata.node_id</code>. The graph's sole owner is the already valid <code>unit:&lt;id&gt;</code>.</td></tr>
+<tr><td><code>metadata[].data</code></td><td><code>NodeMetadata.data</code>, a typed IonValue. Entity IDs stay inside this value.</td></tr>
+<tr><td><code>annotations</code>, <code>provenance</code></td><td>IRUnit's existing symbol-token annotations and Ion provenance values.</td></tr>
+</tbody></table>
+<p>The existing MoonBit checkpoint codec writes a <code>morphir_pipeline</code>-annotated struct with <code>profile: "morphir-pipeline-v1"</code>, <code>contract: "ir-unit"</code>, <code>unit_id</code>, <code>ir</code>, <code>metadata: [{node_id, data}]</code> and <code>provenance</code>. That profile string retains its existing spelling; the conceptual draft does not rename it. The fixture recipe uses readable camelCase construction fields and is deliberately not another wire encoding. Existing codec and owner validation remain responsible for serialization and ownership.</p>
+<p>A prose-only graph uses an empty <code>Specs</code> distribution with an explicit build package. Mixed graphs project resolved public declarations into that same primary package's module specifications. Source namespaces qualify model/module names and do not select a package. The mixed fixture supplies <code>example/model</code> as build context and projects <code>example/model:api#identity</code>. Its conceptual Customer has no invented type. Its implementation is a separate supplied Library artifact with exact identity, revision and FQName.</p>
+<p>Signature-only functions project as ValueSpecifications. Opaque public types hide their known representations. If a consumer cannot project a declared feature, such as the proposed native Union node, retain its complete typed declaration in the graph and list every omitted declaration and dependent signature in <code>projectionGaps</code>. Such a carrier is not a complete public specification. Bare IR export refuses this loss. M1 does not implement Union lowering or change the IR support table.</p>
+<p>Definition-to-specification conversion may initialize ordinary IR annotations to empty in existing implementations. A conceptual transform must retain the separately stored graph, source, revision context and links across that conversion. An empty output annotation list does not authorize dropping the graph.</p>
+<p>MEP may transport model bytes through its existing additive model-transport contract only after its own exact bilateral tuple and evidence admission. This draft neither adds a conceptual tuple to an implementation nor changes MEP's envelope. IRUnit storage, conceptual meaning and transport negotiation stay separate.</p>
+</section>
+
+<section id="preservation"><h2>Preservation and loss</h2>
+<p>Rich text and binary round-trips preserve the graph's logical record values, IDs, revision scopes, source strings, unknown descriptive values, annotations and provenance. Ion binary byte identity or text whitespace outside retained strings is not required. Ion value identity does require integer precision, decimal scale, symbol versus string distinctions, typed nulls, annotation order and struct field multiplicity inside opaque descriptive values. Known record fields cannot be duplicated. A consumer that lacks a required symbol catalog must report the existing codec failure rather than guess symbol text.</p>
+<p>The <a href="fixtures/unknown-descriptive.ion">unknown descriptive asset</a> requires <code>9007199254740993</code>, decimal <code>123.4500</code>, symbol <code>pending</code>, <code>null.string</code>, two ordered top-level annotations and a nested unknown annotation to survive. A JSON serialization through a host number type cannot meet that obligation. The JSON fixtures therefore do not stand in for a tested Ion codec.</p>
+<p>Bare semantic IR JSON cannot carry the required conceptual graph. Export must report the existing <code>data.lossy_conversion</code> refusal and produce no successful bare artifact. An explicitly requested human report can contain ordinary JSON/JSON Lines without claiming a lossless model export. Unknown descriptive data can remain unvalidated; unknown required semantics cannot disappear during checked generation or execution.</p>
+</section>
+
+<section id="diagnostics"><h2>Diagnostics and inspection</h2>
+<p>The corpus uses draft observation codes, not new RPC error numbers. A diagnostic has <code>code</code> and <code>path</code>, an RFC 6901 pointer into the materialized graph or the operation input. The empty string selects the root; <code>/</code> selects an empty-name member and is not the root. Optional <code>relatedPath</code> identifies an earlier duplicate. Messages may explain the problem but are not fixed oracle strings. For a relationship kind mismatch the observation also records expected and actual subject/target kinds.</p>
+<table><thead><tr><th>Code</th><th>Boundary</th></tr></thead><tbody>
+<tr><td><code>conceptual.duplicate_identity</code></td><td>Invalid graph; a later record repeats an identity.</td></tr>
+<tr><td><code>conceptual.relationship_kind</code></td><td>Invalid relationship; known predicate's endpoint kinds or declaration roles disagree.</td></tr>
+<tr><td><code>conceptual.missing_resolved_target</code></td><td>Invalid declared resolution; an entity is absent.</td></tr>
+<tr><td><code>conceptual.reference_revision</code></td><td>Invalid declared resolution; the exact model or entity revision is unavailable or mismatched.</td></tr>
+<tr><td><code>conceptual.unresolved_reference</code>, <code>conceptual.source_unpinned</code></td><td>Representable gap. Never causes implicit source fetching.</td></tr>
+<tr><td><code>conceptual.open_domain_aspect</code>, <code>conceptual.missing_formalization</code>, <code>conceptual.missing_examples</code>, <code>conceptual.implementation_unbound</code></td><td>Independent inspection gaps. They do not manufacture IR recovery nodes.</td></tr>
+<tr><td><code>conceptual.unsupported_profile</code>, <code>conceptual.unsupported_semantics</code></td><td>Required interpretation is not supported. No passing check or execution evidence.</td></tr>
+<tr><td><code>conceptual.stale_evidence</code></td><td>Observation has a changed model, relevant entity, source or implementation revision for the requested context.</td></tr>
+<tr><td><code>conceptual.metadata_owner_conflict</code></td><td>Refused graph attachment; existing unit-owned metadata would be overwritten.</td></tr>
+<tr><td><code>conceptual.invalid_input</code></td><td>A supplied value fails its declared type or refinement before an applicable operation check.</td></tr>
+<tr><td><code>data.lossy_conversion</code></td><td>Existing rich data boundary refuses an export that loses required content.</td></tr>
+</tbody></table>
+<p>Inspection also retains source recovery diagnostics unchanged and reports unsupported clauses and projection gaps. Fatal structural errors take precedence over optional inspection-gap reporting; the negative cases name only their isolated fatal observation. Gap lists in cases specify required observations, not a prohibition on additional relevant inspection information. Diagnostic order is not semantic; compare code, path and stated detail as a set. For duplicate IDs, use authored list order to identify the later occurrence.</p>
+<p><code>valid-with-gaps</code> concerns graph representation; <code>preserved</code> concerns a round-trip; <code>current</code>/<code>stale</code> concern evidence currency. None means a contract was satisfied. <code>invalid</code>, <code>unsupported</code> and <code>refused</code> name different boundaries. General contradiction detection, proof of equivalence and domain approval are outside this draft.</p>
+</section>
+
+<section id="fixtures"><h2>Reference corpus and builders</h2>
+<p><a href="cases.json">cases.json</a> contains independently hand-authored input variants and literal expected observations. The literal asset lengths and SHA-256 digests in <a href="assets.json">assets.json</a> detect accidental changes; they do not compute semantic expectations. Its <code>corpusVersion</code> is exact <code>0.1.0-draft.1</code>, and its <code>status</code> is <code>reference-only</code>. The case operation names are fixture instructions, not a new CLI, RPC protocol or MCK operation registration.</p>
+<table><thead><tr><th>Files</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><a href="fixtures/prose-only.json">prose-only.json</a>, <a href="fixtures/prose-only.ir.json">prose-only.ir.json</a></td><td>Source wording, intent, requirement, unrepresented concept, unresolved external source and empty Specs.</td></tr>
+<tr><td><a href="fixtures/mixed.json">mixed.json</a>, <a href="fixtures/mixed.ir.json">mixed.ir.json</a>, <a href="fixtures/identity-implementation.ir.json">identity-implementation.ir.json</a></td><td>Conceptual entity alongside a generic signature and separate supplied implementation; scoped review, example, claim and illustrative evidence.</td></tr>
+<tr><td><a href="fixtures/independent-concerns.json">independent-concerns.json</a></td><td>Combined elaboration, authored partial definition, editor recovery, review and binding facts; separate complete bodyless function and known opaque type.</td></tr>
+<tr><td><a href="fixtures/contract-kinds.json">contract-kinds.json</a></td><td>Explicit refinement, invariant, precondition and postcondition records, including type/self attachment.</td></tr>
+<tr><td><a href="fixtures/unknown-descriptive.ion">unknown-descriptive.ion</a></td><td>Opaque typed Ion preservation obligations absent from JSON.</td></tr>
+<tr><td><a href="fixture-builders.ts">fixture-builders.ts</a>, <a href="fixture-builders.test.ts">fixture-builders.test.ts</a></td><td>Pure cloned input assembly and checkpoint recipes. No graph validation, predicate evaluation or expectation generation.</td></tr>
+</tbody></table>
+<p>To materialize a case, load its <code>input.graph</code> relative to this directory, then concatenate the optional <code>additions.sources</code>, <code>entities</code>, <code>relationships</code> and <code>capabilities</code> lists in written order. The builder deliberately preserves duplicate and invalid records. It never deduplicates, repairs references or derives expected outcomes. Load optional <code>ir</code> and <code>implementationInputs</code> as separate authored files. An Ion insertion reads exactly one Ion value from the named asset and puts it at the graph pointer, creating the described descriptive struct if absent. Never parse that asset through JSON.</p>
+<p>For <code>roundTrip</code>, construct the existing IRUnit using the supplied <code>unitId</code>, IR and graph metadata; encode/decode with each requested existing codec and compare retained values. For <code>attachGraph</code>, attach to an unoccupied unit metadata owner or refuse the collision without changing existing data. For <code>definitionToSpecification</code>, extract the supplied Library's public signature and retain the separate graph; compare to the literal expected IR asset. For <code>inspect</code>, report the graph concerns and reference validity, optionally restricted to <code>subjects</code>. For <code>check</code>, admit the named provider and required semantic profiles. Optional <code>subject</code> identifies the declaration being checked, <code>inputs</code> supplies named values, <code>candidate</code> supplies an explicit candidate output when present, and <code>valueProfile</code> identifies their interpretation. The scalar fixture profile is test vocabulary: integers are exact base-10 strings; binder, integer literal, field selection, subtraction, equality, greater-or-equal and less-or-equal AST nodes have their ordinary exact-integer meanings. These few authored examples specify future observations and provide no current evaluator. The scalar provider advertisement in the fixture is hypothetical, not a qualification claim. For <code>exportBareIr</code>, attempt an explicit bare export. For <code>assessEvidence</code>, compare the named historical observation to the complete supplied revision context before any trust decision. <code>requestedProfile</code>, when present, is the caller's exact required profile.</p>
+<p>Future runtime tasks consume these fixtures according to their scope. Shared qualification must use an adapter in the existing Rust <code>morphir mck</code> ownership path. It must retain the literal expected results as independent inputs. The fixture builders must not become a second conceptual checker or compatibility runner. A later parser frontend or library can consume this corpus without depending on a second runner.</p>
+<table><thead><tr><th>Cases</th><th>Required observation</th></tr></thead><tbody>
+<tr><td>0001–0005</td><td>Rich prose/mixed preservation and the five independent concerns, including bodyless functions, opacity and generics.</td></tr>
+<tr><td>0006–0009</td><td>Duplicate identity, invalid relationship kinds, falsely resolved missing target and wrong revision.</td></tr>
+<tr><td>0010–0012</td><td>Unknown descriptive Ion retention, unsupported required semantics and refused bare export.</td></tr>
+<tr><td>0013–0016</td><td>Changed model/source/implementation context and exact current context, without proof from currency.</td></tr>
+<tr><td>0022–0024</td><td>Explicit clause kinds and subject/binder scope; not_applicable and invalid-input remain distinct observations.</td></tr>
+<tr><td>0019–0021</td><td>Occupied unit-owner refusal, requirement-revision staleness and definition-to-specification graph preservation.</td></tr>
+<tr><td>0017–0018</td><td>No evidence from review/binding/capability declarations and exact draft matching.</td></tr>
+</tbody></table>
+<p>Run the local construction/integrity checks with <code>bun test spec/conceptual/model/fixture-builders.test.ts</code>. Strict type checking, including noUncheckedIndexedAccess, uses <code>bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/model/tsconfig.json</code> after the normal tools dependency installation. The existing repository JSON Schema CLI validates the three concrete IR fixtures:</p>
+<pre><code class="language-bash">jsonschema validate website/static/schemas/morphir-ir-v4.json \
+  spec/conceptual/model/fixtures/prose-only.ir.json \
+  spec/conceptual/model/fixtures/mixed.ir.json \
+  spec/conceptual/model/fixtures/identity-implementation.ir.json</code></pre>
+<p>These checks prove fixture availability, integrity, recipe assembly and IR shape only. They do not execute the conceptual observations, Ion round-trips, binding checks, loss refusals or stale-evidence logic. Passing them cannot be reported as conceptual model runtime conformance. No negative diagnostic in this corpus was obtained from an implementation under test.</p>
+</section>
+
+<section id="walkthrough"><h2>Paper round-trips</h2>
+<details open><summary>Prose-only construction and recovery</summary>
+<ol>
+<li>Read <code>prose-only.json</code>. Keep <code>urn:example:lending</code> at <code>model-1</code>, all four entity IDs/revisions, both Source records and all three relationships.</li>
+<li>Use caller package <code>example/prose</code> and unit <code>prose</code>. The hand-authored <code>prose-only.ir.json</code> is a valid empty Specs carrier. No concept becomes a type or a hole.</li>
+<li>Construct one metadata entry <code>unit:prose</code> containing the graph, then use the existing rich codec. On decode, that same owner recovers the graph, including the paragraph's interior blank line, two leading spaces and final LF.</li>
+<li>Inspection can still distinguish the pending requirement review, Borrower's open identifying-information question, missing contract/example and explicitly unresolved external source. It performs zero network requests. Exporting only Specs would lose these required facts and must refuse.</li>
+</ol></details>
+<details open><summary>Mixed conceptual and implemented construction</summary>
+<ol>
+<li>Read <code>mixed.json</code> at <code>model-2</code>. The Customer concept has no selected type. Identity's generic <code>a</code> is explicitly declared and its bodyless specification is complete.</li>
+<li>Project the authored signature into <code>example/model:api#identity</code> in <code>mixed.ir.json</code>. Retain the entire graph at <code>unit:mixed</code>. Keep the separately supplied Library artifact <code>urn:example:identity-library</code> at <code>library-2</code>, with the same FQName.</li>
+<li>A rich round-trip retains the input identity and revision links, contract notation, binder IDs and exact expression profile, review assertion, scenario and historical observation. No implementation body is smuggled into Specs, and no new evidence is emitted.</li>
+<li>After conversion of the supplied definition to a public signature, the independently retained graph is still required even if IR annotations are empty. The supplied IR files let a future implementation compare that conversion against an authored expected signature.</li>
+<li>Checking equality remains unsupported for the fixture provider without an equality interpreter. The illustrative recorded observation can be current for its exact context, but remains untrusted fixture data. A model-3, source-3 or library-3 request makes it stale; the historical row remains inspectable.</li>
+</ol></details>
+</section>
+
+<section id="open"><h2>Open decisions and handoff</h2>
+<p>This draft fixes enough local record structure to build independent adapters and review preservation examples. It does not settle the textual language grammar, delimiters, file extension, trait vocabulary, dictionary publication format, expression/type checker internals, import resolver, transformation lineage protocol or general multi-profile metadata container. Plain <code>fn</code> is the pinned design's starting function-specification form; no sample here is claimed to compile.</p>
+<p>M2 defines the typed trait contract. M3 consumes M1 and M2 for the portable model library, rich codecs and their focused tests. Later checker and evidence tasks implement their own scoped runtime semantics. Shared compatibility registration and qualification use the existing Rust MCK runner with explicit adapters in the separately tracked integration work. No implementation may generate expected outcomes by calling itself.</p>
+<p>Broader dictionary mappings and RDF, N-Quads, OWL, Turtle, TriG and JSON-LD profiles remain explicit architectural candidates. They require independent exchange and reasoning semantics. Native Union projection, Smithy mappings, EARS/Gherkin generation, executable refinement rules and full language round-trips retain their own later acceptance work. M1 makes no claim of implementing them.</p>
+</section>
+
+<section id="references"><h2>Pinned design and existing contracts</h2>
+<p>The design source is beads <code>morphir-ukvn.7</code>, draft 0.16, specifically its refinement, evidence, representation and acceptance sections. The reviewed HTML snapshot supplied for M1 has SHA-256 <code>8ac90d423d3fb72fb8996bba81d4faca55b4eaf0e0265f5b35277d2bc10daee5</code>. This contract does not copy the later implementation plan into the repository; beads remains the plan and ledger authority.</p>
+<ul>
+<li>Parent repository base <code>aa30cd069e5c4513a20546d7025bc76ef6e01be1</code>: <a href="../../mep/model-transport.md">MEP model transport</a>, <a href="../../mep/mck/README.md">MEP reference corpus boundaries</a>, <a href="../../../docs/design/draft/ir/linked-metadata.md">linked metadata draft</a> and <a href="../../mck/migration.md">MCK ownership and cutover</a>.</li>
+<li>Existing v4 schema: <a href="../../../website/static/schemas/morphir-ir-v4.json">morphir-ir-v4.json</a>. This contract reuses its Specs, Library and signature records.</li>
+<li>MoonBit carrier source at revision <code>0339126</code>: <a href="https://github.com/finos/morphir-moonbit/blob/0339126/pkgs/morphir-engine/data/types.mbt">IRUnit types and ownership validation</a>, <a href="https://github.com/finos/morphir-moonbit/blob/0339126/pkgs/morphir-engine/data/envelope.mbt">existing checkpoint envelope</a> and <a href="https://github.com/finos/morphir-moonbit/blob/0339126/pkgs/morphir-engine/data/README.md">rich data boundaries</a>.</li>
+</ul>
+</section>
+
+</main>
+</body>
+</html>

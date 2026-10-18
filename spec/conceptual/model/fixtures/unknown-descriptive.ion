@@ -1,0 +1,8 @@
+future_note::source_wording::{
+  preciseCount: 9007199254740993,
+  amount: 123.4500,
+  vocabulary: pending,
+  typedNull: null.string,
+  wording: "Borrower\n\n  Keep spaces.\n",
+  facts: future_vocabulary::{enabled: true}
+}

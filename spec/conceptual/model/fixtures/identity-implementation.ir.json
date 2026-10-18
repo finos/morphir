@@ -1,0 +1,14 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "example/model", "dependencies": {},
+      "def": { "modules": { "api": { "access": "Public", "value": {
+        "types": {},
+        "values": { "identity": { "access": "Public", "value": { "ExpressionBody": {
+          "inputTypes": { "value": "a" }, "outputType": "a", "body": { "Variable": "value" }
+        } } } }
+      } } } }
+    }
+  }
+}
