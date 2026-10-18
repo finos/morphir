@@ -38,7 +38,7 @@ interface TraceError {
   code: string | null;
   effect: string | null;
   submissionUnknown: boolean;
-  jobTransport: boolean;
+  executionTransport: boolean;
 }
 interface TraceResult {
   success: boolean;
@@ -114,10 +114,10 @@ export function admitClientTrace(value: unknown): ClientTraceInput {
       ![
         'session.open',
         'session.close',
-        'job.submit',
-        'job.query',
-        'job.cancel',
-        'job.release',
+        'execution.submit',
+        'execution.query',
+        'execution.cancel',
+        'execution.release',
         'workspace.choose',
         'workspace.cancel-picker',
         'workspace.revoke',
@@ -225,7 +225,7 @@ function error(value: unknown): TraceError {
         : null),
     effect: e.effect ?? null,
     submissionUnknown: e.submissionUnknown === true,
-    jobTransport: e.jobTransport === true,
+    executionTransport: e.executionTransport === true,
   };
 }
 /** A task boundary drains promise continuations. No elapsed-time value decides a verdict. */
@@ -264,8 +264,8 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
   }
   const requests: string[] = [];
   const progress: string[] = [];
-  const publishProgress: Progress = (job) => {
-    const value = clientTraceJson(job);
+  const publishProgress: Progress = (execution) => {
+    const value = clientTraceJson(execution);
     if (recording && progress.at(-1) !== value) progress.push(value);
   };
   const localCalls: string[] = [];
@@ -304,7 +304,7 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
         Object.keys(frame).sort().join(',') ===
           'contractVersion,operation,profile,sessionId' &&
         frame.profile === 'morphir/workbench/native' &&
-        frame.contractVersion === '0.1.0-draft.1' &&
+        frame.contractVersion === '0.2.0-draft.1' &&
         typeof frame.sessionId === 'string'
       )
         return checkSource;
@@ -364,7 +364,7 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
     action: ClientAction['op'],
     delivery: null | 'delivered' | 'unavailable',
   ) => {
-    const j = adapter.jobs;
+    const j = adapter.executions;
     const w = adapter.workspace;
     return {
       action,
@@ -373,9 +373,9 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
       localCount: localCalls.length,
       session: { id: adapter.session.id, disposed: adapter.session.disposed },
       disposed: adapter.disposed,
-      jobs: j
+      executions: j
         ? {
-            job: optionalJson(j.job),
+            execution: optionalJson(j.execution),
             active: j.active,
             polling: j.polling,
             releasePending: j.releasePending,
@@ -424,7 +424,7 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
         case 'resume':
           launch(action.id, () =>
             adapter.execute(
-              { operation: 'resume-job', source: '' },
+              { operation: 'resume-execution', source: '' },
               publishProgress,
             ),
           );

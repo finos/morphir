@@ -2,7 +2,7 @@
 fn descriptor() -> Json {
   {
     "profile": "morphir/workbench/native",
-    "contractVersion": "0.1.0-draft.1",
+    "contractVersion": "0.2.0-draft.1",
     "sessionId": "session",
     "operations": ["workspace"],
   }
@@ -41,7 +41,7 @@ test "native reply codec admits correlated descriptor and closed failure effects
   for effect in [@response.NoEffect, @response.UnknownEffect] {
     let reply = @response.decode(
       @response.failure(@response.Unavailable, effect),
-      "job.submit",
+      "execution.submit",
     )
     assert_true(reply.effect() == Some(effect))
   }
@@ -116,7 +116,7 @@ fn identity() -> Json {
     "hostId": "host",
     "sessionId": "session",
     "providerId": "scheme",
-    "jobId": "job",
+    "executionId": "execution",
     "snapshotId": "snapshot",
   }
 }
@@ -124,7 +124,7 @@ fn identity() -> Json {
 ///|
 fn receipt() -> Json {
   {
-    "contractVersion": "0.1.0-draft.1",
+    "contractVersion": "0.2.0-draft.1",
     "identity": identity(),
     "sequence": 0,
     "state": "submitted",
@@ -141,7 +141,7 @@ test "all thirteen native operation payloads have production round trips" {
       ("session.check", descriptor()),
       ("session.close", ({} : Json)),
       (
-        "job.submit",
+        "execution.submit",
         (
           {
             "identity": identity(),
@@ -149,9 +149,9 @@ test "all thirteen native operation payloads have production round trips" {
             "receipt": receipt(),
           } : Json),
       ),
-      ("job.query", receipt()),
-      ("job.cancel", receipt()),
-      ("job.release", ({ "released": true } : Json)),
+      ("execution.query", receipt()),
+      ("execution.cancel", receipt()),
+      ("execution.release", ({ "released": true } : Json)),
       (
         "workspace.choose",
         (
@@ -268,36 +268,36 @@ test "native replies bind descriptor and submission identity before cursor admis
     "hostId": "other",
     "sessionId": "session",
     "providerId": "scheme",
-    "jobId": "job",
+    "executionId": "execution",
     "snapshotId": "snapshot",
   }
   assert_true(
     rejects(
-      envelope("job.submit", {
+      envelope("execution.submit", {
         "identity": wrong,
         "calls": ["workbench"],
         "receipt": receipt(),
       }),
-      operation="job.submit",
+      operation="execution.submit",
     ),
   )
   assert_true(
     rejects(
-      envelope("job.submit", {
+      envelope("execution.submit", {
         "identity": identity(),
         "calls": ["different"],
         "receipt": receipt(),
       }),
-      operation="job.submit",
+      operation="execution.submit",
     ),
   )
-  let raw = @utf8.decode(envelope("job.query", receipt()))
+  let raw = @utf8.decode(envelope("execution.query", receipt()))
   assert_true(
     rejects(
       @utf8.encode(
         raw.replace(old="\"sequence\":0", new="\"sequence\":-1e-999"),
       ),
-      operation="job.query",
+      operation="execution.query",
     ),
   )
   assert_true(
@@ -308,7 +308,7 @@ test "native replies bind descriptor and submission identity before cursor admis
           new="\"sequence\":0.00000000000000000001",
         ),
       ),
-      operation="job.query",
+      operation="execution.query",
     ),
   )
 }

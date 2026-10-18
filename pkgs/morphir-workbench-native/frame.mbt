@@ -91,7 +91,7 @@ pub async fn worker() -> Unit {
   guard @stdio.stdin.read_some(max_len=1) == None else {
     raise Invalid("workbench.worker_trailing_input")
   }
-  let request = @jobs.decode(source)
+  let request = @executions.decode(source)
   guard request is Object(fields) &&
     fields.get("operation") == Some(Json::string("evaluate")) &&
     fields.get("executionMode") == Some(Json::string("typed")) else {

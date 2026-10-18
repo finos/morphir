@@ -1,0 +1,84 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-execution/executions"
+
+import {
+  "finos/morphir-execution",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror Invalid {
+  Invalid(String)
+}
+
+// Types and methods
+pub enum CancelAction {
+  Send
+  Pending
+  AlreadyTerminal
+  Unavailable
+  Disconnected
+} derive(@debug.Debug)
+pub fn CancelAction::to_repr(Self) -> @debug.Repr
+
+pub struct Cursor {
+  // private fields
+}
+pub fn Cursor::cancel_action(Self) -> CancelAction
+pub fn Cursor::connected(Self) -> Bool
+pub fn Cursor::disconnect(Self) -> Self
+pub fn Cursor::latest(Self) -> Receipt raise
+pub fn Cursor::observe(Self, Receipt) -> (Self, Disposition) raise
+pub fn Cursor::reconnect(Self, Offer) -> Self raise
+pub fn Cursor::start(Offer, Identity, Array[String], Receipt) -> Self raise
+
+pub enum Disposition {
+  Advanced
+  Replay
+  Stale
+} derive(@debug.Debug)
+pub fn Disposition::to_repr(Self) -> @debug.Repr
+
+pub struct ExecutionId(String) derive(Eq, @debug.Debug)
+pub fn ExecutionId::equal(Self, Self) -> Bool
+pub fn ExecutionId::from_string(String) -> Self raise
+pub fn ExecutionId::not_equal(Self, Self) -> Bool
+pub fn ExecutionId::to_repr(Self) -> @debug.Repr
+pub fn ExecutionId::to_string(Self) -> String
+
+pub struct Identity {
+  // private fields
+} derive(Eq)
+pub fn Identity::equal(Self, Self) -> Bool
+pub fn Identity::execution_id(Self) -> ExecutionId
+pub fn Identity::from_json(Json) -> Self raise
+pub fn Identity::not_equal(Self, Self) -> Bool
+pub fn Identity::to_json(Self) -> Json
+
+pub struct Offer {
+  // private fields
+}
+pub fn Offer::from_json(Json) -> Self raise
+pub fn Offer::to_json(Self) -> Json
+
+pub struct Receipt {
+  // private fields
+}
+pub fn Receipt::cancel_requested(Self) -> Bool
+pub fn Receipt::from_json(Json) -> Self raise
+pub fn Receipt::identity(Self) -> Identity
+pub fn Receipt::sequence(Self) -> Int
+pub fn Receipt::state(Self) -> State
+pub fn Receipt::to_json(Self) -> Json
+
+pub enum State {
+  Submitted
+  Running
+  Terminal(@morphir-execution.Outcomes)
+}
+
+// Type aliases
+
+// Traits

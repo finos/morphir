@@ -2,7 +2,7 @@
 fn test_frame(operation : String, id~ : String = "") -> String {
   let fields : Map[String, Json] = {
     "profile": "morphir/workbench/native",
-    "contractVersion": "0.1.0-draft.1",
+    "contractVersion": "0.2.0-draft.1",
     "operation": Json::string(operation),
   }
   if operation != "session.open" {
@@ -38,13 +38,13 @@ async test "replacement open rechecks the trusted page after awaited cleanup" {
     let released = Ref(false)
     let waiting = @async.CondVar::Cond()
     let release = @async.CondVar::Cond()
-    let factory : (String) -> JobsService raise = fn(id) {
+    let factory : (String) -> ExecutionsService raise = fn(id) {
       created.push(id)
       {
         offer: fn() {
           {
-            "profile": "morphir/workbench/jobs",
-            "contractVersion": "0.1.0-draft.1",
+            "profile": "morphir/workbench/executions",
+            "contractVersion": "0.2.0-draft.1",
             "hostId": "host",
             "sessionId": id,
             "providerId": "scheme",
@@ -67,7 +67,7 @@ async test "replacement open rechecks the trusted page after awaited cleanup" {
       }
     }
     let owner = Owner::with_services(group, {
-      jobs: Some(factory),
+      executions: Some(factory),
       workspace: None,
     })
     let page = Ref("page-A")

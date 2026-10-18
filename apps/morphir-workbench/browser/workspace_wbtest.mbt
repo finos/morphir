@@ -4,7 +4,7 @@ test "workspace selection preserves displayed model and selection" {
     "package": "already displayed",
     "originalArtifact": { "content": "AQID" },
   }
-  let model = { ..scope_model(), model: original, busy: true, job: 7, }
+  let model = { ..scope_model(), model: original, busy: true, request_id: 7, }
   let projects : Array[Json] = [
     { "id": "project-1", "name": "demo", "available": true },
   ]
@@ -32,17 +32,22 @@ test "workspace selection preserves displayed model and selection" {
 
 ///|
 test "workspace chooser cannot replace a retained host submission" {
-  let model = { ..scope_model(), host_submitting: true, busy: true, job: 7, }
+  let model = {
+    ..scope_model(),
+    host_submitting: true,
+    busy: true,
+    request_id: 7,
+  }
   let (after, _) = update(
     model,
     Request("workspace"),
     @cmd.Emit(fn(_) { @cmd.none }),
   )
-  assert_eq(after.job, 7)
+  assert_eq(after.request_id, 7)
   assert_true(after.host_submitting)
   assert_eq(after.model, model.model)
   assert_eq(
     after.status,
-    "Resume or finish the retained host job before replacing the model",
+    "Resume or finish the retained host execution before replacing the model",
   )
 }

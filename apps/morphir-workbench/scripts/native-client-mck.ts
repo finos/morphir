@@ -9,7 +9,7 @@ import { nativeClientBrowser } from './native-client-browser.ts';
 const corePath = process.env.MORPHIR_WORKBENCH_CLIENT_CORE;
 if (!corePath)
   throw new Error(
-    'Set MORPHIR_WORKBENCH_CLIENT_CORE to a compiled production job core',
+    'Set MORPHIR_WORKBENCH_CLIENT_CORE to a compiled production execution core',
   );
 const compiled = readFileSync(corePath, 'utf8');
 function core(): Core {
@@ -17,12 +17,12 @@ function core(): Core {
     TextEncoder: typeof TextEncoder;
     TextDecoder: typeof TextDecoder;
     console: typeof console;
-    morphirWorkbenchJobs?: Core;
+    morphirWorkbenchExecutions?: Core;
   } = { TextEncoder, TextDecoder, console };
   runInNewContext(compiled, context);
-  if (!context.morphirWorkbenchJobs)
-    throw new Error('Missing production job core');
-  return context.morphirWorkbenchJobs;
+  if (!context.morphirWorkbenchExecutions)
+    throw new Error('Missing production execution core');
+  return context.morphirWorkbenchExecutions;
 }
 const parser = core();
 const browserMode = process.env.MORPHIR_WORKBENCH_CLIENT_BROWSER === '1';
@@ -34,7 +34,7 @@ if (browserMode && !driverPath)
 const browser = browserMode
   ? await nativeClientBrowser(compiled, driverPath!)
   : null;
-const version = '0.1.0-draft.9';
+const version = '0.1.0-draft.17';
 function closed(value: Record<string, unknown>, keys: string[]) {
   if (Object.keys(value).sort().join(',') !== [...keys].sort().join(','))
     throw new Error('Invalid MCK request shape');

@@ -52,7 +52,7 @@ export async function nativeClientBrowser(
             const trace = (await import(url + '/trace.js')) as typeof Trace;
             return trace.runNativeClientTrace(
               input,
-              globalThis.morphirWorkbenchJobs,
+              globalThis.morphirWorkbenchExecutions,
             );
           },
           { input, url },

@@ -84,9 +84,9 @@ try {
   const originalUrl = page.url();
   const native = async <T = NativeDescriptor,>(operation: string, fields: Record<string,string> = {}): Promise<NativeReply<T>> => {
     const raw = await page.evaluate(async ([operation, fields]) => {
-    const frame = { profile: 'morphir/workbench/native', contractVersion: '0.1.0-draft.1', operation: `session.${operation}`, ...fields };
+    const frame = { profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.1', operation: `session.${operation}`, ...fields };
     const source = await window.__MoonBit__!.core!.invokeOp!('app:workbench_native', JSON.stringify(frame));
-    const admitted = JSON.parse(globalThis.morphirWorkbenchJobs(JSON.stringify({ op: 'native-response', source,
+    const admitted = JSON.parse(globalThis.morphirWorkbenchExecutions(JSON.stringify({ op: 'native-response', source,
       operation: operation === 'unknown' ? 'session.open' : `session.${operation}`,
       sessionId: operation === 'open' || operation === 'unknown' ? null : fields.sessionId })));
     if (!admitted.ok) throw new Error(`Native smoke reply admission failed: ${admitted.code}`);
@@ -101,7 +101,7 @@ try {
   const opened = await native('open');
   assert.ok(opened.ok);
   const firstSession = opened.value;
-  assert.deepEqual(firstSession.operations, ['jobs', 'workspace'], 'The packaged host offers owned native evaluation jobs and read-only workspace grants');
+  assert.deepEqual(firstSession.operations, ['executions', 'workspace'], 'The packaged host offers owned native evaluation executions and read-only workspace grants');
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Desktop local');
   assert.deepEqual(value(await native('check', { sessionId: firstSession.sessionId })), firstSession);
   denied(await native('open', { contractVersion: '0.1.0-draft.2' }), 'invalid_request');
@@ -116,7 +116,7 @@ try {
     const access = await page.evaluate(async () => {
       if (typeof window.__MoonBit__?.core?.invokeOp !== 'function') return 'absent';
       return await Promise.race([
-        Promise.resolve(window.__MoonBit__.core.invokeOp('app:workbench_native', JSON.stringify({ profile: 'morphir/workbench/native', contractVersion: '0.1.0-draft.1', operation: 'session.open' }))).then(() => 'allowed', () => 'rejected'),
+        Promise.resolve(window.__MoonBit__.core.invokeOp('app:workbench_native', JSON.stringify({ profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.1', operation: 'session.open' }))).then(() => 'allowed', () => 'rejected'),
         new Promise<string>(resolve => setTimeout(() => resolve('timeout'), 5000)),
       ]);
     });
@@ -143,11 +143,11 @@ try {
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   await page.evaluate(() => {
     const invoke = window.__MoonBit__!.core!.invokeOp!.bind(window.__MoonBit__!.core);
-    globalThis.nativeJobCalls = [];
+    globalThis.nativeExecutionCalls = [];
     window.__MoonBit__!.core!.invokeOp = (name, payload) => {
       if (name === 'app:workbench_native') {
         const operation = JSON.parse(payload).operation;
-        if (operation.startsWith('job.')) globalThis.nativeJobCalls.push(operation.slice(4));
+        if (operation.startsWith('execution.')) globalThis.nativeExecutionCalls.push(operation.slice('execution.'.length));
       }
       return invoke!(name, payload);
     };
@@ -235,8 +235,8 @@ try {
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), { type: 'int', value: '1234567890123456789012345678901234567890' });
-  const nativeJobCalls = await page.evaluate(() => globalThis.nativeJobCalls);
-  for (const operation of ['submit', 'query', 'release']) assert.ok(nativeJobCalls.includes(operation), `Native ${operation} was used by real typed evaluation`);
+  const nativeExecutionCalls = await page.evaluate(() => globalThis.nativeExecutionCalls);
+  for (const operation of ['submit', 'query', 'release']) assert.ok(nativeExecutionCalls.includes(operation), `Native ${operation} was used by real typed evaluation`);
   // The shared project workflow deliberately reloads the document for storage
   // acceptance, so check this page's native-call recorder before those reloads.
   await elmWorkflow(page, { nativeDownloads: false, selectFolder: selectCefFolder });
@@ -245,7 +245,7 @@ try {
   await stringWorkflow(page);
   await supportedWorkflow(page);
   await toolPanelWorkflow(page, { resize: false });
-  // Native job availability must not apply host retention rules to Local Scheme.
+  // Native execution availability must not apply host retention rules to Local Scheme.
   await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
   const localModel = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import model', exact: true }).first().click();

@@ -258,10 +258,10 @@ struct Model {
   collapsed_modules : Array[String]
   query : String
   selected : String
-  evaluation_typed : Bool
+  evaluation_runtime : @evaluation.Runtime
   evaluation_policy : @capabilities.CapabilityPolicy
   local_evaluator : @capabilities.Evaluator?
-  evaluation_host_job : Bool
+  evaluation_host_execution : Bool
   evaluation_mode : @evaluation.InputMode
   result_mode : @result.Mode
   evaluation_arguments : String
@@ -279,16 +279,16 @@ struct Model {
   generated_state : @generated.State
   status : String
   busy : Bool
-  job : Int32
+  request_id : Int32
   revision : Int32
   worksheet_revision : Int32
   output_revision : Int32
   worksheet_output_revision : Int32
   connected : Bool
-  jobs_available : Bool
+  executions_available : Bool
   workspace_available : Bool
-  host_job : Json
-  host_job_revision : Int32
+  host_execution : Json
+  host_execution_revision : Int32
   host_submitting : Bool
   submission_unknown : Bool
   available : Bool
@@ -322,7 +322,7 @@ enum Msg {
   CancelReset
   Sample(String)
   SampleLoaded(Int32, String, String)
-  EvaluationRuntime(Bool)
+  EvaluationRuntime(@evaluation.Runtime)
   EvaluationPolicy(@capabilities.CapabilityPolicy)
   EvaluationMode(@evaluation.InputMode)
   ResultMode(@result.Mode)
@@ -350,7 +350,7 @@ enum Msg {
   Request(String)
   Receive(Int32, Int32, String, String)
   Cancel
-  ResumeJob
+  ResumeExecution
   Import
   Imported(String)
   Export
@@ -474,10 +474,10 @@ fn initial() -> Model {
     collapsed_modules: [],
     query: "",
     selected: "",
-    evaluation_typed: false,
+    evaluation_runtime: @evaluation.LocalScheme,
     evaluation_policy: @capabilities.CapabilityPolicy::Strict,
     local_evaluator: None,
-    evaluation_host_job: false,
+    evaluation_host_execution: false,
     evaluation_mode: @evaluation.Fields,
     result_mode: @result.Value,
     evaluation_arguments: "[]",
@@ -495,16 +495,16 @@ fn initial() -> Model {
     generated_state: @generated.State::new(),
     status: "Initializing…",
     busy: true,
-    job: 0,
+    request_id: 0,
     revision: 0,
     worksheet_revision: 0,
     output_revision: -1,
     worksheet_output_revision: -1,
     connected: connected_mode(),
-    jobs_available: false,
+    executions_available: false,
     workspace_available: false,
-    host_job: Json::null(),
-    host_job_revision: 0,
+    host_execution: Json::null(),
+    host_execution_revision: 0,
     host_submitting: false,
     submission_unknown: false,
     available: false,
@@ -561,7 +561,7 @@ fn reported(
     panel: model.panel.report(
       clock(),
       operation,
-      model.job,
+      model.request_id,
       scope,
       revision,
       diagnostics,
@@ -1315,14 +1315,14 @@ fn with_language(model : Model, language : String) -> Model {
 ///|
 fn request_cmd(
   emit : @cmd.Emit[Msg],
-  job : Int32,
+  request_id : Int32,
   revision : Int32,
   request : Json,
 ) -> @cmd.Cmd {
   @cmd.custom_cmd(scheduler => {
     host_request(request.stringify(), reply => {
       scheduler.add(
-        emit(Receive(job, revision, text(request, "operation"), reply)),
+        emit(Receive(request_id, revision, text(request, "operation"), reply)),
       )
     })
   })
@@ -1358,8 +1358,8 @@ fn select(model : Model, selected : String) -> Model {
     return model
   }
   // Retain only the current host entry. Other declarations keep their normal
-  // default inputs; navigating does not discard this job's draft or evidence.
-  let host_draft = if model.evaluation_host_job &&
+  // default inputs; navigating does not discard this request's draft or evidence.
+  let host_draft = if model.evaluation_host_execution &&
     model.selected == model.evaluation_entry {
     Some({
       arguments: model.evaluation_arguments,
@@ -1369,7 +1369,7 @@ fn select(model : Model, selected : String) -> Model {
   } else {
     model.host_draft
   }
-  let restored = if model.evaluation_host_job &&
+  let restored = if model.evaluation_host_execution &&
     selected == model.evaluation_entry {
     host_draft
   } else {
@@ -1378,7 +1378,7 @@ fn select(model : Model, selected : String) -> Model {
   let profile = evaluation_profile(
     model.model,
     selected,
-    model.evaluation_typed,
+    model.evaluation_runtime.is_typed(),
     standalone=local_capabilities(model),
   )
   {
@@ -1391,19 +1391,19 @@ fn select(model : Model, selected : String) -> Model {
         default_arguments(
           profile,
           model.evaluation_mode,
-          model.evaluation_typed,
+          model.evaluation_runtime.is_typed(),
         )
     },
     evaluation_mode: match restored {
       Some(draft) => draft.mode
       None => model.evaluation_mode
     },
-    evaluation_result: if model.evaluation_host_job {
+    evaluation_result: if model.evaluation_host_execution {
       model.evaluation_result
     } else {
       Json::null()
     },
-    evaluation_terminal: if model.evaluation_host_job {
+    evaluation_terminal: if model.evaluation_host_execution {
       model.evaluation_terminal
     } else {
       @outcomes.Absent
@@ -1633,20 +1633,20 @@ fn update_core(
     }
     Query(query) => ({ ..model, query, }, @cmd.none)
     Select(selected) => (remember(model, select(model, selected)), @cmd.none)
-    EvaluationRuntime(evaluation_typed) => {
+    EvaluationRuntime(evaluation_runtime) => {
       if model.connected ||
-        host_job_pending(model) ||
-        host_job_disconnected(model) ||
+        host_execution_pending(model) ||
+        host_execution_disconnected(model) ||
         model.submission_unknown {
         return (model, @cmd.none)
       }
-      if evaluation_typed == model.evaluation_typed {
+      if evaluation_runtime == model.evaluation_runtime {
         return (model, @cmd.none)
       }
       let profile = evaluation_profile(
         model.model,
         model.selected,
-        evaluation_typed,
+        evaluation_runtime.is_typed(),
         standalone=local_capabilities(model),
       )
       // Invalidate the request ID as well as resetting the argument document.
@@ -1656,28 +1656,32 @@ fn update_core(
         "Evaluate",
         @bottom_panel.Info,
         (if model.busy {
-          "Cancelled job " + model.job.to_string() + ". "
+          "Cancelled request " + model.request_id.to_string() + ". "
         } else {
           ""
         }) +
         "Evaluation runtime set to " +
-        (if evaluation_typed { "typed invocation" } else { "local Scheme" }),
+        (if evaluation_runtime.is_typed() {
+          "typed invocation"
+        } else {
+          "local Scheme"
+        }),
       )
       (
         {
           ..model,
-          evaluation_typed,
-          evaluation_host_job: false,
+          evaluation_runtime,
+          evaluation_host_execution: false,
           host_draft: None,
           evaluation_arguments: default_arguments(
             profile,
             model.evaluation_mode,
-            evaluation_typed,
+            evaluation_runtime.is_typed(),
           ),
           evaluation_result: Json::null(),
           evaluation_terminal: @outcomes.Absent,
           evaluation_revision: model.evaluation_revision + 1,
-          job: model.job + 1,
+          request_id: model.request_id + 1,
           busy: false,
           status: "Evaluation mode changed",
         },
@@ -1690,8 +1694,8 @@ fn update_core(
           policy == @capabilities.CapabilityPolicy::Permissive &&
           !checking_available(model)
         ) ||
-        host_job_pending(model) ||
-        host_job_disconnected(model) ||
+        host_execution_pending(model) ||
+        host_execution_disconnected(model) ||
         model.submission_unknown {
         return (model, @cmd.none)
       }
@@ -1710,7 +1714,7 @@ fn update_core(
       let profile = evaluation_profile(
         model.model,
         model.selected,
-        model.evaluation_typed,
+        model.evaluation_runtime.is_typed(),
         standalone=local_capabilities(model),
       )
       let evaluation_arguments = @arguments.convert_inputs(
@@ -1718,7 +1722,7 @@ fn update_core(
         model.evaluation_arguments,
         model.evaluation_mode == @evaluation.Ion,
         evaluation_mode == @evaluation.Ion,
-        model.evaluation_typed,
+        model.evaluation_runtime.is_typed(),
       ) catch {
         error => {
           let status = "Cannot switch inputs: " + @arguments.input_error(error)
@@ -1760,19 +1764,19 @@ fn update_core(
       let profile = evaluation_profile(
         model.model,
         model.selected,
-        model.evaluation_typed,
+        model.evaluation_runtime.is_typed(),
         standalone=local_capabilities(model),
       )
       if (
-          model.evaluation_typed &&
+          model.evaluation_runtime.is_typed() &&
           model.evaluation_policy == @capabilities.CapabilityPolicy::Permissive &&
           !checking_available(model)
         ) ||
         model.busy ||
-        host_job_pending(model) ||
-        host_job_disconnected(model) ||
+        host_execution_pending(model) ||
+        host_execution_disconnected(model) ||
         model.submission_unknown ||
-        (model.connected && !model.jobs_available) ||
+        (model.connected && !model.executions_available) ||
         field(profile, "supported") != Json::boolean(true) {
         return (model, @cmd.none)
       }
@@ -1805,19 +1809,19 @@ fn update_core(
             @cmd.none,
           )
       }
-      let job = model.job + 1
+      let request_id = model.request_id + 1
       let model = note(
         model,
         "Evaluate",
         @bottom_panel.Info,
-        "Started job " +
-        job.to_string() +
+        "Started request " +
+        request_id.to_string() +
         " · " +
         entry_label(model, model.selected) +
         " · " +
-        (if model.jobs_available && model.evaluation_typed {
+        (if model.executions_available && model.evaluation_runtime.is_typed() {
           "host typed invocation"
-        } else if model.evaluation_typed {
+        } else if model.evaluation_runtime.is_typed() {
           "typed invocation"
         } else {
           "local Scheme"
@@ -1828,12 +1832,14 @@ fn update_core(
       (
         {
           ..model,
-          job,
+          request_id,
           busy: true,
           started: now_ms(),
           evaluation_entry: model.selected,
-          evaluation_host_job: model.jobs_available && model.evaluation_typed,
-          host_draft: if model.jobs_available && model.evaluation_typed {
+          evaluation_host_execution: model.executions_available &&
+          model.evaluation_runtime.is_typed(),
+          host_draft: if model.executions_available &&
+            model.evaluation_runtime.is_typed() {
             Some({
               arguments: model.evaluation_arguments,
               mode: model.evaluation_mode,
@@ -1842,23 +1848,26 @@ fn update_core(
           } else {
             None
           },
-          evaluation_result: if model.jobs_available && model.evaluation_typed {
+          evaluation_result: if model.executions_available &&
+            model.evaluation_runtime.is_typed() {
             Json::null()
           } else {
             model.evaluation_result
           },
-          evaluation_terminal: if model.jobs_available && model.evaluation_typed {
+          evaluation_terminal: if model.executions_available &&
+            model.evaluation_runtime.is_typed() {
             @outcomes.Absent
           } else {
             model.evaluation_terminal
           },
-          host_job_revision: model.evaluation_revision,
-          host_submitting: model.jobs_available && model.evaluation_typed,
+          host_execution_revision: model.evaluation_revision,
+          host_submitting: model.executions_available &&
+          model.evaluation_runtime.is_typed(),
           status: "Evaluating function…",
         },
         request_cmd(
           emit,
-          job,
+          request_id,
           model.evaluation_revision,
           object([
             ("operation", Json::string("evaluate")),
@@ -1875,7 +1884,8 @@ fn update_core(
             ("arguments", arguments),
             (
               "admission",
-              if model.evaluation_typed && local_capabilities(model) {
+              if model.evaluation_runtime.is_typed() &&
+                local_capabilities(model) {
                 @capabilities.selection_to_json(model.evaluation_policy)
               } else {
                 Json::null()
@@ -1892,9 +1902,10 @@ fn update_core(
             (
               "executionMode",
               Json::string(
-                if model.evaluation_typed && local_capabilities(model) {
+                if model.evaluation_runtime.is_typed() &&
+                  local_capabilities(model) {
                   "capability"
-                } else if model.evaluation_typed {
+                } else if model.evaluation_runtime.is_typed() {
                   "typed"
                 } else {
                   "local"
@@ -1937,9 +1948,9 @@ fn update_core(
             model,
             "Import folder",
             @bottom_panel.Warning,
-            "Another job is running; import the folder when it finishes",
+            "Another operation is running; import the folder when it finishes",
           ),
-          status: "Another job is running; import the folder when it finishes",
+          status: "Another operation is running; import the folder when it finishes",
         },
         @cmd.none,
       )
@@ -1967,17 +1978,18 @@ fn update_core(
         ("operation", Json::string("import-folder")),
         ("files", field(picked, "files")),
       ])
-      let job = model.job + 1
+      let request_id = model.request_id + 1
       (
-        { ..model, busy: true, job, status: "Importing the folder…", },
+        { ..model, busy: true, request_id, status: "Importing the folder…", },
         @cmd.custom_cmd(scheduler => {
           host_request(request.stringify(), reply => {
-            scheduler.add(emit(FolderImported(job, skipped, reply)))
+            scheduler.add(emit(FolderImported(request_id, skipped, reply)))
           })
         }),
       )
     }
-    FolderImported(job, _, _) if job != model.job => (model, @cmd.none)
+    FolderImported(request_id, _, _) if request_id != model.request_id =>
+      (model, @cmd.none)
     FolderImported(_, client_skipped, reply) => {
       let model = { ..model, busy: false, }
       let result = @json.parse(reply) catch { _ => Json::null() }
@@ -2354,24 +2366,24 @@ fn update_core(
       )
     }
     Request(operation) => {
-      if host_job_blocks_replacement(model) {
+      if host_execution_blocks_replacement(model) {
         return (
           {
             ..model,
-            status: "Resume or finish the retained host job before replacing the model",
+            status: "Resume or finish the retained host execution before replacing the model",
           },
           @cmd.none,
         )
       }
 
-      let job = model.job + 1
+      let request_id = model.request_id + 1
       let request = compile_request(model, operation)
       let model = note(
         model,
         operation_label(operation),
         @bottom_panel.Info,
-        "Started job " +
-        job.to_string() +
+        "Started request " +
+        request_id.to_string() +
         (if operation == "workspace" {
           " · native folder selection"
         } else if model.worksheet {
@@ -2393,7 +2405,7 @@ fn update_core(
       (
         {
           ..model,
-          job,
+          request_id,
           busy: true,
           started: now_ms(),
           status: if operation == "workspace" {
@@ -2404,7 +2416,7 @@ fn update_core(
         },
         request_cmd(
           emit,
-          job,
+          request_id,
           if operation == "worksheet" {
             model.worksheet_revision
           } else {
@@ -2414,14 +2426,14 @@ fn update_core(
         ),
       )
     }
-    Receive(job, revision, operation, reply) => {
-      if job != model.job {
+    Receive(request_id, revision, operation, reply) => {
+      if request_id != model.request_id {
         return (
           note(
             model,
             operation_label(operation),
             @bottom_panel.Info,
-            "Ignored a late reply for job " + job.to_string(),
+            "Ignored a late reply for request " + request_id.to_string(),
           ),
           @cmd.none,
         )
@@ -2433,31 +2445,31 @@ fn update_core(
             ("message", Json::string("Invalid host response")),
           ])
       }
-      if text(result, "operation") == "job-progress" {
-        let host_job = field(result, "job")
+      if text(result, "operation") == "execution-progress" {
+        let host_execution = field(result, "execution")
         return (
           {
             ..model,
-            host_job,
+            host_execution,
             host_submitting: false,
-            status: host_job_status(host_job),
+            status: host_execution_status(host_execution),
           },
           @cmd.none,
         )
       }
-      if field(result, "jobTransport") == Json::boolean(true) {
+      if field(result, "executionTransport") == Json::boolean(true) {
         return (
           {
             ..note(
               model,
-              "Host job",
+              "Host execution",
               @bottom_panel.Warning,
               text(result, "message"),
             ),
-            host_job: if field(result, "job") == Json::null() {
-              model.host_job
+            host_execution: if field(result, "execution") == Json::null() {
+              model.host_execution
             } else {
-              field(result, "job")
+              field(result, "execution")
             },
             host_submitting: false,
             submission_unknown: field(result, "submissionUnknown") ==
@@ -2466,18 +2478,18 @@ fn update_core(
             status: if field(result, "submissionUnknown") == Json::boolean(true) {
               "Submission status unknown · the host may still be running; reopen the host session"
             } else {
-              "Host disconnected · resume the retained job"
+              "Host disconnected · resume the retained execution"
             },
           },
           @cmd.none,
         )
       }
-      let model = if field(result, "job") != Json::null() {
-        { ..model, host_job: field(result, "job"), }
+      let model = if field(result, "execution") != Json::null() {
+        { ..model, host_execution: field(result, "execution"), }
       } else {
         model
       }
-      let operation = if operation == "resume-job" {
+      let operation = if operation == "resume-execution" {
         "evaluate"
       } else {
         operation
@@ -2492,15 +2504,15 @@ fn update_core(
       let succeeded = field(result, "success") == Json::boolean(true)
       if operation == "evaluate" {
         if model.evaluation_entry != model.selected &&
-          !model.evaluation_host_job {
+          !model.evaluation_host_execution {
           return (
             {
               ..note(
                 model,
                 label,
                 @bottom_panel.Warning,
-                "Job " +
-                job.to_string() +
+                "Request " +
+                request_id.to_string() +
                 " finished for " +
                 entry_label(model, model.evaluation_entry) +
                 " after another function was selected; its result was not shown",
@@ -2515,7 +2527,9 @@ fn update_core(
         let failure = if succeeded || terminal is Valid(_) {
           None
         } else {
-          Some(failure_detail(model, operation, job, revision, took, result))
+          Some(
+            failure_detail(model, operation, request_id, revision, took, result),
+          )
         }
         let model = reported(
           model,
@@ -2598,8 +2612,8 @@ fn update_core(
           } else {
             @bottom_panel.Info
           },
-          "Job " +
-          job.to_string() +
+          "Request " +
+          request_id.to_string() +
           (if terminal is Valid(_) || succeeded {
             " finished in "
           } else {
@@ -2689,9 +2703,11 @@ fn update_core(
             },
           )
       }
-      // A failed job, or a compile whose generation was refused, keeps its context for the panel's details.
+      // A failed request, or a compile whose generation was refused, keeps its context for the panel's details.
       let failure = if !succeeded || text(result, "generationMessage") != "" {
-        Some(failure_detail(model, operation, job, revision, took, result))
+        Some(
+          failure_detail(model, operation, request_id, revision, took, result),
+        )
       } else {
         None
       }
@@ -2717,8 +2733,8 @@ fn update_core(
           model,
           label,
           @bottom_panel.Error,
-          "Job " +
-          job.to_string() +
+          "Request " +
+          request_id.to_string() +
           " failed in " +
           took +
           ": " +
@@ -2789,7 +2805,7 @@ fn update_core(
           busy: false,
           connected: field(result, "connected") == Json::boolean(true),
           local_evaluator: if field(result, "connected") != Json::boolean(true) &&
-            field(result, "jobsAvailable") != Json::boolean(true) &&
+            field(result, "executionsAvailable") != Json::boolean(true) &&
             field(result, "nativeSession") != Json::boolean(true) {
             @capabilities.Evaluator::from_json(
               field(result, "capabilityEvaluator"),
@@ -2797,11 +2813,17 @@ fn update_core(
           } else {
             None
           },
-          jobs_available: field(result, "jobsAvailable") == Json::boolean(true),
+          executions_available: field(result, "executionsAvailable") ==
+          Json::boolean(true),
           workspace_available: field(result, "workspaceAvailable") ==
           Json::boolean(true),
-          evaluation_typed: field(result, "connected") == Json::boolean(true) &&
-          field(result, "jobsAvailable") == Json::boolean(true),
+          evaluation_runtime: if field(result, "connected") ==
+            Json::boolean(true) &&
+            field(result, "executionsAvailable") == Json::boolean(true) {
+            @evaluation.TypedInvocation
+          } else {
+            @evaluation.LocalScheme
+          },
           available: !frontends.is_empty(),
           catalog,
           language,
@@ -2850,8 +2872,8 @@ fn update_core(
           } else {
             @bottom_panel.Warning
           },
-          "Job " +
-          job.to_string() +
+          "Request " +
+          request_id.to_string() +
           " finished in " +
           took +
           (if revision == model.worksheet_revision {
@@ -2929,8 +2951,8 @@ fn update_core(
         } else {
           @bottom_panel.Info
         },
-        "Job " +
-        job.to_string() +
+        "Request " +
+        request_id.to_string() +
         " finished in " +
         took +
         " · " +
@@ -2960,10 +2982,10 @@ fn update_core(
           } else {
             model.evaluation_result
           },
-          evaluation_host_job: if compiled {
+          evaluation_host_execution: if compiled {
             false
           } else {
-            model.evaluation_host_job
+            model.evaluation_host_execution
           },
           evaluation_entry: if compiled {
             ""
@@ -2987,13 +3009,17 @@ fn update_core(
           } else {
             model.evaluation_revision
           },
-          evaluation_typed: if model.jobs_available && model.connected {
-            true
+          evaluation_runtime: if model.executions_available && model.connected {
+            @evaluation.TypedInvocation
           } else if compiled {
-            text(result, "sourceProfile") == "moonbit-model-bool-v1" ||
-            text(result, "sourceProfile") == "moonbit-model-bool-library-v1"
+            if text(result, "sourceProfile") == "moonbit-model-bool-v1" ||
+              text(result, "sourceProfile") == "moonbit-model-bool-library-v1" {
+              @evaluation.TypedInvocation
+            } else {
+              @evaluation.LocalScheme
+            }
           } else {
-            model.evaluation_typed
+            model.evaluation_runtime
           },
           model: if compiled {
             result
@@ -3040,27 +3066,27 @@ fn update_core(
         @cmd.none,
       )
     }
-    ResumeJob => {
-      if model.busy || model.host_job == Json::null() {
+    ResumeExecution => {
+      if model.busy || model.host_execution == Json::null() {
         return (model, @cmd.none)
       }
       (
         {
           ..model,
           busy: true,
-          status: "Reconnecting to the retained host job…",
-          evaluation_host_job: true,
+          status: "Reconnecting to the retained host execution…",
+          evaluation_host_execution: true,
         },
         request_cmd(
           emit,
-          model.job,
-          model.host_job_revision,
-          object([("operation", Json::string("resume-job"))]),
+          model.request_id,
+          model.host_execution_revision,
+          object([("operation", Json::string("resume-execution"))]),
         ),
       )
     }
     Cancel => {
-      if host_job_pending(model) {
+      if host_execution_pending(model) {
         return (
           { ..model, status: "Requesting host cancellation…", },
           @cmd.custom_cmd(_ => cancel_host()),
@@ -3073,17 +3099,17 @@ fn update_core(
             "Cancel",
             @bottom_panel.Warning,
             if model.connected {
-              "Discarded job " +
-              model.job.to_string() +
+              "Discarded request " +
+              model.request_id.to_string() +
               ". Connected v1 has no server cancellation; the host may still be working."
             } else {
-              "Cancelled job " +
-              model.job.to_string() +
+              "Cancelled request " +
+              model.request_id.to_string() +
               " and stopped its worker"
             },
           ),
           busy: false,
-          job: model.job + 1,
+          request_id: model.request_id + 1,
           status: if model.connected {
             "Discarded. The host may still be working."
           } else {
@@ -3101,11 +3127,11 @@ fn update_core(
         }),
       )
     Imported(source) => {
-      if host_job_blocks_replacement(model) {
+      if host_execution_blocks_replacement(model) {
         return (
           {
             ..model,
-            status: "Resume or finish the retained host job before replacing the model",
+            status: "Resume or finish the retained host execution before replacing the model",
           },
           @cmd.none,
         )
@@ -3143,13 +3169,13 @@ fn update_core(
           )
         }
       }
-      let job = model.job + 1
+      let request_id = model.request_id + 1
       let model = note(
         model,
         "Import",
         @bottom_panel.Info,
-        "Started job " +
-        job.to_string() +
+        "Started request " +
+        request_id.to_string() +
         " · reading " +
         source.length().to_string() +
         " characters of model JSON",
@@ -3158,14 +3184,14 @@ fn update_core(
         remember(model, {
           ..model,
           explorer: true,
-          job,
+          request_id,
           busy: true,
           started: now_ms(),
           status: "Reading model…",
         }),
         request_cmd(
           emit,
-          job,
+          request_id,
           model.revision,
           object([
             ("operation", Json::string("inspect")),
@@ -3226,34 +3252,37 @@ fn update_core(
       )
     }
     Project(project) => {
-      if host_job_blocks_replacement(model) {
+      if host_execution_blocks_replacement(model) {
         return (
           {
             ..model,
-            status: "Resume or finish the retained host job before replacing the model",
+            status: "Resume or finish the retained host execution before replacing the model",
           },
           @cmd.none,
         )
       }
 
-      let job = model.job + 1
+      let request_id = model.request_id + 1
       let model = note(
         model,
         "Open project",
         @bottom_panel.Info,
-        "Started job " + job.to_string() + " · workspace project " + project,
+        "Started request " +
+        request_id.to_string() +
+        " · workspace project " +
+        project,
       )
       (
         {
           ..model,
-          job,
+          request_id,
           busy: true,
           started: now_ms(),
           status: "Opening project model…",
         },
         request_cmd(
           emit,
-          job,
+          request_id,
           model.revision,
           object([
             ("operation", Json::string("project")),
@@ -3616,9 +3645,9 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       @html.div(class="toolbar-actions", [
         @html.button(
           class="secondary",
-          hidden=!model.busy || model.job == 0,
+          hidden=!model.busy || model.request_id == 0,
           on_click=emit(Cancel),
-          if host_job_pending(model) {
+          if host_execution_pending(model) {
             "Cancel"
           } else if model.connected {
             "Discard"
@@ -3766,7 +3795,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           class="secondary",
           hidden=!model.busy,
           on_click=emit(Cancel),
-          if host_job_pending(model) {
+          if host_execution_pending(model) {
             "Cancel"
           } else if model.connected {
             "Discard"
@@ -3777,7 +3806,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         @html.button(
           class="secondary",
           hidden=!model.workspace_available,
-          disabled=model.busy || host_job_blocks_replacement(model),
+          disabled=model.busy || host_execution_blocks_replacement(model),
           on_click=emit(Request("workspace")),
           [action_icon("folder"), @html.span("Open workspace")],
         ),
@@ -3803,15 +3832,16 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       ]),
     ]),
     @html.div(
-      hidden=model.host_job == Json::null(),
+      hidden=model.host_execution == Json::null(),
       class="evaluation-actions small",
       [
-        @html.span(host_job_status(model.host_job)),
+        @html.span(host_execution_status(model.host_execution)),
         @html.button(
           class="secondary",
-          hidden=field(model.host_job, "connected") != Json::boolean(false),
+          hidden=field(model.host_execution, "connected") !=
+            Json::boolean(false),
           disabled=model.busy,
-          on_click=emit(ResumeJob),
+          on_click=emit(ResumeExecution),
           "Reconnect / resume",
         ),
       ],
@@ -3822,7 +3852,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       emit.map(raw => ExplorerRaw(raw)),
       @evaluation.view(
         {
-          typed: model.evaluation_typed,
+          runtime: model.evaluation_runtime,
           policy: model.evaluation_policy,
           policy_available: checking_available(model),
           input_mode: model.evaluation_mode,
@@ -3830,7 +3860,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           profile: evaluation_profile(
             model.model,
             model.selected,
-            model.evaluation_typed,
+            model.evaluation_runtime.is_typed(),
             standalone=local_capabilities(model),
           ),
           document_key: "evaluation-" +
@@ -3838,7 +3868,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           "-" +
           model.selected +
           "-" +
-          model.evaluation_typed.to_string(),
+          model.evaluation_runtime.is_typed().to_string(),
           arguments: model.evaluation_arguments,
           result: if model.evaluation_entry == model.selected {
             model.evaluation_result
@@ -3849,9 +3879,9 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           stale: model.evaluation_result_revision != model.evaluation_revision,
           busy: model.busy,
           connected: model.connected,
-          jobs_available: model.jobs_available,
-          job_pending: host_job_pending(model) ||
-          host_job_disconnected(model) ||
+          executions_available: model.executions_available,
+          execution_pending: host_execution_pending(model) ||
+          host_execution_disconnected(model) ||
           model.submission_unknown,
         },
         emit.map(value => EvaluationArguments(value)),
@@ -4162,12 +4192,14 @@ fn explorer_props(model : Model) -> @explorer.Props {
 
 ///|
 fn local_capabilities(model : Model) -> Bool {
-  !model.connected && !model.jobs_available && model.local_evaluator is Some(_)
+  !model.connected &&
+  !model.executions_available &&
+  model.local_evaluator is Some(_)
 }
 
 ///|
 fn checking_available(model : Model) -> Bool {
-  guard model.evaluation_typed &&
+  guard model.evaluation_runtime.is_typed() &&
     local_capabilities(model) &&
     model.local_evaluator is Some(evaluator) else {
     return false
@@ -4272,27 +4304,27 @@ fn default_arguments(
 }
 
 ///|
-fn host_job_pending(model : Model) -> Bool {
+fn host_execution_pending(model : Model) -> Bool {
   model.host_submitting ||
   (
-    model.host_job != Json::null() &&
-    text(model.host_job, "state") != "terminal"
+    model.host_execution != Json::null() &&
+    text(model.host_execution, "state") != "terminal"
   )
 }
 
 ///|
-fn host_job_status(job : Json) -> String {
-  if job == Json::null() {
+fn host_execution_status(execution : Json) -> String {
+  if execution == Json::null() {
     return ""
   }
   "Host · " +
-  text(job, "state") +
-  (if field(job, "cancelRequested") == Json::boolean(true) {
+  text(execution, "state") +
+  (if field(execution, "cancelRequested") == Json::boolean(true) {
     " · cancellation acknowledged"
   } else {
     ""
   }) +
-  (if field(job, "connected") == Json::boolean(false) {
+  (if field(execution, "connected") == Json::boolean(false) {
     " · disconnected"
   } else {
     ""
@@ -4300,21 +4332,21 @@ fn host_job_status(job : Json) -> String {
 }
 
 ///|
-fn host_job_disconnected(model : Model) -> Bool {
-  model.host_job != Json::null() &&
-  field(model.host_job, "connected") == Json::boolean(false)
+fn host_execution_disconnected(model : Model) -> Bool {
+  model.host_execution != Json::null() &&
+  field(model.host_execution, "connected") == Json::boolean(false)
 }
 
 ///|
-fn host_job_blocks_replacement(model : Model) -> Bool {
-  host_job_pending(model) || host_job_disconnected(model)
+fn host_execution_blocks_replacement(model : Model) -> Bool {
+  host_execution_pending(model) || host_execution_disconnected(model)
 }
 
 // Project explorer, shortcuts and the command palette. The explorer and the palette are pure state machines; these
 // helpers give them the workbench's data and turn their effects into commands.
 
 ///|
-let busy_reason = "Wait for the running job to finish"
+let busy_reason = "Wait for the running operation to finish"
 
 ///|
 fn explorer_env(model : Model) -> @project_files.Env {
@@ -4740,12 +4772,12 @@ fn plural_files(count : Int32) -> String {
 }
 
 ///|
-/// What a failed job ran and how it failed, for the panel's details and the Copy details report. The code and
+/// What a failed request ran and how it failed, for the panel's details and the Copy details report. The code and
 /// stage are the reply's own; a refused generation names its first problem's code.
 fn failure_detail(
   model : Model,
   operation : String,
-  job : Int32,
+  request_id : Int32,
   revision : Int32,
   took : String,
   result : Json,
@@ -4756,14 +4788,14 @@ fn failure_detail(
       context.push(("Language", "Scheme worksheet"))
       context.push(("Worksheet revision", revision.to_string()))
     }
-    "evaluate" | "resume-job" => {
+    "evaluate" | "resume-execution" => {
       context.push(("Function", entry_label(model, model.evaluation_entry)))
       context.push(
         (
           "Runtime",
-          if model.evaluation_host_job {
+          if model.evaluation_host_execution {
             "host typed invocation"
-          } else if model.evaluation_typed {
+          } else if model.evaluation_runtime.is_typed() {
             "typed invocation"
           } else {
             "local Scheme"
@@ -4830,7 +4862,7 @@ fn failure_detail(
   }
   let failed = field(result, "success") != Json::boolean(true)
   {
-    job,
+    request_id,
     operation: operation_label(operation),
     code: if text(result, "code") != "" {
       text(result, "code")
@@ -4859,7 +4891,7 @@ fn failure_detail(
 // Generated files.
 
 ///|
-/// Turns the generated files' effects into a decode job, the clipboard, a download and focus moves.
+/// Turns the generated files' effects into a decode request, the clipboard, a download and focus moves.
 fn generated_effects(
   model : Model,
   effects : Array[@generated.Effect],
@@ -4942,7 +4974,7 @@ fn downloaded(
 }
 
 ///|
-/// Decodes a generated binary Ion file to text in the worker, as a job: the busy rule, cancellation and late replies
+/// Decodes a generated binary Ion file to text in the worker, as a request: the busy rule, cancellation and late replies
 /// work as for a compile.
 fn start_decode(
   model : Model,
@@ -4950,7 +4982,7 @@ fn start_decode(
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
   if model.busy {
-    let message = "Another job is running; view the Ion text when it finishes"
+    let message = "Another operation is running; view the Ion text when it finishes"
     return (
       {
         ..note(model, "View as Ion text", @bottom_panel.Warning, message),
@@ -4974,17 +5006,17 @@ fn start_decode(
       @cmd.none,
     )
   }
-  let job = model.job + 1
+  let request_id = model.request_id + 1
   let model = note(
     model,
     "View as Ion text",
     @bottom_panel.Info,
-    "Started job " + job.to_string() + " · decoding " + path,
+    "Started request " + request_id.to_string() + " · decoding " + path,
   )
   (
     {
       ..model,
-      job,
+      request_id,
       busy: true,
       started: now_ms(),
       generated: true,
@@ -4993,7 +5025,7 @@ fn start_decode(
     },
     request_cmd(
       emit,
-      job,
+      request_id,
       model.output_revision,
       object([
         ("operation", Json::string("decode-ion")),

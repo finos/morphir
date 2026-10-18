@@ -121,9 +121,9 @@ fn descriptor_value(value : Json, expected_session : String?) -> Json raise {
   guard value is Object(fields) && fields.get("operations") is Some(operations) else {
     raise Invalid("native.reply.shape")
   }
-  let jobs = operations == (["jobs"] : Json) ||
-    operations == (["jobs", "workspace"] : Json)
-  guard jobs ||
+  let executions = operations == (["executions"] : Json) ||
+    operations == (["executions", "workspace"] : Json)
+  guard executions ||
     operations == ([] : Json) ||
     operations == (["workspace"] : Json) else {
     raise Invalid("native.reply.shape")
@@ -131,7 +131,7 @@ fn descriptor_value(value : Json, expected_session : String?) -> Json raise {
   ignore(
     closed(
       value,
-      if jobs {
+      if executions {
         ["profile", "contractVersion", "sessionId", "operations", "offer"]
       } else {
         ["profile", "contractVersion", "sessionId", "operations"]
@@ -139,15 +139,15 @@ fn descriptor_value(value : Json, expected_session : String?) -> Json raise {
     ),
   )
   guard fields["profile"] == Json::string("morphir/workbench/native") &&
-    fields["contractVersion"] == Json::string("0.1.0-draft.1") else {
+    fields["contractVersion"] == Json::string("0.2.0-draft.1") else {
     raise Invalid("native.reply.shape")
   }
   let session = token(fields["sessionId"])
   if expected_session is Some(expected) && session != expected {
     raise Invalid("native.reply.authority")
   }
-  if jobs {
-    let offer = @jobs.Offer::from_json(fields["offer"]).to_json()
+  if executions {
+    let offer = @executions.Offer::from_json(fields["offer"]).to_json()
     guard offer is Object(authority) &&
       authority["sessionId"] == Json::string(session) else {
       raise Invalid("native.reply.authority")
@@ -183,7 +183,10 @@ fn identity_session(
 }
 
 ///|
-fn receipt(value : Json, expected_session : String?) -> @jobs.Receipt raise {
+fn receipt(
+  value : Json,
+  expected_session : String?,
+) -> @executions.Receipt raise {
   guard value is Object(fields) &&
     fields.get("sequence") is Some(sequence) &&
     fields.get("identity") is Some(identity) else {
@@ -191,7 +194,7 @@ fn receipt(value : Json, expected_session : String?) -> @jobs.Receipt raise {
   }
   integer(sequence, 0, 2147483647)
   identity_session(identity, expected_session)
-  @jobs.Receipt::from_json(value)
+  @executions.Receipt::from_json(value)
 }
 
 ///|
@@ -210,9 +213,9 @@ fn payload(
       ignore(closed(value, []))
       value
     }
-    "job.submit" => {
+    "execution.submit" => {
       let fields = closed(value, ["identity", "calls", "receipt"])
-      let identity = @jobs.Identity::from_json(fields["identity"])
+      let identity = @executions.Identity::from_json(fields["identity"])
       identity_session(fields["identity"], expected_session)
       let initial = receipt(fields["receipt"], expected_session)
       guard fields["calls"] == (["workbench"] : Json) &&
@@ -224,11 +227,11 @@ fn payload(
       }
       value
     }
-    "job.query" | "job.cancel" => {
+    "execution.query" | "execution.cancel" => {
       ignore(receipt(value, expected_session))
       value
     }
-    "job.release" => {
+    "execution.release" => {
       let fields = closed(value, ["released"])
       guard fields["released"] == Json::boolean(true) else {
         raise Invalid("native.reply.shape")
@@ -303,9 +306,9 @@ fn payload(
 ///|
 fn known(operation : String) -> Bool {
   [
-    "session.open", "session.check", "session.close", "job.submit", "job.query",
-    "job.cancel", "job.release", "workspace.choose", "workspace.cancel-picker", "workspace.revoke",
-    "workspace.open", "workspace.read", "workspace.release",
+    "session.open", "session.check", "session.close", "execution.submit", "execution.query",
+    "execution.cancel", "execution.release", "workspace.choose", "workspace.cancel-picker",
+    "workspace.revoke", "workspace.open", "workspace.read", "workspace.release",
   ].contains(operation)
 }
 

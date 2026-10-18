@@ -48,6 +48,6 @@ internals. SDK allocation/cancellation hardening is tracked as `morphir-be5t`.
 Registered native fallback tests qualify the backend only; this production plan
 registers no caller-supplied native implementations.
 
-No Workbench UI, asynchronous job, native/HTTP mapping, generated backend or
+No Workbench UI, asynchronous execution, native/HTTP mapping, generated backend or
 packaged-platform capability is advertised by this adapter. Those integrations
 have separate implementation and qualification tasks.

@@ -2,16 +2,16 @@ import type { Adapter, Invoke, Json, WorkRequest } from './contracts.ts';
 import type { bridge as bridgeType } from './native-test-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NativeAdapter, NativeSession, NativeJobTransport, nativeBridgeVersion, selectLocalAdapter } from './native-session.ts';
+import { NativeAdapter, NativeSession, NativeExecutionTransport, nativeBridgeVersion, selectLocalAdapter } from './native-session.ts';
 import { core, descriptor, bridge, failure, success } from './native-test-fixture.ts';
 
-globalThis.morphirWorkbenchJobs = core();
+globalThis.morphirWorkbenchExecutions = core();
 import { deferred, malformed } from '../../../tests/helpers.ts';
 const local = (): Adapter & { calls: WorkRequest[] } => ({ calls: [] as WorkRequest[], cancel() {}, dispose() {}, async initialize() { return { success: true, catalog: { frontends: [], targets: [] }, connected: false }; },
   async execute(request: WorkRequest) { this.calls.push(request); return { success: true, value: '42' }; } });
 const session = (handle: Parameters<typeof bridgeType>[0], timeout?: number) => new NativeSession(bridge(handle), timeout, core());
-const jobDescriptor = () => ({ ...descriptor, operations: ['jobs'], offer: {
-  profile: 'morphir/workbench/jobs', contractVersion: nativeBridgeVersion, hostId: 'host',
+const executionDescriptor = () => ({ ...descriptor, operations: ['executions'], offer: {
+  profile: 'morphir/workbench/executions', contractVersion: nativeBridgeVersion, hostId: 'host',
   sessionId: descriptor.sessionId, providerId: 'scheme', operations: ['query', 'cancel'],
 } });
 
@@ -33,7 +33,7 @@ test('native initialization preserves bridge receiver and uses correlated raw en
   } } };
   const adapter = selectLocalAdapter(new URL('https://proton.localhost/index.html'), worker, native);
   const reply = await adapter.initialize();
-  assert.equal(reply.connected, false); assert.equal(reply.nativeSession, true); assert.equal(reply.jobsAvailable, false);
+  assert.equal(reply.connected, false); assert.equal(reply.nativeSession, true); assert.equal(reply.executionsAvailable, false);
   assert.deepEqual(calls.map(f => f.operation), ['session.open', 'session.check']);
   assert.deepEqual(Object.keys(calls[0]!).sort(), ['contractVersion', 'operation', 'profile']);
   assert.equal(calls[0]!.profile, descriptor.profile); assert.equal(calls[1]!.sessionId, descriptor.sessionId);
@@ -55,13 +55,13 @@ test('malformed descriptors, wrong operations and old private shapes never start
 });
 
 test('changed or rejected session authority refuses work before the local worker', async () => {
-  for (const reply of [{ ...descriptor, sessionId: 'replacement' }, failure(), jobDescriptor()]) {
+  for (const reply of [{ ...descriptor, sessionId: 'replacement' }, failure(), executionDescriptor()]) {
     const worker = local();
     const adapter = new NativeAdapter(worker, bridge(f => f.operation === 'session.open' ? descriptor : reply), undefined, { core: core() });
     await adapter.session.open();
     await assert.rejects(adapter.execute({ operation: 'run', source: '42' })); assert.equal(worker.calls.length, 0);
   }
-  const stable = jobDescriptor(); const s = session(f => f.operation === 'session.open' ? stable : { ...stable, offer: { ...stable.offer, hostId: 'changed' } });
+  const stable = executionDescriptor(); const s = session(f => f.operation === 'session.open' ? stable : { ...stable, offer: { ...stable.offer, hostId: 'changed' } });
   await s.open(); await assert.rejects(s.check(), /authority changed/);
 });
 
@@ -95,39 +95,39 @@ test('a late admission reply cannot start an older request after its replacement
 });
 
 test('native transport preserves raw requests and admitted error effects without HTTP statuses', async () => {
-  const calls: Parameters<NonNullable<Parameters<typeof bridge>[0]>>[0][] = [], claimed = jobDescriptor();
-  const s = session(f => { calls.push(f); return f.operation.startsWith('job.') ? failure('conflict', 'none') : claimed; });
-  await s.open(); const t = new NativeJobTransport(s);
+  const calls: Parameters<NonNullable<Parameters<typeof bridge>[0]>>[0][] = [], claimed = executionDescriptor();
+  const s = session(f => { calls.push(f); return f.operation.startsWith('execution.') ? failure('conflict', 'none') : claimed; });
+  await s.open(); const t = new NativeExecutionTransport(s);
   assert.deepEqual(JSON.parse(await t.nativeDescriptor()), claimed);
-  const source = s.encode('job.submit', { contractVersion: nativeBridgeVersion, model: ' {"exact":9007199254740993} ', entry: 'example:main#answer', inputs: { format: 'ion-text', source: '[1]' } });
+  const source = s.encode('execution.submit', { contractVersion: nativeBridgeVersion, model: ' {"exact":9007199254740993} ', entry: 'example:main#answer', inputs: { format: 'ion-text', source: '[1]' } });
   const raw = await t.nativeRequest(source); assert.deepEqual(JSON.parse(raw).error.effect, 'none');
-  assert.equal(calls.find(f => f.operation === 'job.submit')!.payload.model, ' {"exact":9007199254740993} ');
+  assert.equal(calls.find(f => f.operation === 'execution.submit')!.payload.model, ' {"exact":9007199254740993} ');
   assert.equal(calls.filter(f => f.operation === 'session.check').length, 3);
 });
 
-test('native job admission never falls back; explicit local evaluation stays local', async () => {
+test('native execution admission never falls back; explicit local evaluation stays local', async () => {
   const worker = local(); const adapter = new NativeAdapter(worker, bridge(), undefined, { core: core() }); await adapter.initialize();
-  adapter.jobsAvailable = true; let requests = 0;
-  adapter.jobs = malformed({ async execute() { ++requests; throw new Error('Native admission rejected'); } });
+  adapter.executionsAvailable = true; let requests = 0;
+  adapter.executions = malformed({ async execute() { ++requests; throw new Error('Native admission rejected'); } });
   await assert.rejects(adapter.execute({ operation: 'evaluate', executionMode: 'typed' }), /Native admission rejected/);
   assert.equal(requests, 1); assert.equal(worker.calls.length, 0);
   await adapter.execute({ operation: 'evaluate', executionMode: 'local' }); assert.equal(worker.calls.length, 1);
 });
 
 test('native transport rejects malformed, uncorrelated and oversize raw replies and lost frames', async () => {
-  for (const reply of ['x'.repeat(1048577), { status: 200, source: '{}' }, success('job.cancel', {}),
+  for (const reply of ['x'.repeat(1048577), { status: 200, source: '{}' }, success('execution.cancel', {}),
     '{"ok":false,"error":{"code":"conflict","effect":"none","effect":"unknown","message":"x"}}']) {
-    const s = session(f => f.operation.startsWith('job.') ? (typeof reply === 'string' ? reply : JSON.stringify(reply)) : descriptor);
-    await s.open(); await assert.rejects(new NativeJobTransport(s).nativeRequest(s.encode('job.query', {})), /invalid raw|incompatible/);
+    const s = session(f => f.operation.startsWith('execution.') ? (typeof reply === 'string' ? reply : JSON.stringify(reply)) : descriptor);
+    await s.open(); await assert.rejects(new NativeExecutionTransport(s).nativeRequest(s.encode('execution.query', {})), /invalid raw|incompatible/);
   }
-  const s = session(f => f.operation.startsWith('job.') ? new Promise(() => {}) : descriptor, 5);
-  await s.open(); await assert.rejects(new NativeJobTransport(s).nativeRequest(s.encode('job.submit', {})), /effect may be unknown/);
+  const s = session(f => f.operation.startsWith('execution.') ? new Promise(() => {}) : descriptor, 5);
+  await s.open(); await assert.rejects(new NativeExecutionTransport(s).nativeRequest(s.encode('execution.submit', {})), /effect may be unknown/);
 });
 
 test('the bundled adapter initializes native hooks and runs typed evaluation through the compiled cursor', async () => {
-  const d = jobDescriptor(), calls: Parameters<NonNullable<Parameters<typeof bridge>[0]>>[0][] = [], worker = local();
+  const d = executionDescriptor(), calls: Parameters<NonNullable<Parameters<typeof bridge>[0]>>[0][] = [], worker = local();
   const { profile: _profile, contractVersion: _version, operations: _operations, ...owner } = d.offer;
-  const identity = { ...owner, jobId: 'job', snapshotId: 'snapshot' };
+  const identity = { ...owner, executionId: 'execution', snapshotId: 'snapshot' };
   const receipt = { contractVersion: nativeBridgeVersion, identity, sequence: 0, state: 'submitted', cancelRequested: false, outcomes: null };
   const terminal = { ...receipt, sequence: 1, state: 'terminal', outcomes: {
     contractVersion: '0.1.0-draft.5', calls: [{ id: 'workbench', outcome: { status: 'returned', value: { type: 'int', value: '42' } } }], cleanup: null, extensions: null,
@@ -135,21 +135,21 @@ test('the bundled adapter initializes native hooks and runs typed evaluation thr
   const adapter = new NativeAdapter(worker, bridge(f => {
     calls.push(f);
     if (f.operation.startsWith('session.')) return d;
-    if (f.operation === 'job.submit') return { identity, calls: ['workbench'], receipt };
-    if (f.operation === 'job.release') return { released: true };
+    if (f.operation === 'execution.submit') return { identity, calls: ['workbench'], receipt };
+    if (f.operation === 'execution.release') return { released: true };
     return terminal;
   }), 1000, { core: core(), pause: async () => {} });
-  assert.equal((await adapter.initialize()).jobsAvailable, true);
+  assert.equal((await adapter.initialize()).executionsAvailable, true);
   const result = await adapter.execute({ operation: 'evaluate', executionMode: 'typed', source: '{}', entry: 'calls:main#answer', arguments: [] });
   assert.equal(result.success, true); assert.equal(worker.calls.length, 0);
-  assert.equal(calls.filter(f => f.operation === 'job.submit').length, 1);
-  assert.equal(calls.filter(f => f.operation === 'job.release').length, 1);
+  assert.equal(calls.filter(f => f.operation === 'execution.submit').length, 1);
+  assert.equal(calls.filter(f => f.operation === 'execution.release').length, 1);
   adapter.dispose();
 });
 
 
 test('equivalent descriptor and nested offer member order preserves authority', async () => {
-  const d = jobDescriptor();
+  const d = executionDescriptor();
   const reordered = { offer: Object.fromEntries(Object.entries(d.offer).reverse()),
     operations: d.operations, sessionId: d.sessionId, contractVersion: d.contractVersion, profile: d.profile };
   const s = session(f => f.operation === 'session.open' ? d : reordered);

@@ -440,7 +440,7 @@ kbd.shortcut { display:inline-block; min-width:18px; padding:0 5px; border:1px s
 @media (hover:none) { .command-center kbd { display:none; } }
 
 /* Failure details: a disclosure under a log, diagnostic or output entry opens the code, stage, location, message and
-   job context, with Copy details and the raw reply. They read as part of the entry, set in from its left edge. */
+   execution context, with Copy details and the raw reply. They read as part of the entry, set in from its left edge. */
 .tool-disclosure { display:inline-flex; align-items:center; gap:4px; padding:1px 6px 1px 2px; border-radius:4px; font:12px/1.5 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:var(--link); white-space:nowrap; justify-self:start; }
 .tool-disclosure:hover:not(:disabled) { background:var(--selection); }
 .tool-disclosure:focus-visible { outline:2px solid var(--link); outline-offset:0; }

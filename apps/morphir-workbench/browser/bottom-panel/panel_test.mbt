@@ -346,7 +346,7 @@ test "a problem without its own path takes its file's path" {
 
 ///|
 let sample_failure : @bottom_panel.Failure = {
-  job: 7,
+  request_id: 7,
   operation: "Compile",
   code: "workbench.internal_error",
   stage: "reply",
@@ -361,7 +361,7 @@ let sample_failure : @bottom_panel.Failure = {
 }
 
 ///|
-test "a failed job's report names its code, stage, context and reply" {
+test "a failed request's report names its code, stage, context and reply" {
   let text = @bottom_panel.failure_text(sample_failure, "12:00:01")
   @expect.expect_all(s => {
     s
@@ -369,7 +369,7 @@ test "a failed job's report names its code, stage, context and reply" {
     .to_contain_substrings_in_order([
       "Messages can quote your source.",
       "Morphir Workbench failure",
-      "Operation: Compile (job 7)",
+      "Operation: Compile (request 7)",
       "Code: workbench.internal_error",
       "Stage: internal (reply)",
       "Message: The workbench failed",
@@ -385,7 +385,7 @@ test "a failed job's report names its code, stage, context and reply" {
 }
 
 ///|
-test "a diagnostic's report names its location and the job that reported it" {
+test "a diagnostic's report names its location and the request that reported it" {
   let frontend : Json = {
     "success": false,
     "message": "elm.parse: Unexpected token",
@@ -436,7 +436,7 @@ test "a diagnostic's report names its location and the job that reported it" {
     .to_contain_substrings_in_order([
       "Messages can quote your source.", "Morphir Workbench diagnostic", "Severity: Error",
       "Code: elm.parse", "Stage: frontend", "Location: src/Workbench/Main.elm line 3, column 7 (elm-source-position-v1 3:7–3:8)",
-      "Message: Unexpected token", "Reported by: Compile (job 7, source revision 3) at 12:00:02",
+      "Message: Unexpected token", "Reported by: Compile (request 7, source revision 3) at 12:00:02",
       "Language: Elm",
     ])
     s
@@ -448,7 +448,7 @@ test "a diagnostic's report names its location and the job that reported it" {
     s
     .expect(
       report.failure == Some(sample_failure),
-      label="report keeps the job",
+      label="report keeps the request",
     )
     .to_be_true()
   })
@@ -461,7 +461,7 @@ test "details open and close, and a raw reply is bounded" {
     "12:00:03",
     "Compile",
     Error,
-    "Job 7 failed",
+    "Request 7 failed",
     failure=Some(long),
   )
   let (opened, _) = state.update(Toggle("log-1"))

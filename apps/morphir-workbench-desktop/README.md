@@ -40,15 +40,15 @@ page-bound native protocol uses one typed Proton command, restricted to the bund
 checks Proton's native origin/page context; navigation revokes the binding and
 window shutdown closes it. The UI labels this mode **Desktop local**.
 
-The bundled host and renderer use `morphir/workbench/native` draft.1 through
+The bundled host and renderer use `morphir/workbench/native` `0.2.0-draft.1` through
 `app:workbench_native`. Each invocation carries complete raw JSON request and
 reply text. Production codecs bound the full UTF-8 envelope, reject duplicate
 members and validate closed operation payloads. Session open/check returns a
-public descriptor with the actual service's stable frozen jobs offer directly
+public descriptor with the actual service's stable executions offer directly
 nested. Replies correlate to the exact originating invocation and operation.
 
 Errors carry explicit `none` or `unknown` effects, with fixed public messages.
-Caller/frame rejection proves no effect. The shared job owner's returned
+Caller/frame rejection proves no effect. The shared execution owner's returned
 pre-commit rejection also proves no effect. Once that owner accepts a command,
 worker scheduling or publication failure is unknown. Workspace errors after
 entry to the stateful service are conservatively unknown. Closing revokes the
@@ -61,7 +61,7 @@ and exits without starting CEF. Frames are length-prefixed UTF-8 JSON, limited t
 1 MiB. Stderr is capped at 64 KiB. The host observes resident memory every 20 ms
 against a 256 MiB budget and enforces a 30-second deadline. Sampling can overshoot
 between observations; it is not an allocation cap. At most two workers execute,
-with eight retained jobs and 16 MiB retained evidence through the shared owner.
+with eight retained executions and 16 MiB retained evidence through the shared owner.
 Terminal publication follows confirmed child exit. Reload stops old workers before
 a new page can claim work, and shutdown waits for owned children. Returned values
 survive late cancellation; cleanup failures remain separate evidence.
@@ -117,8 +117,8 @@ window to the same-origin authenticated gateway, set
 The native host accepts only that explicit loopback launch shape and retains
 the normal asset origin when the variable is absent. The gateway exchanges the
 token for the upstream HttpOnly cookie. Do not put the token in logs or saved
-configuration. Enable `MORPHIR_WORKBENCH_JOBS=1` on the gateway for typed evaluation;
-see the [job setup and acceptance](../morphir-workbench/README.md#authenticated-evaluation-jobs).
+configuration. Enable `MORPHIR_WORKBENCH_EXECUTIONS=1` on the gateway for typed evaluation;
+see the [execution setup and acceptance](../morphir-workbench/README.md#authenticated-evaluation-executions).
 This HTTP attachment does not introduce native daemon IPC.
 An explicit connected launch registers no native commands.
 

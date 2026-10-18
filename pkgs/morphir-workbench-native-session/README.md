@@ -4,7 +4,7 @@ Pure state for the Proton desktop owner. Its internal bootstrap validates the tr
 window/app-origin/page context supplied by the native host, negotiates the exact
 bridge version, and binds opaque identities to that page. Navigation revokes a
 binding; shutdown prevents reopening it. The default descriptor has no operations.
-A host can explicitly enable jobs discovery after qualifying its worker service.
+A host can explicitly enable executions discovery after qualifying its worker service.
 Every business command still needs native caller/session validation. Filesystem
 operations belong to the composing native owner. That owner builds the public
 descriptor from actual services after validation and awaited cleanup.
@@ -19,7 +19,7 @@ integration are covered by packaged Proton acceptance, not this pure model.
 
 ## Native request framing
 
-The portable `request` package decodes the public native `0.1.0-draft.1`
+The portable `request` package decodes the public native `0.2.0-draft.1`
 request bytes before production owner dispatch. It checks whole-frame and workspace
 command byte limits, strict UTF-8, bounded duplicate-aware whole JSON, the closed
 request shape, and whole nested model/JSON argument documents. It preserves
@@ -27,7 +27,7 @@ source strings and original number tokens. Workspace sequence/offset checks use
 exact decimal integrality, preventing rounded fractions and underflow from
 passing integer bounds. Request copies cannot mutate the validated value.
 
-Exact offline Workbench MCK draft.7 exercises this decoder through the existing
+Exact offline Workbench MCK draft.15 exercises this decoder through the existing
 explicit adapter. Frame acceptance grants no authority, selects no execution entry and
 executes nothing. Ion input remains opaque at this boundary. Trusted caller and
 session binding, actual OS grants and packaged lifecycle qualification remain
@@ -37,16 +37,16 @@ reply/client/owner lifecycle MCK and packaged-target qualification.
 
 ## Native reply boundary
 
-The portable `response` package validates the public native draft.1 reply from
+The portable `response` package validates the public native `0.2.0-draft.1` reply from
 complete UTF-8 bytes. It rejects malformed encoding, BOMs, duplicate members,
 excessive parsing budgets, unknown fields and mismatched originating operations.
 Whole replies fit 1 MiB and grant offers fit 512 KiB, including their wrappers.
-It validates all 13 operation payloads, shares descriptor validation with the job
+It validates all 13 operation payloads, shares descriptor validation with the execution
 client, binds optional expected sessions and checks initial submission identity
-and receipt agreement. The receipt cursor still owns retained-job transitions.
+and receipt agreement. The receipt cursor still owns retained-execution transitions.
 
 Grant validation requires unique project IDs. Labels and error messages use the
-published Unicode character limits; nested jobs retain their UTF-16 limits.
+published Unicode character limits; nested executions retain their UTF-16 limits.
 Workspace chunks use exact integers and canonical padded base64, with at most
 196,608 decoded bytes. Capture totals, offsets and retirement still require the
 stateful workspace client and owner. A reply copy cannot mutate validated data.

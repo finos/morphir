@@ -35,12 +35,12 @@ async fn main {
   guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
     @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
     @stdio.stderr.write(
-      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and draft.10 kit.\n",
+      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and draft.18 kit.\n",
     )
     @sys.exit(1)
   }
   let corpus = @fs.read_file(kit + "/cases.json").json()
-  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.10") &&
+  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.18") &&
     field(corpus, "cases") is Array(cases) &&
     !cases.is_empty() else {
     @sys.exit(1)
@@ -55,7 +55,7 @@ async fn main {
   ])
   for target in ["js", "native", "wasm", "wasm-gc"] {
     checked("moon", [
-      "test", "pkgs/morphir-workbench-native-session", "apps/morphir-workbench/jobs",
+      "test", "pkgs/morphir-workbench-native-session", "apps/morphir-workbench/executions",
       "--target", target,
     ])
   }

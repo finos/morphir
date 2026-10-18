@@ -196,9 +196,9 @@ run = "moon run scripts/workbench-mck.mbtx"
 description = "Opt-in runtime capability checks through the shared exact draft.12 MCK in Node, Chromium and native"
 run = "moonx scripts/workbench-capability-policy-mck.mbtx"
 
-[tasks."test:workbench-capability-job-mck"]
-description = "Opt-in immutable Scheme job traces through the shared exact draft.13 Rust MCK"
-run = "moonx scripts/workbench-capability-job-mck.mbtx"
+[tasks."test:workbench-capability-execution-mck"]
+description = "Opt-in immutable Scheme execution traces through the shared exact draft.19 Rust MCK"
+run = "moonx scripts/workbench-capability-execution-mck.mbtx"
 
 [tasks."test:workbench-selected-scheme-mck"]
 description = "Opt-in selected public Scheme planning and unused-declaration witness through the shared Rust MCK"

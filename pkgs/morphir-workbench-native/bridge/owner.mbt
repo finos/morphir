@@ -1,7 +1,7 @@
 ///|
-/// Trusted host wiring for an owned job service. These callbacks cannot be
+/// Trusted host wiring for an owned execution service. These callbacks cannot be
 /// constructed or selected by renderer requests.
-pub(all) struct JobsService {
+pub(all) struct ExecutionsService {
   offer : () -> Json raise
   request : (String, Json) -> Bytes
   close : () -> Unit
@@ -12,7 +12,7 @@ pub(all) struct JobsService {
 /// A present factory enables the corresponding capability. The owner publishes
 /// it only after construction and awaited predecessor cleanup succeed.
 pub(all) struct ServiceFactories {
-  jobs : ((String) -> JobsService raise)?
+  executions : ((String) -> ExecutionsService raise)?
   workspace : (() -> @workspace.Service)?
 }
 
@@ -23,7 +23,7 @@ pub struct Owner {
   priv session : @session.Session
   priv group : @async.TaskGroup[Unit]
   priv factories : ServiceFactories
-  priv services : Map[String, JobsService]
+  priv services : Map[String, ExecutionsService]
   priv workspaces : Map[String, @workspace.Service]
   priv mut cleanup_failed : Bool
 }
@@ -32,10 +32,10 @@ pub struct Owner {
 pub fn Owner::new(
   group : @async.TaskGroup[Unit],
   executable : String,
-  jobs~ : Bool,
+  executions~ : Bool,
   workspace~ : Bool,
 ) -> Owner {
-  let job_factory : ((String) -> JobsService raise)? = if jobs {
+  let execution_factory : ((String) -> ExecutionsService raise)? = if executions {
     Some(fn(id) raise {
       let service = @native.Service::new(group, executable, id)
       {
@@ -56,7 +56,7 @@ pub fn Owner::new(
     None
   }
   Owner::with_services(group, {
-    jobs: job_factory,
+    executions: execution_factory,
     workspace: workspace_factory,
   })
 }
@@ -70,7 +70,7 @@ pub fn Owner::with_services(
 ) -> Owner {
   {
     session: @session.Session::new(
-      jobs=factories.jobs is Some(_),
+      executions=factories.executions is Some(_),
       workspace=factories.workspace is Some(_),
     ),
     group,
@@ -101,15 +101,15 @@ fn Owner::descriptor(self : Owner, id : String) -> Json raise {
   let operations : Array[Json] = []
   let fields : Map[String, Json] = {
     "profile": "morphir/workbench/native",
-    "contractVersion": "0.1.0-draft.1",
+    "contractVersion": "0.2.0-draft.1",
     "sessionId": Json::string(id),
     "operations": Json::array(operations),
   }
-  if self.factories.jobs is Some(_) {
+  if self.factories.executions is Some(_) {
     guard self.services.get(id) is Some(service) else {
-      raise @session.Rejected("workbench.native_jobs_unavailable")
+      raise @session.Rejected("workbench.native_executions_unavailable")
     }
-    operations.push(Json::string("jobs"))
+    operations.push(Json::string("executions"))
     fields["offer"] = (service.offer)()
   }
   if self.factories.workspace is Some(_) {
@@ -144,7 +144,7 @@ pub async fn Owner::request(
     if operation == "session.open" {
       // Opening can replace a previous page and invalidate its authority.
       effect = @reply.UnknownEffect
-      let id = text(self.session.open(current, "0.1.0-draft.1"), "sessionId")
+      let id = text(self.session.open(current, "0.2.0-draft.1"), "sessionId")
       for (old_id, old) in self.workspaces.to_array() {
         if old_id != id {
           old.close()
@@ -166,7 +166,8 @@ pub async fn Owner::request(
       category = @reply.Unauthorized
       ignore(self.session.check(caller(), id))
       category = @reply.Unavailable
-      if self.factories.jobs is Some(factory) && !self.services.contains(id) {
+      if self.factories.executions is Some(factory) &&
+        !self.services.contains(id) {
         self.services[id] = factory(id)
       }
       if self.factories.workspace is Some(factory) &&
@@ -198,7 +199,7 @@ pub async fn Owner::request(
     category = @reply.Unavailable
     guard value is Object(fields) else { abort("Admitted native request") }
     let payload = fields.get("payload").unwrap_or({})
-    if operation.has_prefix("job.") {
+    if operation.has_prefix("execution.") {
       guard self.services.get(id) is Some(service) else {
         return raw(@reply.failure(category, effect))
       }

@@ -89,7 +89,7 @@ fn integer(
 
 ///|
 fn version(value : Json) -> Unit raise Invalid {
-  guard value == Json::string("0.1.0-draft.1") else {
+  guard value == Json::string("0.2.0-draft.1") else {
     raise Invalid("native.frame.shape")
   }
 }
@@ -114,10 +114,10 @@ fn shape(value : Json) -> Unit raise Invalid {
       token(fields["sessionId"])
       None
     }
-    "job.submit"
-    | "job.query"
-    | "job.cancel"
-    | "job.release"
+    "execution.submit"
+    | "execution.query"
+    | "execution.cancel"
+    | "execution.release"
     | "workspace.revoke"
     | "workspace.open"
     | "workspace.read"
@@ -138,7 +138,7 @@ fn shape(value : Json) -> Unit raise Invalid {
   version(fields["contractVersion"])
   if payload is Some(payload) {
     match op {
-      "job.submit" => {
+      "execution.submit" => {
         let payload = closed(payload, [
           "contractVersion", "model", "entry", "inputs",
         ])
@@ -152,10 +152,12 @@ fn shape(value : Json) -> Unit raise Invalid {
         }
         ignore(text(inputs["source"], 0, 1048576))
       }
-      "job.query" | "job.cancel" | "job.release" => {
+      "execution.query" | "execution.cancel" | "execution.release" => {
         let payload = closed(payload, ["contractVersion", "identity"])
         version(payload["contractVersion"])
-        let keys = ["hostId", "sessionId", "providerId", "jobId", "snapshotId"]
+        let keys = [
+          "hostId", "sessionId", "providerId", "executionId", "snapshotId",
+        ]
         let identity = closed(payload["identity"], keys)
         for key in keys {
           let item = text(identity[key], 1, 128)
@@ -193,7 +195,7 @@ fn shape(value : Json) -> Unit raise Invalid {
 ///|
 fn nested(value : Json) -> Unit raise Invalid {
   guard value is Object(fields) &&
-    fields["operation"] == Json::string("job.submit") else {
+    fields["operation"] == Json::string("execution.submit") else {
     return
   }
   let payload = closed(fields["payload"], [

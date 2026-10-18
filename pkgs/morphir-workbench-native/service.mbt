@@ -15,7 +15,7 @@ struct Record {
 pub struct Service {
   priv group : @async.TaskGroup[Unit]
   priv executable : String
-  priv host : @jobs.Host
+  priv host : @executions.Host
   priv offer : Json
   priv records : Map[String, Record]
   priv queue : Array[Record]
@@ -43,8 +43,8 @@ pub fn Service::new(
     raise Invalid("workbench.native_resources")
   }
   let offer : Json = {
-    "profile": "morphir/workbench/jobs",
-    "contractVersion": "0.1.0-draft.1",
+    "profile": "morphir/workbench/executions",
+    "contractVersion": "0.2.0-draft.1",
     "hostId": "native-" + pid().to_string() + "-" + now().to_int64().to_string(),
     "sessionId": session,
     "providerId": "moonbit-scheme",
@@ -53,7 +53,7 @@ pub fn Service::new(
   {
     group,
     executable,
-    host: @jobs.Host::new(offer.stringify()),
+    host: @executions.Host::new(offer.stringify()),
     offer,
     records: Map([]),
     queue: [],
@@ -105,7 +105,7 @@ pub fn Service::request(self : Service, path : String, body : String?) -> Json {
       guard body == None else { raise Invalid("workbench.native_shape") }
       return response(200, {
         "profile": "morphir/workbench/host",
-        "contractVersion": "0.1.0-draft.1",
+        "contractVersion": "0.2.0-draft.1",
         "offer": self.offer,
       })
     }
@@ -127,7 +127,7 @@ pub fn Service::request(self : Service, path : String, body : String?) -> Json {
         ].contains(code) {
         409
       } else if [
-          "workbench.host_unknown_job", "workbench.host_cancel_unavailable",
+          "workbench.host_unknown_execution", "workbench.host_cancel_unavailable",
         ].contains(code) {
         404
       } else if code.contains("limit") || code.contains("budget") {
@@ -142,9 +142,9 @@ pub fn Service::request(self : Service, path : String, body : String?) -> Json {
         "error": {
           "code": code,
           "message": if code == "workbench.worker_unconfirmed_exit" {
-            "The native worker exit could not be confirmed. The job remains nonterminal."
+            "The native worker exit could not be confirmed. The execution remains nonterminal."
           } else {
-            "The native host rejected this job request."
+            "The native host rejected this execution request."
           },
         },
       })
@@ -193,7 +193,7 @@ fn Service::complete(self : Service, record : Record, outcomes : Json) -> Unit {
     let previous = self.command({
       "op": "query",
       "body": (
-        { "contractVersion": "0.1.0-draft.1", "identity": record.identity } :
+        { "contractVersion": "0.2.0-draft.1", "identity": record.identity } :
         Json).stringify(),
     })
     guard previous is Object(fields) else {
@@ -203,7 +203,7 @@ fn Service::complete(self : Service, record : Record, outcomes : Json) -> Unit {
     fields["sequence"] = Json::number(2147483647)
     fields["outcomes"] = outcomes
     let bounded = try {
-      ignore(@reply.success("job.query", Json::object(fields)))
+      ignore(@reply.success("execution.query", Json::object(fields)))
       true
     } catch {
       _ => false
@@ -301,7 +301,7 @@ async fn Service::run(self : Service, record : Record) -> Unit {
         try {
           let n = frame_length(reader.read_exactly(4))
           let source = @utf8.decode(reader.read_exactly(n))
-          let value = @jobs.decode(source)
+          let value = @executions.decode(source)
           // Typed and structural evidence admission precedes result capture.
           ignore(@protocol.Outcomes::from_json(value))
           record.captured = Some(value)
@@ -490,11 +490,11 @@ fn Service::apply(
       captured: None,
       peak: 0.0,
     }
-    self.records[text(field(identity, "jobId"))] = record
+    self.records[text(field(identity, "executionId"))] = record
     self.queue.push(record)
     self.drain()
   } else if path == "cancel" {
-    if self.records.get(text(field(field(value, "identity"), "jobId")))
+    if self.records.get(text(field(field(value, "identity"), "executionId")))
       is Some(record) &&
       !record.done {
       record.stop("cancel")
@@ -511,29 +511,29 @@ fn Service::apply(
       }
     }
   } else if path == "release" {
-    let identity = field(@jobs.decode(body), "identity")
-    self.records.remove(text(field(identity, "jobId")))
+    let identity = field(@executions.decode(body), "identity")
+    self.records.remove(text(field(identity, "executionId")))
   }
 }
 
 ///|
 /// A fresh view of the actual service authority, stable for its lifetime.
 pub fn Service::offer(self : Service) -> Json {
-  @jobs.decode(self.offer.stringify()) catch {
+  @executions.decode(self.offer.stringify()) catch {
     _ => abort("Native service offer")
   }
 }
 
 ///|
-/// The native bridge mapping for explicit production jobs.Host rejections.
+/// The native bridge mapping for explicit production executions.Host rejections.
 pub fn native_code(code : String) -> @reply.Code {
   if [
       "workbench.host_capacity", "workbench.host_already_claimed", "workbench.host_not_terminal",
     ].contains(code) {
     @reply.Conflict
-  } else if ["workbench.host_unknown_job", "workbench.host_cancel_unavailable"].contains(
-      code,
-    ) {
+  } else if [
+      "workbench.host_unknown_execution", "workbench.host_cancel_unavailable",
+    ].contains(code) {
     @reply.NotFound
   } else if code.contains("limit") || code.contains("budget") {
     @reply.Limit
@@ -554,10 +554,10 @@ pub fn Service::native_request(
     return @reply.failure(@reply.Unavailable, @reply.NoEffect)
   }
   let path = match operation {
-    "job.submit" => "submit"
-    "job.query" => "query"
-    "job.cancel" => "cancel"
-    "job.release" => "release"
+    "execution.submit" => "submit"
+    "execution.query" => "query"
+    "execution.cancel" => "cancel"
+    "execution.release" => "release"
     _ => return @reply.failure(@reply.InvalidRequest, @reply.NoEffect)
   }
   try {

@@ -72,9 +72,11 @@ fn admit_input(value : Json) -> Unit raise {
     abort("native owner MCK: compact input exceeds limit")
   }
   admit_context(field(value, "context"))
-  let services = closed(field(value, "services"), ["jobs", "workspace"])
-  guard ["enabled", "disabled", "unavailable"].contains(text(services["jobs"])) else {
-    abort("native owner MCK: invalid jobs availability")
+  let services = closed(field(value, "services"), ["executions", "workspace"])
+  guard ["enabled", "disabled", "unavailable"].contains(
+    text(services["executions"]),
+  ) else {
+    abort("native owner MCK: invalid executions availability")
   }
   ignore(boolean(services["workspace"]))
   let evaluation = closed(field(value, "evaluation"), [
@@ -151,10 +153,11 @@ fn admit_input(value : Json) -> Unit raise {
         "session.open" => []
         "session.check"
         | "session.close"
-        | "job.submit"
+        | "execution.submit"
         | "workspace.choose"
         | "workspace.cancel-picker" => ["session"]
-        "job.query" | "job.cancel" | "job.release" => ["session", "job"]
+        "execution.query" | "execution.cancel" | "execution.release" =>
+          ["session", "execution"]
         "workspace.revoke" => ["session", "grant"]
         "workspace.open" => ["session", "grant", "project", "sequence"]
         "workspace.read" => ["session", "grant", "sequence", "offset"]
@@ -186,8 +189,8 @@ fn admit_input(value : Json) -> Unit raise {
         abort("native owner MCK: undeclared held delivery")
       }
     } else if op == "complete" {
-      ignore(closed(action, ["op", "job", "outcomes"]))
-      ignore(text(field(action, "job"), token=true))
+      ignore(closed(action, ["op", "execution", "outcomes"]))
+      ignore(text(field(action, "execution"), token=true))
       guard field(action, "outcomes") is Object(_) else {
         abort("native owner MCK: complete outcomes must be an object")
       }

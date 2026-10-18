@@ -46,13 +46,13 @@ function fixture(bytes = Buffer.from(' {"formatVersion":1,"exact":90071992547409
   return { client: new NativeWorkspaceClient(session, local), host, session, calls, localCalls, offer, handle };
 }
 
-test('only exact canonical native capabilities with directly nested jobs offers are admitted', async () => {
-  const offer = { profile: 'morphir/workbench/jobs', contractVersion: version, hostId: 'h', sessionId: descriptor.sessionId, providerId: 'p', operations: ['query'] };
-  for (const operations of [[], ['jobs'], ['workspace'], ['jobs', 'workspace']]) {
-    const value = { ...descriptor, operations, ...(operations.includes('jobs') ? { offer } : {}) };
+test('only exact canonical native capabilities with directly nested executions offers are admitted', async () => {
+  const offer = { profile: 'morphir/workbench/executions', contractVersion: version, hostId: 'h', sessionId: descriptor.sessionId, providerId: 'p', operations: ['query'] };
+  for (const operations of [[], ['executions'], ['workspace'], ['executions', 'workspace']]) {
+    const value = { ...descriptor, operations, ...(operations.includes('executions') ? { offer } : {}) };
     const session = new NativeSession(bridge(() => value), 50, core()); await session.open(); await session.check();
   }
-  for (const operations of [[''], ['jobs,workspace'], ['workspace', 'jobs'], ['jobs', 'jobs'], ['filesystem'], [null]]) {
+  for (const operations of [[''], ['executions,workspace'], ['workspace', 'executions'], ['executions', 'executions'], ['filesystem'], [null]]) {
     await assert.rejects(new NativeSession(bridge(() => ({ ...descriptor, operations })), 50, core()).open(), /incompatible/);
   }
 });

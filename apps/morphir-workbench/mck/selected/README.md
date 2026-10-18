@@ -27,7 +27,7 @@ reached first. Both are resource refusals, distinct from malformed argument synt
 The selected Scheme planner currently accepts Library distributions only.
 
 This witness does not qualify untaken/reached expression semantics, complete
-capability-check policy conformance, asynchronous job retention, terminal inventory, UI support,
+capability-check policy conformance, asynchronous execution retention, terminal inventory, UI support,
 generated targets or a packaged platform. A later exact kit qualifies those
 additional semantics without changing this frozen inventory. The application
 continues to use strict capability checks until its separately tracked integration gates

@@ -103,7 +103,7 @@ test "the menu opens, moves with keys and asks for the Ion text" {
     .to_equal(Some({ path: "data/symbols.bin", left: 10, top: 20, index: 0, }))
     s.expect(focus, label="focus").to_equal([FocusMenu(0)])
     s
-    .expect(effects, label="decode as a job")
+    .expect(effects, label="decode as a execution")
     .to_equal([
       RequestIonText("data/symbols.bin"),
       FocusFile("data/symbols.bin"),

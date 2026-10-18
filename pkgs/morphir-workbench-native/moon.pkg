@@ -1,7 +1,7 @@
 import {
   "finos/morphir-workbench-native-session/response" @reply,
   "finos/morphir-workbench" @pipeline,
-  "finos/morphir-workbench/jobs",
+  "finos/morphir-workbench/executions",
   "finos/morphir-execution" @protocol,
   "finos/morphir-ir/wire",
   "moonbitlang/async",

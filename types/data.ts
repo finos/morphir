@@ -12,8 +12,8 @@ export interface WorkbenchError extends Error {
   effect?: string;
   native?: boolean;
   rejected?: boolean;
-  job?: unknown;
-  jobTransport?: boolean;
+  execution?: unknown;
+  executionTransport?: boolean;
   submissionUnknown?: boolean;
   diagnostics?: unknown[];
 }

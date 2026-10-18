@@ -2,7 +2,7 @@
 
 This component exposes the shipped `finos/morphir-execution` value codec and
 validator to the shared Rust MCK. It supports exact contracts
-`0.1.0-draft.1` through `0.1.0-draft.7`. It has no goldens, evaluator or separate
+`0.1.0-draft.1` through `0.1.0-draft.5`, plus replacement drafts14–16. It has no goldens, evaluator or separate
 conformance runner. The parent `finos/morphir` repository owns the specification,
 corpora and verdict calculation. Draft.1/.2 are merged; draft.3 adds invocation
 validation; draft.4 adds output validation; draft.5 adds terminal outcome validation.
@@ -118,7 +118,7 @@ provider/cancellation/cleanup codes reject. Argument validation remains unchange
 The new operation is unavailable under earlier drafts. The parent owns independent
 goldens, corpus inventory and report rechecking; no connected RPC is advertised.
 Select `spec/workbench/mck/draft.4` with the existing gate to qualify this draft.
-Live job lifecycle and authoritative cleanup behavior remain separate.
+Live execution lifecycle and authoritative cleanup behavior remain separate.
 
 <a id="terminal-outcome-admission"></a>
 
@@ -139,19 +139,19 @@ Select `spec/workbench/mck/draft.5` with the existing gate for the upstream
 and all verdicts. Pure codec tests cover round trips, duplicate fields, typed
 null/annotations, UTF-16 and value budgets. Earlier exact drafts remain supported.
 Validation of failed/cancelled evidence means valid evidence, not successful or
-authenticated execution. UI adoption, live daemon jobs, acknowledged cancellation
+authenticated execution. UI adoption, live daemon executions, acknowledged cancellation
 and connected protocol extensions remain subsequent work.
 
-## Job transition qualification
+## Execution transition qualification
 
-Exact offline MCK draft.6 advertises only `reduce-job` and JSON. It maps the
-unchanged `morphir/workbench/jobs` `0.1.0-draft.1` profile and its nested draft.5
+Exact offline MCK draft.14 advertises only `reduce-execution` and JSON. It maps the
+replacement `morphir/workbench/executions` `0.2.0-draft.1` profile and its nested draft.5
 terminal outcomes. It does not add operations to the five historical drafts or
 define an Ion receipt mapping. Requalify historical kits separately.
 
 Input is exactly `{offer,identity,calls,initial,actions}`. The adapter validates the
 offer, caller-owned expected identity, ordered call IDs and initial submitted
-receipt through `finos/morphir-execution/jobs`. It validates closed action syntax
+receipt through `finos/morphir-execution/executions`. It validates closed action syntax
 before executing up to 64 actions. Actions are `observe` with a receipt,
 `reconnect` with an offer, `disconnect`, or `cancel-action`. Invalid receipt or
 offer payloads produce a bounded per-action rejection and leave the cursor
@@ -166,18 +166,18 @@ and output are each capped at 1 MiB. The parent owns all fixed expectations,
 observation validation, comparisons and report rechecking. No expected data or
 case ID is sent to this adapter.
 
-Select `spec/workbench/mck/draft.6` with the existing gate. Set
+Select `spec/workbench/mck/draft.14` with the existing gate. Set
 `MORPHIR_WORKBENCH_EVIDENCE` to retain reports in a separate directory per kit;
 the default remains `.dev/workbench-mck/`. This qualifies recorded transitions,
 replay/conflict handling, cancellation races and same-session reconciliation.
-It does not authenticate receipts or qualify live job RPC, host execution,
+It does not authenticate receipts or qualify live execution RPC, host execution,
 durable recovery, Proton IPC or generated browser execution.
 
 ## Native request-frame qualification
 
-Exact offline draft.7 advertises only `validate-native-frame` and JSON. It
+Exact offline draft.15 advertises only `validate-native-frame` and JSON. It
 uses `finos/morphir-workbench-native-session/request`, the portable native
-draft.1 request decoder. Select `spec/workbench/mck/draft.7` with the same
+`0.2.0-draft.1` request decoder. Select `spec/workbench/mck/draft.15` with the same
 parent-owned gate. Historical kits are qualified separately.
 
 Input is exactly `{encoding,source}`, with optional
@@ -199,21 +199,21 @@ rejection codes are `native.frame.limit`, `native.frame.utf8`,
 This tests frame acceptance through an implementation decoder. It does not
 activate the public IPC endpoint, authenticate caller context, validate a Morphir
 function or Ion values, create workspace grants or qualify a packaged platform.
-The live native protocol remains draft.1.
+The live native protocol uses `0.2.0-draft.1`.
 
 ## Native reply qualification
 
-Exact offline draft.8 advertises only `validate-native-reply` and JSON. Select
-`spec/workbench/mck/draft.8` in the existing parent-owned gate. The adapter calls
+Exact offline draft.16 advertises only `validate-native-reply` and JSON. Select
+`spec/workbench/mck/draft.16` in the existing parent-owned gate. The adapter calls
 `finos/morphir-workbench-native-session/response.decode` on the original bytes,
 with `expectedOperation` and required nullable `expectedSession` captures. These
 are closed fixture context, not caller authentication. Encoding, source and the
-optional bounded ASCII-space prefix recipe follow draft.7; compact input is
+optional bounded ASCII-space prefix recipe follow draft.15; compact input is
 limited to 1 MiB and materialization to 2 MiB. Exact decimal recipe tokens are
 preserved before fixture validation.
 
 The production decoder checks strict UTF-8, whole duplicate-aware JSON, byte and
-parser budgets, operation/session correlation, closed payloads, job receipt
+parser budgets, operation/session correlation, closed payloads, execution receipt
 consistency, unique project IDs and canonical base64 chunks. A validated success
 projects to `{replyAccepted:true,ok:true,operation}`. A validated native failure
 projects to `{replyAccepted:true,ok:false,error:{code,effect}}`, preserving
@@ -225,24 +225,24 @@ domain rejection. The shared runner owns expectations, verdicts and saved-report
 rechecking; it does not parse native replies.
 
 This qualifies offline response validation only. The live native profile remains
-`0.1.0-draft.1`; executable client/owner lifecycle MCK and actual platform
+`0.2.0-draft.1`; executable client/owner lifecycle MCK and actual platform
 acceptance remain separate work. Historical MCK drafts.1–.7 remain supported.
 
 ## Native client lifecycle qualification
 
-Exact offline draft.9 runs the shipped TypeScript client with controlled native
+Exact offline draft.17 runs the shipped TypeScript client with controlled native
 reply delivery. It uses a separate explicit adapter because the production client
 runs in JavaScript in both browser and Proton CEF. The existing Rust MCK still owns
 all expectations, comparisons and independent report checks.
 
 ```sh
 MORPHIR_MCK_BIN=/path/to/morphir \
-MORPHIR_WORKBENCH_KIT=/path/to/finos/morphir/spec/workbench/mck/draft.9 \
+MORPHIR_WORKBENCH_KIT=/path/to/finos/morphir/spec/workbench/mck/draft.17 \
 mise run test:workbench-native-client-mck
 ```
 
 The task builds checked Node/browser adapters and debug/release production
-MoonBit job cores, runs all 48 scenarios in Node and Chromium, and checks each
+MoonBit execution cores, runs all 48 scenarios in Node and Chromium, and checks each
 saved report. Portable cursor tests also run JS, native, Wasm and WasmGC. Four
 complete JSON/Ion assets separately import and evaluate to Int 42 through the
 production worker. `MORPHIR_WORKBENCH_EVIDENCE` selects an existing or new evidence
@@ -258,11 +258,10 @@ No expected results or case IDs enter it.
 
 This qualifies client behavior with controlled replies. It does not qualify native
 owner lifecycle, real picker grants, authenticated caller authority, process exit
-or packaged platforms. Live native draft.1 and historical MCK drafts.1 through .8
-remain unchanged. See the upstream `spec/workbench/draft.9/README.md` contract.
+or packaged platforms. Live native `0.2.0-draft.1` uses execution names. Historical MCK drafts6–10/13 remain frozen and are rejected by current adapters. See the upstream `spec/workbench/mck/draft.17/README.md` contract.
 
 The separate [native owner adapter](../../../pkgs/morphir-workbench-native/README.md#controlled-owner-qualification)
-adds exact offline draft.10 for production owner orchestration with controlled
+adds exact offline draft.18 for production owner orchestration with controlled
 host dependencies. It runs natively and does not add owner operations to this
 portable codec adapter. Both use the same shared Rust runner.
 
@@ -272,19 +271,19 @@ The separate [capability policy adapter](capabilities/README.md) implements exac
 offline draft.12 with actual selected Scheme execution and explicitly labelled
 captured-completion validation. Its independent 182-case kit qualifies the named
 Node/Chromium/native debug/release lanes. Existing draft.1–.11 contracts stay
-unchanged; this does not add a UI, job or live provider offer.
-## Immutable Scheme job selection
+unchanged; this does not add a UI, execution or live provider offer.
+## Immutable Scheme execution selection
 
-The separate [`capability-jobs`](capability-jobs/README.md) adapter drives real
-host-owned Session state under exact Workbench MCK `0.1.0-draft.13`. It qualifies
+The separate [`capability-executions`](capability-executions/README.md) adapter drives real
+host-owned Session state under exact Workbench MCK `0.1.0-draft.19`. It qualifies
 captured runtime/policy, immutable source and selected boundaries, once-only
 claims, independent replans and typed completion. Execute actions and supplied
 completion evidence are distinct. The parent Rust CLI owns fixed cases and every
 verdict. Frozen adapters and receipts retain their formats.
 
-Run `mise run test:workbench-capability-job-mck` with explicit `MORPHIR_MCK_BIN`
+Run `mise run test:workbench-capability-execution-mck` with explicit `MORPHIR_MCK_BIN`
 and `MORPHIR_WORKBENCH_KIT`. Reports cover Node, Chromium and native, debug and
-release. The private Node job provider also has actual isolated-worker tests in
-`scripts/capability-job.test.ts`. These controlled traces and process tests add no
+release. The private Node execution provider also has actual isolated-worker tests in
+`scripts/capability-execution.test.ts`. These controlled traces and process tests add no
 browser, connected HTTP or native capability offer; those integrations remain
 separate tasks.

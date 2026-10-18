@@ -307,23 +307,27 @@ test "reset removes the stored key of its language" {
 }
 
 ///|
-test "a folder picked while another job runs is refused; a stale import reply is ignored" {
+test "a folder picked while another execution runs is refused; a stale import reply is ignored" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
   let model = {
     ..scope_model(),
     catalog: catalog_fixture(),
     busy: true,
-    job: 4,
+    request_id: 4,
   }
   let picked = ({ "ok": true, "files": [], "skipped": 0 } : Json).stringify()
   let (refused, _) = update(model, FolderPicked(picked), emit)
   let idle = { ..model, busy: false, }
   let (started, _) = update(idle, FolderPicked(picked), emit)
   let (stale, _) = update(started, FolderImported(3, 0, "{}"), emit)
-  let (current, _) = update(started, FolderImported(started.job, 0, "{}"), emit)
+  let (current, _) = update(
+    started,
+    FolderImported(started.request_id, 0, "{}"),
+    emit,
+  )
   @expect.expect_all(s => {
     s.expect(refused.busy, label="busy kept").to_be_true()
-    s.expect(refused.job, label="job kept").to_equal(4)
+    s.expect(refused.request_id, label="execution kept").to_equal(4)
     s
     .expect(
       refused.panel.logs.length() > model.panel.logs.length(),
@@ -331,7 +335,7 @@ test "a folder picked while another job runs is refused; a stale import reply is
     )
     .to_be_true()
     s.expect(started.busy, label="started busy").to_be_true()
-    s.expect(started.job, label="job").to_equal(5)
+    s.expect(started.request_id, label="execution").to_equal(5)
     s.expect(stale.busy, label="stale ignored").to_be_true()
     s.expect(current.busy, label="current clears busy").to_be_false()
   })

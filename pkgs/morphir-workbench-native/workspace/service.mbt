@@ -247,7 +247,7 @@ pub fn Service::request(self : Service, source : String) -> Json {
     guard @utf8.encode(source[:]).length() <= 4096 else {
       raise Rejected("workbench.workspace_request")
     }
-    guard @jobs.decode(source) is Object(fields) else {
+    guard @executions.decode(source) is Object(fields) else {
       raise Rejected("workbench.workspace_request")
     }
     let action = string(fields, "action")
@@ -366,7 +366,7 @@ pub fn bridge_request(source : String) -> (String, String) raise {
   guard @utf8.encode(source[:]).length() <= 8192 else {
     raise Rejected("workbench.workspace_request")
   }
-  guard @jobs.decode(source) is Object(fields) && fields.length() == 2 else {
+  guard @executions.decode(source) is Object(fields) && fields.length() == 2 else {
     raise Rejected("workbench.workspace_request")
   }
   let id = string(fields, "sessionId")

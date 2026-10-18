@@ -38,7 +38,7 @@ test "the palette opens from a shortcut and runs Compile" {
     s.expect(opened.palette.query, label="commands").to_equal(">")
     s.expect(ran.palette.open, label="closed").to_be_false()
     s.expect(ran.busy, label="compiling").to_be_true()
-    s.expect(ran.job, label="job").to_equal(opened.job + 1)
+    s.expect(ran.request_id, label="execution").to_equal(opened.request_id + 1)
     s.expect(ran.palette.recent, label="recent").to_equal([Compile])
   })
 }
@@ -71,7 +71,7 @@ test "quick open shows the file in Try Morphir and opens its folders" {
 
 ///|
 test "a command that cannot run now does nothing" {
-  let busy = { ..ready_model(), busy: true, job: 3, }
+  let busy = { ..ready_model(), busy: true, request_id: 3, }
   let compiled = send(busy, [RunCommand(Compile)])
   let moonbit = ready_model(language="moonbit")
   let added = send(moonbit, [RunCommand(NewFile)])
@@ -83,7 +83,7 @@ test "a command that cannot run now does nothing" {
     from_palette=true,
   )
   @expect.expect_all(s => {
-    s.expect(compiled.job, label="busy").to_equal(3)
+    s.expect(compiled.request_id, label="busy").to_equal(3)
     s.expect(added.files_edit.edit, label="one-file language").to_equal(Idle)
     s.expect(from_palette.busy, label="Compile in a worksheet").to_be_false()
     s

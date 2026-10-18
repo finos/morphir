@@ -18,13 +18,13 @@ async fn main {
       @argparse.OptionArg("host-bin", required=true),
       @argparse.OptionArg("desktop-bin"),
     ],
-    flags=[@argparse.FlagArg("jobs")],
+    flags=[@argparse.FlagArg("executions")],
   )
   let matches = command.parse()
   guard matches.values.get("host-bin") is Some([binary]) else { @sys.exit(2) }
   let environment = { "MORPHIR_WORKBENCH_LIVE_HOST_BIN": binary }
-  if matches.flags.get("jobs").unwrap_or(false) {
-    environment["MORPHIR_WORKBENCH_LIVE_JOBS"] = "1"
+  if matches.flags.get("executions").unwrap_or(false) {
+    environment["MORPHIR_WORKBENCH_LIVE_EXECUTIONS"] = "1"
   }
   if matches.values.get("desktop-bin") is Some([desktop]) {
     environment["MORPHIR_WORKBENCH_DESKTOP_BIN"] = desktop

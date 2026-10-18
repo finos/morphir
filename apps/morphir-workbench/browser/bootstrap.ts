@@ -22,31 +22,31 @@ globalThis.morphirWorkbench = {
       let result;
       if (request.operation === 'initialize') {
         if (connected) {
-          await import(new URL('./job-core.js', import.meta.url).href);
+          await import(new URL('./execution-core.js', import.meta.url).href);
           adapter = await connect(location, local);
           result = await adapter.initialize();
         } else {
-          await import(new URL('./job-core.js', import.meta.url).href);
+          await import(new URL('./execution-core.js', import.meta.url).href);
           adapter = selectLocalAdapter(location, local);
           result = await adapter.initialize();
         }
-      } else result = await adapter.execute(request, job => {
-        if (current === generation) receive(JSON.stringify({ success: true, operation: 'job-progress', job }));
+      } else result = await adapter.execute(request, execution => {
+        if (current === generation) receive(JSON.stringify({ success: true, operation: 'execution-progress', execution }));
       });
       if (current === generation) receive(JSON.stringify(result));
     } catch (cause) {
       const error = workbenchError(cause);
       if (request.operation === 'initialize') adapter.dispose?.();
       if (current === generation) receive(JSON.stringify({ success: false, message: error.message || 'Host request failed',
-        ...(error.job ? { job: error.job } : {}),
-        ...(error.jobTransport ? { jobTransport: true } : {}),
+        ...(error.execution ? { execution: error.execution } : {}),
+        ...(error.executionTransport ? { executionTransport: true } : {}),
         ...(error.submissionUnknown ? { submissionUnknown: true } : {}),
         ...(Array.isArray(error.diagnostics) && error.diagnostics.length ? { diagnostics: error.diagnostics } : {}) }));
     }
   },
   cancel() {
-    const hostJob = adapter.jobs?.active || (adapter.jobs?.job && adapter.jobs.job.state !== 'terminal');
-    if (!hostJob) ++generation;
+    const hostExecution = adapter.executions?.active || (adapter.executions?.execution && adapter.executions.execution.state !== 'terminal');
+    if (!hostExecution) ++generation;
     Promise.resolve(adapter.cancel()).catch(() => { /* The active observer reports retained disconnection evidence. */ });
   },
   importModel(receive) {

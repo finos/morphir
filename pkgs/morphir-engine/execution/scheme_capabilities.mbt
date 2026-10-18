@@ -32,7 +32,7 @@ pub fn plan_scheme_capabilities(
 
 ///|
 /// Check complete terminal evidence against the plan's captured public context.
-/// This validates evidence; it neither executes nor authenticates a job.
+/// This validates evidence; it neither executes nor authenticates a execution.
 pub fn SchemePlan::validate_outcomes(
   self : SchemePlan,
   outcomes : @protocol.Outcomes,

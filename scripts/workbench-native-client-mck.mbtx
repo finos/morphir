@@ -40,12 +40,12 @@ async fn main {
   guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
     @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
     @stdio.stderr.write(
-      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and draft.9 kit.\n",
+      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and draft.17 kit.\n",
     )
     @sys.exit(1)
   }
   let corpus = @fs.read_file(kit + "/cases.json").json()
-  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.9") &&
+  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.17") &&
     field(corpus, "cases") is Array(cases) &&
     !cases.is_empty() else {
     @sys.exit(1)
@@ -58,7 +58,7 @@ async fn main {
   }
   checked("bun", ["--check", "tools/build-native-client-mck.ts"])
   for target in ["js", "native", "wasm", "wasm-gc"] {
-    checked("moon", ["test", "apps/morphir-workbench/jobs", "--target", target])
+    checked("moon", ["test", "apps/morphir-workbench/executions", "--target", target])
   }
   let app = "apps/morphir-workbench/"
   let built = app + "_build/native-client-mck/"
@@ -70,7 +70,7 @@ async fn main {
       let core = app +
         "_build/js/" +
         mode +
-        "/build/finos/morphir-workbench/job-core/job-core.js"
+        "/build/finos/morphir-workbench/execution-core/execution-core.js"
       let report = evidence + "/" + runtime + "-" + mode + ".json"
       checked(
         runner,

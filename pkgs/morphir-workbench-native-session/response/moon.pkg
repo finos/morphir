@@ -1,6 +1,6 @@
 import {
   "finos/morphir-ir/wire",
-  "finos/morphir-execution/jobs",
+  "finos/morphir-execution/executions",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/encoding/base64",
 }

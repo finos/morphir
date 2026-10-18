@@ -1,4 +1,22 @@
 ///|
+/// The selected evaluation semantics, captured before dispatching work.
+pub(all) enum Runtime {
+  LocalScheme
+  TypedInvocation
+} derive(Eq)
+
+///|
+pub extend Runtime with Eq::{equal, not_equal}
+
+///|
+pub fn Runtime::is_typed(self : Runtime) -> Bool {
+  match self {
+    LocalScheme => false
+    TypedInvocation => true
+  }
+}
+
+///|
 pub(all) enum InputMode {
   Fields
   Json
@@ -18,9 +36,9 @@ pub(all) struct Props {
   stale : Bool
   busy : Bool
   connected : Bool
-  jobs_available : Bool
-  job_pending : Bool
-  typed : Bool
+  executions_available : Bool
+  execution_pending : Bool
+  runtime : Runtime
   policy : @capabilities.CapabilityPolicy
   policy_available : Bool
   input_mode : InputMode
@@ -339,7 +357,7 @@ pub fn view(
   on_mode : @cmd.Emit[InputMode],
   on_edit : @cmd.Emit[@arguments.Edit],
   on_result_mode : @cmd.Emit[@result.Mode],
-  on_runtime : @cmd.Emit[Bool],
+  on_runtime : @cmd.Emit[Runtime],
   on_policy : @cmd.Emit[@capabilities.CapabilityPolicy],
 ) -> @html.Html {
   let captured_policy = Some(
@@ -357,17 +375,21 @@ pub fn view(
           .aria_label("Evaluation runtime"),
         [
           @html.button(
-            disabled=props.job_pending,
-            class=if !props.typed { "selected" } else { "" },
-            attrs=@html.Attrs::build().aria_pressed((!props.typed).to_string()),
-            on_click=on_runtime(false),
+            disabled=props.execution_pending,
+            class=if !props.runtime.is_typed() { "selected" } else { "" },
+            attrs=@html.Attrs::build().aria_pressed(
+              (!props.runtime.is_typed()).to_string(),
+            ),
+            on_click=on_runtime(LocalScheme),
             "Local Scheme",
           ),
           @html.button(
-            disabled=props.job_pending,
-            class=if props.typed { "selected" } else { "" },
-            attrs=@html.Attrs::build().aria_pressed(props.typed.to_string()),
-            on_click=on_runtime(true),
+            disabled=props.execution_pending,
+            class=if props.runtime.is_typed() { "selected" } else { "" },
+            attrs=@html.Attrs::build().aria_pressed(
+              props.runtime.is_typed().to_string(),
+            ),
+            on_click=on_runtime(TypedInvocation),
             "Typed invocation",
           ),
         ],
@@ -377,15 +399,15 @@ pub fn view(
   let contents : Array[@html.Html] = [
     @html.div(class="evaluation-heading", heading),
   ]
-  let incompatible = props.typed &&
+  let incompatible = props.runtime.is_typed() &&
     props.policy == @capabilities.CapabilityPolicy::Permissive &&
     !props.policy_available
-  if props.typed {
+  if props.runtime.is_typed() {
     contents.push(
       @html.label(class="checking-policy small", [
         @html.span("Capability checks"),
         @html.select(
-          disabled=props.job_pending,
+          disabled=props.execution_pending,
           attrs=@html.Attrs::build()
             .aria_label("Capability checks")
             .value_prop(@capabilities.policy_value(props.policy)),
@@ -428,7 +450,7 @@ pub fn view(
     }
   }
   let supported = field(props.profile, "supported") == Json::boolean(true)
-  if props.connected && !props.jobs_available {
+  if props.connected && !props.executions_available {
     contents.push(
       @html.p(
         class="muted",
@@ -451,8 +473,8 @@ pub fn view(
       @html.p(
         class="muted small",
         if props.connected {
-          "Evaluated by the authenticated bounded host runtime. Inputs are captured when the job is submitted."
-        } else if props.typed {
+          "Evaluated by the authenticated bounded host runtime. Inputs are captured when the execution is submitted."
+        } else if props.runtime.is_typed() {
           "Each run starts in a fresh bounded runtime. Tagged JSON preserves exact numbers, UTF-16 units and constructor identity."
         } else {
           "Each run starts in a fresh local runtime. Use JSON or Ion inputs for larger values."
@@ -460,7 +482,7 @@ pub fn view(
       ),
     )
     let inputs = items(field(props.profile, "inputs"))
-    if props.typed {
+    if props.runtime.is_typed() {
       if props.input_mode == Ion {
         contents.push(
           @html.p(
@@ -566,7 +588,7 @@ pub fn view(
       @html.div(class="evaluation-actions", [
         @html.button(
           class="primary",
-          disabled=props.busy || props.job_pending || incompatible,
+          disabled=props.busy || props.execution_pending || incompatible,
           on_click=on_run,
           "Evaluate",
         ),
@@ -607,7 +629,7 @@ pub fn view(
               summary.cleanup != None {
               "Result · " + text(props.result, "profile")
             } else if field(props.result, "success") == Json::boolean(true) {
-              if props.typed {
+              if props.runtime.is_typed() {
                 "Result · " +
                 text(props.result, "profile") +
                 (if text(props.result, "outcome") == "model-error" {

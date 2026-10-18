@@ -22,7 +22,7 @@ for (const mode of ['debug', 'release'])
     'moon',
     [
       'build',
-      app + 'job-core',
+      app + 'execution-core',
       '--target',
       'js',
       '--target-dir',

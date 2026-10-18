@@ -132,6 +132,6 @@ Opaque extension bytes use the existing JSON binary wrapper or an Ion blob.
 complete call inventory/order and declared outputs, and requires exact metadata
 echo. Callers must validate the whole declaration graph before decoding evidence;
 the MCK adapter does so. Successful validation includes well-formed failure and
-cancellation claims. It does not run/authenticate a job or prove cancellation.
+cancellation claims. It does not run/authenticate a execution or prove cancellation.
 The parent finos/morphir specification and single Rust MCK own independent
 expectations and report checking; UI and live-host adoption are separate.

@@ -1,5 +1,5 @@
 ///|
-/// Opt-in value, invocation, output, terminal and job-trace qualification against a selected parent-owned MCK corpus
+/// Opt-in value, invocation, output, terminal and execution-trace qualification against a selected parent-owned MCK corpus
 /// and Rust runner. No upstream checkout or toolchain is acquired by this gate.
 import {
   "moonbitlang/async@0.22.4",

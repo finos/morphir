@@ -42,8 +42,8 @@ test "only native main-window app callers with a page can negotiate" {
 ///|
 test "handshake is exact, stable for a page, and offers no execution operations" {
   let session = Session::new()
-  let first = session.open(caller("one"), "0.1.0-draft.1")
-  assert_eq(session.open(caller("one"), "0.1.0-draft.1"), first)
+  let first = session.open(caller("one"), "0.2.0-draft.1")
+  assert_eq(session.open(caller("one"), "0.2.0-draft.1"), first)
   assert_eq(session.check(caller("one"), id(first)), first)
   assert_eq(fields(first).get("operations"), Some(Json::array([])))
   assert_eq(fields(first).length(), 4)
@@ -60,8 +60,8 @@ test "handshake is exact, stable for a page, and offers no execution operations"
 ///|
 test "new page invalidates old identities and stale close cannot close its replacement" {
   let session = Session::new()
-  let first = session.open(caller("one"), "0.1.0-draft.1")
-  let next = session.open(caller("two"), "0.1.0-draft.1")
+  let first = session.open(caller("one"), "0.2.0-draft.1")
+  let next = session.open(caller("two"), "0.2.0-draft.1")
   assert_true(id(first) != id(next))
   for
     (page, value) in [("one", id(first)), ("one", id(next)), ("two", id(first))] {
@@ -79,7 +79,7 @@ test "new page invalidates old identities and stale close cannot close its repla
 ///|
 test "navigation revokes access; window shutdown cannot be reopened" {
   let session = Session::new()
-  let first = session.open(caller("one"), "0.1.0-draft.1")
+  let first = session.open(caller("one"), "0.2.0-draft.1")
   session.revoke()
   let rejected = try {
     ignore(session.check(caller("one"), id(first)))
@@ -88,13 +88,13 @@ test "navigation revokes access; window shutdown cannot be reopened" {
     _ => true
   }
   assert_true(rejected)
-  let next = session.open(caller("one"), "0.1.0-draft.1")
+  let next = session.open(caller("one"), "0.2.0-draft.1")
   assert_true(id(first) != id(next))
   assert_eq(session.close(caller("one"), id(next)), { "ok": true })
   session.shutdown()
   session.revoke()
   let rejected = try {
-    ignore(session.open(caller("one"), "0.1.0-draft.1"))
+    ignore(session.open(caller("one"), "0.2.0-draft.1"))
     false
   } catch {
     _ => true
@@ -105,13 +105,13 @@ test "navigation revokes access; window shutdown cannot be reopened" {
 ///|
 test "qualified operations are independent and stable within the native page session" {
   for
-    (jobs, workspace, expected) in [
+    (executions, workspace, expected) in [
       (false, true, [Json::string("workspace")]),
-      (true, true, [Json::string("jobs"), Json::string("workspace")]),
-      (true, false, [Json::string("jobs")]),
+      (true, true, [Json::string("executions"), Json::string("workspace")]),
+      (true, false, [Json::string("executions")]),
     ] {
-    let session = Session::new(jobs~, workspace~)
-    let first = session.open(caller("one"), "0.1.0-draft.1")
+    let session = Session::new(executions~, workspace~)
+    let first = session.open(caller("one"), "0.2.0-draft.1")
     assert_eq(fields(first).get("operations"), Some(Json::array(expected)))
     assert_eq(session.check(caller("one"), id(first)), first)
   }

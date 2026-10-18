@@ -17,7 +17,7 @@ fn scope_model() -> Model {
   {
     ..initial(),
     busy: false,
-    jobs_available: true,
+    executions_available: true,
     selected: "value|original",
     evaluation_entry: "value|original",
     evaluation_result: { "success": true, "value": "42" },
@@ -25,7 +25,7 @@ fn scope_model() -> Model {
 }
 
 ///|
-test "local results clear on navigation even when native jobs are available" {
+test "local results clear on navigation even when native executions are available" {
   let other = select(scope_model(), "value|other")
   assert_eq(other.evaluation_result, Json::null())
   assert_true(other.evaluation_terminal is Absent)
@@ -38,7 +38,7 @@ test "late local replies are refused after selecting another function" {
     ..scope_model(),
     selected: "value|other",
     busy: true,
-    job: 7,
+    request_id: 7,
     evaluation_result: Json::null(),
   }
   let (after, _) = update(
@@ -60,27 +60,27 @@ test "late local replies are refused after selecting another function" {
 test "runtime changes cannot discard a pending host submission" {
   let model = {
     ..scope_model(),
-    evaluation_typed: true,
+    evaluation_runtime: @evaluation.TypedInvocation,
     host_submitting: true,
     busy: true,
-    job: 7,
+    request_id: 7,
   }
   let (after, _) = update(
     model,
-    EvaluationRuntime(false),
+    EvaluationRuntime(@evaluation.LocalScheme),
     @cmd.Emit(fn(_) { @cmd.none }),
   )
-  assert_true(after.evaluation_typed)
-  assert_eq(after.job, 7)
+  assert_true(after.evaluation_runtime.is_typed())
+  assert_eq(after.request_id, 7)
   assert_true(after.host_submitting)
 }
 
 ///|
-test "captured host results survive navigation independently of current job discovery" {
+test "captured host results survive navigation independently of current execution discovery" {
   let model = {
     ..scope_model(),
-    evaluation_host_job: true,
-    jobs_available: false,
+    evaluation_host_execution: true,
+    executions_available: false,
     host_draft: Some({ arguments: "[]", mode: @evaluation.Fields, revision: 0, }),
   }
   let other = select(model, "value|other")
@@ -95,8 +95,8 @@ test "captured host results survive navigation independently of current job disc
 fn policy_scope_model() -> Model {
   {
     ..scope_model(),
-    jobs_available: false,
-    evaluation_typed: true,
+    executions_available: false,
+    evaluation_runtime: @evaluation.TypedInvocation,
     evaluation_policy: @capabilities.CapabilityPolicy::Strict,
     local_evaluator: Some(@capabilities.SchemePortable),
     model: {
@@ -145,7 +145,7 @@ test "policy changes retain exact drafts and source profiles while making result
   assert_eq(after.source_profile, model.source_profile)
   assert_eq(after.evaluation_result, model.evaluation_result)
   assert_true(after.evaluation_revision != after.evaluation_result_revision)
-  assert_eq(after.job, model.job)
+  assert_eq(after.request_id, model.request_id)
 }
 
 ///|
@@ -155,7 +155,7 @@ test "local checking offer is scoped to the actual evaluator entry and complete 
   for
     incompatible in [
       { ..model, connected: true, },
-      { ..model, jobs_available: true, },
+      { ..model, executions_available: true, },
       { ..model, local_evaluator: None, },
       {
         ..model,
@@ -165,7 +165,7 @@ test "local checking offer is scoped to the actual evaluator entry and complete 
       },
       { ..model, selected: "value|unsupported", },
       { ..model, selected: "value|private", },
-      { ..model, evaluation_typed: false, },
+      { ..model, evaluation_runtime: @evaluation.LocalScheme, },
     ] {
     assert_false(checking_available(incompatible))
     let (after, _) = update(
@@ -185,7 +185,7 @@ test "local checking offer is scoped to the actual evaluator entry and complete 
     blocked.evaluation_policy,
     @capabilities.CapabilityPolicy::Permissive,
   )
-  assert_eq(blocked.job, requested.job)
+  assert_eq(blocked.request_id, requested.request_id)
   let (strict, _) = update(
     blocked,
     EvaluationPolicy(@capabilities.CapabilityPolicy::Strict),
@@ -199,7 +199,7 @@ test "editing policy during execution never rewrites the completed run selection
   let running = {
     ..policy_scope_model(),
     busy: true,
-    job: 7,
+    request_id: 7,
     evaluation_policy: @capabilities.CapabilityPolicy::Permissive,
   }
   let (edited, _) = update(
@@ -207,7 +207,7 @@ test "editing policy during execution never rewrites the completed run selection
     EvaluationPolicy(@capabilities.CapabilityPolicy::Strict),
     @cmd.Emit(fn(_) { @cmd.none }),
   )
-  assert_eq(edited.job, running.job)
+  assert_eq(edited.request_id, running.request_id)
   assert_true(edited.busy)
   let reply : Json = {
     "success": true,

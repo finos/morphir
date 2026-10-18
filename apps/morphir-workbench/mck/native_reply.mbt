@@ -27,8 +27,8 @@ fn captured_session(value : Json) -> String? {
 fn native_reply(id : Json, input : Json) -> Json {
   guard field(input, "expectedOperation") is String(operation) &&
     [
-      "session.open", "session.check", "session.close", "job.submit", "job.query",
-      "job.cancel", "job.release", "workspace.choose", "workspace.cancel-picker",
+      "session.open", "session.check", "session.close", "execution.submit", "execution.query",
+      "execution.cancel", "execution.release", "workspace.choose", "workspace.cancel-picker",
       "workspace.revoke", "workspace.open", "workspace.read", "workspace.release",
     ].contains(operation) else {
     abort("workbench: invalid captured native operation")

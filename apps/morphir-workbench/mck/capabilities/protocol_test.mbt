@@ -61,7 +61,7 @@ test "capability policy witness observes model decoding failure without running"
 
 ///|
 test "capability policy witness cannot negotiate adjacent versions or mappings" {
-  for version in ["0.1.0-draft.11", "0.1.0-draft.12+build", "0.1.0-draft.13"] {
+  for version in ["0.1.0-draft.11", "0.1.0-draft.12+build", "0.1.0-draft.19"] {
     let request : Json = {
       "id": 1,
       "op": "capabilities",

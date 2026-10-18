@@ -49,8 +49,8 @@ priv struct Attempt {
 }
 
 ///|
-priv struct ControlledJobs {
-  host : @jobs.Host
+priv struct ControlledExecutions {
+  host : @executions.Host
   session : String
   cleanup : Cleanup
   mut closed : Bool
@@ -66,7 +66,7 @@ priv struct Runtime {
   pickers : Array[Picker]
   cleanups : Map[String, Cleanup]
   gates : Map[String, Gate]
-  services : Map[String, ControlledJobs]
+  services : Map[String, ControlledExecutions]
   workspace_scopes : Map[String, String]
   pending_workspace_scopes : Array[String]
   calls : Array[Json]
@@ -311,7 +311,7 @@ fn Runtime::frame(self : Runtime, action : Json) -> (String, Json)? {
   let operation = text(field(action, "operation"))
   let frame : Map[String, Json] = {
     "profile": "morphir/workbench/native",
-    "contractVersion": "0.1.0-draft.1",
+    "contractVersion": "0.2.0-draft.1",
     "operation": Json::string(operation),
   }
   if operation == "session.open" {
@@ -322,19 +322,19 @@ fn Runtime::frame(self : Runtime, action : Json) -> (String, Json)? {
   }
   frame["sessionId"] = Json::string(session)
   let payload : Map[String, Json] = Map([])
-  if operation == "job.submit" {
+  if operation == "execution.submit" {
     guard field(self.input, "evaluation") is Object(evaluation) else {
       abort("native owner MCK: evaluation")
     }
     for (key, value) in evaluation {
       payload[key] = value
     }
-    payload["contractVersion"] = Json::string("0.1.0-draft.1")
-  } else if operation.has_prefix("job.") {
-    guard self.reference(action, "job", "job") is Some(identity) else {
+    payload["contractVersion"] = Json::string("0.2.0-draft.1")
+  } else if operation.has_prefix("execution.") {
+    guard self.reference(action, "execution", "execution") is Some(identity) else {
       return None
     }
-    payload["contractVersion"] = Json::string("0.1.0-draft.1")
+    payload["contractVersion"] = Json::string("0.2.0-draft.1")
     payload["identity"] = identity
   } else if [
       "workspace.revoke", "workspace.open", "workspace.read", "workspace.release",
@@ -356,7 +356,7 @@ fn Runtime::frame(self : Runtime, action : Json) -> (String, Json)? {
       payload["offset"] = field(action, "offset")
     }
   }
-  if operation.has_prefix("job.") ||
+  if operation.has_prefix("execution.") ||
     [
       "workspace.revoke", "workspace.open", "workspace.read", "workspace.release",
     ].contains(operation) {
@@ -460,7 +460,7 @@ async fn Runtime::execute(self : Runtime, owner : @bridge.Owner) -> Json {
         )
       "complete" =>
         completion = self.complete(
-          text(field(action, "job")),
+          text(field(action, "execution")),
           field(action, "outcomes"),
         )
       "replace" => {

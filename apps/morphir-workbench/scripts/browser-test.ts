@@ -12,8 +12,8 @@ import { readFile, mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createWorkbenchServer } from './server.ts';
-import { createJobProvider } from './job-provider.ts';
-import { jobWorkflow } from './job-workflow.ts';
+import { createExecutionProvider } from './execution-provider.ts';
+import { executionWorkflow } from './execution-workflow.ts';
 import { createServer as createPortReservation } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -33,7 +33,7 @@ async function liveHostWorkflow(binary: string) {
   await mkdir(workspace); await mkdir(home);
   await writeFile(join(workspace, 'morphir.toml'), '[project]\nname="acceptance/workbench"\nversion="1.0.0"\nsource_directory="src"\n[frontend]\nlanguage="gleam"\n');
   let host: ChildProcess | undefined, proxy: ReturnType<typeof createWorkbenchServer> | undefined, browser: Browser | null | undefined, desktop: ChildProcess | undefined;
-  const jobsEnabled = process.env.MORPHIR_WORKBENCH_LIVE_JOBS === '1';
+  const executionsEnabled = process.env.MORPHIR_WORKBENCH_LIVE_EXECUTIONS === '1';
   try {
     host = spawn(binary, ['ui', workspace, '--no-open', '--no-banner'], {
       env: {...process.env, MORPHIR_HOME:home, RUST_LOG:'warn'}, stdio:['ignore','ignore','pipe'],
@@ -50,8 +50,8 @@ async function liveHostWorkflow(binary: string) {
         if (url) { clearTimeout(timer); resolve(new URL(url)); }
       });
     });
-    const jobs = jobsEnabled ? await createJobProvider() : null;
-    proxy = createWorkbenchServer({host:launch.origin, jobs});
+    const executions = executionsEnabled ? await createExecutionProvider() : null;
+    proxy = createWorkbenchServer({host:launch.origin, executions});
     proxy.listen(0, '127.0.0.1'); await once(proxy, 'listening');
     const origin = `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`;
     let context: BrowserContext, page: Page;
@@ -79,11 +79,11 @@ async function liveHostWorkflow(binary: string) {
         if (typeof window.__MoonBit__?.core?.invokeOp !== 'function') return [];
         const accessible = [];
         for (const [name, payload] of [
-          ['app:workbench_native', JSON.stringify({ profile: 'morphir/workbench/native', contractVersion: '0.1.0-draft.1', operation: 'session.open' })],
-          ['app:workbench_session_open', '0.1.0-draft.1'],
+          ['app:workbench_native', JSON.stringify({ profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.1', operation: 'session.open' })],
+          ['app:workbench_session_open', '0.2.0-draft.1'],
           ['app:workbench_workspace_choose', 'not-a-native-session'],
           ['app:workbench_workspace', JSON.stringify({ sessionId: 'not-a-native-session', body: '{"action":"cancel-picker"}' })],
-          ['app:workbench_job', JSON.stringify({ sessionId: 'not-a-native-session', path: 'session', body: null })],
+          ['app:workbench_execution', JSON.stringify({ sessionId: 'not-a-native-session', path: 'session', body: null })],
         ] as const) {
           try { await window.__MoonBit__.core.invokeOp(name!, payload!); accessible.push(name); } catch { /* No native command grant. */ }
         }
@@ -111,7 +111,7 @@ async function liveHostWorkflow(binary: string) {
     });
     if (!desktop) {
       assert.equal((await context!.request.get(origin+'/api/session')).status(), 401);
-      if (jobsEnabled) assert.equal((await context!.request.get(origin+'/api/workbench/session')).status(), 401);
+      if (executionsEnabled) assert.equal((await context!.request.get(origin+'/api/workbench/session')).status(), 401);
       await page!.goto(origin+launch.pathname+launch.search);
     } else await page!.reload();
     await page!.getByRole('status').filter({hasText:'Connected · ready to compile'}).waitFor();
@@ -151,8 +151,8 @@ async function liveHostWorkflow(binary: string) {
     await page!.getByRole('heading',{name:'Currency',exact:true}).waitFor();
     await page!.locator('.tree-item').filter({hasText:'identity'}).click();
     await page!.getByRole('heading',{name:'identity',exact:true}).waitFor();
-    if (!jobsEnabled) assert.equal(await page!.getByRole('button',{name:'Evaluate',exact:true}).count(), 0);
-    else await jobWorkflow(page!, { screenshot: process.env.MORPHIR_WORKBENCH_JOB_SCREENSHOT });
+    if (!executionsEnabled) assert.equal(await page!.getByRole('button',{name:'Evaluate',exact:true}).count(), 0);
+    else await executionWorkflow(page!, { screenshot: process.env.MORPHIR_WORKBENCH_EXECUTION_SCREENSHOT });
     assert.ok(methods.includes('morphir.session.initialize'));
     for (const method of ['catalog','compile','generate']) assert.ok(methods.includes('morphir.playground.'+method));
     assert.ok(methods.includes('morphir.workspace.open'));
@@ -160,7 +160,7 @@ async function liveHostWorkflow(binary: string) {
     assert.ok(methods.every(method => !/evaluate|cancel/.test(method)), 'v1 does not invent evaluation or cancellation RPC');
     assert.deepEqual(errors, []);
     if (process.env.MORPHIR_WORKBENCH_LIVE_SCREENSHOT) await page!.screenshot({path:process.env.MORPHIR_WORKBENCH_LIVE_SCREENSHOT,fullPage:true});
-    console.log(JSON.stringify({liveRustHost:true,protocol:1,authenticated:true,singleUseLaunch:true,jobs:jobsEnabled,proton:!!desktop,frontend:'gleam',provider:'morphir-gleam',target:'gleam',artifactCount:generation.result.artifacts!.length,workspaceModel:true,methods:[...new Set(methods)]}));
+    console.log(JSON.stringify({liveRustHost:true,protocol:1,authenticated:true,singleUseLaunch:true,executions:executionsEnabled,proton:!!desktop,frontend:'gleam',provider:'morphir-gleam',target:'gleam',artifactCount:generation.result.artifacts!.length,workspaceModel:true,methods:[...new Set(methods)]}));
     await browser.close(); browser = null;
     host.kill('SIGINT');
     const timer = setTimeout(() => host!.kill('SIGKILL'), 5000);
@@ -174,7 +174,7 @@ async function liveHostWorkflow(binary: string) {
     }
     proxy?.closeAllConnections();
     if (proxy?.listening) await new Promise(resolve => proxy!.close(resolve));
-    await proxy?.jobCleanup;
+    await proxy?.executionCleanup;
     if (host?.pid && host.exitCode === null && host.signalCode === null) {
       const exited = once(host, 'exit'); host.kill('SIGKILL'); await exited;
     }

@@ -403,7 +403,7 @@ pub fn Outcomes::decode(bytes : Bytes, format : String) -> Outcomes raise {
 
 ///|
 /// Admission succeeds for well-formed failed/cancelled evidence too. It neither
-/// runs nor authenticates a job. Caller admits declarations before this function.
+/// runs nor authenticates a execution. Caller admits declarations before this function.
 pub fn validate_outcomes(
   outcomes : Outcomes,
   suite : Suite,

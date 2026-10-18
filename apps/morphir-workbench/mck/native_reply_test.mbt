@@ -4,7 +4,7 @@ fn reply_request(input : Json) -> Json {
     "id": 1,
     "op": "validate-native-reply",
     "suite": "workbench",
-    "contractVersion": "0.1.0-draft.8",
+    "contractVersion": "0.1.0-draft.16",
     "format": "json",
     "input": input,
   }
@@ -16,10 +16,13 @@ test "native reply MCK negotiates and invokes the production reply decoder" {
     "id": 1,
     "op": "capabilities",
     "suite": "workbench",
-    "contractVersion": "0.1.0-draft.8",
+    "contractVersion": "0.1.0-draft.16",
   })
-  assert_eq(job_field(caps, "operations"), (["validate-native-reply"] : Json))
-  assert_eq(job_field(caps, "formats"), (["json"] : Json))
+  assert_eq(
+    execution_field(caps, "operations"),
+    (["validate-native-reply"] : Json),
+  )
+  assert_eq(execution_field(caps, "formats"), (["json"] : Json))
   assert_eq(
     @mck.handle(
       reply_request({
@@ -53,7 +56,7 @@ test "native reply MCK projects admitted effects and preserves call correlation"
     assert_eq(
       @mck.handle(
         reply_request({
-          "expectedOperation": "job.submit",
+          "expectedOperation": "execution.submit",
           "expectedSession": "session",
           "encoding": "utf8",
           "source": source,

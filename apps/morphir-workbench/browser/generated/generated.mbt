@@ -97,7 +97,7 @@ pub(all) enum Action {
 ///|
 /// Work for the workbench after an action.
 pub(all) enum Effect {
-  /// Decode this file's binary Ion to text, as a job.
+  /// Decode this file's binary Ion to text, as a request.
   RequestIonText(String)
   Copy(String)
   DownloadFile(String)

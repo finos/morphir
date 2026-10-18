@@ -1,6 +1,6 @@
 ///|
 fn opening() -> String {
-  "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+  "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}"
 }
 
 ///|
@@ -40,11 +40,11 @@ fn submission(
     (
       {
         "profile": "morphir/workbench/native",
-        "contractVersion": "0.1.0-draft.1",
-        "operation": "job.submit",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.submit",
         "sessionId": "s",
         "payload": {
-          "contractVersion": "0.1.0-draft.1",
+          "contractVersion": "0.2.0-draft.1",
           "model": model,
           "entry": "not-an-admitted-function",
           "inputs": { "format": format, "source": source },
@@ -73,7 +73,7 @@ test "native frame boundary decodes nested JSON without model or value admission
 
 ///|
 test "native workspace integers use original number text" {
-  let source = "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"workspace.read\",\"sessionId\":\"s\",\"payload\":{\"grantId\":\"g\",\"sequence\":SEQUENCE,\"offset\":OFFSET}}"
+  let source = "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"workspace.read\",\"sessionId\":\"s\",\"payload\":{\"grantId\":\"g\",\"sequence\":SEQUENCE,\"offset\":OFFSET}}"
   for sequence in ["1.00000000000000001", "2147483647.00000001", "1e-999"] {
     rejected(
       @utf8.encode(

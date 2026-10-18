@@ -47,7 +47,7 @@ export interface WorkResult {
   frontends?: Language[];
   targets?: Target[];
   projects?: Project[];
-  jobsAvailable?: boolean;
+  executionsAvailable?: boolean;
   workspaceAvailable?: boolean;
   nativeSession?: boolean;
   cancelled?: boolean;
@@ -59,24 +59,24 @@ export interface WorkResult {
   originalArtifact?: Artifact;
   inspectionMessage?: string;
   generationMessage?: string;
-  job?: Job | null;
+  execution?: Execution | null;
 }
-export interface Job {
-  state: string;
-  identity: { hostId: string; sessionId: string; providerId: string; jobId: string; snapshotId: string };
+export interface Execution {
+  state: 'submitted' | 'running' | 'terminal';
+  identity: { hostId: string; sessionId: string; providerId: string; executionId: string; snapshotId: string };
   connected?: boolean;
   sequence?: number;
   cancelRequested?: boolean;
-  cancelAction?: string;
+  cancelAction?: 'send' | 'pending' | 'already-terminal' | 'unavailable' | 'disconnected';
 }
-export type Progress = (job: Job | null) => void;
+export type Progress = (execution: Execution | null) => void;
 export interface Adapter {
   initialize(): Promise<WorkResult>;
   execute(request: WorkRequest, progress?: Progress): Promise<WorkResult>;
   cancel(): void | Promise<void>;
   dispose(): void;
   runtimeLabel?: string;
-  jobs?: { active: boolean; job: Job | null } | null;
+  executions?: { active: boolean; execution: Execution | null } | null;
 }
 export interface InitialSource { providerId: string; locator: string; displayName: string; }
 export interface Manifest {
@@ -87,35 +87,35 @@ export interface Manifest {
   initialSources: InitialSource[];
 }
 export type Core = (command: string) => string;
-export interface JobDescriptor {
+export interface ExecutionDescriptor {
   profile: string;
   contractVersion: string;
   sessionId?: string;
   operations: string[];
   offer: Json;
 }
-export interface NativeDescriptor extends JobDescriptor { sessionId: string; }
+export interface NativeDescriptor extends ExecutionDescriptor { sessionId: string; }
 export type NativeReply<T> = { ok: true; operation: string; value: T } |
   { ok: false; error: { code: string; message: string; effect: string } };
 export interface CoreReply<T = Json> {
   ok: boolean;
   code?: string;
   value: T;
-  job?: Job;
+  execution?: Execution;
   result?: WorkResult;
 }
-export interface JobTransport {
+export interface ExecutionTransport {
   request?(path: string, source?: string, optional?: boolean): Promise<{ ok: boolean; status: number; source: string }>;
   nativeDescriptor?(): Promise<string>;
   nativeRequest?(source: string): Promise<string>;
 }
-export interface JobOptions {
+export interface ExecutionOptions {
   fetchFn?: Fetch;
   core?: Core;
   pause?: () => Promise<void>;
   authenticate?: () => Promise<string>;
   timeout?: number;
-  transport?: JobTransport;
+  transport?: ExecutionTransport;
 }
 export type Invoke = (name: string, source: string) => unknown | Promise<unknown>;
 export interface NativeBridge { core?: { invokeOp?: Invoke }; }

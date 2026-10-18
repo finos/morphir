@@ -52,7 +52,7 @@ test "draft3 negotiates all admission operations with exact older drafts retaine
     "operations": ["decode-value", "validate-value", "validate-invocations"],
     "formats": ["json", "ion-text"],
   })
-  for version in ["0.1.0-draft.1", "0.1.0-draft.2", "0.1.0-draft.6"] {
+  for version in ["0.1.0-draft.1", "0.1.0-draft.2", "0.1.0-draft.14"] {
     let request = invocation_request(invocation_suite([]), public_manifest([]))
     if request is Object(fields) {
       fields["contractVersion"] = Json::string(version)

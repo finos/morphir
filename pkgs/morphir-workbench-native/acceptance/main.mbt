@@ -2,7 +2,7 @@
 fn body(format~ : String = "json") -> String raise {
   (
     {
-      "contractVersion": "0.1.0-draft.1",
+      "contractVersion": "0.2.0-draft.1",
       "model": @codec.to_json(@fixtures.invocation_library()).stringify(),
       "entry": "calls:main#subtract",
       "inputs": {
@@ -23,7 +23,7 @@ fn value(reply : Json) -> Json raise {
     Json::number(200),
     msg=reply.stringify(),
   )
-  @jobs.decode(@wire.string(@wire.field(reply, "source")))
+  @executions.decode(@wire.string(@wire.field(reply, "source")))
 }
 
 ///|
@@ -33,7 +33,7 @@ fn identity(service : @native.Service, format~ : String = "json") -> Json raise 
 
 ///|
 fn request(identity : Json) -> String {
-  ({ "contractVersion": "0.1.0-draft.1", "identity": identity } : Json).stringify()
+  ({ "contractVersion": "0.2.0-draft.1", "identity": identity } : Json).stringify()
 }
 
 ///|
@@ -180,7 +180,7 @@ async fn main {
         ),
       ] {
       let payload : Json = {
-        "contractVersion": "0.1.0-draft.1",
+        "contractVersion": "0.2.0-draft.1",
         "model": model,
         "entry": entry,
         "inputs": {
@@ -206,7 +206,7 @@ async fn main {
         ),
       ] {
       let payload : Json = {
-        "contractVersion": "0.1.0-draft.1",
+        "contractVersion": "0.2.0-draft.1",
         "model": model,
         "entry": "pricing:quotes#total",
         "inputs": { "format": format, "source": source },

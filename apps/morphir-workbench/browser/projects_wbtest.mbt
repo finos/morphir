@@ -203,7 +203,7 @@ test "a host session starts with empty sources" {
 
 ///|
 fn initialized(model : Model, reply : Json) -> Model {
-  let busy = { ..model, busy: true, job: 7, }
+  let busy = { ..model, busy: true, request_id: 7, }
   let (after, _) = update(
     busy,
     Receive(7, busy.revision, "initialize", reply.stringify()),
@@ -321,7 +321,7 @@ test "a compile reply sets the problem counts per file" {
 
 ///|
 fn initialized_compile(model : Model, reply : Json) -> Model {
-  let busy = { ..model, busy: true, job: 7, }
+  let busy = { ..model, busy: true, request_id: 7, }
   let (after, _) = update(
     busy,
     Receive(7, busy.revision, "compile", reply.stringify()),

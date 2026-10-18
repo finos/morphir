@@ -1,5 +1,5 @@
 ///|
-test "a failed compile keeps its job context on the log, the output and the report" {
+test "a failed compile keeps its execution context on the log, the output and the report" {
   let model = { ..ready_model(), panel: @bottom_panel.State::new(), }
   let reply : Json = {
     "success": false,
@@ -87,7 +87,7 @@ test "a failed Ion decode reports its Ion code with the file it read" {
     output: { "success": true, "artifacts": [artifact] },
     target: "moonbit",
     busy: true,
-    job: 9,
+    request_id: 9,
     generated_state: { ..@generated.State::new(), selected: "symbols.10n", },
     panel: @bottom_panel.State::new(),
   }
@@ -124,7 +124,7 @@ test "a failed Ion decode reports its Ion code with the file it read" {
 }
 
 ///|
-test "a decoded file shows in the Generated tab; a decode waits for a running job" {
+test "a decoded file shows in the Generated tab; a decode waits for a running execution" {
   let artifact : Json = {
     "path": "symbols.10n",
     "content": "4AEA6g8=",
@@ -138,7 +138,9 @@ test "a decoded file shows in the Generated tab; a decode waits for a running jo
     generated_state: { ..@generated.State::new(), selected: "symbols.10n", },
   }
   let started = send(model, [RunCommand(ViewIonText)])
-  let busy = send({ ..model, busy: true, job: 3, }, [RunCommand(ViewIonText)])
+  let busy = send({ ..model, busy: true, request_id: 3, }, [
+    RunCommand(ViewIonText),
+  ])
   let reply : Json = {
     "success": true,
     "operation": "decode-ion",
@@ -150,7 +152,7 @@ test "a decoded file shows in the Generated tab; a decode waits for a running jo
   let (shown, _) = update(
     started,
     Receive(
-      started.job,
+      started.request_id,
       started.output_revision,
       "decode-ion",
       reply.stringify(),
@@ -158,9 +160,11 @@ test "a decoded file shows in the Generated tab; a decode waits for a running jo
     ignore_cmds(),
   )
   @expect.expect_all(s => {
-    s.expect(started.busy, label="a job").to_be_true()
-    s.expect(started.job, label="new job").to_equal(model.job + 1)
-    s.expect(busy.job, label="busy refuses").to_equal(3)
+    s.expect(started.busy, label="a execution").to_be_true()
+    s
+    .expect(started.request_id, label="new execution")
+    .to_equal(model.request_id + 1)
+    s.expect(busy.request_id, label="busy refuses").to_equal(3)
     s
     .expect(shown.generated_state.preview, label="decoded")
     .to_equal(IonText("symbols.10n", "null", 1))
@@ -234,8 +238,12 @@ test "a connected workbench does not send a decode to its host" {
   let from_palette = send(model, [RunCommand(ViewIonText)])
   let from_heading = send(model, [Generated(ViewIonTextOf("a.10n"))])
   @expect.expect_all(s => {
-    s.expect(from_palette.job, label="palette").to_equal(model.job)
-    s.expect(from_heading.job, label="heading").to_equal(model.job)
+    s
+    .expect(from_palette.request_id, label="palette")
+    .to_equal(model.request_id)
+    s
+    .expect(from_heading.request_id, label="heading")
+    .to_equal(model.request_id)
     s.expect(from_heading.busy, label="not busy").to_be_false()
     s
     .expect(from_heading.status, label="says why")

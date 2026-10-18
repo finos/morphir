@@ -1,6 +1,6 @@
-import type { Adapter, Catalog, CoreReply, Diagnostic, JobOptions, Language, Manifest, Progress, Project, Target, WorkRequest, WorkResult, WorkerPort, Rpc, RpcSocket, Fetch } from './contracts.ts';
+import type { Adapter, Catalog, CoreReply, Diagnostic, ExecutionOptions, Language, Manifest, Progress, Project, Target, WorkRequest, WorkResult, WorkerPort, Rpc, RpcSocket, Fetch } from './contracts.ts';
 import { isRecord, workbenchError } from '../../../types/data.ts';
-import { JobClient } from './job-session.ts';
+import { ExecutionClient } from './execution-session.ts';
 import { captureLocalEvaluation, matchesCapabilityPolicy } from './capabilities.ts';
 // Browser host boundary. Private operation envelopes never go onto Morphir RPC.
 export class LocalAdapter {
@@ -162,7 +162,7 @@ function diagnosticMessage(result: { diagnostics?: Diagnostic[] }, fallback: str
 
 export class ConnectedAdapter {
   rpc: Rpc;
-  jobs: Pick<JobClient, 'initialize' | 'execute' | 'resume' | 'cancel' | 'active' | 'job'> | null;
+  executions: Pick<ExecutionClient, 'initialize' | 'execute' | 'resume' | 'cancel' | 'active' | 'execution'> | null;
   manifest: Manifest;
   local: Pick<Adapter, 'execute' | 'cancel'>;
   catalog: Catalog;
@@ -170,10 +170,10 @@ export class ConnectedAdapter {
   documentVersion: number;
   epoch: number;
   workspaceMessage?: string;
-  jobsAvailable = false;
-  constructor(rpc: Rpc, manifest: Manifest, local: Pick<Adapter, 'execute' | 'cancel'>, jobs: Pick<JobClient, 'initialize' | 'execute' | 'resume' | 'cancel' | 'active' | 'job'> | null = null) {
+  executionsAvailable = false;
+  constructor(rpc: Rpc, manifest: Manifest, local: Pick<Adapter, 'execute' | 'cancel'>, executions: Pick<ExecutionClient, 'initialize' | 'execute' | 'resume' | 'cancel' | 'active' | 'execution'> | null = null) {
     this.rpc = rpc;
-    this.jobs = jobs;
+    this.executions = executions;
     this.manifest = validateManifest(manifest);
     this.local = local;
     this.catalog = { frontends: [], targets: [] };
@@ -211,16 +211,16 @@ export class ConnectedAdapter {
         }
       } catch (cause) { const error = workbenchError(cause); this.workspaceMessage = error.message; }
     }
-    this.jobsAvailable = this.jobs ? await this.jobs.initialize() : false;
-    return { success: true, operation: 'initialize', connected: true, jobsAvailable: this.jobsAvailable, catalog: this.catalog, projects: this.projects,
+    this.executionsAvailable = this.executions ? await this.executions.initialize() : false;
+    return { success: true, operation: 'initialize', connected: true, executionsAvailable: this.executionsAvailable, catalog: this.catalog, projects: this.projects,
       message: this.workspaceMessage || (this.catalog.frontends.length ? 'Connected · ready to compile' : 'Connected · no compiler is advertised') };
   }
   async execute(request: WorkRequest, progress?: Progress): Promise<WorkResult> {
     if (request.executionMode === 'capability' || request.admission != null) {
       throw new Error('This connected session does not offer checking-policy selection.');
     }
-    if (request.operation === 'resume-job') return this.jobs!.resume(progress);
-    if (request.operation === 'evaluate' && this.jobsAvailable) return this.jobs!.execute(request, progress);
+    if (request.operation === 'resume-execution') return this.executions!.resume(progress);
+    if (request.operation === 'evaluate' && this.executionsAvailable) return this.executions!.execute(request, progress);
     const epoch = this.epoch;
     const stillCurrent = () => { if (epoch !== this.epoch) throw new Error("Discarded. The host may still be working."); };
     if (request.operation === 'inspect') return this.local.execute(request);
@@ -277,7 +277,7 @@ export class ConnectedAdapter {
     return result;
   }
   cancel() {
-    if (this.jobs?.active || (this.jobs?.job && this.jobs.job.state !== 'terminal')) return this.jobs.cancel();
+    if (this.executions?.active || (this.executions?.execution && this.executions.execution.state !== 'terminal')) return this.executions.cancel();
     ++this.epoch; this.local.cancel(); /* v1 has no server cancellation method */ }
   dispose() { ++this.epoch; this.local.cancel(); this.rpc.dispose?.(); }
 }
@@ -297,11 +297,11 @@ export async function connect(location: Pick<Location, 'href' | 'protocol'>, loc
       socket.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Cannot connect to the same-origin Morphir host.')); }, { once: true });
       socket.addEventListener('close', () => { clearTimeout(timer); reject(new Error('Morphir connection closed before initialization.')); }, { once: true });
     });
-    const jobs = new JobClient(manifest.sessionId, { fetchFn, authenticate: async () => {
+    const executions = new ExecutionClient(manifest.sessionId, { fetchFn, authenticate: async () => {
       const response = await fetchFn('/api/session', { credentials: 'same-origin', cache: 'no-store' });
-      if (!response.ok) throw new Error('Authenticate with the same host session to resume this job.');
+      if (!response.ok) throw new Error('Authenticate with the same host session to resume this execution.');
       return validateManifest(await response.json()).sessionId;
     } });
-    return new ConnectedAdapter(rpc, manifest, local, jobs);
+    return new ConnectedAdapter(rpc, manifest, local, executions);
   } catch (cause) { const error = workbenchError(cause); rpc.dispose(); throw error; }
 }

@@ -80,6 +80,24 @@ The resolved projects, sources, configuration and stages for one invocation.
 **Publication**:
 Making a completed set of artifacts available at its destination.
 
+## Workbench execution
+
+**Operation**:
+A kind of work a Morphir provider can perform, such as function evaluation, compilation or generation.
+
+**Invocation**:
+A call to a particular Morphir function with its ordered arguments. An evaluation execution may contain one or more invocations.
+
+**Execution request**:
+A request to perform a Morphir operation with selected inputs and execution context. Acceptance creates an identified execution; rejection does not.
+
+**Execution**:
+An accepted, identified instance of a Morphir operation with captured inputs and execution context, tracked through its lifecycle, outcomes and cleanup. Reconnection observes the same execution; a new accepted request creates a new execution.
+_Avoid_: Job, task, invocation when referring to the tracked execution
+
+**Function evaluation**:
+Performing Morphir function invocations against a captured model revision using the selected runtime and checking policy.
+
 ## Runtime capabilities
 
 **Runtime capabilities**:

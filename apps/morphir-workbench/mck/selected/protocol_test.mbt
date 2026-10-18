@@ -54,7 +54,7 @@ test "selected Scheme witness observes model decoding failure without running" {
 
 ///|
 test "selected Scheme witness cannot negotiate adjacent versions or mappings" {
-  for version in ["0.1.0-draft.10", "0.1.0-draft.11+build", "0.1.0-draft.12"] {
+  for version in ["0.1.0-draft.18", "0.1.0-draft.11+build", "0.1.0-draft.12"] {
     let request : Json = {
       "id": 1,
       "op": "capabilities",

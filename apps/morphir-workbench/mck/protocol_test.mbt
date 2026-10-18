@@ -91,7 +91,7 @@ test "adapter rejects unsupported drafts and leaked expected values" {
       "id": 3,
       "op": "capabilities",
       "suite": "workbench",
-      "contractVersion": "0.1.0-draft.9",
+      "contractVersion": "0.1.0-draft.17",
     },
     {
       "id": 3,
@@ -110,6 +110,32 @@ test "adapter rejects unsupported drafts and leaked expected values" {
       "code": "workbench.invalid_request",
     })
   }
+}
+
+///|
+test "replacement adapter rejects retired job trace and native MCK drafts" {
+  for version in ["0.1.0-draft.6", "0.1.0-draft.7", "0.1.0-draft.8"] {
+    assert_eq(
+      @mck.handle({
+        "id": 1,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": version,
+      }),
+      { "id": 1, "status": "invalid", "code": "workbench.invalid_request" },
+    )
+  }
+  assert_eq(
+    @mck.handle({
+      "id": 1,
+      "op": "reduce-job",
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.14",
+      "format": "json",
+      "input": {},
+    }),
+    { "id": 1, "status": "invalid", "code": "workbench.invalid_request" },
+  )
 }
 
 ///|

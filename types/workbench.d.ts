@@ -1,9 +1,9 @@
 import type { Core, NativeBridge, WorkRequest, Artifact } from '../apps/morphir-workbench/browser/contracts.ts';
 
 declare global {
-  var morphirWorkbenchJobs: Core;
+  var morphirWorkbenchExecutions: Core;
   var morphirWorkbenchDecode: Core;
-  var morphirWorkbenchJobHost: (offer: string) => Core;
+  var morphirWorkbenchExecutionHost: (offer: string) => Core;
   var __MoonBit__: NativeBridge | undefined;
   var morphirWorkbench: {
     connected: boolean;

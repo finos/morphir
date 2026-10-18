@@ -80,7 +80,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
         receive(reply);
       });
     });
-    const fixture = fileURLToPath(new URL('../fixtures/capability-job.json', import.meta.url));
+    const fixture = fileURLToPath(new URL('../fixtures/capability-execution.json', import.meta.url));
     await importModel(fixture);
     await page.locator('.tree-item[title="selected:main#answer"]').click();
     await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();

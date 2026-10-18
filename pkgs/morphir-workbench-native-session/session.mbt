@@ -35,27 +35,30 @@ enum State {
 pub struct Session {
   priv mut state : State
   priv mut next : Int32
-  priv jobs : Bool
+  priv executions : Bool
   priv workspace : Bool
 }
 
 ///|
-pub fn Session::new(jobs~ : Bool = false, workspace~ : Bool = false) -> Session {
-  { state: Idle, next: 0, jobs, workspace, }
+pub fn Session::new(
+  executions~ : Bool = false,
+  workspace~ : Bool = false,
+) -> Session {
+  { state: Idle, next: 0, executions, workspace, }
 }
 
 ///|
 fn Session::descriptor(self : Session, id : String) -> Json {
   let operations : Array[Json] = []
-  if self.jobs {
-    operations.push(Json::string("jobs"))
+  if self.executions {
+    operations.push(Json::string("executions"))
   }
   if self.workspace {
     operations.push(Json::string("workspace"))
   }
   {
     "ok": true,
-    "bridgeVersion": "0.1.0-draft.1",
+    "bridgeVersion": "0.2.0-draft.1",
     "sessionId": id,
     "operations": Json::array(operations),
   }
@@ -70,7 +73,7 @@ pub fn Session::open(
   caller : Caller,
   version : String,
 ) -> Json raise Invalid {
-  guard version == "0.1.0-draft.1" else {
+  guard version == "0.2.0-draft.1" else {
     raise Rejected("workbench.native_version")
   }
   match self.state {

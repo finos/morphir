@@ -1,10 +1,10 @@
-import type { Outcomes } from '../apps/morphir-workbench/scripts/job-contracts.ts';
+import type { Outcomes } from '../apps/morphir-workbench/scripts/execution-contracts.ts';
 import type { Json } from '../types/data.ts';
 
 declare global {
   var artifactDownload: { name: string; bytes: number[] } | null;
   var toolKeys: boolean[];
-  var nativeJobCalls: string[];
+  var nativeExecutionCalls: string[];
   var workspaceDownload: Promise<number[]>;
   var releaseEvaluation: (() => void) | undefined;
   var restoreRequests: (() => void) | undefined;

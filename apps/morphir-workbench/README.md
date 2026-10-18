@@ -9,8 +9,8 @@ uses browser workers for compilation and explicitly selected Local Scheme evalua
 On qualified macOS Apple Silicon packages, Typed invocation uses owned native
 workers. The explorer also offers read-only workspace grants. Explicit connected launches take precedence over this bootstrap.
 
-`browser/job-session.js` owns shared job observation and receipt validation.
-`browser/job-transport.js` carries bounded HTTP text frames; an injected transport
+`browser/execution-session.js` owns shared execution observation and receipt validation.
+`browser/execution-transport.js` carries bounded HTTP text frames; an injected transport
 uses the same decoder, cursor, cancellation and release logic. Native desktop
 transport supplies raw business frames to that same client after page-bound
 session checks. See the desktop README for budgets and platform qualification.
@@ -142,7 +142,7 @@ The **MoonBit** Target produces `library.mbt`, `moon.mod`, `moon.pkg` and binary
 `symbols.10n`. Text files have read-only highlighting; file/ZIP downloads retain the exact bytes of binary files.
 A generated file has a context menu (right-click, Shift+F10 or its ⋯ button) with Copy path and Download, and for a
 binary file **View as Ion text** and **View raw (hex)**. View as Ion text decodes a binary Ion file (one that starts
-with `E0 01 00 EA`) to pretty Ion text in the browser-local worker, as a job. Each limit stops the work before it
+with `E0 01 00 EA`) to pretty Ion text in the browser-local worker, as an operation. Each limit stops the work before it
 grows: at most 4 MiB in (checked before base64 decoding), at most 128 levels, 100,000 values (nulls included) and
 64 KiB for one integer or decimal (checked by a walk of the binary structure before the Ion reader runs), and at
 most 4 Mi characters out (counted while the text is written). The viewer marks the decoded view and has **Show
@@ -288,7 +288,7 @@ execution validation rejects them until completed. Unexpected tags, record field
 constructor owners or invalid JSON fall back to a repair message without replacing
 data. Forms visit at most 200 values/units with depth 32. Recursive types are
 rendered from their actual finite values; additions that have no bounded finite
-default use JSON input. Connected hosts use the separate authenticated job profile described below.
+default use JSON input. Connected hosts use the separate authenticated execution profile described below.
 
 **Ion inputs** accepts one Ion list in parameter order through the same editor
 component. Typed mode uses the published `Value::from_ion` codec. Int, Bool and
@@ -328,7 +328,7 @@ unresolved type variables and unavailable input types show an
 unavailable explanation. Supported input shapes do not guarantee that every
 referenced SDK operation has a runtime binding; execution errors appear in the
 result panel. Connected protocol v1 has no evaluation method. Without a separately authenticated
-job offer, this component shows its availability message without sending an RPC extension.
+execution offer, this component shows its availability message without sending an RPC extension.
 
 The portable `inspector.mbt` builds this projection from semantic IR. Its selection
 keys include declaration kind because a type and value can share a qualified name.
@@ -358,7 +358,7 @@ does not capture the browser console or add host capabilities.
 
 - **Logs** keep the last 200 application operations: initialize, compile, run,
   worksheet, import, project open, evaluation, downloads, export, cancellation,
-  runtime changes and ignored late replies. Each entry has its job, the
+  runtime changes and ignored late replies. Each entry has its execution, the
   revision it read and its duration.
 - **Diagnostics** keep the last 20 reports, up to 50 diagnostics each. A report
   belongs to its operation and to the revision of the source, worksheet, inputs
@@ -385,10 +385,10 @@ owns the typed state, the actions, the reply parsing and the view.
 
 ### Failure details
 
-A failed job and each diagnostic open their details in place, with the keyboard or a screen reader (disclosure
+A failed execution and each diagnostic open their details in place, with the keyboard or a screen reader (disclosure
 buttons with `aria-expanded`). A diagnostic shows its code, severity, stage, location (select it to open the file at
-that place) with the original coordinates, the full message, related declarations and fix, and the job that
-reported it. A failed job in Logs or Output shows its code, stage and message with the job's context: language,
+that place) with the original coordinates, the full message, related declarations and fix, and the execution that
+reported it. A failed execution in Logs or Output shows its code, stage and message with the execution's context: language,
 profile, provider, target, project and file count, source revision and duration. **Copy details** copies a
 plain-text report to paste into an issue; its first line is "Messages can quote your source." **Raw reply** shows
 the reply JSON, at most 8,000 characters. It keeps names, numbers, codes, stages, paths, settings and messages;
@@ -411,7 +411,7 @@ starts with a **Morphir** link to that URL, and the logo links there too. The pr
 the desktop host and the development server do not.
 
 Each screen has one primary action. Try Morphir promotes the run action when
-the layout can run and **Compile** otherwise; Cancel appears only while a job
+the layout can run and **Compile** otherwise; Cancel appears only while an operation
 runs. Secondary actions, such as source-unit, project and IR downloads, use
 quiet icon buttons. Input and result views are tabs, and the evaluation runtime
 is the only segmented switch inside an evaluation card. Profile details and
@@ -459,7 +459,7 @@ The browser and Proton package use that same bundle without a CDN or extra worke
 `browser/main.mbt` owns rendering and application state. `pipeline.mbt` calls the
 existing Morphir Scheme frontend, IR codecs/migrations and Scheme backend.
 Elm generation also runs in that worker through the pure Elm backend.
-`worker/main.mbt` hosts that portable pipeline in a dedicated worker. Each job
+`worker/main.mbt` hosts that portable pipeline in a dedicated worker. Each execution
 gets a fresh worker; cancel terminates it. The adapter imposes a 15-second wall
 clock deadline and separate 16-MiB source/argument text limits in addition to the runtime's evaluation
 limits. These limits are not a complete memory sandbox.
@@ -492,7 +492,7 @@ with the origin changed to the workbench server's origin, keeping `/launch` and
 the token query. The proxy exchanges the token with the upstream host, retains
 its HttpOnly session cookie, then redirects to this frontend in connected mode.
 It proxies `/launch`, `/api/session` and `/rpc`; ordinary assets are local.
-The optional job endpoints described below execute in this gateway.
+The optional execution endpoints described below execute in this gateway.
 The upstream target must be an explicit `http://127.0.0.1:<port>` origin. The
 proxy binds to loopback, checks its own Host/Origin and cross-site request headers,
 and rewrites Host/Origin only after those checks. Tokens and cookies are not logged.
@@ -517,29 +517,29 @@ which means expose all, and never name a provider directly.
 
 The wire shapes follow [finos/morphir protocol.rs](https://github.com/finos/morphir/blob/5c5307d89f34d876e8f1ebf561ec55efbadf9fa0/crates/morphir/src/commands/ui/protocol.rs).
 No new wire method or protocol version is introduced by this slice. v1 does not
-offer evaluation or server cancellation. Without the separate job offer, evaluation controls are unavailable when
+offer evaluation or server cancellation. Without the separate execution offer, evaluation controls are unavailable when
 connected; Discard ignores a compile reply while the host may keep running.
 Workspace watching and native daemon IPC are not implemented yet.
 
-The separate live job profile is contributed to
-[finos/morphir](https://github.com/finos/morphir/tree/98f9ad980b2c64a89ce550c6eee45e69834d300f/spec/workbench/host/draft.1).
-It preserves connected v1 and the existing job receipt and terminal contracts.
+The separate live execution profile is contributed to
+[finos/morphir](https://github.com/finos/morphir/tree/7492f2b85e1dc0f86a004575032179011dc93018/spec/workbench/host/0.2.0-draft.1).
+It preserves connected v1 and the terminal outcome contract. The execution and native bundles use exact `0.2.0-draft.1`.
 
 <a id="native-descriptor-admission"></a>
 
 ## Native descriptor validation
 
-The shared job client accepts paired `nativeDescriptor()` and
+The shared execution client accepts paired `nativeDescriptor()` and
 `nativeRequest(source)` hooks. The descriptor hook supplies JSON descriptor text
 after the binding checks its current page and session. If it extracts a descriptor
 from a public reply, it must validate the complete original reply with bounded,
 duplicate-aware decoding before projecting that descriptor. The compiled
 `native-descriptor` command uses the shared native reply codec to check the exact
-profile, closed capabilities and directly nested frozen jobs offer. Its session
+profile, closed capabilities and directly nested frozen executions offer. Its session
 must match the current page session. HTTP retains separate authenticated
 host-descriptor validation.
 
-The request hook receives a complete public native job request as JSON text,
+The request hook receives a complete public native execution request as JSON text,
 including profile, version, operation, session and payload. Preflight bounds the
 whole 1-MiB envelope before sending. The hook returns the complete raw native
 reply text for compiled `native-response` validation against that originating
@@ -555,11 +555,11 @@ Transport exceptions cannot manufacture a validated effect. Native errors carry
 no fabricated HTTP status. Terminal release absence can confirm cleanup only
 after fresh, matching authority validation and an authoritative no-effect error.
 
-Reconciliation checks the same job authority and stable native capabilities
-before observing a retained identity. Missing jobs are explicit absence, and
+Reconciliation checks the same execution authority and stable native capabilities
+before observing a retained identity. Missing executions are explicit absence, and
 malformed negotiation never falls back to another transport. The bundled Proton
 host and renderer now use this raw mapping through `app:workbench_native` for
-all session, job and workspace operations. The session binding validates complete
+all session, execution and workspace operations. The session binding validates complete
 replies before extracting descriptors and rechecks stable authority after each
 request. Independent MCK drafts.7 through .10 cover raw frames, reply validation,
 production client lifecycle and controlled production owner orchestration. Fresh
@@ -613,7 +613,7 @@ pinned morphir-rust submodule `04ababf1dbeff10333bdaa70613562157843125a`,
 Rust 1.98.1 and Chromium. The v1 `morphir.workspace.open` result wraps the workspace
 in `snapshot`; malformed envelopes now report a diagnostic while keeping compiler
 capabilities available. Other installed providers, workspace watching and durable daemon recovery need
-their own acceptance. The opt-in job acceptance below exercises connected evaluation.
+their own acceptance. The opt-in execution acceptance below exercises connected evaluation.
 
 ## Projects
 
@@ -702,38 +702,38 @@ Input errors, stale results and late replies keep their existing handling.
 
 The browser and packaged Proton share the same component and acceptance workflow.
 Tests exercise actual typed values/SDK errors and explicit failure, cleanup and
-cancellation evidence fixtures. Connected v1 has no new job or cancellation RPC;
+cancellation evidence fixtures. Connected v1 has no new execution or cancellation RPC;
 local cancellation still stops/discards the worker operation. Native provider
-acquisition/disposal and authoritative daemon job transitions are subsequent work.
+acquisition/disposal and authoritative daemon execution transitions are subsequent work.
 
-## Authenticated evaluation jobs
+## Authenticated evaluation executions
 
 Build the app first, then explicitly enable the gateway's bounded Scheme provider:
 
 ```sh
-MORPHIR_WORKBENCH_HOST_URL=http://127.0.0.1:HOST_PORT MORPHIR_WORKBENCH_JOBS=1 mise exec -- bun run --cwd apps/morphir-workbench dev
+MORPHIR_WORKBENCH_HOST_URL=http://127.0.0.1:HOST_PORT MORPHIR_WORKBENCH_EXECUTIONS=1 mise exec -- bun run --cwd apps/morphir-workbench dev
 ```
 
 Authenticate through the upstream one-use `/launch` URL with its origin changed
 to `http://127.0.0.1:5173`, as above. The gateway serves the shared UI and the
-exact `morphir/workbench/host` version `0.1.0-draft.1` endpoints at one origin.
-Every job request authenticates the HttpOnly cookie against the real upstream
+exact `morphir/workbench/host` version `0.2.0-draft.1` endpoints at one origin.
+Every execution request authenticates the HttpOnly cookie against the real upstream
 `/api/session`. The gateway selects its own `moonbit-scheme` provider; it does
 not claim the Rust host's compiler provider can evaluate or grant metadata access.
 With the flag absent, connected v1 retains its existing behavior.
 
 Import the typed pricing fixture and evaluate a public entry with fields,
 JSON or Ion. The UI captures one immutable model/entry/input snapshot and binds
-its cursor to the authenticated host, session, provider, job and snapshot.
-`finos/morphir-engine/execution/jobs` owns authoritative receipts; the portable
-`finos/morphir-execution/jobs` cursor validates incoming evidence. JavaScript handles
+its cursor to the authenticated host, session, provider, execution and snapshot.
+`finos/morphir-engine/execution/executions` owns authoritative receipts; the portable
+`finos/morphir-execution/executions` cursor validates incoming evidence. JavaScript handles
 HTTP and worker scheduling, while shared MoonBit code validates values and receipts.
 Private host code is built outside the public `dist` directory.
 
 The provider runs at most two isolated Node workers at once, with a 128 MiB
 V8 old-generation limit and a 30-second execution deadline. This is not a total
 process-memory quota. It retains at most eight
-jobs within the owner's 16 MiB serialized-evidence budget. Terminal jobs require
+executions within the owner's 16 MiB serialized-evidence budget. Terminal executions require
 explicit release; the UI releases them after validating their evidence. The raw
 HTTP body and receipt each have a 1 MiB limit. Duplicate JSON keys and invalid
 UTF-8 reject during framing validation. Ion uses the library's flat lexer to reject more
@@ -742,7 +742,7 @@ typed values still obey depth 64 and 100,000-node/code-unit limits.
 
 Cancel acknowledges intent before worker termination and cleanup. A captured
 returned value can win the race. A lost HTTP reply never creates terminal
-execution evidence. The UI retains a known job while disconnected and offers
+execution evidence. The UI retains a known execution while disconnected and offers
 **Reconnect / resume** only for a newly authenticated identical offer. Resume
 queries the same identity without submitting again. A lost submission response
 has unknown acceptance, so blind resubmission is blocked. Retention is in memory;
@@ -751,16 +751,16 @@ owner restart, browser reload recovery and durable retry are separate work.
 The bottom Output and Diagnostics panels show validated terminal evidence,
 including ordinary `Result.Err`, SDK model errors and separate cleanup failures.
 Editing inputs marks earlier output outdated while the accepted snapshot stays
-unchanged. Model replacement is blocked while a job needs reconciliation, including a
-disconnected terminal job whose release reply was lost. The latest host evaluation
+unchanged. Model replacement is blocked while an execution needs reconciliation, including a
+disconnected terminal execution whose release reply was lost. The latest host evaluation
 retains its input draft and full result across declaration navigation. Returning
 to that declaration preserves input edits and the result's outdated marker; a new
 host evaluation replaces this single retained evaluation.
 
-Run the real-host browser acceptance with jobs enabled:
+Run the real-host browser acceptance with executions enabled:
 
 ```sh
-mise run test:workbench-live-host -- --host-bin /absolute/path/to/morphir --jobs
+mise run test:workbench-live-host -- --host-bin /absolute/path/to/morphir --executions
 ```
 
 Add `--desktop-bin '/absolute/path/to/Morphir Workbench.app/Contents/MacOS/morphir-workbench'`
@@ -779,3 +779,25 @@ When the browser refuses the save (a private window, a full quota), "Not saved" 
 the project stays in the page. "Reset project" (in the explorer's More actions menu and the command palette) asks
 inline, then restores the default project of the language and removes the saved copy. Nothing leaves the browser: a folder import is a copy, and connected mode (a Morphir host) does not use
 this storage.
+
+## Breaking execution migration
+
+Before 1.0, the accepted-work lifecycle changes directly from job to execution.
+Current clients and owners use `morphir/workbench/executions`, `executionId`,
+`morphir/workbench/execution-plan`, native `execution.*` operations and the
+`executions` native capability. Execution, host, native and execution-plan bundles
+require exact `0.2.0-draft.1`. Old names, versions and duplicate identity fields
+are rejected without aliases or resubmission. HTTP keeps the operation routes
+`/api/workbench/submit`, `/query`, `/cancel` and `/release`; no `/jobs` alias exists.
+
+An execution request has no execution identity until accepted. A lost submission
+reply remains uncertain. Reconnection observes the same retained execution,
+while another accepted request gets a fresh identity. Cancellation acknowledgement
+does not prove termination, and cleanup failures remain separate evidence.
+Worker message counters are request IDs and cannot identify accepted executions.
+
+The shared replacement MCK drafts14–19 qualify these changed contracts. Historical
+drafts6–10/13 and their evidence stay frozen; current adapters refuse them.
+Capability policy `0.1.0-draft.1`, terminal outcomes `0.1.0-draft.5` and independent
+value/invocation contracts retain their versions. This migration does not enable
+policy selection on the public native or authenticated HTTP mappings.

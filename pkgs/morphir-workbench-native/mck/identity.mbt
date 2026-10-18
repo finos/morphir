@@ -51,7 +51,7 @@ fn Aliases::offer(self : Aliases, value : Json) -> Json {
 ///|
 fn Aliases::identity(self : Aliases, value : Json) -> Json {
   let fields = closed(value, [
-    "hostId", "sessionId", "providerId", "jobId", "snapshotId",
+    "hostId", "sessionId", "providerId", "executionId", "snapshotId",
   ]).copy()
   let host = text(fields["hostId"])
   let session = text(fields["sessionId"])
@@ -59,8 +59,13 @@ fn Aliases::identity(self : Aliases, value : Json) -> Json {
   // Allocation order is semantic and independent of JSON object iteration.
   fields["hostId"] = Json::string(self.name("host", session, host))
   fields["sessionId"] = Json::string(self.session(session))
-  fields["jobId"] = Json::string(
-    self.name("job", scope, text(fields["jobId"]), reference=Some(value)),
+  fields["executionId"] = Json::string(
+    self.name(
+      "execution",
+      scope,
+      text(fields["executionId"]),
+      reference=Some(value),
+    ),
   )
   fields["snapshotId"] = Json::string(
     self.name("snapshot", scope, text(fields["snapshotId"])),
@@ -69,14 +74,14 @@ fn Aliases::identity(self : Aliases, value : Json) -> Json {
 }
 
 ///|
-fn Aliases::job_value(self : Aliases, value : Json) -> Json {
+fn Aliases::execution_value(self : Aliases, value : Json) -> Json {
   guard value is Object(fields) else { return value }
   let fields = fields.copy()
   if fields.get("identity") is Some(identity) {
     fields["identity"] = self.identity(identity)
   }
   if fields.get("receipt") is Some(receipt) {
-    fields["receipt"] = self.job_value(receipt)
+    fields["receipt"] = self.execution_value(receipt)
   }
   Json::object(fields)
 }
@@ -139,8 +144,8 @@ fn Runtime::normalize(
       fields["offer"] = self.aliases.offer(offer)
     }
     Json::object(fields)
-  } else if operation.has_prefix("job.") {
-    self.aliases.job_value(value)
+  } else if operation.has_prefix("execution.") {
+    self.aliases.execution_value(value)
   } else if operation.has_prefix("workspace.") {
     self.workspace_value(session, value)
   } else {

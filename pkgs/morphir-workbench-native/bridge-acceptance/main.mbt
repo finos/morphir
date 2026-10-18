@@ -6,7 +6,7 @@ fn request(
 ) -> String {
   let fields : Map[String, Json] = {
     "profile": "morphir/workbench/native",
-    "contractVersion": "0.1.0-draft.1",
+    "contractVersion": "0.2.0-draft.1",
     "operation": Json::string(operation),
   }
   if operation != "session.open" {
@@ -71,7 +71,7 @@ async fn main {
     let owner = @bridge.Owner::new(
       group,
       @env.args()[0],
-      jobs=true,
+      executions=true,
       workspace=true,
     )
     let mut page = "page-1"
@@ -113,32 +113,38 @@ async fn main {
       "none",
     )
     let bad : Json = {
-      "contractVersion": "0.1.0-draft.1",
+      "contractVersion": "0.2.0-draft.1",
       "model": "{}",
       "entry": "calls:main#subtract",
       "inputs": { "format": "json", "source": "[]" },
     }
     rejected(
-      send("job.submit", id, Some(bad)),
-      "job.submit",
+      send("execution.submit", id, Some(bad)),
+      "execution.submit",
       "invalid_request",
       "none",
     )
     let submitted : Json = {
-      "contractVersion": "0.1.0-draft.1",
+      "contractVersion": "0.2.0-draft.1",
       "model": original,
       "entry": "calls:main#subtract",
       "inputs": { "format": "ion-text", "source": "[45,3]" },
     }
-    let job = value(send("job.submit", id, Some(submitted)), "job.submit")
-    let identity = @wire.field(job, "identity")
+    let execution = value(
+      send("execution.submit", id, Some(submitted)),
+      "execution.submit",
+    )
+    let identity = @wire.field(execution, "identity")
     let payload : Json = {
-      "contractVersion": "0.1.0-draft.1",
+      "contractVersion": "0.2.0-draft.1",
       "identity": identity,
     }
     let mut finished = false
     for _ in 0..<1000 {
-      let receipt = value(send("job.query", id, Some(payload)), "job.query")
+      let receipt = value(
+        send("execution.query", id, Some(payload)),
+        "execution.query",
+      )
       if @wire.field(receipt, "state") == Json::string("terminal") {
         let outcome = @wire.field(
           @wire.array(@wire.field(@wire.field(receipt, "outcomes"), "calls"))[0],
@@ -154,11 +160,15 @@ async fn main {
       @async.sleep(10)
     }
     assert_true(finished)
-    ignore(value(send("job.cancel", id, Some(payload)), "job.cancel"))
-    ignore(value(send("job.release", id, Some(payload)), "job.release"))
+    ignore(
+      value(send("execution.cancel", id, Some(payload)), "execution.cancel"),
+    )
+    ignore(
+      value(send("execution.release", id, Some(payload)), "execution.release"),
+    )
     rejected(
-      send("job.release", id, Some(payload)),
-      "job.release",
+      send("execution.release", id, Some(payload)),
+      "execution.release",
       "not_found",
       "none",
     )

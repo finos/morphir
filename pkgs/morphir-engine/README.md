@@ -581,9 +581,9 @@ registry, such as `example.com/morphir/naming@1.0.0`. It is distinct from the
 provider's native IR package name, `morphir/naming`, which validation must check
 independently. The example authority is a placeholder, not a default trust grant.
 
-## Host-owned execution jobs
+## Host-owned executions
 
-The [execution jobs package](execution/jobs/README.md) owns bounded in-memory
+The [executions package](execution/executions/README.md) owns bounded in-memory
 snapshot-bound receipts around validated engine plans. It captures rich inputs,
 allows one execution claim, acknowledges cooperative cancellation and validates
 terminal outputs against the retained public declarations. Authenticated host

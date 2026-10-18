@@ -51,7 +51,7 @@ pub(all) struct Env {
   busy : Bool
   /// The examples and samples the project menu offers, as `(id, label)`, from the workbench's one list.
   samples : Array[(String, String)]
-  /// Why samples cannot open now, such as a running job; empty when they can.
+  /// Why samples cannot open now, such as a running request; empty when they can.
   sample_reason : String
 }
 
@@ -140,7 +140,7 @@ pub(all) enum Action {
 }
 
 ///|
-let busy_reason = "Wait for the running job to finish"
+let busy_reason = "Wait for the running operation to finish"
 
 ///|
 fn Env::tree(self : Env) -> Array[Node] {

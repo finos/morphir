@@ -121,6 +121,6 @@ async fn main {
     ])
   }
   @stdio.stdout.write(
-    "Capability checks pass Node/Chromium/native debug/release with independently checked reports; UI, jobs and provider integrations remain separate.\n",
+    "Capability checks pass Node/Chromium/native debug/release with independently checked reports; UI, executions and provider integrations remain separate.\n",
   )
 }

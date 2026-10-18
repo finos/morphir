@@ -1,9 +1,9 @@
-import type { Adapter, Core, CoreReply, Invoke, JobOptions, NativeBridge, NativeDescriptor, NativeOperations, NativeReply, Progress, WorkRequest, WorkResult } from './contracts.ts';
+import type { Adapter, Core, CoreReply, Invoke, ExecutionOptions, NativeBridge, NativeDescriptor, NativeOperations, NativeReply, Progress, WorkRequest, WorkResult } from './contracts.ts';
 // Bundled page-bound native protocol. Capability advertisement and platform
 // qualification remain separate from using the accepted wire contract here.
-import { JobClient } from './job-session.ts';
+import { ExecutionClient } from './execution-session.ts';
 import { NativeWorkspaceClient } from './native-workspace.ts';
-export const nativeBridgeVersion = '0.1.0-draft.1';
+export const nativeBridgeVersion = '0.2.0-draft.1';
 const limit = 1048576;
 // Validation closes both objects. Compare every descriptor/offer field in a fixed
 // order so equivalent JSON member order does not look like changed authority.
@@ -19,7 +19,7 @@ export class NativeSession {
   disposed: boolean;
   operations: string[];
   descriptor?: string;
-  constructor(invoke: Invoke, timeout = 10000, core: Core = command => globalThis.morphirWorkbenchJobs(command)) {
+  constructor(invoke: Invoke, timeout = 10000, core: Core = command => globalThis.morphirWorkbenchExecutions(command)) {
     this.invoke = invoke; this.timeout = timeout; this.core = core;
     this.id = null; this.disposed = false; this.operations = [];
   }
@@ -85,23 +85,23 @@ export class NativeSession {
   }
 }
 
-export class NativeJobTransport {
+export class NativeExecutionTransport {
   session: NativeSession;
   constructor(session: NativeSession) { this.session = session; }
   async nativeDescriptor() { return JSON.stringify(await this.session.check()); }
   async nativeRequest(source: string) {
-    // This is the complete locally generated request from JobClient. Preserve it
+    // This is the complete locally generated request from ExecutionClient. Preserve it
     // exactly; only inspect operation/session for this originating invocation.
     const request = JSON.parse(source);
-    if (!['job.submit', 'job.query', 'job.cancel', 'job.release'].includes(request.operation) || request.sessionId !== this.session.id) {
-      throw new Error('Invalid native job operation or session.');
+    if (!['execution.submit', 'execution.query', 'execution.cancel', 'execution.release'].includes(request.operation) || request.sessionId !== this.session.id) {
+      throw new Error('Invalid native execution operation or session.');
     }
     await this.session.check();
     const result = await this.session.exchange(source, request.operation, this.session.id);
     await this.session.check();
-    // JobClient independently admits this same complete raw reply and handles
+    // ExecutionClient independently admits this same complete raw reply and handles
     // native error effects. Transport failures cannot manufacture no-effect.
-    if (typeof result.source !== 'string') throw new Error('Invalid native job reply.');
+    if (typeof result.source !== 'string') throw new Error('Invalid native execution reply.');
     return result.source;
   }
 }
@@ -112,17 +112,17 @@ export class NativeAdapter {
   runtimeLabel: string;
   epoch: number;
   disposed: boolean;
-  jobOptions: JobOptions;
-  jobs?: JobClient;
-  jobsAvailable = false;
+  executionOptions: ExecutionOptions;
+  executions?: ExecutionClient;
+  executionsAvailable = false;
   workspace?: NativeWorkspaceClient;
-  constructor(local: Adapter, invoke: Invoke, timeout?: number, jobOptions: JobOptions = {}) {
+  constructor(local: Adapter, invoke: Invoke, timeout?: number, executionOptions: ExecutionOptions = {}) {
     this.local = local;
-    this.session = new NativeSession(invoke, timeout, jobOptions.core);
+    this.session = new NativeSession(invoke, timeout, executionOptions.core);
     this.runtimeLabel = 'Desktop local';
     this.epoch = 0;
     this.disposed = false;
-    this.jobOptions = jobOptions;
+    this.executionOptions = executionOptions;
   }
   current(epoch: number) {
     if (this.disposed || epoch !== this.epoch) throw new Error('Discarded. The desktop request is no longer current.');
@@ -135,15 +135,15 @@ export class NativeAdapter {
     this.current(epoch);
     await this.session.check();
     this.current(epoch);
-    if (this.session.operations.includes('jobs')) {
-      this.jobs = new JobClient(this.session.id!, { ...this.jobOptions, transport: new NativeJobTransport(this.session),
+    if (this.session.operations.includes('executions')) {
+      this.executions = new ExecutionClient(this.session.id!, { ...this.executionOptions, transport: new NativeExecutionTransport(this.session),
         authenticate: async () => { await this.session.check(); return this.session.id!; } });
-      this.jobsAvailable = await this.jobs.initialize();
-      if (!this.jobsAvailable) throw new Error("The native host advertised jobs without a compatible offer.");
+      this.executionsAvailable = await this.executions.initialize();
+      if (!this.executionsAvailable) throw new Error("The native host advertised executions without a compatible offer.");
       this.current(epoch);
     }
     if (this.session.operations.includes('workspace')) this.workspace = new NativeWorkspaceClient(this.session, this.local);
-    return { ...result, nativeSession: true, workspaceAvailable: !!this.workspace, jobsAvailable: !!this.jobsAvailable, message: 'Desktop local · ready to compile' };
+    return { ...result, nativeSession: true, workspaceAvailable: !!this.workspace, executionsAvailable: !!this.executionsAvailable, message: 'Desktop local · ready to compile' };
   }
   async execute(request: WorkRequest, progress?: Progress): Promise<WorkResult> {
     if (request.executionMode === 'capability' || request.admission != null) {
@@ -152,14 +152,14 @@ export class NativeAdapter {
     const epoch = ++this.epoch;
     await this.session.check();
     this.current(epoch);
-    if (this.jobsAvailable && (request.operation === 'resume-job' ||
+    if (this.executionsAvailable && (request.operation === 'resume-execution' ||
         (request.operation === 'evaluate' && request.executionMode === 'typed'))) {
-      const currentProgress: Progress = job => {
-        if (!this.disposed && epoch === this.epoch) progress?.(job);
+      const currentProgress: Progress = execution => {
+        if (!this.disposed && epoch === this.epoch) progress?.(execution);
       };
-      const result = request.operation === 'resume-job'
-        ? await this.jobs!.resume(currentProgress)
-        : await this.jobs!.execute(request, currentProgress);
+      const result = request.operation === 'resume-execution'
+        ? await this.executions!.resume(currentProgress)
+        : await this.executions!.execute(request, currentProgress);
       this.current(epoch);
       return result;
     }
@@ -169,7 +169,7 @@ export class NativeAdapter {
     if (request.operation === 'project' && this.workspace) {
       const result = await this.workspace.openProject(typeof request.project === 'string' ? request.project : ''); this.current(epoch); return result;
     }
-    if (request.operation === 'project' || request.operation === 'workspace' || request.operation === 'resume-job') throw new Error('This desktop session does not offer native jobs or workspace access.');
+    if (request.operation === 'project' || request.operation === 'workspace' || request.operation === 'resume-execution') throw new Error('This desktop session does not offer native executions or workspace access.');
     const result = await this.local.execute(request);
     this.current(epoch);
     await this.session.check();
@@ -177,7 +177,7 @@ export class NativeAdapter {
     return result;
   }
   cancel() {
-    if (this.jobs?.active || (this.jobs?.job && this.jobs.job.state !== 'terminal')) return this.jobs.cancel();
+    if (this.executions?.active || (this.executions?.execution && this.executions.execution.state !== 'terminal')) return this.executions.cancel();
     ++this.epoch; this.local.cancel(); return this.workspace?.cancel();
   }
   dispose() { this.disposed = true; ++this.epoch; this.workspace?.dispose(); this.local.cancel(); this.session.dispose(); }

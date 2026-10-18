@@ -3,8 +3,8 @@ import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
 import { openSample } from './workbench-steps.ts';
 
-// Real failures can be read in the tool panel: each failed job and each diagnostic opens its details (code, stage,
-// location, message, job context), copies a plain-text report and shows the reply without source or models.
+// Real failures can be read in the tool panel: each failed execution and each diagnostic opens its details (code, stage,
+// location, message, execution context), copies a plain-text report and shows the reply without source or models.
 export async function detailsWorkflow(page: Page) {
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(page.url()).origin });
   const tab = (name: string) => page.getByRole('tab', { name: new RegExp(`^${name}`) });
@@ -26,7 +26,7 @@ export async function detailsWorkflow(page: Page) {
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('[role="status"]')?.textContent?.includes('elm.'));
 
-  // Diagnostics: the row opens its code, severity, stage, location, message and job; the location opens the file.
+  // Diagnostics: the row opens its code, severity, stage, location, message and execution; the location opens the file.
   await tab('Diagnostics').click();
   const row = body.locator('.tool-report.current .tool-diagnostic').first();
   await row.waitFor();
@@ -52,7 +52,7 @@ export async function detailsWorkflow(page: Page) {
   const report = await copy(details);
   assert.match(report, /^Messages can quote your source\.\nMorphir Workbench diagnostic\nSeverity: Error\nCode: elm\./);
   assert.match(report, /Location: src\/Workbench\/Main\.elm line 3/);
-  assert.match(report, /Reported by: Compile \(job \d+, source revision \d+\)/);
+  assert.match(report, /Reported by: Compile \(request \d+, source revision \d+\)/);
   await details.getByRole('button', { name: /^Raw reply of elm\./ }).click();
   const raw = details.getByRole('region', { name: /^Raw reply of elm\.\S+ at src\/Workbench\/Main\.elm/ });
   await raw.waitFor();
@@ -64,10 +64,10 @@ export async function detailsWorkflow(page: Page) {
   assert.equal(await disclosure.getAttribute('aria-expanded'), 'false', 'The disclosure closes again');
   assert.equal(await disclosure.getAttribute('aria-controls'), null, 'The closed disclosure controls nothing again');
 
-  // Logs: the failed job opens its context and failure.
+  // Logs: the failed request opens its context and failure.
   await tab('Logs').click();
-  const failedLog = body.locator('.tool-log').filter({ hasText: /Job \d+ failed in/ }).first();
-  await failedLog.getByRole('button', { name: /^Details of Compile job \d+$/ }).click();
+  const failedLog = body.locator('.tool-log').filter({ hasText: /Request \d+ failed in/ }).first();
+  await failedLog.getByRole('button', { name: /^Details of Compile request \d+$/ }).click();
   const logDetails = failedLog.locator('.tool-details');
   await logDetails.waitFor();
   const logValue = (label: string) => logDetails.locator(`dt:text-is("${label}") + dd`);
@@ -75,13 +75,13 @@ export async function detailsWorkflow(page: Page) {
   assert.equal(await logValue('Project').textContent(), 'Workbench (1 file)');
   assert.match((await logValue('Duration').textContent())!, /^\d+ ms$/);
   const logReport = await copy(logDetails);
-  assert.match(logReport, /^Messages can quote your source\.\nMorphir Workbench failure\nOperation: Compile \(job \d+\)\nCode: elm\./);
+  assert.match(logReport, /^Messages can quote your source\.\nMorphir Workbench failure\nOperation: Compile \(request \d+\)\nCode: elm\./);
   assert.ok(logReport.includes('Reply (source, models and values omitted; other text over 32 characters replaced by its size, except messages, codes and paths):'), 'The report says what the reply leaves out');
 
   // Output: the failed result opens the same details.
   await tab('Output').click();
   const outcome = body.locator('.tool-outcome').filter({ hasText: 'Compile failed' }).first();
-  await outcome.getByRole('button', { name: /^Details of Compile job \d+$/ }).click();
+  await outcome.getByRole('button', { name: /^Details of Compile request \d+$/ }).click();
   await outcome.locator('.tool-details dt:text-is("Code") + dd').filter({ hasText: code }).waitFor();
 
   // Details fit a phone-width window.

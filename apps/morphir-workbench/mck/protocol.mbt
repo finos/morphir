@@ -46,8 +46,8 @@ pub fn handle_line(source : String) -> Json? raise {
   // The exact new draft preserves compact recipe number tokens as well as
   // embedded native source bytes. Historical adapters retain their parser.
   let request = if field(request, "contractVersion") ==
-    Json::string("0.1.0-draft.7") ||
-    field(request, "contractVersion") == Json::string("0.1.0-draft.8") {
+    Json::string("0.1.0-draft.15") ||
+    field(request, "contractVersion") == Json::string("0.1.0-draft.16") {
     @wire.parse(source)
   } else {
     request
@@ -70,7 +70,7 @@ pub fn exit_requested(request : Json) -> Bool {
 
 ///|
 /// Implements the parent's exact draft codec and declaration observations.
-/// These test claims do not advertise connected RPC or job execution.
+/// These test claims do not advertise connected RPC or execution execution.
 pub fn handle(request : Json) -> Json {
   let id = field(request, "id")
   guard request is Object(fields) else {
@@ -84,9 +84,9 @@ pub fn handle(request : Json) -> Json {
     ["id", "op", "suite", "contractVersion", "format", "input"]
   }
   let version = field(request, "contractVersion")
-  let draft8 = version == Json::string("0.1.0-draft.8")
-  let draft7 = version == Json::string("0.1.0-draft.7")
-  let draft6 = version == Json::string("0.1.0-draft.6")
+  let draft16 = version == Json::string("0.1.0-draft.16")
+  let draft15 = version == Json::string("0.1.0-draft.15")
+  let draft14 = version == Json::string("0.1.0-draft.14")
   let draft2 = version == Json::string("0.1.0-draft.2")
   let draft3 = version == Json::string("0.1.0-draft.3")
   let draft5 = version == Json::string("0.1.0-draft.5")
@@ -99,9 +99,9 @@ pub fn handle(request : Json) -> Json {
       draft2 ||
       draft3 ||
       draft4 ||
-      draft6 ||
-      draft7 ||
-      draft8
+      draft14 ||
+      draft15 ||
+      draft16
     ) else {
     return invalid(id, "workbench.invalid_request")
   }
@@ -112,12 +112,12 @@ pub fn handle(request : Json) -> Json {
       "contractVersion": version,
       "binding": "morphir-moonbit",
       "language": "moonbit",
-      "operations": if draft8 {
+      "operations": if draft16 {
         ["validate-native-reply"]
-      } else if draft7 {
+      } else if draft15 {
         ["validate-native-frame"]
-      } else if draft6 {
-        ["reduce-job"]
+      } else if draft14 {
+        ["reduce-execution"]
       } else if draft5 {
         [
           "decode-value", "validate-value", "validate-invocations", "validate-output",
@@ -134,30 +134,30 @@ pub fn handle(request : Json) -> Json {
       } else {
         ["decode-value"]
       },
-      "formats": if draft6 || draft7 || draft8 {
+      "formats": if draft14 || draft15 || draft16 {
         ["json"]
       } else {
         ["json", "ion-text"]
       },
     }
   }
-  if draft8 {
+  if draft16 {
     guard op == Json::string("validate-native-reply") &&
       field(request, "format") == Json::string("json") else {
       return invalid(id, "workbench.invalid_request")
     }
     return native_reply(id, field(request, "input"))
   }
-  if draft7 {
+  if draft15 {
     guard op == Json::string("validate-native-frame") &&
       field(request, "format") == Json::string("json") else {
       return invalid(id, "workbench.invalid_request")
     }
     return native_frame(id, field(request, "input"))
   }
-  guard (draft6 && op == Json::string("reduce-job")) ||
+  guard (draft14 && op == Json::string("reduce-execution")) ||
     (
-      !draft6 &&
+      !draft14 &&
       (
         op == Json::string("decode-value") ||
         ((draft2 || draft3 || draft4) && op == Json::string("validate-value")) ||
@@ -170,12 +170,12 @@ pub fn handle(request : Json) -> Json {
   }
   try {
     let input = field(request, "input")
-    if (draft2 || draft3 || draft4 || draft6) &&
+    if (draft2 || draft3 || draft4 || draft14) &&
       @utf8.encode(input.stringify()).length() > 1024 * 1024 {
       return invalid(id, "workbench.input_limit")
     }
-    let observation = if draft6 {
-      reduce_job(input, field(request, "format"))
+    let observation = if draft14 {
+      reduce_execution(input, field(request, "format"))
     } else if op == Json::string("validate-outcomes") {
       admit_outcomes(input, field(request, "format")).to_json()
     } else if op == Json::string("validate-invocations") {
@@ -195,7 +195,7 @@ pub fn handle(request : Json) -> Json {
     }
     { "id": id, "status": "ok", "value": observation }
   } catch {
-    @jobs.Invalid(code) => invalid(id, code)
+    @executions.Invalid(code) => invalid(id, code)
     @execution.Invalid(code) => {
       // Legacy codec diagnostics append input paths/names after a colon.
       // The MCK observation carries only the bounded, stable rejection code.

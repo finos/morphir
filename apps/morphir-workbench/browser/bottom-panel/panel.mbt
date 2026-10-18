@@ -34,15 +34,15 @@ pub(all) enum Severity {
 pub extend Severity with Eq::{equal, not_equal}
 
 ///|
-/// What a failed job ran and how it failed: what its details show and its plain-text report holds.
+/// What a failed request ran and how it failed: what its details show and its plain-text report holds.
 pub(all) struct Failure {
-  job : Int32
+  request_id : Int32
   operation : String
   /// The reply's code, such as an engine problem code or `workbench.internal_error`; empty when it gave none.
   code : String
   stage : String
   message : String
-  /// The job's context as `(label, value)` pairs in display order, such as `("Language", "elm")`.
+  /// The request's context as `(label, value)` pairs in display order, such as `("Language", "elm")`.
   context : Array[(String, String)]
   /// The reply as JSON text after `redacted`, bounded; empty when there is none.
   raw : String
@@ -59,13 +59,13 @@ pub extend Failure with Eq::{equal, not_equal}
 pub let raw_text_bound : Int32 = 32
 
 ///|
-/// Members whose text a raw reply keeps at any length: structure, diagnostics and the job's settings. Messages
+/// Members whose text a raw reply keeps at any length: structure, diagnostics and the request's settings. Messages
 /// (`message`, `detail`, `generationMessage`) are kept, so they can quote the source a failure points at.
 let kept_text_members : Array[String] = [
   "success", "operation", "code", "stage", "message", "detail", "generationMessage",
   "severity", "kind", "path", "target", "provider", "profile", "coordinateProfile",
-  "languageId", "language", "encoding", "codec", "id", "jobId", "version", "formatVersion",
-  "schemaVersion",
+  "languageId", "language", "encoding", "codec", "id", "executionId", "version",
+  "formatVersion", "schemaVersion",
 ]
 
 ///|
@@ -196,7 +196,7 @@ pub(all) struct Report {
   id : Int32
   time : String
   operation : String
-  job : Int32
+  request_id : Int32
   scope : String
   revision : Int32
   diagnostics : Array[Diagnostic]
@@ -481,7 +481,7 @@ pub fn State::report(
   self : State,
   time : String,
   operation : String,
-  job : Int32,
+  request_id : Int32,
   scope : String,
   revision : Int32,
   diagnostics : Array[Diagnostic],
@@ -512,7 +512,7 @@ pub fn State::report(
     id: self.next,
     time,
     operation,
-    job,
+    request_id,
     scope,
     revision,
     diagnostics: kept,
@@ -1019,13 +1019,17 @@ fn context_lines(failure : Failure) -> Array[String] {
 }
 
 ///|
-/// The plain-text report of a failed job, to paste into an issue. Its first line warns that messages can quote
+/// The plain-text report of a failed request, to paste into an issue. Its first line warns that messages can quote
 /// source; the raw reply is `redacted`.
 pub fn failure_text(failure : Failure, time : String) -> String {
   let lines = [
     source_warning,
     "Morphir Workbench failure",
-    "Operation: " + failure.operation + " (job " + failure.job.to_string() + ")",
+    "Operation: " +
+    failure.operation +
+    " (request " +
+    failure.request_id.to_string() +
+    ")",
   ]
   if failure.code != "" {
     lines.push("Code: " + failure.code)
@@ -1045,7 +1049,7 @@ pub fn failure_text(failure : Failure, time : String) -> String {
 }
 
 ///|
-/// The plain-text report of one diagnostic, with the job that reported it.
+/// The plain-text report of one diagnostic, with the request that reported it.
 pub fn diagnostic_text(d : Diagnostic, report : Report) -> String {
   let lines = [
     source_warning,
@@ -1075,8 +1079,8 @@ pub fn diagnostic_text(d : Diagnostic, report : Report) -> String {
   lines.push(
     "Reported by: " +
     report.operation +
-    " (job " +
-    report.job.to_string() +
+    " (request " +
+    report.request_id.to_string() +
     (if report.scope == "session" {
       ""
     } else {
@@ -1207,7 +1211,7 @@ fn detail_row(label : String, value : @html.Html) -> Array[@html.Html] {
 
 ///|
 /// Copy details and the raw reply, under a failure's or a diagnostic's details. `subject` names them, such as
-/// `Compile job 3`.
+/// `Compile request 3`.
 fn detail_actions(
   state : State,
   key : String,
@@ -1249,13 +1253,13 @@ fn detail_actions(
 }
 
 ///|
-/// What a failure's controls name: its operation and job, such as `Compile job 3`.
+/// What a failure's controls name: its operation and request, such as `Compile request 3`.
 fn failure_subject(failure : Failure) -> String {
-  failure.operation + " job " + failure.job.to_string()
+  failure.operation + " request " + failure.request_id.to_string()
 }
 
 ///|
-/// The details of a failed job: its code, stage, message and context, Copy details and the raw reply.
+/// The details of a failed request: its code, stage, message and context, Copy details and the raw reply.
 fn failure_details(
   state : State,
   key : String,
@@ -1278,8 +1282,10 @@ fn failure_details(
   )
   rows.append(
     detail_row(
-      "Job",
-      @html.text(failure.operation + " · job " + failure.job.to_string()),
+      "Request",
+      @html.text(
+        failure.operation + " · request " + failure.request_id.to_string(),
+      ),
     ),
   )
   for pair in failure.context {
@@ -1366,8 +1372,8 @@ fn diagnostics_view(
   .map(report => {
     let current = state.is_current(report, revisions)
     let heading = report.operation +
-      " · job " +
-      report.job.to_string() +
+      " · request " +
+      report.request_id.to_string() +
       (if report.scope == "session" {
         ""
       } else {
@@ -1478,7 +1484,9 @@ fn diagnostic_row(
     rows.append(
       detail_row(
         "Reported by",
-        @html.text(report.operation + " · job " + report.job.to_string()),
+        @html.text(
+          report.operation + " · request " + report.request_id.to_string(),
+        ),
       ),
     )
     if report.failure is Some(failure) {

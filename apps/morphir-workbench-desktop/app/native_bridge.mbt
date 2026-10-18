@@ -17,7 +17,7 @@ fn with_native_session(app : @proton.App) -> @proton.App {
         @bridge.Owner::new(
           context.task_group(),
           context.application_executable,
-          jobs=@native.desktop_supported(),
+          executions=@native.desktop_supported(),
           workspace=@native.desktop_supported() && @workspace.supported(),
         ),
       )

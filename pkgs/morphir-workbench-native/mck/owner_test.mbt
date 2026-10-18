@@ -6,11 +6,11 @@ async test "wrong window reaches owner caller admission without dependencies" {
         "id": 1,
         "op": "run-native-owner",
         "suite": "workbench",
-        "contractVersion": "0.1.0-draft.10",
+        "contractVersion": "0.1.0-draft.18",
         "format": "json",
         "input": {
           "context": { "window": "other", "origin": "app", "page": "page" },
-          "services": { "jobs": "enabled", "workspace": true },
+          "services": { "executions": "enabled", "workspace": true },
           "evaluation": {
             "model": "opaque model",
             "entry": "demo:main#answer",
@@ -52,11 +52,11 @@ async test "owner workspace captures inline bytes and rejects unresolved referen
         "id": 1,
         "op": "run-native-owner",
         "suite": "workbench",
-        "contractVersion": "0.1.0-draft.10",
+        "contractVersion": "0.1.0-draft.18",
         "format": "json",
         "input": {
           "context": { "window": "main", "origin": "app", "page": "page" },
-          "services": { "jobs": "disabled", "workspace": true },
+          "services": { "executions": "disabled", "workspace": true },
           "evaluation": {
             "model": "opaque",
             "entry": "demo:main#answer",
@@ -156,11 +156,11 @@ async test "held cleanup is shared across revoke and shutdown waiters" {
         "id": 1,
         "op": "run-native-owner",
         "suite": "workbench",
-        "contractVersion": "0.1.0-draft.10",
+        "contractVersion": "0.1.0-draft.18",
         "format": "json",
         "input": {
           "context": { "window": "main", "origin": "app", "page": "page" },
-          "services": { "jobs": "enabled", "workspace": false },
+          "services": { "executions": "enabled", "workspace": false },
           "evaluation": {
             "model": "opaque",
             "entry": "demo:main#answer",
@@ -198,7 +198,7 @@ async test "held cleanup is shared across revoke and shutdown waiters" {
   assert_eq(
     open_reply["value"],
     Json::string(
-      "{\"contractVersion\":\"0.1.0-draft.1\",\"offer\":{\"contractVersion\":\"0.1.0-draft.1\",\"hostId\":\"host-1\",\"operations\":[\"query\",\"cancel\"],\"profile\":\"morphir/workbench/jobs\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\"},\"operations\":[\"jobs\"],\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session-1\"}",
+      "{\"contractVersion\":\"0.2.0-draft.1\",\"offer\":{\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host-1\",\"operations\":[\"query\",\"cancel\"],\"profile\":\"morphir/workbench/executions\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\"},\"operations\":[\"executions\"],\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session-1\"}",
     ),
   )
   assert_eq(
