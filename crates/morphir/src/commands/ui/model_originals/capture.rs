@@ -21,6 +21,7 @@ use std::{
 #[derive(Clone)]
 pub struct CaptureControl {
     cancelled: Arc<AtomicBool>,
+    notification: Arc<tokio::sync::Notify>,
     deadline: Instant,
 }
 impl Default for CaptureControl {
@@ -32,18 +33,54 @@ impl CaptureControl {
     pub fn new() -> Self {
         Self {
             cancelled: Arc::new(AtomicBool::new(false)),
+            notification: Arc::new(tokio::sync::Notify::new()),
             deadline: Instant::now() + Duration::from_secs(30),
         }
     }
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Relaxed);
+        self.notification.notify_waiters();
     }
-    fn check(&self) -> Result<(), CaptureError> {
+    #[cfg(test)]
+    pub(super) fn with_timeout(timeout: Duration) -> Self {
+        let mut control = Self::new();
+        control.deadline = Instant::now() + timeout;
+        control
+    }
+    pub(super) fn check(&self) -> Result<(), CaptureError> {
         if self.cancelled.load(Ordering::Relaxed) || Instant::now() >= self.deadline {
             Err(CaptureError::Timeout)
         } else {
             Ok(())
         }
+    }
+    pub(super) fn deadline(&self) -> Instant {
+        self.deadline
+    }
+    pub(super) async fn cancelled(&self) {
+        let notified = self.notification.notified();
+        tokio::pin!(notified);
+        notified.as_mut().enable();
+        if self.cancelled.load(Ordering::Relaxed) {
+            return;
+        }
+        notified.await;
+    }
+}
+
+/// Reservation boundary for retained copies. Temporary raw-record input has its
+/// own bounded active-worker budget and never escapes into a retained capture.
+pub(super) trait CaptureAccounting {
+    fn source(&mut self, bytes: usize) -> Result<(), CaptureError>;
+    fn metadata(&mut self, bytes: usize) -> Result<(), CaptureError>;
+}
+struct PerCaptureOnly;
+impl CaptureAccounting for PerCaptureOnly {
+    fn source(&mut self, _: usize) -> Result<(), CaptureError> {
+        Ok(())
+    }
+    fn metadata(&mut self, _: usize) -> Result<(), CaptureError> {
+        Ok(())
     }
 }
 #[derive(Clone, Copy)]
@@ -78,6 +115,16 @@ pub(super) fn capture_with_limits(
     scope: CaptureScope,
     control: &CaptureControl,
     limits: Limits,
+) -> Result<CaptureResult, CaptureError> {
+    capture_accounted(output, module, scope, control, limits, &mut PerCaptureOnly)
+}
+pub(super) fn capture_accounted(
+    output: &Dir,
+    module: &SelectedModule,
+    scope: CaptureScope,
+    control: &CaptureControl,
+    limits: Limits,
+    accounting: &mut dyn CaptureAccounting,
 ) -> Result<CaptureResult, CaptureError> {
     control.check()?;
     let directory = match open_directory(output, Path::new(module.as_str())) {
@@ -118,7 +165,13 @@ pub(super) fn capture_with_limits(
         }
         Err(_) => return Err(CaptureError::CaptureFailed),
     };
-    let raw = read_bounded(raw_file, limits.record, CaptureError::RecordLimit, control)?;
+    let raw = read_bounded(
+        raw_file,
+        limits.record,
+        CaptureError::RecordLimit,
+        control,
+        |_| Ok(()),
+    )?;
     let (record, declaration) = record::decode(raw, module, scope)?;
     let primary = record.descriptor.primary()?;
     let companions = match (scope, declaration) {
@@ -143,6 +196,7 @@ pub(super) fn capture_with_limits(
         descendants_left: limits.descendants,
         paths: PathSet::default(),
         control,
+        accounting,
     };
     for root in roots {
         builder.metadata(root)?;
@@ -195,6 +249,7 @@ fn read_bounded(
     limit: usize,
     excess: CaptureError,
     control: &CaptureControl,
+    mut reserve: impl FnMut(usize) -> Result<(), CaptureError>,
 ) -> Result<Vec<u8>, CaptureError> {
     let metadata = file.metadata().map_err(io_error)?;
     if !metadata.is_file() {
@@ -217,6 +272,7 @@ fn read_bounded(
         if count > limit - bytes.len() {
             return Err(excess);
         }
+        reserve(count)?;
         bytes.extend_from_slice(&block[..count]);
     }
     Ok(bytes)
@@ -306,6 +362,7 @@ struct Builder<'a> {
     descendants_left: usize,
     paths: PathSet,
     control: &'a CaptureControl,
+    accounting: &'a mut dyn CaptureAccounting,
 }
 impl Builder<'_> {
     fn metadata(&mut self, value: &impl Serialize) -> Result<(), CaptureError> {
@@ -322,8 +379,12 @@ impl Builder<'_> {
                 Ok(())
             }
         }
-        serde_json::to_writer(Counter(&mut self.metadata_left), value)
-            .map_err(|_| CaptureError::InventoryLimit)
+        let mut remaining = self.metadata_left;
+        serde_json::to_writer(Counter(&mut remaining), value)
+            .map_err(|_| CaptureError::InventoryLimit)?;
+        self.accounting.metadata(self.metadata_left - remaining)?;
+        self.metadata_left = remaining;
+        Ok(())
     }
     fn walk(
         &mut self,
@@ -336,7 +397,6 @@ impl Builder<'_> {
         if depth > 128 || self.entries.len() == MAX_ENTRIES {
             return Err(CaptureError::InventoryLimit);
         }
-        self.paths.insert(path, kind)?;
         let id = uuid::Uuid::new_v4().to_string();
         let content = match kind {
             SourceKind::File => {
@@ -345,6 +405,7 @@ impl Builder<'_> {
                     self.source_left,
                     CaptureError::SourceLimit,
                     self.control,
+                    |bytes| self.accounting.source(bytes),
                 )?;
                 self.source_left -= bytes.len();
                 SourceContent::File {
@@ -356,15 +417,38 @@ impl Builder<'_> {
         };
         // Charge the exact compact entry metadata, including generated identity,
         // before retaining the entry. Original file content never enters JSON.
+        #[derive(Serialize)]
+        #[serde(
+            tag = "kind",
+            rename_all = "lowercase",
+            rename_all_fields = "camelCase"
+        )]
+        enum EntryMetadata<'a> {
+            Directory {
+                entry_id: &'a str,
+                path: &'a SourcePath,
+            },
+            File {
+                entry_id: &'a str,
+                path: &'a SourcePath,
+                byte_length: usize,
+                sha256: &'a Sha256Digest,
+            },
+        }
         let metadata = match &content {
-            SourceContent::Directory => {
-                serde_json::json!({"kind":"directory","entryId":&id,"path":path})
-            }
-            SourceContent::File { bytes, digest } => {
-                serde_json::json!({"kind":"file","entryId":&id,"path":path,"byteLength":bytes.len(),"sha256":digest})
-            }
+            SourceContent::Directory => EntryMetadata::Directory {
+                entry_id: &id,
+                path,
+            },
+            SourceContent::File { bytes, digest } => EntryMetadata::File {
+                entry_id: &id,
+                path,
+                byte_length: bytes.len(),
+                sha256: digest,
+            },
         };
         self.metadata(&metadata)?;
+        self.paths.insert(path, kind)?;
         self.entries.push(SourceEntry {
             id,
             path: path.clone(),

@@ -5,10 +5,15 @@
 
 mod capture;
 mod domain;
+mod lifecycle;
 mod record;
 
 pub use capture::{CaptureControl, capture_compiled};
 pub use domain::*;
+pub use lifecycle::*;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod lifecycle_tests;

@@ -35,6 +35,14 @@ pub enum CaptureError {
     CaptureFailed,
     #[error("Model source capture timed out or was cancelled.")]
     Timeout,
+    #[error("Model capture capacity is exhausted.")]
+    Capacity,
+    #[error("A model capture is already active on this connection.")]
+    ActiveCapture,
+    #[error("The model capture is unavailable on this connection.")]
+    UnknownHandle,
+    #[error("Invalid model capture identity.")]
+    InvalidIdentity,
 }
 
 /// A portable source path, deliberately independent of the generated-artifact
